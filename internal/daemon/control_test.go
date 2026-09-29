@@ -279,3 +279,20 @@ func TestFlagArgs(t *testing.T) {
 		}
 	}
 }
+
+func TestExactMode(t *testing.T) {
+	for _, c := range []struct {
+		ctx  *pb.TurnContext
+		want pb.ApprovalMode
+	}{
+		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "on-request", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_ASK},
+		{&pb.TurnContext{ApprovalsReviewer: "auto_review", ApprovalPolicy: "on-request", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_AUTO},
+		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "never", Sandbox: "danger-full-access"}, pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS},
+		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "on-request", Sandbox: "read-only"}, pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED},
+		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "untrusted", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED},
+	} {
+		if got := exactMode(c.ctx); got != c.want {
+			t.Errorf("%v: got %v, want %v", c.ctx, got, c.want)
+		}
+	}
+}

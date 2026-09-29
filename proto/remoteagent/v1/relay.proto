@@ -120,8 +120,9 @@ enum PairingState {
   // The initiator sent the sealed root key.
   PAIRING_STATE_APPROVED = 4;
   PAIRING_STATE_CANCELED = 5;
-  // The joiner took the sealed root key. Only this tells the initiator
-  // that pairing went through; the pairing is kept a minute to say so.
+  // The joiner confirmed it has the sealed root key. Only this tells the
+  // initiator that pairing went through; the pairing is kept a minute to
+  // say so.
   PAIRING_STATE_DELIVERED = 6;
 }
 
@@ -129,6 +130,10 @@ message GetPairingRequest {
   string pairing_id = 1;
   // The joiner's token; the initiator uses its login instead.
   string candidate_token = 2;
+  // Set by the joiner once it has the sealed root key and has joined:
+  // the server then drops the key and tells the initiator. Until then
+  // the joiner can fetch the key again, e.g. after a lost response.
+  bool received = 3;
 }
 
 message GetPairingResponse {

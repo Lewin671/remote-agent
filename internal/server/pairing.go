@@ -220,12 +220,16 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub}
-	if !initiator && p.payload != nil {
-		// Delivered once. The initiator learns of it from the state.
-		res.Payload = p.payload
+	switch {
+	case initiator || p.payload == nil:
+	case req.Msg.Received:
+		// The joiner has the key: drop it, and let the initiator know.
 		p.payload, p.delivered = nil, true
 		p.expires = time.Now().Add(pairingDeliveredTTL)
 		delete(ps.byCode, p.code)
+		res.State = p.state()
+	default:
+		res.Payload = p.payload
 	}
 	return connect.NewResponse(res), nil
 }

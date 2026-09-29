@@ -120,7 +120,7 @@ func Initiate(ctx context.Context, acct *Account, show func(PairLink), confirm f
 		cancel()
 		return err
 	}
-	// Only the new device taking the key counts as success.
+	// Only the new device confirming it has the key counts as success.
 	wctx, stop := context.WithTimeout(ctx, pairDeliverWait)
 	defer stop()
 	if _, err := waitPairing(wctx, pc, id, "", pb.PairingState_PAIRING_STATE_DELIVERED); err != nil {
@@ -178,7 +178,14 @@ func JoinByPairing(ctx context.Context, link PairLink, show func(emoji []string)
 	if payload.Server != server {
 		return nil, errors.New("the account belongs to another server")
 	}
-	return Join(ctx, server, payload.Root, "")
+	acct, err := Join(ctx, server, payload.Root, "")
+	if err != nil {
+		return nil, err
+	}
+	// Tells the initiator it went through. If this is lost, the initiator
+	// reports the outcome as unknown; the join itself stands.
+	_, _ = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: token, Received: true}))
+	return acct, nil
 }
 
 // waitPairing polls until the pairing reaches want.

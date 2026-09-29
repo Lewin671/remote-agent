@@ -111,7 +111,7 @@ export async function initiate(remote: Remote): Promise<Initiation> {
         create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server }),
       );
       await pc.approvePairing({ pairingId: id, payload: env });
-      // Only the new device taking the key counts as success. A pairing
+      // Only the new device confirming it has the key counts as success. A pairing
       // that disappears meanwhile leaves the outcome unknown.
       for (let i = 0; i < 120 && !stopped; i++) {
         try {
@@ -156,5 +156,9 @@ export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) =
     PairingPayloadSchema,
   );
   if (msg.server !== link.server) throw new Error("账户属于另一个服务器");
-  return joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server);
+  const acct = await joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server);
+  // Tells the other device it went through. If this is lost, that device
+  // reports the outcome as unknown; the join itself stands.
+  await pc.getPairing({ pairingId: id, candidateToken: token, received: true }).catch(() => undefined);
+  return acct;
 }

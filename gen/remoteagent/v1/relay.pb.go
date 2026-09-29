@@ -85,8 +85,9 @@ const (
 	// The initiator sent the sealed root key.
 	PairingState_PAIRING_STATE_APPROVED PairingState = 4
 	PairingState_PAIRING_STATE_CANCELED PairingState = 5
-	// The joiner took the sealed root key. Only this tells the initiator
-	// that pairing went through; the pairing is kept a minute to say so.
+	// The joiner confirmed it has the sealed root key. Only this tells the
+	// initiator that pairing went through; the pairing is kept a minute to
+	// say so.
 	PairingState_PAIRING_STATE_DELIVERED PairingState = 6
 )
 
@@ -803,8 +804,12 @@ type GetPairingRequest struct {
 	PairingId string                 `protobuf:"bytes,1,opt,name=pairing_id,json=pairingId,proto3" json:"pairing_id,omitempty"`
 	// The joiner's token; the initiator uses its login instead.
 	CandidateToken string `protobuf:"bytes,2,opt,name=candidate_token,json=candidateToken,proto3" json:"candidate_token,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Set by the joiner once it has the sealed root key and has joined:
+	// the server then drops the key and tells the initiator. Until then
+	// the joiner can fetch the key again, e.g. after a lost response.
+	Received      bool `protobuf:"varint,3,opt,name=received,proto3" json:"received,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPairingRequest) Reset() {
@@ -849,6 +854,13 @@ func (x *GetPairingRequest) GetCandidateToken() string {
 		return x.CandidateToken
 	}
 	return ""
+}
+
+func (x *GetPairingRequest) GetReceived() bool {
+	if x != nil {
+		return x.Received
+	}
+	return false
 }
 
 type GetPairingResponse struct {
@@ -3276,11 +3288,12 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\n" +
 	"pairing_id\x18\x01 \x01(\tR\tpairingId\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\fR\x06commit\x12'\n" +
-	"\x0fcandidate_token\x18\x03 \x01(\tR\x0ecandidateToken\"[\n" +
+	"\x0fcandidate_token\x18\x03 \x01(\tR\x0ecandidateToken\"w\n" +
 	"\x11GetPairingRequest\x12\x1d\n" +
 	"\n" +
 	"pairing_id\x18\x01 \x01(\tR\tpairingId\x12'\n" +
-	"\x0fcandidate_token\x18\x02 \x01(\tR\x0ecandidateToken\"\xa1\x02\n" +
+	"\x0fcandidate_token\x18\x02 \x01(\tR\x0ecandidateToken\x12\x1a\n" +
+	"\breceived\x18\x03 \x01(\bR\breceived\"\xa1\x02\n" +
 	"\x12GetPairingResponse\x122\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1c.remoteagent.v1.PairingStateR\x05state\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\fR\x06commit\x12#\n" +

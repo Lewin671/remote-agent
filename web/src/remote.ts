@@ -341,14 +341,18 @@ export class Remote {
 
   private async putSession(rs: RemoteSession) {
     let view = this.sessions.get(rs.sessionId);
+    const removals = this.removedPushes.get(rs.machineId) ?? 0;
     try {
       if (!view) {
         const { header, plaintext } = await open(this.keys.wrap, rs.key);
         expect(header, { kind: PayloadKind.SESSION_KEY, machineId: rs.machineId, sessionId: rs.sessionId });
-        view = {
+        const key = await importSessionKey(plaintext as Uint8Array<ArrayBuffer>);
+        // The machine may have been removed while the key was opened.
+        if ((this.removedPushes.get(rs.machineId) ?? 0) !== removals) return;
+        view = this.sessions.get(rs.sessionId) ?? {
           id: rs.sessionId,
           machineId: rs.machineId,
-          key: await importSessionKey(plaintext as Uint8Array<ArrayBuffer>),
+          key,
           metaRev: 0n,
           lastSeq: 0n,
           updatedMs: 0n,

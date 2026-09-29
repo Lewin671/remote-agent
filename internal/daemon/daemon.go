@@ -517,7 +517,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 		if _, ok := effortLabels[ctx.Effort]; ok {
 			over = append(over, "-c", fmt.Sprintf("model_reasoning_effort=%q", ctx.Effort))
 		}
-		if ma := modeArgs(contextMode(ctx)); ma != nil {
+		if ma := modeArgs(exactMode(ctx)); ma != nil {
 			over = append(over, ma...)
 			for _, f := range approvalFlags {
 				drop[f] = true
@@ -576,6 +576,18 @@ func (d *Daemon) resume(id string) (*session, error) {
 
 // contextMode is the approval mode a turn context shows; Plan mode is not
 // kept across a restart.
+// exactMode is the approval mode whose settings the turn context has
+// exactly, or UNSPECIFIED. Unlike contextMode it does not round, so that
+// resuming never loosens a sandbox, e.g. a read-only one.
+func exactMode(c *pb.TurnContext) pb.ApprovalMode {
+	m := contextMode(c)
+	want := fmt.Sprintf("-c|approvals_reviewer=%q|-c|approval_policy=%q|-c|sandbox_mode=%q", c.ApprovalsReviewer, c.ApprovalPolicy, c.Sandbox)
+	if strings.Join(modeArgs(m), "|") != want {
+		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+	}
+	return m
+}
+
 func contextMode(c *pb.TurnContext) pb.ApprovalMode {
 	switch {
 	case c.Sandbox == "danger-full-access" && c.ApprovalPolicy == "never":

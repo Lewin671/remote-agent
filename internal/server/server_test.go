@@ -400,18 +400,34 @@ func TestPairingLimits(t *testing.T) {
 	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env})); err != nil {
 		t.Fatal(err)
 	}
-	get := func() (*connect.Response[pb.GetPairingResponse], error) {
-		return anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId, CandidateToken: joined.Msg.CandidateToken}))
+	get := func(received bool) (*connect.Response[pb.GetPairingResponse], error) {
+		return anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId, CandidateToken: joined.Msg.CandidateToken, Received: received}))
 	}
-	if res, err := get(); err != nil || res.Msg.Payload == nil {
-		t.Fatalf("payload: %v %v", res, err)
+	initiatorState := func() pb.PairingState {
+		res, err := pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId}))
+		if err != nil || res.Msg.Payload != nil {
+			t.Fatalf("initiator: %v %v", res, err)
+		}
+		return res.Msg.State
 	}
-	if res, err := get(); err != nil || res.Msg.Payload != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
-		t.Fatalf("payload delivered twice: %v %v", res, err)
+	// A lost response can be fetched again; the initiator waits for the
+	// joiner to confirm.
+	for range 2 {
+		if res, err := get(false); err != nil || res.Msg.Payload == nil {
+			t.Fatalf("payload: %v %v", res, err)
+		}
 	}
-	// The initiator learns that the key was taken.
-	if res, err := pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId})); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
-		t.Fatalf("initiator after delivery: %v %v", res, err)
+	if st := initiatorState(); st != pb.PairingState_PAIRING_STATE_APPROVED {
+		t.Fatalf("initiator before confirmation: %v", st)
+	}
+	if res, err := get(true); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
+		t.Fatalf("confirm: %v %v", res, err)
+	}
+	if res, err := get(false); err != nil || res.Msg.Payload != nil {
+		t.Fatalf("payload after confirmation: %v %v", res, err)
+	}
+	if st := initiatorState(); st != pb.PairingState_PAIRING_STATE_DELIVERED {
+		t.Fatalf("initiator after confirmation: %v", st)
 	}
 	// Wrong codes are limited.
 	var last error
