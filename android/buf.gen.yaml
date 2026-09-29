@@ -1,0 +1,25 @@
+# Generates the Android client's protocol code from ../proto:
+#   cd android && buf generate
+# The Go and web code have their own templates (../buf.gen.yaml,
+# ../web/buf.gen.yaml); this one only writes into core/src/main/gen.
+version: v2
+clean: true
+inputs:
+  - directory: ../proto
+managed:
+  enabled: true
+  override:
+    - file_option: java_package
+      value: io.github.lewin671.remoteagent.proto
+    - file_option: java_multiple_files
+      value: true
+plugins:
+  - remote: buf.build/protocolbuffers/java:v31.1
+    out: core/src/main/gen
+    opt: lite
+  - remote: buf.build/connectrpc/kotlin:v0.9.0
+    out: core/src/main/gen
+    opt:
+      - generateCallbackMethods=false
+      - generateCoroutineMethods=true
+      - generateBlockingUnaryMethods=false

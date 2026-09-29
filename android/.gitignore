@@ -1,0 +1,9 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+# Firebase config lives outside the repo, see app/build.gradle.kts.
+app/google-services.json
