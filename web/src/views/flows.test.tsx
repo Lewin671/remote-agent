@@ -6,7 +6,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
-import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { create } from "@bufbuild/protobuf";
+import { Agent, PlanProposedSchema } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
@@ -228,7 +229,7 @@ it("greys out modes a Claude Code session cannot switch to, and effort for haiku
 
 it("offers no clear-and-implement on a Claude Code plan", () => {
   const r = demo();
-  const plan = { $typeName: "remoteagent.v1.PlanProposed", text: "1. do it" } as const;
+  const plan = create(PlanProposedSchema, { text: "1. do it" });
   mount(<PlanPage remote={r} sid="s-claude" plan={plan} title="t" onBack={() => undefined} />);
   expect(button("批准执行")).toBeTruthy();
   expect(button("清空上下文后执行")).toBeUndefined();
