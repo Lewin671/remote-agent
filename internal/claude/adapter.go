@@ -143,7 +143,9 @@ func modeOf(permissionMode string) pb.ApprovalMode {
 
 // ownFlags are claude options remote-agent sets itself or that would take
 // the session out of its hands.
-var ownFlags = []string{"-p", "--print", "--session-id", "-r", "--resume", "-c", "--continue", "--settings",
+// --bare and --safe-mode turn off the hooks from --settings, without
+// which remote-agent cannot find the transcript or forward approvals.
+var ownFlags = []string{"-p", "--print", "--session-id", "-r", "--resume", "-c", "--continue", "--settings", "--bare", "--safe-mode",
 	"--fork-session", "--bg", "--background", "--teleport", "--cloud", "--from-pr", "--tmux", "-w", "--worktree"}
 
 // Options turns a new session's model, effort and approval mode into
@@ -187,6 +189,45 @@ var valueFlags = map[string]bool{
 	"--setting-sources": true, "--system-prompt": true, "--tools": true, "--json-schema": true, "--autocompact": true,
 	"--client-data-url": true, "--system-prompt-snapshot": true, "--remote-control-session-name-prefix": true,
 	"--settings": true, "--session-id": true, "-r": true, "--resume": true,
+}
+
+// variadic are claude options that take every value up to the next
+// option (--disallowedTools Write Edit), as its parser does.
+var variadic = map[string]bool{
+	"--add-dir": true, "--allowedTools": true, "--allowed-tools": true, "--betas": true,
+	"--disallowedTools": true, "--disallowed-tools": true, "--file": true, "--mcp-config": true, "--tools": true,
+}
+
+// flagArgs keeps the options in claude arguments, except those in drop,
+// with all their values, and drops positional ones such as a first prompt.
+// A value after a variadic option is one of its values, not a prompt.
+func flagArgs(args []string, drop map[string]bool) []string {
+	var out []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if !strings.HasPrefix(a, "-") {
+			continue
+		}
+		name, _, inline := strings.Cut(a, "=")
+		n := 1
+		switch {
+		case inline:
+		case variadic[name]:
+			for i+n < len(args) && !strings.HasPrefix(args[i+n], "-") {
+				n++
+			}
+		case valueFlags[name] && i+1 < len(args):
+			n = 2
+		}
+		if !drop[name] {
+			out = append(out, args[i:i+n]...)
+		}
+		i += n - 1
+	}
+	return out
 }
 
 // FullAccess reports whether a session started with args can switch to
@@ -275,11 +316,13 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 			drop["--permission-mode"], drop["--dangerously-skip-permissions"] = true, true
 		}
 	}
-	if a.FullAccess(l.Args) && !slices.Contains(l.Args, "--allow-dangerously-skip-permissions") {
-		// Keep bypass on offer even when resuming in another mode.
+	if l.FullAccess && !slices.Contains(l.Args, "--allow-dangerously-skip-permissions") {
+		// Keep bypass on offer, as it was at launch, even when resuming in
+		// another mode. Whether it was is saved with the session rather
+		// than read again from settings that may have changed since.
 		over = append(over, "--allow-dangerously-skip-permissions")
 	}
-	args := append(codex.FlagArgs(l.Args, drop, valueFlags), over...)
+	args := append(flagArgs(l.Args, drop), over...)
 	flag := "--session-id" // nothing was sent: there is no conversation yet
 	if l.Transcript != "" {
 		if _, err := os.Stat(l.Transcript); err == nil {

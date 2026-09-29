@@ -549,7 +549,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
 	cliArgs, err := s.ag.Argv(&agent.Launch{
-		Dir: s.dir, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx,
+		Dir: s.dir, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess,
 	})
 	if err != nil {
 		return nil, err

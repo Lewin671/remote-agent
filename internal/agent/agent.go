@@ -80,6 +80,9 @@ type Launch struct {
 	Resume bool
 	// Context holds the settings the session last ran with, when resuming.
 	Context *pb.TurnContext
+	// FullAccess: the session could be switched to full access when it was
+	// started (Launcher.FullAccess then), for resuming it alike.
+	FullAccess bool
 }
 
 // Source reads what the CLI records.

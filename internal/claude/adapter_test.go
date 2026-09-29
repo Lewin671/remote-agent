@@ -18,7 +18,7 @@ func TestOptionsAndArgv(t *testing.T) {
 	if err != nil || strings.Join(args, " ") != "--add-dir /x --model sonnet --effort low --permission-mode default" {
 		t.Fatalf("options %q %v", args, err)
 	}
-	for _, bad := range [][]string{{"-p"}, {"--settings", "x"}, {"--resume=abc"}, {"--session-id", "x"}} {
+	for _, bad := range [][]string{{"-p"}, {"--settings", "x"}, {"--resume=abc"}, {"--session-id", "x"}, {"--bare"}, {"--safe-mode"}} {
 		if _, err := a.Options(bad, "", "", 0); err == nil {
 			t.Errorf("accepted %q", bad)
 		}
@@ -82,10 +82,15 @@ func TestFullAccess(t *testing.T) {
 	if !a.FullAccess(nil) || a.FullAccess([]string{"--permission-mode", "auto"}) {
 		t.Fatal("the default mode in settings.json")
 	}
-	// Resuming keeps bypass on offer.
-	argv, _ := a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, Context: &pb.TurnContext{PermissionMode: "default"}})
+	// Resuming keeps bypass on offer as it was at launch, whatever the
+	// default mode says now (review C9).
+	argv, _ := a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, FullAccess: true, Context: &pb.TurnContext{PermissionMode: "default"}})
 	if !strings.Contains(strings.Join(argv, " "), "--allow-dangerously-skip-permissions") {
 		t.Fatalf("argv %q", argv)
+	}
+	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, FullAccess: false, Context: &pb.TurnContext{PermissionMode: "default"}})
+	if strings.Contains(strings.Join(argv, " "), "dangerously") {
+		t.Fatalf("bypass added to a session started without it: %q", argv)
 	}
 }
 
@@ -316,5 +321,22 @@ func TestAnswerAndPlan(t *testing.T) {
 	f = &fakeClaude{plan: true}
 	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING); err != nil || strings.Join(f.writes, "|") != agent.KeyEsc {
 		t.Fatalf("keep: %v %q", err, f.writes)
+	}
+}
+
+// Resuming keeps every value of a variadic option; the prompt goes
+// (review C2).
+func TestResumeKeepsVariadicValues(t *testing.T) {
+	a := New("claude", t.TempDir())
+	args := []string{"--disallowedTools", "Write", "Edit", "--add-dir", "/a", "/b", "--mcp-config=/m.json", "--model", "haiku", "--verbose", "--", "fix it"}
+	argv, _ := a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, Args: args, Context: &pb.TurnContext{Model: "claude-haiku-4-5-20251001"}})
+	j := strings.Join(argv[4:], " ")
+	if j != "--disallowedTools Write Edit --add-dir /a /b --mcp-config=/m.json --verbose --model claude-haiku-4-5-20251001" {
+		t.Fatalf("argv %q", j)
+	}
+	// A prompt given before any option is dropped.
+	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, Args: []string{"fix it", "--tools", "Bash", "Read"}})
+	if j := strings.Join(argv[4:], " "); j != "--tools Bash Read" {
+		t.Fatalf("argv %q", j)
 	}
 }
