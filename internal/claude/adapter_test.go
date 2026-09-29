@@ -127,8 +127,20 @@ type fakeClaude struct {
 	note     string
 	question *pb.Question
 	picked   []int
+	ticked   map[int]bool
 	review   bool
 	plan     bool
+	stuck    bool   // s does nothing in the model menu
+	wrap     int    // wrap question and plan text after this many characters
+	planText string // the plan prompt as drawn, if set
+}
+
+func (f *fakeClaude) wrapped(s string) string {
+	if f.wrap == 0 || len(s) <= f.wrap {
+		return s
+	}
+	cut := strings.LastIndex(s[:f.wrap], " ") // terminals wrap Claude Code's text at words
+	return s[:cut] + "\n      " + s[cut+1:]
 }
 
 func (f *fakeClaude) modeLine() string {
@@ -162,11 +174,20 @@ func (f *fakeClaude) draw() {
 	case f.review:
 		b.WriteString(rule + "\nReview your answers\nReady to submit your answers?\n❯ 1. Submit answers\n  2. Cancel\n")
 	case f.question != nil:
-		b.WriteString(rule + "\n ☐ H\n" + f.question.Text + "\n")
+		b.WriteString(rule + "\n ☐ H\n" + f.wrapped(f.question.Text) + "\n")
 		for i, o := range f.question.Options {
-			b.WriteString("  " + string(rune('1'+i)) + ". " + o.Label + "\n")
+			box := ""
+			if f.question.MultiSelect {
+				box = "[ ] "
+				if f.ticked[i+1] {
+					box = "[✔] "
+				}
+			}
+			b.WriteString("  " + string(rune('1'+i)) + ". " + box + o.Label + "\n")
 		}
 		b.WriteString("Enter to select · ↑/↓ to navigate · Esc to cancel\n")
+	case f.plan && f.planText != "":
+		b.WriteString(f.planText)
 	case f.plan:
 		b.WriteString(rule + "\n Claude has written up a plan and is ready to execute. Would you like to proceed?\n" +
 			" ❯ 1. Yes, auto-accept edits\n   2. Yes, manually approve edits\n   3. Tell Claude what to change\n")
@@ -194,6 +215,9 @@ func (f *fakeClaude) Write(b []byte) error {
 		case agent.KeyRight:
 			f.effort = (f.effort + 1) % len(efforts)
 		case "s":
+			if f.stuck {
+				return nil
+			}
 			label := strings.Fields(f.menu[f.cursor])[0]
 			if f.cached {
 				f.confirm = true
@@ -209,8 +233,14 @@ func (f *fakeClaude) Write(b []byte) error {
 	case f.question != nil:
 		if k == agent.KeyRight || !f.question.MultiSelect {
 			f.review = true
+			return nil
 		}
-		f.picked = append(f.picked, int(k[0]-'0'))
+		n := int(k[0] - '0')
+		if f.ticked == nil {
+			f.ticked = map[int]bool{}
+		}
+		f.ticked[n] = !f.ticked[n]
+		f.picked = append(f.picked, n)
 	case f.plan:
 		f.plan = false
 	case k == agent.KeyBTab:
@@ -338,5 +368,76 @@ func TestResumeKeepsVariadicValues(t *testing.T) {
 	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, Args: []string{"fix it", "--tools", "Bash", "Read"}})
 	if j := strings.Join(argv[4:], " "); j != "--tools Bash Read" {
 		t.Fatalf("argv %q", j)
+	}
+}
+
+// Only the real confirmation gets its 1: the same words in the
+// conversation, with the menu still up, are not it (review C3).
+func TestSetModelConfirmIsTheDialog(t *testing.T) {
+	a := New("claude", "")
+	f := &fakeClaude{stuck: true, note: "⏺ You asked: Switch model?\n  ❯ 1. Yes, switch to Opus"}
+	if err := a.SetModel(f, "sonnet", ""); err == nil {
+		t.Fatal("no error for a menu that stayed up")
+	}
+	for _, w := range f.writes {
+		if w == "1" {
+			t.Fatalf("pressed %q into the menu: %q", w, f.writes)
+		}
+	}
+}
+
+// Ticks the local user made are kept or cleared to match the answer
+// (review C4).
+func TestAnswerMultiSelectReconciles(t *testing.T) {
+	a := New("claude", "")
+	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{{Id: "Which?", Text: "Which?", MultiSelect: true,
+		Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}, {Label: "C"}}}}}
+	f := &fakeClaude{question: q.Questions[0], ticked: map[int]bool{1: true, 2: true}}
+	if err := a.Answer(f, q, nil, []int32{1, 3}); err != nil {
+		t.Fatal(err)
+	}
+	if !f.ticked[1] || f.ticked[2] || !f.ticked[3] {
+		t.Fatalf("ticked %v after %q", f.ticked, f.writes)
+	}
+}
+
+// A wrapped question is found without an index; none showing is an
+// error, not question zero (review C5).
+func TestAnswerFindsWrappedQuestion(t *testing.T) {
+	a := New("claude", "")
+	long := "Which of these fruits would you like to have for breakfast tomorrow morning?"
+	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{
+		{Id: "Color?", Text: "Color?", Options: []*pb.QuestionOption{{Label: "Red"}}},
+		{Id: long, Text: long, MultiSelect: true, Options: []*pb.QuestionOption{{Label: "A"}, {Label: "B"}}},
+	}}
+	f := &fakeClaude{question: q.Questions[1], wrap: 30}
+	if err := a.Answer(f, q, nil, []int32{1, 2}); err != nil {
+		t.Fatal(err)
+	}
+	if !f.ticked[1] || !f.ticked[2] {
+		t.Fatalf("keys %q", f.writes)
+	}
+	f = &fakeClaude{question: &pb.Question{Text: "Something else?"}}
+	if err := a.Answer(f, q, nil, []int32{1}); err == nil || len(f.writes) != 0 {
+		t.Fatalf("answered a question not showing: %v %q", err, f.writes)
+	}
+}
+
+// The plan prompt is recognized and answered when a narrow window wraps
+// its title and rows (review C6).
+func TestAnswerPlanWrapped(t *testing.T) {
+	a := New("claude", "")
+	text := rule + "\n Claude has written up a plan and is ready to execute. Would you\n like to proceed?\n" +
+		" ❯ 1. Yes, and switch to BYPASS PERMISSIONS (no\n      further prompts) for this session\n   2. Yes, manually\n      approve edits\n   3. Tell Claude what to\n      change\n"
+	if !AnalyzeScreen(text).PlanOpen {
+		t.Fatal("wrapped plan prompt not recognized")
+	}
+	narrow := rule + "\n Claude has written up a plan and is ready to execute. Would you like to\n proceed?\n ❯ 1. Yes\n   2. Yes, manually approve\n      edits\n"
+	if !AnalyzeScreen(narrow).PlanOpen {
+		t.Fatal("title wrapped mid-phrase")
+	}
+	f := &fakeClaude{plan: true, planText: text}
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil || strings.Join(f.writes, "|") != "2" {
+		t.Fatalf("implement: %v %q", err, f.writes)
 	}
 }

@@ -69,8 +69,13 @@ func AnalyzeScreen(styled string) agent.Screen {
 		// may be conversation.
 	find:
 		for i := len(lines) - 1; i >= 0; i-- {
+			// A narrow window may wrap the words onto the next line.
+			joined := lines[i].plain
+			if i+1 < len(lines) {
+				joined = strings.Join(strings.Fields(joined+" "+lines[i+1].plain), " ")
+			}
 			for _, p := range popups {
-				if strings.Contains(lines[i].plain, p.text) {
+				if strings.Contains(lines[i].plain, p.text) || strings.Contains(joined, p.text) {
 					s.Popup = p.name
 					break find
 				}

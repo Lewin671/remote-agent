@@ -67,14 +67,12 @@ type row struct {
 }
 
 // rowsAfter reads the numbered rows below the lowest line containing title.
+//
+// A narrow window wraps text: the title may continue on the next line,
+// and a label's continuation lines are joined to it.
 func rowsAfter(plain, title string) []row {
 	lines := strings.Split(plain, "\n")
-	start := -1
-	for i, l := range lines {
-		if strings.Contains(l, title) {
-			start = i
-		}
-	}
+	start := titleLine(lines, title)
 	if start < 0 {
 		return nil
 	}
@@ -82,12 +80,58 @@ func rowsAfter(plain, title string) []row {
 	for _, l := range lines[start+1:] {
 		m := menuRow.FindStringSubmatch(l)
 		if m == nil {
+			if len(out) > 0 && strings.TrimSpace(l) != "" && strings.HasPrefix(l, "  ") && out[len(out)-1].detail == "" {
+				last := &out[len(out)-1]
+				last.label += " " + strings.TrimSpace(l)
+			} else if strings.TrimSpace(l) == "" && len(out) > 0 {
+				out[len(out)-1].detail = " " // no more continuation
+			}
 			continue
 		}
 		n, _ := strconv.Atoi(m[2])
 		out = append(out, row{num: n, label: strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(m[3]), "✔")), detail: m[4], cursor: m[1] != ""})
 	}
 	return out
+}
+
+// titleLine is the last line holding title, or ending it when the title
+// wraps onto a second line; -1 if none.
+func titleLine(lines []string, title string) int {
+	start := -1
+	for i, l := range lines {
+		switch {
+		case strings.Contains(l, title):
+			start = i
+		case i > 0 && !strings.Contains(lines[i-1], title) && strings.Contains(normalize(lines[i-1]+" "+l), title):
+			start = i
+		}
+	}
+	return start
+}
+
+// normalize collapses white space, as wrapping changes it.
+func normalize(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// switchPrompt finds the "Switch model?" confirmation, which Claude Code
+// shows instead of the menu: the title below any menu, and its "Yes,
+// switch to …" row. The words alone, say in the conversation, are not it.
+func switchPrompt(plain string) (int, bool) {
+	lines := strings.Split(plain, "\n")
+	at := titleLine(lines, "Switch model?")
+	if at < 0 {
+		return 0, false
+	}
+	for _, l := range lines[at+1:] {
+		if strings.Contains(l, "Select model") || strings.Contains(l, "to use this session only") {
+			return 0, false // the menu is still up
+		}
+	}
+	for _, r := range rowsAfter(plain, "Switch model?") {
+		if strings.HasPrefix(r.label, "Yes, switch to") {
+			return r.num, true
+		}
+	}
+	return 0, false
 }
 
 // effortRE reads the effort line of /model, e.g. "◐ Medium effort
@@ -195,15 +239,23 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	// With a cached conversation Claude Code asks to confirm the switch.
+	// Only its "Yes" row is pressed: a number in the menu itself would
+	// change the default model.
 	_, err = waitFor(t, "the model to switch", func(scr agent.Screen, p string) bool {
-		return scr.ComposerReady || strings.Contains(p, "Switch model?")
+		_, confirm := switchPrompt(p)
+		return scr.ComposerReady || (confirm && !scr.ComposerReady)
 	})
 	if err != nil {
 		bail(t)
 		return err
 	}
-	if scr, p, err := screenNow(t); err == nil && !scr.ComposerReady && strings.Contains(p, "Switch model?") {
-		if err := t.Write([]byte("1")); err != nil {
+	if scr, p, err := screenNow(t); err == nil && !scr.ComposerReady {
+		num, ok := switchPrompt(p)
+		if !ok {
+			bail(t)
+			return errors.New("unexpected screen after choosing the model")
+		}
+		if err := t.Write([]byte(strconv.Itoa(num))); err != nil {
 			return err
 		}
 	}
@@ -376,6 +428,31 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice) error {
 	return fmt.Errorf("%w: the plan prompt offers no %q", agent.ErrUnsupported, label)
 }
 
+// tickRE reads a multi-select row: its number and whether it is ticked.
+var tickRE = regexp.MustCompile(`^\s*(?:❯\s*)?(\d+)\.\s+\[(.)\]`)
+
+// toggles are the option numbers to press so that exactly want is ticked.
+func toggles(plain string, n int, want []int32) []int32 {
+	ticked := map[int32]bool{}
+	for _, l := range strings.Split(plain, "\n") {
+		if m := tickRE.FindStringSubmatch(l); m != nil {
+			k, _ := strconv.Atoi(m[1])
+			ticked[int32(k)] = m[2] != " "
+		}
+	}
+	wanted := map[int32]bool{}
+	for _, o := range want {
+		wanted[o] = true
+	}
+	var out []int32
+	for k := int32(1); k <= int32(n); k++ {
+		if ticked[k] != wanted[k] {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
 // Answer presses the option numbers of the question showing: one picks
 // and moves on; for a multi-select question they tick options and → goes
 // on. After the last question Claude Code shows a review page, where 1
@@ -385,15 +462,24 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 	if index != nil {
 		i = int(*index)
 	} else if len(q.Questions) > 1 {
-		// Without an index, answer the question that is showing.
-		plain := ""
-		if styled, err := t.Capture(); err == nil {
-			plain = plainText(styled)
+		// Without an index, answer the question that is showing, found in
+		// the screen with wrapping undone; never guess.
+		styled, err := t.Capture()
+		if err != nil {
+			return err
 		}
+		screen := normalize(plainText(styled))
+		i = -1
 		for j, item := range q.Questions {
-			if strings.Contains(plain, item.Text) {
+			if strings.Contains(screen, normalize(item.Text)) {
+				if i >= 0 {
+					return errors.New("cannot tell which question is showing; answer with its index")
+				}
 				i = j
 			}
+		}
+		if i < 0 {
+			return errors.New("cannot find the question on the screen")
 		}
 	}
 	if i < 0 || i >= len(q.Questions) {
@@ -403,7 +489,17 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 	if !item.MultiSelect && len(options) != 1 {
 		return fmt.Errorf("the question takes one option, got %d", len(options))
 	}
-	for _, o := range options {
+	keys := options
+	if item.MultiSelect {
+		// A number toggles its option: press only those whose tick differs
+		// from the answer, as the local user may have ticked some.
+		styled, err := t.Capture()
+		if err != nil {
+			return err
+		}
+		keys = toggles(plainText(styled), len(item.Options), options)
+	}
+	for _, o := range keys {
 		if err := t.Write([]byte(strconv.Itoa(int(o)))); err != nil {
 			return err
 		}
