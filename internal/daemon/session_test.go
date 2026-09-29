@@ -275,7 +275,7 @@ func TestPermissionAllowDenyTimeout(t *testing.T) {
 
 	id, ch = ask()
 	h.s.resolve(id, false, "no")
-	if r := <-ch; !strings.Contains(string(r.out), `"behavior":"deny","message":"no"`) {
+	if r := <-ch; !strings.Contains(string(r.out), `"behavior":"deny","message":"The user denied this request from remote-agent: no"`) {
 		t.Fatalf("deny: %s", r.out)
 	}
 

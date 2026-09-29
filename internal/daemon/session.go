@@ -958,7 +958,20 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	} else {
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message)
 	}
-	return agent.PermissionDecision(d.allow, d.message), nil
+	return agent.PermissionDecision(d.allow, denialFor(d)), nil
+}
+
+// denialFor is what the CLI is told about an answer. A bare deny reaches the
+// model as "denied by a hook", which it tends to blame on its settings, so a
+// denial says it was the user's and carries their reason.
+func denialFor(d decision) string {
+	if d.allow {
+		return d.message
+	}
+	if d.message == "" {
+		return "The user denied this request from remote-agent."
+	}
+	return "The user denied this request from remote-agent: " + d.message
 }
 
 // claim settles a for the caller unless someone else already did.
