@@ -57,6 +57,13 @@ android {
             // debug key, which is enough to test it with R8.
             signingConfig = if (signingFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
+        // The release build (R8 and all) that may talk to a local server
+        // over plain HTTP, for testing against a dev server.
+        create("minified") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     compileOptions {
@@ -92,6 +99,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.core.ktx)
     implementation(libs.activity.compose)
+    implementation(libs.fragment)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.process)

@@ -33,9 +33,9 @@ import okhttp3.OkHttpClient
  */
 class RaApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    lateinit var vault: Vault
-    lateinit var prefs: Prefs
-    lateinit var db: CacheDb
+    val vault: Vault by lazy { Vault(this) }
+    val prefs: Prefs by lazy { Prefs(this) }
+    val db: CacheDb by lazy { CacheDb.open(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
 
     private val _remote = MutableStateFlow<Remote?>(null)
@@ -48,9 +48,7 @@ class RaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        vault = Vault(this)
-        prefs = Prefs(this)
-        db = CacheDb.open(this)
+        // Kept light: a push may start the process just to show a notification.
         Push.createChannels(this)
         scope.launch {
             val acct = withContext(Dispatchers.IO) {

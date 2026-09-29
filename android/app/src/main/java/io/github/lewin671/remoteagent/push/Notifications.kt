@@ -114,6 +114,8 @@ object Notifier {
             .setPublicVersion(public)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            // No "Open link" chips guessed from the command.
+            .setAllowSystemGeneratedContextualActions(false)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(openIntent(context, session, approval?.approvalId, nid))
         if (!showContent || c == null) {

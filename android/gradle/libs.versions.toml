@@ -24,6 +24,8 @@ zxing = "3.5.3"
 firebase-bom = "33.16.0"
 google-services = "4.4.3"
 annotation = "1.9.1"
+# Firebase pulls an old Fragment; ActivityResult needs 1.3 or later.
+fragment = "1.8.8"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -44,6 +46,7 @@ compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-icons = { module = "androidx.compose.material:material-icons-extended" }
+fragment = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
 core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
