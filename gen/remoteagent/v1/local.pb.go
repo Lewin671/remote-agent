@@ -838,7 +838,11 @@ type AnswerQuestionRequest struct {
 	SessionId  string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	QuestionId string                 `protobuf:"bytes,2,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
 	// 1-based option number of the current question.
-	Option        int32 `protobuf:"varint,3,opt,name=option,proto3" json:"option,omitempty"`
+	Option int32 `protobuf:"varint,3,opt,name=option,proto3" json:"option,omitempty"`
+	// 0-based index of the question the option answers, for a call that asks
+	// several. When set, the option is only entered while the terminal shows
+	// that question.
+	QuestionIndex *int32 `protobuf:"varint,4,opt,name=question_index,json=questionIndex,proto3,oneof" json:"question_index,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -890,6 +894,13 @@ func (x *AnswerQuestionRequest) GetQuestionId() string {
 func (x *AnswerQuestionRequest) GetOption() int32 {
 	if x != nil {
 		return x.Option
+	}
+	return 0
+}
+
+func (x *AnswerQuestionRequest) GetQuestionIndex() int32 {
+	if x != nil && x.QuestionIndex != nil {
+		return *x.QuestionIndex
 	}
 	return 0
 }
@@ -1199,13 +1210,15 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"approvalId\x12\x14\n" +
 	"\x05allow\x18\x03 \x01(\bR\x05allow\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\"\x19\n" +
-	"\x17ResolveApprovalResponse\"o\n" +
+	"\x17ResolveApprovalResponse\"\xae\x01\n" +
 	"\x15AnswerQuestionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
 	"\vquestion_id\x18\x02 \x01(\tR\n" +
 	"questionId\x12\x16\n" +
-	"\x06option\x18\x03 \x01(\x05R\x06option\"\x18\n" +
+	"\x06option\x18\x03 \x01(\x05R\x06option\x12*\n" +
+	"\x0equestion_index\x18\x04 \x01(\x05H\x00R\rquestionIndex\x88\x01\x01B\x11\n" +
+	"\x0f_question_index\"\x18\n" +
 	"\x16AnswerQuestionResponse\"h\n" +
 	"\x12WatchEventsRequest\x12\x1d\n" +
 	"\n" +
@@ -1316,6 +1329,7 @@ func file_remoteagent_v1_local_proto_init() {
 		return
 	}
 	file_remoteagent_v1_event_proto_init()
+	file_remoteagent_v1_local_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

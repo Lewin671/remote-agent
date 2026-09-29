@@ -433,7 +433,9 @@ export class Remote {
         if (msg.errorCode) throw new CommandError(msg.errorCode, msg.errorMessage);
         return msg;
       } catch (e) {
-        const ce = ConnectError.from(e);
+        // The daemon's answer is final; only transport failures are retried.
+        if (!(e instanceof ConnectError)) throw e;
+        const ce = e;
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           await this.login();
           continue;

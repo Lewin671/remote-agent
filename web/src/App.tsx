@@ -201,6 +201,8 @@ function Conn({ remote }: { remote: Remote }) {
 // --- session page ---
 
 interface Outgoing {
+  // The Send request ID. The daemon accepts a request ID once, so a retry
+  // with it can never deliver the message twice.
   requestId: string;
   text: string;
   status: "sending" | "queued" | "failed";
@@ -248,17 +250,20 @@ function SessionPage({ remote, session, onBack }: { remote: Remote; session: Ses
     }
   };
 
-  const send = async (text: string) => {
-    const requestId = crypto.randomUUID().replace(/-/g, "");
-    setOutgoing((l) => [...l, { requestId, text, status: "sending" }]);
+  const deliver = async (requestId: string, text: string) => {
+    setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "sending", error: undefined } : o)));
     try {
       await remote.command(session.id, { case: "send", value: { sessionId: session.id, text, requestId } });
       setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "queued" } : o)));
-      return true;
     } catch (e) {
       setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "failed", error: errorText(e) } : o)));
-      return false;
     }
+  };
+
+  const send = (text: string) => {
+    const requestId = crypto.randomUUID().replace(/-/g, "");
+    setOutgoing((l) => [...l, { requestId, text, status: "sending" }]);
+    void deliver(requestId, text);
   };
 
   const usage = derived.usage;
@@ -305,7 +310,19 @@ function SessionPage({ remote, session, onBack }: { remote: Remote; session: Ses
         {outgoing.map((o) => (
           <div key={o.requestId} className="me pending">
             <div>{o.text}</div>
-            <small className={o.status === "failed" ? "error" : ""}>{o.status === "sending" ? "发送中…" : o.status === "queued" ? "已送达电脑" : "发送失败：" + o.error}</small>
+            <small className={o.status === "failed" ? "error" : ""}>
+              {o.status === "sending" ? "发送中…" : o.status === "queued" ? "已送达电脑" : "没能确认送达：" + o.error}
+            </small>
+            {o.status === "failed" && (
+              <span className="row">
+                <button className="link small" onClick={() => void deliver(o.requestId, o.text)}>
+                  重试（不会重复发送）
+                </button>
+                <button className="link small faint" onClick={() => setOutgoing((l) => l.filter((x) => x.requestId !== o.requestId))}>
+                  忽略
+                </button>
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -510,26 +527,34 @@ function ApprovalCard({ a, run, sessionId }: { a: ApprovalRequested; run: Run; s
 
 function QuestionCard({ q, run, sessionId }: { q: QuestionAsked; run: Run; sessionId: string }) {
   const [busy, setBusy] = useState(false);
-  // Each answer moves Codex to the next question of the same call, so the
-  // next option number applies to it.
+  // Which question to answer. The daemon only enters the option while the
+  // terminal shows this very question, so a stale choice here is refused
+  // rather than answering another question.
   const [current, setCurrent] = useState(0);
-  const item = q.questions[current];
   const multi = q.questions.length > 1;
-  if (!item) {
-    return <div className="appr question muted">已回答全部 {q.questions.length} 题，等待 Codex 继续</div>;
-  }
+  const index = Math.min(current, q.questions.length - 1);
+  const item = q.questions[index];
+  if (!item) return null;
   return (
     <div className="appr question">
       <div className="h">
         <b>{item.header || "Codex 在提问"}</b>
         {multi && (
-          <span className="muted">
-            第 {current + 1} / {q.questions.length} 题
+          <span className="row">
+            <button className="link small" disabled={index === 0} onClick={() => setCurrent(index - 1)} aria-label="上一题">
+              ‹
+            </button>
+            <span className="muted">
+              第 {index + 1} / {q.questions.length} 题
+            </span>
+            <button className="link small" disabled={index === q.questions.length - 1} onClick={() => setCurrent(index + 1)} aria-label="下一题">
+              ›
+            </button>
           </span>
         )}
       </div>
       <p>{item.text}</p>
-      {multi && <p className="small muted">多个问题会逐题提交；如果已经在终端里答过，请以终端为准。</p>}
+      {multi && <p className="small muted">终端上显示的必须是这一题，否则不会作答；答完一题后翻到下一题。</p>}
       <div className="options">
         {item.options.map((o, i) => (
           <button
@@ -537,8 +562,11 @@ function QuestionCard({ q, run, sessionId }: { q: QuestionAsked; run: Run; sessi
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              const res = await run("回答", { case: "answerQuestion", value: { sessionId, questionId: q.questionId, option: i + 1 } });
-              if (res) setCurrent((c) => c + 1);
+              const res = await run("回答", {
+                case: "answerQuestion",
+                value: { sessionId, questionId: q.questionId, option: i + 1, questionIndex: index },
+              });
+              if (res && index < q.questions.length - 1) setCurrent(index + 1);
               setBusy(false);
             }}
           >
@@ -553,7 +581,7 @@ function QuestionCard({ q, run, sessionId }: { q: QuestionAsked; run: Run; sessi
   );
 }
 
-function Composer({ running, onSend, onInterrupt }: { running: boolean; onSend: (text: string) => Promise<boolean>; onInterrupt: () => void }) {
+function Composer({ running, onSend, onInterrupt }: { running: boolean; onSend: (text: string) => void; onInterrupt: () => void }) {
   const [text, setText] = useState("");
   const submit = async () => {
     const t = text.trim();
@@ -561,8 +589,10 @@ function Composer({ running, onSend, onInterrupt }: { running: boolean; onSend: 
     // Slash commands typed as text are sent to the model, and menus they
     // open are not visible here.
     if (t.startsWith("/") && !confirm("以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。仍然发送？")) return;
+    // A message that fails stays in the timeline with a retry button;
+    // putting it back here would invite sending it a second time.
     setText("");
-    if (!(await onSend(t))) setText(t);
+    onSend(t);
   };
   return (
     <div className="composer">

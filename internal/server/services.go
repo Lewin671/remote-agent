@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -93,6 +94,20 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.GetChallengeRequest]) (*connect.Response[pb.GetChallengeResponse], error) {
 	if !validDeviceID(req.Msg.DeviceId) {
 		return nil, invalid("malformed device ID")
+	}
+	_, err := a.s.store.device(ctx, req.Msg.DeviceId)
+	if errors.Is(err, errNoRows) {
+		// Unknown devices get a challenge that is never stored, so they
+		// take no space and cannot tell that the device does not exist;
+		// the login fails like any other bad login.
+		ch := make([]byte, 32)
+		if _, err := rand.Read(ch); err != nil {
+			return nil, internal(err)
+		}
+		return connect.NewResponse(&pb.GetChallengeResponse{Challenge: ch}), nil
+	}
+	if err != nil {
+		return nil, internal(err)
 	}
 	ch, err := a.s.newChallenge(req.Msg.DeviceId)
 	if err != nil {

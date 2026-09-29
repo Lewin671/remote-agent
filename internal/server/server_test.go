@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/ed25519"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 )
 
 type testServer struct {
+	srv  *Server
 	url  string
 	keys *e2e.Keys
 	auth remoteagentv1connect.AuthServiceClient
@@ -31,7 +33,7 @@ func newTestServer(t *testing.T) *testServer {
 	hs := httptest.NewServer(s.Handler())
 	t.Cleanup(func() { hs.Close(); s.Close() })
 	keys, _ := e2e.Derive(e2e.NewKey())
-	return &testServer{url: hs.URL, keys: keys, auth: remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, hs.URL)}
+	return &testServer{srv: s, url: hs.URL, keys: keys, auth: remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, hs.URL)}
 }
 
 func (ts *testServer) register(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, token string) (ed25519.PrivateKey, string, error) {
@@ -211,12 +213,25 @@ func TestChallengesAreBounded(t *testing.T) {
 			t.Fatalf("device ID %.10q: %v", id, err)
 		}
 	}
-	id := strings.Repeat("ab", 16)
-	var err error
-	for i := 0; i <= maxChallenges && err == nil; i++ {
-		_, err = ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id}))
+	priv, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("after %d challenges: %v", maxChallenges, err)
+	// Unknown devices get challenges, but nothing is stored for them.
+	for i := range 2 * maxChallenges {
+		unknown := fmt.Sprintf("%032x", i)
+		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: unknown})); err != nil {
+			t.Fatal(err)
+		}
 	}
+	// A device's own flood only pushes out its own oldest challenges.
+	for range 3 * maxDeviceChallenges {
+		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := ts.srv.pendingChallenges(); n != maxDeviceChallenges {
+		t.Fatalf("%d challenges stored", n)
+	}
+	ts.login(t, priv, id)
 }

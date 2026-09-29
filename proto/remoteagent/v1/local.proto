@@ -111,6 +111,10 @@ message AnswerQuestionRequest {
   string question_id = 2;
   // 1-based option number of the current question.
   int32 option = 3;
+  // 0-based index of the question the option answers, for a call that asks
+  // several. When set, the option is only entered while the terminal shows
+  // that question.
+  optional int32 question_index = 4;
 }
 
 message AnswerQuestionResponse {}

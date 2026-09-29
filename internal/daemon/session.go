@@ -559,8 +559,9 @@ func (s *session) interrupt() (bool, error) {
 	return true, c.Write([]byte{0x1b})
 }
 
-// answer picks option (1-based) of the question that is showing.
-func (s *session) answer(questionID string, option int) error {
+// answer picks option (1-based) of the question that is showing. With
+// index set, that must be the index-th question of the call.
+func (s *session) answer(questionID string, option int, index *int32) error {
 	s.readRollout()
 	s.mu.Lock()
 	_, ok := s.questions[questionID]
@@ -600,7 +601,14 @@ func (s *session) answer(questionID string, option int) error {
 	if err != nil {
 		return err
 	}
-	if !codex.AnalyzeScreen(styled).QuestionOpen || !showsQuestion(styled, q) {
+	items := q.Questions
+	if index != nil {
+		if *index < 0 || int(*index) >= len(items) {
+			return fmt.Errorf("question index %d out of range", *index)
+		}
+		items = items[*index : *index+1]
+	}
+	if !codex.AnalyzeScreen(styled).QuestionOpen || !showsQuestion(styled, items) {
 		return errNotAnswering
 	}
 	return c.Write([]byte(strconv.Itoa(option)))
@@ -764,11 +772,11 @@ func (s *session) resolve(id string, allow bool, message string) error {
 	return nil
 }
 
-// showsQuestion reports whether the screen shows one of q's questions. The
+// showsQuestion reports whether the screen shows one of the questions. The
 // start of the text is enough and survives line wrapping.
-func showsQuestion(styled string, q *pb.QuestionAsked) bool {
+func showsQuestion(styled string, questions []*pb.Question) bool {
 	screen := normalizeText(codex.StripANSI(styled))
-	for _, item := range q.Questions {
+	for _, item := range questions {
 		words := strings.Fields(item.Text)
 		prefix := []rune(strings.Join(words, " "))
 		if len(prefix) > 24 {

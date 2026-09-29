@@ -201,14 +201,17 @@ func internal(err error) error {
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
-// maxChallenges bounds outstanding login challenges, which anyone can
-// request without logging in.
-const maxChallenges = 1024
+// Login challenges can be requested without logging in, so they are
+// bounded: only registered devices get stored challenges, each at most
+// maxDeviceChallenges, the oldest giving way.
+const (
+	maxDeviceChallenges = 8
+	maxChallenges       = 4096
+)
 
 var errTooManyChallenges = errors.New("too many pending logins; try again in a minute")
 
-// newChallenge issues a one-time login challenge for deviceID, which the
-// caller has checked to be a well-formed device ID.
+// newChallenge issues a one-time login challenge for a registered device.
 func (s *Server) newChallenge(deviceID string) ([]byte, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -217,18 +220,35 @@ func (s *Server) newChallenge(deviceID string) ([]byte, error) {
 	s.challengeMu.Lock()
 	defer s.challengeMu.Unlock()
 	now := time.Now()
-	if len(s.challenges) >= maxChallenges {
-		for k, c := range s.challenges {
-			if now.After(c.expires) {
-				delete(s.challenges, k)
+	var mine []string
+	for k, c := range s.challenges {
+		switch {
+		case now.After(c.expires):
+			delete(s.challenges, k)
+		case c.deviceID == deviceID:
+			mine = append(mine, k)
+		}
+	}
+	if len(mine) >= maxDeviceChallenges {
+		oldest := mine[0]
+		for _, k := range mine[1:] {
+			if s.challenges[k].expires.Before(s.challenges[oldest].expires) {
+				oldest = k
 			}
 		}
-		if len(s.challenges) >= maxChallenges {
-			return nil, errTooManyChallenges
-		}
+		delete(s.challenges, oldest)
+	}
+	if len(s.challenges) >= maxChallenges {
+		return nil, errTooManyChallenges
 	}
 	s.challenges[string(b)] = challenge{deviceID: deviceID, expires: now.Add(time.Minute)}
 	return b, nil
+}
+
+func (s *Server) pendingChallenges() int {
+	s.challengeMu.Lock()
+	defer s.challengeMu.Unlock()
+	return len(s.challenges)
 }
 
 // takeChallenge consumes a challenge issued to deviceID.

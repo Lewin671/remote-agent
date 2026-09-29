@@ -106,7 +106,7 @@ func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.An
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.answer(req.Msg.QuestionId, int(req.Msg.Option)); err != nil {
+	if err := s.answer(req.Msg.QuestionId, int(req.Msg.Option), req.Msg.QuestionIndex); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil
