@@ -90,6 +90,10 @@ type Daemon struct {
 	settingsMu sync.Mutex
 	cached     *pb.DaemonSettings
 
+	// resumeMu makes resumes one at a time: two for the same session
+	// would both pass the checks and share its startup files.
+	resumeMu sync.Mutex
+
 	versionOnce sync.Once
 	version     string
 }
@@ -485,6 +489,8 @@ var errRunning = errors.New("the session is still running")
 // keeps its ID and history; Codex appends to the same rollout, which is
 // read on from where it stopped.
 func (d *Daemon) resume(id string) (*session, error) {
+	d.resumeMu.Lock()
+	defer d.resumeMu.Unlock()
 	s, err := d.exact(id)
 	if err != nil {
 		return nil, err

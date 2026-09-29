@@ -11,6 +11,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BIN=${BIN:-$HOME/bin/remote-agent}
 mkdir -p "$(dirname "$BIN")"
+BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 tmp=$BIN.new.$$
 trap 'rm -f "$tmp"' EXIT
 (cd "$ROOT" && go build -o "$tmp" ./cmd/remote-agent)
@@ -21,9 +22,12 @@ case $(uname) in
 Darwin) unit=$HOME/Library/LaunchAgents/com.github.lewin671.remote-agent.plist ;;
 *) unit=$HOME/.config/systemd/user/remote-agent.service ;;
 esac
-if [ -f "$unit" ]; then
+if [ -f "$unit" ] && grep -qF "$BIN" "$unit"; then
 	BIN=$BIN "$ROOT/scripts/daemon.sh" restart
 	echo "restarted the daemon"
+elif [ -f "$unit" ]; then
+	# The service runs another binary: point it at this one.
+	BIN=$BIN "$ROOT/scripts/daemon.sh" install
 elif "$BIN" ls >/dev/null 2>&1; then
 	echo "a daemon started by hand is running the old binary: restart it, or run scripts/daemon.sh install to have it managed"
 fi
