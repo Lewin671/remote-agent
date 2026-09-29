@@ -22,7 +22,7 @@ public  final class QuestionAsked extends
   private java.lang.String questionId_;
   /**
    * <pre>
-   * Codex tool call ID; also used to answer the question.
+   * The CLI's tool call ID; also used to answer the question.
    * </pre>
    *
    * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -34,7 +34,7 @@ public  final class QuestionAsked extends
   }
   /**
    * <pre>
-   * Codex tool call ID; also used to answer the question.
+   * The CLI's tool call ID; also used to answer the question.
    * </pre>
    *
    * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -47,7 +47,7 @@ public  final class QuestionAsked extends
   }
   /**
    * <pre>
-   * Codex tool call ID; also used to answer the question.
+   * The CLI's tool call ID; also used to answer the question.
    * </pre>
    *
    * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -62,7 +62,7 @@ public  final class QuestionAsked extends
   }
   /**
    * <pre>
-   * Codex tool call ID; also used to answer the question.
+   * The CLI's tool call ID; also used to answer the question.
    * </pre>
    *
    * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -73,7 +73,7 @@ public  final class QuestionAsked extends
   }
   /**
    * <pre>
-   * Codex tool call ID; also used to answer the question.
+   * The CLI's tool call ID; also used to answer the question.
    * </pre>
    *
    * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -320,7 +320,7 @@ public  final class QuestionAsked extends
 
     /**
      * <pre>
-     * Codex tool call ID; also used to answer the question.
+     * The CLI's tool call ID; also used to answer the question.
      * </pre>
      *
      * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -332,7 +332,7 @@ public  final class QuestionAsked extends
     }
     /**
      * <pre>
-     * Codex tool call ID; also used to answer the question.
+     * The CLI's tool call ID; also used to answer the question.
      * </pre>
      *
      * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -345,7 +345,7 @@ public  final class QuestionAsked extends
     }
     /**
      * <pre>
-     * Codex tool call ID; also used to answer the question.
+     * The CLI's tool call ID; also used to answer the question.
      * </pre>
      *
      * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -360,7 +360,7 @@ public  final class QuestionAsked extends
     }
     /**
      * <pre>
-     * Codex tool call ID; also used to answer the question.
+     * The CLI's tool call ID; also used to answer the question.
      * </pre>
      *
      * <code>string question_id = 1 [json_name = "questionId"];</code>
@@ -373,7 +373,7 @@ public  final class QuestionAsked extends
     }
     /**
      * <pre>
-     * Codex tool call ID; also used to answer the question.
+     * The CLI's tool call ID; also used to answer the question.
      * </pre>
      *
      * <code>string question_id = 1 [json_name = "questionId"];</code>

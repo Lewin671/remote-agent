@@ -17,6 +17,7 @@ public  final class AnswerQuestionRequest extends
   private AnswerQuestionRequest() {
     sessionId_ = "";
     questionId_ = "";
+    options_ = emptyIntList();
   }
   private int bitField0_;
   public static final int SESSION_ID_FIELD_NUMBER = 1;
@@ -209,6 +210,112 @@ public  final class AnswerQuestionRequest extends
   private void clearQuestionIndex() {
     bitField0_ = (bitField0_ & ~0x00000001);
     questionIndex_ = 0;
+  }
+
+  public static final int OPTIONS_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.IntList options_;
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @return A list containing the options.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.Integer>
+      getOptionsList() {
+    return options_;
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @return The count of options.
+   */
+  @java.lang.Override
+  public int getOptionsCount() {
+    return options_.size();
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @param index The index of the element to return.
+   * @return The options at the given index.
+   */
+  @java.lang.Override
+  public int getOptions(int index) {
+    return options_.getInt(index);
+  }
+  private int optionsMemoizedSerializedSize = -1;
+  private void ensureOptionsIsMutable() {
+    com.google.protobuf.Internal.IntList tmp = options_;
+    if (!tmp.isModifiable()) {
+      options_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @param index The index to set the value at.
+   * @param value The options to set.
+   */
+  private void setOptions(
+      int index, int value) {
+    ensureOptionsIsMutable();
+    options_.setInt(index, value);
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @param value The options to add.
+   */
+  private void addOptions(int value) {
+    ensureOptionsIsMutable();
+    options_.addInt(value);
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @param values The options to add.
+   */
+  private void addAllOptions(
+      java.lang.Iterable<? extends java.lang.Integer> values) {
+    ensureOptionsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, options_);
+  }
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   */
+  private void clearOptions() {
+    options_ = emptyIntList();
   }
 
   public static io.github.lewin671.remoteagent.proto.AnswerQuestionRequest parseFrom(
@@ -506,6 +613,110 @@ public  final class AnswerQuestionRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @return A list containing the options.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.Integer>
+        getOptionsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getOptionsList());
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @return The count of options.
+     */
+    @java.lang.Override
+    public int getOptionsCount() {
+      return instance.getOptionsCount();
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @param index The index of the element to return.
+     * @return The options at the given index.
+     */
+    @java.lang.Override
+    public int getOptions(int index) {
+      return instance.getOptions(index);
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @param value The options to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOptions(
+        int index, int value) {
+      copyOnWrite();
+      instance.setOptions(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @param value The options to add.
+     * @return This builder for chaining.
+     */
+    public Builder addOptions(int value) {
+      copyOnWrite();
+      instance.addOptions(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @param values The options to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllOptions(
+        java.lang.Iterable<? extends java.lang.Integer> values) {
+      copyOnWrite();
+      instance.addAllOptions(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * 1-based option numbers for a multi_select question (Claude Code); when
+     * set, option is ignored.
+     * </pre>
+     *
+     * <code>repeated int32 options = 5 [json_name = "options"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOptions() {
+      copyOnWrite();
+      instance.clearOptions();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.AnswerQuestionRequest)
   }
   @java.lang.Override
@@ -527,10 +738,11 @@ public  final class AnswerQuestionRequest extends
             "questionId_",
             "option_",
             "questionIndex_",
+            "options_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0004\u0004\u1004\u0000";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0004\u0004\u1004\u0000\u0005\'";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

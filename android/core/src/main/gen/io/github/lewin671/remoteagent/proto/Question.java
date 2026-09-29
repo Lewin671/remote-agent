@@ -23,6 +23,11 @@ public  final class Question extends
   public static final int ID_FIELD_NUMBER = 1;
   private java.lang.String id_;
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @return The id.
    */
@@ -31,6 +36,11 @@ public  final class Question extends
     return id_;
   }
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @return The bytes for id.
    */
@@ -40,6 +50,11 @@ public  final class Question extends
     return com.google.protobuf.ByteString.copyFromUtf8(id_);
   }
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @param value The id to set.
    */
@@ -51,6 +66,11 @@ public  final class Question extends
     id_ = value;
   }
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    */
   private void clearId() {
@@ -58,6 +78,11 @@ public  final class Question extends
     id_ = getDefaultInstance().getId();
   }
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @param value The bytes for id to set.
    */
@@ -261,6 +286,47 @@ public  final class Question extends
     options_.remove(index);
   }
 
+  public static final int MULTI_SELECT_FIELD_NUMBER = 5;
+  private boolean multiSelect_;
+  /**
+   * <pre>
+   * Several options may be picked (Claude Code); answer with
+   * AnswerQuestionRequest.options.
+   * </pre>
+   *
+   * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+   * @return The multiSelect.
+   */
+  @java.lang.Override
+  public boolean getMultiSelect() {
+    return multiSelect_;
+  }
+  /**
+   * <pre>
+   * Several options may be picked (Claude Code); answer with
+   * AnswerQuestionRequest.options.
+   * </pre>
+   *
+   * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+   * @param value The multiSelect to set.
+   */
+  private void setMultiSelect(boolean value) {
+    
+    multiSelect_ = value;
+  }
+  /**
+   * <pre>
+   * Several options may be picked (Claude Code); answer with
+   * AnswerQuestionRequest.options.
+   * </pre>
+   *
+   * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+   */
+  private void clearMultiSelect() {
+
+    multiSelect_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.Question parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -359,6 +425,11 @@ public  final class Question extends
 
 
     /**
+     * <pre>
+     * Codex's question ID; for Claude Code, which has none, the question
+     * text, which also keys its answer.
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id"];</code>
      * @return The id.
      */
@@ -367,6 +438,11 @@ public  final class Question extends
       return instance.getId();
     }
     /**
+     * <pre>
+     * Codex's question ID; for Claude Code, which has none, the question
+     * text, which also keys its answer.
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id"];</code>
      * @return The bytes for id.
      */
@@ -376,6 +452,11 @@ public  final class Question extends
       return instance.getIdBytes();
     }
     /**
+     * <pre>
+     * Codex's question ID; for Claude Code, which has none, the question
+     * text, which also keys its answer.
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id"];</code>
      * @param value The id to set.
      * @return This builder for chaining.
@@ -387,6 +468,11 @@ public  final class Question extends
       return this;
     }
     /**
+     * <pre>
+     * Codex's question ID; for Claude Code, which has none, the question
+     * text, which also keys its answer.
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id"];</code>
      * @return This builder for chaining.
      */
@@ -396,6 +482,11 @@ public  final class Question extends
       return this;
     }
     /**
+     * <pre>
+     * Codex's question ID; for Claude Code, which has none, the question
+     * text, which also keys its answer.
+     * </pre>
+     *
      * <code>string id = 1 [json_name = "id"];</code>
      * @param value The bytes for id to set.
      * @return This builder for chaining.
@@ -607,6 +698,49 @@ public  final class Question extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Several options may be picked (Claude Code); answer with
+     * AnswerQuestionRequest.options.
+     * </pre>
+     *
+     * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+     * @return The multiSelect.
+     */
+    @java.lang.Override
+    public boolean getMultiSelect() {
+      return instance.getMultiSelect();
+    }
+    /**
+     * <pre>
+     * Several options may be picked (Claude Code); answer with
+     * AnswerQuestionRequest.options.
+     * </pre>
+     *
+     * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+     * @param value The multiSelect to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMultiSelect(boolean value) {
+      copyOnWrite();
+      instance.setMultiSelect(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Several options may be picked (Claude Code); answer with
+     * AnswerQuestionRequest.options.
+     * </pre>
+     *
+     * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMultiSelect() {
+      copyOnWrite();
+      instance.clearMultiSelect();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Question)
   }
   @java.lang.Override
@@ -628,10 +762,11 @@ public  final class Question extends
             "text_",
             "options_",
             io.github.lewin671.remoteagent.proto.QuestionOption.class,
+            "multiSelect_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u001b";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u001b\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -7,8 +7,9 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
- * terminal whether to implement it.
+ * PlanProposed is a plan the CLI wrote in Plan mode (Claude Code: its
+ * ExitPlanMode call). The CLI then asks in the terminal whether to carry it
+ * out.
  * </pre>
  *
  * Protobuf type {@code remoteagent.v1.PlanProposed}
@@ -155,8 +156,9 @@ public  final class PlanProposed extends
 
   /**
    * <pre>
-   * PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
-   * terminal whether to implement it.
+   * PlanProposed is a plan the CLI wrote in Plan mode (Claude Code: its
+   * ExitPlanMode call). The CLI then asks in the terminal whether to carry it
+   * out.
    * </pre>
    *
    * Protobuf type {@code remoteagent.v1.PlanProposed}

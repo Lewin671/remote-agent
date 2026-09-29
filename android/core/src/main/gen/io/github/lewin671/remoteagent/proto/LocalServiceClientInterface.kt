@@ -27,7 +27,7 @@ public interface LocalServiceClientInterface {
   public suspend fun stopSession(request: StopSessionRequest, headers: Headers = emptyMap()): ResponseMessage<StopSessionResponse>
 
   /**
-   *  ResumeSession starts Codex again for an exited session, continuing its
+   *  ResumeSession starts the CLI again for an exited session, continuing its
    *  conversation.
    */
   public suspend fun resumeSession(request: ResumeSessionRequest, headers: Headers = emptyMap()): ResponseMessage<ResumeSessionResponse>
@@ -52,7 +52,8 @@ public interface LocalServiceClientInterface {
   public suspend fun compact(request: CompactRequest, headers: Headers = emptyMap()): ResponseMessage<CompactResponse>
 
   /**
-   *  AnswerPlan answers Codex's "Implement this plan?" prompt.
+   *  AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
+   *  "Implement this plan?", Claude Code's "Would you like to proceed?".
    */
   public suspend fun answerPlan(request: AnswerPlanRequest, headers: Headers = emptyMap()): ResponseMessage<AnswerPlanResponse>
 
@@ -73,7 +74,7 @@ public interface LocalServiceClientInterface {
   public suspend fun watchEvents(headers: Headers = emptyMap()): ServerOnlyStreamInterface<WatchEventsRequest, WatchEventsResponse>
 
   /**
-   *  Hook is called by `remote-agent hook codex`. For PermissionRequest it
+   *  Hook is called by `remote-agent hook codex|claude`. For PermissionRequest it
    *  blocks until the request is decided.
    */
   public suspend fun hook(request: HookRequest, headers: Headers = emptyMap()): ResponseMessage<HookResponse>

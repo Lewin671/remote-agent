@@ -30,6 +30,7 @@ public  final class Session extends
     sandbox_ = "";
     collaborationMode_ = "";
     inputWait_ = "";
+    permissionMode_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -269,6 +270,11 @@ public  final class Session extends
   public static final int CODEX_SESSION_ID_FIELD_NUMBER = 6;
   private java.lang.String codexSessionId_;
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @return The codexSessionId.
    */
@@ -277,6 +283,11 @@ public  final class Session extends
     return codexSessionId_;
   }
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @return The bytes for codexSessionId.
    */
@@ -286,6 +297,11 @@ public  final class Session extends
     return com.google.protobuf.ByteString.copyFromUtf8(codexSessionId_);
   }
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @param value The codexSessionId to set.
    */
@@ -297,6 +313,11 @@ public  final class Session extends
     codexSessionId_ = value;
   }
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    */
   private void clearCodexSessionId() {
@@ -304,6 +325,11 @@ public  final class Session extends
     codexSessionId_ = getDefaultInstance().getCodexSessionId();
   }
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @param value The bytes for codexSessionId to set.
    */
@@ -1180,6 +1206,187 @@ public  final class Session extends
     agent_ = 0;
   }
 
+  public static final int MODE_FIELD_NUMBER = 26;
+  private int mode_;
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @return The enum numeric value on the wire for mode.
+   */
+  @java.lang.Override
+  public int getModeValue() {
+    return mode_;
+  }
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @return The mode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ApprovalMode getMode() {
+    io.github.lewin671.remoteagent.proto.ApprovalMode result = io.github.lewin671.remoteagent.proto.ApprovalMode.forNumber(mode_);
+    return result == null ? io.github.lewin671.remoteagent.proto.ApprovalMode.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @param value The enum numeric value on the wire for mode to set.
+   */
+  private void setModeValue(int value) {
+      mode_ = value;
+  }
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @param value The mode to set.
+   */
+  private void setMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
+    mode_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   */
+  private void clearMode() {
+
+    mode_ = 0;
+  }
+
+  public static final int PERMISSION_MODE_FIELD_NUMBER = 27;
+  private java.lang.String permissionMode_;
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @return The permissionMode.
+   */
+  @java.lang.Override
+  public java.lang.String getPermissionMode() {
+    return permissionMode_;
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @return The bytes for permissionMode.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPermissionModeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(permissionMode_);
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @param value The permissionMode to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPermissionMode(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    permissionMode_ = value;
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   */
+  private void clearPermissionMode() {
+
+    permissionMode_ = getDefaultInstance().getPermissionMode();
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @param value The bytes for permissionMode to set.
+   */
+  private void setPermissionModeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    permissionMode_ = value.toStringUtf8();
+
+  }
+
+  public static final int FULL_ACCESS_UNAVAILABLE_FIELD_NUMBER = 28;
+  private boolean fullAccessUnavailable_;
+  /**
+   * <pre>
+   * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+   * sessions started with it allowed. Always false for Codex.
+   * </pre>
+   *
+   * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+   * @return The fullAccessUnavailable.
+   */
+  @java.lang.Override
+  public boolean getFullAccessUnavailable() {
+    return fullAccessUnavailable_;
+  }
+  /**
+   * <pre>
+   * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+   * sessions started with it allowed. Always false for Codex.
+   * </pre>
+   *
+   * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+   * @param value The fullAccessUnavailable to set.
+   */
+  private void setFullAccessUnavailable(boolean value) {
+    
+    fullAccessUnavailable_ = value;
+  }
+  /**
+   * <pre>
+   * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+   * sessions started with it allowed. Always false for Codex.
+   * </pre>
+   *
+   * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+   */
+  private void clearFullAccessUnavailable() {
+
+    fullAccessUnavailable_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1520,6 +1727,11 @@ public  final class Session extends
     }
 
     /**
+     * <pre>
+     * The CLI's own session ID and transcript (Codex's rollout); the names
+     * date from when only Codex was supported.
+     * </pre>
+     *
      * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
      * @return The codexSessionId.
      */
@@ -1528,6 +1740,11 @@ public  final class Session extends
       return instance.getCodexSessionId();
     }
     /**
+     * <pre>
+     * The CLI's own session ID and transcript (Codex's rollout); the names
+     * date from when only Codex was supported.
+     * </pre>
+     *
      * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
      * @return The bytes for codexSessionId.
      */
@@ -1537,6 +1754,11 @@ public  final class Session extends
       return instance.getCodexSessionIdBytes();
     }
     /**
+     * <pre>
+     * The CLI's own session ID and transcript (Codex's rollout); the names
+     * date from when only Codex was supported.
+     * </pre>
+     *
      * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
      * @param value The codexSessionId to set.
      * @return This builder for chaining.
@@ -1548,6 +1770,11 @@ public  final class Session extends
       return this;
     }
     /**
+     * <pre>
+     * The CLI's own session ID and transcript (Codex's rollout); the names
+     * date from when only Codex was supported.
+     * </pre>
+     *
      * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
      * @return This builder for chaining.
      */
@@ -1557,6 +1784,11 @@ public  final class Session extends
       return this;
     }
     /**
+     * <pre>
+     * The CLI's own session ID and transcript (Codex's rollout); the names
+     * date from when only Codex was supported.
+     * </pre>
+     *
      * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
      * @param value The bytes for codexSessionId to set.
      * @return This builder for chaining.
@@ -2461,6 +2693,194 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The approval mode the session is in, for either CLI; UNSPECIFIED when
+     * it is in none of the four, e.g. Claude Code's accept edits (see
+     * permission_mode).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+     * @return The enum numeric value on the wire for mode.
+     */
+    @java.lang.Override
+    public int getModeValue() {
+      return instance.getModeValue();
+    }
+    /**
+     * <pre>
+     * The approval mode the session is in, for either CLI; UNSPECIFIED when
+     * it is in none of the four, e.g. Claude Code's accept edits (see
+     * permission_mode).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+     * @param value The mode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setModeValue(int value) {
+      copyOnWrite();
+      instance.setModeValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The approval mode the session is in, for either CLI; UNSPECIFIED when
+     * it is in none of the four, e.g. Claude Code's accept edits (see
+     * permission_mode).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+     * @return The mode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ApprovalMode getMode() {
+      return instance.getMode();
+    }
+    /**
+     * <pre>
+     * The approval mode the session is in, for either CLI; UNSPECIFIED when
+     * it is in none of the four, e.g. Claude Code's accept edits (see
+     * permission_mode).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+     * @param value The enum numeric value on the wire for mode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
+      copyOnWrite();
+      instance.setMode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The approval mode the session is in, for either CLI; UNSPECIFIED when
+     * it is in none of the four, e.g. Claude Code's accept edits (see
+     * permission_mode).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMode() {
+      copyOnWrite();
+      instance.clearMode();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+     * </pre>
+     *
+     * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+     * @return The permissionMode.
+     */
+    @java.lang.Override
+    public java.lang.String getPermissionMode() {
+      return instance.getPermissionMode();
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+     * </pre>
+     *
+     * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+     * @return The bytes for permissionMode.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPermissionModeBytes() {
+      return instance.getPermissionModeBytes();
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+     * </pre>
+     *
+     * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+     * @param value The permissionMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPermissionMode(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPermissionMode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+     * </pre>
+     *
+     * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPermissionMode() {
+      copyOnWrite();
+      instance.clearPermissionMode();
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+     * </pre>
+     *
+     * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+     * @param value The bytes for permissionMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPermissionModeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPermissionModeBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+     * sessions started with it allowed. Always false for Codex.
+     * </pre>
+     *
+     * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+     * @return The fullAccessUnavailable.
+     */
+    @java.lang.Override
+    public boolean getFullAccessUnavailable() {
+      return instance.getFullAccessUnavailable();
+    }
+    /**
+     * <pre>
+     * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+     * sessions started with it allowed. Always false for Codex.
+     * </pre>
+     *
+     * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+     * @param value The fullAccessUnavailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFullAccessUnavailable(boolean value) {
+      copyOnWrite();
+      instance.setFullAccessUnavailable(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+     * sessions started with it allowed. Always false for Codex.
+     * </pre>
+     *
+     * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFullAccessUnavailable() {
+      copyOnWrite();
+      instance.clearFullAccessUnavailable();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -2503,13 +2923,16 @@ public  final class Session extends
             "planOpen_",
             "inputWait_",
             "agent_",
+            "mode_",
+            "permissionMode_",
+            "fullAccessUnavailable_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n" +
               "\u0208\u000b\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208" +
               "\u0012\u0208\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208" +
-              "\u0019\f";
+              "\u0019\f\u001a\f\u001b\u0208\u001c\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

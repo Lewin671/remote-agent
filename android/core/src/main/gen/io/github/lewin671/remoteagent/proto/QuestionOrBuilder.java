@@ -11,11 +11,21 @@ public interface QuestionOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @return The id.
    */
   java.lang.String getId();
   /**
+   * <pre>
+   * Codex's question ID; for Claude Code, which has none, the question
+   * text, which also keys its answer.
+   * </pre>
+   *
    * <code>string id = 1 [json_name = "id"];</code>
    * @return The bytes for id.
    */
@@ -59,4 +69,15 @@ public interface QuestionOrBuilder extends
    * <code>repeated .remoteagent.v1.QuestionOption options = 4 [json_name = "options"];</code>
    */
   int getOptionsCount();
+
+  /**
+   * <pre>
+   * Several options may be picked (Claude Code); answer with
+   * AnswerQuestionRequest.options.
+   * </pre>
+   *
+   * <code>bool multi_select = 5 [json_name = "multiSelect"];</code>
+   * @return The multiSelect.
+   */
+  boolean getMultiSelect();
 }

@@ -66,4 +66,36 @@ public interface AnswerQuestionRequestOrBuilder extends
    * @return The questionIndex.
    */
   int getQuestionIndex();
+
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @return A list containing the options.
+   */
+  java.util.List<java.lang.Integer> getOptionsList();
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @return The count of options.
+   */
+  int getOptionsCount();
+  /**
+   * <pre>
+   * 1-based option numbers for a multi_select question (Claude Code); when
+   * set, option is ignored.
+   * </pre>
+   *
+   * <code>repeated int32 options = 5 [json_name = "options"];</code>
+   * @param index The index of the element to return.
+   * @return The options at the given index.
+   */
+  int getOptions(int index);
 }

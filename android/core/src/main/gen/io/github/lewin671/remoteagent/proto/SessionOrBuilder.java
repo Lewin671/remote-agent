@@ -70,11 +70,21 @@ public interface SessionOrBuilder extends
       getStatusDetailBytes();
 
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @return The codexSessionId.
    */
   java.lang.String getCodexSessionId();
   /**
+   * <pre>
+   * The CLI's own session ID and transcript (Codex's rollout); the names
+   * date from when only Codex was supported.
+   * </pre>
+   *
    * <code>string codex_session_id = 6 [json_name = "codexSessionId"];</code>
    * @return The bytes for codexSessionId.
    */
@@ -308,4 +318,58 @@ public interface SessionOrBuilder extends
    * @return The agent.
    */
   io.github.lewin671.remoteagent.proto.Agent getAgent();
+
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @return The enum numeric value on the wire for mode.
+   */
+  int getModeValue();
+  /**
+   * <pre>
+   * The approval mode the session is in, for either CLI; UNSPECIFIED when
+   * it is in none of the four, e.g. Claude Code's accept edits (see
+   * permission_mode).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode mode = 26 [json_name = "mode"];</code>
+   * @return The mode.
+   */
+  io.github.lewin671.remoteagent.proto.ApprovalMode getMode();
+
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @return The permissionMode.
+   */
+  java.lang.String getPermissionMode();
+  /**
+   * <pre>
+   * Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+   * </pre>
+   *
+   * <code>string permission_mode = 27 [json_name = "permissionMode"];</code>
+   * @return The bytes for permissionMode.
+   */
+  com.google.protobuf.ByteString
+      getPermissionModeBytes();
+
+  /**
+   * <pre>
+   * FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+   * sessions started with it allowed. Always false for Codex.
+   * </pre>
+   *
+   * <code>bool full_access_unavailable = 28 [json_name = "fullAccessUnavailable"];</code>
+   * @return The fullAccessUnavailable.
+   */
+  boolean getFullAccessUnavailable();
 }

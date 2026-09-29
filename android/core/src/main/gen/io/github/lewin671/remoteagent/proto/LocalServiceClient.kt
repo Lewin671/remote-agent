@@ -92,7 +92,7 @@ public class LocalServiceClient(
 
 
   /**
-   *  ResumeSession starts Codex again for an exited session, continuing its
+   *  ResumeSession starts the CLI again for an exited session, continuing its
    *  conversation.
    */
   override suspend fun resumeSession(request: ResumeSessionRequest, headers: Headers): ResponseMessage<ResumeSessionResponse> = client.unary(
@@ -177,7 +177,8 @@ public class LocalServiceClient(
 
 
   /**
-   *  AnswerPlan answers Codex's "Implement this plan?" prompt.
+   *  AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
+   *  "Implement this plan?", Claude Code's "Would you like to proceed?".
    */
   override suspend fun answerPlan(request: AnswerPlanRequest, headers: Headers): ResponseMessage<AnswerPlanResponse> = client.unary(
     request,
@@ -267,7 +268,7 @@ public class LocalServiceClient(
 
 
   /**
-   *  Hook is called by `remote-agent hook codex`. For PermissionRequest it
+   *  Hook is called by `remote-agent hook codex|claude`. For PermissionRequest it
    *  blocks until the request is decided.
    */
   override suspend fun hook(request: HookRequest, headers: Headers): ResponseMessage<HookResponse> = client.unary(

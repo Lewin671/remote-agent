@@ -8,7 +8,8 @@ package io.github.lewin671.remoteagent.proto;
 /**
  * <pre>
  * ApprovalMode is what a client can switch a session to. ASK, AUTO and
- * FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+ * FULL_ACCESS are Codex's /permissions levels and PLAN its Plan mode; for
+ * Claude Code they are manual, auto, bypass and plan.
  * </pre>
  *
  * Protobuf enum {@code remoteagent.v1.ApprovalMode}

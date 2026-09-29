@@ -39,6 +39,16 @@ public enum ApprovalDecision
    * <code>APPROVAL_DECISION_CANCELED = 4;</code>
    */
   APPROVAL_DECISION_CANCELED(4),
+  /**
+   * <pre>
+   * Answered in the terminal before any client did (Claude Code shows its
+   * own prompt while the hook waits); what was chosen shows in the tool
+   * call that follows.
+   * </pre>
+   *
+   * <code>APPROVAL_DECISION_TERMINAL = 5;</code>
+   */
+  APPROVAL_DECISION_TERMINAL(5),
   UNRECOGNIZED(-1),
   ;
 
@@ -70,6 +80,16 @@ public enum ApprovalDecision
    * <code>APPROVAL_DECISION_CANCELED = 4;</code>
    */
   public static final int APPROVAL_DECISION_CANCELED_VALUE = 4;
+  /**
+   * <pre>
+   * Answered in the terminal before any client did (Claude Code shows its
+   * own prompt while the hook waits); what was chosen shows in the tool
+   * call that follows.
+   * </pre>
+   *
+   * <code>APPROVAL_DECISION_TERMINAL = 5;</code>
+   */
+  public static final int APPROVAL_DECISION_TERMINAL_VALUE = 5;
 
 
   @java.lang.Override
@@ -98,6 +118,7 @@ public enum ApprovalDecision
       case 2: return APPROVAL_DECISION_DENY;
       case 3: return APPROVAL_DECISION_TIMEOUT;
       case 4: return APPROVAL_DECISION_CANCELED;
+      case 5: return APPROVAL_DECISION_TERMINAL;
       default: return null;
     }
   }

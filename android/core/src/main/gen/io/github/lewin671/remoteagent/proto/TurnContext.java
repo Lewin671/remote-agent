@@ -7,7 +7,9 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * TurnContext is the configuration Codex recorded at the start of a turn.
+ * TurnContext is the configuration the CLI recorded at the start of a
+ * turn. Codex sets the approval fields 3 to 6; Claude Code sets
+ * permission_mode.
  * </pre>
  *
  * Protobuf type {@code remoteagent.v1.TurnContext}
@@ -25,10 +27,16 @@ public  final class TurnContext extends
     approvalsReviewer_ = "";
     sandbox_ = "";
     collaborationMode_ = "";
+    permissionMode_ = "";
   }
   public static final int MODEL_FIELD_NUMBER = 1;
   private java.lang.String model_;
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @return The model.
    */
@@ -37,6 +45,11 @@ public  final class TurnContext extends
     return model_;
   }
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @return The bytes for model.
    */
@@ -46,6 +59,11 @@ public  final class TurnContext extends
     return com.google.protobuf.ByteString.copyFromUtf8(model_);
   }
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @param value The model to set.
    */
@@ -57,6 +75,11 @@ public  final class TurnContext extends
     model_ = value;
   }
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    */
   private void clearModel() {
@@ -64,6 +87,11 @@ public  final class TurnContext extends
     model_ = getDefaultInstance().getModel();
   }
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @param value The bytes for model to set.
    */
@@ -334,6 +362,79 @@ public  final class TurnContext extends
 
   }
 
+  public static final int PERMISSION_MODE_FIELD_NUMBER = 7;
+  private java.lang.String permissionMode_;
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @return The permissionMode.
+   */
+  @java.lang.Override
+  public java.lang.String getPermissionMode() {
+    return permissionMode_;
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @return The bytes for permissionMode.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPermissionModeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(permissionMode_);
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @param value The permissionMode to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPermissionMode(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    permissionMode_ = value;
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   */
+  private void clearPermissionMode() {
+
+    permissionMode_ = getDefaultInstance().getPermissionMode();
+  }
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @param value The bytes for permissionMode to set.
+   */
+  private void setPermissionModeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    permissionMode_ = value.toStringUtf8();
+
+  }
+
   public static io.github.lewin671.remoteagent.proto.TurnContext parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -419,7 +520,9 @@ public  final class TurnContext extends
 
   /**
    * <pre>
-   * TurnContext is the configuration Codex recorded at the start of a turn.
+   * TurnContext is the configuration the CLI recorded at the start of a
+   * turn. Codex sets the approval fields 3 to 6; Claude Code sets
+   * permission_mode.
    * </pre>
    *
    * Protobuf type {@code remoteagent.v1.TurnContext}
@@ -436,6 +539,11 @@ public  final class TurnContext extends
 
 
     /**
+     * <pre>
+     * Codex's model slug, or Claude Code's full model ID (e.g.
+     * "claude-haiku-4-5-20251001").
+     * </pre>
+     *
      * <code>string model = 1 [json_name = "model"];</code>
      * @return The model.
      */
@@ -444,6 +552,11 @@ public  final class TurnContext extends
       return instance.getModel();
     }
     /**
+     * <pre>
+     * Codex's model slug, or Claude Code's full model ID (e.g.
+     * "claude-haiku-4-5-20251001").
+     * </pre>
+     *
      * <code>string model = 1 [json_name = "model"];</code>
      * @return The bytes for model.
      */
@@ -453,6 +566,11 @@ public  final class TurnContext extends
       return instance.getModelBytes();
     }
     /**
+     * <pre>
+     * Codex's model slug, or Claude Code's full model ID (e.g.
+     * "claude-haiku-4-5-20251001").
+     * </pre>
+     *
      * <code>string model = 1 [json_name = "model"];</code>
      * @param value The model to set.
      * @return This builder for chaining.
@@ -464,6 +582,11 @@ public  final class TurnContext extends
       return this;
     }
     /**
+     * <pre>
+     * Codex's model slug, or Claude Code's full model ID (e.g.
+     * "claude-haiku-4-5-20251001").
+     * </pre>
+     *
      * <code>string model = 1 [json_name = "model"];</code>
      * @return This builder for chaining.
      */
@@ -473,6 +596,11 @@ public  final class TurnContext extends
       return this;
     }
     /**
+     * <pre>
+     * Codex's model slug, or Claude Code's full model ID (e.g.
+     * "claude-haiku-4-5-20251001").
+     * </pre>
+     *
      * <code>string model = 1 [json_name = "model"];</code>
      * @param value The bytes for model to set.
      * @return This builder for chaining.
@@ -749,6 +877,80 @@ public  final class TurnContext extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Claude Code's permission mode: "default" (manual), "acceptEdits",
+     * "plan", "bypassPermissions" or "auto".
+     * </pre>
+     *
+     * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+     * @return The permissionMode.
+     */
+    @java.lang.Override
+    public java.lang.String getPermissionMode() {
+      return instance.getPermissionMode();
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode: "default" (manual), "acceptEdits",
+     * "plan", "bypassPermissions" or "auto".
+     * </pre>
+     *
+     * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+     * @return The bytes for permissionMode.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPermissionModeBytes() {
+      return instance.getPermissionModeBytes();
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode: "default" (manual), "acceptEdits",
+     * "plan", "bypassPermissions" or "auto".
+     * </pre>
+     *
+     * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+     * @param value The permissionMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPermissionMode(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPermissionMode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode: "default" (manual), "acceptEdits",
+     * "plan", "bypassPermissions" or "auto".
+     * </pre>
+     *
+     * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPermissionMode() {
+      copyOnWrite();
+      instance.clearPermissionMode();
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's permission mode: "default" (manual), "acceptEdits",
+     * "plan", "bypassPermissions" or "auto".
+     * </pre>
+     *
+     * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+     * @param value The bytes for permissionMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPermissionModeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPermissionModeBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.TurnContext)
   }
   @java.lang.Override
@@ -771,10 +973,11 @@ public  final class TurnContext extends
             "approvalsReviewer_",
             "sandbox_",
             "collaborationMode_",
+            "permissionMode_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

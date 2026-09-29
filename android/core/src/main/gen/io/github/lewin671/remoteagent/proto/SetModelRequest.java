@@ -71,7 +71,7 @@ public  final class SetModelRequest extends
   private java.lang.String model_;
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -83,7 +83,7 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -96,7 +96,7 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -111,7 +111,7 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -122,7 +122,7 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -139,7 +139,8 @@ public  final class SetModelRequest extends
   private java.lang.String effort_;
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -151,7 +152,8 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -164,7 +166,8 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -179,7 +182,8 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -190,7 +194,8 @@ public  final class SetModelRequest extends
   }
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -351,7 +356,7 @@ public  final class SetModelRequest extends
 
     /**
      * <pre>
-     * Model slug, e.g. "gpt-6-sol".
+     * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
      * </pre>
      *
      * <code>string model = 2 [json_name = "model"];</code>
@@ -363,7 +368,7 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * Model slug, e.g. "gpt-6-sol".
+     * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
      * </pre>
      *
      * <code>string model = 2 [json_name = "model"];</code>
@@ -376,7 +381,7 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * Model slug, e.g. "gpt-6-sol".
+     * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
      * </pre>
      *
      * <code>string model = 2 [json_name = "model"];</code>
@@ -391,7 +396,7 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * Model slug, e.g. "gpt-6-sol".
+     * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
      * </pre>
      *
      * <code>string model = 2 [json_name = "model"];</code>
@@ -404,7 +409,7 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * Model slug, e.g. "gpt-6-sol".
+     * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
      * </pre>
      *
      * <code>string model = 2 [json_name = "model"];</code>
@@ -420,7 +425,8 @@ public  final class SetModelRequest extends
 
     /**
      * <pre>
-     * "low", "medium", "high", "xhigh", "max" or "ultra".
+     * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+     * for Claude Code models without effort levels, such as haiku.
      * </pre>
      *
      * <code>string effort = 3 [json_name = "effort"];</code>
@@ -432,7 +438,8 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * "low", "medium", "high", "xhigh", "max" or "ultra".
+     * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+     * for Claude Code models without effort levels, such as haiku.
      * </pre>
      *
      * <code>string effort = 3 [json_name = "effort"];</code>
@@ -445,7 +452,8 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * "low", "medium", "high", "xhigh", "max" or "ultra".
+     * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+     * for Claude Code models without effort levels, such as haiku.
      * </pre>
      *
      * <code>string effort = 3 [json_name = "effort"];</code>
@@ -460,7 +468,8 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * "low", "medium", "high", "xhigh", "max" or "ultra".
+     * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+     * for Claude Code models without effort levels, such as haiku.
      * </pre>
      *
      * <code>string effort = 3 [json_name = "effort"];</code>
@@ -473,7 +482,8 @@ public  final class SetModelRequest extends
     }
     /**
      * <pre>
-     * "low", "medium", "high", "xhigh", "max" or "ultra".
+     * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+     * for Claude Code models without effort levels, such as haiku.
      * </pre>
      *
      * <code>string effort = 3 [json_name = "effort"];</code>

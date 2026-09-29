@@ -90,7 +90,7 @@ public  final class HookRequest extends
   private com.google.protobuf.ByteString payload_;
   /**
    * <pre>
-   * Raw JSON payload Codex wrote to the hook's stdin.
+   * Raw JSON payload the CLI wrote to the hook's stdin.
    * </pre>
    *
    * <code>bytes payload = 2 [json_name = "payload"];</code>
@@ -102,7 +102,7 @@ public  final class HookRequest extends
   }
   /**
    * <pre>
-   * Raw JSON payload Codex wrote to the hook's stdin.
+   * Raw JSON payload the CLI wrote to the hook's stdin.
    * </pre>
    *
    * <code>bytes payload = 2 [json_name = "payload"];</code>
@@ -115,7 +115,7 @@ public  final class HookRequest extends
   }
   /**
    * <pre>
-   * Raw JSON payload Codex wrote to the hook's stdin.
+   * Raw JSON payload the CLI wrote to the hook's stdin.
    * </pre>
    *
    * <code>bytes payload = 2 [json_name = "payload"];</code>
@@ -293,7 +293,7 @@ public  final class HookRequest extends
 
     /**
      * <pre>
-     * Raw JSON payload Codex wrote to the hook's stdin.
+     * Raw JSON payload the CLI wrote to the hook's stdin.
      * </pre>
      *
      * <code>bytes payload = 2 [json_name = "payload"];</code>
@@ -305,7 +305,7 @@ public  final class HookRequest extends
     }
     /**
      * <pre>
-     * Raw JSON payload Codex wrote to the hook's stdin.
+     * Raw JSON payload the CLI wrote to the hook's stdin.
      * </pre>
      *
      * <code>bytes payload = 2 [json_name = "payload"];</code>
@@ -319,7 +319,7 @@ public  final class HookRequest extends
     }
     /**
      * <pre>
-     * Raw JSON payload Codex wrote to the hook's stdin.
+     * Raw JSON payload the CLI wrote to the hook's stdin.
      * </pre>
      *
      * <code>bytes payload = 2 [json_name = "payload"];</code>

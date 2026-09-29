@@ -24,7 +24,7 @@ public interface SetModelRequestOrBuilder extends
 
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -33,7 +33,7 @@ public interface SetModelRequestOrBuilder extends
   java.lang.String getModel();
   /**
    * <pre>
-   * Model slug, e.g. "gpt-6-sol".
+   * Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
    * </pre>
    *
    * <code>string model = 2 [json_name = "model"];</code>
@@ -44,7 +44,8 @@ public interface SetModelRequestOrBuilder extends
 
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>
@@ -53,7 +54,8 @@ public interface SetModelRequestOrBuilder extends
   java.lang.String getEffort();
   /**
    * <pre>
-   * "low", "medium", "high", "xhigh", "max" or "ultra".
+   * "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+   * for Claude Code models without effort levels, such as haiku.
    * </pre>
    *
    * <code>string effort = 3 [json_name = "effort"];</code>

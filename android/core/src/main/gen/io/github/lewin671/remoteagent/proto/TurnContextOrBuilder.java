@@ -11,11 +11,21 @@ public interface TurnContextOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @return The model.
    */
   java.lang.String getModel();
   /**
+   * <pre>
+   * Codex's model slug, or Claude Code's full model ID (e.g.
+   * "claude-haiku-4-5-20251001").
+   * </pre>
+   *
    * <code>string model = 1 [json_name = "model"];</code>
    * @return The bytes for model.
    */
@@ -89,4 +99,26 @@ public interface TurnContextOrBuilder extends
    */
   com.google.protobuf.ByteString
       getCollaborationModeBytes();
+
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @return The permissionMode.
+   */
+  java.lang.String getPermissionMode();
+  /**
+   * <pre>
+   * Claude Code's permission mode: "default" (manual), "acceptEdits",
+   * "plan", "bypassPermissions" or "auto".
+   * </pre>
+   *
+   * <code>string permission_mode = 7 [json_name = "permissionMode"];</code>
+   * @return The bytes for permissionMode.
+   */
+  com.google.protobuf.ByteString
+      getPermissionModeBytes();
 }

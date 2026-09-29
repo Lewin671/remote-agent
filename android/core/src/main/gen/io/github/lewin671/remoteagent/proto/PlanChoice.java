@@ -17,7 +17,8 @@ public enum PlanChoice
   PLAN_CHOICE_UNSPECIFIED(0),
   /**
    * <pre>
-   * Switch to Default mode and start implementing.
+   * Switch to Default mode (Claude Code: manual, "Yes, manually approve
+   * edits") and start implementing.
    * </pre>
    *
    * <code>PLAN_CHOICE_IMPLEMENT = 1;</code>
@@ -25,7 +26,8 @@ public enum PlanChoice
   PLAN_CHOICE_IMPLEMENT(1),
   /**
    * <pre>
-   * Start a fresh thread with the plan and implement it.
+   * Start a fresh thread with the plan and implement it. Codex only;
+   * Claude Code 2.1.284 has no such choice and the command fails.
    * </pre>
    *
    * <code>PLAN_CHOICE_CLEAR_AND_IMPLEMENT = 2;</code>
@@ -33,7 +35,7 @@ public enum PlanChoice
   PLAN_CHOICE_CLEAR_AND_IMPLEMENT(2),
   /**
    * <pre>
-   * Stay in Plan mode.
+   * Stay in Plan mode. Claude Code ends the turn (Esc).
    * </pre>
    *
    * <code>PLAN_CHOICE_KEEP_PLANNING = 3;</code>
@@ -48,7 +50,8 @@ public enum PlanChoice
   public static final int PLAN_CHOICE_UNSPECIFIED_VALUE = 0;
   /**
    * <pre>
-   * Switch to Default mode and start implementing.
+   * Switch to Default mode (Claude Code: manual, "Yes, manually approve
+   * edits") and start implementing.
    * </pre>
    *
    * <code>PLAN_CHOICE_IMPLEMENT = 1;</code>
@@ -56,7 +59,8 @@ public enum PlanChoice
   public static final int PLAN_CHOICE_IMPLEMENT_VALUE = 1;
   /**
    * <pre>
-   * Start a fresh thread with the plan and implement it.
+   * Start a fresh thread with the plan and implement it. Codex only;
+   * Claude Code 2.1.284 has no such choice and the command fails.
    * </pre>
    *
    * <code>PLAN_CHOICE_CLEAR_AND_IMPLEMENT = 2;</code>
@@ -64,7 +68,7 @@ public enum PlanChoice
   public static final int PLAN_CHOICE_CLEAR_AND_IMPLEMENT_VALUE = 2;
   /**
    * <pre>
-   * Stay in Plan mode.
+   * Stay in Plan mode. Claude Code ends the turn (Esc).
    * </pre>
    *
    * <code>PLAN_CHOICE_KEEP_PLANNING = 3;</code>
