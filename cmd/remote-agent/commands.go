@@ -28,6 +28,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/ptyhost"
+	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -87,13 +88,15 @@ func runDaemon(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	d := daemon.New(daemon.Config{
+	var d *daemon.Daemon
+	d = daemon.New(daemon.Config{
 		Exe:             exe,
 		CodexBin:        *codexBin,
 		Tmux:            tc,
 		HistoryPath:     filepath.Join(codexHome, "history.jsonl"),
 		Env:             env,
 		ApprovalTimeout: *approvalTimeout,
+		Started:         func(ctx context.Context) { relay.New(d).Run(ctx) },
 	})
 	slog.Info("starting daemon", "codex", *codexBin, "approval_timeout", *approvalTimeout)
 	return d.Run(ctx)

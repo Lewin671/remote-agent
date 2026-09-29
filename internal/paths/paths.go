@@ -24,6 +24,12 @@ func Socket() string { return filepath.Join(Dir(), "daemon.sock") }
 // Lock is held by the running daemon.
 func Lock() string { return filepath.Join(Dir(), "daemon.lock") }
 
+// Account is the machine's account membership, including the root key.
+func Account() string { return filepath.Join(Dir(), "account.json") }
+
+// Commands remembers remote commands for deduplication.
+func Commands() string { return filepath.Join(Dir(), "commands.json") }
+
 // SessionsDir holds one directory per session.
 func SessionsDir() string { return filepath.Join(Dir(), "sessions") }
 

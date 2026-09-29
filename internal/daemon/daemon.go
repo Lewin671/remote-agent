@@ -44,6 +44,10 @@ type Config struct {
 	RetryInterval   time.Duration // retry of blocked input
 	SubmitTimeout   time.Duration // wait for history.jsonl after injecting
 	Width, Height   int           // size of new sessions until attached
+
+	// Started, if set, runs in its own goroutine once the daemon holds its
+	// lock and has restored its sessions.
+	Started func(ctx context.Context)
 }
 
 func (c *Config) defaults() {
@@ -100,6 +104,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.ctx = ctx
 	if err := d.restore(); err != nil {
 		return err
+	}
+	if d.cfg.Started != nil {
+		go d.cfg.Started(ctx)
 	}
 
 	sock := paths.Socket()

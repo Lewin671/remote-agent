@@ -21,6 +21,8 @@ Usage:
   remote-agent answer <id> <question-id> <option>
   remote-agent interrupt <id>              interrupt the running turn
   remote-agent stop <id>                   end the session
+  remote-agent account init|join|secret|status
+                                           connect this machine to a server
 
 Session IDs may be abbreviated to any unique prefix.
 `
@@ -57,6 +59,8 @@ func main() {
 		err = runInterrupt(args)
 	case "stop":
 		err = runStop(args)
+	case "account":
+		err = runAccount(args)
 	case "hook":
 		os.Exit(runHook(args))
 	case "pty-host":
