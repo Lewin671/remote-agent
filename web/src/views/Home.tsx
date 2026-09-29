@@ -24,7 +24,7 @@ import {
   type Project,
 } from "../model";
 import type { Remote, SessionView } from "../remote";
-import { Avatar, Dot, Skeleton, useNow, useRemote } from "../ui";
+import { Avatar, Banner, Dot, Skeleton, useNow, useRemote } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
@@ -208,6 +208,18 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
   );
 }
 
+/** Listing sessions failed while connected: say so, offer a retry. */
+function ListError({ remote }: { remote: Remote }) {
+  if (!remote.listError) return null;
+  return (
+    <div className="pad listerr">
+      <Banner kind="err" action="重试" onAction={() => remote.retryList()}>
+        没能读取会话列表：{remote.listError}
+      </Banner>
+    </div>
+  );
+}
+
 function HomeConn({ remote }: { remote: Remote }) {
   if (remote.conn === "online") return null;
   const failed = !remote.everOnline && remote.failures >= 2;
@@ -229,10 +241,13 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
           <span className="newbtn">＋</span>
         </button>
       </div>
-      {!remote.listed ? (
-        <div className="pad">
-          <Skeleton />
-        </div>
+      <ListError remote={remote} />
+      {!remote.listed && list.length === 0 ? (
+        !remote.listError && (
+          <div className="pad">
+            <Skeleton />
+          </div>
+        )
       ) : list.length === 0 ? (
         <Empty remote={remote} go={go} onStart={() => setPicking(true)} />
       ) : (
@@ -288,7 +303,8 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
         </button>
       </div>
       <div className="scroll">
-        {!remote.listed && (
+        <ListError remote={remote} />
+        {!remote.listed && !remote.listError && list.length === 0 && (
           <div className="pad">
             <Skeleton />
           </div>
@@ -373,8 +389,8 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
   return (
     <div className="body">
       <div className="start">
-        {!remote.listed ? (
-          <Skeleton />
+        {!remote.listed && !pkey ? (
+          remote.listError ? <ListError remote={remote} /> : <Skeleton />
         ) : !pkey ? (
           <Empty remote={remote} go={go} onStart={() => setPicking("new")} />
         ) : (

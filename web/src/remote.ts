@@ -170,8 +170,12 @@ export class Remote {
   everOnline = false;
   failures = 0;
   connError = "";
-  // Set once machines and sessions have been listed.
+  // Set once machines and sessions have been listed; listError says why
+  // the last listing failed.
   listed = false;
+  listError = "";
+  private listRetry = 2000;
+  private listTimer?: ReturnType<typeof setTimeout>;
   // First messages of sessions started here, shown until the CLI takes
   // them; and the machine chosen for a project that has no session yet.
   prompts = new Map<string, string>();
@@ -366,10 +370,29 @@ export class Remote {
       }
       for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
       this.listed = true;
+      this.listError = "";
+      this.listRetry = 2000;
       this.changed();
     } catch (e) {
+      // The stream is up but the lists are not: say so, and try again
+      // rather than wait for a reconnect that may never come.
+      this.listError = errorText(e);
       this.report(e);
+      clearTimeout(this.listTimer);
+      const delay = this.listRetry;
+      this.listRetry = Math.min(this.listRetry * 2, 30_000);
+      this.listTimer = setTimeout(() => {
+        if (!this.closed && this.conn === "online") void this.refresh();
+      }, delay);
     }
+  }
+
+  /** Lists machines and sessions again now, after a failure. */
+  retryList() {
+    clearTimeout(this.listTimer);
+    this.listError = "";
+    this.changed();
+    void this.refresh();
   }
 
   /** Stores a machine. staleOnline: a push arrived after m was fetched,

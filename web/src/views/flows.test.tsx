@@ -146,3 +146,31 @@ it("follows the project's latest session as sessions change", () => {
   expect(line()).toContain("Claude Code");
 });
 
+it("shows a failed first listing and lists again", async () => {
+  vi.useFakeTimers();
+  try {
+    const r = DemoRemote.create(new URLSearchParams("empty=none"));
+    r.conn = "online";
+    let fail = true;
+    const empty = { machines: [], sessions: [] };
+    (r as unknown as { api: object }).api = {
+      listMachines: async () => {
+        if (fail) throw new Error("连接超时");
+        return empty;
+      },
+      listRemoteSessions: async () => empty,
+    };
+    mount(<Home remote={r} go={() => undefined} />);
+    await act(async () => r.refresh());
+    expect(r.listed).toBe(false);
+    expect(host.querySelector(".skels")).toBeNull();
+    expect(host.textContent).toContain("没能读取会话列表：连接超时");
+    // It tries again by itself.
+    fail = false;
+    await act(async () => vi.advanceTimersByTimeAsync(2500));
+    expect(r.listed).toBe(true);
+    expect(host.textContent).not.toContain("没能读取会话列表");
+  } finally {
+    vi.useRealTimers();
+  }
+});
