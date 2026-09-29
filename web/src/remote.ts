@@ -46,6 +46,7 @@ import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 export interface MachineView {
   id: string;
   online: boolean;
+  lastSeenMs: bigint;
   meta?: MachineMeta;
   metaRev: bigint;
 }
@@ -280,10 +281,11 @@ export class Remote {
   private async putMachine(m: RemoteMachine, staleOnline = false) {
     let view = this.machines.get(m.id);
     if (!view) {
-      view = { id: m.id, online: m.online, metaRev: 0n };
+      view = { id: m.id, online: m.online, lastSeenMs: m.lastSeenMs, metaRev: 0n };
       this.machines.set(m.id, view);
     }
     if (!staleOnline) view.online = m.online;
+    if (m.lastSeenMs > view.lastSeenMs) view.lastSeenMs = m.lastSeenMs;
     if (m.meta) {
       try {
         const { header, msg } = await openMessage(this.keys.meta, m.meta, { kind: PayloadKind.MACHINE_META, machineId: m.id }, MachineMetaSchema);
