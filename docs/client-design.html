@@ -266,6 +266,14 @@
   .sysline b { font-weight: 600; color: #3a3f46; }
   .appr.plan { box-shadow: 0 0 0 1.5px #8a5fd6, 0 6px 18px rgba(138,95,214,.14); }
   .appr.plan .h b { color: #7a4fd0; }
+  .appr.ask { box-shadow: 0 0 0 1.5px var(--blue), 0 6px 18px rgba(47,111,235,.12); }
+  .appr.ask .h b { color: var(--blue); }
+  .appr .q { font-size: 14px; font-weight: 600; margin: 8px 0; }
+  .ans { border: 1px solid var(--line); border-radius: 11px; padding: 7px 11px; margin: 6px 0; font-size: 13.5px; }
+  .ans small { display: block; font-size: 11.5px; color: var(--muted); }
+  .ans.rec { border-color: var(--blue); }
+  .appr .foot { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .appr .foot b { color: var(--blue); font-weight: 600; }
   .appr .plan-body { background: var(--soft); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; margin: 9px 0; line-height: 1.6; }
   .alert { position: absolute; left: 34px; right: 34px; top: 200px; background: var(--card); border-radius: 18px; padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
   .alert h5 { margin: 0 0 6px; font-size: 16px; color: var(--red); }
@@ -415,42 +423,62 @@
   <div>
     <div class="phone" style="background:#0d1117">
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b>升级依赖</b><span style="color:#8b949e"><span class="dot wait"></span>iMac</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b>对账脚本</b><span style="color:#8b949e"><span class="dot wait"></span>iMac</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg" style="background:#21262d"><div style="color:#8b949e">聊天</div><div class="on" style="background:#30363d;color:#e6edf3">终端</div></div></div>
       <div class="fit">⤢ 适配屏幕</div>
-      <div class="term"><span class="d">• Ran</span> go get -u ./...
-  <span class="d">└</span> upgraded golang.org/x/net
-    v0.30.0 =&gt; v0.34.0
+      <div class="term"><span class="y">  Folder access</span>
+  ~/Code/billing
 
-<span class="y">  Approaching rate limits</span>
-  Switch to a cheaper model?
+  Trust this folder? Codex can read,
+  edit, and run files here.
 
-<span class="b">› 1. Switch model</span>
-  2. Keep current model
+<span class="b">› 1. Trust and continue</span>
+  2. Quit
 
-  Press enter to confirm<span class="cur"> </span></div>
+  enter continue · esc quit<span class="cur"> </span></div>
       <div class="keys"><span>esc</span><span>tab</span><span>^C</span><span>↑</span><span>↓</span><span>⏎</span><span>⌨</span></div>
     </div>
-    <div class="cap">终端：处理 Codex 弹窗</div>
+    <div class="cap">终端：处理信任目录等少数弹窗</div>
   </div>
 
-  <!-- 需要处理横幅 -->
+  <!-- 模型提问 -->
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back">‹</span><span class="title"><b>升级依赖</b><span><span class="dot wait"></span>iMac</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
-        <div class="me"><div>把依赖都升级到最新的小版本</div></div>
-        <div class="tool"><span class="ok">✓</span><code>go get -u ./...</code></div>
-        <div class="ai">已更新 12 个依赖，<code>go build</code> 通过。</div>
-        <div class="sep">48 秒 · 6k tokens</div>
-        <div class="banner">⚠ Codex 弹出了选择框<b>去终端 ›</b></div>
+        <div class="me"><div>把依赖都升级到最新的版本</div></div>
+        <div class="tool"><span class="ok">✓</span><code>go list -m -u all</code></div>
+        <div class="ai">有 12 个依赖可以升级，其中 <code>pgx</code> 是 v4 → v5 的大版本。</div>
+        <div class="appr ask">
+          <div class="h"><b>Codex 在问你</b><span class="muted">升级范围</span></div>
+          <div class="q">大版本也一起升吗？</div>
+          <div class="ans rec">只升小版本（推荐）<small>改动小，go build 大概率直接通过</small></div>
+          <div class="ans">包括 pgx v5<small>要改连接池和事务相关的调用</small></div>
+          <div class="foot">都不合适？<b>去终端补充 ›</b></div>
+        </div>
       </div>
-      <div class="queued">排队 <span>跑一下测试 ✕</span></div>
+      <div class="queued">排队 <span>跑一下测试 ✕</span> 答完再发</div>
       <div class="comp"><div class="in">消息</div><div class="go">↑</div></div>
     </div>
-    <div class="cap">卡在弹窗时提示去终端</div>
+    <div class="cap">模型提问：点选项即回答，在终端答了卡片自动收起</div>
+  </div>
+
+  <!-- 兜底：终端弹窗 -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>对账脚本</b><span><span class="dot wait"></span>iMac</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="sep">新会话 · ~/Code/billing</div>
+        <div class="banner">⚠ 终端里有弹窗：Trust this folder?<b>去终端 ›</b></div>
+      </div>
+      <div class="queued">排队 <span>看下这些脚本是做什么的 ✕</span> 已暂停</div>
+      <div class="comp"><div class="in">消息</div><div class="go">↑</div></div>
+    </div>
+    <div class="cap">兜底：其他弹窗显示标题，去终端处理</div>
   </div>
 </div>
 
