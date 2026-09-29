@@ -187,9 +187,10 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
               </div>
               {!remote.loaded(session.id) && events.length === 0 && <p className="sysline">加载中…</p>}
               {events.map((e) => (
-                <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} />
+                <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} machine={machineName(machine)} />
               ))}
-              {pending.map((o) => (
+              {derived.running && derived.tools.map((t, i) => <RunningTool key={i} title={t.title} since={t.since} />)}
+        {pending.map((o) => (
                 <div key={o.requestId} className="me pending">
                   <div>{o.text}</div>
                   <small>{o.status === "sending" ? "发送中…" : "已送达电脑"}</small>
@@ -280,13 +281,14 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   );
 }
 
-function EventRow({ e, d, cwd }: { e: Event; d: Derived; cwd: string }) {
+function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; machine: string }) {
   const k = e.kind;
   switch (k.case) {
     case "userMessage":
       return (
         <div className="me">
           <div>{k.value.text}</div>
+          {d.typedLocally.has(e.seq) && <small>{machine} 终端</small>}
         </div>
       );
     case "agentMessage":
@@ -524,4 +526,18 @@ function relativePath(path: string, cwd: string): string {
   const p = norm(path);
   const base = norm(cwd).replace(/\/$/, "") + "/";
   return p.startsWith(base) ? p.slice(base.length) : shortPath(path);
+}
+
+function RunningTool({ title, since }: { title: string; since: number }) {
+  const now = useNow(1000);
+  const secs = since ? Math.max(0, Math.floor((now - since) / 1000)) : 0;
+  return (
+    <div className="tool">
+      <div className="summary">
+        <span className="sp">◌</span>
+        <code>{title}</code>
+        <span className="faint">{secs > 0 ? `${secs}s` : ""}</span>
+      </div>
+    </div>
+  );
 }

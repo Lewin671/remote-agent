@@ -147,11 +147,27 @@ export interface Derived {
   running: boolean;
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
+  // Tools started and not yet completed, oldest first, with start times.
+  tools: { title: string; since: number }[];
+  // User messages typed in the terminal rather than sent from a client.
+  typedLocally: Set<bigint>;
 }
 
 /** Pending approvals and questions, input states and the running turn. */
 export function derive(events: Event[]): Derived {
-  const d: Derived = { approvals: new Map(), resolved: new Map(), questions: new Map(), answered: new Map(), inputs: new Map(), running: false };
+  const d: Derived = {
+    approvals: new Map(),
+    resolved: new Map(),
+    questions: new Map(),
+    answered: new Map(),
+    inputs: new Map(),
+    running: false,
+    tools: [],
+    typedLocally: new Set(),
+  };
+  // Messages sent from clients are recorded as submitted before Codex
+  // records them; the rest were typed in the terminal.
+  let submitted = 0;
   for (const e of events) {
     const k = e.kind;
     switch (k.case) {
@@ -178,9 +194,22 @@ export function derive(events: Event[]): Derived {
       case "turnEnded":
         d.running = false;
         d.questions.clear();
+        d.tools = [];
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
+        if (k.value.status === InputStatus.SUBMITTED) submitted++;
+        break;
+      case "userMessage":
+        if (submitted > 0) submitted--;
+        // Codex sends this itself when a plan is approved.
+        else if (k.value.text !== "Implement the plan.") d.typedLocally.add(e.seq);
+        break;
+      case "toolStarted":
+        d.tools.push({ title: k.value.title, since: eventTime(e) });
+        break;
+      case "toolCall":
+        d.tools.shift();
         break;
       case "tokenUsage":
         d.usage = k.value;

@@ -143,3 +143,14 @@ func TestParseCompaction(t *testing.T) {
 		t.Fatalf("%v %v", evs, err)
 	}
 }
+
+func TestParseToolStarted(t *testing.T) {
+	evs, err := NewParser().Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c","input":"const r = await tools.exec_command({cmd:\"go test ./... \\\"x\\\"\",\"workdir\":\"/w\"});"}}`))
+	if err != nil || len(evs) != 1 || evs[0].GetToolStarted().GetTitle() != `go test ./... "x"` {
+		t.Fatalf("%v %v", evs, err)
+	}
+	evs, _ = NewParser().Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","input":"*** Begin Patch"}}`))
+	if len(evs) != 1 || evs[0].GetToolStarted().GetTitle() != "apply_patch" {
+		t.Fatalf("%v", evs)
+	}
+}

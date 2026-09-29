@@ -32,7 +32,14 @@ message Event {
     InputState input_state = 23;
     PlanProposed plan_proposed = 24;
     SettingsChanged settings_changed = 25;
+    ToolStarted tool_started = 26;
   }
+}
+
+// ToolStarted says the model called a tool; its ToolCall event follows when
+// the call completes. The two carry no common ID.
+message ToolStarted {
+  string title = 1;
 }
 
 message UserMessage {

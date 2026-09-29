@@ -5,6 +5,7 @@ package codex
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -433,6 +434,7 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 		Type      string          `json:"type"`
 		Name      string          `json:"name"`
 		Arguments string          `json:"arguments"`
+		Input     string          `json:"input"`
 		CallID    string          `json:"call_id"`
 		Output    json.RawMessage `json:"output"`
 	}
@@ -440,9 +442,13 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 		return nil, err
 	}
 	switch m.Type {
+	case "custom_tool_call":
+		// Written when the call starts; the item_completed record comes
+		// when it ends.
+		return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: toolTitle(m.Name, m.Input)}}}), nil
 	case "function_call":
 		if m.Name != "request_user_input" && m.Name != "request_user_input_async" {
-			return nil, nil
+			return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: toolTitle(m.Name, m.Arguments)}}}), nil
 		}
 		q, err := ParseQuestions(m.CallID, m.Name, []byte(m.Arguments))
 		if err != nil {
@@ -578,3 +584,18 @@ func truncate(s string) (string, bool) {
 }
 
 func utf8Start(b byte) bool { return b&0xC0 != 0x80 }
+
+// execCmd finds the shell command in Codex's exec tool call, which is a
+// small program like `tools.exec_command({cmd:"go test ./..."})`.
+var execCmd = regexp.MustCompile(`\bcmd"?\s*:\s*("(?:[^"\\]|\\.)*")`)
+
+// toolTitle names a started tool call: its command for shell calls.
+func toolTitle(name, input string) string {
+	if m := execCmd.FindStringSubmatch(input); m != nil {
+		var cmd string
+		if json.Unmarshal([]byte(m[1]), &cmd) == nil && cmd != "" {
+			return cmd
+		}
+	}
+	return name
+}

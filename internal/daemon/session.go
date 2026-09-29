@@ -147,6 +147,8 @@ func (s *session) observe(e *pb.Event) {
 		s.preview = summary(k.AgentMessage.Text, 120)
 	case *pb.Event_ToolCall:
 		s.preview = "✓ " + summary(k.ToolCall.Title, 110)
+	case *pb.Event_ToolStarted:
+		s.preview = "正在执行 " + summary(k.ToolStarted.Title, 110)
 	case *pb.Event_QuestionAsked:
 		if !k.QuestionAsked.Async {
 			s.questions[k.QuestionAsked.QuestionId] = k.QuestionAsked

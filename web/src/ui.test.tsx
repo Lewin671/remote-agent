@@ -25,3 +25,24 @@ it("formats times like the mockup", () => {
   expect(when(new Date(2026, 8, 29, 8, 12).getTime(), now)).toBe("8:12");
   expect(when(new Date(2026, 8, 28, 20, 0).getTime(), now)).toBe("昨天");
 });
+
+it("tells running tools and terminal-typed messages apart", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { EventSchema, InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  const { derive } = await import("./model");
+  let seq = 0n;
+  const ev = (kind: object) => create(EventSchema, { seq: ++seq, kind: kind as never });
+  const events = [
+    ev({ case: "userMessage", value: { text: "typed at the computer" } }),
+    ev({ case: "inputState", value: { requestId: "r", status: InputStatus.SUBMITTED } }),
+    ev({ case: "userMessage", value: { text: "sent from the phone" } }),
+    ev({ case: "turnStarted", value: {} }),
+    ev({ case: "toolStarted", value: { title: "go test" } }),
+    ev({ case: "toolStarted", value: { title: "go vet" } }),
+    ev({ case: "toolCall", value: { title: "go test" } }),
+  ];
+  const d = derive(events);
+  expect([...d.typedLocally]).toEqual([1n]);
+  expect(d.tools.map((t) => t.title)).toEqual(["go vet"]);
+  expect(d.running).toBe(true);
+});
