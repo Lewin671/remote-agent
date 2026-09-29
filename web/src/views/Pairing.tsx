@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { initiate, joinByPairing, parsePairLink, type Initiation } from "../pairing";
 import { errorText, join, type Remote } from "../remote";
-import { Banner, NavBar } from "../ui";
+import { Banner, NavBar, useRemote } from "../ui";
 
 /** A QR code drawn as SVG from the module grid. */
 export function QR({ text }: { text: string }) {
@@ -33,7 +33,11 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
   const [state, setState] = useState<"waiting" | "sending" | "done">("waiting");
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  useRemote(remote);
+  // Pairing calls need the login token: wait for the connection.
+  const online = remote.conn === "online";
   useEffect(() => {
+    if (!online) return;
     let cur: Initiation | undefined;
     let alive = true;
     setP(undefined);
@@ -56,7 +60,7 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
       alive = false;
       cur?.cancel();
     };
-  }, [remote, attempt]);
+  }, [remote, attempt, online]);
   const approve = async () => {
     if (!p) return;
     setState("sending");
@@ -109,7 +113,7 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
             <p className="muted small center-text">
               用新手机的相机扫码，或在新设备的网页里输入这 8 位数字。5 分钟内有效。
               <br />
-              电脑上运行 <code>remote-agent account join --code {p.code}</code>
+              电脑上运行 <code>remote-agent account join --server {remote.account.server} --code {p.code}</code>
             </p>
           </>
         )}
@@ -165,12 +169,15 @@ export function Setup({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof joinBanner>>();
   const stopped = useRef(false);
-  useEffect(
-    () => () => {
+  const started = useRef(false);
+  // Mounting again, as StrictMode does in development, must not leave the
+  // join in progress marked as stopped.
+  useEffect(() => {
+    stopped.current = false;
+    return () => {
       stopped.current = true;
-    },
-    [],
-  );
+    };
+  }, []);
 
   const pair = async (link = fromLink ?? { code, server }) => {
     setBusy(true);
@@ -187,7 +194,11 @@ export function Setup({ onDone }: { onDone: () => void }) {
     }
   };
   useEffect(() => {
-    if (fromLink) void pair(fromLink);
+    // Once per page: a second join would take the pairing's only slot.
+    if (fromLink && !started.current) {
+      started.current = true;
+      void pair(fromLink);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const paste = async () => {
