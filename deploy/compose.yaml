@@ -1,0 +1,21 @@
+# remote-agent-server behind an existing Caddy container. The server is not
+# published on a host port; Caddy reaches it over the shared network.
+services:
+  remote-agent-server:
+    build: .
+    image: remote-agent-server:local
+    container_name: remote-agent-server
+    restart: unless-stopped
+    env_file: .env # RA_SETUP_TOKEN, ALLOWED_ORIGINS
+    command: ["--allowed-origins", "${ALLOWED_ORIGINS:-}"]
+    volumes:
+      - ./data:/data
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks: [proxy]
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-happy_default}
