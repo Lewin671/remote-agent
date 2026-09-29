@@ -33,12 +33,14 @@ git fetch && git rebase origin/main
 go test ./...
 git push origin HEAD:main
 
-# 收尾：确认已推送后清理
+# 收尾：确认已推送后清理，并把主工作区快进到最新
 git worktree remove ../remote-agent.worktrees/<任务名>
 git branch -D wt/<任务名>
+git -C <主工作区> merge --ff-only origin/main
 ```
 
 - 本地验收和测试都通过，就可以直接提交并推送，不用等用户确认
 - `wt/<任务名>` 只是临时分支，不推到远端，推送目标始终是 `main`
 - rebase 出现冲突时先停下来告诉用户，不要自行合并；rebase 后测试不过（别人的改动和你的不兼容）也一样
-- 主工作区留给用户，agent 不在里面改动或提交；它的 `main` 不会自动跟上远端，由用户自己 `git pull`
+- 主工作区留给用户，agent 不在里面改动或提交；唯一例外是收尾时的快进，它只会前移到远端已有的提交，不动未提交的改动。快进失败就跳过，告诉用户原因
+- 新 agent 通常从主工作区启动、读那里的 AGENTS.md，所以每次推送后都要快进，免得后来的 agent 读到旧规则
