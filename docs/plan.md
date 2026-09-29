@@ -194,6 +194,12 @@ Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程�
 
 按 [design/client-v1.html](design/client-v1.html) 改网页，手机和宽屏一起改，亮色和暗色都要一致。验收：界面稿里的每个画面和状态集在本机 Chrome 上逐一对照；`cd web && pnpm test` 覆盖状态优先级、停靠区顺序、消息发送状态和 Markdown 渲染。
 
+**进度**（2026-09-29）：界面稿的全部画面和状态集已实现，也包括 C4 的网页部分（文案按会话的 CLI、新建时选 CLI、模型按 CLI 列、设置里两套默认值、`ToolStarted` 按调用 ID 配对）。规则在 `web/src/model.ts`，单元测试在 `web/src/*.test.ts(x)`。
+
+- 开发时 `pnpm dev` 后打开 `/?demo`，用假数据看各个状态，不连 server，不进构建；`&conn=`、`&term=closed`、`&empty=` 切换连接、终端和空账户的情况（见 `web/src/dev/demo.ts`）
+- 本机 Chrome 上逐屏对照过 390 宽和 1280 宽、亮色和暗色；用真实的 daemon 和 Codex（GPT-6-Luna，低档位）走过：配对加入、在项目里新建、信任目录的弹窗停靠后去终端处理、适配和还原终端、发消息、结束和恢复、切换审批模式
+- 还没用真实数据验证：审批停靠区（Codex 在沙箱里直接执行，没触发审批，只用假数据验证过）、Claude Code 会话（daemon 端还没有）、手机真机上的键盘弹出
+
 ## 待确认
 
 所有还没定的问题和待实测的行为都列在这里，有了结论就写进对应的文档，再从这里删掉。

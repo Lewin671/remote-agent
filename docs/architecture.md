@@ -276,7 +276,7 @@ server 把指令原样转给那台机器的 WebSocket，最多等 30 秒。机�
 
 **大小限制**：单个信封不超过 1 MiB，一次上传不超过 500 个事件，推送帧超过 1 MiB 就拆开发。
 
-**网页**：事件内容一律当文本渲染，不插入 HTML；构建产物带 CSP，只允许运行自己的脚本。网页和 server 要放在同一个注册域名下（`app.<域名>` 和 `ra.<域名>`）：拦截扩展常按「第三方请求」过滤，实测 AdGuard 会拦掉跨站发往 `*.*.top` 的 WebSocket（[browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）。本地开发遇到这种拦截时，可以用 `RA_PROXY` 让 vite 把请求转发到 server，同时用 `VITE_SAME_ORIGIN_API=1` 构建。
+**网页**：事件内容一律当文本渲染，不插入 HTML；Markdown 里只有 http(s) 的链接可以点，其他目标（大多是本机文件路径，也可能是 `javascript:`）显示成等宽文字；构建产物带 CSP，只允许运行自己的脚本。网页和 server 要放在同一个注册域名下（`app.<域名>` 和 `ra.<域名>`）：拦截扩展常按「第三方请求」过滤，实测 AdGuard 会拦掉跨站发往 `*.*.top` 的 WebSocket（[browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）。本地开发遇到这种拦截时，可以用 `RA_PROXY` 让 vite 把请求转发到 server，同时用 `VITE_SAME_ORIGIN_API=1` 构建。
 
 ## 11. 终端视图
 
