@@ -152,7 +152,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 下面每条做法都基于 [codex-notes.md](codex-notes.md) 里的实测，括号里的「notes §n」指它的第 n 节。升级 Codex 后要跟着复核。
 
-- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/codex.env`（放代理等变量；daemon 由 launchd 启动时读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`。用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令路径和 `timeout`）必须固定，否则每次都要重新信任（notes §3、§5）
+- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/codex.env`（放代理等变量；daemon 由 launchd 启动时读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`。这些变量写进会话目录下只有自己可读的 `env.json`，由 PTY 代理读取后删除，不经过 tmux 的命令行：命令行对本机所有用户可见，而环境变量里常有 API key。用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令路径和 `timeout`）必须固定，否则每次都要重新信任（notes §3、§5）
 - **启动弹窗**：用 `-c` 关掉检查更新、限额换模型提示等能关的弹窗；关不掉的 `Trust this folder?`、`Hooks need review` 每个目录或每套 hook 只问一次，客户端提示去终端处理。能不弹就不弹；信任目录是安全决定，留给用户在终端里做（notes §5）
 - **防弹窗挡输入**：每次注入前先抓屏，确认没有弹窗挡着。判断画面时只看屏幕底部；以列表里选中的行判断有没有弹窗，标题只用来给弹窗命名，对话里出现同样的字不算（notes §5、§6、§10）
 - **等画面**：轮询屏幕，等到预期画面出现再操作，并设超时；不用固定的 sleep（notes §6）

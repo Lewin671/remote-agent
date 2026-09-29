@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -246,13 +247,21 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
 		env["REMOTE_AGENT_HOME"] = h
 	}
+	// The environment goes through a private file, not tmux's command
+	// line, where every local user could read secrets such as API keys.
+	envFile := filepath.Join(dir, "env.json")
+	if err := writeEnvFile(envFile, env); err != nil {
+		log.Close()
+		return nil, err
+	}
 	hookCmd := shellQuote(d.cfg.Exe) + " hook codex"
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--", d.cfg.CodexBin}
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
 	argv = append(argv, codex.Args(hookCmd, req.Args)...)
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
-		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Env: env, Argv: argv,
+		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	})
 	if err != nil {
+		os.Remove(envFile)
 		log.Close()
 		return nil, err
 	}
@@ -349,4 +358,22 @@ func shellQuote(s string) string {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// writeEnvFile stores env for the PTY host, readable by the owner only.
+// The PTY host deletes it once read.
+func writeEnvFile(path string, env map[string]string) error {
+	b, err := json.Marshal(env)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }

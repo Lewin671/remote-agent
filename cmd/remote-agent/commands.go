@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -433,9 +434,17 @@ func runHook(args []string) int {
 func runPTYHost(args []string) int {
 	fs := flag.NewFlagSet("pty-host", flag.ContinueOnError)
 	sock := fs.String("socket", "", "control socket path")
+	envFile := fs.String("env-file", "", "JSON file with environment variables for the command; deleted once read")
 	if err := fs.Parse(args); err != nil || *sock == "" || fs.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "usage: remote-agent pty-host --socket PATH -- command [args]")
+		fmt.Fprintln(os.Stderr, "usage: remote-agent pty-host --socket PATH [--env-file PATH] -- command [args]")
 		return 2
+	}
+	if *envFile != "" {
+		if err := loadEnvFile(*envFile); err != nil {
+			fmt.Fprintln(os.Stderr, "remote-agent pty-host:", err)
+			time.Sleep(3 * time.Second)
+			return 1
+		}
 	}
 	code, err := ptyhost.Run(*sock, fs.Args())
 	if err != nil {
@@ -444,4 +453,23 @@ func runPTYHost(args []string) int {
 		time.Sleep(3 * time.Second)
 	}
 	return code
+}
+
+// loadEnvFile sets the variables in a JSON file and deletes the file.
+func loadEnvFile(path string) error {
+	b, err := os.ReadFile(path)
+	os.Remove(path)
+	if err != nil {
+		return err
+	}
+	env := map[string]string{}
+	if err := json.Unmarshal(b, &env); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	for k, v := range env {
+		if err := os.Setenv(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
