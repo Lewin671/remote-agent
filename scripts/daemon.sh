@@ -108,7 +108,8 @@ StandardError=append:$LOG
 WantedBy=default.target
 EOF
 		systemctl --user daemon-reload
-		systemctl --user enable --now remote-agent.service
+		systemctl --user enable remote-agent.service
+		systemctl --user restart remote-agent.service
 	fi
 	echo "installed $UNIT for $BIN; log: $LOG"
 }

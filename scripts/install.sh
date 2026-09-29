@@ -18,11 +18,20 @@ trap 'rm -f "$tmp"' EXIT
 mv -f "$tmp" "$BIN"
 echo "installed $BIN"
 
+# The line of the service's unit that names the binary, as daemon.sh
+# writes it, to tell whether the service runs this one.
 case $(uname) in
-Darwin) unit=$HOME/Library/LaunchAgents/com.github.lewin671.remote-agent.plist ;;
-*) unit=$HOME/.config/systemd/user/remote-agent.service ;;
+Darwin)
+	unit=$HOME/Library/LaunchAgents/com.github.lewin671.remote-agent.plist
+	esc=$(printf '%s' "$BIN" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+	line="	<array><string>$esc</string><string>daemon</string></array>"
+	;;
+*)
+	unit=$HOME/.config/systemd/user/remote-agent.service
+	line="ExecStart=\"$BIN\" daemon"
+	;;
 esac
-if [ -f "$unit" ] && grep -qF "$BIN" "$unit"; then
+if [ -f "$unit" ] && grep -qxF "$line" "$unit"; then
 	BIN=$BIN "$ROOT/scripts/daemon.sh" restart
 	echo "restarted the daemon"
 elif [ -f "$unit" ]; then
