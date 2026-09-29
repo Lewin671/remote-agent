@@ -1,0 +1,154 @@
+package daemon
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/codex"
+)
+
+type handler struct {
+	remoteagentv1connect.UnimplementedLocalServiceHandler
+	d *Daemon
+}
+
+func rpcErr(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, errExited), errors.Is(err, errNotAnswering):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	var ce *connect.Error
+	if errors.As(err, &ce) {
+		return err
+	}
+	return connect.NewError(connect.CodeUnknown, err)
+}
+
+func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.CreateSessionRequest]) (*connect.Response[pb.CreateSessionResponse], error) {
+	s, err := h.d.create(req.Msg)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	return connect.NewResponse(&pb.CreateSessionResponse{Session: s.info()}), nil
+}
+
+func (h *handler) ListSessions(ctx context.Context, req *connect.Request[pb.ListSessionsRequest]) (*connect.Response[pb.ListSessionsResponse], error) {
+	return connect.NewResponse(&pb.ListSessionsResponse{Sessions: h.d.list(req.Msg.IncludeExited)}), nil
+}
+
+func (h *handler) GetSession(ctx context.Context, req *connect.Request[pb.GetSessionRequest]) (*connect.Response[pb.GetSessionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.GetSessionResponse{Session: s.info()}), nil
+}
+
+func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
+	if req.Msg.Text == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text is empty"))
+	}
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	pos, err := s.send(req.Msg.Text, req.Msg.RequestId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil
+}
+
+func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.InterruptRequest]) (*connect.Response[pb.InterruptResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	ok, err := s.interrupt()
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.InterruptResponse{Interrupted: ok}), nil
+}
+
+func (h *handler) StopSession(ctx context.Context, req *connect.Request[pb.StopSessionRequest]) (*connect.Response[pb.StopSessionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.kill(); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.StopSessionResponse{}), nil
+}
+
+func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.ResolveApprovalRequest]) (*connect.Response[pb.ResolveApprovalResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.resolve(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Message); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
+}
+
+func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.AnswerQuestionRequest]) (*connect.Response[pb.AnswerQuestionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.answer(req.Msg.QuestionId, int(req.Msg.Option)); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil
+}
+
+func (h *handler) WatchEvents(ctx context.Context, req *connect.Request[pb.WatchEventsRequest], stream *connect.ServerStream[pb.WatchEventsResponse]) error {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return rpcErr(err)
+	}
+	after := req.Msg.AfterSeq
+	for {
+		evs, changed := s.log.Since(after)
+		for _, e := range evs {
+			if err := stream.Send(&pb.WatchEventsResponse{Event: e}); err != nil {
+				return err
+			}
+			after = e.Seq
+		}
+		if !req.Msg.Follow {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-changed:
+		}
+	}
+}
+
+func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]) (*connect.Response[pb.HookResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	var p codex.HookPayload
+	if err := json.Unmarshal(req.Msg.Payload, &p); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	out, err := s.hook(ctx, &p)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.HookResponse{Output: out}), nil
+}
