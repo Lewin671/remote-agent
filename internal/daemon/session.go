@@ -91,6 +91,8 @@ type approval struct {
 	// as the start of the command; seen is set once the prompt showed.
 	key  string
 	seen bool
+	// tool is the tool the request is for.
+	tool string
 }
 
 type decision struct {
@@ -280,6 +282,11 @@ func (s *session) readRollout() {
 				// A request still waiting was answered in the terminal
 				// (or interrupted there) since the turn is over.
 				s.retractApprovals()
+			}
+			if c := e.GetToolCall(); c != nil {
+				// Its call ran: allowed in the terminal before the
+				// status check saw the prompt.
+				s.retractFor(c)
 			}
 		}
 	}
@@ -901,7 +908,7 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
 		req.Command, req.Description = shell.Command, shell.Description
 	}
-	a.key = promptKey(p.ToolInput)
+	a.key, a.tool = promptKey(p.ToolInput), p.ToolName
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
@@ -1029,6 +1036,32 @@ func (s *session) retractApprovals() {
 	s.mu.Unlock()
 	for _, a := range out {
 		a.decision <- decision{terminal: true}
+	}
+}
+
+// retractFor settles as answered in the terminal a waiting approval whose
+// tool call has completed.
+func (s *session) retractFor(c *pb.ToolCall) {
+	key := ""
+	switch {
+	case c.Kind == pb.ToolKind_TOOL_KIND_COMMAND:
+		key = promptKey([]byte(fmt.Sprintf(`{"command":%q}`, c.Input)))
+	case c.Kind == pb.ToolKind_TOOL_KIND_FILE_CHANGE:
+		key = promptKey([]byte(fmt.Sprintf(`{"file_path":%q}`, c.Title)))
+	}
+	s.mu.Lock()
+	var out *approval
+	for id, a := range s.approvals {
+		if !a.claimed && a.tool != "" && a.tool == c.ItemType && (a.key == "" || a.key == key) {
+			a.claimed = true
+			delete(s.approvals, id)
+			out = a
+			break
+		}
+	}
+	s.mu.Unlock()
+	if out != nil {
+		out.decision <- decision{terminal: true}
 	}
 }
 

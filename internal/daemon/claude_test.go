@@ -201,3 +201,32 @@ func TestClaudeQuestionReportedOnce(t *testing.T) {
 		t.Fatalf("questions %v", n)
 	}
 }
+
+// Allowed in the terminal before the status check saw the prompt: the
+// completed call withdraws the card (review C8).
+func TestClaudeApprovalWithdrawnWhenCallCompletes(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"touch /w/x"}}]}}`)
+	h.s.bindRollout("cc-1", path)
+	out := make(chan []byte, 1)
+	go func() {
+		b, _ := h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/x","description":"x"}`))
+		out <- b
+	}()
+	eventually(t, "the card", func() bool { return h.s.info().PendingApprovals == 1 })
+	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.readRollout()
+	select {
+	case b := <-out:
+		if b != nil {
+			t.Fatalf("hook printed %s", b)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the hook still waits")
+	}
+	if h.s.info().Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+		t.Fatal("exited")
+	}
+}
