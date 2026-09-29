@@ -72,6 +72,8 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
 - **和 `auto_review` 的先后顺序：先调用 hook，hook 没给决定时再交给 `auto_review`。** 实测结果：hook 返回 deny，请求直接被拒绝，`auto_review` 不再参与；hook 什么都不输出、正常退出（exit 0）时，`auto_review` 接着处理，并批准了写 home 目录的请求
 - `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据
 - 实测完整流程：README 里写着"删除 home 下某个目录"，让模型按 README 初始化。模型**自己没有执行删除**，而是在对话里问"是否确认删除"；回复确认后，模型发起提权，hook 被调用且不表态，`auto_review` 批准，删除成功。也就是说，拿不准的操作会以普通对话的形式出现。`auto_review` 直接拒绝的情况没有复现出来
+- **hook 超时**：hook 定义可以带 `timeout`（秒）。实测 `timeout=5`、hook 睡 15 秒：界面显示 `Hook failed` / `hook timed out after 5s`，随后**弹出原生审批框**，并没有直接拒绝。`timeout=99999` 时 hook 睡 130 秒，Codex 一直等到它返回；二进制里有 `clamping … hook timeout to …` 的字样，说明存在上限，具体数值未测。改 `timeout` 也算改了 hook 定义，要重新信任
+- 在原生审批框里按 Esc：取消这次请求，并中断这一轮
 - 注意：`workspace-write` 沙箱下 `/tmp` 默认可写，写 `/tmp` 不会触发提权。测试提权要写 home 目录之类的位置
 
 ## 4. 审批模式
@@ -144,4 +146,23 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 问题：`PreToolUse` hook 的 `tool_input` 和 rollout 里 `function_call` 的 `arguments`（JSON 字符串）内容相同；hook 的 `tool_use_id` 就是 rollout 的 `call_id`
 - 答案：rollout 的 `function_call_output`，`output` 为 `{"answers":{"<id>":{"answers":["Python"]}}}`，另有一条 `retained_context`（`type: verified_answer`）；`PostToolUse` 的 `tool_response` 是同一个字符串
 - `PreToolUse` 的输出字段只有 `permissionDecision`、`permissionDecisionReason`、`updatedInput`、`additionalContext`（取自二进制里的 schema）。`updatedInput` 只能改问题，没有答案字段，**hook 没法代替用户回答**
+- **问题在等待回答时就写进了 rollout**：实测提问界面还显示着的时候，rollout 里已经有这次的 `function_call`，还没有 `function_call_output`
+- `PreToolUse` 的 `matcher="request_user_input"` 能匹配到 `request_user_input`；是否也匹配 `request_user_input_async`，未测
 - 异步提问：实测模型问完很快就结束了这一轮，回答框随之消失，之后输入的文字落进主输入框，回车后作为普通消息发出，模型能接上
+
+## 10. 屏幕和输入
+
+用 `capture-pane -p -e` 抓屏（保留颜色属性）时：
+
+| 画面 | 样子 |
+|---|---|
+| 输入框提示符 | `\e[1m›\e[0m`（加粗） |
+| 空输入框里的占位提示（如 `Ask Codex to do anything`） | 提示符后跟淡色字 `\e[2m…` |
+| 输入框里有草稿 | 提示符后跟普通字 |
+| 对话里之前的用户消息 | `\e[1;2m› `（加粗加淡） |
+| 列表里选中的行（信任目录、hook 确认、审批框、提问） | `\e[1;7m› 1. …`（加粗反色） |
+
+- bracketed paste 的正文和回车一次写入，Codex 会正常提交，不需要在中间等待；多行正文的换行会保留
+- 本地终端和远程注入同时打字的实测：远程注入时本地正好连续敲 10 个字符，远程消息原样提交，10 个字符完整出现在新的输入框里
+- 输入框为空时按一次 Ctrl-C 就退出了 Codex（输入框有内容时，第一次是清空）
+

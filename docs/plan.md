@@ -6,7 +6,7 @@
 
 | 阶段 | 内容 | 做完后能证明什么 |
 |---|---|---|
-| **P0 本地打通** | 只做 `remote-agent` 这一个二进制：在 tmux 里托管 Codex，注入输入、解析 rollout、处理审批 hook；用本地命令模拟手机 | 最难的一段跑通了 |
+| **P0 本地打通**（已完成） | 只做 `remote-agent` 这一个二进制：在 tmux 里托管 Codex，注入输入、解析 rollout、处理审批 hook；用本地命令模拟手机 | 最难的一段跑通了 |
 | **P1 端到端打通** | 定义协议，写 server，接入加密，做一个最简单的网页：看消息、发消息、审批 | 手机上真的能用 |
 | **P2 可以日常使用** | 终端视图、切换模型和压缩上下文、按项目分组、推送、配对流程、部署到 VPS 和 Cloudflare Pages | 能替代现有的工作方式 |
 | **P3 以后** | Claude Code 等其他 CLI、附件等 | |
@@ -25,6 +25,7 @@
 |---|---|
 | `remote-agent daemon` | 在前台运行 daemon（开机自启放到 P2） |
 | `remote-agent codex [参数]` | 在当前目录新建 Codex 会话，并在当前终端 attach 上去；参数原样传给 codex |
+| `remote-agent new [参数]` | 同上，但不 attach，只打印会话 ID |
 | `remote-agent ls` | 列出会话及其状态 |
 | `remote-agent attach <id>` | attach 到已有会话 |
 
@@ -43,7 +44,8 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
 
 **tmux**
 
-- 通过 control mode 连接独立的 tmux socket，每个会话对应一个 tmux session，命名为 `ra-<id前8位>`；接收输出和退出通知
+- 使用独立的 tmux socket，每个会话对应一个 tmux session，命名为 `ra-<id前8位>`，完整 ID 记在 session 选项 `@ra_session_id` 里
+- pane 里运行 PTY 代理，Codex 跑在它下面（见 architecture 第 6 节）
 - 启动时检查 tmux 是否存在、版本是否满足要求
 - daemon 重启后，重新接上仍在运行的会话
 
@@ -74,6 +76,8 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 ### 验收标准
 
+`scripts/acceptance.sh` 用真实的 Codex 检查第 2–7 条（需要已登录的 codex，会消耗少量额度）；第 8 条由 `go test ./...` 覆盖；第 1 条的 attach 体验和第 6 条「本地先答」需要在终端里手动确认。
+
 1. `remote-agent codex` 启动后，终端里的使用体验和直接运行 `codex` 一样；detach 后会话继续在后台运行
 2. 用 `send` 发消息，Codex 会执行；同一时间在本地终端里打字也不会出问题
 3. `events --follow` 能完整、按顺序地输出一轮对话的所有事件
@@ -91,7 +95,6 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 - 项目判定规则：[architecture.md](architecture.md) 第 8 节的提案是否采用
 - 终端视图默认可以输入还是只读（倾向可以输入）
-- 审批超时的时长
 - 客户端显示 Codex 账户额度是否放进 MVP（界面稿里画了）
 - 客户端切换审批模式（[architecture.md](architecture.md) 第 7 节）和 fast 模式是否放进 MVP（优先级低）
 - 是否允许在手机上切到完全放行（目前的设计是允许，但要二次确认）

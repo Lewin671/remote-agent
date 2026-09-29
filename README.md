@@ -14,4 +14,27 @@
 | `remote-agent-server` | Go | 部署在 VPS：鉴权、密文转发与存储、推送 |
 | `web` | TypeScript（React） | PWA 客户端：聊天视图、终端视图、权限审批 |
 
-> 状态：设计阶段。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
+> 状态：P0 完成，本地 `remote-agent` 可用；server 和客户端尚未开始。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
+
+## 本地使用
+
+需要 Go 1.25+、tmux 3.2+ 和已登录的 codex。
+
+```sh
+go build -o ~/bin/remote-agent ./cmd/remote-agent
+remote-agent daemon            # 在前台运行 daemon
+remote-agent codex             # 另开一个终端：在当前目录启动 Codex 并 attach
+remote-agent ls                # 列出会话
+remote-agent send <id> 你好     # 从别处发消息，id 可以只写前几位
+remote-agent events <id> -f    # 持续查看事件
+```
+
+- Codex 需要的代理等环境变量写进 `~/.remote-agent/codex.env`，一行一个 `KEY=VALUE`，daemon 启动每个会话时都会带上
+- 二进制的路径要固定：它是 Codex hook 的命令，路径一变 Codex 就会要求重新信任 hook
+- 第一次在某个目录启动时，Codex 会问是否信任这个目录、是否信任 hook，需要在终端里回答
+
+## 开发
+
+- `go test ./...`：单元测试，不依赖真实的 Codex
+- `scripts/acceptance.sh`：用真实的 Codex 跑 P0 验收
+- 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），生成的代码在 `gen/`，一并提交

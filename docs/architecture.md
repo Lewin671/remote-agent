@@ -135,10 +135,12 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
-| tmux 接入 | control mode（`tmux -C`），使用独立的 socket（`tmux -L remote-agent`） | 一条连接就能拿到全部 pane 的输出并发送命令；不影响平时用的 tmux |
+| tmux 接入 | 使用独立的 socket（`tmux -L remote-agent`）；P0 直接执行 tmux 命令（建会话、抓屏、存活检查），终端视图（P2）再接 control mode（`tmux -C`） | 不影响平时用的 tmux；P0 不需要 pane 的字节流，会话存活由 tmux 和 PTY 代理判断 |
+| 输入 | tmux pane 里跑一层 PTY 代理（`remote-agent pty-host`），Codex 以原生 TUI 跑在它下面；本地按键和远程注入都经过它，见第 6 节 | 注入时要先确认输入框为空再写入；只靠 tmux 命令，检查和写入之间本地敲的键会混进远程消息 |
 | tmux 依赖 | 必需；安装脚本和 `remote-agent` 启动时检查是否存在、版本是否满足 | |
 | 输出来源 | Codex rollout jsonl，不从屏幕解析消息 | 屏幕内容不可靠 |
-| 审批超时 | 拒绝（时长未定） | 安全优先 |
+| 审批超时 | 拒绝；默认 10 分钟，`remote-agent daemon --approval-timeout` 可调 | 安全优先；手机上从收到提醒到处理需要时间 |
+| 本地状态 | 每个会话一个目录：`session.json` 和 append-only 的 `events.jsonl`；事件记录里带着读到的 rollout 位置，同时充当读取进度 | 重启后从记录的位置接着读，事件序号连续、不重复；单用户、单机，不需要数据库 |
 | `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到（[codex-notes §6](codex-notes.md#6-踩过的坑)） |
 | 上下文提示 | 占用超过 80% 时提示，并提供「压缩」按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
 
@@ -146,21 +148,22 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 下面每条做法都基于 [codex-notes.md](codex-notes.md) 里的实测，括号里的「notes §n」指它的第 n 节。升级 Codex 后要跟着复核。
 
-- **启动**：daemon 启动 Codex 时带上代理等环境变量（由 launchd 启动时读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`；用 `-c` 注入 `PermissionRequest`、`SessionStart`、`PreToolUse` 三个 hook，只对这个会话生效。hook 命令的路径必须固定，否则每次都要重新信任（notes §3、§5）
+- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/codex.env`（放代理等变量；daemon 由 launchd 启动时读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`。用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令路径和 `timeout`）必须固定，否则每次都要重新信任（notes §3、§5）
 - **启动弹窗**：用 `-c` 关掉检查更新、限额换模型提示等能关的弹窗；关不掉的 `Trust this folder?`、`Hooks need review` 每个目录或每套 hook 只问一次，客户端提示去终端处理。能不弹就不弹；信任目录是安全决定，留给用户在终端里做（notes §5）
 - **防弹窗挡输入**：每次注入前先抓屏，确认没有弹窗挡着。判断画面时只看屏幕底部的菜单标题和选项区域，不全屏搜关键词（notes §5、§6）
 - **等画面**：轮询屏幕，等到预期画面出现再操作，并设超时；不用固定的 sleep（notes §6）
-- **输入**：`load-buffer` 加 `paste-buffer -p`（bracketed paste），再单独发 Enter；以 `~/.codex/history.jsonl` 新增一行确认提交成功（notes §1）。Codex 会把裸换行当作提交，所以不能直接发送带换行的按键
+- **输入**：远程消息按到达顺序排队，一次注入一条。注入时 daemon 先让 PTY 代理暂存本地按键，等 80ms 让已经敲下的键显示出来，再抓屏：输入框就绪且没有未发送的草稿，才一次写入 bracketed paste 包起来的正文和回车，然后放开暂存。暂存期间本地敲的键不丢，放开后按顺序进入新的输入框；PTY 是按顺序的字节流，它们一定排在这条消息的回车之后。本地有草稿或有弹窗时，消息继续排队，绝不覆盖或拼接草稿。以 `~/.codex/history.jsonl` 新增一行确认提交成功（notes §1、§10）。正文里的控制字符会被去掉，避免提前结束粘贴
+- **判断输入框**：抓屏时保留颜色属性（`capture-pane -e`）。输入框的提示符是加粗的 `›`，占位提示是淡色字，列表里选中的行是加粗反色的 `›`（notes §10）
 - **找到 rollout**：`SessionStart` hook（发出第一条消息时触发）把 `RA_SESSION` 和 `transcript_path` 一起报给 daemon（notes §3）
 - **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
-- **模型提问**：再用 `-c` 注入一个 `PreToolUse` hook，把 `request_user_input` 的问题转给 daemon 后立即返回，不阻塞，否则本地终端在它返回前看不到问题；hook 也没法代答。回答时抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
+- **模型提问**：问题从 rollout 的 `function_call` 读出，它在等待回答时就已经写入，不需要 hook。回答时暂存本地按键、抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
 - **中断**：只在一轮运行时发 Esc，绝不发 Ctrl-C。空闲时发 Ctrl-C 会清空输入框，再按一次会退出 Codex（notes §8）
 - **切换模型和 effort**：空闲时操作 `/model` 菜单，按模型名在屏幕上找编号，用方向键选档位后按 `s`，只改当前会话；以屏幕出现 `for this session only` 为成功，认不出菜单就按 Esc 退出并报错，退回到用 `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 重启。客户端先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对；rollout 何时记录新模型是推测，未验证（notes §2、§6，见 plan.md）
 - **命令参数**：Go 代码调用 tmux 和 codex 时一律传参数数组，不拼 shell 字符串
 
 ## 7. 审批
 
-`remote-agent hook codex` 作为 Codex 的 `PermissionRequest` hook，通过 unix socket 把请求交给 daemon，再按会话的审批方式处理：
+`remote-agent hook codex` 作为 Codex 的 `PermissionRequest` hook，通过 unix socket 把请求交给 daemon。daemon 先读完 rollout，按最近一次 `turn_context` 的 `approvals_reviewer` 判断会话的审批方式：
 
 | 会话的审批方式 | hook 的行为 | 用户看到什么 |
 |---|---|---|
@@ -168,6 +171,9 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | 没开 `auto_review` | 把请求转到客户端，等待回复；超时拒绝 | 审批卡片：允许 / 拒绝，拒绝时可以附一句说明 |
 
 依据：Codex 先调用 hook，hook 不表态时才交给 `auto_review`；hook 只能返回 allow 或 deny 加 message，做不到原生审批框里的「以后不再询问」（notes §3、§4）。
+
+- **hook 的超时**：hook 定义里的 `timeout` 设为 3600 秒，审批超时必须比它短。hook 自己超时的话，Codex 会改为在终端里弹原生审批框（notes §3），就做不到「超时拒绝」了
+- **daemon 连不上**：hook 什么都不输出，交给 Codex 在终端里弹原生审批框，仍然由人决定。审批等待中 daemon 重启时，hook 会重试 30 秒，连上新的 daemon 后重新发起审批；旧的那条记为「已取消」
 
 ### 客户端的审批模式
 
