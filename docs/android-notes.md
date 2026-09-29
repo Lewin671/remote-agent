@@ -1,0 +1,45 @@
+# Android 实测记录
+
+本文记录 Android 客户端依赖的库和系统在实际使用中的表现：connect-kotlin、Termux 终端组件、加密实现、FCM 和模拟器。只写观察到的现象和踩过的坑；App 据此怎么设计见 [architecture.md](architecture.md) 第 15 节，还没测的见 [plan.md](plan.md) 的「待确认」。
+
+没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。
+
+验证环境：connect-kotlin 0.9.0、OkHttp 5.4.0、protobuf-javalite 4.35.1（生成代码 31.1）、Bouncy Castle 1.81、Termux terminal-emulator / terminal-view v0.118.3，JDK 17，Android 模拟器 API 36（google_apis_playstore，arm64），2026-09-29。还没有在真手机上验证。
+
+## 1. connect-kotlin 和现有 server
+
+- **能直接互通**：Connect 协议加二进制 Protobuf，用 `GoogleJavaLiteProtobufStrategy`，对 connect-go 写的 server 不用任何适配。`:core` 的测试在 JVM 上起真实的 Go server 和一个假 daemon，登记、登录、拉列表、`GetEvents`、`Forward`、配对全部跑通；模拟器上的 App 同样
+- **错误码**：server 返回的 Connect 错误（如机器离线的 `unavailable`）变成 `ConnectException`，`exception` 为空。网络层的失败也是 `ConnectException`：`SocketTimeoutException` 是 `DEADLINE_EXCEEDED`，其他 `IOException` 是 `UNKNOWN`，原始异常在 `exception` 里。所以「电脑不在线」要看 `exception` 为空，连不上服务器（`UnknownHostException`、`ConnectException`）说明请求没有发出
+- **版本约束**：connect-kotlin 0.9.0 依赖 OkHttp 5.4.0，它的 `okhttp-android` 要求 compileSdk 36 以上（`checkAarMetadata` 报错）。0.7.4 还用 OkHttp 4.12，没有这个要求
+- **生成代码**：用 buf 的远程插件 `buf.build/protocolbuffers/java`（`lite`）和 `buf.build/connectrpc/kotlin`，java_package 用 managed mode 覆盖。生成代码的版本不能高于运行时的 protobuf-javalite（本机 protoc 36.2 生成的代码要求运行时 4.36 以上），所以固定用远程插件的版本
+- **R8**：release 包开 R8 后同步、指令、配对都正常，只需要保留 `GeneratedMessageLite` 的子类（`app/proguard-rules.pro`）。release 包 5.3 MB
+
+## 2. Termux 终端组件
+
+- **许可**：termux-app 仓库整体是 GPLv3，只有 `terminal-emulator` 和 `terminal-view` 两个模块是 Apache 2.0（仓库的 LICENSE.md 写明）
+- **改接远程字节流的工作量**：`TerminalView` 只通过 `TerminalSession` 的少数方法和它打交道（`write`、`writeCodePoint`、`getEmulator`、`updateSize`、`onCopyTextToClipboard` 等）。`TerminalSession` 是 `final`，并在 `updateSize` 时通过 JNI 起本地进程，所以没法继承或只换一部分。做法是把两个模块的源码放进 `android/terminal`，只重写 `TerminalSession`（约 190 行）：键盘输入交给回调，远程输出和快照由外部喂进来，模拟器的尺寸跟随远程快照，`updateSize` 只报告视图能放下的行列数。JNI 和 C 代码一起去掉，不再需要 NDK。`TerminalView`、`TerminalEmulator` 原样使用
+- **字号**：渲染器用 `measureText("X")` 算列宽。用 `M` 的宽度估算字号时，160 列的窗口在 1080 像素宽的屏幕上最右边一两个字被截掉；改成和渲染器一样量 `X` 并逐个像素试，就正好放下
+- **输入法**：`TerminalView` 默认把输入类型设为 `TYPE_NULL`。Gboard 英文键盘在这种模式下逐个发按键，输入、退格、回车都正常，`^C` 等按键栏发的控制字符也正常。中文输入法未验证（模拟器上的 Gboard 只有英文）
+- **键盘弹出**：`adjustResize` 下视图变矮，远程的 tmux 尺寸不变，只是把光标所在的行滚进可见区
+- **adb 注入文字**：`adb shell input text` 一次发一长串时，Gboard 会丢字（模拟器负载高时更明显）；逐个词发、中间停一下就不丢。这是测试手段的问题，不是 App 的
+
+## 3. 加密
+
+- **Bouncy Castle lightweight API**：X25519、Ed25519、HKDF 和 Go、TypeScript 逐字节一致：`vectors.json` 在 Kotlin 通过，Kotlin 生成的 `kotlin-vectors.json` 在 Go 和 TypeScript 也通过（包括大于 2^63 的 `uint64` 序号和配对封好的根密钥）
+- **X25519 全零共享值**：对方公钥是低阶点（如 32 个零字节）时，BC 的 `X25519Agreement` 自己抛 `IllegalStateException`，不会返回全零；代码里仍然另外检查一次
+- **AES-GCM 用平台 JCA**：`AES/GCM/NoPadding` 在 JVM 和 Android 上都能用附加数据加解密，和 Go 的结果一致（同一组向量）
+- **平台 JCA 导入原始 32 字节的 X25519、Ed25519 密钥**：未验证，一直用 Bouncy Castle
+- **Keystore**：`setUnlockedDeviceRequired(true)`（API 28 起）的 AES 密钥在模拟器上能生成和使用；设了它的密钥在锁屏时不能用，所以通知密钥用另一把没设这一项的密钥包装
+
+## 4. FCM
+
+- **可用**：模拟器（Google Play 镜像）经 `-http-proxy` 走本机代理后能拿到 FCM token，server 用 FCM HTTP v1 发的 data message 能收到。token 长 142 字符
+- **耗时**：App 在后台时，从 daemon 记下审批到通知出现约 3 秒；进程被杀掉后（`am kill`），系统为 FCM 广播新起进程，从审批记下到通知出现约 2 秒，其中 `onMessageReceived` 里读偏好、解密、发通知共 191 ms（进程在时 14 到 80 ms）。模拟器负载很高时，进程启动超过 10 秒会被判定为「failed to complete startup」的 ANR，这条推送随之丢失（系统日志 `broadcast intent callback: result=CANCELLED`）。推测真手机上不会这么慢，但 Application 的 `onCreate` 仍然只做最少的事
+- **`am force-stop` 之后收不到推送**：被强制停止的 App 处于 stopped 状态，系统不投递广播；测试「进程被回收」要用 `am kill`
+- **通知按钮**：`setAuthenticationRequired(true)` 的按钮在没有锁屏的模拟器上直接可点，点「允许」「拒绝」后由 WorkManager 转发，daemon 记下的是 allow / deny。锁屏时要先解锁未验证（模拟器没设锁屏）
+- **系统猜的操作**：通知正文里有网址时（如 `curl https://…`），系统会自动加一个「Open link」按钮，位置就在「拒绝」「允许」上面，容易误点；要用 `setAllowSystemGeneratedContextualActions(false)` 关掉
+
+## 5. 模拟器
+
+- **默认的 AVD 太慢**：`Medium_Phone` 的配置是 1 个 CPU、2 GB 内存。跑 Android 36 加 Google 服务时 system_server 反复被 watchdog 重启，adb 报 `Can't find service: activity`，debug 包启动要几十秒。用 `-cores 4 -memory 3072` 启动后正常得多，但宿主机内存吃紧（在交换）时仍会卡到 SystemUI、Launcher 报 ANR
+- **debug 包**：Compose 的 debug 包没有预编译，冷启动在慢机器上要十几秒，性能判断以 R8 的包为准

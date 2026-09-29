@@ -330,10 +330,10 @@ Android 原生 App 要把手机上的体验做到原生水平，范围见 [scope
 | WebSocket | OkHttp，`/v1/stream` 和 `/v1/term` 各一条 | 和网页相同的两条连接 |
 | 加密 | AES-256-GCM 用平台 JCA；X25519、Ed25519、HKDF 用 Bouncy Castle 的 lightweight API | 先保证和 Go、TS 逐字节一致，见下文「加密和密钥」 |
 | 本地存储 | Room 存密文信封和同步游标，DataStore 存偏好 | 本地不保存明文 |
-| 推送 | 手机有 GMS 用 FCM data message，没有再用 UnifiedPush | 见下文「推送和通知里审批」 |
-| 终端 | Termux 的 `terminal-emulator` 和 `terminal-view`，用 `AndroidView` 嵌进 Compose | 原生渲染和输入法都比 WebView 里的 xterm.js 好 |
+| 推送 | FCM data message（自己的手机有 GMS） | 见下文「推送和通知里审批」 |
+| 终端 | Termux 的 `terminal-emulator` 和 `terminal-view`，源码放在 `android/terminal`，用 `AndroidView` 嵌进 Compose | 原生渲染和输入法都比 WebView 里的 xterm.js 好；为什么放源码见下文「终端」 |
 | 扫码 | CameraX + ZXing core | 本地解码，只扫配对二维码这一种 |
-| 构建和分发 | Gradle version catalog 锁定依赖版本；release 构建开 R8，测试也在 release 包上跑；自己签名，侧载安装 | 不上架应用商店 |
+| 构建和分发 | Gradle version catalog 锁定依赖版本；minSdk 26，targetSdk 35，compileSdk 36（connect-kotlin 0.9 依赖的 OkHttp 5.4 要求）；release 构建开 R8，另有一个 `minified` 构建类型，和 release 相同但允许明文 HTTP，用来在本机 server 上测 R8 的包；自己签名，侧载安装；Firebase 的 `google-services.json` 和签名配置放在仓库外的 `~/.config/remote-agent/`，没有时照常构建、推送关闭 | 不上架应用商店；`setAuthenticationRequired` 等 API 31 起的能力按版本判断 |
 
 ### 为什么是纯 Kotlin
 
@@ -365,18 +365,20 @@ App 在前台时保持主 WebSocket；进入后台就断开，改靠推送；回
 
 ### 终端
 
-`terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只引这两个。`TerminalView` 原本绑定的是本地 PTY 的 `TerminalSession`，要改成接收远程字节流。
+`terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只用这两个。`TerminalView` 绑定的 `TerminalSession` 是 `final`，还在 `updateSize` 里通过 JNI 起本地进程，引用发布的包就换不掉它。所以两个模块的源码固定在 v0.118.3 放进 `android/terminal`，只重写 `TerminalSession`：输入交给回调，远程的输出和快照由外部喂入，JNI 和 C 代码去掉（实测见 [android-notes §2](android-notes.md#2-termux-终端组件)）。升级上游时对照这一个文件合并。
+
+默认按远程窗口的列数缩小字号，量字宽的方法和渲染器相同；「适配屏幕」按 12dp 左右的字号算出能放下的行列数发给 daemon。
 
 尺寸和积压的规则同第 11 节：默认不改 tmux 窗口，键盘弹出、旋转屏幕都不改远端尺寸，只有「适配屏幕」才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
 
 ### 推送和通知里审批
 
-- **推送后端**：server 新增按类型登记推送目标的接口，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页；server 用 FCM HTTP v1 发送，token 失效时删除。没有 GMS 时改用 UnifiedPush，未定，见 plan.md
+- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。手机有 GMS，不做 UnifiedPush
 - **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
 - **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
-- **显示**：通知用 `VISIBILITY_PRIVATE`，锁屏上只显示通用文案。是否在通知里显示审批内容未定（scope 第 4 节），不显示就只发通用提醒
+- **显示**：通知用 `VISIBILITY_PRIVATE`，锁屏上只显示通用文案。默认解锁后也只显示通用文案，点开直接进审批页；App 设置里打开「在通知里显示内容并直接审批」后，才显示会话标题、命令和按钮（scope 第 4 节）。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知
 - **按钮**：「允许 / 拒绝」设 `setAuthenticationRequired(true)`（API 31 起），先解锁手机才能点；每条通知用独立、不可变的 `PendingIntent`，只绑定自己那条审批；命令显示不全时，「允许」改为打开完整的审批页
-- **执行**：在后台发 `Forward`，必要时交给 WorkManager；先显示「处理中」，daemon 返回才算完成；结果未知就如实显示，重试沿用同一个请求 ID
+- **执行**：点按钮时在广播里封好指令（请求 ID 和截止时间就此固定），交给 WorkManager 发 `Forward`；先显示「允许中…」，daemon 返回才算完成；结果未知时重试同一个信封，过了截止时间还不知道就如实显示
 - **daemon 的校验**：超时和回复都要先抢到审批的 `claimed` 标记，只有一方生效，过期的回复不会被放行。另在审批里存一个绝对截止时间，处理回复时一并检查，作为额外防护
 - **投递失败**：推送没送到不影响 daemon 的超时拒绝，审批仍可以打开 App 处理
 

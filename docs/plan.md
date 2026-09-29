@@ -215,11 +215,9 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 **Android App**
 
-- 手机的型号和系统版本：决定 minSdk；`setAuthenticationRequired` 要 API 31 起
-- 手机上有没有 GMS：有就用 FCM，没有要改用 UnifiedPush，并多部署一个 distributor
-- 是否接受审批内容进入系统通知（可能留在通知历史里、被有通知读取权限的 App 读到）：不接受的话，A4 只发通用提醒
 - 以后做不做原生 iOS：做的话，再比较把 `:core` 迁到 KMP 和改用 gomobile 复用 Go
-- 待验证：connect-kotlin 和现有 server 能否直接互通；Termux 的 `TerminalView` 改接远程字节流的工作量；平台 JCA 能否导入导出原始 32 字节的 X25519、Ed25519 密钥；FCM 冷启动时解密并发出通知的耗时
+- 待验证：平台 JCA 能否导入导出原始 32 字节的 X25519、Ed25519 密钥（现在一直用 Bouncy Castle）
+- 真手机上验证：中文输入法在终端里输入；设了锁屏时通知里的「允许」「拒绝」要先解锁；FCM 在国内网络和省电策略下的到达；连续使用一天没有 ANR 和崩溃（模拟器上只验证了英文输入和没有锁屏的情况，见 [android-notes.md](android-notes.md)）
 
 **P1、P2 遗留**
 
