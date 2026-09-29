@@ -17,6 +17,9 @@ type input struct {
 	// it holds the history.jsonl offset at that moment. After a crash, the
 	// history from there tells whether the message was submitted.
 	Inflight *int64 `json:"inflight,omitempty"`
+	// InflightSeq is the last event sequence number at that moment; a
+	// matching user message after it also confirms submission.
+	InflightSeq uint64 `json:"inflight_seq,omitempty"`
 }
 
 // queueState is queue.json: accepted input that has not been submitted,

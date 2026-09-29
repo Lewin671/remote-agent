@@ -245,6 +245,62 @@ func (SessionStatus) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{3}
 }
 
+type InputStatus int32
+
+const (
+	InputStatus_INPUT_STATUS_UNSPECIFIED InputStatus = 0
+	// Accepted and waiting for the input box.
+	InputStatus_INPUT_STATUS_QUEUED InputStatus = 1
+	// Codex recorded the message.
+	InputStatus_INPUT_STATUS_SUBMITTED InputStatus = 2
+	// The keys were delivered but Codex did not record the message in time.
+	// It is not sent again, to avoid submitting it twice.
+	InputStatus_INPUT_STATUS_UNCONFIRMED InputStatus = 3
+)
+
+// Enum value maps for InputStatus.
+var (
+	InputStatus_name = map[int32]string{
+		0: "INPUT_STATUS_UNSPECIFIED",
+		1: "INPUT_STATUS_QUEUED",
+		2: "INPUT_STATUS_SUBMITTED",
+		3: "INPUT_STATUS_UNCONFIRMED",
+	}
+	InputStatus_value = map[string]int32{
+		"INPUT_STATUS_UNSPECIFIED": 0,
+		"INPUT_STATUS_QUEUED":      1,
+		"INPUT_STATUS_SUBMITTED":   2,
+		"INPUT_STATUS_UNCONFIRMED": 3,
+	}
+)
+
+func (x InputStatus) Enum() *InputStatus {
+	p := new(InputStatus)
+	*p = x
+	return p
+}
+
+func (x InputStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InputStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_v1_event_proto_enumTypes[4].Descriptor()
+}
+
+func (InputStatus) Type() protoreflect.EnumType {
+	return &file_remoteagent_v1_event_proto_enumTypes[4]
+}
+
+func (x InputStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InputStatus.Descriptor instead.
+func (InputStatus) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{4}
+}
+
 // Event is one entry in a session's unified event stream. It is the content
 // that P1 will encrypt as the inner layer, so it may carry message text but
 // must never be exposed to the server in plaintext.
@@ -271,6 +327,7 @@ type Event struct {
 	//	*Event_QuestionAsked
 	//	*Event_QuestionAnswered
 	//	*Event_SessionState
+	//	*Event_InputState
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -458,6 +515,15 @@ func (x *Event) GetSessionState() *SessionState {
 	return nil
 }
 
+func (x *Event) GetInputState() *InputState {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_InputState); ok {
+			return x.InputState
+		}
+	}
+	return nil
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -514,6 +580,10 @@ type Event_SessionState struct {
 	SessionState *SessionState `protobuf:"bytes,22,opt,name=session_state,json=sessionState,proto3,oneof"`
 }
 
+type Event_InputState struct {
+	InputState *InputState `protobuf:"bytes,23,opt,name=input_state,json=inputState,proto3,oneof"`
+}
+
 func (*Event_UserMessage) isEvent_Kind() {}
 
 func (*Event_AgentMessage) isEvent_Kind() {}
@@ -539,6 +609,8 @@ func (*Event_QuestionAsked) isEvent_Kind() {}
 func (*Event_QuestionAnswered) isEvent_Kind() {}
 
 func (*Event_SessionState) isEvent_Kind() {}
+
+func (*Event_InputState) isEvent_Kind() {}
 
 type UserMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1572,11 +1644,65 @@ func (x *SessionState) GetDetail() string {
 	return ""
 }
 
+// InputState tracks a message sent with Send. The text itself appears in
+// the UserMessage event once Codex records it.
+type InputState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status        InputStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=remoteagent.v1.InputStatus" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InputState) Reset() {
+	*x = InputState{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InputState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InputState) ProtoMessage() {}
+
+func (x *InputState) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InputState.ProtoReflect.Descriptor instead.
+func (*InputState) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *InputState) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *InputState) GetStatus() InputStatus {
+	if x != nil {
+		return x.Status
+	}
+	return InputStatus_INPUT_STATUS_UNSPECIFIED
+}
+
 var File_remoteagent_v1_event_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x86\b\n" +
+	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\b\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x1d\n" +
 	"\n" +
@@ -1598,7 +1724,9 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x11approval_resolved\x18\x13 \x01(\v2 .remoteagent.v1.ApprovalResolvedH\x00R\x10approvalResolved\x12F\n" +
 	"\x0equestion_asked\x18\x14 \x01(\v2\x1d.remoteagent.v1.QuestionAskedH\x00R\rquestionAsked\x12O\n" +
 	"\x11question_answered\x18\x15 \x01(\v2 .remoteagent.v1.QuestionAnsweredH\x00R\x10questionAnswered\x12C\n" +
-	"\rsession_state\x18\x16 \x01(\v2\x1c.remoteagent.v1.SessionStateH\x00R\fsessionStateB\x06\n" +
+	"\rsession_state\x18\x16 \x01(\v2\x1c.remoteagent.v1.SessionStateH\x00R\fsessionState\x12=\n" +
+	"\vinput_state\x18\x17 \x01(\v2\x1a.remoteagent.v1.InputStateH\x00R\n" +
+	"inputStateB\x06\n" +
 	"\x04kind\"B\n" +
 	"\vUserMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
@@ -1682,7 +1810,12 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"]\n" +
 	"\fSessionState\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.remoteagent.v1.SessionStatusR\x06status\x12\x16\n" +
-	"\x06detail\x18\x02 \x01(\tR\x06detail*\x99\x01\n" +
+	"\x06detail\x18\x02 \x01(\tR\x06detail\"`\n" +
+	"\n" +
+	"InputState\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x123\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.InputStatusR\x06status*\x99\x01\n" +
 	"\bToolKind\x12\x19\n" +
 	"\x15TOOL_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11TOOL_KIND_COMMAND\x10\x01\x12\x19\n" +
@@ -1706,7 +1839,12 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x13SESSION_STATUS_IDLE\x10\x02\x12\x1a\n" +
 	"\x16SESSION_STATUS_RUNNING\x10\x03\x12\x1a\n" +
 	"\x16SESSION_STATUS_BLOCKED\x10\x04\x12\x19\n" +
-	"\x15SESSION_STATUS_EXITED\x10\x05B\xbc\x01\n" +
+	"\x15SESSION_STATUS_EXITED\x10\x05*~\n" +
+	"\vInputStatus\x12\x1c\n" +
+	"\x18INPUT_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13INPUT_STATUS_QUEUED\x10\x01\x12\x1a\n" +
+	"\x16INPUT_STATUS_SUBMITTED\x10\x02\x12\x1c\n" +
+	"\x18INPUT_STATUS_UNCONFIRMED\x10\x03B\xbc\x01\n" +
 	"\x12com.remoteagent.v1B\n" +
 	"EventProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
@@ -1722,60 +1860,64 @@ func file_remoteagent_v1_event_proto_rawDescGZIP() []byte {
 	return file_remoteagent_v1_event_proto_rawDescData
 }
 
-var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_remoteagent_v1_event_proto_goTypes = []any{
 	(ToolKind)(0),                 // 0: remoteagent.v1.ToolKind
 	(TurnOutcome)(0),              // 1: remoteagent.v1.TurnOutcome
 	(ApprovalDecision)(0),         // 2: remoteagent.v1.ApprovalDecision
 	(SessionStatus)(0),            // 3: remoteagent.v1.SessionStatus
-	(*Event)(nil),                 // 4: remoteagent.v1.Event
-	(*UserMessage)(nil),           // 5: remoteagent.v1.UserMessage
-	(*AgentMessage)(nil),          // 6: remoteagent.v1.AgentMessage
-	(*Reasoning)(nil),             // 7: remoteagent.v1.Reasoning
-	(*ToolCall)(nil),              // 8: remoteagent.v1.ToolCall
-	(*TurnStarted)(nil),           // 9: remoteagent.v1.TurnStarted
-	(*TurnEnded)(nil),             // 10: remoteagent.v1.TurnEnded
-	(*TokenUsage)(nil),            // 11: remoteagent.v1.TokenUsage
-	(*TurnContext)(nil),           // 12: remoteagent.v1.TurnContext
-	(*ApprovalRequested)(nil),     // 13: remoteagent.v1.ApprovalRequested
-	(*ApprovalResolved)(nil),      // 14: remoteagent.v1.ApprovalResolved
-	(*QuestionOption)(nil),        // 15: remoteagent.v1.QuestionOption
-	(*Question)(nil),              // 16: remoteagent.v1.Question
-	(*QuestionAsked)(nil),         // 17: remoteagent.v1.QuestionAsked
-	(*QuestionAnswer)(nil),        // 18: remoteagent.v1.QuestionAnswer
-	(*QuestionAnswered)(nil),      // 19: remoteagent.v1.QuestionAnswered
-	(*SessionState)(nil),          // 20: remoteagent.v1.SessionState
-	(*timestamppb.Timestamp)(nil), // 21: google.protobuf.Timestamp
+	(InputStatus)(0),              // 4: remoteagent.v1.InputStatus
+	(*Event)(nil),                 // 5: remoteagent.v1.Event
+	(*UserMessage)(nil),           // 6: remoteagent.v1.UserMessage
+	(*AgentMessage)(nil),          // 7: remoteagent.v1.AgentMessage
+	(*Reasoning)(nil),             // 8: remoteagent.v1.Reasoning
+	(*ToolCall)(nil),              // 9: remoteagent.v1.ToolCall
+	(*TurnStarted)(nil),           // 10: remoteagent.v1.TurnStarted
+	(*TurnEnded)(nil),             // 11: remoteagent.v1.TurnEnded
+	(*TokenUsage)(nil),            // 12: remoteagent.v1.TokenUsage
+	(*TurnContext)(nil),           // 13: remoteagent.v1.TurnContext
+	(*ApprovalRequested)(nil),     // 14: remoteagent.v1.ApprovalRequested
+	(*ApprovalResolved)(nil),      // 15: remoteagent.v1.ApprovalResolved
+	(*QuestionOption)(nil),        // 16: remoteagent.v1.QuestionOption
+	(*Question)(nil),              // 17: remoteagent.v1.Question
+	(*QuestionAsked)(nil),         // 18: remoteagent.v1.QuestionAsked
+	(*QuestionAnswer)(nil),        // 19: remoteagent.v1.QuestionAnswer
+	(*QuestionAnswered)(nil),      // 20: remoteagent.v1.QuestionAnswered
+	(*SessionState)(nil),          // 21: remoteagent.v1.SessionState
+	(*InputState)(nil),            // 22: remoteagent.v1.InputState
+	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
 }
 var file_remoteagent_v1_event_proto_depIdxs = []int32{
-	21, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
-	5,  // 1: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
-	6,  // 2: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
-	7,  // 3: remoteagent.v1.Event.reasoning:type_name -> remoteagent.v1.Reasoning
-	8,  // 4: remoteagent.v1.Event.tool_call:type_name -> remoteagent.v1.ToolCall
-	9,  // 5: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
-	10, // 6: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
-	11, // 7: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
-	12, // 8: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
-	13, // 9: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
-	14, // 10: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
-	17, // 11: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
-	19, // 12: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
-	20, // 13: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
-	0,  // 14: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
-	1,  // 15: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
-	21, // 16: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
-	2,  // 17: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
-	15, // 18: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
-	16, // 19: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
-	18, // 20: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
-	3,  // 21: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	23, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
+	6,  // 1: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
+	7,  // 2: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
+	8,  // 3: remoteagent.v1.Event.reasoning:type_name -> remoteagent.v1.Reasoning
+	9,  // 4: remoteagent.v1.Event.tool_call:type_name -> remoteagent.v1.ToolCall
+	10, // 5: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
+	11, // 6: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
+	12, // 7: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
+	13, // 8: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
+	14, // 9: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
+	15, // 10: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
+	18, // 11: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
+	20, // 12: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
+	21, // 13: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
+	22, // 14: remoteagent.v1.Event.input_state:type_name -> remoteagent.v1.InputState
+	0,  // 15: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
+	1,  // 16: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
+	23, // 17: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
+	2,  // 18: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
+	16, // 19: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
+	17, // 20: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
+	19, // 21: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
+	3,  // 22: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
+	4,  // 23: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_event_proto_init() }
@@ -1797,6 +1939,7 @@ func file_remoteagent_v1_event_proto_init() {
 		(*Event_QuestionAsked)(nil),
 		(*Event_QuestionAnswered)(nil),
 		(*Event_SessionState)(nil),
+		(*Event_InputState)(nil),
 	}
 	file_remoteagent_v1_event_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
@@ -1804,8 +1947,8 @@ func file_remoteagent_v1_event_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_event_proto_rawDesc), len(file_remoteagent_v1_event_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   17,
+			NumEnums:      5,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

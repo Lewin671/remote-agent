@@ -114,6 +114,12 @@ func formatEvent(e *pb.Event) string {
 			parts = append(parts, strings.Join(a.Answers, ", "))
 		}
 		body = fmt.Sprintf("question %s answered: %s", q.QuestionId, strings.Join(parts, "; "))
+	case *pb.Event_InputState:
+		body = fmt.Sprintf("input %s: %s", k.InputState.RequestId,
+			strings.ToLower(strings.TrimPrefix(k.InputState.Status.String(), "INPUT_STATUS_")))
+		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+			body += " (delivered but not recorded by Codex; not sent again)"
+		}
 	case *pb.Event_SessionState:
 		body = "session " + statusName(k.SessionState.Status)
 		if d := k.SessionState.Detail; d != "" {

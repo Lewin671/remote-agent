@@ -25,6 +25,10 @@ type Parser struct {
 // NewParser returns a Parser.
 func NewParser() *Parser { return &Parser{questions: map[string]bool{}} }
 
+// RememberQuestion restores, after a restart, that callID is a question
+// whose rendering as an agent message must be dropped.
+func (p *Parser) RememberQuestion(callID string) { p.questions[callID] = true }
+
 type line struct {
 	Timestamp time.Time       `json:"timestamp"`
 	Type      string          `json:"type"`

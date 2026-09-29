@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,9 +97,13 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		status:    pb.SessionStatus_SESSION_STATUS_STARTING,
 		queue:     q,
 	}
-	s.recoverInflight()
 	// Rebuild derived state from the events already logged.
-	log.Each(s.observe)
+	log.Each(func(e *pb.Event) {
+		s.observe(e)
+		if q := e.GetQuestionAsked(); q != nil {
+			s.parser.RememberQuestion(q.QuestionId)
+		}
+	})
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
@@ -215,6 +220,14 @@ func (s *session) readRollout() {
 		}
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", err)
+			// Read this line and the rest of the batch again next time.
+			path, off := s.log.Checkpoint()
+			if path != r.Path {
+				off = 0
+			}
+			s.mu.Lock()
+			s.reader = tail.NewReader(r.Path, off)
+			s.mu.Unlock()
 			return
 		}
 		s.mu.Lock()
@@ -328,45 +341,36 @@ func (s *session) info() *pb.Session {
 // position; a retried request ID is accepted once.
 func (s *session) send(text, requestID string) (int, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.meta.Exited {
+		s.mu.Unlock()
 		return 0, errExited
 	}
-	if requestID != "" && s.queue.seen(requestID) {
+	if requestID == "" {
+		requestID = newID(8)
+	} else if s.queue.seen(requestID) {
+		s.mu.Unlock()
 		return 0, nil
 	}
-	s.queue.Queue = append(s.queue.Queue, input{Text: text, RequestID: requestID})
-	if requestID != "" {
-		s.queue.remember(requestID)
-	}
+	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
+	s.queue.Queue = append(s.queue.Queue[:len(s.queue.Queue):len(s.queue.Queue)], input{Text: text, RequestID: requestID})
+	s.queue.remember(requestID)
 	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue = s.queue.Queue[:len(s.queue.Queue)-1]
+		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
+		s.mu.Unlock()
 		return 0, fmt.Errorf("save input queue: %w", err)
 	}
+	pos := len(s.queue.Queue)
+	s.mu.Unlock()
+	s.emitInput(requestID, pb.InputStatus_INPUT_STATUS_QUEUED)
 	select {
 	case s.wake <- struct{}{}:
 	default:
 	}
-	return len(s.queue.Queue), nil
+	return pos, nil
 }
 
-// recoverInflight settles a message that was being written when a previous
-// daemon stopped: if history.jsonl shows it was submitted it is dropped,
-// otherwise it is sent again.
-func (s *session) recoverInflight() {
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].Inflight == nil {
-		return
-	}
-	head := s.queue.Queue[0]
-	hist := newHistory(s.d.cfg.HistoryPath, *head.Inflight)
-	if hist.submitted(head.Text, s.meta.CodexSessionID) {
-		s.queue.Queue = s.queue.Queue[1:]
-	} else {
-		s.queue.Queue[0].Inflight = nil
-	}
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", err)
-	}
+func (s *session) emitInput(requestID string, status pb.InputStatus) {
+	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status}}})
 }
 
 // injectLoop submits queued input one message at a time, in order.
@@ -382,16 +386,29 @@ func (s *session) injectLoop(ctx context.Context) {
 		}
 		s.mu.Unlock()
 		if ok {
-			done, err := s.inject(ctx, next.Text)
-			if err != nil {
-				slog.Warn("inject", "session", s.meta.ID, "err", err)
+			if next.Inflight == nil {
+				written, err := s.inject(next.Text)
+				if err != nil {
+					slog.Warn("inject", "session", s.meta.ID, "err", err)
+				}
+				if !written {
+					retry.Reset(s.d.cfg.RetryInterval)
+					goto wait
+				}
+				s.mu.Lock()
+				if len(s.queue.Queue) > 0 {
+					next = s.queue.Queue[0]
+				}
+				s.mu.Unlock()
 			}
-			if done {
-				s.popInput()
-				continue
+			// The message was written, possibly by a previous daemon.
+			// Settle it without ever writing it again.
+			if !s.settle(ctx, next) {
+				return // ctx done; it stays inflight for the next daemon
 			}
-			retry.Reset(s.d.cfg.RetryInterval)
+			continue
 		}
+	wait:
 		select {
 		case <-ctx.Done():
 			return
@@ -399,6 +416,49 @@ func (s *session) injectLoop(ctx context.Context) {
 		case <-retry.C:
 		}
 	}
+}
+
+// settle waits for evidence that the written head message was submitted,
+// records the outcome and removes it from the queue. It returns false if
+// ctx ended first.
+func (s *session) settle(ctx context.Context, in input) bool {
+	hist := newHistory(s.d.cfg.HistoryPath, *in.Inflight)
+	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
+	status := pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+	for time.Now().Before(deadline) {
+		s.readRollout()
+		s.mu.Lock()
+		codexID := s.meta.CodexSessionID
+		s.mu.Unlock()
+		if hist.submitted(in.Text, codexID) || s.loggedUserMessage(in.InflightSeq, in.Text) {
+			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
+	}
+	s.popInput()
+	s.emitInput(in.RequestID, status)
+	return true
+}
+
+// loggedUserMessage reports whether a user message with text was logged
+// after seq.
+func (s *session) loggedUserMessage(seq uint64, text string) bool {
+	want := normalizeText(text)
+	evs, _ := s.log.Since(seq)
+	for _, e := range evs {
+		if m := e.GetUserMessage(); m != nil && normalizeText(m.Text) == want {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *session) popInput() {
@@ -413,21 +473,23 @@ func (s *session) popInput() {
 }
 
 // markInflight records, before the head message is written, where
-// history.jsonl stood.
+// history.jsonl and the event log stood.
 func (s *session) markInflight(offset int64) error {
+	seq := s.log.LastSeq()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.queue.Queue) == 0 {
 		return errors.New("input queue is empty")
 	}
 	s.queue.Queue[0].Inflight = &offset
+	s.queue.Queue[0].InflightSeq = seq
 	return s.queue.save(s.dir)
 }
 
-// inject tries once to submit text. It returns false, leaving the input
+// inject tries once to write text. It returns false, leaving the input
 // queued, when the terminal is not ready: a popup is open or the local
 // user has an unsent draft, which is never overwritten or merged.
-func (s *session) inject(ctx context.Context, text string) (bool, error) {
+func (s *session) inject(text string) (bool, error) {
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
@@ -438,12 +500,9 @@ func (s *session) inject(ctx context.Context, text string) (bool, error) {
 	if err := c.Hold(holdFor); err != nil {
 		return false, err
 	}
-	released := false
-	defer func() {
-		if !released {
-			_ = c.Release()
-		}
-	}()
+	// Local keys typed after the release reach Codex after the Enter, in
+	// the fresh input box.
+	defer c.Release()
 	time.Sleep(settle)
 	styled, err := s.term.Capture()
 	if err != nil {
@@ -458,31 +517,16 @@ func (s *session) inject(ctx context.Context, text string) (bool, error) {
 		return false, err
 	}
 	if err := c.Write(codex.PasteBytes(text)); err != nil {
+		// Not written: clear the mark so the message is tried again.
+		s.mu.Lock()
+		if len(s.queue.Queue) > 0 {
+			s.queue.Queue[0].Inflight = nil
+			_ = s.queue.save(s.dir)
+		}
+		s.mu.Unlock()
 		return false, err
 	}
-	// Local keys typed from now on reach Codex after the Enter, in the
-	// fresh input box.
-	_ = c.Release()
-	released = true
-
-	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
-	for time.Now().Before(deadline) {
-		s.mu.Lock()
-		codexID := s.meta.CodexSessionID
-		s.mu.Unlock()
-		if hist.submitted(text, codexID) {
-			return true, nil
-		}
-		select {
-		case <-ctx.Done():
-			// Stay inflight; the next daemon settles it from history.
-			return false, ctx.Err()
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
-	// The keys were delivered, but Codex did not record the message.
-	// Sending again could submit it twice, so drop it.
-	return true, fmt.Errorf("no submission of the injected message within %s", s.d.cfg.SubmitTimeout)
+	return true, nil
 }
 
 // interrupt presses Esc if a turn is running.
@@ -499,6 +543,15 @@ func (s *session) interrupt() (bool, error) {
 	}
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
+	// The turn may have ended while waiting for the lock; Esc in an idle
+	// input box does something else.
+	s.readRollout()
+	s.mu.Lock()
+	running = s.running
+	s.mu.Unlock()
+	if !running {
+		return false, nil
+	}
 	c, err := s.term.Control()
 	if err != nil {
 		return false, err
@@ -535,11 +588,20 @@ func (s *session) answer(questionID string, option int) error {
 	}
 	defer c.Release()
 	time.Sleep(settle)
+	// The local user may have answered in the meantime, and another
+	// question may be showing now: check both after taking the hold.
+	s.readRollout()
+	s.mu.Lock()
+	q, ok := s.questions[questionID]
+	s.mu.Unlock()
+	if !ok {
+		return fmt.Errorf("question %s was already answered: %w", questionID, errNotFound)
+	}
 	styled, err := s.term.Capture()
 	if err != nil {
 		return err
 	}
-	if !codex.AnalyzeScreen(styled).QuestionOpen {
+	if !codex.AnalyzeScreen(styled).QuestionOpen || !showsQuestion(styled, q) {
 		return errNotAnswering
 	}
 	return c.Write([]byte(strconv.Itoa(option)))
@@ -701,6 +763,23 @@ func (s *session) resolve(id string, allow bool, message string) error {
 	s.mu.Unlock()
 	a.decision <- decision{allow: allow, message: message}
 	return nil
+}
+
+// showsQuestion reports whether the screen shows one of q's questions. The
+// start of the text is enough and survives line wrapping.
+func showsQuestion(styled string, q *pb.QuestionAsked) bool {
+	screen := normalizeText(codex.StripANSI(styled))
+	for _, item := range q.Questions {
+		words := strings.Fields(item.Text)
+		prefix := []rune(strings.Join(words, " "))
+		if len(prefix) > 24 {
+			prefix = prefix[:24]
+		}
+		if len(prefix) > 0 && strings.Contains(screen, string(prefix)) {
+			return true
+		}
+	}
+	return false
 }
 
 func newID(n int) string {

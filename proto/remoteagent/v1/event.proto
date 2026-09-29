@@ -29,6 +29,7 @@ message Event {
     QuestionAsked question_asked = 20;
     QuestionAnswered question_answered = 21;
     SessionState session_state = 22;
+    InputState input_state = 23;
   }
 }
 
@@ -183,4 +184,22 @@ message SessionState {
   SessionStatus status = 1;
   // Popup title when blocked, exit reason when exited.
   string detail = 2;
+}
+
+enum InputStatus {
+  INPUT_STATUS_UNSPECIFIED = 0;
+  // Accepted and waiting for the input box.
+  INPUT_STATUS_QUEUED = 1;
+  // Codex recorded the message.
+  INPUT_STATUS_SUBMITTED = 2;
+  // The keys were delivered but Codex did not record the message in time.
+  // It is not sent again, to avoid submitting it twice.
+  INPUT_STATUS_UNCONFIRMED = 3;
+}
+
+// InputState tracks a message sent with Send. The text itself appears in
+// the UserMessage event once Codex records it.
+message InputState {
+  string request_id = 1;
+  InputStatus status = 2;
 }
