@@ -8,7 +8,7 @@
 |---|---|---|
 | **P0 本地打通**（已完成） | 只做 `remote-agent` 这一个二进制：在 tmux 里托管 Codex，注入输入、解析 rollout、处理审批 hook；用本地命令模拟手机 | 最难的一段跑通了 |
 | **P1 端到端打通**（已完成） | 定义协议，写 server 并部署到 VPS，接入加密，做一个最简单的网页：看消息、发消息、审批 | 手机上真的能用 |
-| **P2 可以日常使用** | 终端视图、切换模型和压缩上下文、按项目分组、推送、配对流程、网页部署到 Cloudflare Pages | 能替代现有的工作方式 |
+| **P2 可以日常使用** | 终端视图、切换模型和压缩上下文、按项目分组、推送、配对流程、网页部署到 Cloudflare Pages（已完成） | 能替代现有的工作方式 |
 | **P3 以后** | Claude Code 等其他 CLI、附件等 | |
 
 ## P0 本地打通
@@ -135,7 +135,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 **P1 遗留**
 
-- 手机实测：P1 只在本机 Chrome 上验证过；手机需要通过 HTTPS 打开网页（Web Crypto 只在安全上下文里可用），等 P2 部署到 Cloudflare Pages 后再测
+- 手机实测：P1 只在本机 Chrome 上验证过；网页已经部署到 `https://remote-agent.top`，可以在手机上测了
 - daemon 建会话时用 `tmux new-session -e KEY=VALUE` 传入调用方的全部环境变量，会话存活期间 API key 等密钥出现在进程命令行上，本机任何进程用 `ps` 都能看到（P0 起就是这样，2026-09-29 发现）；要改成不经过命令行传递，比如写进仅自己可读的文件，由 pty-host 读取
 - 网页部署到 `app.<域名>` 后，AdGuard 是否把它和 server 当成同站、不再拦截 WebSocket（原因见 [browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）
 

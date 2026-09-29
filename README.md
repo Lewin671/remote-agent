@@ -39,10 +39,11 @@ remote-agent events <id> -f    # 持续查看事件
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
 remote-agent account init --server https://ra.example.com   # 建账户，输入 setup token
 remote-agent account secret              # 输出账户密钥，粘贴到网页或另一台电脑的 account join
-cd web && pnpm install && pnpm build && pnpm preview        # 在 http://localhost:4173 打开网页
+cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cloudflare Pages（先 npx wrangler login）
 ```
 
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](docs/architecture.md) 第 1 节
+- 本地调试网页用 `pnpm build && pnpm preview`，在 http://localhost:4173 打开
 - 账户密钥能解开所有会话，只粘贴到自己的设备上
 - daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
 - 网页能登录但一直「未连接」时，多半是浏览器的拦截扩展挡住了 WebSocket，见 [docs/browser-notes.md](docs/browser-notes.md)
