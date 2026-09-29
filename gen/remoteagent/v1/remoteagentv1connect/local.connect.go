@@ -95,7 +95,7 @@ type LocalServiceClient interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	Interrupt(context.Context, *connect.Request[v1.InterruptRequest]) (*connect.Response[v1.InterruptResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
-	// ResumeSession starts Codex again for an exited session, continuing its
+	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
 	// CancelInput removes a queued message that has not been written yet.
@@ -106,7 +106,8 @@ type LocalServiceClient interface {
 	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
 	// Compact runs /compact while the session is idle.
 	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
-	// AnswerPlan answers Codex's "Implement this plan?" prompt.
+	// AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
+	// "Implement this plan?", Claude Code's "Would you like to proceed?".
 	AnswerPlan(context.Context, *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error)
 	// ListDirectories lists the folders in a directory, for choosing where
 	// to start a session.
@@ -116,7 +117,7 @@ type LocalServiceClient interface {
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest]) (*connect.ServerStreamForClient[v1.WatchEventsResponse], error)
-	// Hook is called by `remote-agent hook codex`. For PermissionRequest it
+	// Hook is called by `remote-agent hook codex|claude`. For PermissionRequest it
 	// blocks until the request is decided.
 	Hook(context.Context, *connect.Request[v1.HookRequest]) (*connect.Response[v1.HookResponse], error)
 }
@@ -387,7 +388,7 @@ type LocalServiceHandler interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	Interrupt(context.Context, *connect.Request[v1.InterruptRequest]) (*connect.Response[v1.InterruptResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
-	// ResumeSession starts Codex again for an exited session, continuing its
+	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
 	// CancelInput removes a queued message that has not been written yet.
@@ -398,7 +399,8 @@ type LocalServiceHandler interface {
 	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
 	// Compact runs /compact while the session is idle.
 	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
-	// AnswerPlan answers Codex's "Implement this plan?" prompt.
+	// AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
+	// "Implement this plan?", Claude Code's "Would you like to proceed?".
 	AnswerPlan(context.Context, *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error)
 	// ListDirectories lists the folders in a directory, for choosing where
 	// to start a session.
@@ -408,7 +410,7 @@ type LocalServiceHandler interface {
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest], *connect.ServerStream[v1.WatchEventsResponse]) error
-	// Hook is called by `remote-agent hook codex`. For PermissionRequest it
+	// Hook is called by `remote-agent hook codex|claude`. For PermissionRequest it
 	// blocks until the request is decided.
 	Hook(context.Context, *connect.Request[v1.HookRequest]) (*connect.Response[v1.HookResponse], error)
 }

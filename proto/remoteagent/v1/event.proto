@@ -134,14 +134,16 @@ message RateLimit {
   int64 resets_at = 3;
 }
 
-// PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
-// terminal whether to implement it.
+// PlanProposed is a plan the CLI wrote in Plan mode (Claude Code: its
+// ExitPlanMode call). The CLI then asks in the terminal whether to carry it
+// out.
 message PlanProposed {
   string text = 1;
 }
 
 // ApprovalMode is what a client can switch a session to. ASK, AUTO and
-// FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+// FULL_ACCESS are Codex's /permissions levels and PLAN its Plan mode; for
+// Claude Code they are manual, auto, bypass and plan.
 enum ApprovalMode {
   APPROVAL_MODE_UNSPECIFIED = 0;
   APPROVAL_MODE_ASK = 1;
@@ -160,8 +162,12 @@ message SettingsChanged {
   bool compacted = 4;
 }
 
-// TurnContext is the configuration Codex recorded at the start of a turn.
+// TurnContext is the configuration the CLI recorded at the start of a
+// turn. Codex sets the approval fields 3 to 6; Claude Code sets
+// permission_mode.
 message TurnContext {
+  // Codex's model slug, or Claude Code's full model ID (e.g.
+  // "claude-haiku-4-5-20251001").
   string model = 1;
   string effort = 2;
   string approval_policy = 3;
@@ -169,6 +175,9 @@ message TurnContext {
   string approvals_reviewer = 4;
   string sandbox = 5;
   string collaboration_mode = 6;
+  // Claude Code's permission mode: "default" (manual), "acceptEdits",
+  // "plan", "bypassPermissions" or "auto".
+  string permission_mode = 7;
 }
 
 message ApprovalRequested {
@@ -189,6 +198,10 @@ enum ApprovalDecision {
   APPROVAL_DECISION_TIMEOUT = 3;
   // The hook went away (Codex gave up on it) before a decision was made.
   APPROVAL_DECISION_CANCELED = 4;
+  // Answered in the terminal before any client did (Claude Code shows its
+  // own prompt while the hook waits); what was chosen shows in the tool
+  // call that follows.
+  APPROVAL_DECISION_TERMINAL = 5;
 }
 
 message ApprovalResolved {
@@ -203,14 +216,19 @@ message QuestionOption {
 }
 
 message Question {
+  // Codex's question ID; for Claude Code, which has none, the question
+  // text, which also keys its answer.
   string id = 1;
   string header = 2;
   string text = 3;
   repeated QuestionOption options = 4;
+  // Several options may be picked (Claude Code); answer with
+  // AnswerQuestionRequest.options.
+  bool multi_select = 5;
 }
 
 message QuestionAsked {
-  // Codex tool call ID; also used to answer the question.
+  // The CLI's tool call ID; also used to answer the question.
   string question_id = 1;
   repeated Question questions = 2;
   // request_user_input_async: the model does not wait for the answer.

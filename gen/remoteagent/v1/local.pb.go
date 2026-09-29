@@ -26,11 +26,13 @@ type PlanChoice int32
 
 const (
 	PlanChoice_PLAN_CHOICE_UNSPECIFIED PlanChoice = 0
-	// Switch to Default mode and start implementing.
+	// Switch to Default mode (Claude Code: manual, "Yes, manually approve
+	// edits") and start implementing.
 	PlanChoice_PLAN_CHOICE_IMPLEMENT PlanChoice = 1
-	// Start a fresh thread with the plan and implement it.
+	// Start a fresh thread with the plan and implement it. Codex only;
+	// Claude Code 2.1.284 has no such choice and the command fails.
 	PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT PlanChoice = 2
-	// Stay in Plan mode.
+	// Stay in Plan mode. Claude Code ends the turn (Esc).
 	PlanChoice_PLAN_CHOICE_KEEP_PLANNING PlanChoice = 3
 )
 
@@ -78,12 +80,14 @@ func (PlanChoice) EnumDescriptor() ([]byte, []int) {
 }
 
 type Session struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Cwd              string                 `protobuf:"bytes,2,opt,name=cwd,proto3" json:"cwd,omitempty"`
-	TmuxSession      string                 `protobuf:"bytes,3,opt,name=tmux_session,json=tmuxSession,proto3" json:"tmux_session,omitempty"`
-	Status           SessionStatus          `protobuf:"varint,4,opt,name=status,proto3,enum=remoteagent.v1.SessionStatus" json:"status,omitempty"`
-	StatusDetail     string                 `protobuf:"bytes,5,opt,name=status_detail,json=statusDetail,proto3" json:"status_detail,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Cwd          string                 `protobuf:"bytes,2,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	TmuxSession  string                 `protobuf:"bytes,3,opt,name=tmux_session,json=tmuxSession,proto3" json:"tmux_session,omitempty"`
+	Status       SessionStatus          `protobuf:"varint,4,opt,name=status,proto3,enum=remoteagent.v1.SessionStatus" json:"status,omitempty"`
+	StatusDetail string                 `protobuf:"bytes,5,opt,name=status_detail,json=statusDetail,proto3" json:"status_detail,omitempty"`
+	// The CLI's own session ID and transcript (Codex's rollout); the names
+	// date from when only Codex was supported.
 	CodexSessionId   string                 `protobuf:"bytes,6,opt,name=codex_session_id,json=codexSessionId,proto3" json:"codex_session_id,omitempty"`
 	RolloutPath      string                 `protobuf:"bytes,7,opt,name=rollout_path,json=rolloutPath,proto3" json:"rollout_path,omitempty"`
 	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
@@ -110,10 +114,19 @@ type Session struct {
 	// Why queued input waits: "draft" (the terminal holds unsent text),
 	// "popup", or "unrecognized" (the input box cannot be found, likely
 	// after a Codex update); empty when nothing waits or it is being sent.
-	InputWait     string `protobuf:"bytes,24,opt,name=input_wait,json=inputWait,proto3" json:"input_wait,omitempty"`
-	Agent         Agent  `protobuf:"varint,25,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	InputWait string `protobuf:"bytes,24,opt,name=input_wait,json=inputWait,proto3" json:"input_wait,omitempty"`
+	Agent     Agent  `protobuf:"varint,25,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
+	// The approval mode the session is in, for either CLI; UNSPECIFIED when
+	// it is in none of the four, e.g. Claude Code's accept edits (see
+	// permission_mode).
+	Mode ApprovalMode `protobuf:"varint,26,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
+	// Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+	PermissionMode string `protobuf:"bytes,27,opt,name=permission_mode,json=permissionMode,proto3" json:"permission_mode,omitempty"`
+	// FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+	// sessions started with it allowed. Always false for Codex.
+	FullAccessUnavailable bool `protobuf:"varint,28,opt,name=full_access_unavailable,json=fullAccessUnavailable,proto3" json:"full_access_unavailable,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -319,6 +332,27 @@ func (x *Session) GetAgent() Agent {
 		return x.Agent
 	}
 	return Agent_AGENT_UNSPECIFIED
+}
+
+func (x *Session) GetMode() ApprovalMode {
+	if x != nil {
+		return x.Mode
+	}
+	return ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+}
+
+func (x *Session) GetPermissionMode() string {
+	if x != nil {
+		return x.PermissionMode
+	}
+	return ""
+}
+
+func (x *Session) GetFullAccessUnavailable() bool {
+	if x != nil {
+		return x.FullAccessUnavailable
+	}
+	return false
 }
 
 type CreateSessionRequest struct {
@@ -1126,6 +1160,9 @@ type AnswerQuestionRequest struct {
 	// several. When set, the option is only entered while the terminal shows
 	// that question.
 	QuestionIndex *int32 `protobuf:"varint,4,opt,name=question_index,json=questionIndex,proto3,oneof" json:"question_index,omitempty"`
+	// 1-based option numbers for a multi_select question (Claude Code); when
+	// set, option is ignored.
+	Options       []int32 `protobuf:"varint,5,rep,packed,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1186,6 +1223,13 @@ func (x *AnswerQuestionRequest) GetQuestionIndex() int32 {
 		return *x.QuestionIndex
 	}
 	return 0
+}
+
+func (x *AnswerQuestionRequest) GetOptions() []int32 {
+	if x != nil {
+		return x.Options
+	}
+	return nil
 }
 
 type AnswerQuestionResponse struct {
@@ -1334,7 +1378,7 @@ type HookRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// remote-agent session ID from the RA_SESSION environment variable.
 	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// Raw JSON payload Codex wrote to the hook's stdin.
+	// Raw JSON payload the CLI wrote to the hook's stdin.
 	Payload       []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1432,9 +1476,10 @@ func (x *HookResponse) GetOutput() []byte {
 type SetModelRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// Model slug, e.g. "gpt-6-sol".
+	// Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
 	Model string `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
-	// "low", "medium", "high", "xhigh", "max" or "ultra".
+	// "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+	// for Claude Code models without effort levels, such as haiku.
 	Effort        string `protobuf:"bytes,3,opt,name=effort,proto3" json:"effort,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2473,7 +2518,7 @@ var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\x82\a\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\x95\b\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -2502,7 +2547,10 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\tplan_open\x18\x17 \x01(\bR\bplanOpen\x12\x1d\n" +
 	"\n" +
 	"input_wait\x18\x18 \x01(\tR\tinputWait\x12+\n" +
-	"\x05agent\x18\x19 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\"\xda\x02\n" +
+	"\x05agent\x18\x19 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x120\n" +
+	"\x04mode\x18\x1a \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12'\n" +
+	"\x0fpermission_mode\x18\x1b \x01(\tR\x0epermissionMode\x126\n" +
+	"\x17full_access_unavailable\x18\x1c \x01(\bR\x15fullAccessUnavailable\"\xda\x02\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +
@@ -2556,14 +2604,15 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"approvalId\x12\x14\n" +
 	"\x05allow\x18\x03 \x01(\bR\x05allow\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\"\x19\n" +
-	"\x17ResolveApprovalResponse\"\xae\x01\n" +
+	"\x17ResolveApprovalResponse\"\xc8\x01\n" +
 	"\x15AnswerQuestionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
 	"\vquestion_id\x18\x02 \x01(\tR\n" +
 	"questionId\x12\x16\n" +
 	"\x06option\x18\x03 \x01(\x05R\x06option\x12*\n" +
-	"\x0equestion_index\x18\x04 \x01(\x05H\x00R\rquestionIndex\x88\x01\x01B\x11\n" +
+	"\x0equestion_index\x18\x04 \x01(\x05H\x00R\rquestionIndex\x88\x01\x01\x12\x18\n" +
+	"\aoptions\x18\x05 \x03(\x05R\aoptionsB\x11\n" +
 	"\x0f_question_index\"\x18\n" +
 	"\x16AnswerQuestionResponse\"h\n" +
 	"\x12WatchEventsRequest\x12\x1d\n" +
@@ -2743,69 +2792,70 @@ var file_remoteagent_v1_local_proto_depIdxs = []int32{
 	46, // 0: remoteagent.v1.Session.status:type_name -> remoteagent.v1.SessionStatus
 	47, // 1: remoteagent.v1.Session.created_at:type_name -> google.protobuf.Timestamp
 	48, // 2: remoteagent.v1.Session.agent:type_name -> remoteagent.v1.Agent
-	45, // 3: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
-	49, // 4: remoteagent.v1.CreateSessionRequest.mode:type_name -> remoteagent.v1.ApprovalMode
-	48, // 5: remoteagent.v1.CreateSessionRequest.agent:type_name -> remoteagent.v1.Agent
-	1,  // 6: remoteagent.v1.CreateSessionResponse.session:type_name -> remoteagent.v1.Session
-	1,  // 7: remoteagent.v1.ListSessionsResponse.sessions:type_name -> remoteagent.v1.Session
-	1,  // 8: remoteagent.v1.GetSessionResponse.session:type_name -> remoteagent.v1.Session
-	50, // 9: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
-	48, // 10: remoteagent.v1.ListModelsRequest.agent:type_name -> remoteagent.v1.Agent
-	27, // 11: remoteagent.v1.ListModelsResponse.models:type_name -> remoteagent.v1.ModelInfo
-	49, // 12: remoteagent.v1.SetApprovalModeRequest.mode:type_name -> remoteagent.v1.ApprovalMode
-	0,  // 13: remoteagent.v1.AnswerPlanRequest.choice:type_name -> remoteagent.v1.PlanChoice
-	49, // 14: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
-	38, // 15: remoteagent.v1.DaemonSettings.claude:type_name -> remoteagent.v1.AgentDefaults
-	49, // 16: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
-	37, // 17: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	37, // 18: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
-	37, // 19: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	1,  // 20: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
-	2,  // 21: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
-	4,  // 22: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
-	6,  // 23: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
-	8,  // 24: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
-	10, // 25: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
-	12, // 26: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
-	43, // 27: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
-	14, // 28: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
-	24, // 29: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
-	26, // 30: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
-	29, // 31: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
-	31, // 32: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
-	33, // 33: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
-	35, // 34: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
-	39, // 35: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
-	41, // 36: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
-	16, // 37: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
-	18, // 38: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
-	20, // 39: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
-	22, // 40: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
-	3,  // 41: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
-	5,  // 42: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
-	7,  // 43: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
-	9,  // 44: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
-	11, // 45: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
-	13, // 46: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
-	44, // 47: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
-	15, // 48: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
-	25, // 49: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
-	28, // 50: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
-	30, // 51: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
-	32, // 52: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
-	34, // 53: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
-	36, // 54: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
-	40, // 55: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
-	42, // 56: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
-	17, // 57: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
-	19, // 58: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
-	21, // 59: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
-	23, // 60: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
-	41, // [41:61] is the sub-list for method output_type
-	21, // [21:41] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	49, // 3: remoteagent.v1.Session.mode:type_name -> remoteagent.v1.ApprovalMode
+	45, // 4: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
+	49, // 5: remoteagent.v1.CreateSessionRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	48, // 6: remoteagent.v1.CreateSessionRequest.agent:type_name -> remoteagent.v1.Agent
+	1,  // 7: remoteagent.v1.CreateSessionResponse.session:type_name -> remoteagent.v1.Session
+	1,  // 8: remoteagent.v1.ListSessionsResponse.sessions:type_name -> remoteagent.v1.Session
+	1,  // 9: remoteagent.v1.GetSessionResponse.session:type_name -> remoteagent.v1.Session
+	50, // 10: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
+	48, // 11: remoteagent.v1.ListModelsRequest.agent:type_name -> remoteagent.v1.Agent
+	27, // 12: remoteagent.v1.ListModelsResponse.models:type_name -> remoteagent.v1.ModelInfo
+	49, // 13: remoteagent.v1.SetApprovalModeRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	0,  // 14: remoteagent.v1.AnswerPlanRequest.choice:type_name -> remoteagent.v1.PlanChoice
+	49, // 15: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
+	38, // 16: remoteagent.v1.DaemonSettings.claude:type_name -> remoteagent.v1.AgentDefaults
+	49, // 17: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
+	37, // 18: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	37, // 19: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
+	37, // 20: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	1,  // 21: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
+	2,  // 22: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
+	4,  // 23: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
+	6,  // 24: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
+	8,  // 25: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
+	10, // 26: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
+	12, // 27: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
+	43, // 28: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
+	14, // 29: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
+	24, // 30: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
+	26, // 31: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
+	29, // 32: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
+	31, // 33: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
+	33, // 34: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
+	35, // 35: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
+	39, // 36: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
+	41, // 37: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
+	16, // 38: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
+	18, // 39: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
+	20, // 40: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
+	22, // 41: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
+	3,  // 42: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
+	5,  // 43: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
+	7,  // 44: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
+	9,  // 45: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
+	11, // 46: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
+	13, // 47: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
+	44, // 48: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
+	15, // 49: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
+	25, // 50: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
+	28, // 51: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
+	30, // 52: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
+	32, // 53: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
+	34, // 54: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
+	36, // 55: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
+	40, // 56: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
+	42, // 57: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
+	17, // 58: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
+	19, // 59: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
+	21, // 60: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
+	23, // 61: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
+	42, // [42:62] is the sub-list for method output_type
+	22, // [22:42] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_local_proto_init() }

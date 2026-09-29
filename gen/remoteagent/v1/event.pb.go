@@ -181,7 +181,8 @@ func (TurnOutcome) EnumDescriptor() ([]byte, []int) {
 }
 
 // ApprovalMode is what a client can switch a session to. ASK, AUTO and
-// FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+// FULL_ACCESS are Codex's /permissions levels and PLAN its Plan mode; for
+// Claude Code they are manual, auto, bypass and plan.
 type ApprovalMode int32
 
 const (
@@ -247,6 +248,10 @@ const (
 	ApprovalDecision_APPROVAL_DECISION_TIMEOUT ApprovalDecision = 3
 	// The hook went away (Codex gave up on it) before a decision was made.
 	ApprovalDecision_APPROVAL_DECISION_CANCELED ApprovalDecision = 4
+	// Answered in the terminal before any client did (Claude Code shows its
+	// own prompt while the hook waits); what was chosen shows in the tool
+	// call that follows.
+	ApprovalDecision_APPROVAL_DECISION_TERMINAL ApprovalDecision = 5
 )
 
 // Enum value maps for ApprovalDecision.
@@ -257,6 +262,7 @@ var (
 		2: "APPROVAL_DECISION_DENY",
 		3: "APPROVAL_DECISION_TIMEOUT",
 		4: "APPROVAL_DECISION_CANCELED",
+		5: "APPROVAL_DECISION_TERMINAL",
 	}
 	ApprovalDecision_value = map[string]int32{
 		"APPROVAL_DECISION_UNSPECIFIED": 0,
@@ -264,6 +270,7 @@ var (
 		"APPROVAL_DECISION_DENY":        2,
 		"APPROVAL_DECISION_TIMEOUT":     3,
 		"APPROVAL_DECISION_CANCELED":    4,
+		"APPROVAL_DECISION_TERMINAL":    5,
 	}
 )
 
@@ -1376,8 +1383,9 @@ func (x *RateLimit) GetResetsAt() int64 {
 	return 0
 }
 
-// PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
-// terminal whether to implement it.
+// PlanProposed is a plan the CLI wrote in Plan mode (Claude Code: its
+// ExitPlanMode call). The CLI then asks in the terminal whether to carry it
+// out.
 type PlanProposed struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
@@ -1493,18 +1501,25 @@ func (x *SettingsChanged) GetCompacted() bool {
 	return false
 }
 
-// TurnContext is the configuration Codex recorded at the start of a turn.
+// TurnContext is the configuration the CLI recorded at the start of a
+// turn. Codex sets the approval fields 3 to 6; Claude Code sets
+// permission_mode.
 type TurnContext struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Model          string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	Effort         string                 `protobuf:"bytes,2,opt,name=effort,proto3" json:"effort,omitempty"`
-	ApprovalPolicy string                 `protobuf:"bytes,3,opt,name=approval_policy,json=approvalPolicy,proto3" json:"approval_policy,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Codex's model slug, or Claude Code's full model ID (e.g.
+	// "claude-haiku-4-5-20251001").
+	Model          string `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Effort         string `protobuf:"bytes,2,opt,name=effort,proto3" json:"effort,omitempty"`
+	ApprovalPolicy string `protobuf:"bytes,3,opt,name=approval_policy,json=approvalPolicy,proto3" json:"approval_policy,omitempty"`
 	// "user" or "auto_review".
 	ApprovalsReviewer string `protobuf:"bytes,4,opt,name=approvals_reviewer,json=approvalsReviewer,proto3" json:"approvals_reviewer,omitempty"`
 	Sandbox           string `protobuf:"bytes,5,opt,name=sandbox,proto3" json:"sandbox,omitempty"`
 	CollaborationMode string `protobuf:"bytes,6,opt,name=collaboration_mode,json=collaborationMode,proto3" json:"collaboration_mode,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Claude Code's permission mode: "default" (manual), "acceptEdits",
+	// "plan", "bypassPermissions" or "auto".
+	PermissionMode string `protobuf:"bytes,7,opt,name=permission_mode,json=permissionMode,proto3" json:"permission_mode,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TurnContext) Reset() {
@@ -1575,6 +1590,13 @@ func (x *TurnContext) GetSandbox() string {
 func (x *TurnContext) GetCollaborationMode() string {
 	if x != nil {
 		return x.CollaborationMode
+	}
+	return ""
+}
+
+func (x *TurnContext) GetPermissionMode() string {
+	if x != nil {
+		return x.PermissionMode
 	}
 	return ""
 }
@@ -1777,11 +1799,16 @@ func (x *QuestionOption) GetDescription() string {
 }
 
 type Question struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Header        string                 `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	Options       []*QuestionOption      `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Codex's question ID; for Claude Code, which has none, the question
+	// text, which also keys its answer.
+	Id      string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Header  string            `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
+	Text    string            `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	Options []*QuestionOption `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`
+	// Several options may be picked (Claude Code); answer with
+	// AnswerQuestionRequest.options.
+	MultiSelect   bool `protobuf:"varint,5,opt,name=multi_select,json=multiSelect,proto3" json:"multi_select,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1844,9 +1871,16 @@ func (x *Question) GetOptions() []*QuestionOption {
 	return nil
 }
 
+func (x *Question) GetMultiSelect() bool {
+	if x != nil {
+		return x.MultiSelect
+	}
+	return false
+}
+
 type QuestionAsked struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Codex tool call ID; also used to answer the question.
+	// The CLI's tool call ID; also used to answer the question.
 	QuestionId string      `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
 	Questions  []*Question `protobuf:"bytes,2,rep,name=questions,proto3" json:"questions,omitempty"`
 	// request_user_input_async: the model does not wait for the answer.
@@ -2207,14 +2241,15 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +
 	"\x04mode\x18\x03 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12\x1c\n" +
-	"\tcompacted\x18\x04 \x01(\bR\tcompacted\"\xdc\x01\n" +
+	"\tcompacted\x18\x04 \x01(\bR\tcompacted\"\x85\x02\n" +
 	"\vTurnContext\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x12'\n" +
 	"\x0fapproval_policy\x18\x03 \x01(\tR\x0eapprovalPolicy\x12-\n" +
 	"\x12approvals_reviewer\x18\x04 \x01(\tR\x11approvalsReviewer\x12\x18\n" +
 	"\asandbox\x18\x05 \x01(\tR\asandbox\x12-\n" +
-	"\x12collaboration_mode\x18\x06 \x01(\tR\x11collaborationMode\"\xed\x01\n" +
+	"\x12collaboration_mode\x18\x06 \x01(\tR\x11collaborationMode\x12'\n" +
+	"\x0fpermission_mode\x18\a \x01(\tR\x0epermissionMode\"\xed\x01\n" +
 	"\x11ApprovalRequested\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +
@@ -2230,12 +2265,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"H\n" +
 	"\x0eQuestionOption\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\"\x80\x01\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xa3\x01\n" +
 	"\bQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06header\x18\x02 \x01(\tR\x06header\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x128\n" +
-	"\aoptions\x18\x04 \x03(\v2\x1e.remoteagent.v1.QuestionOptionR\aoptions\"~\n" +
+	"\aoptions\x18\x04 \x03(\v2\x1e.remoteagent.v1.QuestionOptionR\aoptions\x12!\n" +
+	"\fmulti_select\x18\x05 \x01(\bR\vmultiSelect\"~\n" +
 	"\rQuestionAsked\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x126\n" +
@@ -2277,13 +2313,14 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x11APPROVAL_MODE_ASK\x10\x01\x12\x16\n" +
 	"\x12APPROVAL_MODE_AUTO\x10\x02\x12\x1d\n" +
 	"\x19APPROVAL_MODE_FULL_ACCESS\x10\x03\x12\x16\n" +
-	"\x12APPROVAL_MODE_PLAN\x10\x04*\xad\x01\n" +
+	"\x12APPROVAL_MODE_PLAN\x10\x04*\xcd\x01\n" +
 	"\x10ApprovalDecision\x12!\n" +
 	"\x1dAPPROVAL_DECISION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17APPROVAL_DECISION_ALLOW\x10\x01\x12\x1a\n" +
 	"\x16APPROVAL_DECISION_DENY\x10\x02\x12\x1d\n" +
 	"\x19APPROVAL_DECISION_TIMEOUT\x10\x03\x12\x1e\n" +
-	"\x1aAPPROVAL_DECISION_CANCELED\x10\x04*\xb8\x01\n" +
+	"\x1aAPPROVAL_DECISION_CANCELED\x10\x04\x12\x1e\n" +
+	"\x1aAPPROVAL_DECISION_TERMINAL\x10\x05*\xb8\x01\n" +
 	"\rSessionStatus\x12\x1e\n" +
 	"\x1aSESSION_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SESSION_STATUS_STARTING\x10\x01\x12\x17\n" +

@@ -15,7 +15,7 @@ service LocalService {
   rpc Send(SendRequest) returns (SendResponse);
   rpc Interrupt(InterruptRequest) returns (InterruptResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
-  // ResumeSession starts Codex again for an exited session, continuing its
+  // ResumeSession starts the CLI again for an exited session, continuing its
   // conversation.
   rpc ResumeSession(ResumeSessionRequest) returns (ResumeSessionResponse);
   // CancelInput removes a queued message that has not been written yet.
@@ -26,7 +26,8 @@ service LocalService {
   rpc SetApprovalMode(SetApprovalModeRequest) returns (SetApprovalModeResponse);
   // Compact runs /compact while the session is idle.
   rpc Compact(CompactRequest) returns (CompactResponse);
-  // AnswerPlan answers Codex's "Implement this plan?" prompt.
+  // AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
+  // "Implement this plan?", Claude Code's "Would you like to proceed?".
   rpc AnswerPlan(AnswerPlanRequest) returns (AnswerPlanResponse);
   // ListDirectories lists the folders in a directory, for choosing where
   // to start a session.
@@ -36,7 +37,7 @@ service LocalService {
   rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
-  // Hook is called by `remote-agent hook codex`. For PermissionRequest it
+  // Hook is called by `remote-agent hook codex|claude`. For PermissionRequest it
   // blocks until the request is decided.
   rpc Hook(HookRequest) returns (HookResponse);
 }
@@ -47,6 +48,8 @@ message Session {
   string tmux_session = 3;
   SessionStatus status = 4;
   string status_detail = 5;
+  // The CLI's own session ID and transcript (Codex's rollout); the names
+  // date from when only Codex was supported.
   string codex_session_id = 6;
   string rollout_path = 7;
   google.protobuf.Timestamp created_at = 8;
@@ -75,6 +78,15 @@ message Session {
   // after a Codex update); empty when nothing waits or it is being sent.
   string input_wait = 24;
   Agent agent = 25;
+  // The approval mode the session is in, for either CLI; UNSPECIFIED when
+  // it is in none of the four, e.g. Claude Code's accept edits (see
+  // permission_mode).
+  ApprovalMode mode = 26;
+  // Claude Code's permission mode as the CLI names it, e.g. "acceptEdits".
+  string permission_mode = 27;
+  // FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
+  // sessions started with it allowed. Always false for Codex.
+  bool full_access_unavailable = 28;
 }
 
 message CreateSessionRequest {
@@ -168,6 +180,9 @@ message AnswerQuestionRequest {
   // several. When set, the option is only entered while the terminal shows
   // that question.
   optional int32 question_index = 4;
+  // 1-based option numbers for a multi_select question (Claude Code); when
+  // set, option is ignored.
+  repeated int32 options = 5;
 }
 
 message AnswerQuestionResponse {}
@@ -187,7 +202,7 @@ message WatchEventsResponse {
 message HookRequest {
   // remote-agent session ID from the RA_SESSION environment variable.
   string session_id = 1;
-  // Raw JSON payload Codex wrote to the hook's stdin.
+  // Raw JSON payload the CLI wrote to the hook's stdin.
   bytes payload = 2;
 }
 
@@ -198,9 +213,10 @@ message HookResponse {
 
 message SetModelRequest {
   string session_id = 1;
-  // Model slug, e.g. "gpt-6-sol".
+  // Model slug from ListModels, e.g. "gpt-6-sol" or Claude Code's "sonnet".
   string model = 2;
-  // "low", "medium", "high", "xhigh", "max" or "ultra".
+  // "low", "medium", "high", "xhigh", "max" or "ultra" (Codex only). Empty
+  // for Claude Code models without effort levels, such as haiku.
   string effort = 3;
 }
 
@@ -240,11 +256,13 @@ message CompactResponse {}
 
 enum PlanChoice {
   PLAN_CHOICE_UNSPECIFIED = 0;
-  // Switch to Default mode and start implementing.
+  // Switch to Default mode (Claude Code: manual, "Yes, manually approve
+  // edits") and start implementing.
   PLAN_CHOICE_IMPLEMENT = 1;
-  // Start a fresh thread with the plan and implement it.
+  // Start a fresh thread with the plan and implement it. Codex only;
+  // Claude Code 2.1.284 has no such choice and the command fails.
   PLAN_CHOICE_CLEAR_AND_IMPLEMENT = 2;
-  // Stay in Plan mode.
+  // Stay in Plan mode. Claude Code ends the turn (Esc).
   PLAN_CHOICE_KEEP_PLANNING = 3;
 }
 
