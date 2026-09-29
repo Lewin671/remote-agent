@@ -133,7 +133,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 - **项目**：按工作目录的绝对路径分组，项目名是最后一段
 - **推送**：等我处理时、一轮结束时两类，通知只有通用文案；网页可以装成 PWA
 - **设备**：扫码或输码配对，核对四个 emoji；设置页有机器详情（Codex 额度、新会话默认值、审批超时、项目）、移除设备
-- **网页**：界面按 [client-design.html](client-design.html)；亮色、暗色、跟随系统；部署在 Cloudflare Pages（`remote-agent.top`）
+- **网页**：界面按 [design/client-v0.html](design/client-v0.html)；亮色、暗色、跟随系统；部署在 Cloudflare Pages（`remote-agent.top`）
 - **修复**：会话的环境变量不再出现在 tmux 命令行上；在真彩色终端里 attach 过的会话也能识别空输入框
 
 ### 验收标准

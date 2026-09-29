@@ -1,4 +1,4 @@
-/* Follows docs/client-design.html: same palette, type, spacing and parts. */
+/* Follows docs/design/client-v0.html: same palette, type, spacing and parts. */
 :root {
   color-scheme: light;
   --bg: #fff; --fg: #16181c; --fg2: #3a3f46; --muted: #7a818a; --faint: #a9afb6; --line: #ebedf0; --card: #fff; --soft: #f7f7f8;
