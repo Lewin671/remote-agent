@@ -11,7 +11,7 @@
 
 ## 开发流程
 
-前期直接在 `main` 上开发，不开分支、不提 PR：
+前期所有改动直接进 `main`，不提 PR：
 
 - 每次提交只做一件事，出问题时用 `git revert` 撤回
 - 推送前 `go test ./...` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
@@ -21,9 +21,24 @@ server 部署并开始日常使用后，大改动改回用分支。
 
 ### 多 agent 并行
 
-可能有多个 agent 同时在这个工作区里开发：
+可能有多个 agent 同时开发，每个 agent 在自己的 `git worktree` 里干活，不在主工作区里改代码。这样暂存区、`go test` 和 rebase 都互不干扰。
 
-- 自己的改动在本地验收通过、且和别人的改动不冲突，就可以直接提交并推送，不用等用户确认
-- 只提交自己改的文件，`git add` 逐个写明路径，不用 `git add -A`、`git add .`、`git commit -a`
-- 工作区里别人未提交的改动不要碰，也不要 stash、checkout、reset 掉
-- 冲突指：要改的文件别人也有未提交的改动，或者 rebase 时出现冲突。遇到这种情况先停下来告诉用户，不要自行合并
+```sh
+# 开工：从最新的 main 建 worktree，放在仓库外的同级目录
+git fetch
+git worktree add -b wt/<任务名> ../remote-agent.worktrees/<任务名> origin/main
+
+# 做完：在 worktree 里提交后，rebase 到最新的 main，测试通过再推
+git fetch && git rebase origin/main
+go test ./...
+git push origin HEAD:main
+
+# 收尾：确认已推送后清理
+git worktree remove ../remote-agent.worktrees/<任务名>
+git branch -D wt/<任务名>
+```
+
+- 本地验收和测试都通过，就可以直接提交并推送，不用等用户确认
+- `wt/<任务名>` 只是临时分支，不推到远端，推送目标始终是 `main`
+- rebase 出现冲突时先停下来告诉用户，不要自行合并；rebase 后测试不过（别人的改动和你的不兼容）也一样
+- 主工作区留给用户，agent 不在里面改动或提交；它的 `main` 不会自动跟上远端，由用户自己 `git pull`
