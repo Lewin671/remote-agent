@@ -372,6 +372,19 @@ describe("events", () => {
       Agent.CLAUDE,
     );
     expect([...claude.typedLocally]).toEqual([6n]);
+    // A turn started at the computer takes a message sent from here: the
+    // enqueue record confirms it before the message itself is recorded.
+    const queued = derive(
+      events(
+        { case: "turnStarted", value: {} },
+        { case: "userMessage", value: { text: "typed at the computer" } },
+        { case: "inputState", value: { requestId: "q", status: InputStatus.QUEUED } },
+        { case: "inputState", value: { requestId: "q", status: InputStatus.SUBMITTED } },
+        { case: "userMessage", value: { text: "sent from the phone" } },
+      ),
+      Agent.CLAUDE,
+    );
+    expect([...queued.typedLocally]).toEqual([2n]);
     // Codex marks it submitted first; a message typed just before stays
     // the computer's.
     const codex = derive(

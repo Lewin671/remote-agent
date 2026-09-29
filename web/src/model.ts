@@ -434,6 +434,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
   // A user message with no submitted state before it, which may still
   // come right after: Claude Code records the message first.
   let unclaimed: bigint | undefined;
+  const queuedAt = new Map<string, bigint>();
   // A plan was proposed since entering plan mode: leaving it is the plan's
   // answer, however given, not a mode switch made in the terminal.
   let planned = false;
@@ -467,11 +468,16 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
+        if (k.value.status === InputStatus.QUEUED && !queuedAt.has(k.value.requestId)) queuedAt.set(k.value.requestId, e.seq);
         if (k.value.status === InputStatus.SUBMITTED) {
-          // Codex marks a message submitted before recording it; Claude
-          // Code records the message first and the state follows, claiming
-          // the message just before it.
-          if (agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n) {
+          // Codex marks a message submitted before recording it. Claude
+          // Code usually records the message first and the state follows;
+          // but a message queued into a running turn is confirmed by its
+          // enqueue record, before the message. So the state claims only
+          // a message recorded after its request was queued: one recorded
+          // before that was typed at the computer.
+          const since = queuedAt.get(k.value.requestId);
+          if (agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n && (since === undefined || unclaimed > since)) {
             d.typedLocally.delete(unclaimed);
             unclaimed = undefined;
           } else submitted++;
