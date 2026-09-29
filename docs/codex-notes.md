@@ -69,13 +69,29 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
 - `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据（依据提示词推断，**被拒绝的情况尚未实测**）
 - 注意：`workspace-write` 沙箱下 `/tmp` 默认可写，写 `/tmp` 不会触发提权。测试提权要写 home 目录之类的位置
 
-## 4. 启动时的弹窗和环境
+## 4. 审批模式
+
+Codex 的「审批模式」其实是两个互相独立的维度：
+
+| 维度 | 取值 | 怎么切 | 从哪读 |
+|---|---|---|---|
+| 权限 | `/permissions` 菜单里的 3 档：`Ask for approval`、`Approve for me`、`Full Access` | 空闲时输入 `/permissions`，回车，方向键选，回车；屏幕出现 `Permission selection requested: <档位>` | rollout 的 `turn_context`：`approval_policy`、`sandbox_policy`、`approvals_reviewer`（`user` 或 `auto_review`）；`/status` 的 `Permissions` 一行 |
+| 协作模式 | `Default`、`Plan` | Shift+Tab 开关 | `turn_context.collaboration_mode.mode`；屏幕右下角出现 `Plan mode` |
+
+- `/permissions` 的选择**只对当前会话生效**：实测切换后 `config.toml` 没有变化
+- 三档和配置项的对应关系：`Ask for approval` 实测为 `on-request` + `workspace-write` + reviewer `user`；`Approve for me` 对应 `approvals_reviewer = "auto_review"`（本机默认值）；`Full Access` 未实测
+- 原生审批框的选项：`1. Yes, proceed (y)`、`2. Yes, and don't ask again for commands that start with <前缀> (p)`、`3. No, and tell Codex what to do differently (esc)`。hook 只能返回 allow 或 deny 加 message，做不到第 2 项
+- 在 `workspace-write` 下联网命令先在沙箱里失败，模型要再申请提权才会弹审批，不一定每次都会申请
+- `Approve for me` 和 hook 的配合见第 3 节：hook 不表态时才交给 `auto_review`
+- 待验证：`Full Access` 对应的配置项；运行中能否执行 `/permissions`
+
+## 5. 启动时的弹窗和环境
 
 - 启动时的弹窗依次可能有：`Update available`（选 `2. Skip`）、`Trust this folder?`（按数字只会移动光标，**还要再按回车**才生效）、`Hooks need review`。每一个都会吞掉紧接着发的按键
 - `-a untrusted` 在这个版本里已经删除，`-a` 只接受 `on-request`、`never`
 - Codex 要通过代理才能联网，而本机是靠 shell 函数 `ai_cli_with_clash_proxy` 设置的代理环境变量（`HTTP_PROXY` 等）。daemon 启动 Codex 时要带上这些变量；尤其是 daemon 由 launchd 启动时，读不到 shell 里的配置
 
-## 5. 踩过的坑
+## 6. 踩过的坑
 
 | 现象 | 后果 | 对策 |
 |---|---|---|
@@ -85,7 +101,7 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
 | 抓屏里混有历史对话、“Update available” 提示框、状态栏 | 全屏搜关键词会误判 | 只认屏幕底部的菜单标题和选项区域 |
 | 切换模型后，rollout 的 `turn_context` 要到下一轮才会记录新模型（推测，**未验证**） | 客户端显示滞后 | 先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对 |
 
-## 6. 做实测时的注意事项
+## 7. 做实测时的注意事项
 
 - 用独立的 tmux socket（`tmux -L <名字>`），不影响平时用的 tmux，测完 `kill-server`
 - 实测会改到真实的 `~/.codex/config.toml`，比如目录信任记录。测前记下文件的校验值，测后对比

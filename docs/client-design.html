@@ -188,8 +188,9 @@
   .ds .chat { overflow: hidden; border-right: 1px solid var(--line); padding: 8px 18px; }
 
   /* 模型与上下文 */
-  .chips { display: flex; gap: 6px; padding: 6px 12px 0; flex: none; align-items: center; }
+  .chips { display: flex; gap: 5px; padding: 6px 12px 0; flex: none; align-items: center; }
   .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; background: #f0f1f3; color: #3a3f46; border-radius: 14px; padding: 3px 10px; white-space: nowrap; }
+  .chips .chip { padding: 3px 7px; }
   .chip.warn { background: var(--orange-soft); color: var(--orange); }
   .ring { width: 14px; height: 14px; border-radius: 50%; flex: none; position: relative;
     background: conic-gradient(var(--c, var(--blue)) calc(var(--p) * 1%), #d9dce0 0); }
@@ -248,13 +249,52 @@
   .slider .knob { position: absolute; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transform: translateX(-11px); }
   .slabels { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); margin: 2px 0 0; }
   .slabels .on { color: var(--fg); font-weight: 600; }
+
+  /* 审批模式 */
+  .chip.m-ask { background: #f0f1f3; }
+  .chip.m-auto { background: var(--blue-soft); color: var(--blue); }
+  .chip.m-plan { background: #f3edfd; color: #7a4fd0; }
+  .chip.m-danger { background: #fdecec; color: var(--red); }
+  .mode .mi { display: flex; gap: 10px; align-items: flex-start; padding: 9px 2px; border-bottom: 1px solid var(--line); }
+  .mode .mi:last-child { border: none; }
+  .mode .mi .mt { flex: 1; min-width: 0; }
+  .mode .mi b { font-size: 14px; font-weight: 600; }
+  .mode .mi b small { font-weight: 400; color: var(--faint); font-size: 11px; margin-left: 6px; }
+  .mode .mi .md { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+  .mode .mi .ck { color: var(--blue); font-weight: 700; }
+  .mode .mi.danger b { color: var(--red); }
+  .mode .mi.dis { opacity: .4; }
+  .toggle { display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 12px; padding: 9px 12px; font-size: 14px; }
+  .toggle .md { font-size: 11.5px; color: var(--muted); }
+  .toggle .sw { flex: none; }
+  .sw.off { background: #d9dce0; }
+  .sw.off::after { right: auto; left: 2px; }
+  .sysline { text-align: center; font-size: 11.5px; color: var(--muted); margin: 10px 0; }
+  .sysline b { font-weight: 600; color: #3a3f46; }
+  .appr .vbtns { display: flex; flex-direction: column; gap: 6px; }
+  .appr .vbtns .btn { font-size: 13.5px; padding: 6px; }
+  .appr .why { font-size: 12.5px; color: #3a3f46; margin-top: 6px; }
+  .appr.plan { box-shadow: 0 0 0 1.5px #8a5fd6, 0 6px 18px rgba(138,95,214,.14); }
+  .appr.plan .h b { color: #7a4fd0; }
+  .appr .plan-body { background: var(--soft); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; margin: 9px 0; line-height: 1.6; }
+  .alert { position: absolute; left: 34px; right: 34px; top: 200px; background: var(--card); border-radius: 18px; padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .alert h5 { margin: 0 0 6px; font-size: 16px; color: var(--red); }
+  .alert p { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
+  .note { background: var(--card); border-radius: 14px; padding: 18px 22px; margin-top: 28px; font-size: 13.5px; max-width: 1080px; }
+  .note h4 { margin: 14px 0 6px; font-size: 14px; }
+  .note h4:first-child { margin-top: 0; }
+  .note table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  .note th, .note td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .note th { color: var(--muted); font-weight: 600; }
+  .note ul { margin: 4px 0; padding-left: 20px; }
+  .note li { margin: 3px 0; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <h1>remote-agent 客户端</h1>
-<div class="sub">PWA 设计稿 · v0.2 · 2026-09-29</div>
+<div class="sub">PWA 设计稿 · v0.3 · 2026-09-29</div>
 
 <!-- ============================= -->
 <h2>项目</h2>
@@ -325,6 +365,7 @@
           <div class="sr"><span class="ico" style="background:#5b8def">⌘</span>机器<span class="v"><span class="dot idle"></span>MacBook</span></div>
           <div class="sr"><span class="ico" style="background:#f0a35a">▤</span>目录<span class="v">~/Code/foo</span></div>
           <div class="sr"><span class="ico" style="background:#8a5fd6">✦</span>模型<span class="v">GPT-6-Astra · medium</span></div>
+          <div class="sr"><span class="ico" style="background:#22a05a">✓</span>审批<span class="v">替我审批</span></div>
         </div>
       </div>
     </div>
@@ -352,10 +393,10 @@
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="faint">12s</span></div>
       </div>
       <div class="queued">排队 <span>顺便补一个测试 ✕</span></div>
-      <div class="chips"><span class="chip">GPT-6-Astra ▾</span><span class="chip">medium</span><span class="chip"><span class="ring" style="--p:11"></span>11%</span></div>
+      <div class="chips"><span class="chip m-auto">替我审批</span><span class="chip">GPT-6-Astra ▾</span><span class="chip">medium</span><span class="chip"><span class="ring" style="--p:11"></span>11%</span></div>
       <div class="comp" style="padding-top:6px"><div class="in">消息</div><div class="stop">■</div></div>
     </div>
-    <div class="cap">运行中：底部显示模型、effort、上下文</div>
+    <div class="cap">运行中：底部显示审批模式、模型、effort、上下文</div>
   </div>
 
   <!-- 审批 -->
@@ -421,6 +462,152 @@
     </div>
     <div class="cap">卡在弹窗时提示去终端</div>
   </div>
+</div>
+
+<!-- ============================= -->
+<h2>审批模式</h2>
+<div class="screens">
+
+  <!-- Codex 模式 sheet -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet" style="padding-bottom:22px">
+        <div class="grab"></div>
+        <h4>审批模式 <span class="muted" style="font-size:12px;font-weight:400">· Codex</span></h4>
+        <div class="fl" style="margin-top:0">权限</div>
+        <div class="mode">
+          <div class="mi"><div class="mt"><b>每次询问<small>Ask for approval</small></b><div class="md">工作区内读写和执行不用问；联网、改工作区外的文件要审批</div></div></div>
+          <div class="mi"><div class="mt"><b>替我审批<small>Approve for me</small></b><div class="md">由 Codex 的自动审查代为判断；它拒绝的，Codex 会在对话里向你说明并请求批准</div></div><span class="ck">✓</span></div>
+          <div class="mi danger"><div class="mt"><b>完全访问<small>Full Access</small></b><div class="md">可以改工作区外的文件、联网，都不再审批</div></div></div>
+        </div>
+        <div class="fl">协作</div>
+        <div class="toggle"><div style="flex:1">计划模式<div class="md">只讨论和出计划，不改代码</div></div><span class="sw off"></span></div>
+        <div class="hint">只改当前会话。权限在空闲时通过 <code>/permissions</code> 切换，计划模式对应 Shift+Tab</div>
+      </div>
+    </div>
+    <div class="cap">Codex：权限和计划模式是两个独立开关</div>
+  </div>
+
+  <!-- Claude Code 模式 sheet -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet" style="padding-bottom:22px">
+        <div class="grab"></div>
+        <h4>审批模式 <span class="muted" style="font-size:12px;font-weight:400">· Claude Code</span></h4>
+        <div class="mode">
+          <div class="mi"><div class="mt"><b>手动<small>manual</small></b><div class="md">改文件、执行命令都要审批</div></div></div>
+          <div class="mi"><div class="mt"><b>自动改文件<small>accept edits</small></b><div class="md">改文件不用问，执行命令仍要审批</div></div></div>
+          <div class="mi"><div class="mt"><b>计划<small>plan</small></b><div class="md">只读和出计划，计划要你批准后才开始改</div></div></div>
+          <div class="mi"><div class="mt"><b>自动<small>auto</small></b><div class="md">由分类器代为判断，有风险的操作才来问你</div></div><span class="ck">✓</span></div>
+          <div class="mi danger"><div class="mt"><b>跳过审批<small>bypass</small></b><div class="md">所有操作都不审批，只在隔离环境里用</div></div></div>
+        </div>
+        <div class="hint">只改当前会话，对应 Shift+Tab 循环。启动时没允许 bypass 的会话，这一项置灰</div>
+      </div>
+    </div>
+    <div class="cap">Claude Code：一个维度，五种模式</div>
+  </div>
+
+  <!-- Claude 审批卡 + 模式变化 -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>整理迁移脚本</b><span><span class="dot wait"></span>MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="sysline">MacBook 终端把模式切到了 <b>手动</b></div>
+        <div class="me"><div>把 migrations 目录里的旧脚本归档一下</div></div>
+        <div class="appr">
+          <div class="h"><b>请求执行</b><span class="muted">9:48 后拒绝</span></div>
+          <pre>mkdir -p migrations/archive &amp;&amp; git mv migrations/2025_* migrations/archive/</pre>
+          <div class="vbtns">
+            <div class="btn pri">允许</div>
+            <div class="btn">总是允许 <code>git mv</code></div>
+            <div class="btn">允许，并切到自动模式</div>
+            <div class="btn no">拒绝…</div>
+          </div>
+        </div>
+      </div>
+      <div class="chips"><span class="chip m-ask">手动</span><span class="chip">Opus 5.5 ▾</span><span class="chip">medium</span></div>
+      <div class="comp" style="padding-top:6px"><div class="in">消息</div><div class="go">↑</div></div>
+    </div>
+    <div class="cap">选项跟着 CLI 走；终端里切模式也会记一笔</div>
+  </div>
+
+  <!-- 计划审批 -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>拆分订单服务</b><span><span class="dot wait"></span>iMac</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="me"><div>先出个方案，把订单服务里的库存逻辑拆出去</div></div>
+        <div class="tool"><span class="ok">✓</span><code>读取 14 个文件</code></div>
+        <div class="appr plan">
+          <div class="h"><b>计划待批准</b><span class="muted">展开全文 ›</span></div>
+          <div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减</div>
+          <div class="vbtns">
+            <div class="btn pri">批准，用自动模式执行</div>
+            <div class="btn">批准，逐个审批</div>
+            <div class="btn">继续规划…</div>
+          </div>
+        </div>
+      </div>
+      <div class="chips"><span class="chip m-plan">计划</span><span class="chip">Opus 5.5 ▾</span><span class="chip">high</span></div>
+      <div class="comp" style="padding-top:6px"><div class="in">消息</div><div class="go">↑</div></div>
+    </div>
+    <div class="cap">计划模式：批准时顺便选执行模式</div>
+  </div>
+
+  <!-- 危险模式确认 -->
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="alert">
+        <h5>切到完全访问？</h5>
+        <p>Codex 之后改工作区外的文件、联网都不会再问你，手机上也收不到审批。只对这个会话生效。</p>
+        <div class="btns"><div class="btn">取消</div><div class="btn" style="background:var(--red);color:#fff">切换</div></div>
+      </div>
+    </div>
+    <div class="cap">切到完全访问 / 跳过审批前二次确认，chip 变红</div>
+  </div>
+</div>
+
+<div class="note">
+  <h4>两个 CLI 的审批模式（实测：codex-cli 0.157.1、Claude Code 2.1.284，2026-09-29）</h4>
+  <table>
+    <tr><th></th><th>Codex</th><th>Claude Code</th></tr>
+    <tr><td>模式</td><td>权限 3 档：Ask for approval / Approve for me / Full Access；另有协作模式 Default / Plan，两者互相独立</td><td>一个维度 5 种：manual / accept edits / plan / auto / bypass（bypass 需要启动时允许）</td></tr>
+    <tr><td>切换方式</td><td>权限：<code>/permissions</code> 菜单，只改当前会话，不写 config.toml；计划：Shift+Tab 开关</td><td>Shift+Tab 循环；启动时 <code>--permission-mode</code></td></tr>
+    <tr><td>读当前模式</td><td>rollout <code>turn_context</code>：<code>approval_policy</code>、<code>sandbox_policy</code>、<code>approvals_reviewer</code>、<code>collaboration_mode.mode</code>；屏幕底部有 <code>Plan mode</code></td><td>transcript 的 <code>permission-mode</code> 记录（manual 记作 <code>default</code>）；状态栏有 <code>⏸ manual mode on</code> 等</td></tr>
+    <tr><td>原生审批框</td><td>允许 / 允许且同前缀的命令不再问 / 拒绝并告诉 Codex 怎么改</td><td>允许 / 总是允许（按目录或命令）/ 允许并切到 auto / 拒绝（Tab 可补充说明）</td></tr>
+    <tr><td>hook 能返回</td><td>allow / deny + message，没有「总是允许」</td><td>待实测：官方文档里 hook 可以带权限更新（加规则、改模式）</td></tr>
+  </table>
+
+  <h4>设计取舍</h4>
+  <ul>
+    <li><b>不强行统一</b>：两个 CLI 的模式语义不同，客户端显示各自的模式，只统一 chip 的颜色：灰 = 每次都问，蓝 = 代为判断 / 部分放行，紫 = 计划，红 = 不审批</li>
+    <li><b>审批卡片的选项由 adapter 声明</b>：hook 做不到的选项（如 Codex 的「总是允许」）不显示，需要时去终端操作</li>
+    <li><b>拒绝可以附一句话</b>：两边都支持把拒绝原因交给模型，对应卡片上的「拒绝…」</li>
+    <li><b>模式以 CLI 为准</b>：客户端只发「切换」指令，显示的是从 rollout / transcript / 屏幕读回来的结果；在电脑终端里切的，聊天里记一条</li>
+    <li><b>切到不审批的模式要二次确认</b>，新会话默认值沿用 CLI 自己的配置</li>
+    <li><b>Codex「替我审批」下手机不弹审批卡</b>：Codex 先调 hook、hook 不表态才交给 auto_review，所以这一档 hook 一律不表态；auto_review 拒绝后，Codex 在对话里说明风险并请求批准，你在手机上直接回复。只有「每次询问」才把审批转到手机（见 plan.md）</li>
+  </ul>
+
+  <h4>待实测 / 待确认</h4>
+  <ul>
+    <li>Claude Code 在 auto 模式下，PermissionRequest hook 是只收到分类器拦下的请求，还是全部请求</li>
+    <li>Claude Code 计划审批（ExitPlanMode）能不能走 hook，批准时能不能同时指定执行模式；Codex 计划模式结束时的交互</li>
+    <li>运行中能不能切：Codex 的 <code>/permissions</code>、Claude Code 的 Shift+Tab 都只在空闲时验证过</li>
+    <li>要不要允许在手机上切到完全访问 / bypass（目前设计是允许，但要二次确认）</li>
+  </ul>
 </div>
 
 <!-- ============================= -->
@@ -492,6 +679,7 @@
         <div class="grp">
           <div class="row">模型<span class="v">GPT-6-Astra ›</span></div>
           <div class="row">Reasoning effort<span class="v">medium ›</span></div>
+          <div class="row">审批模式<span class="v">替我审批 ›</span></div>
         </div>
         <div class="glabel">项目</div>
         <div class="grp">
