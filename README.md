@@ -21,8 +21,9 @@
 需要 Go 1.25+、tmux 3.2+ 和已登录的 codex。
 
 ```sh
-go build -o ~/bin/remote-agent ./cmd/remote-agent
-remote-agent daemon            # 在前台运行 daemon
+scripts/install.sh             # 编译到 ~/bin/remote-agent；装过后台服务的话顺便重启 daemon
+scripts/daemon.sh install      # 把 daemon 装成后台服务（macOS 用 launchd，Linux 用 systemd --user），开机自启
+remote-agent daemon            # 或者：在前台运行 daemon
 remote-agent codex             # 另开一个终端：在当前目录启动 Codex 并 attach
 remote-agent ls                # 列出会话
 remote-agent send <id> 你好     # 从别处发消息，id 可以只写前几位
@@ -30,7 +31,7 @@ remote-agent events <id> -f    # 持续查看事件
 ```
 
 - Codex 需要的代理等环境变量写进 `~/.remote-agent/codex.env`，一行一个 `KEY=VALUE`，daemon 启动每个会话时都会带上
-- 二进制的路径要固定：它是 Codex hook 的命令，路径一变 Codex 就会要求重新信任 hook
+- 后台服务的日常操作：`scripts/daemon.sh restart|stop|start|status|log`，日志在 `~/.remote-agent/daemon.log`。重启 daemon 不影响正在 tmux 里运行的会话。服务用的是安装时 shell 的 `PATH`，codex 或 tmux 换了位置就重新 `install` 一次
 - 第一次在某个目录启动时，Codex 会问是否信任这个目录、是否信任 hook，需要在终端里回答
 - **升级 Codex 后运行 `remote-agent doctor`**：它用一个临时会话（GPT-6-Luna，低档位）检查 remote-agent 依赖的各项行为，并记下这个版本已验证
 
@@ -38,6 +39,7 @@ remote-agent events <id> -f    # 持续查看事件
 
 ```sh
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
+scripts/deploy.sh [server|web|all]      # 部署 server 和/或网页，host 取 RA_DEPLOY_HOST
 remote-agent account init --server https://ra.example.com   # 建账户，输入 setup token
 remote-agent account pair --web https://app.example.com   # 添加设备：显示二维码和配对码
 remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入
