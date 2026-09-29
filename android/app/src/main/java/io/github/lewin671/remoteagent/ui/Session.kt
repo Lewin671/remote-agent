@@ -227,8 +227,8 @@ private fun ChatPane(
     var seen by remember { mutableStateOf(items.size) }
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     LaunchedEffect(items.size, outbox.size, d.tools.size, ime) {
-        val last = list.layoutInfo.totalItemsCount - 1
-        if (follow && last >= 0) list.scrollToItem(last)
+        // Past the end: the list stops at its last item, even before its first layout.
+        if (follow && items.isNotEmpty()) list.scrollToItem(items.size + d.tools.size + outbox.size + 3)
         if (follow) seen = items.size
     }
     LaunchedEffect(atBottom) { if (atBottom) seen = items.size }
@@ -324,7 +324,7 @@ private fun Bottom(
     if (status == Status.EXITED) {
         val act = rememberAction()
         StatusCard("会话已结束", buildString {
-            append(s.info?.statusDetail?.takeIf { it.isNotEmpty() }?.let { "$it。" } ?: "")
+            append(if (s.info?.statusDetail == "stopped") "会话是被手动结束的。" else "tmux 会话已经不在了。")
             if (m?.online == true) append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
             else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
         }) {
