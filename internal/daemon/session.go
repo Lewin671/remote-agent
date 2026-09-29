@@ -51,6 +51,9 @@ type session struct {
 	meta        meta
 	running     bool // a turn is in progress
 	context     *pb.TurnContext
+	usage       *pb.TokenUsage
+	title       string
+	preview     string
 	screen      codex.Screen
 	prevScreen  codex.Screen
 	sawComposer bool
@@ -127,6 +130,16 @@ func (s *session) observe(e *pb.Event) {
 		s.running = false
 	case *pb.Event_TurnContext:
 		s.context = k.TurnContext
+	case *pb.Event_TokenUsage:
+		s.usage = k.TokenUsage
+	case *pb.Event_UserMessage:
+		if s.title == "" {
+			s.title = summary(k.UserMessage.Text, 60)
+		}
+	case *pb.Event_AgentMessage:
+		s.preview = summary(k.AgentMessage.Text, 120)
+	case *pb.Event_ToolCall:
+		s.preview = "✓ " + summary(k.ToolCall.Title, 110)
 	case *pb.Event_QuestionAsked:
 		if !k.QuestionAsked.Async {
 			s.questions[k.QuestionAsked.QuestionId] = k.QuestionAsked
@@ -330,10 +343,28 @@ func (s *session) info() *pb.Session {
 		PendingQuestions: int32(len(s.questions)),
 		QueuedInputs:     int32(len(s.queue.Queue)),
 	}
-	if s.context != nil {
-		out.Model, out.Effort = s.context.Model, s.context.Effort
+	if c := s.context; c != nil {
+		out.Model, out.Effort = c.Model, c.Effort
+		out.ApprovalsReviewer, out.ApprovalPolicy, out.Sandbox, out.CollaborationMode = c.ApprovalsReviewer, c.ApprovalPolicy, c.Sandbox, c.CollaborationMode
 	}
+	if u := s.usage; u != nil {
+		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
+	}
+	out.Title, out.Preview = s.title, s.preview
 	return out
+}
+
+// summary is the first non-empty line of text, at most n characters.
+func summary(text string, n int) string {
+	for _, line := range strings.Split(text, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			if r := []rune(line); len(r) > n {
+				return string(r[:n-1]) + "…"
+			}
+			return line
+		}
+	}
+	return ""
 }
 
 // send queues text for injection and saves the queue before returning,

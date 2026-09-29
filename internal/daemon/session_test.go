@@ -424,3 +424,24 @@ func TestSessionEnv(t *testing.T) {
 		t.Fatalf("quote %s", got)
 	}
 }
+
+func TestInfoSummarizesTheSession(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.emit(
+		&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "\n  修复登录超时\n详细说明"}}},
+		&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "m", Effort: "high", ApprovalsReviewer: "auto_review", Sandbox: "workspace-write"}}},
+		&pb.Event{Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{Title: "go test ./..."}}},
+		&pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: &pb.TokenUsage{LastTotalTokens: 1000, ContextWindow: 10000}}},
+		&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "second"}}},
+	)
+	info := h.s.info()
+	if info.Title != "修复登录超时" || info.Preview != "✓ go test ./..." {
+		t.Fatalf("title %q preview %q", info.Title, info.Preview)
+	}
+	if info.ApprovalsReviewer != "auto_review" || info.Effort != "high" || info.ContextTokens != 1000 || info.ContextWindow != 10000 {
+		t.Fatalf("info %v", info)
+	}
+	if s := summary(strings.Repeat("长", 200), 60); len([]rune(s)) != 60 || !strings.HasSuffix(s, "…") {
+		t.Fatalf("summary %q", s)
+	}
+}

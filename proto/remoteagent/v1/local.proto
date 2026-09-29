@@ -38,6 +38,18 @@ message Session {
   int32 pending_approvals = 12;
   int32 pending_questions = 13;
   int32 queued_inputs = 14;
+  // First line of the first user message, shortened.
+  string title = 15;
+  // What happened last: the latest agent message or tool call, shortened.
+  string preview = 16;
+  // Approval settings from the latest turn context.
+  string approvals_reviewer = 17;
+  string approval_policy = 18;
+  string sandbox = 19;
+  string collaboration_mode = 20;
+  // Context window use from the latest token count, 0 when unknown.
+  int64 context_tokens = 21;
+  int64 context_window = 22;
 }
 
 message CreateSessionRequest {

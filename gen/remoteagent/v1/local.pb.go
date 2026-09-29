@@ -38,8 +38,20 @@ type Session struct {
 	PendingApprovals int32                  `protobuf:"varint,12,opt,name=pending_approvals,json=pendingApprovals,proto3" json:"pending_approvals,omitempty"`
 	PendingQuestions int32                  `protobuf:"varint,13,opt,name=pending_questions,json=pendingQuestions,proto3" json:"pending_questions,omitempty"`
 	QueuedInputs     int32                  `protobuf:"varint,14,opt,name=queued_inputs,json=queuedInputs,proto3" json:"queued_inputs,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// First line of the first user message, shortened.
+	Title string `protobuf:"bytes,15,opt,name=title,proto3" json:"title,omitempty"`
+	// What happened last: the latest agent message or tool call, shortened.
+	Preview string `protobuf:"bytes,16,opt,name=preview,proto3" json:"preview,omitempty"`
+	// Approval settings from the latest turn context.
+	ApprovalsReviewer string `protobuf:"bytes,17,opt,name=approvals_reviewer,json=approvalsReviewer,proto3" json:"approvals_reviewer,omitempty"`
+	ApprovalPolicy    string `protobuf:"bytes,18,opt,name=approval_policy,json=approvalPolicy,proto3" json:"approval_policy,omitempty"`
+	Sandbox           string `protobuf:"bytes,19,opt,name=sandbox,proto3" json:"sandbox,omitempty"`
+	CollaborationMode string `protobuf:"bytes,20,opt,name=collaboration_mode,json=collaborationMode,proto3" json:"collaboration_mode,omitempty"`
+	// Context window use from the latest token count, 0 when unknown.
+	ContextTokens int64 `protobuf:"varint,21,opt,name=context_tokens,json=contextTokens,proto3" json:"context_tokens,omitempty"`
+	ContextWindow int64 `protobuf:"varint,22,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -166,6 +178,62 @@ func (x *Session) GetPendingQuestions() int32 {
 func (x *Session) GetQueuedInputs() int32 {
 	if x != nil {
 		return x.QueuedInputs
+	}
+	return 0
+}
+
+func (x *Session) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Session) GetPreview() string {
+	if x != nil {
+		return x.Preview
+	}
+	return ""
+}
+
+func (x *Session) GetApprovalsReviewer() string {
+	if x != nil {
+		return x.ApprovalsReviewer
+	}
+	return ""
+}
+
+func (x *Session) GetApprovalPolicy() string {
+	if x != nil {
+		return x.ApprovalPolicy
+	}
+	return ""
+}
+
+func (x *Session) GetSandbox() string {
+	if x != nil {
+		return x.Sandbox
+	}
+	return ""
+}
+
+func (x *Session) GetCollaborationMode() string {
+	if x != nil {
+		return x.CollaborationMode
+	}
+	return ""
+}
+
+func (x *Session) GetContextTokens() int64 {
+	if x != nil {
+		return x.ContextTokens
+	}
+	return 0
+}
+
+func (x *Session) GetContextWindow() int64 {
+	if x != nil {
+		return x.ContextWindow
 	}
 	return 0
 }
@@ -1150,7 +1218,7 @@ var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xfa\x03\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\x99\x06\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -1167,7 +1235,15 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x06effort\x18\v \x01(\tR\x06effort\x12+\n" +
 	"\x11pending_approvals\x18\f \x01(\x05R\x10pendingApprovals\x12+\n" +
 	"\x11pending_questions\x18\r \x01(\x05R\x10pendingQuestions\x12#\n" +
-	"\rqueued_inputs\x18\x0e \x01(\x05R\fqueuedInputs\"\xb5\x01\n" +
+	"\rqueued_inputs\x18\x0e \x01(\x05R\fqueuedInputs\x12\x14\n" +
+	"\x05title\x18\x0f \x01(\tR\x05title\x12\x18\n" +
+	"\apreview\x18\x10 \x01(\tR\apreview\x12-\n" +
+	"\x12approvals_reviewer\x18\x11 \x01(\tR\x11approvalsReviewer\x12'\n" +
+	"\x0fapproval_policy\x18\x12 \x01(\tR\x0eapprovalPolicy\x12\x18\n" +
+	"\asandbox\x18\x13 \x01(\tR\asandbox\x12-\n" +
+	"\x12collaboration_mode\x18\x14 \x01(\tR\x11collaborationMode\x12%\n" +
+	"\x0econtext_tokens\x18\x15 \x01(\x03R\rcontextTokens\x12%\n" +
+	"\x0econtext_window\x18\x16 \x01(\x03R\rcontextWindow\"\xb5\x01\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +
