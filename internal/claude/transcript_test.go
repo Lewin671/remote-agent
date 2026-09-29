@@ -178,8 +178,15 @@ func TestTranscriptFixture(t *testing.T) {
 	if lastUsage == nil || lastUsage.ContextWindow != 200_000 || lastUsage.LastTotalTokens == 0 || lastUsage.TotalTokens < lastUsage.LastTotalTokens {
 		t.Errorf("usage %v", lastUsage)
 	}
-	if !slices.Contains(models, "claude-sonnet-5-5/medium/plan") || !slices.Contains(models, "claude-haiku-4-5-20251001//default") {
+	// Plan mode answers with Sonnet for the time being; the session's
+	// model stays haiku, which resuming keeps.
+	if !slices.Contains(models, "claude-haiku-4-5-20251001//plan") || !slices.Contains(models, "claude-haiku-4-5-20251001//default") {
 		t.Errorf("contexts %q", models)
+	}
+	for _, m := range models {
+		if strings.Contains(m, "sonnet") {
+			t.Errorf("the planning model became the session's: %q", models)
+		}
 	}
 }
 
@@ -237,6 +244,9 @@ func TestHookEventsNotRepeated(t *testing.T) {
 	q := a.HookEvents(&agent.Hook{HookEventName: "PreToolUse", ToolName: "AskUserQuestion", ToolUseID: "t1",
 		ToolInput: []byte(`{"questions":[{"question":"Q?","header":"H","options":[{"label":"A"},{"label":"B"}]}]}`)})
 	plan := a.HookEvents(&agent.Hook{HookEventName: "PreToolUse", ToolName: "ExitPlanMode", ToolUseID: "t2", ToolInput: []byte(`{"plan":"# Plan"}`)})
+	if p.Reported(q[0]) || p.Reported(plan[0]) {
+		t.Fatal("reported before anything was parsed")
+	}
 	if len(q) != 1 || q[0].GetQuestionAsked().GetQuestions()[0].GetText() != "Q?" || len(plan) != 1 || plan[0].GetPlanProposed().GetText() != "# Plan" {
 		t.Fatalf("hook events %v %v", q, plan)
 	}
@@ -261,5 +271,93 @@ func TestHookEventsNotRepeated(t *testing.T) {
 	evs, _ = p.Parse([]byte(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"User has approved your plan."}]}}`))
 	if len(evs) != 0 {
 		t.Fatalf("plan result %v", evs)
+	}
+}
+
+// The transcript may have the call before the hook reports it; the hook's
+// event is then recognized as the same call, also after a restart.
+func TestTranscriptBeforeHook(t *testing.T) {
+	a := New("", "")
+	p := NewParser()
+	lines := []string{
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"AskUserQuestion","input":{"questions":[{"question":"Q?","options":[{"label":"A"}]}]}}]}}`,
+		`{"type":"assistant","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"ExitPlanMode","input":{"plan":"# Plan"}}]}}`,
+	}
+	var logged []*pb.Event
+	for _, l := range lines {
+		evs, _ := p.Parse([]byte(l))
+		logged = append(logged, evs...)
+	}
+	hooks := append(a.HookEvents(&agent.Hook{HookEventName: "PreToolUse", ToolName: "AskUserQuestion", ToolUseID: "t1", ToolInput: []byte(`{"questions":[{"question":"Q?","options":[{"label":"A"}]}]}`)}),
+		a.HookEvents(&agent.Hook{HookEventName: "PreToolUse", ToolName: "ExitPlanMode", ToolUseID: "t2", ToolInput: []byte(`{"plan":"# Plan"}`)})...)
+	for _, e := range hooks {
+		if !p.Reported(e) {
+			t.Fatalf("not recognized: %v", e)
+		}
+	}
+	// A parser restored from the log knows them too.
+	q := NewParser()
+	for _, e := range logged {
+		q.Replay(e)
+	}
+	for _, e := range hooks {
+		if !q.Reported(e) {
+			t.Fatalf("not recognized after a restart: %v", e)
+		}
+	}
+	// And a plan reported by a hook before a restart is not repeated by the
+	// transcript after it.
+	r := NewParser()
+	r.Replay(hooks[1])
+	if evs, _ := r.Parse([]byte(lines[1])); len(evs) != 1 || evs[0].GetPlanProposed() != nil {
+		t.Fatalf("plan repeated after restart: %v", evs)
+	}
+}
+
+// A call still running at a restart is reported in full when it ends.
+func TestPendingCallAfterRestart(t *testing.T) {
+	p := NewParser()
+	evs, _ := p.Parse([]byte(`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"sleep 30"}}]}}`))
+	q := NewParser()
+	for _, e := range evs {
+		q.Replay(e)
+	}
+	out, _ := q.Parse([]byte(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"done"}]}}`))
+	if len(out) != 1 {
+		t.Fatalf("events %v", out)
+	}
+	c := out[0].GetToolCall()
+	if c.Kind != pb.ToolKind_TOOL_KIND_COMMAND || c.Input != "sleep 30" || c.ItemType != "Bash" || c.Title != "sleep 30" {
+		t.Fatalf("call %v", c)
+	}
+}
+
+// A restart between two lines of one reply does not count its usage twice.
+func TestUsageAfterRestartMidReply(t *testing.T) {
+	line := func(block string) []byte {
+		return []byte(`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","usage":{"input_tokens":10,"cache_creation_input_tokens":100,"cache_read_input_tokens":1000,"output_tokens":5},"content":[` + block + `]}}`)
+	}
+	p := NewParser()
+	evs, _ := p.Parse(line(`{"type":"thinking","thinking":"hm"}`))
+	q := NewParser()
+	for _, e := range evs {
+		q.Replay(e)
+	}
+	evs, _ = q.Parse(line(`{"type":"text","text":"hi"}`))
+	for _, e := range evs {
+		if u := e.GetTokenUsage(); u != nil {
+			t.Fatalf("counted again: %v", u)
+		}
+	}
+	// The next reply counts.
+	evs, _ = q.Parse([]byte(`{"type":"assistant","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":1120,"output_tokens":3},"content":[{"type":"text","text":"x"}]}}`))
+	var u *pb.TokenUsage
+	for _, e := range evs {
+		if e.GetTokenUsage() != nil {
+			u = e.GetTokenUsage()
+		}
+	}
+	if u == nil || u.InputTokens != 1110+1121 || u.OutputTokens != 8 {
+		t.Fatalf("usage %v", u)
 	}
 }

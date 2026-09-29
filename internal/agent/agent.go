@@ -115,6 +115,9 @@ type Parser interface {
 	// Replay feeds an event logged earlier, so that a parser created after
 	// a restart knows what it needs about the past.
 	Replay(e *pb.Event)
+	// Reported tells whether an event a hook reports (Source.HookEvents)
+	// was already parsed from the transcript.
+	Reported(e *pb.Event) bool
 }
 
 // Controller operates the CLI's terminal. Methods that take a Term run

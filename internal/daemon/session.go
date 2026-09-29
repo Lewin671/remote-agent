@@ -854,12 +854,20 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 		if turn == "" {
 			turn = p.PromptID
 		}
+		var fresh []*pb.Event
 		for _, e := range evs {
+			// The transcript may have had it first.
+			if s.parser.Reported(e) {
+				continue
+			}
 			e.TurnId = turn
 			s.parser.Replay(e)
+			fresh = append(fresh, e)
 		}
 		s.readMu.Unlock()
-		s.emit(evs...)
+		if len(fresh) > 0 {
+			s.emit(fresh...)
+		}
 	}
 	return nil, nil
 }

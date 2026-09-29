@@ -26,11 +26,15 @@ type Parser struct {
 	calls     map[string]call // tool calls without a result yet
 	questions map[string]*pb.QuestionAsked
 	plans     map[string]bool // ExitPlanMode calls
-	// shown are plans already reported from a hook, by text.
-	shown     map[string]bool
+	// reported are AskUserQuestion and ExitPlanMode calls already turned
+	// into events, from the transcript or a PreToolUse hook.
+	reported  map[string]bool
 	ctx       *pb.TurnContext // last context emitted
 	usage     *pb.TokenUsage  // running totals
 	lastMsgID string          // assistant message whose usage was counted
+	// restored: usage came from Replay, so the message it last counted is
+	// known only by its size.
+	restored bool
 }
 
 type call struct {
@@ -42,7 +46,7 @@ type call struct {
 
 // NewParser returns a Parser.
 func NewParser() *Parser {
-	return &Parser{calls: map[string]call{}, questions: map[string]*pb.QuestionAsked{}, plans: map[string]bool{}, shown: map[string]bool{}}
+	return &Parser{calls: map[string]call{}, questions: map[string]*pb.QuestionAsked{}, plans: map[string]bool{}, reported: map[string]bool{}}
 }
 
 var _ agent.Parser = (*Parser)(nil)
@@ -56,24 +60,51 @@ func (p *Parser) Replay(e *pb.Event) {
 		p.inTurn = false
 		clear(p.calls)
 		clear(p.questions)
-		clear(p.shown)
 	case *pb.Event_PlanProposed:
-		p.shown[k.PlanProposed.Text] = true
+		if id := k.PlanProposed.CallId; id != "" {
+			p.report(id)
+			p.plans[id] = true
+		}
 	case *pb.Event_ToolStarted:
-		if k.ToolStarted.CallId != "" {
-			p.calls[k.ToolStarted.CallId] = call{title: k.ToolStarted.Title, kind: pb.ToolKind_TOOL_KIND_OTHER}
+		if t := k.ToolStarted; t.CallId != "" {
+			kind := t.Kind
+			if kind == pb.ToolKind_TOOL_KIND_UNSPECIFIED {
+				kind = pb.ToolKind_TOOL_KIND_OTHER
+			}
+			p.calls[t.CallId] = call{name: t.ItemType, title: t.Title, input: t.Input, kind: kind}
 		}
 	case *pb.Event_ToolCall:
 		delete(p.calls, k.ToolCall.CallId)
 	case *pb.Event_QuestionAsked:
+		p.report(k.QuestionAsked.QuestionId)
 		p.questions[k.QuestionAsked.QuestionId] = k.QuestionAsked
 	case *pb.Event_QuestionAnswered:
 		delete(p.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_TurnContext:
 		p.ctx = k.TurnContext
 	case *pb.Event_TokenUsage:
-		p.usage = k.TokenUsage
+		p.usage, p.lastMsgID, p.restored = k.TokenUsage, "", true
 	}
+}
+
+// report records that a question or plan call has its event.
+func (p *Parser) report(id string) {
+	if len(p.reported) > 1000 {
+		clear(p.reported)
+	}
+	p.reported[id] = true
+}
+
+// Reported tells whether the question or plan in e, reported by a hook,
+// was already parsed from the transcript.
+func (p *Parser) Reported(e *pb.Event) bool {
+	switch k := e.Kind.(type) {
+	case *pb.Event_QuestionAsked:
+		return p.reported[k.QuestionAsked.QuestionId]
+	case *pb.Event_PlanProposed:
+		return k.PlanProposed.CallId != "" && p.reported[k.PlanProposed.CallId]
+	}
+	return false
 }
 
 type record struct {
@@ -231,7 +262,6 @@ func (p *Parser) endTurn(outcome pb.TurnOutcome, reason string, ms int64) []*pb.
 	}
 	p.inTurn = false
 	clear(p.calls)
-	clear(p.shown)
 	e := &pb.Event{TurnId: p.turnID, Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: outcome, Reason: reason, DurationMs: ms}}}
 	// Questions of an ended turn can no longer be answered.
 	clear(p.questions)
@@ -272,7 +302,11 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 		return nil, err
 	}
 	var evs []*pb.Event
-	if m.Model != "" && m.Model != "<synthetic>" {
+	// In Plan mode Claude Code answers with another model for the time
+	// being (claude-code-notes §2); the session's model is the one it goes
+	// back to, which resuming must keep.
+	planning := p.ctx != nil && p.ctx.PermissionMode == "plan"
+	if m.Model != "" && m.Model != "<synthetic>" && !planning {
 		if c := p.context("", m.Model, r.Effort); c != nil {
 			evs = append(evs, c)
 		}
@@ -297,6 +331,12 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 	}
 	// Every content block of a reply is its own line with the same usage;
 	// count it once.
+	if m.Usage != nil && m.ID != "" && m.ID != p.lastMsgID && p.restored && p.usage != nil &&
+		m.Usage.Input+m.Usage.CacheCreation+m.Usage.CacheRead+m.Usage.Output == p.usage.LastTotalTokens {
+		// After a restart between two lines of the same reply: counted.
+		p.lastMsgID = m.ID
+	}
+	p.restored = false
 	if m.Usage != nil && m.ID != "" && m.ID != p.lastMsgID {
 		p.lastMsgID = m.ID
 		u := &pb.TokenUsage{}
@@ -319,30 +359,38 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 func (p *Parser) toolUse(b block) []*pb.Event {
 	switch b.Name {
 	case "AskUserQuestion":
-		if _, ok := p.questions[b.ID]; ok {
+		if p.reported[b.ID] {
 			return nil // reported by the PreToolUse hook
 		}
 		q, err := ParseQuestions(b.ID, b.Input)
 		if err != nil {
 			break
 		}
+		p.report(b.ID)
 		p.questions[b.ID] = q
 		return []*pb.Event{{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}}
 	case "ExitPlanMode":
-		var in struct {
-			Plan string `json:"plan"`
-		}
-		_ = json.Unmarshal(b.Input, &in)
 		p.plans[b.ID] = true
-		if p.shown[in.Plan] {
-			delete(p.shown, in.Plan)
+		if p.reported[b.ID] {
 			return nil
 		}
-		return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: in.Plan}}}}
+		p.report(b.ID)
+		return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: PlanFromInput(b.ID, b.Input)}}}
 	}
 	c := describe(b.Name, b.Input)
 	p.calls[b.ID] = c
-	return []*pb.Event{{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: c.title, CallId: b.ID}}}}
+	return []*pb.Event{{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{
+		Title: c.title, CallId: b.ID, Kind: c.kind, Input: c.input, ItemType: c.name,
+	}}}}
+}
+
+// PlanFromInput is the plan in ExitPlanMode's input.
+func PlanFromInput(callID string, input []byte) *pb.PlanProposed {
+	var in struct {
+		Plan string `json:"plan"`
+	}
+	_ = json.Unmarshal(input, &in)
+	return &pb.PlanProposed{Text: in.Plan, CallId: callID}
 }
 
 // describe names a tool call for display.

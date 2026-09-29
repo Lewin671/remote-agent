@@ -368,13 +368,7 @@ func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
 		}
 		return []*pb.Event{{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}}
 	case "ExitPlanMode":
-		var in struct {
-			Plan string `json:"plan"`
-		}
-		if json.Unmarshal(h.ToolInput, &in) != nil {
-			return nil
-		}
-		return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: in.Plan}}}}
+		return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: PlanFromInput(h.ToolUseID, h.ToolInput)}}}
 	}
 	return nil
 }

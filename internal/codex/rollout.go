@@ -30,6 +30,9 @@ func NewParser() *Parser { return &Parser{questions: map[string]bool{}} }
 // whose rendering as an agent message must be dropped.
 func (p *Parser) RememberQuestion(callID string) { p.questions[callID] = true }
 
+// Reported: Codex has no hook events.
+func (p *Parser) Reported(*pb.Event) bool { return false }
+
 // Replay restores what the parser needs from an event logged earlier.
 func (p *Parser) Replay(e *pb.Event) {
 	if q := e.GetQuestionAsked(); q != nil {

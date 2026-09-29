@@ -172,3 +172,32 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 		t.Fatalf("codex defaults %q", args)
 	}
 }
+
+// A question the transcript already had is not reported again by the
+// PreToolUse hook, nor the other way round.
+func TestClaudeQuestionReportedOnce(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"ask"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"AskUserQuestion","input":{"questions":[{"question":"Q?","options":[{"label":"A"}]}]}}]}}`)
+	h.s.bindRollout("cc-1", path)
+	pre := func(id, q string) {
+		if _, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: "PreToolUse", PromptID: "p1", TranscriptPath: path, ToolName: "AskUserQuestion", ToolUseID: id,
+			ToolInput: json.RawMessage(`{"questions":[{"question":"` + q + `","options":[{"label":"A"}]}]}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pre("t1", "Q?") // transcript first
+	pre("t2", "R?") // hook first
+	h.writeRollout(`{"type":"assistant","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"AskUserQuestion","input":{"questions":[{"question":"R?","options":[{"label":"A"}]}]}}]}}`)
+	h.s.readRollout()
+	n := map[string]int{}
+	for _, e := range h.events() {
+		if q := e.GetQuestionAsked(); q != nil {
+			n[q.QuestionId]++
+		}
+	}
+	if n["t1"] != 1 || n["t2"] != 1 {
+		t.Fatalf("questions %v", n)
+	}
+}
