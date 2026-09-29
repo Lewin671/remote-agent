@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -289,7 +290,10 @@ func (c *Client) Stream(ctx context.Context) (<-chan *pb.ServerFrame, error) {
 				return
 			}
 			f := &pb.ServerFrame{}
-			if proto.Unmarshal(b, f) != nil {
+			if err := proto.Unmarshal(b, f); err != nil {
+				if first {
+					ready <- fmt.Errorf("stream frame: %w", err)
+				}
 				return
 			}
 			if first {
@@ -308,8 +312,14 @@ func (c *Client) Stream(ctx context.Context) (<-chan *pb.ServerFrame, error) {
 			}
 		}
 	}()
-	if err := <-ready; err != nil {
-		return nil, err
+	select {
+	case err := <-ready:
+		if err != nil {
+			return nil, err
+		}
+	case <-ctx.Done():
+		ws.CloseNow()
+		return nil, ctx.Err()
 	}
 	return out, nil
 }
@@ -320,8 +330,10 @@ type Term struct {
 	s      Session
 	ws     *websocket.Conn
 	stream string
-	seq    uint64
 	last   uint64
+
+	mu  sync.Mutex // orders sends so frames leave in seq order
+	seq uint64
 }
 
 // OpenTerminal joins a session's terminal stream.
@@ -370,12 +382,20 @@ func (t *Term) Read(ctx context.Context) (*pb.TerminalFrame, error) {
 
 // Send seals and sends a frame to the daemon.
 func (t *Term) Send(ctx context.Context, f *pb.TerminalFrame) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.seq++
-	return t.SendRaw(ctx, t.seq, f)
+	return t.send(ctx, t.seq, f)
 }
 
 // SendRaw sends a frame with the given sequence number, for tests.
 func (t *Term) SendRaw(ctx context.Context, seq uint64, f *pb.TerminalFrame) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.send(ctx, seq, f)
+}
+
+func (t *Term) send(ctx context.Context, seq uint64, f *pb.TerminalFrame) error {
 	env, err := e2e.SealMessage(t.s.Key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT, MachineId: t.s.MachineID, SessionId: t.s.ID,
 		RequestId: t.stream, Seq: seq, Sender: t.c.DeviceID,
