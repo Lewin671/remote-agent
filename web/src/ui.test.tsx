@@ -113,3 +113,9 @@ it("closes a fence only with one at least as long", () => {
     { kind: "text", text: "after" },
   ]);
 });
+
+it("keeps code blocks nested in list items", () => {
+  const md = ["- 运行：", "", "    ```sh", "    ls | wc -l", "    ```", "- 完成"].join("\n");
+  expect(mdBlocks(md).map((b) => b.kind)).toEqual(["text", "code", "text"]);
+  expect(mdBlocks(md)[1]).toEqual({ kind: "code", text: "ls | wc -l" });
+});

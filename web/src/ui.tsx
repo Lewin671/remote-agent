@@ -44,7 +44,8 @@ export function Rich({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
-const fence = /^\s{0,3}(`{3,}|~{3,})/;
+// Any indent: Codex nests code blocks in list items.
+const fence = /^\s*(`{3,}|~{3,})/;
 const tableSep = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
@@ -107,9 +108,12 @@ export function mdBlocks(md: string): Block[] {
     if (f) {
       const body: string[] = [];
       // Closed by a fence of the same character, at least as long.
-      const close = new RegExp(`^\\s{0,3}${f[1][0] === "`" ? "`" : "~"}{${f[1].length},}\\s*$`);
+      const close = new RegExp(`^\\s*${f[1][0] === "`" ? "`" : "~"}{${f[1].length},}\\s*$`);
       let j = i + 1;
-      while (j < lines.length && !close.test(lines[j])) body.push(lines[j++]);
+      // The fence's own indent is the list's, not the code's.
+      const indent = line.length - line.trimStart().length;
+      const dedent = (l: string) => l.slice(Math.min(indent, l.length - l.trimStart().length));
+      while (j < lines.length && !close.test(lines[j])) body.push(dedent(lines[j++]));
       flush();
       blocks.push({ kind: "code", text: body.join("\n") });
       i = j;
