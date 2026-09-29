@@ -426,6 +426,21 @@ describe("events", () => {
     ]);
   });
 
+  it("notes a model changed in the terminal after a switch from here", () => {
+    const ctx = (model: string, effort: string) => ({ case: "turnContext", value: { approvalsReviewer: "user", approvalPolicy: "on-request", model, effort } });
+    const d = derive(
+      events(
+        ctx("gpt-6-astra", "medium"),
+        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "high" } },
+        // Changed again at the computer before the next turn.
+        ctx("gpt-6-luna", "low"),
+        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "high" } },
+        ctx("gpt-6-sol", "high"), // as chosen here: nothing to note
+      ),
+    );
+    expect([...d.terminalChanges.entries()]).toEqual([[3n, "模型切到了 gpt-6-luna · low"]]);
+  });
+
   it("records context use around a compaction", () => {
     const d = derive(
       events(

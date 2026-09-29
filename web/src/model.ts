@@ -327,10 +327,13 @@ export function contextPercent(s: SessionLike): number | undefined {
  * ID that has it as one of its words. */
 export function findModel<M extends { slug: string }>(models: M[] | undefined, id: string): M | undefined {
   if (!models || !id) return undefined;
-  const exact = models.find((m) => m.slug === id);
-  if (exact) return exact;
-  const words = id.toLowerCase().split(/[-_.\s]/);
-  return models.find((m) => words.includes(m.slug.toLowerCase()));
+  return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
+}
+
+/** Whether the model a CLI reports (id) is the one chosen by slug or
+ * alias. */
+export function modelIs(id: string, slug: string): boolean {
+  return !!id && !!slug && (id === slug || id.toLowerCase().split(/[-_.\s]/).includes(slug.toLowerCase()));
 }
 
 /** Context above this share turns the chip orange. */
@@ -434,6 +437,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
   // A user message with no submitted state before it, which may still
   // come right after: Claude Code records the message first.
   let unclaimed: bigint | undefined;
+  // The model and effort last switched to from here, until a context shows
+  // a model.
+  let expected: { model: string; effort: string } | undefined;
   const queuedAt = new Map<string, bigint>();
   // A plan was proposed since entering plan mode: leaving it is the plan's
   // answer, however given, not a mode switch made in the terminal.
@@ -517,10 +523,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "settingsChanged":
         // Changed through remote-agent; recorded as such already.
-        // The client names models by slug or alias, contexts by the CLI's
-        // own ID (Claude Code: the full one): start over from the next
-        // context rather than compare the two.
-        if (k.value.model) model = "";
+        // The next context should show this model; the client names it by
+        // slug or alias, the context by the CLI's own ID.
+        if (k.value.model) expected = { model: k.value.model, effort: k.value.effort };
         if (k.value.mode) mode = modeName(k.value.mode);
         if (k.value.compacted) {
           d.compactions.set(e.seq, { before: usagePercent(d.usage) });
@@ -538,7 +543,11 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         // Plan mode runs at its own effort; only a model change counts there.
         // A context without a model is Claude Code's mode, read off the
         // screen; it says nothing about the model.
-        if (model && c.model && mm !== model && !planning) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
+        // After a switch from here, the next context is compared with what
+        // was chosen; a different model means the terminal changed it since.
+        const changed = expected ? !(modelIs(c.model, expected.model) && (!expected.effort || !c.effort || c.effort === expected.effort)) : mm !== model;
+        if ((model || expected) && c.model && changed && !planning) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
+        if (c.model && !planning) expected = undefined;
         if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
         if (m) mode = m;
         if (!planning && c.model) model = mm;
