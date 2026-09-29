@@ -24,8 +24,8 @@ import {
   type Keys,
 } from "./crypto";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import type { Event } from "./gen/remoteagent/v1/event_pb";
-import { SessionSchema, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
+import { Agent, type Event } from "./gen/remoteagent/v1/event_pb";
+import { SessionSchema, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
   ClientService,
@@ -43,6 +43,7 @@ import { CommandResultSchema, CommandSchema, MachineMetaSchema, TerminalFrameSch
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
+import type { Outgoing } from "./model";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
 export interface MachineView {
@@ -69,6 +70,30 @@ interface EventBuffer {
   fetching: boolean;
   refetch: boolean;
   loaded: boolean;
+  // The last fetch failed; a retry may help.
+  error: string;
+  // An event did not open; history stops before it.
+  broken: boolean;
+}
+
+/** How far a session's history got: loading, complete, a fetch that
+ * failed, or an event that does not open. */
+export interface History {
+  loaded: boolean;
+  error: string;
+  broken: boolean;
+}
+
+/** A command's request ID and deadline. Sealing a retry with the same
+ * pair makes the daemon return its first answer instead of running the
+ * command again. */
+export interface RequestSlot {
+  requestId: string;
+  deadline: number;
+}
+
+export function newSlot(now = Date.now()): RequestSlot {
+  return { requestId: newRequestID(), deadline: now + COMMAND_TTL_MS };
 }
 
 export class CommandError extends Error {
@@ -93,7 +118,7 @@ export interface TermConn {
 
 export type ConnState = "connecting" | "online" | "offline";
 
-const COMMAND_TTL_MS = 60_000;
+export const COMMAND_TTL_MS = 60_000;
 
 /** Joins the account in secretText with a new browser device. */
 export async function join(secretText: string): Promise<StoredAccount> {
@@ -130,6 +155,22 @@ export class Remote {
   sessions = new Map<string, SessionView>();
   conn: ConnState = "connecting";
   error = "";
+  // Whether the stream has been up at least once, and how many attempts
+  // failed since it last was: tells "connecting" from "reconnecting" and
+  // from "cannot reach the server".
+  everOnline = false;
+  failures = 0;
+  connError = "";
+  // Set once machines and sessions have been listed.
+  listed = false;
+  // First messages of sessions started here, shown until the CLI takes
+  // them; and the machine chosen for a project that has no session yet.
+  prompts = new Map<string, string>();
+  draftMachines = new Map<string, string>();
+  // Sessions started here whose record has not arrived yet, and the
+  // project whose new-session box should take focus when shown.
+  created = new Set<string>();
+  focusProject = "";
 
   private buffers = new Map<string, EventBuffer>();
   // Pushes seen per machine, session and machine removal, so that a list
@@ -145,7 +186,7 @@ export class Remote {
   private listeners = new Set<() => void>();
   private version = 0;
 
-  private constructor(
+  protected constructor(
     readonly account: StoredAccount,
     private keys: Keys,
   ) {
@@ -171,7 +212,7 @@ export class Remote {
 
   snapshot = () => this.version;
 
-  private changed() {
+  protected changed() {
     this.version++;
     for (const fn of this.listeners) fn();
   }
@@ -233,6 +274,8 @@ export class Remote {
 
   private fail(e: unknown) {
     this.conn = "offline";
+    this.failures++;
+    this.connError = errorText(e);
     this.error = errorText(e);
     this.changed();
     if (this.closed) return;
@@ -246,6 +289,9 @@ export class Remote {
       case "ready":
         this.retry = 1000;
         this.conn = "online";
+        this.everOnline = true;
+        this.failures = 0;
+        this.connError = "";
         this.error = "";
         this.changed();
         // Subscribed first, then catch up: nothing falls in between.
@@ -310,6 +356,8 @@ export class Remote {
         await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
       }
       for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
+      this.listed = true;
+      this.changed();
     } catch (e) {
       this.report(e);
     }
@@ -386,7 +434,7 @@ export class Remote {
   events(sid: string): Event[] {
     const b = this.buffers.get(sid);
     if (!b) {
-      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false });
+      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, error: "", broken: false });
       void this.fetchEvents(sid);
       return [];
     }
@@ -395,6 +443,21 @@ export class Remote {
 
   loaded(sid: string): boolean {
     return this.buffers.get(sid)?.loaded ?? false;
+  }
+
+  history(sid: string): History {
+    const b = this.buffers.get(sid);
+    return { loaded: b?.loaded ?? false, error: b?.error ?? "", broken: b?.broken ?? false };
+  }
+
+  /** Fetches a session's events again after a failure. */
+  retryEvents(sid: string) {
+    const b = this.buffers.get(sid);
+    if (!b) return;
+    b.error = "";
+    b.broken = false;
+    this.changed();
+    void this.fetchEvents(sid);
   }
 
   /** Fetches everything after the last contiguous event. */
@@ -420,7 +483,9 @@ export class Remote {
         }
       } while (b.refetch);
       b.loaded = true;
+      b.error = "";
     } catch (e) {
+      b.error = errorText(e);
       this.report(e);
     } finally {
       b.fetching = false;
@@ -443,6 +508,7 @@ export class Remote {
         if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
         b.pending.set(se.seq, msg);
       } catch (e) {
+        b.broken = true;
         this.report(e);
         return;
       }
@@ -458,24 +524,24 @@ export class Remote {
 
   // --- commands ---
 
-  /** Sends a command about a session. */
-  async command(sid: string, cmd: CommandKind): Promise<CommandResult> {
+  /** Sends a command about a session. slot, when given, is the request
+   * ID and deadline of an earlier attempt of the same command. */
+  async command(sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
-    return this.forward(s.machineId, sid, cmd);
+    return this.forward(s.machineId, sid, cmd, slot);
   }
 
   /** Sends a command about a machine, such as starting a session. */
-  machineCommand(machineId: string, cmd: CommandKind): Promise<CommandResult> {
-    return this.forward(machineId, "", cmd);
+  machineCommand(machineId: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> {
+    return this.forward(machineId, "", cmd, slot);
   }
 
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
-  private async forward(machineId: string, sid: string, cmd: CommandKind): Promise<CommandResult> {
-    const requestId = newRequestID();
-    const deadline = Date.now() + COMMAND_TTL_MS;
+  private async forward(machineId: string, sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
+    const { requestId, deadline } = slot;
     const env = await sealMessage(
       this.keys.command,
       {
@@ -514,8 +580,78 @@ export class Remote {
           continue;
         }
         if (ce.code === Code.Unavailable) throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+        if (unknown) throw new CommandError("unknown", "连接超时");
         throw e;
       }
+    }
+  }
+
+  /** Sends a chat message. A retry passes the first attempt's slot, so
+   * the daemon answers it from its log. Only if that slot expired before
+   * reaching the computer is a new one used; the send ID still keeps the
+   * daemon from queueing the text twice. Returns the slot that got an
+   * answer. */
+  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot): Promise<RequestSlot> {
+    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId } };
+    try {
+      await this.command(sid, cmd, slot);
+      return slot;
+    } catch (e) {
+      if (!(e instanceof CommandError) || e.code !== "deadline_exceeded" || Date.now() < slot.deadline) throw e;
+      const fresh = newSlot();
+      await this.command(sid, cmd, fresh);
+      return fresh;
+    }
+  }
+
+  // --- the outbox: chat messages sent from this page ---
+
+  protected outboxes = new Map<string, Outgoing[]>();
+
+  /** Messages sent from this page to session sid, oldest first. */
+  outbox(sid: string): Outgoing[] {
+    return this.outboxes.get(sid) ?? [];
+  }
+
+  private patchOut(sid: string, sendId: string, patch: Partial<Outgoing>) {
+    this.outboxes.set(
+      sid,
+      this.outbox(sid).map((o) => (o.sendId === sendId ? { ...o, ...patch } : o)),
+    );
+    this.changed();
+  }
+
+  /** Sends text to a session; its progress shows in outbox(sid). */
+  send(sid: string, text: string) {
+    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, status: "sending" };
+    this.outboxes.set(sid, [...this.outbox(sid), o]);
+    this.changed();
+    void this.deliver(sid, o);
+  }
+
+  /** Sends a message that could not be confirmed again, with the same
+   * request ID and deadline. */
+  retrySend(sid: string, sendId: string) {
+    const o = this.outbox(sid).find((x) => x.sendId === sendId);
+    if (o && o.status === "failed") void this.deliver(sid, o);
+  }
+
+  /** Forgets a failed message. */
+  dismissSend(sid: string, sendId: string) {
+    this.outboxes.set(
+      sid,
+      this.outbox(sid).filter((o) => o.sendId !== sendId),
+    );
+    this.changed();
+  }
+
+  private async deliver(sid: string, o: Outgoing) {
+    this.patchOut(sid, o.sendId, { status: "sending", error: undefined });
+    try {
+      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline });
+      this.patchOut(sid, o.sendId, { status: "sent", ...slot });
+    } catch (e) {
+      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e) });
     }
   }
 
@@ -614,19 +750,51 @@ export class Remote {
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();
+  private modelLists = new Map<string, ListModelsResponse>();
 
-  /** The models a machine's Codex offers, fetched once per page load. */
-  listModels(machineId: string): Promise<ListModelsResponse> {
-    let p = this.models.get(machineId);
+  /** A model's display name, once the machine's list has been fetched. */
+  modelName(machineId: string, agent: Agent, slug: string): string {
+    return this.modelLists.get(machineId + "/" + agent)?.models.find((m) => m.slug === slug)?.displayName || slug;
+  }
+
+  /** The models a machine's CLI offers, fetched once per page load. */
+  listModels(machineId: string, agent: Agent = Agent.CODEX): Promise<ListModelsResponse> {
+    const key = machineId + "/" + agent;
+    let p = this.models.get(key);
     if (!p) {
-      p = this.machineCommand(machineId, { case: "listModels", value: {} }).then((r) => {
+      p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
         if (r.kind.case !== "listModels") throw new Error("意外的回复");
+        this.modelLists.set(key, r.kind.value);
+        this.changed();
         return r.kind.value;
       });
-      p.catch(() => this.models.delete(machineId));
-      this.models.set(machineId, p);
+      p.catch(() => this.models.delete(key));
+      this.models.set(key, p);
     }
     return p;
+  }
+
+  private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
+
+  /** A machine's daemon settings, fetched once per page load. */
+  settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
+    let p = fresh ? undefined : this.settingsCache.get(machineId);
+    if (!p) {
+      p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
+        if (r.kind.case !== "getSettings") throw new Error("意外的回复");
+        return r.kind.value.settings;
+      });
+      p.catch(() => this.settingsCache.delete(machineId));
+      this.settingsCache.set(machineId, p);
+    }
+    return p;
+  }
+
+  async saveSettings(machineId: string, next: DaemonSettings): Promise<DaemonSettings | undefined> {
+    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next } });
+    if (r.kind.case !== "updateSettings") throw new Error("意外的回复");
+    this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
+    return r.kind.value.settings;
   }
 
   private report(e: unknown) {

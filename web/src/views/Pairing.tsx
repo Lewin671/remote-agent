@@ -1,8 +1,10 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import qrcode from "qrcode-generator";
 import { useEffect, useRef, useState } from "react";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { initiate, joinByPairing, parsePairLink, type Initiation } from "../pairing";
 import { errorText, join, type Remote } from "../remote";
+import { Banner, NavBar } from "../ui";
 
 /** A QR code drawn as SVG from the module grid. */
 export function QR({ text }: { text: string }) {
@@ -21,6 +23,8 @@ export function QR({ text }: { text: string }) {
 }
 
 const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
+
+const kindName = (k: DeviceKind) => (k === DeviceKind.MACHINE ? "新电脑" : "新设备");
 
 /** Adds a device: shows a QR code and a code, then the emoji to check. */
 export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () => void }) {
@@ -63,82 +67,103 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
       setError(errorText(e));
     }
   };
+  const again = () => setAttempt((a) => a + 1);
+  const who = req ? kindName(req.kind) : "新设备";
+  let banner;
+  if (error) {
+    if (/不确定|可能没有加入成功/.test(error))
+      banner = (
+        <Banner kind="warn" action="重试" onAction={again}>
+          不确定{who}收到没有，到{who}上看一眼是否已加入
+        </Banner>
+      );
+    else if (/过期/.test(error))
+      banner = (
+        <Banner kind="err" action="换一个" onAction={again}>
+          配对码过期了
+        </Banner>
+      );
+    else
+      banner = (
+        <Banner kind="err" action="重新开始" onAction={again}>
+          {error}
+        </Banner>
+      );
+  } else if (state === "sending") banner = <Banner>◌ 正在把密钥交给{who}…</Banner>;
+  else if (state === "done")
+    banner = (
+      <Banner action="完成" onAction={onBack}>
+        ✓ {who}已加入
+      </Banner>
+    );
   return (
-    <>
-      <header className="navbar">
-        <button className="back" onClick={onBack} aria-label="返回">
-          ‹
-        </button>
-        <span className="title">
-          <b>添加设备</b>
-        </span>
-        <span className="more" />
-      </header>
+    <div className="page">
+      <NavBar onBack={onBack} title="添加设备" />
       <div className="body pairing">
-        {error && (
-          <div className="req">
-            <p className="error">{error}</p>
-            <button className="big" onClick={() => setAttempt((a) => a + 1)}>
-              重新开始
-            </button>
-          </div>
-        )}
-        {!error && state === "done" && (
-          <div className="req">
-            <div className="emoji">✅</div>
-            <p className="center-text">新设备已加入。</p>
-          </div>
-        )}
-        {!error && state !== "done" && p && (
+        {p && state !== "done" && !(error && !req) && (
           <>
             <div className="qr">
               <QR text={p.link} />
             </div>
             <div className="code">{spaced(p.code)}</div>
             <p className="muted small center-text">
-              用新手机的相机扫码，或在新设备的网页里输入这 8 位数字。
+              用新手机的相机扫码，或在新设备的网页里输入这 8 位数字。5 分钟内有效。
               <br />
-              电脑上运行 <code>remote-agent account join --server {remote.account.server} --code {p.code}</code>
+              电脑上运行 <code>remote-agent account join --code {p.code}</code>
             </p>
-            {!req && <p className="muted small center-text">等待新设备…（5 分钟内有效）</p>}
-            {req && (
-              <div className="req">
-                <div className="req-t">
-                  <b>{req.kind === DeviceKind.MACHINE ? "新电脑" : "新浏览器"}</b> <span className="muted">请求加入</span>
-                </div>
-                <div className="emoji">{req.emoji.join(" ")}</div>
-                <p className="muted small center-text">核对新设备上显示的 4 个图案是否一模一样。不一样就拒绝。</p>
-                <div className="btns">
-                  <button className="btn no" disabled={state === "sending"} onClick={() => (p.cancel(), setAttempt((a) => a + 1))}>
-                    拒绝
-                  </button>
-                  <button className="btn pri" disabled={state === "sending"} onClick={() => void approve()}>
-                    {state === "sending" ? "发送中…" : "图案一致，允许"}
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
-        {!error && !p && <p className="center muted">准备中…</p>}
+        {!p && !error && <p className="center-text muted small">◌ 准备中…</p>}
+        {req && state !== "done" && !error && (
+          <div className="req">
+            <div className="small">
+              <b>{who}</b> <span className="muted">请求加入</span>
+            </div>
+            <div className="emoji">{req.emoji.join(" ")}</div>
+            <div className="muted small center-text" style={{ marginBottom: 10 }}>
+              和新设备上的 4 个图案一模一样才允许
+            </div>
+            <div className="btns">
+              <button className="btn no" disabled={state === "sending"} onClick={() => (p?.cancel(), again())}>
+                拒绝
+              </button>
+              <button className="btn pri" disabled={state === "sending"} onClick={() => void approve()}>
+                图案一致，允许
+              </button>
+            </div>
+          </div>
+        )}
+        {banner && <div className="pad">{banner}</div>}
       </div>
-    </>
+    </div>
   );
 }
 
 const defaultServer = () => localStorage.getItem("ra-server") || import.meta.env.VITE_DEFAULT_SERVER || "";
 
+/** A joining error, as the banner the new device shows. */
+function joinBanner(e: unknown): { kind: "err" | "warn"; text: string; action: string } {
+  const text = errorText(e);
+  if (e instanceof ConnectError && [Code.NotFound, Code.InvalidArgument, Code.PermissionDenied, Code.FailedPrecondition].includes(e.code))
+    return { kind: "err", text: "配对码不对，或者已经用过了", action: "重填" };
+  if (e instanceof ConnectError && e.code === Code.ResourceExhausted) return { kind: "err", text: "试得太多了，等一分钟再试", action: "重填" };
+  if (/取消/.test(text)) return { kind: "err", text: "对方拒绝了这次加入", action: "重新开始" };
+  if (/过期/.test(text)) return { kind: "err", text: "配对码过期了", action: "重填" };
+  if ((e instanceof ConnectError && e.code === Code.Unavailable) || e instanceof TypeError) return { kind: "warn", text: "不确定是否成功：网络断了", action: "重试" };
+  return { kind: "err", text, action: "重新开始" };
+}
+
 /** Joins this browser to an account: by pairing code, pairing link, or
  * the account secret. */
 export function Setup({ onDone }: { onDone: () => void }) {
   const fromLink = location.hash.startsWith("#/pair?") ? parsePairLink(location.hash.slice("#/pair?".length)) : undefined;
-  const [code, setCode] = useState(fromLink?.code ?? "");
+  const [code, setCode] = useState(fromLink ? spaced(fromLink.code) : "");
   const [server, setServer] = useState(fromLink?.server ?? defaultServer());
   const [secret, setSecret] = useState("");
   const [useSecret, setUseSecret] = useState(false);
   const [emoji, setEmoji] = useState<string[]>();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ReturnType<typeof joinBanner>>();
   const stopped = useRef(false);
   useEffect(
     () => () => {
@@ -149,14 +174,14 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
   const pair = async (link = fromLink ?? { code, server }) => {
     setBusy(true);
-    setError("");
+    setError(undefined);
     setEmoji(undefined);
     try {
       await joinByPairing(link, setEmoji, () => stopped.current);
       location.hash = "";
       onDone();
     } catch (e) {
-      setError(errorText(e));
+      setError(joinBanner(e));
       setEmoji(undefined);
       setBusy(false);
     }
@@ -167,16 +192,33 @@ export function Setup({ onDone }: { onDone: () => void }) {
 
   const paste = async () => {
     setBusy(true);
-    setError("");
+    setError(undefined);
     try {
       await join(secret);
       setSecret("");
       onDone();
     } catch (e) {
-      setError(errorText(e));
+      setError({ kind: "err", text: errorText(e), action: "" });
       setBusy(false);
     }
   };
+
+  const banner = error && (
+    <div className="pad">
+      <Banner
+        kind={error.kind}
+        action={error.action || undefined}
+        onAction={() => {
+          if (error.action === "重填") {
+            setCode("");
+            setError(undefined);
+          } else if (error.action) void pair({ code, server });
+        }}
+      >
+        {error.text}
+      </Banner>
+    </div>
+  );
 
   if (emoji)
     return (
@@ -184,49 +226,61 @@ export function Setup({ onDone }: { onDone: () => void }) {
         <div className="large">
           <h3>核对图案</h3>
         </div>
-        <div className="emoji">{emoji.join(" ")}</div>
-        <p className="muted center-text">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
-        <p className="muted small center-text">等待允许…</p>
+        <div className="emoji big">{emoji.join(" ")}</div>
+        <p className="muted center-text small">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
+        <p className="muted center-text small" style={{ marginTop: 24 }}>
+          ◌ 等待允许…
+        </p>
       </div>
     );
 
   return (
     <div className="setup">
       <div className="large">
-        <h3>添加这台设备</h3>
+        <h3>加入账户</h3>
       </div>
       {!useSecret ? (
         <>
-          <p className="muted">在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。</p>
+          <p className="muted small lead">在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。</p>
           <input
-            className="ta code-in"
+            className="field code-in"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="配对码"
+            placeholder="0000 0000"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ""))}
+            onChange={(e) => {
+              const d = e.target.value.replace(/\D/g, "").slice(0, 8);
+              setCode(d.length > 4 ? spaced(d) : d);
+            }}
             aria-label="配对码"
           />
-          <input className="ta" placeholder="服务器，如 https://ra.example.com" value={server} onChange={(e) => setServer(e.target.value.trim())} aria-label="服务器" />
-          {error && <p className="error">{error}</p>}
-          <button className="big" disabled={busy || code.replace(/\s/g, "").length !== 8 || !server} onClick={() => void pair({ code, server })}>
-            {busy ? "连接中…" : "加入"}
-          </button>
-          <button className="link small" onClick={() => setUseSecret(true)}>
+          <label className="field">
+            <small>服务器</small>
+            <input placeholder="https://ra.example.com" value={server} onChange={(e) => setServer(e.target.value.trim())} aria-label="服务器" />
+          </label>
+          {banner}
+          <div className="big">
+            <button className="btn pri" disabled={busy || code.replace(/\s/g, "").length !== 8 || !server} onClick={() => void pair({ code, server })}>
+              {busy ? "连接中…" : "加入"}
+            </button>
+          </div>
+          <button className="link mid" onClick={() => setUseSecret(true)}>
             改用账户密钥
           </button>
         </>
       ) : (
         <>
-          <p className="muted">
+          <p className="muted small lead">
             在电脑上运行 <code>remote-agent account secret</code>，把输出的账户密钥粘贴到这里。密钥只保存在这个浏览器里，不会发给服务器。
           </p>
-          <textarea className="ta" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="ra1.…" rows={4} autoComplete="off" spellCheck={false} aria-label="账户密钥" />
-          {error && <p className="error">{error}</p>}
-          <button className="big" disabled={busy || !secret.trim()} onClick={() => void paste()}>
-            {busy ? "连接中…" : "连接"}
-          </button>
-          <button className="link small" onClick={() => setUseSecret(false)}>
+          <textarea className="field mono" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="ra1.…" rows={4} autoComplete="off" spellCheck={false} aria-label="账户密钥" />
+          {banner}
+          <div className="big">
+            <button className="btn pri" disabled={busy || !secret.trim()} onClick={() => void paste()}>
+              {busy ? "连接中…" : "加入"}
+            </button>
+          </div>
+          <button className="link mid" onClick={() => setUseSecret(false)}>
             改用配对码
           </button>
         </>

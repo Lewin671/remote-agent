@@ -14,6 +14,19 @@ export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
+export type PushState = "ok" | "default" | "denied" | "unsupported" | "ios-browser";
+
+/** Whether push can work here: iPhones only allow it for pages added to
+ * the home screen, and the browser may have refused permission. */
+export function pushState(): PushState {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone = matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+  if (ios && !standalone) return "ios-browser";
+  if (!pushSupported()) return "unsupported";
+  if (Notification.permission === "denied") return "denied";
+  return Notification.permission === "granted" ? "ok" : "default";
+}
+
 export function pushPrefs(): PushPrefs {
   try {
     return { attention: false, turns: false, ...JSON.parse(localStorage.getItem(KEY) || "{}") };

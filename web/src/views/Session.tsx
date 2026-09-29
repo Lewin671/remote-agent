@@ -1,309 +1,434 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ApprovalRequested, Event, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
-import { ApprovalDecision, ApprovalMode, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "../gen/remoteagent/v1/event_pb";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import type { Event, ToolCall } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalDecision, InputStatus, SessionStatus, ToolKind, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { Markdown } from "../markdown";
 import {
-  contextPercent,
+  agentName,
+  agentOf,
+  ago,
   decisionText,
-  derive,
+  dockItems,
+  duration,
+  eventTime,
+  exitReason,
   hhmm,
   machineName,
-  optionLabel,
+  modeName,
+  phaseOf,
   projectKey,
   projectName,
+  queueReason,
   shortPath,
-  statusOf,
+  stateOf,
+  timeline,
   titleOf,
+  toolsSummary,
   type Derived,
+  type Item,
+  type Outgoing,
 } from "../model";
-import { errorText, type CommandKind, type Remote, type SessionView } from "../remote";
-import { ModeSheet, PlanCard, SessionSheet } from "../sheets";
+import { errorText, type Remote, type SessionView } from "../remote";
+import { ModeSheet, SessionSheet } from "../sheets";
+import { ActionSheet, Alert, Banner, Chips, ConnBar, Dot, NavBar, Skeleton, useNow, useRemote } from "../ui";
+import { useDerived } from "./actions";
+import { ApprovalPage, Dock, PlanPage } from "./Dock";
 import { TerminalView } from "./Terminal";
-import { Chips, Dot, Markdown, useNow, useRemote } from "../ui";
 
-interface Outgoing {
-  // The Send request ID. The daemon accepts a request ID once, so a retry
-  // with it can never deliver the message twice.
-  requestId: string;
-  text: string;
-  status: "sending" | "sent" | "failed";
-  error?: string;
+type Tab = "chat" | "term" | "split";
+
+/** Tracks an element's width, for choices that depend on the space the
+ * main area has rather than the window. */
+function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setW(el.clientWidth));
+    ro.observe(el);
+    setW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
 }
-
-type Run = (label: string, cmd: CommandKind) => Promise<unknown>;
 
 export function SessionPage({ remote, session, onBack, wide }: { remote: Remote; session: SessionView; onBack: () => void; wide: boolean }) {
   useRemote(remote);
-  const events = remote.events(session.id);
-  const [outgoing, setOutgoing] = useState<Outgoing[]>([]);
-  const [toast, setToast] = useState("");
-  const [menu, setMenu] = useState(false);
+  const sid = session.id;
+  const events = remote.events(sid);
+  const d = useDerived(remote, sid);
+  const machine = remote.machines.get(session.machineId);
+  const st = stateOf(session, machine);
+  const agent = agentOf(session);
+  const title = titleOf(session);
+  const project = projectName(projectKey(session));
+  const mname = machineName(machine);
+  const online = remote.conn === "online";
+  const ended = st.kind === "ended";
+  const inactive = ended || st.kind === "offline";
+
+  const [rootRef, width] = useWidth<HTMLDivElement>();
+  const canSplit = wide && width >= 840;
+  const [tabPick, setTab] = useState<Tab>("chat");
+  let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
+  if (inactive && tab !== "chat") tab = "chat";
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
-  const [tabPick, setTab] = useState<"chat" | "term" | "split">("chat");
-  const tab = tabPick === "split" && !wide ? "term" : tabPick;
-  const tabs: ["chat" | "term" | "split", string][] = wide
-    ? [
-        ["chat", "聊天"],
-        ["term", "终端"],
-        ["split", "并排"],
-      ]
-    : [
-        ["chat", "聊天"],
-        ["term", "终端"],
-      ];
+  const [menu, setMenu] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [page, setPage] = useState<"" | "plan" | { approval: string }>("");
+  const [typing, setTyping] = useState(false);
+  const [toast, setToast] = useState("");
+  const composer = useRef<HTMLTextAreaElement>(null);
+
+  const items = dockItems(session, d, machine);
+  // Display names for the model chip; the list is cached per machine.
+  useEffect(() => {
+    if (machine?.online && !inactive) remote.listModels(session.machineId, agent).catch(() => undefined);
+  }, [remote, session.machineId, agent, machine?.online, inactive]);
+  const outbox = remote.outbox(sid);
+
+  const run = async (label: string, fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      return true;
+    } catch (e) {
+      setToast(label + "失败：" + errorText(e));
+      return false;
+    }
+  };
+
+  // Detail pages replace the whole session view.
+  if (page === "plan" && d.plan && session.info?.planOpen)
+    return <PlanPage remote={remote} sid={sid} plan={d.plan} title={title} onBack={() => setPage("")} />;
+  if (typeof page === "object") {
+    const a = d.approvals.get(page.approval);
+    if (a) return <ApprovalPage remote={remote} sid={sid} a={a} agent={agent} title={title} onBack={() => setPage("")} />;
+  }
+
+  const tabs: [Tab, string][] = [
+    ["chat", "聊天"],
+    ["term", "终端"],
+    ...(canSplit ? ([["split", "并排"]] as [Tab, string][]) : []),
+  ];
   const seg = (
-    <div className="seg tabs">
+    <div className={"seg" + (tab !== "chat" && !wide ? " dark" : "")} role="tablist">
       {tabs.map(([t, name]) => (
-        <button key={t} className={t === tab ? "on" : ""} onClick={() => setTab(t)}>
+        <button key={t} role="tab" aria-selected={t === tab} className={t === tab ? "on" : ""} disabled={t !== "chat" && inactive} onClick={() => setTab(t)}>
           {name}
+          {t === "term" && st.kind === "popup" && <span className="n">●</span>}
         </button>
       ))}
     </div>
   );
-  const scroller = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
+  const chips = <Chips remote={remote} s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} disabled={!online || inactive} />;
+  const sub = (
+    <>
+      <Dot tone={st.tone} />
+      {st.text} · {project} · {mname}
+    </>
+  );
+  const more = (
+    <button className="more" onClick={() => setMenu(true)} aria-label="更多">
+      ⋯
+    </button>
+  );
 
-  const derived = useMemo(() => derive(events), [events, events.length]);
-  const machine = remote.machines.get(session.machineId);
-  const st = statusOf(session);
-  const ended = session.info?.status === SessionStatus.EXITED;
-  const blocked = session.info?.status === SessionStatus.BLOCKED ? session.info.statusDetail : "";
+  const header = wide ? (
+    <header className="dh">
+      <div className="r1">
+        <Dot tone={st.tone} />
+        <b>{title}</b>
+        <span className="muted">
+          {st.text} · {project} · {mname}
+        </span>
+        <button className="mr" onClick={() => setMenu(true)} aria-label="更多">
+          ⋯
+        </button>
+      </div>
+      <div className="r2">
+        {chips}
+        {seg}
+      </div>
+    </header>
+  ) : (
+    <NavBar onBack={onBack} title={title} sub={sub} right={more} className={tab === "term" ? "dark" : ""} />
+  );
 
-  // A message is shown locally until Codex records it or gives up on it.
-  useEffect(() => {
-    setOutgoing((list) =>
-      list.filter((o) => {
-        const s = derived.inputs.get(o.requestId);
-        return o.status === "failed" || s === undefined || s === InputStatus.QUEUED;
-      }),
-    );
-  }, [derived]);
-
-  useEffect(() => {
-    const el = scroller.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-  });
-
-  const run: Run = async (label, cmd) => {
-    try {
-      return await remote.command(session.id, cmd);
-    } catch (e) {
-      setToast(label + "失败：" + errorText(e));
-      return undefined;
-    }
-  };
-
-  const deliver = async (requestId: string, text: string) => {
-    setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "sending", error: undefined } : o)));
-    try {
-      await remote.command(session.id, { case: "send", value: { sessionId: session.id, text, requestId } });
-      setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "sent" } : o)));
-    } catch (e) {
-      setOutgoing((l) => l.map((o) => (o.requestId === requestId ? { ...o, status: "failed", error: errorText(e) } : o)));
-    }
-  };
-
-  const send = (text: string) => {
-    const requestId = crypto.randomUUID().replace(/-/g, "");
-    setOutgoing((l) => [...l, { requestId, text, status: "sending" }]);
-    void deliver(requestId, text);
-  };
-
-  // Messages waiting in the daemon's queue, including ones sent elsewhere.
-  const queued = [...derived.inputs.entries()].filter(([, s]) => s === InputStatus.QUEUED).map(([id]) => id);
-  const localText = new Map(outgoing.map((o) => [o.requestId, o.text]));
-  const pending = outgoing.filter((o) => o.status !== "failed" && !queued.includes(o.requestId));
-  const failed = outgoing.filter((o) => o.status === "failed");
+  const chat = (
+    <div className="ccol">
+      <ChatBody remote={remote} session={session} events={events} d={d} agent={agent} machine={mname} />
+      {toast && (
+        <div className="toast" onClick={() => setToast("")}>
+          {toast}
+        </div>
+      )}
+      {!inactive && (
+        <Dock
+          remote={remote}
+          sid={sid}
+          items={items}
+          agent={agent}
+          collapsed={typing}
+          onExpand={() => {
+            composer.current?.blur();
+            setTyping(false);
+          }}
+          onDetail={(id) => setPage({ approval: id })}
+          onPlan={() => setPage("plan")}
+          onTerminal={() => setTab(canSplit ? "split" : "term")}
+        />
+      )}
+      {!inactive && <Queue remote={remote} session={session} d={d} outbox={outbox} />}
+      {!inactive && !wide && !["approval", "question", "popup"].includes(items[0]?.kind ?? "") && <div className="chips">{chips}</div>}
+      {inactive ? (
+        <EndCard remote={remote} session={session} ended={ended} machineOnline={machine?.online ?? false} agent={agent} mname={mname} lastSeen={machine?.lastSeenMs ?? 0n} />
+      ) : (
+        <Composer
+          ref={composer}
+          wide={wide}
+          online={online}
+          running={st.kind === "running"}
+          asking={d.questions.size > 0}
+          onFocus={(v) => setTyping(v)}
+          onSend={(text) => remote.send(sid, text)}
+          onInterrupt={() => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } }))}
+        />
+      )}
+    </div>
+  );
 
   return (
-    <div className="session">
-      <header className={wide ? "dh" : "navbar"}>
-        {!wide && (
-          <button className="back" onClick={onBack} aria-label="返回">
-            ‹
-          </button>
-        )}
-        {wide ? (
-          <>
-            <Dot tone={st.tone} />
-            <b className="ellipsis">{titleOf(session)}</b>
-            <span className="muted small nowrap">
-              {projectName(projectKey(session))} · {machineName(machine)}
-            </span>
-            <span className="dh-chips">
-              <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
-            </span>
-            {seg}
-          </>
-        ) : (
-          <span className="title">
-            <b>{titleOf(session)}</b>
-            <span>
-              <Dot tone={st.tone} />
-              {machineName(machine)}
-            </span>
-          </span>
-        )}
-        <span className="more-wrap">
-          <button className="more" onClick={() => setMenu((m) => !m)} aria-label="更多">
-            ⋯
-          </button>
-          {menu && (
-            <div className="menu" onClick={() => setMenu(false)}>
-              <div className="menu-info">
-                {shortPath(session.info?.cwd ?? "")}
-                <br />
-                {session.id}
-              </div>
-              {!ended && (
-                <button
-                  className="danger"
-                  onClick={() => {
-                    if (confirm("结束这个会话？Codex 进程会被关闭。")) void run("结束会话", { case: "stopSession", value: { sessionId: session.id } });
-                  }}
-                >
-                  结束会话
-                </button>
-              )}
-            </div>
-          )}
-        </span>
-      </header>
-      {!wide && <div className="pad seg-row">{seg}</div>}
-
-      <div className={"panes " + tab}>
-        {tab !== "term" && (
-          <div className="chatpane">
-            <div
-              className="body chat"
-              ref={scroller}
-              onScroll={(e) => {
-                const el = e.currentTarget;
-                stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-              }}
-            >
-              <div className="sep">
-                {events[0] ? hhmm(Number(events[0].time?.seconds ?? 0n) * 1000) + " · " : ""}
-                {shortPath(session.info?.cwd ?? "")}
-              </div>
-              {!remote.loaded(session.id) && events.length === 0 && <p className="sysline">加载中…</p>}
-              {events.map((e) => (
-                <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} machine={machineName(machine)} />
-              ))}
-              {derived.running && derived.tools.map((t, i) => <RunningTool key={i} title={t.title} since={t.since} />)}
-              {pending.map((o) => (
-                <div key={o.requestId} className="me pending">
-                  <div>{o.text}</div>
-                  <small>{o.status === "sending" ? "发送中…" : "已送达电脑"}</small>
-                </div>
-              ))}
-              {failed.map((o) => (
-                <div key={o.requestId} className="me failed">
-                  <div>{o.text}</div>
-                  <small>
-                    没能确认送达：{o.error}
-                    <button className="link" onClick={() => void deliver(o.requestId, o.text)}>
-                      重试
-                    </button>
-                    <button className="link muted" onClick={() => setOutgoing((l) => l.filter((x) => x.requestId !== o.requestId))}>
-                      忽略
-                    </button>
-                  </small>
-                </div>
-              ))}
-              {[...derived.approvals.values()].map((a) => (
-                <ApprovalCard key={a.approvalId} a={a} run={run} sessionId={session.id} />
-              ))}
-              {[...derived.questions.values()].map((q) => (
-                <QuestionCard key={q.questionId} q={q} run={run} sessionId={session.id} />
-              ))}
-              {session.info?.planOpen && derived.plan && <PlanCard plan={derived.plan} run={run} sessionId={session.id} />}
-              {!ended && (contextPercent(session) ?? 0) >= 80 && (
-                <div className="ctxwarn">
-                  上下文已用 {contextPercent(session)}%
-                  <b onClick={() => !derived.running && void run("压缩", { case: "compact", value: { sessionId: session.id } })}>压缩</b>
-                </div>
-              )}
-              {blocked && (
-                <div className="banner">
-                  ⚠ 终端里有弹窗：{blocked}
-                  <b onClick={() => setTab("term")}>去终端处理 ›</b>
-                </div>
-              )}
-              {!machine?.online && <div className="banner">⚠ 这台电脑不在线，只能查看历史</div>}
-              {session.info?.inputWait === "unrecognized" && (
-                <div className="banner">
-                  ⚠ 认不出 Codex 的输入框，排队的消息发不出去。可能是 Codex 升级改了界面
-                  {machine?.meta?.codexVersion ? `（${machine.meta.codexVersion}）` : ""}，请在电脑上运行 remote-agent doctor
-                  <b onClick={() => setTab("term")}>去终端 ›</b>
-                </div>
-              )}
-            </div>
-
-            {toast && (
-              <div className="toast" onClick={() => setToast("")}>
-                {toast}
-              </div>
-            )}
-            {queued.length > 0 && (
-              <div className="queued">
-                排队{" "}
-                {queued.map((id) => (
-                  <span key={id}>
-                    {localText.get(id) ?? "一条消息"}
-                    <button
-                      className="x"
-                      aria-label="取消这条消息"
-                      onClick={() => void run("取消", { case: "cancelInput", value: { sessionId: session.id, requestId: id } })}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}{" "}
-                {session.info?.inputWait === "draft"
-                  ? "终端里有没发出的草稿，发完或清掉后再发"
-                  : blocked || session.info?.inputWait === "popup"
-                    ? "已暂停"
-                    : derived.questions.size > 0
-                      ? "答完再发"
-                      : derived.running
-                        ? "本轮结束后发"
-                        : ""}
-              </div>
-            )}
-            {!wide && (
-              <div className="chips">
-                <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
-              </div>
-            )}
-            {ended ? (
-              <div className="comp ended">
-                会话已结束
-                {machine?.online && (
-                  <button className="resume" onClick={() => void run("恢复会话", { case: "resumeSession", value: { sessionId: session.id } })}>
-                    恢复会话
-                  </button>
-                )}
-              </div>
-            ) : (
-              <Composer
-                running={derived.running}
-                wide={wide}
-                onSend={send}
-                onInterrupt={() => void run("中断", { case: "interrupt", value: { sessionId: session.id } })}
-              />
-            )}
+    <div className={"session" + (tab === "term" && !wide ? " termmode" : "")} ref={rootRef}>
+      {header}
+      <ConnBar remote={remote} />
+      {!wide && <div className="segrow">{seg}</div>}
+      <div className={"panes p-" + tab}>
+        {tab !== "term" && chat}
+        {tab !== "chat" && (
+          <div className="tcol">
+            <TerminalView remote={remote} session={session} compact={tab === "split"} wide={wide} running={!ended} />
           </div>
         )}
-        {tab !== "chat" &&
-          (ended ? <div className="center muted">会话已结束，终端已关闭</div> : <TerminalView remote={remote} session={session} compact={tab === "split"} />)}
       </div>
-      {sheet === "mode" && <ModeSheet s={session} run={run} onClose={() => setSheet("")} />}
-      {sheet === "model" && <SessionSheet remote={remote} s={session} run={run} running={derived.running} onClose={() => setSheet("")} />}
+      {menu && (
+        <ActionSheet
+          info={
+            <>
+              <span className="mono">{shortPath(session.info?.cwd ?? "")}</span> · {mname}
+              <br />
+              会话 <span className="mono">{sid}</span>
+            </>
+          }
+          actions={[
+            ...(!inactive && d.running ? [{ label: "中断本轮", onClick: () => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } })) }] : []),
+            ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
+          ]}
+          onClose={() => setMenu(false)}
+        />
+      )}
+      {confirmEnd && (
+        <Alert
+          title="结束这个会话？"
+          text={`${mname} 上的 ${agentName(agent)} 会被关掉，聊天记录保留，之后可以恢复。`}
+          ok="结束"
+          danger
+          onCancel={() => setConfirmEnd(false)}
+          onOk={() => {
+            setConfirmEnd(false);
+            void run("结束会话", () => remote.command(sid, { case: "stopSession", value: { sessionId: sid } }));
+          }}
+        />
+      )}
+      {sheet === "mode" && <ModeSheet remote={remote} s={session} onClose={() => setSheet("")} />}
+      {sheet === "model" && <SessionSheet remote={remote} s={session} running={d.running} onClose={() => setSheet("")} />}
     </div>
   );
 }
 
-function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; machine: string }) {
+/** The chat: history, what runs now, and messages on their way. Follows
+ * the bottom unless scrolled up, then offers a way back. */
+function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remote; session: SessionView; events: Event[]; d: Derived; agent: Agent; machine: string }) {
+  const sid = session.id;
+  const scroller = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+  const [unseen, setUnseen] = useState(0);
+  const seen = useRef(0);
+  const hist = remote.history(sid);
+  const items = timeline(events, d);
+  const outbox = remote.outbox(sid);
+  const prompt = remote.prompts.get(sid);
+  const cwd = session.info?.cwd ?? "";
+
+  // Text of a message this page knows, by request ID.
+  const textOf = new Map(outbox.map((o) => [o.sendId, o.text]));
+  const promptId = prompt ? [...d.inputs.keys()].find((id) => !textOf.has(id)) : undefined;
+  if (promptId && prompt) textOf.set(promptId, prompt);
+
+  const count = items.length + outbox.length + d.tools.length;
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    if (stick.current) {
+      el.scrollTop = el.scrollHeight;
+      seen.current = count;
+      setUnseen(0);
+    } else if (count > seen.current) setUnseen(count - seen.current);
+  }, [count, hist.loaded]);
+
+  const pending = outbox.filter((o) => ["sending", "delivered", "failed"].includes(phaseOf(o, d.inputs.get(o.sendId))));
+  const started = session.info?.createdAt ? Number(session.info.createdAt.seconds) * 1000 : events[0] ? eventTime(events[0]) : 0;
+  // The first message of a session started here, until the CLI takes it.
+  const promptState = promptId ? d.inputs.get(promptId) : undefined;
+  const showPrompt = prompt && !events.some((e) => e.kind.case === "userMessage") && promptState !== InputStatus.CANCELED && promptState !== InputStatus.UNCONFIRMED;
+
+  return (
+    <div className="chatwrap">
+      <div
+        className="body chat"
+        ref={scroller}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+          if (stick.current) {
+            seen.current = count;
+            setUnseen(0);
+          }
+        }}
+      >
+        <div className="sep">
+          {started ? hhmm(started) + " · " : ""}
+          {shortPath(cwd)}
+        </div>
+        {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
+        {items.map((it) => (
+          <Row key={it.key} it={it} d={d} cwd={cwd} machine={machine} agent={agent} textOf={textOf} />
+        ))}
+        {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
+        {hist.error && (
+          <Banner kind="err" action="重试" onAction={() => remote.retryEvents(sid)}>
+            后面的记录没读到
+          </Banner>
+        )}
+        {showPrompt && (
+          <div className="me">
+            <div>{prompt}</div>
+            <small>{promptState === InputStatus.QUEUED ? `已送达电脑，等 ${agentName(agent)} 就绪后发出` : "已送达电脑"}</small>
+          </div>
+        )}
+        {session.info?.status === SessionStatus.STARTING && (
+          <div className="sysline">
+            正在 {machine} 上启动 {agentName(agent)}…
+          </div>
+        )}
+        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={t.title} since={t.since} />)}
+        {pending.map((o) => (
+          <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
+        ))}
+      </div>
+      {unseen > 0 && (
+        <button
+          className="newmsg"
+          onClick={() => {
+            const el = scroller.current;
+            if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+            stick.current = true;
+            seen.current = count;
+            setUnseen(0);
+          }}
+        >
+          ↓ {unseen} 条新消息
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Outgoing; phase: string }) {
+  if (phase === "failed")
+    return (
+      <div className="me fail">
+        <div>{o.text}</div>
+        <small>
+          没能确认送达：{o.error}
+          <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>
+          <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
+        </small>
+      </div>
+    );
+  return (
+    <div className={"me" + (phase === "sending" ? " pending" : "")}>
+      <div>{o.text}</div>
+      <small>{phase === "sending" ? "◌ 发送中…" : "已送达电脑"}</small>
+    </div>
+  );
+}
+
+/** path relative to the session directory; macOS reports /tmp as /private/tmp. */
+function relativePath(path: string, cwd: string): string {
+  const norm = (p: string) => p.replace(/^\/private\//, "/");
+  const p = norm(path);
+  const base = norm(cwd).replace(/\/$/, "") + "/";
+  return p.startsWith(base) ? p.slice(base.length) : shortPath(path);
+}
+
+function toolTitle(t: ToolCall, cwd: string): string {
+  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + relativePath(t.title, cwd) : t.title || t.itemType;
+}
+
+function ToolRow({ t, cwd }: { t: ToolCall; cwd: string }) {
+  const [open, setOpen] = useState(false);
+  const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
+  const secs = Number(t.durationMs) / 1000;
+  const out = t.output.replace(/\n+$/, "");
+  const lines = out ? out.split("\n") : [];
+  const hasMore = !!t.input && t.input !== t.title;
+  return (
+    <>
+      <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span>
+        <code>{toolTitle(t, cwd)}</code>
+        {!ok && t.exitCode !== undefined ? <span className="exit">退出码 {t.exitCode}</span> : secs >= 1 ? <span className="muted">{Math.round(secs)}s</span> : null}
+      </button>
+      {open && hasMore && <div className="toolout">{t.input}</div>}
+      {(open || !ok) && lines.length > 0 && (
+        <div className="toolout">
+          {open ? out : lines[0]}
+          {open && t.outputTruncated && <span className="more">{"\n"}…（已截断）</span>}
+          {!open && lines.length > 1 && (
+            <span className="more" onClick={() => setOpen(true)}>
+              {"\n"}… 还有 {lines.length - 1} 行，展开
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ToolGroup({ calls, cwd }: { calls: ToolCall[]; cwd: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="tool tgrp" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="ok">✓</span>
+        <b>{toolsSummary(calls)}</b>
+        <span className="muted">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="grpbody">
+          {calls.map((t, i) => (
+            <ToolRow key={i} t={t} cwd={cwd} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function Row({ it, d, cwd, machine, agent, textOf }: { it: Item; d: Derived; cwd: string; machine: string; agent: Agent; textOf: Map<string, string> }) {
+  if (it.kind === "tools") return <ToolGroup calls={it.calls} cwd={cwd} />;
+  if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
+  const e = it.event;
   const k = e.kind;
   switch (k.case) {
     case "userMessage":
@@ -323,43 +448,23 @@ function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; m
       return (
         <details className="think">
           <summary>▸ 思考</summary>
-          <div>{k.value.text}</div>
+          <div className="thinktext">{k.value.text}</div>
         </details>
       );
-    case "toolCall": {
-      const t = k.value;
-      const ok = t.status === "completed" && (t.exitCode === undefined || t.exitCode === 0);
-      const secs = Number(t.durationMs) / 1000;
-      return (
-        <details className="tool">
-          <summary>
-            <span className={ok ? "ok" : "bad"}>{ok ? "✓" : "✕"}</span>
-            <code>{t.kind === ToolKind.FILE_CHANGE ? "编辑 " + relativePath(t.title, cwd) : t.title || t.itemType}</code>
-            <span className="faint">{!ok && t.exitCode !== undefined ? `退出码 ${t.exitCode}` : secs >= 1 ? `${Math.round(secs)}s` : ""}</span>
-          </summary>
-          {t.input && t.input !== t.title && <pre>{t.input}</pre>}
-          {t.output && (
-            <pre>
-              {t.output}
-              {t.outputTruncated ? "\n…（已截断）" : ""}
-            </pre>
-          )}
-        </details>
-      );
-    }
+    case "toolCall":
+      return <ToolRow t={k.value} cwd={cwd} />;
     case "turnEnded":
-      return k.value.outcome === TurnOutcome.ABORTED ? <div className="sysline">已中断</div> : null;
+      return <div className="sysline">已中断</div>;
     case "approvalRequested": {
       const r = d.resolved.get(k.value.approvalId);
-      if (!r) return null; // the pending card is shown at the bottom
+      if (!r) return null;
       const ok = r.decision === ApprovalDecision.ALLOW;
+      const canceled = r.decision === ApprovalDecision.CANCELED;
       return (
-        <div className="tool">
-          <div className="summary">
-            <span className={ok ? "ok" : "bad"}>{ok ? "✓" : "✕"}</span>
-            <code>{k.value.command || k.value.toolName}</code>
-            <span className="faint">{decisionText(r.decision)}</span>
-          </div>
+        <div className="record">
+          <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? "–" : ok ? "✓" : "✕"}</span>
+          <code>{k.value.command || k.value.toolName}</code>
+          <span className="muted">{decisionText(r.decision)}</span>
         </div>
       );
     }
@@ -371,191 +476,71 @@ function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; m
         </div>
       ) : null;
     }
-    case "inputState":
+    case "inputState": {
       if (k.value.status === InputStatus.CANCELED) return <div className="sysline">取消了一条排队的消息</div>;
-      return k.value.status === InputStatus.UNCONFIRMED ? <div className="sysline warn">有一条消息已送到终端，但没能确认 Codex 收到，没有重发</div> : null;
+      const text = textOf.get(k.value.requestId);
+      const note = `已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发`;
+      return text ? (
+        <div className="me warn">
+          <div>{text}</div>
+          <small>{note}</small>
+        </div>
+      ) : (
+        <div className="sysline warn">有一条消息{note}</div>
+      );
+    }
     case "settingsChanged": {
       const c = k.value;
-      if (c.compacted) return <div className="compacted">上下文已压缩</div>;
-      if (c.model) {
+      if (c.compacted) {
+        const x = d.compactions.get(e.seq);
+        return (
+          <div className="sysline">
+            上下文已压缩{x?.before !== undefined && x.after !== undefined ? ` · ${x.before}% → ${x.after}%` : ""}
+          </div>
+        );
+      }
+      if (c.model)
         return (
           <div className="sysline">
             切换到 <b>{c.model}</b> · {c.effort}
           </div>
         );
-      }
-      const name = { [ApprovalMode.ASK]: "询问", [ApprovalMode.AUTO]: "自动", [ApprovalMode.PLAN]: "计划", [ApprovalMode.FULL_ACCESS]: "完全放行" }[
-        c.mode as number
-      ];
-      return name ? (
+      return (
         <div className="sysline">
-          模式切换到 <b>{name}</b>
+          模式切换到 <b>{modeName(c.mode)}</b>
         </div>
-      ) : null;
+      );
     }
-    case "turnContext": {
-      const change = d.terminalChanges.get(e.seq);
-      return change ? (
+    case "turnContext":
+      return (
         <div className="sysline">
-          {machine} 终端把<b>{change}</b>
+          {machine} 终端把
+          {(d.terminalChanges.get(e.seq) ?? "").split("，").map((c, i) => {
+            const [what, to] = c.split("切到了 ");
+            return (
+              <span key={i}>
+                {i > 0 && "，"}
+                {what}切到了 <b>{to}</b>
+              </span>
+            );
+          })}
         </div>
-      ) : null;
-    }
+      );
     case "planProposed":
       return (
-        <details className="think plan-log">
+        <details className="think">
           <summary>▸ 计划</summary>
-          <div>{k.value.text}</div>
+          <div className="ai">
+            <Markdown text={k.value.text} />
+          </div>
         </details>
       );
-    case "sessionState":
-      return k.value.status === SessionStatus.EXITED ? <div className="sysline">会话已结束{k.value.detail ? `（${k.value.detail}）` : ""}</div> : null;
-    default:
-      return null;
+    case "sessionState": {
+      const t = eventTime(e);
+      return <div className="sep">{t ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} ` : ""}结束</div>;
+    }
   }
-}
-
-function ApprovalCard({ a, run, sessionId }: { a: ApprovalRequested; run: Run; sessionId: string }) {
-  const now = useNow(1000);
-  const [busy, setBusy] = useState(false);
-  const [reasonOpen, setReasonOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const deadline = a.deadline ? Number(a.deadline.seconds) * 1000 : 0;
-  const expired = deadline > 0 && now >= deadline;
-  const resolve = async (allow: boolean) => {
-    setBusy(true);
-    await run(allow ? "允许" : "拒绝", { case: "resolveApproval", value: { sessionId, approvalId: a.approvalId, allow, message: allow ? "" : reason } });
-    setBusy(false);
-  };
-  return (
-    <div className="appr">
-      <div className="h">
-        <b>{a.command ? "请求执行" : "请求权限 · " + a.toolName}</b>
-        <span className="muted">{expired ? "已超时" : deadline ? `${hhmm(deadline)} 后拒绝` : ""}</span>
-      </div>
-      {a.description && <p className="desc">{a.description}</p>}
-      <pre>{a.command || a.toolInputJson}</pre>
-      {reasonOpen && <input autoFocus placeholder="拒绝的理由，会告诉 Codex" value={reason} onChange={(e) => setReason(e.target.value)} />}
-      <div className="btns">
-        <button className="btn no" disabled={busy || expired} onClick={() => (reasonOpen || !reason ? void resolve(false) : setReasonOpen(true))}>
-          拒绝
-        </button>
-        <button className="btn pri" disabled={busy || expired} onClick={() => void resolve(true)}>
-          允许
-        </button>
-      </div>
-      {!reasonOpen && (
-        <div className="foot">
-          想告诉 Codex 为什么？<b onClick={() => setReasonOpen(true)}>附理由拒绝 ›</b>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function QuestionCard({ q, run, sessionId }: { q: QuestionAsked; run: Run; sessionId: string }) {
-  const [busy, setBusy] = useState(false);
-  // Which question to answer. The daemon only enters the option while the
-  // terminal shows this very question, so a stale choice is refused rather
-  // than answering another question.
-  const [current, setCurrent] = useState(0);
-  const multi = q.questions.length > 1;
-  const index = Math.min(current, q.questions.length - 1);
-  const item = q.questions[index];
-  if (!item) return null;
-  return (
-    <div className="appr ask">
-      <div className="h">
-        <b>Codex 在问你</b>
-        <span className="muted">
-          {multi ? (
-            <>
-              <button className="link" disabled={index === 0} onClick={() => setCurrent(index - 1)} aria-label="上一题">
-                ‹
-              </button>
-              {index + 1}/{q.questions.length}
-              <button className="link" disabled={index === q.questions.length - 1} onClick={() => setCurrent(index + 1)} aria-label="下一题">
-                ›
-              </button>
-            </>
-          ) : (
-            item.header
-          )}
-        </span>
-      </div>
-      <div className="q">{item.text}</div>
-      {item.options.map((o, i) => {
-        const { text, recommended } = optionLabel(o.label);
-        return (
-          <button
-            key={i}
-            className={"ans" + (recommended ? " rec" : "")}
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              const res = await run("回答", { case: "answerQuestion", value: { sessionId, questionId: q.questionId, option: i + 1, questionIndex: index } });
-              if (res && index < q.questions.length - 1) setCurrent(index + 1);
-              setBusy(false);
-            }}
-          >
-            {text}
-            {recommended && "（推荐）"}
-            {o.description && <small>{o.description}</small>}
-          </button>
-        );
-      })}
-      <div className="foot">{multi ? "终端上显示的必须是这一题，否则不会作答。" : "都不合适？去终端里补充。"}</div>
-    </div>
-  );
-}
-
-function Composer({ running, wide, onSend, onInterrupt }: { running: boolean; wide: boolean; onSend: (text: string) => void; onInterrupt: () => void }) {
-  const [text, setText] = useState("");
-  const submit = () => {
-    const t = text.trim();
-    if (!t) return;
-    // Slash commands typed as text are sent to the model, and menus they
-    // open are not visible here.
-    if (t.startsWith("/") && !confirm("以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。仍然发送？")) return;
-    // A message that fails stays in the timeline with a retry button;
-    // putting it back here would invite sending it a second time.
-    setText("");
-    onSend(t);
-  };
-  return (
-    <div className="comp">
-      <textarea
-        className="in"
-        value={text}
-        rows={1}
-        placeholder={wide ? "消息 · ⌘↵ 发送" : "消息"}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-      />
-      {running && !text.trim() ? (
-        <button className="stop" onClick={onInterrupt} aria-label="中断" title="中断当前这一轮">
-          ■
-        </button>
-      ) : (
-        <button className="go" disabled={!text.trim()} onClick={submit} aria-label="发送">
-          ↑
-        </button>
-      )}
-    </div>
-  );
-}
-
-/** path relative to the session directory; macOS reports /tmp as /private/tmp. */
-function relativePath(path: string, cwd: string): string {
-  const norm = (p: string) => p.replace(/^\/private\//, "/");
-  const p = norm(path);
-  const base = norm(cwd).replace(/\/$/, "") + "/";
-  return p.startsWith(base) ? p.slice(base.length) : shortPath(path);
+  return null;
 }
 
 function RunningTool({ title, since }: { title: string; since: number }) {
@@ -563,11 +548,223 @@ function RunningTool({ title, since }: { title: string; since: number }) {
   const secs = since ? Math.max(0, Math.floor((now - since) / 1000)) : 0;
   return (
     <div className="tool">
-      <div className="summary">
-        <span className="sp">◌</span>
-        <code>{title}</code>
-        <span className="faint">{secs > 0 ? `${secs}s` : ""}</span>
-      </div>
+      <span className="sp">◌</span>
+      <code>{title}</code>
+      {secs > 0 && <span className="muted">{secs}s</span>}
     </div>
   );
 }
+
+/** Messages waiting in the daemon's queue, each cancellable, and why
+ * they wait. */
+function Queue({ remote, session, d, outbox }: { remote: Remote; session: SessionView; d: Derived; outbox: Outgoing[] }) {
+  const [canceling, setCanceling] = useState<Set<string>>(new Set());
+  const sid = session.id;
+  const text = new Map(outbox.map((o) => [o.sendId, o.text]));
+  const prompt = remote.prompts.get(sid);
+  const ids = [...d.inputs.entries()].filter(([, s]) => s === InputStatus.QUEUED).map(([id]) => id);
+  // The first message of a session started here shows in the chat.
+  const shown = prompt ? ids.filter((id) => text.has(id)) : ids;
+  if (shown.length === 0) return null;
+  const reason = queueReason(session, d);
+  const cancel = async (id: string) => {
+    setCanceling((s) => new Set(s).add(id));
+    try {
+      await remote.command(sid, { case: "cancelInput", value: { sessionId: sid, requestId: id } });
+    } catch {
+      setCanceling((s) => {
+        const n = new Set(s);
+        n.delete(id);
+        return n;
+      });
+    }
+  };
+  return (
+    <div className="queued">
+      {!reason.startsWith("认不出") && shown.length === 1 && <span className="lbl">排队</span>}
+      {shown.map((id) => (
+        <span key={id} className={"q" + (canceling.has(id) ? " canceling" : "")}>
+          <em>{text.get(id) ?? "一条消息"}</em>
+          <button aria-label="取消这条消息" disabled={canceling.has(id)} onClick={() => void cancel(id)}>
+            ✕
+          </button>
+        </span>
+      ))}
+      {reason && <span className="lbl">{shown.length > 1 ? `${reason.replace(/发$/, "按顺序发")}` : reason}</span>}
+    </div>
+  );
+}
+
+function Composer({
+  ref,
+  wide,
+  online,
+  running,
+  asking,
+  onFocus,
+  onSend,
+  onInterrupt,
+}: {
+  ref: RefObject<HTMLTextAreaElement | null>;
+  wide: boolean;
+  online: boolean;
+  running: boolean;
+  asking: boolean;
+  onFocus: (typing: boolean) => void;
+  onSend: (text: string) => void;
+  onInterrupt: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [slash, setSlash] = useState(false);
+  const t = text.trim();
+  // While the server is away, nothing is queued behind the user's back:
+  // the text stays here until they send it themselves.
+  const canSend = !!t && online;
+  const submit = (force = false) => {
+    if (!canSend) return;
+    // Slash commands typed as text go to the model; menus they would open
+    // are not visible here.
+    if (t.startsWith("/") && !force) return setSlash(true);
+    setText("");
+    onSend(t);
+  };
+  return (
+    <div className="comp">
+      <textarea
+        ref={ref}
+        className={"in" + (t ? " typed" : "")}
+        value={text}
+        rows={1}
+        placeholder={asking ? "排队发送，回答后继续" : wide ? "消息 · ⌘↵ 发送" : "消息"}
+        onChange={(e) => setText(e.target.value)}
+        onFocus={() => onFocus(true)}
+        onBlur={() => onFocus(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        aria-label="消息"
+      />
+      {running && !t ? (
+        <button className="stop" onClick={onInterrupt} disabled={!online} aria-label="中断本轮" title="中断本轮">
+          ■
+        </button>
+      ) : (
+        <button className="go" disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onClick={() => submit()} aria-label="发送">
+          ↑
+        </button>
+      )}
+      {slash && (
+        <Alert
+          title="作为普通消息发送？"
+          text="以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"
+          ok="发送"
+          onCancel={() => setSlash(false)}
+          onOk={() => {
+            setSlash(false);
+            submit(true);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The input's place when the session cannot take messages: ended, or the
+ * computer is offline. */
+function EndCard({
+  remote,
+  session,
+  ended,
+  machineOnline,
+  agent,
+  mname,
+  lastSeen,
+}: {
+  remote: Remote;
+  session: SessionView;
+  ended: boolean;
+  machineOnline: boolean;
+  agent: Agent;
+  mname: string;
+  lastSeen: bigint;
+}) {
+  const [resuming, setResuming] = useState(false);
+  const [error, setError] = useState("");
+  const status = session.info?.status;
+  useEffect(() => {
+    if (status !== SessionStatus.EXITED) setResuming(false);
+  }, [status]);
+  if (!ended)
+    return (
+      <div className="endcard">
+        <div className="h">
+          <Dot tone="off" />
+          {mname} 不在线
+        </div>
+        <div className="d">{lastSeen ? `${ago(lastSeen)}断开。` : ""}电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div>
+      </div>
+    );
+  const resume = async () => {
+    setResuming(true);
+    setError("");
+    try {
+      await remote.command(session.id, { case: "resumeSession", value: { sessionId: session.id } });
+    } catch (e) {
+      setError(errorText(e));
+      setResuming(false);
+    }
+  };
+  if (resuming)
+    return (
+      <div className="endcard">
+        <div className="h">
+          <Dot tone="run" />
+          正在恢复…
+        </div>
+        <div className="d">
+          在 {mname} 上重新打开 {agentName(agent)}
+        </div>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="endcard">
+        <div className="h">
+          <Dot tone="off" />
+          恢复失败
+        </div>
+        <div className="d">{error}</div>
+        <div className="btns">
+          <button className="btn" onClick={() => void resume()} disabled={!machineOnline || remote.conn !== "online"}>
+            再试一次
+          </button>
+        </div>
+      </div>
+    );
+  return (
+    <div className="endcard">
+      <div className="h">
+        <Dot tone="off" />
+        会话已结束
+      </div>
+      {machineOnline ? (
+        <>
+          <div className="d">
+            {exitReason(session.info?.statusDetail ?? "")}恢复会在 {mname} 上用同样的设置重新打开它，聊天记录都在。
+          </div>
+          <div className="btns">
+            <button className="btn pri" onClick={() => void resume()} disabled={remote.conn !== "online"}>
+              恢复会话
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="d">{mname} 不在线，连上后才能恢复。</div>
+      )}
+    </div>
+  );
+}
+
