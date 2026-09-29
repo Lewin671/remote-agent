@@ -101,4 +101,15 @@ it("renders Markdown blocks: tables, code, headings", () => {
 it("splits table rows", () => {
   expect(tableCells("| a | `x|y` | c \\| d |")).toEqual(["a", "`x|y`", "c | d"]);
   expect(tableCells("a | b")).toEqual(["a", "b"]);
+  // An escaped backslash does not escape the pipe after it.
+  expect(tableCells("| a\\\\| b |")).toEqual(["a\\\\", "b"]);
+  expect(tableCells("| a\\\\\\| | b |")).toEqual(["a\\\\|", "b"]);
+});
+
+it("closes a fence only with one at least as long", () => {
+  const md = ["````md", "```sh", "ls", "```", "````", "after"].join("\n");
+  expect(mdBlocks(md)).toEqual([
+    { kind: "code", text: "```sh\nls\n```" },
+    { kind: "text", text: "after" },
+  ]);
 });

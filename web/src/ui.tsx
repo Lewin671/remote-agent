@@ -44,7 +44,7 @@ export function Rich({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
-const fence = /^\s*(```|~~~)/;
+const fence = /^\s{0,3}(`{3,}|~{3,})/;
 const tableSep = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
@@ -55,14 +55,20 @@ const bullet = /^(\s*)[-*+]\s+/;
 export function tableCells(line: string): string[] {
   let s = line.trim();
   if (s.startsWith("|")) s = s.slice(1);
-  if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+  // A pipe after an odd run of backslashes is escaped.
+  const escaped = (end: number) => {
+    let n = 0;
+    while (end - 1 - n >= 0 && s[end - 1 - n] === "\\") n++;
+    return n % 2 === 1;
+  };
+  if (s.endsWith("|") && !escaped(s.length - 1)) s = s.slice(0, -1);
   const cells: string[] = [];
   let cur = "";
   let code = false;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
-    if (c === "\\" && s[i + 1] === "|") {
-      cur += "|";
+    if (c === "\\" && (s[i + 1] === "|" || s[i + 1] === "\\")) {
+      cur += s[i + 1] === "|" ? "|" : "\\\\";
       i++;
     } else if (c === "`") {
       code = !code;
@@ -100,8 +106,10 @@ export function mdBlocks(md: string): Block[] {
     const f = fence.exec(line);
     if (f) {
       const body: string[] = [];
+      // Closed by a fence of the same character, at least as long.
+      const close = new RegExp(`^\\s{0,3}${f[1][0] === "`" ? "`" : "~"}{${f[1].length},}\\s*$`);
       let j = i + 1;
-      while (j < lines.length && !lines[j].trim().startsWith(f[1])) body.push(lines[j++]);
+      while (j < lines.length && !close.test(lines[j])) body.push(lines[j++]);
       flush();
       blocks.push({ kind: "code", text: body.join("\n") });
       i = j;
