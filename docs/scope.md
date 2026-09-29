@@ -20,7 +20,7 @@
 ```
 ┌──────────── 每台电脑 ────────────┐        ┌──── VPS ────┐        ┌── 各端客户端 ──┐
 │ remote-agent（Go 单二进制）      │ HTTPS  │ remote-agent│ HTTPS  │ Web / PWA      │
-│  daemon + 本地 CLI 命令          │◄──────►│ -server（Go）│◄──────►│                │
+│  daemon + 本地 CLI 命令          │◄──────►│ -server（Go）│◄──────►│ Android App    │
 └──────────────────────────────────┘ + WSS  └─────────────┘ + WSS  └────────────────┘
 ```
 
@@ -29,8 +29,9 @@
 | 组件 | 负责 | 不负责 |
 |---|---|---|
 | `remote-agent`（每台电脑一个） | 在 tmux 里启动和托管 CLI；读取 transcript 并转成统一事件；接收 hook（审批、轮次边界）；排队并注入输入；转发终端字节流；加密和解密；上报本机的项目 | 存储历史（transcript 本身就是本地的数据源）；替 CLI 做决策 |
-| `remote-agent-server`（VPS） | 设备鉴权；按路由转发密文；存储会话事件的密文；发送推送 | 解密任何内容；理解消息语义；分组和搜索；替离线的 daemon 排队指令；提供网页代码（网页放在 Cloudflare Pages） |
+| `remote-agent-server`（VPS） | 设备鉴权；按路由转发密文；存储会话事件的密文；发送推送 | 解密任何内容；理解消息语义；分组和搜索；替离线的 daemon 排队指令；提供网页代码（网页放在 Cloudflare Pages）或 App 安装包 |
 | `web`（PWA） | 配对设备；解密和渲染；按项目分组；聊天视图和终端视图；权限审批 | 直接连接 daemon（一律经 server 转发） |
+| `android`（原生 App） | 和 PWA 相同，另外在系统通知里显示审批并直接允许或拒绝 | 直接连接 daemon（一律经 server 转发） |
 
 ## 4. 信任边界
 
@@ -43,12 +44,14 @@
 | 设备 ID、机器 ID、会话 ID、事件序号、时间戳、密文长度 | 是（路由必需） |
 | 设备公钥 | 是 |
 | 账户根密钥、会话密钥 | 否（会话密钥用根密钥加密后存储） |
-| 推送内容 | 只包含通用文案（如「有新的审批请求」），不包含具体内容 |
+| 推送内容 | Web Push 只包含通用文案（如「有新的审批请求」）；Android 的推送可以带内容，但必须是 daemon 端到端加密的密文，server 和推送服务（FCM）只能看到密文、推送 token、时间和长度 |
 | 网页代码 | 不由 server 提供，否则被攻破后可以替换 JS、绕过加密 |
+| App 安装包 | 不由 server 提供，自己签名、自己安装；APK 签名密钥和 Cloudflare 账号一样是关键资产 |
 
 硬性规则：
 - 任何明文内容不得出现在 server 的日志、数据库或推送 payload 中
 - daemon 和客户端的日志里也不得打印消息正文或密钥；调试时只打印 ID 和长度
+- App 在本机解密后显示的通知，锁屏上只显示通用文案。解密后的内容交给系统通知，就可能留在通知历史里、被有通知读取权限的 App 读到；是否接受这一点未定，见 [plan.md](plan.md)
 - 加密只用标准原语：AES-256-GCM、X25519、Ed25519、HKDF，不自己发明密码算法或密码学构造（应用层的报文格式照常自己设计，见 [architecture.md](architecture.md)）
 
 ## 5. MVP 范围
@@ -71,12 +74,16 @@
 - **推送**：Web Push，在一轮结束和有审批请求时提醒
 - **部署**：server 部署在 VPS，TLS 必须开启
 
+### MVP 之后要做
+
+- **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店。选型见 [architecture.md](architecture.md) 第 15 节，进度见 [plan.md](plan.md)
+
 ### 不做（MVP 之后再评估）
 
 - Claude Code 和其他 CLI（P3；已有的实测是预研，见 [claude-code-notes.md](claude-code-notes.md)）
 - 附件和图片上传
 - 接管不是由 `remote-agent` 启动的 CLI 进程
-- 原生 App（iOS、Android、桌面端）
+- 原生 App（iOS、桌面端）
 - 语音、feed、artifacts、数据统计
 - 在客户端里浏览或编辑文件、查看 diff 面板
 - 全文搜索（server 无法搜密文，客户端本地搜索留到以后）

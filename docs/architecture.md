@@ -7,9 +7,9 @@
 ```
  手机 / 平板 / 浏览器              VPS（海外）                         每台电脑
  ────────────────────             ───────────                         ────────
- PWA（React）                      Caddy（HTTPS）                      remote-agent（Go）
-   │  网页代码来自                   └─ remote-agent-server（Go）        ├─ daemon
-   │  Cloudflare Pages                  SQLite                          ├─ 本地 CLI 命令
+ PWA / Android App                 Caddy（HTTPS）                      remote-agent（Go）
+   │  网页来自 Cloudflare Pages      └─ remote-agent-server（Go）        ├─ daemon
+   │  App 侧载安装                      SQLite                          ├─ 本地 CLI 命令
    │                                                                    └─ hook 入口
    └──────── HTTPS / WSS ────────▶ api.<域名> ◀──────── HTTPS / WSS ─────┘
                                                                      tmux ─ codex
@@ -20,6 +20,7 @@
 | `remote-agent` | Go 单二进制：daemon、本地 CLI（`remote-agent codex` 等）和 hook 入口都在里面 | 每台电脑一个 |
 | `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
+| `android` | 原生 App，Kotlin + Jetpack Compose，见第 15 节 | 自己签名的 APK，侧载安装 |
 
 当前的 VPS 上已经有 Happy 用 docker compose 跑的 Caddy（占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。部署文件和脚本在 `deploy/`。
 
@@ -27,7 +28,7 @@
 
 网页代码**不由 VPS 提供**：如果 VPS 被攻破后能替换网页的 JS，端到端加密就会被绕过。放在另一个平台上，攻击者必须同时攻破两处才行。Cloudflare 账号因此也成了关键资产，必须开启两步验证。
 
-代码放在同一个仓库：一个 Go module，外加 `web/` 目录。
+代码放在同一个仓库：一个 Go module，外加 `web/` 和 `android/` 两个目录。
 
 ## 2. 报文分层
 
@@ -135,7 +136,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 |---|---|---|
 | 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
 | 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
-| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages | 一套代码覆盖所有设备；不上架应用商店；网页不和 server 放在一起 |
+| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 另做原生 App（第 15 节） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
 | 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
@@ -223,10 +224,11 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | `wrap` | AES-256 | 加密会话密钥 |
 | `machine-meta` | AES-256 | 加密机器元数据（机器名、系统） |
 | `command` | AES-256 | 加密客户端发给 daemon 的指令和返回结果 |
+| `notify` | AES-256 | 加密推送里的通知内容，只给 Android App 在后台解密用（第 15 节） |
 
 每个会话另有一把随机的**会话密钥**，加密这个会话的事件和元数据。它存在 daemon 的会话目录里（`relay.key`），用 `wrap` 加密后上传到 server，客户端从 server 取回再解开。
 
-**设备**：每台电脑和每个浏览器都有自己的 Ed25519 设备密钥，设备 ID 是公钥 SHA-256 的前 16 字节。登记时用账户密钥签名，server 用账户公钥验证；登录时设备签 server 给的一次性 challenge，换取 30 天有效的 token。设备登记由账户密钥签名，而不是由一台已登记的设备签名：单用户场景下根密钥本身就是信任根，这样新设备加入时不需要旧设备在线。
+**设备**：每台电脑、每个浏览器和每个 App 都有自己的 Ed25519 设备密钥，设备 ID 是公钥 SHA-256 的前 16 字节。登记时用账户密钥签名，server 用账户公钥验证；登录时设备签 server 给的一次性 challenge，换取 30 天有效的 token。设备登记由账户密钥签名，而不是由一台已登记的设备签名：单用户场景下根密钥本身就是信任根，这样新设备加入时不需要旧设备在线。
 
 **把根密钥交给新设备：配对**。已有设备（网页的「设置 › 添加设备」或 `remote-agent account pair`）显示二维码和 8 位配对码，新设备扫码、输码（网页），或用 `remote-agent account join --code` 加入。实现在 `internal/e2e/pair.go`、`internal/relay/pair.go` 和 `web/src/pairing.ts`，要点：
 
@@ -239,7 +241,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 账户密钥串 `ra1.<根密钥>.<server 地址>`（`remote-agent account secret`）仍可作为备用方式粘贴，它不放进 URL，以免留在浏览历史里。
 
-**浏览器怎么存**：设备私钥存成不可导出的 `CryptoKey`（IndexedDB）；根密钥除了不可导出的 HKDF 密钥，还存一份原始字节，因为配对时要把它交给新设备（WebCrypto 的不可导出密钥取不回原始字节）。代价是页面一旦被注入脚本，根密钥能被带走；不过那种情况下脚本本来就能通过页面解密全部内容，差别在于带走后长期有效。配对上线前加入的浏览器没有原始字节，不能发起配对，要重新加入一次。不同的网页来源（如 localhost 和 `app.<域名>`）各有各的存储，换了地址要重新加入。
+**浏览器怎么存**：设备私钥存成不可导出的 `CryptoKey`（IndexedDB）；根密钥除了不可导出的 HKDF 密钥，还存一份原始字节，因为配对时要把它交给新设备（WebCrypto 的不可导出密钥取不回原始字节）。代价是页面一旦被注入脚本，根密钥能被带走；不过那种情况下脚本本来就能通过页面解密全部内容，差别在于带走后长期有效。配对上线前加入的浏览器没有原始字节，不能发起配对，要重新加入一次。不同的网页来源（如 localhost 和 `app.<域名>`）各有各的存储，换了地址要重新加入。App 怎么存见第 15 节。
 
 ## 10. 报文、同步和指令
 
@@ -260,7 +262,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 server 把指令原样转给那台机器的 WebSocket，最多等 30 秒。机器不在线时立即返回「不可用」，**不排队**；已经转发出去但没等到结果时，返回「可能执行了、也可能没有」，客户端用同一个请求 ID 重试即可。
 
-**WebSocket**：路径 `/v1/stream`，承载二进制 Protobuf 帧。浏览器的 WebSocket 不能自定义请求头，所以第一帧发 token，认证通过前 server 不发任何数据；浏览器连接还要检查 `Origin`。server 每 20 秒 ping 一次；某个客户端积压超过 256 帧就断开它，它重连后从历史补。每台机器同时只保留一条连接，新连接顶掉旧的。
+**WebSocket**：路径 `/v1/stream`，承载二进制 Protobuf 帧。浏览器的 WebSocket 不能自定义请求头，所以第一帧发 token，认证通过前 server 不发任何数据；浏览器连接还要检查 `Origin`；原生 App 不发 `Origin`，server 用的 coder/websocket 对没有 `Origin` 的请求直接放行，App 同样靠第一帧的 token 认证。server 每 20 秒 ping 一次；某个客户端积压超过 256 帧就断开它，它重连后从历史补。每台机器同时只保留一条连接，新连接顶掉旧的。
 
 **大小限制**：单个信封不超过 1 MiB，一次上传不超过 500 个事件，推送帧超过 1 MiB 就拆开发。
 
@@ -283,6 +285,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 - **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送
 - **内容**：只有通用文案（「有会话在等你处理」），外加用于跳转的会话 ID，符合 scope 第 4 节「推送不含具体内容」。同一会话同一类别 15 秒内只推一次
 - **客户端**：service worker 收到推送时，如果应用正开着并在前台，就不再弹通知；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
+- **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见第 15 节
 
 ## 13. daemon 设置与远程新建会话
 
@@ -301,3 +304,68 @@ remote-agent 依赖 Codex 的屏幕和 rollout，Codex 升级可能改变它们�
 - **看得出来**：排队的消息发不出去时，daemon 在会话信息里给出原因（终端有草稿、有弹窗、认不出输入框）；认不出输入框超过 20 秒会记一条带 Codex 版本的警告，网页上提示可能是 Codex 升级改了界面
 - **查得出来**：`remote-agent doctor` 用独立的 daemon、状态目录和 tmux，在 `~/.remote-agent/doctor-work` 里以 GPT-6-Luna 低档位真的跑一个会话，逐项检查：认出输入框、区分本地草稿、注入并读回回复、切模型、切审批模式和计划模式、中断、终端快照。失败时附上画面分析的结果（不含内容）
 - **记录版本**：daemon 启动时读 `codex --version`，放进机器元数据；代码测试过的版本（`codex.TestedVersions`）和本机 doctor 通过的版本算「已验证」，否则启动日志和网页的机器详情里提示运行 doctor
+
+## 15. Android 客户端
+
+Android 原生 App 要把手机上的体验做到原生水平，范围见 [scope.md](scope.md) 第 5 节，进度和未定的问题见 [plan.md](plan.md)。协议、同步、指令和终端的规则都和网页一样（第 10、11 节），这里只写 App 自己的选型和约束。
+
+### 选型
+
+| 组件 | 选型 | 理由 |
+|---|---|---|
+| 工程结构 | 纯 Android 工程，分成 `:core` 和 `:app` 两个模块，代码放在 `android/` | 见下文「模块」 |
+| UI | Jetpack Compose + Material 3；状态用 Coroutines + StateFlow，事件在一个串行队列里归约 | 返回手势、键盘 insets、动态取色这些原生交互都能直接控制；前台界面和后台通知走同一套逻辑 |
+| RPC | connect-kotlin + OkHttp，Connect 协议，二进制 Protobuf | ConnectRPC 官方的 Android 用法 |
+| Protobuf | 用 `buf` 从 `proto/` 生成 javalite 和 connect-kotlin 代码 | `proto/` 仍是唯一的协议定义 |
+| WebSocket | OkHttp，`/v1/stream` 和 `/v1/term` 各一条 | 和网页相同的两条连接 |
+| 加密 | AES-256-GCM 用平台 JCA；X25519、Ed25519、HKDF 用 Bouncy Castle 的 lightweight API | 先保证和 Go、TS 逐字节一致，见下文「加密和密钥」 |
+| 本地存储 | Room 存密文信封和同步游标，DataStore 存偏好 | 本地不保存明文 |
+| 推送 | 手机有 GMS 用 FCM data message，没有再用 UnifiedPush | 见下文「推送和通知里审批」 |
+| 终端 | Termux 的 `terminal-emulator` 和 `terminal-view`，用 `AndroidView` 嵌进 Compose | 原生渲染和输入法都比 WebView 里的 xterm.js 好 |
+| 扫码 | CameraX + ZXing core | 本地解码，只扫配对二维码这一种 |
+| 构建和分发 | Gradle version catalog 锁定依赖版本；release 构建开 R8，测试也在 release 包上跑；自己签名，侧载安装 | 不上架应用商店 |
+
+### 为什么是纯 Kotlin
+
+| 方案 | 结论 | 理由 |
+|---|---|---|
+| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。`:core` 不依赖 `android.*`，以后做 iOS 再迁，业务规则和测试都能保留 |
+| gomobile 复用 Go | 暂不采用 | 能直接复用的只有 `internal/e2e`：`relay.JoinByPairing` 按机器登记并写 `account.json`，`remoteclient` 是测试用的客户端，不保存设备私钥；同步引擎和事件归约只有 TS 版，用 Go 也要新写。还要承担：Go 的 TLS 不走 Android 的网络安全策略，系统代理不自动生效，网络切换要由 Kotlin 通知，协程取消要桥接到 `context`，Go 和 JVM 两个堆，以及 NDK、R8、16 KB 页面的构建问题。做 iOS 时和 KMP 一起重新评估 |
+| 只把加密交给 Go | 不采用 | 绑定层的固定成本一样不少，复用最少 |
+| Flutter、React Native | 不采用 | 终端和系统交互仍要写原生模块；Flutter 多出一套 Dart；RN 也搬不动现有网页，它依赖 WebCrypto、IndexedDB、xterm.js 和 DOM |
+| 包装 PWA（TWA、Capacitor） | 不采用 | 界面仍是网页，终端输入、键盘和系统交互达不到原生 |
+
+### 模块
+
+- **`:core`**：纯 Kotlin/JVM，不依赖 `android.*`。包括 proto、RPC 和 WebSocket、加密、配对、同步、事件归约和项目分组，都能在 JVM 上单独测试
+- **`:app`**：Compose UI、终端视图、生命周期、Keystore、Room 和 DataStore、FCM 和通知、扫码。通过少量接口使用 `:core`，不把 Android 类型传进去
+
+### 同步和生命周期
+
+同步、指令的规则照搬网页（第 10 节）：先连主 WebSocket，收到 `Ready` 后再拉列表和缺的事件；按序号去重、补缺口；元数据只接受更新的修订号；指令重试沿用同一个请求 ID 和截止时间，结果未知就如实显示。
+
+App 在前台时保持主 WebSocket；进入后台就断开，改靠推送；回到前台重新同步。不靠常驻后台的连接收通知。
+
+### 加密和密钥
+
+- **实现**：Android 13（API 33）起平台 JCA 也有 XDH 和 Ed25519，但导入导出原始 32 字节密钥、从 seed 推出公钥都没验证过，验证通过前继续用 Bouncy Castle。直接用 Bouncy Castle 的 lightweight API，不依赖系统里名为 `BC` 的旧 provider
+- **互通**：`:core` 的测试读取 `internal/e2e/testdata/vectors.json`；另加 Kotlin 生成、Go 和 TS 校验的反向向量。要特别对齐的是：header 按原始字节参与认证、密文后接 16 字节 tag、签名上下文末尾的 `\0`、配对 transcript 的长度前缀和 emoji 表、拒绝全零的 X25519 共享值、`uint64` 序号不经过有符号数
+- **保管**：在 Keystore 里生成不可导出的 AES 密钥，用它加密根密钥和设备 seed，存在应用私有目录，不进云备份和设备迁移。签名和配对都要原始字节，所以用的时候它们仍会进内存，Keystore 只保护存储。AndroidX `security-crypto` 已弃用，不用 `EncryptedSharedPreferences`
+- **通知密钥**：`notify`（第 9 节）单独包装保存，后台收到推送时就能解密；根密钥和 `command` 密钥不因为收通知而在后台解开
+
+### 终端
+
+`terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只引这两个。`TerminalView` 原本绑定的是本地 PTY 的 `TerminalSession`，要改成接收远程字节流。
+
+尺寸和积压的规则同第 11 节：默认不改 tmux 窗口，键盘弹出、旋转屏幕都不改远端尺寸，只有「适配屏幕」才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
+
+### 推送和通知里审批
+
+- **推送后端**：server 新增按类型登记推送目标的接口，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页；server 用 FCM HTTP v1 发送，token 失效时删除。没有 GMS 时改用 UnifiedPush，未定，见 plan.md
+- **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
+- **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
+- **显示**：通知用 `VISIBILITY_PRIVATE`，锁屏上只显示通用文案。是否在通知里显示审批内容未定（scope 第 4 节），不显示就只发通用提醒
+- **按钮**：「允许 / 拒绝」设 `setAuthenticationRequired(true)`（API 31 起），先解锁手机才能点；每条通知用独立、不可变的 `PendingIntent`，只绑定自己那条审批；命令显示不全时，「允许」改为打开完整的审批页
+- **执行**：在后台发 `Forward`，必要时交给 WorkManager；先显示「处理中」，daemon 返回才算完成；结果未知就如实显示，重试沿用同一个请求 ID
+- **daemon 的校验**：超时和回复都要先抢到审批的 `claimed` 标记，只有一方生效，过期的回复不会被放行。另在审批里存一个绝对截止时间，处理回复时一并检查，作为额外防护
+- **投递失败**：推送没送到不影响 daemon 的超时拒绝，审批仍可以打开 App 处理

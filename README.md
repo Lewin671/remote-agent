@@ -13,6 +13,7 @@
 | `remote-agent` | Go | 每台电脑一个，daemon 和本地命令在同一个二进制里：tmux 托管会话、读取 transcript、hook 审批、输入注入 |
 | `remote-agent-server` | Go | 部署在 VPS：鉴权、密文转发与存储、推送 |
 | `web` | TypeScript（React） | PWA 客户端：聊天视图、终端视图、权限审批 |
+| `android` | Kotlin（Jetpack Compose） | Android 原生客户端（开发中）：原生终端，在通知里审批 |
 
 > 状态：P1 完成，可以在浏览器里经自部署的 server 查看会话、发消息、审批；扫码配对、终端视图、推送等在 P2。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
 
