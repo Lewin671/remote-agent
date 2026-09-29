@@ -24,7 +24,8 @@
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：权限模式、模型提问（MVP 之后才接入，先存顺带测到的结果） |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v0.html](design/client-v0.html) | 界面稿 | PWA 客户端的当前设计，P2 按它实现 |
+| [design/client-v1.html](design/client-v1.html) | 界面稿 | PWA 客户端的当前设计 |
+| [design/client-v0.html](design/client-v0.html) | 界面稿 | 上一版，P2 按它实现，只读 |
 
 根目录的 README 只写一段简介和链接；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 
