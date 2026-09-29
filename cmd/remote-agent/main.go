@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 const usage = `remote-agent: operate native AI coding CLIs running in tmux
@@ -11,24 +13,26 @@ const usage = `remote-agent: operate native AI coding CLIs running in tmux
 Usage:
   remote-agent daemon [flags]              run the daemon in the foreground
   remote-agent codex [codex args]          start a Codex session here and attach to it
-  remote-agent new [codex args]            start a Codex session here without attaching
+  remote-agent claude [claude args]        start a Claude Code session here and attach to it
+  remote-agent new [--agent claude] [args] start a session here without attaching
   remote-agent ls [-a]                     list sessions
   remote-agent attach <id>                 attach to a session
   remote-agent send <id> <text>            send a message ("-" reads stdin)
   remote-agent events <id> [-f] [--json]   show the session's events
   remote-agent approve <id> <approval-id>  allow a permission request
   remote-agent deny <id> <approval-id> [-m reason]
-  remote-agent answer <id> <question-id> <option>
+  remote-agent answer <id> <question-id> <option>[,<option>...]
   remote-agent interrupt <id>              interrupt the running turn
   remote-agent stop <id>                   end the session
   remote-agent resume <id>                 start an ended session again
-  remote-agent model [<id> <model> <effort>]
-                                           list models, or switch a session's model
+  remote-agent model [codex|claude]        list a CLI's models
+  remote-agent model <id> <model> [<effort>]
+                                           switch a session's model
   remote-agent mode <id> ask|auto|full|plan switch the approval mode
   remote-agent compact <id>                compact the session's context
   remote-agent plan <id> implement|clear|keep
                                            answer "Implement this plan?"
-  remote-agent doctor                      check that the installed Codex works with remote-agent
+  remote-agent doctor [codex|claude]       check that the installed CLIs work with remote-agent
   remote-agent account init|join|secret|status
                                            connect this machine to a server
 
@@ -46,9 +50,11 @@ func main() {
 	case "daemon":
 		err = runDaemon(args)
 	case "codex":
-		err = runCodex(args, true)
+		err = runAgent(pb.Agent_AGENT_CODEX, args, true)
+	case "claude":
+		err = runAgent(pb.Agent_AGENT_CLAUDE, args, true)
 	case "new":
-		err = runCodex(args, false)
+		err = runNew(args)
 	case "ls", "list":
 		err = runList(args)
 	case "attach":

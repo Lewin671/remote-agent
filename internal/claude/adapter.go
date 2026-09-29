@@ -1,0 +1,431 @@
+// Package claude adapts the native Claude Code CLI: its launch arguments,
+// hooks, transcript and screen (docs/claude-code-notes.md,
+// docs/architecture.md §16).
+package claude
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/codex"
+	"google.golang.org/protobuf/proto"
+)
+
+// TestedVersions are the Claude Code versions the screen analysis, menus
+// and transcript parsing were checked against (docs/claude-code-notes.md).
+var TestedVersions = []string{"2.1.284"}
+
+// hookCommand runs remote-agent's hook; the session environment names the
+// executable in RA_EXE, as for Codex.
+const hookCommand = `"$RA_EXE" hook claude`
+
+// SettingsFile is where a session's hook settings are written in its
+// state directory; Claude Code reads it through --settings.
+const SettingsFile = "claude-settings.json"
+
+// Adapter is Claude Code's agent.Adapter.
+type Adapter struct {
+	bin  string
+	home string // ~/.claude
+
+	versionOnce sync.Once
+	version     string
+}
+
+var (
+	_ agent.Adapter   = (*Adapter)(nil)
+	_ agent.Checkable = (*Adapter)(nil)
+)
+
+// New returns the adapter for the claude executable bin (empty if Claude
+// Code is not installed). home is its settings directory, ~/.claude.
+func New(bin, home string) *Adapter { return &Adapter{bin: bin, home: home} }
+
+func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CLAUDE }
+func (a *Adapter) Name() string   { return "Claude Code" }
+func (a *Adapter) Bin() string    { return a.bin }
+
+// Version is the first word of `claude --version` ("2.1.284 (Claude
+// Code)"), read once.
+func (a *Adapter) Version() string {
+	a.versionOnce.Do(func() {
+		if a.bin == "" {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, a.bin, "--version").Output()
+		if err == nil {
+			if f := strings.Fields(string(out)); len(f) > 0 {
+				a.version = f[0]
+			}
+		}
+	})
+	return a.version
+}
+
+func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions, v) }
+
+// efforts are the levels /model and --effort take, in the order →
+// cycles through them from medium.
+var efforts = []string{"low", "medium", "high", "xhigh", "max"}
+
+// models are the aliases /model lists. Which model an alias stands for
+// changes with Claude Code releases; the menu shows it.
+var models = []*pb.ModelInfo{
+	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium"},
+	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium"},
+	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium"},
+	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers"},
+}
+
+// Models lists the aliases of /model. The default is the model set in
+// ~/.claude/settings.json, if any.
+func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
+	out := &pb.ListModelsResponse{}
+	for _, m := range models {
+		out.Models = append(out.Models, proto.CloneOf(m))
+	}
+	var st struct {
+		Model string `json:"model"`
+	}
+	if b, err := os.ReadFile(filepath.Join(a.home, "settings.json")); err == nil && json.Unmarshal(b, &st) == nil {
+		out.DefaultModel = st.Model
+	}
+	return out, nil
+}
+
+// CheckEffort accepts Claude Code's levels, and none for models without
+// levels such as haiku.
+func (a *Adapter) CheckEffort(effort string) error {
+	if effort == "" || slices.Contains(efforts, effort) {
+		return nil
+	}
+	return fmt.Errorf("unknown effort %q", effort)
+}
+
+// permissionModes are Claude Code's names for the client's modes.
+var permissionModes = map[pb.ApprovalMode]string{
+	pb.ApprovalMode_APPROVAL_MODE_ASK:         "default",
+	pb.ApprovalMode_APPROVAL_MODE_AUTO:        "auto",
+	pb.ApprovalMode_APPROVAL_MODE_PLAN:        "plan",
+	pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS: "bypassPermissions",
+}
+
+// Mode is the client's mode for a turn context's permission mode.
+func (a *Adapter) Mode(c *pb.TurnContext) pb.ApprovalMode {
+	if c == nil {
+		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+	}
+	return modeOf(c.PermissionMode)
+}
+
+func modeOf(permissionMode string) pb.ApprovalMode {
+	for m, name := range permissionModes {
+		if name == permissionMode {
+			return m
+		}
+	}
+	return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+}
+
+// ownFlags are claude options remote-agent sets itself or that would take
+// the session out of its hands.
+var ownFlags = []string{"-p", "--print", "--session-id", "-r", "--resume", "-c", "--continue", "--settings",
+	"--fork-session", "--bg", "--background", "--teleport", "--cloud", "--from-pr", "--tmux", "-w", "--worktree"}
+
+// Options turns a new session's model, effort and approval mode into
+// claude flags after the extra arguments.
+func (a *Adapter) Options(extra []string, model, effort string, mode pb.ApprovalMode) ([]string, error) {
+	for _, arg := range extra {
+		name, _, _ := strings.Cut(arg, "=")
+		if slices.Contains(ownFlags, name) {
+			return nil, fmt.Errorf("remote-agent sets %s itself or cannot run a session with it", name)
+		}
+	}
+	if mode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
+		return nil, errors.New("sessions cannot start in Plan mode; switch to it once the session runs")
+	}
+	args := append([]string{}, extra...)
+	if model != "" {
+		if !codex.SafeValue.MatchString(model) {
+			return nil, fmt.Errorf("invalid model %q", model)
+		}
+		args = append(args, "--model", model)
+	}
+	if effort != "" {
+		if err := a.CheckEffort(effort); err != nil {
+			return nil, err
+		}
+		args = append(args, "--effort", effort)
+	}
+	if name, ok := permissionModes[mode]; ok {
+		args = append(args, "--permission-mode", name)
+	}
+	return args, nil
+}
+
+// valueFlags are claude options that take a value. Options that take
+// several (--add-dir a b) are read as taking one.
+var valueFlags = map[string]bool{
+	"--add-dir": true, "--agent": true, "--agents": true, "--allowedTools": true, "--allowed-tools": true,
+	"--append-system-prompt": true, "--betas": true, "--debug-file": true, "--disallowedTools": true,
+	"--disallowed-tools": true, "--effort": true, "--fallback-model": true, "--file": true, "--mcp-config": true,
+	"--model": true, "-n": true, "--name": true, "--permission-mode": true, "--plugin-dir": true, "--plugin-url": true,
+	"--setting-sources": true, "--system-prompt": true, "--tools": true, "--json-schema": true, "--autocompact": true,
+	"--client-data-url": true, "--system-prompt-snapshot": true, "--remote-control-session-name-prefix": true,
+	"--settings": true, "--session-id": true, "-r": true, "--resume": true,
+}
+
+// FullAccess reports whether a session started with args can switch to
+// bypass: Claude Code only offers it to sessions started in it or with it
+// allowed, which ~/.claude/settings.json can do by making it the default
+// mode (claude-code-notes §5).
+func (a *Adapter) FullAccess(args []string) bool {
+	mode := ""
+	for i, arg := range args {
+		name, value, inline := strings.Cut(arg, "=")
+		switch name {
+		case "--dangerously-skip-permissions", "--allow-dangerously-skip-permissions":
+			return true
+		case "--permission-mode":
+			if !inline && i+1 < len(args) {
+				value = args[i+1]
+			}
+			mode = value
+		}
+	}
+	if mode == "" {
+		mode = a.defaultMode()
+	}
+	return mode == "bypassPermissions"
+}
+
+// defaultMode is permissions.defaultMode in ~/.claude/settings.json.
+func (a *Adapter) defaultMode() string {
+	var st struct {
+		Permissions struct {
+			DefaultMode string `json:"defaultMode"`
+		} `json:"permissions"`
+	}
+	if b, err := os.ReadFile(filepath.Join(a.home, "settings.json")); err == nil {
+		_ = json.Unmarshal(b, &st)
+	}
+	return st.Permissions.DefaultMode
+}
+
+// settings is the --settings file: remote-agent's hooks, which run
+// alongside the user's own. SessionStart reports the transcript as soon as
+// the folder is trusted; PermissionRequest forwards approvals; PreToolUse
+// reports questions and plans, which Claude Code may write to the
+// transcript only once they are answered.
+func settings() []byte {
+	hook := func(timeout int) []map[string]any {
+		return []map[string]any{{"type": "command", "command": hookCommand, "timeout": timeout}}
+	}
+	s := map[string]any{"hooks": map[string]any{
+		"SessionStart":      []map[string]any{{"hooks": hook(30)}},
+		"PermissionRequest": []map[string]any{{"matcher": "*", "hooks": hook(agent.HookTimeoutSeconds)}},
+		"PreToolUse":        []map[string]any{{"matcher": "AskUserQuestion|ExitPlanMode", "hooks": hook(30)}},
+	}}
+	b, _ := json.MarshalIndent(s, "", "  ")
+	return b
+}
+
+// Argv starts Claude Code with remote-agent's hooks and a session ID
+// chosen here. Resuming continues the conversation when there is one,
+// with the original options minus positional arguments such as a first
+// prompt, then the model, effort and permission mode it last ran with.
+func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
+	path := filepath.Join(l.Dir, SettingsFile)
+	if err := os.WriteFile(path, settings(), 0o600); err != nil {
+		return nil, err
+	}
+	if l.SessionID == "" {
+		l.SessionID = newUUID()
+	}
+	if !l.Resume {
+		return append([]string{"--settings", path, "--session-id", l.SessionID}, l.Args...), nil
+	}
+	drop := map[string]bool{}
+	var over []string
+	if c := l.Context; c != nil {
+		if c.Model != "" && codex.SafeValue.MatchString(c.Model) {
+			over = append(over, "--model", c.Model)
+			drop["--model"] = true
+		}
+		if c.Effort != "" && slices.Contains(efforts, c.Effort) {
+			over = append(over, "--effort", c.Effort)
+			drop["--effort"] = true
+		}
+		if c.PermissionMode != "" && (modeOf(c.PermissionMode) != pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED || c.PermissionMode == "acceptEdits") {
+			over = append(over, "--permission-mode", c.PermissionMode)
+			drop["--permission-mode"], drop["--dangerously-skip-permissions"] = true, true
+		}
+	}
+	if a.FullAccess(l.Args) && !slices.Contains(l.Args, "--allow-dangerously-skip-permissions") {
+		// Keep bypass on offer even when resuming in another mode.
+		over = append(over, "--allow-dangerously-skip-permissions")
+	}
+	args := append(codex.FlagArgs(l.Args, drop, valueFlags), over...)
+	flag := "--session-id" // nothing was sent: there is no conversation yet
+	if l.Transcript != "" {
+		if _, err := os.Stat(l.Transcript); err == nil {
+			flag = "--resume"
+		}
+	}
+	return append([]string{"--settings", path, flag, l.SessionID}, args...), nil
+}
+
+func newUUID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	b[6] = b[6]&0x0f | 0x40
+	b[8] = b[8]&0x3f | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
+// NewParser returns a transcript parser.
+func (a *Adapter) NewParser() agent.Parser { return NewParser() }
+
+// SubmitLog is the transcript itself: submitted messages show up there
+// at once, or as queued while a turn runs.
+func (a *Adapter) SubmitLog(transcript string) string { return transcript }
+
+// Submitted reports whether a transcript line records text as typed: a
+// user message, a message queued while a turn runs, or one taken into it.
+func (a *Adapter) Submitted(line []byte, text, _ string) bool {
+	var r struct {
+		Type      string  `json:"type"`
+		Operation string  `json:"operation"`
+		Content   string  `json:"content"`
+		Origin    *origin `json:"origin"`
+		Message   *struct {
+			Content json.RawMessage `json:"content"`
+		} `json:"message"`
+		Attachment *struct {
+			Type   string `json:"type"`
+			Prompt string `json:"prompt"`
+		} `json:"attachment"`
+	}
+	if json.Unmarshal(line, &r) != nil {
+		return false
+	}
+	want := codex.NormalizeText(text)
+	switch r.Type {
+	case "queue-operation":
+		return r.Operation == "enqueue" && codex.NormalizeText(r.Content) == want
+	case "attachment":
+		return r.Attachment != nil && r.Attachment.Type == "queued_command" && codex.NormalizeText(r.Attachment.Prompt) == want
+	case "user":
+		if r.Origin == nil || r.Origin.Kind != "human" || r.Message == nil {
+			return false
+		}
+		var s string
+		if json.Unmarshal(r.Message.Content, &s) == nil {
+			return codex.NormalizeText(s) == want
+		}
+		var blocks []block
+		if json.Unmarshal(r.Message.Content, &blocks) == nil {
+			var parts []string
+			for _, b := range blocks {
+				if b.Type == "text" {
+					parts = append(parts, b.Text)
+				}
+			}
+			return codex.NormalizeText(strings.Join(parts, "\n")) == want
+		}
+	}
+	return false
+}
+
+// HookEvents turns AskUserQuestion and ExitPlanMode calls, reported by
+// PreToolUse before Claude Code shows them, into a question and a plan:
+// the transcript may get them only after they are answered.
+func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
+	if h.HookEventName != "PreToolUse" || h.ToolUseID == "" {
+		return nil
+	}
+	switch h.ToolName {
+	case "AskUserQuestion":
+		q, err := ParseQuestions(h.ToolUseID, h.ToolInput)
+		if err != nil {
+			return nil
+		}
+		return []*pb.Event{{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}}
+	case "ExitPlanMode":
+		var in struct {
+			Plan string `json:"plan"`
+		}
+		if json.Unmarshal(h.ToolInput, &in) != nil {
+			return nil
+		}
+		return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: in.Plan}}}}
+	}
+	return nil
+}
+
+// ForwardPermission forwards every permission prompt: Claude Code only
+// asks when its mode does not decide by itself. AskUserQuestion and
+// ExitPlanMode ask too, but they are answered as a question and a plan.
+func (a *Adapter) ForwardPermission(h *agent.Hook, _ *pb.TurnContext) bool {
+	return h.ToolName != "AskUserQuestion" && h.ToolName != "ExitPlanMode"
+}
+
+// ApplySettings records a change made through remote-agent until the
+// transcript shows it.
+func (a *Adapter) ApplySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext {
+	if ctx == nil {
+		ctx = &pb.TurnContext{}
+	}
+	ctx = proto.CloneOf(ctx)
+	if ch.Model != "" {
+		ctx.Model, ctx.Effort = ch.Model, ch.Effort
+	}
+	if name, ok := permissionModes[ch.Mode]; ok {
+		ctx.PermissionMode = name
+	}
+	return ctx
+}
+
+func (a *Adapter) Analyze(styled string) agent.Screen { return AnalyzeScreen(styled) }
+func (a *Adapter) Paste(text string) []byte           { return agent.PasteBytes(text) }
+
+// Interrupt is Esc. Only sent while a turn runs: pressed twice in an idle
+// input box it opens the rewind menu.
+func (a *Adapter) Interrupt() []byte { return []byte(agent.KeyEsc) }
+
+// DoctorModels: haiku, which has no effort levels, and sonnet at low
+// effort to switch to.
+func (a *Adapter) DoctorModels() (string, string, string, string) {
+	return "haiku", "", "sonnet", "low"
+}
+
+// DoctorModes: from manual through accept edits to plan, and back; haiku
+// offers no auto mode.
+func (a *Adapter) DoctorModes() []pb.ApprovalMode {
+	return []pb.ApprovalMode{pb.ApprovalMode_APPROVAL_MODE_PLAN, pb.ApprovalMode_APPROVAL_MODE_ASK}
+}
+
+// StartupKeys trust the folder the way a local user would: the cursor
+// starts on "No, exit".
+func (a *Adapter) StartupKeys(popup string) []string {
+	if popup == "trust folder" {
+		return []string{"Down", "Enter"}
+	}
+	return nil
+}

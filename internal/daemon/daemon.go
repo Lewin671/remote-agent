@@ -22,6 +22,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
@@ -40,6 +41,10 @@ type Config struct {
 	CodexHome string
 	// HistoryPath is Codex's history.jsonl.
 	HistoryPath string
+	// ClaudeBin is the claude executable, empty if Claude Code is not
+	// installed; ClaudeHome is its settings directory, ~/.claude.
+	ClaudeBin  string
+	ClaudeHome string
 	// Env is added to every session, e.g. proxy variables.
 	Env map[string]string
 
@@ -102,6 +107,7 @@ func New(cfg Config) *Daemon {
 	cfg.defaults()
 	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}}
 	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
+	d.agents[pb.Agent_AGENT_CLAUDE] = claude.New(cfg.ClaudeBin, cfg.ClaudeHome)
 	return d
 }
 
@@ -147,6 +153,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return err
 	}
 	for _, a := range d.agents {
+		if a.Bin() == "" {
+			continue
+		}
 		if v := a.Version(); v != "" && !d.verified(a) {
 			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
 		}
@@ -296,7 +305,7 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 		return nil, err
 	}
 	id := newID(8)
-	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC()}
+	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args)}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -375,12 +384,26 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	home, _ := os.UserHomeDir()
 	cx := d.agents[pb.Agent_AGENT_CODEX]
 	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
+	m.Agents = d.installed()
 	d.mu.Lock()
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
 	}
 	d.mu.Unlock()
 	return m
+}
+
+// installed lists the CLIs on this machine and their versions.
+func (d *Daemon) installed() []*pb.AgentInfo {
+	var out []*pb.AgentInfo
+	for _, k := range []pb.Agent{pb.Agent_AGENT_CODEX, pb.Agent_AGENT_CLAUDE} {
+		a := d.agents[k]
+		if a == nil || a.Bin() == "" {
+			continue
+		}
+		out = append(out, &pb.AgentInfo{Agent: k, Version: a.Version(), Verified: d.verified(a)})
+	}
+	return out
 }
 
 // session finds a session by full ID or unique prefix.

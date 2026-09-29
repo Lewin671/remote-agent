@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/tail"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -85,11 +87,18 @@ type approval struct {
 	// deadline is when the approval times out. A reply after it is refused
 	// even if the timer has not fired yet.
 	deadline time.Time
+	// key is text that identifies the request's prompt on the screen, such
+	// as the start of the command; seen is set once the prompt showed.
+	key  string
+	seen bool
 }
 
 type decision struct {
 	allow   bool
 	message string
+	// terminal: the request was answered in the terminal; the hook's
+	// output no longer matters.
+	terminal bool
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
@@ -266,6 +275,13 @@ func (s *session) readRollout() {
 			s.observe(e)
 		}
 		s.mu.Unlock()
+		for _, e := range evs {
+			if e.GetTurnEnded() != nil {
+				// A request still waiting was answered in the terminal
+				// (or interrupted there) since the turn is over.
+				s.retractApprovals()
+			}
+		}
 	}
 }
 
@@ -297,10 +313,24 @@ func (s *session) checkScreen() bool {
 		return true
 	}
 	s.planOpen = scr.PlanOpen
+	retract := s.watchApprovals(scr, styled)
+	var modeSeen *pb.TurnContext
+	if scr.Mode != "" && (s.context == nil || s.context.PermissionMode != scr.Mode) {
+		// Switched in the terminal; the transcript records it only with
+		// the next message.
+		modeSeen = &pb.TurnContext{}
+		if s.context != nil {
+			modeSeen = proto.CloneOf(s.context)
+		}
+		modeSeen.PermissionMode = scr.Mode
+	}
 	status, detail := s.status, s.detail
 	next, nextDetail := status, detail
 	switch {
 	case scr.PlanOpen:
+		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
+	case scr.PermissionOpen && len(s.approvals) > 0:
+		// Claude Code's own prompt for a request a client is asked about.
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
 	case scr.Popup != "" && scr.Popup != "question":
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_BLOCKED, scr.Popup
@@ -308,6 +338,12 @@ func (s *session) checkScreen() bool {
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
 	}
 	s.mu.Unlock()
+	for _, a := range retract {
+		a.decision <- decision{terminal: true}
+	}
+	if modeSeen != nil {
+		s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: modeSeen}})
+	}
 	// RUNNING is derived from turn events; the state event only records
 	// startup, popups and exit.
 	if next != status || nextDetail != detail {
@@ -376,10 +412,14 @@ func (s *session) info() *pb.Session {
 			out.InputWait = "" // not yet: it may be a passing frame
 		}
 	}
+	out.Agent = s.ag.Kind()
 	if c := s.context; c != nil {
 		out.Model, out.Effort = c.Model, c.Effort
 		out.ApprovalsReviewer, out.ApprovalPolicy, out.Sandbox, out.CollaborationMode = c.ApprovalsReviewer, c.ApprovalPolicy, c.Sandbox, c.CollaborationMode
+		out.PermissionMode = c.PermissionMode
 	}
+	out.Mode = s.ag.Mode(s.context)
+	out.FullAccessUnavailable = s.meta.NoFullAccess
 	if u := s.usage; u != nil {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
 	}
@@ -806,6 +846,21 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
 	}
+	if evs := s.ag.HookEvents(p); len(evs) > 0 {
+		s.bindRollout(p.SessionID, p.TranscriptPath)
+		s.readRollout()
+		s.readMu.Lock()
+		turn := p.TurnID
+		if turn == "" {
+			turn = p.PromptID
+		}
+		for _, e := range evs {
+			e.TurnId = turn
+			s.parser.Replay(e)
+		}
+		s.readMu.Unlock()
+		s.emit(evs...)
+	}
 	return nil, nil
 }
 
@@ -838,6 +893,7 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
 		req.Command, req.Description = shell.Command, shell.Description
 	}
+	a.key = promptKey(p.ToolInput)
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
@@ -878,6 +934,10 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "")
 		return nil, ctx.Err()
 	}
+	if d.terminal {
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "")
+		return nil, nil
+	}
 	if d.allow {
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message)
 	} else {
@@ -916,6 +976,73 @@ func (s *session) resolve(id string, allow bool, message string) error {
 	s.mu.Unlock()
 	a.decision <- decision{allow: allow, message: message}
 	return nil
+}
+
+// watchApprovals follows the CLI's own permission prompts for requests a
+// client is asked about. Claude Code shows its prompt while the hook waits
+// (claude-code-notes §6); a prompt that showed and is gone was answered in
+// the terminal. It returns those approvals, claimed, for the caller to
+// settle once s.mu is released. Callers hold s.mu.
+func (s *session) watchApprovals(scr agent.Screen, styled string) []*approval {
+	if len(s.approvals) == 0 {
+		return nil
+	}
+	plain := normalizeText(agent.StripANSI(styled))
+	var out []*approval
+	for id, a := range s.approvals {
+		if a.claimed {
+			continue
+		}
+		shown := scr.PermissionOpen && (a.key == "" || strings.Contains(plain, a.key))
+		switch {
+		case shown:
+			a.seen = true
+		case a.seen:
+			a.claimed = true
+			delete(s.approvals, id)
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// retractApprovals settles every waiting approval as answered in the
+// terminal.
+func (s *session) retractApprovals() {
+	s.mu.Lock()
+	var out []*approval
+	for id, a := range s.approvals {
+		if !a.claimed {
+			a.claimed = true
+			out = append(out, a)
+		}
+		delete(s.approvals, id)
+	}
+	s.mu.Unlock()
+	for _, a := range out {
+		a.decision <- decision{terminal: true}
+	}
+}
+
+// promptKey is text a permission prompt shows for a tool call: the start
+// of its command, or the name of the file it changes.
+func promptKey(input []byte) string {
+	var in struct {
+		Command  string `json:"command"`
+		FilePath string `json:"file_path"`
+	}
+	if json.Unmarshal(input, &in) != nil {
+		return ""
+	}
+	key := in.Command
+	if key == "" && in.FilePath != "" {
+		key = filepath.Base(in.FilePath)
+	}
+	key = normalizeText(key)
+	if r := []rune(key); len(r) > 24 {
+		key = string(r[:24])
+	}
+	return key
 }
 
 // showsQuestion reports whether the screen shows one of the questions. The

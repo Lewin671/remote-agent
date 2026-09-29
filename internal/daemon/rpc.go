@@ -107,7 +107,11 @@ func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.An
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.answer(req.Msg.QuestionId, []int32{req.Msg.Option}, req.Msg.QuestionIndex); err != nil {
+	options := req.Msg.Options
+	if len(options) == 0 {
+		options = []int32{req.Msg.Option}
+	}
+	if err := s.answer(req.Msg.QuestionId, options, req.Msg.QuestionIndex); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil

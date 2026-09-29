@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -106,8 +107,16 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 			return nil, err
 		}
 	}
-	if st.DefaultMode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
+	if st.DefaultMode == pb.ApprovalMode_APPROVAL_MODE_PLAN || st.GetClaude().GetMode() == pb.ApprovalMode_APPROVAL_MODE_PLAN {
 		return nil, errors.New("new sessions cannot start in Plan mode")
+	}
+	if c := st.GetClaude(); c != nil {
+		if err := d.agents[pb.Agent_AGENT_CLAUDE].CheckEffort(c.Effort); err != nil {
+			return nil, err
+		}
+		if c.Model != "" && !codex.SafeValue.MatchString(c.Model) {
+			return nil, fmt.Errorf("invalid model %q", c.Model)
+		}
 	}
 	b, err := protojson.Marshal(st)
 	if err != nil {
@@ -149,6 +158,12 @@ func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]
 	st := d.settings()
 	model, effort, mode := req.Model, req.Effort, req.Mode
 	def := &pb.AgentDefaults{Model: st.DefaultModel, Effort: st.DefaultEffort, Mode: st.DefaultMode}
+	if ag.Kind() == pb.Agent_AGENT_CLAUDE {
+		def = st.GetClaude()
+		if def == nil {
+			def = &pb.AgentDefaults{}
+		}
+	}
 	if model == "" {
 		model = def.Model
 	}

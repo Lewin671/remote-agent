@@ -269,4 +269,3 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 		t.Fatal("accepted a bad model name")
 	}
 }
-

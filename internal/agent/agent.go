@@ -57,6 +57,9 @@ type Launcher interface {
 	// Options turns the options chosen for a new session into CLI
 	// arguments, which the session keeps for resuming.
 	Options(extra []string, model, effort string, mode pb.ApprovalMode) ([]string, error)
+	// FullAccess reports whether a session started with args can be
+	// switched to FULL_ACCESS.
+	FullAccess(args []string) bool
 	// Argv is the command line after the executable that starts or resumes
 	// a session. It may write files the CLI reads into l.Dir and set
 	// l.SessionID when the adapter chooses the CLI's session ID.
@@ -89,6 +92,9 @@ type Source interface {
 	// Submitted reports whether a line of the submit log records text as
 	// submitted in the CLI session cliSessionID (empty if unknown).
 	Submitted(line []byte, text, cliSessionID string) bool
+	// HookEvents are events a hook call shows before the transcript does;
+	// the parser is told about them and does not repeat them.
+	HookEvents(h *Hook) []*pb.Event
 	// ForwardPermission reports whether a PermissionRequest hook call
 	// should wait for a client's decision. If not, the hook stays silent
 	// and the CLI decides on its own.
@@ -152,6 +158,9 @@ type Screen struct {
 	PermissionOpen bool
 	// Footer is the status line under the input box, for diagnostics.
 	Footer string
+	// Mode is the permission mode the screen shows, in the CLI's own
+	// words (Claude Code: "default", "acceptEdits", ...); empty if none.
+	Mode string
 }
 
 // Hook is a hook call's payload. Codex and Claude Code use the same field
@@ -159,6 +168,7 @@ type Screen struct {
 type Hook struct {
 	SessionID      string          `json:"session_id"`
 	TurnID         string          `json:"turn_id"`
+	PromptID       string          `json:"prompt_id"` // Claude Code's turn
 	TranscriptPath string          `json:"transcript_path"`
 	Cwd            string          `json:"cwd"`
 	HookEventName  string          `json:"hook_event_name"`

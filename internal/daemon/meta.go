@@ -24,6 +24,9 @@ type meta struct {
 	CodexSessionID string `json:"codex_session_id,omitempty"`
 	RolloutPath    string `json:"rollout_path,omitempty"`
 	Exited         bool   `json:"exited,omitempty"`
+	// NoFullAccess: the CLI would not switch this session to full access,
+	// as Claude Code started without bypass allowed.
+	NoFullAccess bool `json:"no_full_access,omitempty"`
 }
 
 func loadMeta(dir string) (*meta, error) {

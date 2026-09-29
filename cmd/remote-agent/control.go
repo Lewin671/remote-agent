@@ -10,8 +10,12 @@ import (
 )
 
 func runModel(args []string) error {
-	if len(args) == 0 {
-		res, err := dial().ListModels(context.Background(), connect.NewRequest(&pb.ListModelsRequest{}))
+	if len(args) == 0 || (len(args) == 1 && (args[0] == "codex" || args[0] == "claude")) {
+		kind := pb.Agent_AGENT_CODEX
+		if len(args) == 1 && args[0] == "claude" {
+			kind = pb.Agent_AGENT_CLAUDE
+		}
+		res, err := dial().ListModels(context.Background(), connect.NewRequest(&pb.ListModelsRequest{Agent: kind}))
 		if err != nil {
 			return explain(err)
 		}
@@ -24,7 +28,10 @@ func runModel(args []string) error {
 		}
 		return nil
 	}
-	if err := needArgs(args, 3, "model [<id> <model> <effort>]"); err != nil {
+	if len(args) == 2 {
+		args = append(args, "") // Claude Code models without effort levels
+	}
+	if err := needArgs(args, 3, "model [codex|claude] | model <id> <model> [<effort>]"); err != nil {
 		return err
 	}
 	_, err := dial().SetModel(context.Background(), connect.NewRequest(&pb.SetModelRequest{SessionId: args[0], Model: args[1], Effort: args[2]}))

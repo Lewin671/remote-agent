@@ -55,13 +55,14 @@ func runDaemon(args []string) error {
 	fs := flag.NewFlagSet("daemon", flag.ExitOnError)
 	approvalTimeout := fs.Duration("approval-timeout", 10*time.Minute, "deny a permission request nobody answers within this time")
 	codexBin := fs.String("codex", os.Getenv("REMOTE_AGENT_CODEX"), "codex executable (default: codex in PATH)")
+	claudeBin := fs.String("claude", os.Getenv("REMOTE_AGENT_CLAUDE"), "claude executable (default: claude in PATH, if any)")
 	fs.Parse(args)
 
 	if max := time.Duration(agent.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
 	ensureUTF8()
-	cfg, err := daemonConfig(*codexBin, tmuxClient())
+	cfg, err := daemonConfig(*codexBin, *claudeBin, tmuxClient())
 	if err != nil {
 		return err
 	}
@@ -71,12 +72,13 @@ func runDaemon(args []string) error {
 	var d *daemon.Daemon
 	cfg.Started = func(ctx context.Context) { relay.New(backend{d}).Run(ctx) }
 	d = daemon.New(cfg)
-	slog.Info("starting daemon", "codex", cfg.CodexBin, "approval_timeout", *approvalTimeout)
+	slog.Info("starting daemon", "codex", cfg.CodexBin, "claude", cfg.ClaudeBin, "approval_timeout", *approvalTimeout)
 	return d.Run(ctx)
 }
 
-// daemonConfig finds codex, this binary and Codex's files.
-func daemonConfig(codexBin string, tc *tmux.Client) (daemon.Config, error) {
+// daemonConfig finds the CLIs, this binary and the CLIs' files. Codex is
+// required; Claude Code is optional.
+func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, error) {
 	if _, err := tc.CheckVersion(); err != nil {
 		return daemon.Config{}, err
 	}
@@ -98,15 +100,26 @@ func daemonConfig(codexBin string, tc *tmux.Client) (daemon.Config, error) {
 	if err != nil {
 		return daemon.Config{}, err
 	}
+	home, _ := os.UserHomeDir()
 	codexHome := os.Getenv("CODEX_HOME")
 	if codexHome == "" {
-		home, _ := os.UserHomeDir()
 		codexHome = filepath.Join(home, ".codex")
+	}
+	if claudeBin == "" {
+		// The path in PATH, not the versioned file it links to, which
+		// Claude Code's updates replace.
+		claudeBin, _ = exec.LookPath("claude")
+	}
+	claudeHome := os.Getenv("CLAUDE_CONFIG_DIR")
+	if claudeHome == "" {
+		claudeHome = filepath.Join(home, ".claude")
 	}
 	return daemon.Config{
 		Exe:         exe,
 		CodexBin:    codexBin,
 		CodexHome:   codexHome,
+		ClaudeBin:   claudeBin,
+		ClaudeHome:  claudeHome,
 		Tmux:        tc,
 		HistoryPath: filepath.Join(codexHome, "history.jsonl"),
 		Env:         env,
@@ -159,13 +172,42 @@ func environ() map[string]string {
 	return env
 }
 
-func runCodex(args []string, attachNow bool) error {
+// runNew starts a session without attaching: Codex, or the CLI named by
+// a leading --agent.
+func runNew(args []string) error {
+	kind := pb.Agent_AGENT_CODEX
+	if len(args) > 0 {
+		name, value, inline := strings.Cut(args[0], "=")
+		if name == "--agent" {
+			rest := args[1:]
+			if !inline {
+				if len(rest) == 0 {
+					return errors.New("usage: remote-agent new [--agent codex|claude] [args]")
+				}
+				value, rest = rest[0], rest[1:]
+			}
+			switch value {
+			case "codex":
+			case "claude":
+				kind = pb.Agent_AGENT_CLAUDE
+			default:
+				return fmt.Errorf("unknown agent %q; use codex or claude", value)
+			}
+			args = rest
+		}
+	}
+	return runAgent(kind, args, false)
+}
+
+// runAgent starts a session of the CLI in this directory, passing args to
+// it unchanged, and attaches to it unless attachNow is false.
+func runAgent(kind pb.Agent, args []string, attachNow bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	resp, err := dial().CreateSession(context.Background(), connect.NewRequest(&pb.CreateSessionRequest{
-		Cwd: cwd, Args: args, Env: environ(),
+		Cwd: cwd, Args: args, Env: environ(), Agent: kind,
 	}))
 	if err != nil {
 		return explain(err)
@@ -206,7 +248,7 @@ func runList(args []string) error {
 		return explain(err)
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tSTATUS\tMODEL\tPENDING\tCREATED\tDIRECTORY")
+	fmt.Fprintln(w, "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tDIRECTORY")
 	for _, s := range resp.Msg.Sessions {
 		status := statusName(s.Status)
 		if s.StatusDetail != "" {
@@ -230,7 +272,7 @@ func runList(args []string) error {
 		if p == "" {
 			p = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.Id[:12], status, model, p,
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.Id[:12], agentName(s.Agent), status, model, p,
 			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), s.Cwd)
 	}
 	return w.Flush()
@@ -375,17 +417,29 @@ func runResolve(args []string, allow bool) error {
 }
 
 func runAnswer(args []string) error {
-	if err := needArgs(args, 3, "answer <id> <question-id> <option>"); err != nil {
+	if err := needArgs(args, 3, "answer <id> <question-id> <option>[,<option>...]"); err != nil {
 		return err
 	}
-	opt, err := strconv.Atoi(args[2])
-	if err != nil {
-		return fmt.Errorf("option must be a number: %w", err)
+	req := &pb.AnswerQuestionRequest{SessionId: args[0], QuestionId: args[1]}
+	for _, f := range strings.Split(args[2], ",") {
+		opt, err := strconv.Atoi(strings.TrimSpace(f))
+		if err != nil {
+			return fmt.Errorf("option must be a number: %w", err)
+		}
+		req.Options = append(req.Options, int32(opt))
 	}
-	_, err = dial().AnswerQuestion(context.Background(), connect.NewRequest(&pb.AnswerQuestionRequest{
-		SessionId: args[0], QuestionId: args[1], Option: int32(opt),
-	}))
+	if len(req.Options) == 1 {
+		req.Option, req.Options = req.Options[0], nil
+	}
+	_, err := dial().AnswerQuestion(context.Background(), connect.NewRequest(req))
 	return explain(err)
+}
+
+func agentName(a pb.Agent) string {
+	if a == pb.Agent_AGENT_CLAUDE {
+		return "claude"
+	}
+	return "codex"
 }
 
 func runInterrupt(args []string) error {
@@ -410,13 +464,14 @@ func runStop(args []string) error {
 	return explain(err)
 }
 
-// runHook is the Codex hook entry point. It forwards the payload to the
-// daemon and prints the daemon's answer. It never fails the hook: when the
-// daemon cannot be reached it prints nothing, which leaves the decision to
-// Codex's own prompt in the terminal.
+// runHook is the hook entry point of Codex and Claude Code, which send the
+// same payload fields. It forwards the payload to the daemon and prints
+// the daemon's answer. It never fails the hook: when the daemon cannot be
+// reached it prints nothing, which leaves the decision to the CLI's own
+// prompt in the terminal.
 func runHook(args []string) int {
-	if len(args) < 1 || args[0] != "codex" {
-		fmt.Fprintln(os.Stderr, "usage: remote-agent hook codex")
+	if len(args) < 1 || (args[0] != "codex" && args[0] != "claude") {
+		fmt.Fprintln(os.Stderr, "usage: remote-agent hook codex|claude")
 		return 2
 	}
 	sessionID := os.Getenv("RA_SESSION")

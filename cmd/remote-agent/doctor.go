@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,13 +19,20 @@ import (
 	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
-// runDoctor checks the installed Codex against what remote-agent relies
+// runDoctor checks the installed CLIs against what remote-agent relies
 // on, with a private daemon, state directory and tmux socket, so the
-// running daemon and its sessions are not touched.
+// running daemon and its sessions are not touched. With no argument it
+// checks every CLI installed.
 func runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ExitOnError)
 	codexBin := fs.String("codex", os.Getenv("REMOTE_AGENT_CODEX"), "codex executable (default: codex in PATH)")
+	claudeBin := fs.String("claude", os.Getenv("REMOTE_AGENT_CLAUDE"), "claude executable (default: claude in PATH)")
+	var which []string
+	for len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		which, args = append(which, args[0]), args[1:]
+	}
 	fs.Parse(args)
+	which = append(which, fs.Args()...)
 
 	// Settings come from the real state directory; the session runs in a
 	// fixed folder there, so Codex asks to trust it only once.
@@ -34,7 +42,7 @@ func runDoctor(args []string) error {
 		return err
 	}
 	tc := &tmux.Client{Socket: fmt.Sprintf("ra-doctor-%d", os.Getpid())}
-	cfg, err := daemonConfig(*codexBin, tc)
+	cfg, err := daemonConfig(*codexBin, *claudeBin, tc)
 	if err != nil {
 		return err
 	}
@@ -77,22 +85,55 @@ func runDoctor(args []string) error {
 		}
 	}
 
-	fmt.Println("Checking the installed Codex with a throwaway session (GPT-6-Luna, low effort)")
-	fmt.Printf("in %s. Startup prompts there are answered for you.\n\n", work)
-	ok, err := d.Doctor(ctx, pb.Agent_AGENT_CODEX, work, os.Stdout)
-	fmt.Println()
-	switch {
-	case err != nil:
-		return err
-	case ok:
-		restore()
-		v := d.Version(pb.Agent_AGENT_CODEX)
-		if err := daemon.MarkVerified(pb.Agent_AGENT_CODEX, v); err != nil {
+	var kinds []pb.Agent
+	for _, w := range which {
+		switch w {
+		case "codex":
+			kinds = append(kinds, pb.Agent_AGENT_CODEX)
+		case "claude":
+			if cfg.ClaudeBin == "" {
+				return errors.New("claude not found in PATH; pass --claude")
+			}
+			kinds = append(kinds, pb.Agent_AGENT_CLAUDE)
+		default:
+			return fmt.Errorf("unknown CLI %q; use codex or claude", w)
+		}
+	}
+	if len(kinds) == 0 {
+		kinds = append(kinds, pb.Agent_AGENT_CODEX)
+		if cfg.ClaudeBin != "" {
+			kinds = append(kinds, pb.Agent_AGENT_CLAUDE)
+		}
+	}
+	failed := false
+	var passed []string
+	for _, k := range kinds {
+		name, how := "Codex", "GPT-6-Luna, low effort"
+		if k == pb.Agent_AGENT_CLAUDE {
+			name, how = "Claude Code", "haiku"
+		}
+		fmt.Printf("Checking the installed %s with a throwaway session (%s)\n", name, how)
+		fmt.Printf("in %s. Startup prompts there are answered for you.\n\n", work)
+		ok, err := d.Doctor(ctx, k, work, os.Stdout)
+		fmt.Println()
+		if err != nil {
 			return err
 		}
-		fmt.Printf("All checks passed; Codex %s is marked as verified.\n", v)
-		return nil
-	default:
-		return errors.New("some checks failed; remote-agent may not work with this Codex version. Please report the failing check")
+		if !ok {
+			failed = true
+			fmt.Printf("Some checks failed; remote-agent may not work with this %s version. Please report the failing check.\n\n", name)
+			continue
+		}
+		passed = append(passed, fmt.Sprintf("%s %s", name, d.Version(k)))
+		if err := daemon.MarkVerified(realDir, k, d.Version(k)); err != nil {
+			return err
+		}
 	}
+	if len(passed) > 0 {
+		fmt.Printf("All checks passed for %s; marked as verified.\n", strings.Join(passed, ", "))
+	}
+	if failed {
+		return errors.New("some checks failed")
+	}
+	return nil
 }

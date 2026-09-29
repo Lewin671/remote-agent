@@ -26,9 +26,9 @@ func formatEvent(e *pb.Event) string {
 			body += fmt.Sprintf(" [%d image(s)]", n)
 		}
 	case *pb.Event_AgentMessage:
-		label := "codex"
+		label := "agent"
 		if k.AgentMessage.Phase == "commentary" {
-			label = "codex (progress)"
+			label = "agent (progress)"
 		}
 		body = label + ": " + k.AgentMessage.Text
 	case *pb.Event_Reasoning:
@@ -46,6 +46,8 @@ func formatEvent(e *pb.Event) string {
 		if out := strings.TrimSpace(t.Output); out != "" {
 			body += "\n" + indent(clip(out, 12))
 		}
+	case *pb.Event_ToolStarted:
+		body = "tool started: " + oneLine(k.ToolStarted.Title)
 	case *pb.Event_TurnStarted:
 		body = "turn started"
 	case *pb.Event_TurnEnded:
@@ -65,8 +67,12 @@ func formatEvent(e *pb.Event) string {
 		}
 	case *pb.Event_TurnContext:
 		t := k.TurnContext
-		body = fmt.Sprintf("context: model %s %s, approvals %s/%s, sandbox %s, mode %s",
-			t.Model, t.Effort, t.ApprovalPolicy, t.ApprovalsReviewer, t.Sandbox, t.CollaborationMode)
+		if t.PermissionMode != "" {
+			body = fmt.Sprintf("context: model %s %s, permission mode %s", t.Model, t.Effort, t.PermissionMode)
+		} else {
+			body = fmt.Sprintf("context: model %s %s, approvals %s/%s, sandbox %s, mode %s",
+				t.Model, t.Effort, t.ApprovalPolicy, t.ApprovalsReviewer, t.Sandbox, t.CollaborationMode)
+		}
 	case *pb.Event_ApprovalRequested:
 		a := k.ApprovalRequested
 		body = fmt.Sprintf("approval %s requested: %s", a.ApprovalId, a.ToolName)
@@ -96,6 +102,9 @@ func formatEvent(e *pb.Event) string {
 		body = fmt.Sprintf("%s %s:", kind, q.QuestionId)
 		for _, item := range q.Questions {
 			body += "\n" + indent(item.Text)
+			if item.MultiSelect {
+				body += " (pick several: 1,3)"
+			}
 			for i, o := range item.Options {
 				line := fmt.Sprintf("%d. %s", i+1, o.Label)
 				if o.Description != "" {
@@ -118,7 +127,7 @@ func formatEvent(e *pb.Event) string {
 		body = fmt.Sprintf("input %s: %s", k.InputState.RequestId,
 			strings.ToLower(strings.TrimPrefix(k.InputState.Status.String(), "INPUT_STATUS_")))
 		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
-			body += " (delivered but not recorded by Codex; not sent again)"
+			body += " (delivered but not recorded by the CLI; not sent again)"
 		}
 	case *pb.Event_PlanProposed:
 		body = "plan proposed: " + oneLine(k.PlanProposed.Text)

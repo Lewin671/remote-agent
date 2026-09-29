@@ -11,7 +11,8 @@
 #
 # The service gets the PATH of the shell that ran install, so that it
 # finds codex and tmux, and REMOTE_AGENT_HOME, REMOTE_AGENT_TMUX_SOCKET,
-# REMOTE_AGENT_CODEX and CODEX_HOME if set; run install again after moving them. Variables
+# REMOTE_AGENT_CODEX, CODEX_HOME, REMOTE_AGENT_CLAUDE and CLAUDE_CONFIG_DIR if set;
+# run install again after moving them. Variables
 # the CLIs need, such as proxies, go in ~/.remote-agent/agent.env. Sessions
 # keep running in tmux while the daemon restarts.
 set -eu
@@ -74,7 +75,7 @@ install() {
 	mkdir -p "$STATE" "$(dirname "$UNIT")"
 	if [ "$(uname)" = Darwin ]; then
 		extra=
-		for v in REMOTE_AGENT_HOME REMOTE_AGENT_TMUX_SOCKET REMOTE_AGENT_CODEX CODEX_HOME; do
+		for v in REMOTE_AGENT_HOME REMOTE_AGENT_TMUX_SOCKET REMOTE_AGENT_CODEX CODEX_HOME REMOTE_AGENT_CLAUDE CLAUDE_CONFIG_DIR; do
 			eval "val=\${$v:-}"
 			[ -n "$val" ] && extra="$extra<key>$v</key><string>$(xml "$val")</string>"
 		done
@@ -101,7 +102,7 @@ EOF
 		launchctl bootstrap "$DOMAIN" "$UNIT"
 	else
 		extra=
-		for v in REMOTE_AGENT_HOME REMOTE_AGENT_TMUX_SOCKET REMOTE_AGENT_CODEX CODEX_HOME; do
+		for v in REMOTE_AGENT_HOME REMOTE_AGENT_TMUX_SOCKET REMOTE_AGENT_CODEX CODEX_HOME REMOTE_AGENT_CLAUDE CLAUDE_CONFIG_DIR; do
 			eval "val=\${$v:-}"
 			[ -n "$val" ] && extra="$extra
 Environment=\"$v=$val\""

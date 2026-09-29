@@ -181,6 +181,9 @@ func (a *Adapter) Options(extra []string, model, effort string, mode pb.Approval
 	return append(args, modeArgs(mode)...), nil
 }
 
+// FullAccess: Codex's Full Access is always on offer.
+func (a *Adapter) FullAccess([]string) bool { return true }
+
 // valueFlags are codex options that take a value.
 var valueFlags = map[string]bool{
 	"-c": true, "--config": true, "-m": true, "--model": true, "-p": true, "--profile": true,
@@ -319,6 +322,9 @@ func (a *Adapter) Submitted(line []byte, text, sessionID string) bool {
 
 // NormalizeText collapses white space for comparing submitted text.
 func NormalizeText(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// HookEvents: Codex writes what remote-agent needs to the rollout in time.
+func (a *Adapter) HookEvents(*agent.Hook) []*pb.Event { return nil }
 
 // ForwardPermission: with auto_review on, the hook stays silent and
 // Codex's reviewer decides (architecture §7).
