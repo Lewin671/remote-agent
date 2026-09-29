@@ -504,7 +504,8 @@ function Row({ it, d, cwd, machine, agent, textOf }: { it: Item; d: Derived; cwd
       if (c.model)
         return (
           <div className="sysline">
-            切换到 <b>{c.model}</b> · {c.effort}
+            切换到 <b>{c.model}</b>
+            {c.effort && ` · ${c.effort}`}
           </div>
         );
       return (
