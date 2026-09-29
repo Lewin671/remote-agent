@@ -12,7 +12,7 @@
 # The service gets the PATH of the shell that ran install, so that it
 # finds codex and tmux, and REMOTE_AGENT_HOME, REMOTE_AGENT_TMUX_SOCKET,
 # REMOTE_AGENT_CODEX and CODEX_HOME if set; run install again after moving them. Variables
-# Codex needs, such as proxies, go in ~/.remote-agent/codex.env. Sessions
+# the CLIs need, such as proxies, go in ~/.remote-agent/agent.env. Sessions
 # keep running in tmux while the daemon restarts.
 set -eu
 
