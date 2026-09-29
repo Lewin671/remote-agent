@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -122,7 +123,7 @@ fun JoinScreen(app: RaApp) {
                     Text(s.emoji.joinToString("  "), fontSize = 40.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                     Text("确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。", color = p.muted)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.padding(end = 10.dp).height(18.dp))
+                        CircularProgressIndicator(Modifier.padding(end = 10.dp).size(18.dp), strokeWidth = 2.dp)
                         Text("等待允许…", color = p.muted)
                     }
                     TextButton(onClick = { stopped = true; job?.cancel(); step = JoinStep.Form }) { Text("取消") }
@@ -130,7 +131,7 @@ fun JoinScreen(app: RaApp) {
                 JoinStep.Working -> {
                     Text("加入账户", style = MaterialTheme.typography.headlineSmall)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.padding(end = 10.dp).height(18.dp))
+                        CircularProgressIndicator(Modifier.padding(end = 10.dp).size(18.dp), strokeWidth = 2.dp)
                         Text("正在连接…", color = p.muted)
                     }
                 }

@@ -125,4 +125,14 @@ class ModelTest {
         assertEquals("sonnet", findModel(models, "sonnet") { it })
         assertEquals(null, findModel(models, "gpt-6-luna") { it })
     }
+
+    @Test
+    fun claudeCodeRecordsTheMessageBeforeItsState() {
+        val events = listOf(
+            ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))),
+            ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("r").setStatus(InputStatus.INPUT_STATUS_SUBMITTED))),
+        )
+        assertEquals(emptySet<Long>(), derive(events, Agent.AGENT_CLAUDE).typedLocally)
+        assertEquals(setOf(1L), derive(events, Agent.AGENT_CODEX).typedLocally)
+    }
 }

@@ -187,7 +187,7 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long) {
     val remote = LocalRemote.current
     val st = statusIn(state, s)
     val events by remote.events(s.id).collectAsState()
-    val d = remember(events.events) { derive(events.events) }
+    val d = remember(events.events) { derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
     Card(Modifier.padding(horizontal = 12.dp, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

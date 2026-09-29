@@ -55,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -116,7 +117,7 @@ fun SessionScreen(sid: String) {
         return
     }
     val events by remote.events(sid).collectAsState()
-    val d = remember(events.events) { derive(events.events) }
+    val d = remember(events.events) { derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
     val status = statusIn(state, s)
     var tab by rememberSaveable { mutableStateOf(0) }
     BackHandler(enabled = tab == 1) { tab = 0 }
@@ -125,10 +126,10 @@ fun SessionScreen(sid: String) {
         SessionTopBar(state, s, status, d.running, onTerminal = { tab = 1 })
         ConnBanner(state)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-            SegmentedButton(tab == 0, { tab = 0 }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("聊天") }
+            SegmentedButton(tab == 0, { tab = 0 }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) { Text("聊天") }
             SegmentedButton(
                 tab == 1, { tab = 1 }, SegmentedButtonDefaults.itemShape(1, 2),
-                enabled = status != Status.EXITED,
+                enabled = status != Status.EXITED, icon = {},
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("终端")
@@ -217,10 +218,18 @@ private fun ChatPane(
     val outbox = Outbox.of(s.id)
     val t = now(1000)
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
+    // Follow new messages while the user is at the bottom; stop once they
+    // scroll up, until they come back.
+    var follow by remember { mutableStateOf(true) }
+    LaunchedEffect(list) {
+        snapshotFlow { list.isScrollInProgress }.collect { scrolling -> if (!scrolling) follow = !list.canScrollForward }
+    }
     var seen by remember { mutableStateOf(items.size) }
-    LaunchedEffect(items.size, outbox.size, d.tools.size) {
-        if (atBottom || seen == 0) list.scrollToItem(Int.MAX_VALUE.coerceAtMost(list.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1).coerceAtLeast(0))
-        if (atBottom) seen = items.size
+    val ime = WindowInsets.ime.getBottom(LocalDensity.current)
+    LaunchedEffect(items.size, outbox.size, d.tools.size, ime) {
+        val last = list.layoutInfo.totalItemsCount - 1
+        if (follow && last >= 0) list.scrollToItem(last)
+        if (follow) seen = items.size
     }
     LaunchedEffect(atBottom) { if (atBottom) seen = items.size }
 
@@ -398,7 +407,7 @@ private fun QueueView(s: SessionView, d: io.github.lewin671.remoteagent.core.Der
             val act = rememberAction()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    Outbox.text(s.id, id) ?: "（从其他设备发出的消息）",
+                    Outbox.text(s.id, id) ?: Outbox.prompt(s.id)?.takeIf { queued.size == 1 } ?: "（从其他设备发出的消息）",
                     style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f), color = if (act.running) p.faint else p.fg,
                 )

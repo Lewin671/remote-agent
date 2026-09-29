@@ -147,7 +147,7 @@ fun SettingsScreen() {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             val opts = listOf(ThemeMode.SYSTEM to "自动", ThemeMode.LIGHT to "亮色", ThemeMode.DARK to "暗色")
             opts.forEachIndexed { i, (mode, label) ->
-                SegmentedButton(settings.theme == mode, { scope.launch { app.prefs.update { it.copy(theme = mode) } } }, SegmentedButtonDefaults.itemShape(i, opts.size)) { Text(label) }
+                SegmentedButton(settings.theme == mode, { scope.launch { app.prefs.update { it.copy(theme = mode) } } }, SegmentedButtonDefaults.itemShape(i, opts.size), icon = {}) { Text(label) }
             }
         }
         SectionHeader("账户")

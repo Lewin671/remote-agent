@@ -94,6 +94,15 @@ object Outbox {
         of(sid).remove(o)
     }
 
+    private val prompts = HashMap<String, String>()
+
+    /** The first message of a session started here, sent by the daemon once the CLI is ready. */
+    fun rememberPrompt(sid: String, text: String) {
+        if (text.isNotEmpty()) prompts[sid] = text
+    }
+
+    fun prompt(sid: String): String? = prompts[sid]
+
     /** Local text of a request, for queued messages. */
     fun text(sid: String, requestId: String): String? = bySession[sid]?.firstOrNull { it.requestId == requestId }?.text
 }

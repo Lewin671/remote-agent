@@ -211,7 +211,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
-    val d = remember(events.events) { derive(events.events) }
+    val d = remember(events.events) { derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
     val a = d.approvals[aid]
     val p = pal
     val t = now()
@@ -256,7 +256,7 @@ fun PlanPage(sid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
-    val d = remember(events.events) { derive(events.events) }
+    val d = remember(events.events) { derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
     PageScaffold("计划") {
         val plan = d.plan
         if (s == null || plan == null) {

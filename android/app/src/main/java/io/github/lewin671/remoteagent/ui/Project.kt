@@ -175,8 +175,11 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                                 .setModel(cfg.model).setEffort(cfg.effort).setMode(cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).build()
                         })
                     }) { r ->
+                        r?.createSession?.session?.id?.let {
+                            Outbox.rememberPrompt(it, text.trim())
+                            nav.session(it)
+                        }
                         text = ""
-                        r?.createSession?.session?.id?.let { nav.session(it) }
                     }
                 },
                 enabled = c != null && !act.running && state.conn == ConnState.ONLINE && state.machines[c.machineId]?.online == true,
@@ -254,7 +257,7 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
                             if (c.model == m.slug) Text("✓", color = p.blue)
                         }
                     }
-                    ms.modelsList.firstOrNull { it.slug == c.model }?.let { m ->
+                    ms.modelsList.firstOrNull { it.slug == c.model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
                         Text("推理强度", style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             for (e in m.effortsList) FilterChip(c.effort == e, { c = c.copy(effort = e) }, { Text(e) })

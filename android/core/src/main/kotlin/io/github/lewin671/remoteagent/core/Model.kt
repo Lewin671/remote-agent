@@ -265,13 +265,20 @@ class Derived(
 )
 
 /** Pending approvals and questions, input states and the running turn. */
-fun derive(events: List<Event>): Derived {
+fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
     val d = Derived()
     var mode: Mode? = null
     var model = ""
     // Messages sent from clients are recorded as submitted before the CLI
     // records them; the rest were typed in the terminal.
     var submitted = 0
+    // A user message with no submitted state before it, which may still come
+    // right after: Claude Code records the message first.
+    var unclaimed: Long? = null
+    // A plan was proposed since entering plan mode: leaving it is the plan's
+    // answer, however given, not a mode switch made in the terminal.
+    var planned = false
+    val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
     for (e in events) {
         when (e.kindCase) {
             Event.KindCase.APPROVAL_REQUESTED -> d.approvals[e.approvalRequested.approvalId] = e.approvalRequested
@@ -292,12 +299,26 @@ fun derive(events: List<Event>): Derived {
             }
             Event.KindCase.INPUT_STATE -> {
                 d.inputs[e.inputState.requestId] = e.inputState.status
-                if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) submitted++
+                if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
+                    // Codex marks a message submitted before recording it;
+                    // Claude Code records the message first and the state
+                    // follows, claiming the message just before it.
+                    val u = unclaimed
+                    if (claude && u != null && e.seq - u <= 3) {
+                        d.typedLocally.remove(u)
+                        unclaimed = null
+                    } else {
+                        submitted++
+                    }
+                }
             }
             Event.KindCase.USER_MESSAGE -> {
                 if (submitted > 0) submitted--
                 // Codex sends this itself when a plan is approved.
-                else if (e.userMessage.text != "Implement the plan.") d.typedLocally += e.seq
+                else if (e.userMessage.text != "Implement the plan.") {
+                    d.typedLocally += e.seq
+                    unclaimed = e.seq
+                }
             }
             Event.KindCase.TOOL_STARTED -> d.tools += RunningTool(e.toolStarted.title, e.toolStarted.callId, eventTime(e))
             Event.KindCase.TOOL_CALL -> {
@@ -305,13 +326,20 @@ fun derive(events: List<Event>): Derived {
                 // Codex gives no ID and they pair in order.
                 val id = e.toolCall.callId
                 val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
-                if (i >= 0) d.tools.removeAt(i) else if (d.tools.isNotEmpty() && d.tools[0].callId.isEmpty()) d.tools.removeAt(0)
+                val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
+                if (j >= 0) d.tools.removeAt(j)
             }
             Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage
-            Event.KindCase.PLAN_PROPOSED -> d.plan = e.planProposed
+            Event.KindCase.PLAN_PROPOSED -> {
+                d.plan = e.planProposed
+                planned = true
+            }
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged
-                if (c.model.isNotEmpty()) model = "${c.model} ${c.effort}"
+                // The client names models by slug or alias, contexts by the
+                // CLI's own ID: start over from the next context rather than
+                // compare the two.
+                if (c.model.isNotEmpty()) model = ""
                 modeOf(c.mode)?.let { mode = it }
             }
             Event.KindCase.TURN_CONTEXT -> {
@@ -320,7 +348,8 @@ fun derive(events: List<Event>): Derived {
                 val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
                 val mm = "${c.model} ${c.effort}"
                 val changes = mutableListOf<String>()
-                if (mode != null && m != null && m != mode) changes += "模式切到了 ${m.text}"
+                if (mode != null && m != null && m != mode && !(mode == Mode.PLAN && planned)) changes += "模式切到了 ${m.text}"
+                if (m != null && m != mode) planned = false
                 // Plan mode runs at its own effort; only a model change counts
                 // there. A context without a model is Claude Code's mode, read
                 // off the screen; it says nothing about the model.
@@ -335,6 +364,7 @@ fun derive(events: List<Event>): Derived {
                 d.running = false
                 d.approvals.clear()
                 d.questions.clear()
+                d.tools.clear()
             }
             else -> {}
         }
