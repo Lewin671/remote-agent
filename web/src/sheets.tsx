@@ -6,7 +6,7 @@ import { ApprovalMode, type PlanProposed } from "./gen/remoteagent/v1/event_pb";
 import { PlanChoice, type ListDirectoriesResponse, type ListModelsResponse, type ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { contextPercent, machineName, modeOf, projectName, shortPath } from "./model";
 import { errorText, type CommandKind, type Remote, type SessionView } from "./remote";
-import { Avatar, Dot, Rich } from "./ui";
+import { Avatar, Dot, Markdown } from "./ui";
 
 export function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   useEffect(() => {
@@ -214,7 +214,7 @@ export function PlanCard({ plan, run, sessionId }: { plan: PlanProposed; run: Ru
         </button>
       </div>
       <div className={"plan-body" + (open ? " open" : "")}>
-        <Rich text={plan.text} />
+        <Markdown text={plan.text} />
       </div>
       <div className="btns">
         <button className="btn" disabled={busy} onClick={() => void answer(PlanChoice.KEEP_PLANNING)}>

@@ -44,6 +44,159 @@ export function Rich({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
+const fence = /^\s*(```|~~~)/;
+const tableSep = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
+const bullet = /^(\s*)[-*+]\s+/;
+
+/** Splits a table row into cells, at pipes outside `code` and not
+ * escaped. */
+export function tableCells(line: string): string[] {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+  const cells: string[] = [];
+  let cur = "";
+  let code = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "\\" && s[i + 1] === "|") {
+      cur += "|";
+      i++;
+    } else if (c === "`") {
+      code = !code;
+      cur += c;
+    } else if (c === "|" && !code) {
+      cells.push(cur.trim());
+      cur = "";
+    } else cur += c;
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+type Block =
+  | { kind: "text"; text: string }
+  | { kind: "code"; text: string }
+  | { kind: "heading"; text: string }
+  | { kind: "rule" }
+  | { kind: "table"; head: string[]; align: ("left" | "center" | "right" | undefined)[]; rows: string[][] };
+
+/** Splits Markdown into blocks: fenced code, tables, headings, rules and
+ * text in between. */
+export function mdBlocks(md: string): Block[] {
+  const lines = md.split("\n");
+  const blocks: Block[] = [];
+  let text: string[] = [];
+  const flush = () => {
+    while (text.length && !text[0].trim()) text.shift();
+    while (text.length && !text[text.length - 1].trim()) text.pop();
+    if (text.length) blocks.push({ kind: "text", text: text.join("\n") });
+    text = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const f = fence.exec(line);
+    if (f) {
+      const body: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim().startsWith(f[1])) body.push(lines[j++]);
+      flush();
+      blocks.push({ kind: "code", text: body.join("\n") });
+      i = j;
+      continue;
+    }
+    if (line.includes("|") && i + 1 < lines.length && tableSep.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+      const head = tableCells(line);
+      const align = tableCells(lines[i + 1]).map((c) =>
+        c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : undefined,
+      );
+      const rows: string[][] = [];
+      let j = i + 2;
+      while (j < lines.length && lines[j].includes("|") && lines[j].trim()) rows.push(tableCells(lines[j++]));
+      flush();
+      blocks.push({ kind: "table", head, align, rows });
+      i = j - 1;
+      continue;
+    }
+    const h = heading.exec(line);
+    if (h) {
+      flush();
+      blocks.push({ kind: "heading", text: h[2] });
+      continue;
+    }
+    if (rule.test(line)) {
+      flush();
+      blocks.push({ kind: "rule" });
+      continue;
+    }
+    text.push(line.replace(bullet, "$1• "));
+  }
+  flush();
+  return blocks;
+}
+
+/** Markdown as Codex writes it: blocks from mdBlocks, inline parts by
+ * Rich. Everything is rendered as text, never as HTML. */
+export function Markdown({ text }: { text: string }) {
+  return (
+    <>
+      {mdBlocks(text).map((b, i) => {
+        switch (b.kind) {
+          case "code":
+            return (
+              <pre key={i} className="mdcode">
+                {b.text}
+              </pre>
+            );
+          case "heading":
+            return (
+              <div key={i} className="mdh">
+                <Rich text={b.text} />
+              </div>
+            );
+          case "rule":
+            return <hr key={i} className="mdrule" />;
+          case "table":
+            return (
+              <div key={i} className="mdtable">
+                <table>
+                  <thead>
+                    <tr>
+                      {b.head.map((c, k) => (
+                        <th key={k} style={{ textAlign: b.align[k] }}>
+                          <Rich text={c} />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {b.rows.map((r, n) => (
+                      <tr key={n}>
+                        {b.head.map((_, k) => (
+                          <td key={k} style={{ textAlign: b.align[k] }}>
+                            <Rich text={r[k] ?? ""} />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          default:
+            return (
+              <div key={i} className="mdp">
+                <Rich text={b.text} />
+              </div>
+            );
+        }
+      })}
+    </>
+  );
+}
+
 /** Approval mode, model, effort and context use, as read from Codex.
  * With handlers the chips open the sheets that change them. */
 export function Chips({ s, onMode, onModel }: { s: SessionView; onMode?: () => void; onModel?: () => void }) {

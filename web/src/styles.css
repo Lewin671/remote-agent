@@ -136,6 +136,16 @@ textarea, input { font: inherit; color: inherit; }
 .ai.commentary { color: var(--fg2); }
 .ai code { background: var(--chip); padding: 1px 4px; border-radius: 4px; }
 .ai .mdlink { color: var(--blue); }
+.mdp + .mdp, .mdp + .mdh, .mdcode + .mdp, .mdtable + .mdp, .mdrule + .mdp { margin-top: .6em; }
+.mdh { font-weight: 650; margin: .8em 0 .3em; }
+.mdh:first-child { margin-top: 0; }
+.mdcode { background: var(--soft); border-radius: 8px; padding: 8px 10px; margin: .5em 0; font: 12px/1.5 ui-monospace, Menlo, monospace;
+  white-space: pre; overflow-x: auto; }
+.mdrule { border: 0; border-top: 1px solid var(--line); margin: .8em 0; }
+.mdtable { overflow-x: auto; margin: .5em 0; -webkit-overflow-scrolling: touch; }
+.mdtable table { border-collapse: collapse; font-size: 13px; line-height: 1.45; white-space: normal; min-width: 100%; }
+.mdtable th, .mdtable td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; min-width: 4.5em; overflow-wrap: normal; word-break: normal; }
+.mdtable th { background: var(--soft); font-weight: 600; }
 .think { font-size: 12.5px; color: var(--faint); margin: 6px 0; }
 .think summary { cursor: pointer; list-style: none; }
 .think summary::-webkit-details-marker { display: none; }

@@ -18,7 +18,7 @@ import {
 import { errorText, type CommandKind, type Remote, type SessionView } from "../remote";
 import { ModeSheet, PlanCard, SessionSheet } from "../sheets";
 import { TerminalView } from "./Terminal";
-import { Chips, Dot, Rich, useNow, useRemote } from "../ui";
+import { Chips, Dot, Markdown, useNow, useRemote } from "../ui";
 
 interface Outgoing {
   // The Send request ID. The daemon accepts a request ID once, so a retry
@@ -316,7 +316,7 @@ function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; m
     case "agentMessage":
       return (
         <div className={"ai" + (k.value.phase === "commentary" ? " commentary" : "")}>
-          <Rich text={k.value.text} />
+          <Markdown text={k.value.text} />
         </div>
       );
     case "reasoning":

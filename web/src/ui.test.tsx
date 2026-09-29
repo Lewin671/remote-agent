@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { optionLabel, plain, when } from "./model";
-import { Rich } from "./ui";
+import { Markdown, mdBlocks, Rich, tableCells } from "./ui";
 
 it("renders a Markdown subset as text, never HTML", () => {
   const html = renderToStaticMarkup(<Rich text={"见 `a.go` 和 **注意** [README.md](/tmp/x/README.md) <img src=x onerror=alert(1)>"} />);
@@ -67,4 +67,38 @@ it("notes mode changes made in the terminal", async () => {
     [2n, "模式切到了 自动"],
     [5n, "模式切到了 计划"],
   ]);
+});
+
+it("renders Markdown blocks: tables, code, headings", () => {
+  const md = [
+    "查过官方文档后：",
+    "",
+    "| 使用入口 | 官方说明 |",
+    "| --- | :---: |",
+    "| ChatGPT Plus、Pro | 包括 **Codex CLI** |",
+    "| OpenAI API | 已有 `gpt-6.1-sol` 模型页，`a|b` 不拆 \\| 这里也不拆 |",
+    "",
+    "## 结论",
+    "- 第一点",
+    "```sh",
+    "echo a | wc -l",
+    "<img src=x onerror=alert(1)>",
+    "```",
+    "---",
+    "完。",
+  ].join("\n");
+  expect(mdBlocks(md).map((b) => b.kind)).toEqual(["text", "table", "heading", "text", "code", "rule", "text"]);
+  const html = renderToStaticMarkup(<Markdown text={md} />);
+  expect(html).toContain("<th style=\"text-align:center\">官方说明</th>");
+  expect(html).toContain("<td style=\"text-align:center\">包括 <b>Codex CLI</b></td>");
+  expect(html).toContain("<code>a|b</code> 不拆 | 这里也不拆");
+  expect(html).toContain("• 第一点");
+  expect(html).toContain("echo a | wc -l");
+  expect(html).toContain("&lt;img");
+  expect(html).not.toContain("<img");
+});
+
+it("splits table rows", () => {
+  expect(tableCells("| a | `x|y` | c \\| d |")).toEqual(["a", "`x|y`", "c | d"]);
+  expect(tableCells("a | b")).toEqual(["a", "b"]);
 });
