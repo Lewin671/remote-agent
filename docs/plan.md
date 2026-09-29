@@ -123,10 +123,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 **范围和产品**
 
-- 终端视图默认可以输入还是只读（倾向可以输入）
-- 客户端显示 Codex 账户额度是否放进 MVP（界面稿里画了）
-- 客户端切换审批模式（[architecture.md](architecture.md) 第 7 节）和 fast 模式是否放进 MVP（优先级低）
-- 是否允许在手机上切到完全放行（目前的设计是允许，但要二次确认）
+- 客户端切换 fast 模式是否要做（优先级低）
 
 **设计**
 
@@ -135,7 +132,6 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 **P1 遗留**
 
 - 手机实测：P1 只在本机 Chrome 上验证过；网页已经部署到 `https://remote-agent.top`，可以在手机上测了
-- 网页部署到 `app.<域名>` 后，AdGuard 是否把它和 server 当成同站、不再拦截 WebSocket（原因见 [browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）
 
 **Codex 待实测**
 

@@ -19,6 +19,7 @@
 | `http://localhost:4173` → `wss://echo.websocket.org` | 正常（`.org` 不命中） |
 | `https://ra.remote-agent.top` 页面 → `wss://ra.remote-agent.top` | 正常（同站，不算第三方） |
 | 加了下面的放行规则后，localhost → `ra.remote-agent.top` | 正常，177ms 连上；没放行的 `vps.remote-agent.top` 仍然失败 |
+| `https://remote-agent.top` → `wss://vps.remote-agent.top`（没有放行） | 正常，341ms 连上（同站） |
 
 失败只用几毫秒、没有任何网络记录，是被扩展拦下的典型特征；网络问题通常要等到超时。
 
@@ -26,6 +27,6 @@
 
 - 在 AdGuard 的「用户规则」里放行 server 的 WebSocket：`@@||ra.remote-agent.top^$websocket`（换成自己的 server 域名）
 - 或者开发时让 vite 转发请求，网页只连自己的 origin：`RA_PROXY=https://<server> pnpm preview`，构建时加 `VITE_SAME_ORIGIN_API=1`
-- 正式部署时，网页和 server 放在同一个注册域名下（如 `remote-agent.top` 和 `ra.remote-agent.top`），AdGuard 会把它们当成同站请求，推测不会命中这条规则，未验证。网页不要直接用 `*.pages.dev` 这类别的域名访问
+- 正式部署时，网页和 server 放在同一个注册域名下（如 `remote-agent.top` 和 `ra.remote-agent.top`），AdGuard 把它们当成同站请求，不会命中这条规则。已验证（同一环境，2026-09-29）：从 `https://remote-agent.top` 页面连没有放行的 `wss://vps.remote-agent.top`，341ms 连上；同样的连接从 localhost 发起，1ms 就被拦。网页不要直接用 `*.pages.dev` 这类别的域名访问
 
 其他拦截扩展（uBlock Origin 等）用的中文过滤列表里可能也有类似规则，未验证。遇到「fetch 正常、WebSocket 几毫秒就失败」时，先在无痕窗口或关掉扩展后试一次。

@@ -371,6 +371,14 @@ function EventRow({ e, d, cwd, machine }: { e: Event; d: Derived; cwd: string; m
         </div>
       ) : null;
     }
+    case "turnContext": {
+      const change = d.terminalChanges.get(e.seq);
+      return change ? (
+        <div className="sysline">
+          {machine} 终端把<b>{change}</b>
+        </div>
+      ) : null;
+    }
     case "planProposed":
       return (
         <details className="think plan-log">

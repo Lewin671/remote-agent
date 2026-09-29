@@ -46,3 +46,25 @@ it("tells running tools and terminal-typed messages apart", async () => {
   expect(d.tools.map((t) => t.title)).toEqual(["go vet"]);
   expect(d.running).toBe(true);
 });
+
+it("notes mode changes made in the terminal", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { EventSchema, ApprovalMode } = await import("./gen/remoteagent/v1/event_pb");
+  const { derive } = await import("./model");
+  let seq = 0n;
+  const ev = (kind: object) => create(EventSchema, { seq: ++seq, kind: kind as never });
+  const ctx = (reviewer: string, collaboration = "default", model = "m", effort = "low") =>
+    ev({ case: "turnContext", value: { approvalsReviewer: reviewer, approvalPolicy: "on-request", sandbox: "workspace-write", collaborationMode: collaboration, model, effort } });
+  const events = [
+    ctx("user"),
+    ctx("auto_review"), // switched in the terminal
+    ev({ case: "settingsChanged", value: { mode: ApprovalMode.ASK } }),
+    ctx("user"), // switched from the client: already recorded
+    ctx("user", "plan", "m", "medium"), // plan mode's own effort is not a model change
+  ];
+  const d = derive(events);
+  expect([...d.terminalChanges.entries()]).toEqual([
+    [2n, "模式切到了 自动"],
+    [5n, "模式切到了 计划"],
+  ]);
+});

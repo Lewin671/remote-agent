@@ -162,7 +162,12 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
 - **模型提问**：问题从 rollout 的 `function_call` 读出，它在等待回答时就已经写入，不需要 hook。回答时暂存本地按键、抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
 - **中断**：只在一轮运行时发 Esc，绝不发 Ctrl-C。空闲时发 Ctrl-C 会清空输入框，再按一次会退出 Codex（notes §8）
-- **切换模型和 effort**：空闲时操作 `/model` 菜单，按模型名在屏幕上找编号，用方向键选档位后按 `s`，只改当前会话；以屏幕出现 `for this session only` 为成功，认不出菜单就按 Esc 退出并报错，退回到用 `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 重启。客户端先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对；rollout 何时记录新模型是推测，未验证（notes §2、§6，见 plan.md）
+- **切换模型和 effort**：空闲时操作 `/model` 菜单：按显示名在屏幕上找模型的编号并按下，在档位列表里用方向键移到目标档位后按 `s`，只改当前会话（回车会改全局默认值）。Max、Ultra 在 `More reasoning…` 子菜单里。以底部状态栏出现新的模型和档位为成功，认不出菜单就按 Esc 退出并报错。rollout 要到下一轮才记录新模型（notes §2），所以 daemon 先记一条 `SettingsChanged`，会话信息立即按它更新，下一轮的 `turn_context` 再校对。可选的模型和档位读自 `~/.codex/models_cache.json`
+- **切换审批模式**：询问、自动、完全放行分别是 `/permissions` 菜单的 1、2、3，按数字直接选中；完全放行还要在 `Enable full access?` 里按 1 确认，以屏幕出现 `Permission selection requested` 为成功。计划模式用 Shift+Tab 切换，以状态栏右侧的 `Plan mode` 判断当前状态。运行中也能切，下一轮起生效（notes §4）。同样先记 `SettingsChanged`
+- **压缩上下文**：空闲时输入 `/compact`。压缩在 rollout 里是一条 `ContextCompaction`，无论是客户端发起的还是终端里敲的，都解析成「上下文已压缩」事件
+- **计划**：Plan 模式下模型给出计划后，rollout 里的 `Plan` 条目解析成 `PlanProposed` 事件，屏幕上的 `Implement this plan?` 让会话处于「计划待批准」，客户端显示计划卡片，回答时注入 1、2 或 3（notes §4）
+- **工具开始**：rollout 在调用工具时先写一条 `custom_tool_call`，完成后才有 `item_completed`；前者解析成 `ToolStarted`，客户端据此显示运行中的工具和耗时。两条记录没有共同的 ID，按先后顺序配对
+- **菜单操作的共同做法**：和注入一样拿控制锁、暂存本地按键，并在操作期间续期暂存；每一步都先确认画面再按键，等不到预期画面就按 Esc 退出。操作期间暂停状态检测，免得把自己打开的菜单当成弹窗
 - **命令参数**：Go 代码调用 tmux 和 codex 时一律传参数数组，不拼 shell 字符串
 
 ## 7. 审批
@@ -181,7 +186,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 ### 客户端的审批模式
 
-客户端的模式切换只做 Codex 和 Claude Code 都有的 4 种，这样接入 Claude Code 时不用改界面（是否放进 MVP 未定，见 plan.md）：
+客户端的模式切换只做 Codex 和 Claude Code 都有的 4 种，这样接入 Claude Code 时不用改界面：
 
 | 客户端 | Codex | Claude Code |
 |---|---|---|
@@ -197,7 +202,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
 - **Codex 的计划模式**：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会先关掉计划模式再切权限
 - **以 CLI 为准**：客户端只发「切换」指令，显示的是从 rollout、transcript 或屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端切到了这 4 种以外的模式（如 accept edits），照实显示
-- **完全放行要二次确认**；新会话的默认模式沿用 CLI 自己的配置
+- **完全放行要二次确认**；新会话的默认模式在 daemon 的设置里指定，没指定就沿用 CLI 自己的配置（第 13 节）
 
 ## 8. 项目标识
 
@@ -246,3 +251,29 @@ server 把指令原样转给那台机器的 WebSocket，最多等 30 秒。机�
 **大小限制**：单个信封不超过 1 MiB，一次上传不超过 500 个事件，推送帧超过 1 MiB 就拆开发。
 
 **网页**：事件内容一律当文本渲染，不插入 HTML；构建产物带 CSP，只允许运行自己的脚本。网页和 server 要放在同一个注册域名下（`app.<域名>` 和 `ra.<域名>`）：拦截扩展常按「第三方请求」过滤，实测 AdGuard 会拦掉跨站发往 `*.*.top` 的 WebSocket（[browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）。本地开发遇到这种拦截时，可以用 `RA_PROXY` 让 vite 把请求转发到 server，同时用 `VITE_SAME_ORIGIN_API=1` 构建。
+
+## 11. 终端视图
+
+客户端打开终端时，发一条加密指令 `OpenTerminal`，带上随机的流 ID。客户端和 daemon 各自用这个流 ID 连 server 的 `/v1/term`，server 把两条连接配对后原样转发，**不存储、不解析**：配对要求一端是客户端设备，另一端正是客户端指定的机器；先到的一方最多等 20 秒。
+
+- **画面来源**：daemon 为每条流起一个 tmux control mode 客户端（`tmux -C attach`），它不参与窗口尺寸的计算。先用 `capture-pane -e` 和光标位置拼出快照，之后转发 `%output` 里这个 pane 的输出。窗口尺寸变化时（`%layout-change`，比如电脑上调了终端大小），重新发快照
+- **加密**：每一帧用会话密钥封成信封，类型分输出和输入，`request_id` 是流 ID，`seq` 是各自的帧序号，接收方要求序号严格递增，乱序或重放就断开
+- **输入**：客户端敲的键经 `tmux send-keys -H` 进入 pane，走的是和本地键盘相同的路，所以注入消息时对本地按键的暂存同样挡住它们
+- **尺寸**：默认不改 tmux 窗口，客户端按列数缩小字号；「适配屏幕」才 `resize-window` 到客户端能放下的大小，取消适配或关闭终端时把 `window-size` 设回 `latest`
+- **积压**：输出通道满了就结束这条流，客户端重连后拿到新的快照；server 写一侧超过 10 秒写不出去，两边一起断开
+
+## 12. 推送通知
+
+server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订阅时说明要哪几类通知：「等我处理时」（审批、提问、计划、终端弹窗）和「一轮结束时」。
+
+- **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送
+- **内容**：只有通用文案（「有会话在等你处理」），外加用于跳转的会话 ID，符合 scope 第 4 节「推送不含具体内容」。同一会话同一类别 15 秒内只推一次
+- **客户端**：service worker 收到推送时，如果应用正开着并在前台，就不再弹通知；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
+
+## 13. daemon 设置与远程新建会话
+
+daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取和修改：审批超时（30 秒到 hook 超时之前）、新会话默认的模型、effort 和审批模式。未设置的项沿用启动参数或 Codex 自己的配置。
+
+- **远程新建会话**：客户端指定机器、目录、第一句话，以及可选的模型、effort、审批模式；daemon 把它们换成 codex 的 `-m` 和 `-c` 参数，第一句话像普通消息一样排队，等 Codex 的输入框出现再发。会话的环境变量用 daemon 自己的，不用客户端的。目录由客户端通过 `ListDirectories` 逐级浏览选择，隐藏目录不列出
+- **机器级指令**：新建会话、列模型、浏览目录、读写设置不属于某个会话，信封头里不带会话 ID；daemon 拒绝带了会话 ID 的机器级指令
+- **移除设备**：客户端可以在 server 上删除一台设备：删掉它的登记、登录凭证和推送订阅；如果是机器，连同它的会话和事件密文一起删除，并断开它的连接。单用户模型下这不是吊销：手里还有根密钥的设备可以重新登记

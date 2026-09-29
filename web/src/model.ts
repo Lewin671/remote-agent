@@ -3,7 +3,7 @@
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage } from "./gen/remoteagent/v1/event_pb";
-import { ApprovalDecision, InputStatus, SessionStatus } from "./gen/remoteagent/v1/event_pb";
+import { ApprovalDecision, ApprovalMode, InputStatus, SessionStatus } from "./gen/remoteagent/v1/event_pb";
 import type { MachineView, Remote, SessionView } from "./remote";
 
 // --- projects ---
@@ -120,14 +120,27 @@ export interface ModeChip {
   text: string;
 }
 
+/** The approval mode named from turn-context fields. */
+export function contextMode(reviewer: string, policy: string, sandbox: string, collaboration: string): string {
+  if (!reviewer && !policy && !collaboration) return "";
+  if (collaboration === "plan") return "计划";
+  if (sandbox === "danger-full-access" && policy === "never") return "完全放行";
+  if (reviewer === "auto_review") return "自动";
+  return "询问";
+}
+
+const modeClass: Record<string, string> = { 计划: "m-plan", 完全放行: "m-danger", 自动: "m-auto", 询问: "m-ask" };
+
+export function modeName(m: ApprovalMode): string {
+  return { [ApprovalMode.ASK]: "询问", [ApprovalMode.AUTO]: "自动", [ApprovalMode.PLAN]: "计划", [ApprovalMode.FULL_ACCESS]: "完全放行" }[m as number] ?? "";
+}
+
 /** The approval mode, read from the latest turn context. */
 export function modeOf(s: SessionView): ModeChip | undefined {
   const i = s.info;
-  if (!i || (!i.approvalsReviewer && !i.approvalPolicy && !i.collaborationMode)) return undefined;
-  if (i.collaborationMode === "plan") return { cls: "m-plan", text: "计划" };
-  if (i.sandbox === "danger-full-access" && i.approvalPolicy === "never") return { cls: "m-danger", text: "完全放行" };
-  if (i.approvalsReviewer === "auto_review") return { cls: "m-auto", text: "自动" };
-  return { cls: "m-ask", text: "询问" };
+  if (!i) return undefined;
+  const text = contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode);
+  return text ? { cls: modeClass[text], text } : undefined;
 }
 
 export function contextPercent(s: SessionView): number | undefined {
@@ -151,6 +164,9 @@ export interface Derived {
   tools: { title: string; since: number }[];
   // User messages typed in the terminal rather than sent from a client.
   typedLocally: Set<bigint>;
+  // Mode or model changes made in the terminal, found by comparing turn
+  // contexts, by the seq of the context that shows them.
+  terminalChanges: Map<bigint, string>;
 }
 
 /** Pending approvals and questions, input states and the running turn. */
@@ -164,7 +180,10 @@ export function derive(events: Event[]): Derived {
     running: false,
     tools: [],
     typedLocally: new Set(),
+    terminalChanges: new Map(),
   };
+  let mode = "";
+  let model = "";
   // Messages sent from clients are recorded as submitted before Codex
   // records them; the rest were typed in the terminal.
   let submitted = 0;
@@ -217,6 +236,24 @@ export function derive(events: Event[]): Derived {
       case "planProposed":
         d.plan = k.value;
         break;
+      case "settingsChanged":
+        // Changed through remote-agent; recorded as such already.
+        if (k.value.model) model = `${k.value.model} ${k.value.effort}`;
+        if (k.value.mode) mode = modeName(k.value.mode);
+        break;
+      case "turnContext": {
+        const c = k.value;
+        const m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode);
+        const mm = `${c.model} ${c.effort}`;
+        const changes: string[] = [];
+        if (mode && m && m !== mode) changes.push(`模式切到了 ${m}`);
+        // Plan mode runs at its own effort; only a model change counts there.
+        if (model && mm !== model && c.collaborationMode !== "plan") changes.push(`模型切到了 ${c.model} · ${c.effort}`);
+        if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
+        if (m) mode = m;
+        if (c.collaborationMode !== "plan") model = mm;
+        break;
+      }
       case "sessionState":
         if (k.value.status === SessionStatus.EXITED) {
           d.running = false;
