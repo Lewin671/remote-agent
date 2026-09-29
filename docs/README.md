@@ -21,6 +21,7 @@
 | [scope.md](scope.md) | 边界 | 项目范围、组件职责、信任边界、MVP 做与不做 |
 | [architecture.md](architecture.md) | 设计 | 各端部署、报文分层、通信方式、技术决策 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单操作、hook、弹窗 |
+| [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为（MVP 之后接入，先存顺带测到的结果） |
 | [plan.md](plan.md) | 计划 | 分阶段计划、各阶段任务和验收标准、待确认问题 |
 | [client-design.html](client-design.html) | 界面稿 | PWA 客户端的界面设计 |
 
