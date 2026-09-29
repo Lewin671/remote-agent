@@ -4,6 +4,7 @@
 //   ?demo&conn=connecting|reconnecting|fail   the server link's states
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
+//   ?demo&list=fail                          the first listing fails
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -101,7 +102,8 @@ function fixtures(): Record<string, Fixture> {
           value: {
             approvalId: "a1",
             toolName: "shell",
-            description: "跑一遍全部测试，确认拆包没有破坏行为",
+            description:
+              "跑一遍全部测试，确认拆包没有破坏行为。先清掉旧的生成文件再用 buf 重新生成，编译通过后只跑配对、会话和终端三组测试，最后看一眼 gen 目录有没有意外的改动；任何一步失败都会停下来，不会继续执行后面的命令。",
             command: "rm -rf gen/remoteagent && \\\nbuf generate --template buf.gen.yaml && \\\ngo build ./... && \\\ngo test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' && \\\ngit status --short gen/",
             deadline: timestampFromMs(now + 8 * min),
           },
@@ -140,7 +142,7 @@ function fixtures(): Record<string, Fixture> {
     "s-claude": {
       machine: "mac",
       updated: now - 30 * min,
-      info: { title: "给登录接口加限流", cwd: "/Users/me/Code/foo", status: SessionStatus.RUNNING, pendingQuestions: 1, agent: Agent.CLAUDE, model: "claude-sonnet", effort: "high", ...ctxAsk },
+      info: { title: "给登录接口加限流", cwd: "/Users/me/Code/foo", status: SessionStatus.RUNNING, pendingQuestions: 1, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "high", ...ctxAsk },
       events: [
         { case: "userMessage", value: { text: "给登录接口加限流" } },
         { case: "turnStarted", value: {} },
@@ -149,6 +151,15 @@ function fixtures(): Record<string, Fixture> {
         { case: "toolStarted", value: { title: "Grep RateLimit", callId: "t3" } },
         { case: "toolCall", value: { title: "Read auth/limit.go", callId: "t2", kind: ToolKind.OTHER, status: "completed" } },
         { case: "questionAsked", value: { questionId: "cq", questions: [{ text: "限流按 IP 还是按账户？", options: [{ label: "按 IP" }, { label: "按账户" }] }] } },
+      ],
+    },
+    "s-claude-idle": {
+      machine: "mac",
+      updated: now - 35 * min,
+      info: { title: "整理错误码", cwd: "/Users/me/Code/bar", status: SessionStatus.IDLE, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "medium", ...ctxAsk, preview: "错误码已按模块分组" },
+      events: [
+        { case: "userMessage", value: { text: "整理错误码" } },
+        { case: "agentMessage", value: { text: "错误码已按模块分组。" } },
       ],
     },
     "s-plan": {
@@ -369,7 +380,8 @@ export class DemoRemote extends Remote {
 
   override start() {
     const c = this.opts.get("conn");
-    this.listed = true;
+    this.listed = this.opts.get("list") !== "fail";
+    if (!this.listed) this.listError = "连接超时";
     if (c === "connecting") this.conn = "connecting";
     else if (c === "reconnecting") Object.assign(this, { conn: "offline", everOnline: true });
     else if (c === "fail") Object.assign(this, { conn: "offline", failures: 3, connError: "证书无效" });
@@ -378,6 +390,15 @@ export class DemoRemote extends Remote {
   }
 
   override stop() {}
+
+  override retryList() {
+    this.listError = "";
+    this.changed();
+    setTimeout(() => {
+      this.listed = true;
+      this.changed();
+    }, 800);
+  }
 
   override events(sid: string): Event[] {
     let e = this.evs.get(sid);
