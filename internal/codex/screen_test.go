@@ -34,6 +34,16 @@ const (
 	screenTitleInChat = "• You asked about the Trust this folder? dialog and Question 1/2 counters.\n" +
 		"\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n" +
 		"  GPT-6-Sol medium · /tmp/w\n"
+	// Attached from a terminal that reports its background color, Codex
+	// paints the input box's background before the placeholder.
+	screenIdleBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m \x1b[2mAsk Codex to do anything\x1b[0m\x1b[48;2;57;57;57m\n" +
+		"  GPT-6-Sol medium · ~/w\n"
+	screenDraftBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m hello draft\x1b[0m\x1b[48;2;57;57;57m\n" +
+		"  GPT-6-Sol medium · ~/w\n"
+	// A draft colored like the placeholder's RGB arguments must not pass.
+	screenDraftRGB2 = "\x1b[1m›\x1b[0m\x1b[38;2;2;2;2m draft\x1b[0m\n"
+	screenBareBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m \x1b[0m\n" +
+		"  second line of a local draft\n"
 	screenUnknownMenu = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex\x1b[0m\n" +
 		"  Some new dialog\n" +
 		"\x1b[1;7m› 1. First\n" +
@@ -54,6 +64,10 @@ func TestAnalyzeScreen(t *testing.T) {
 		{"unknown menu", screenUnknownMenu, Screen{Popup: "menu"}},
 		{"dialog title quoted in chat", screenTitleInChat, Screen{ComposerReady: true, DraftEmpty: true}},
 		{"draft with blank first line", screenBlankFirstLine, Screen{ComposerReady: true, DraftEmpty: false}},
+		{"idle with background", screenIdleBackground, Screen{ComposerReady: true, DraftEmpty: true}},
+		{"draft with background", screenDraftBackground, Screen{ComposerReady: true, DraftEmpty: false}},
+		{"draft colored 2;2;2", screenDraftRGB2, Screen{ComposerReady: true, DraftEmpty: false}},
+		{"bare prompt with background", screenBareBackground, Screen{ComposerReady: true, DraftEmpty: false}},
 		{"empty", "", Screen{}},
 	}
 	for _, c := range cases {

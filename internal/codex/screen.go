@@ -28,8 +28,6 @@ const (
 	composerPrompt = "\x1b[1m›\x1b[0m"
 	// The highlighted row of a selection list is bold and reversed.
 	selectionCursor = "\x1b[1;7m›"
-	// The placeholder in an empty composer is dim.
-	dim = "\x1b[2m"
 )
 
 // bottomLines is how much of the screen bottom is inspected. Only the
@@ -89,12 +87,58 @@ func AnalyzeScreen(styled string) Screen {
 	s.QuestionOpen = s.Popup == "question"
 	if composer >= 0 && s.Popup == "" {
 		s.ComposerReady = true
-		rest := strings.TrimPrefix(lines[composer], composerPrompt)
-		rest = strings.TrimPrefix(rest, " ")
 		// Only the placeholder proves the box is empty. A bare prompt may
 		// head a multi-line draft whose text is on later lines, and those
 		// cannot be told apart from the footer, so it counts as a draft.
-		s.DraftEmpty = strings.HasPrefix(rest, dim) && strings.TrimSpace(StripANSI(rest)) != ""
+		s.DraftEmpty = startsDim(strings.TrimPrefix(lines[composer], composerPrompt))
 	}
 	return s
+}
+
+// startsDim reports whether the first visible text of s is drawn dim.
+// Codex may color the input box's background first, when the attached
+// terminal reports its own background color, so leading spaces and other
+// style changes are skipped.
+func startsDim(s string) bool {
+	dimOn := false
+	for s != "" {
+		if s[0] == ' ' {
+			s = s[1:]
+			continue
+		}
+		loc := sgrRE.FindStringIndex(s)
+		if loc == nil || loc[0] != 0 {
+			return dimOn // visible text
+		}
+		seq := s[:loc[1]]
+		s = s[loc[1]:]
+		if strings.HasSuffix(seq, "m") {
+			dimOn = applyDim(dimOn, strings.TrimSuffix(strings.TrimPrefix(seq, "\x1b["), "m"))
+		}
+	}
+	return false // nothing visible: a bare prompt
+}
+
+// applyDim tracks the dim attribute through one SGR sequence's parameters.
+func applyDim(on bool, params string) bool {
+	ps := strings.FieldsFunc(params, func(r rune) bool { return r == ';' || r == ':' })
+	if len(ps) == 0 {
+		return false // ESC[m resets
+	}
+	for i := 0; i < len(ps); i++ {
+		switch ps[i] {
+		case "0", "22":
+			on = false
+		case "2":
+			on = true
+		case "38", "48", "58":
+			// Extended colors carry their own arguments: 5;n or 2;r;g;b.
+			if i+1 < len(ps) && ps[i+1] == "5" {
+				i += 2
+			} else if i+1 < len(ps) && ps[i+1] == "2" {
+				i += 4
+			}
+		}
+	}
+	return on
 }
