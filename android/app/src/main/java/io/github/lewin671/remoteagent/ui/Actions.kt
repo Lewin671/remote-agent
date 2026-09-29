@@ -1,0 +1,99 @@
+package io.github.lewin671.remoteagent.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import io.github.lewin671.remoteagent.core.CommandException
+import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.core.newRequestId
+import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.CommandResult
+import io.github.lewin671.remoteagent.proto.SendRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+/** One command with its progress: running, and the error of the last try. */
+class Action(private val scope: CoroutineScope) {
+    var running by mutableStateOf(false)
+        private set
+    var error by mutableStateOf("")
+    /** The last failure left the outcome unknown. */
+    var unknown by mutableStateOf(false)
+        private set
+
+    fun run(block: suspend () -> CommandResult?, onDone: (CommandResult?) -> Unit = {}) {
+        if (running) return
+        running = true
+        error = ""
+        unknown = false
+        scope.launch {
+            try {
+                onDone(block())
+            } catch (e: Exception) {
+                error = errorText(e)
+                unknown = (e as? CommandException)?.unknown == true
+            } finally {
+                running = false
+            }
+        }
+    }
+}
+
+@Composable
+fun rememberAction(): Action {
+    val scope = rememberCoroutineScope()
+    return remember { Action(scope) }
+}
+
+fun Remote.cmd(b: Command.Builder.() -> Unit): Command = Command.newBuilder().apply(b).build()
+
+/**
+ * A message sent from this device. Its text stays in memory only (the disk
+ * never holds plaintext); the daemon dedupes by [requestId], so a retry
+ * never submits it twice.
+ */
+class Outgoing(val requestId: String, val text: String) {
+    enum class State { SENDING, SENT, FAILED, UNKNOWN }
+
+    var state by mutableStateOf(State.SENDING)
+    var error by mutableStateOf("")
+}
+
+/** Messages sent from this device, per session, for this run of the app. */
+object Outbox {
+    private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
+
+    fun of(sid: String) = bySession.getOrPut(sid) { mutableStateListOf() }
+
+    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String) {
+        val o = Outgoing(newRequestId(), text)
+        of(sid) += o
+        deliver(scope, remote, sid, o)
+    }
+
+    fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
+        o.state = Outgoing.State.SENDING
+        o.error = ""
+        scope.launch {
+            try {
+                remote.command(sid, remote.cmd { send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).build() })
+                o.state = Outgoing.State.SENT
+            } catch (e: Exception) {
+                o.error = errorText(e)
+                o.state = if ((e as? CommandException)?.unknown == true) Outgoing.State.UNKNOWN else Outgoing.State.FAILED
+            }
+        }
+    }
+
+    fun remove(sid: String, o: Outgoing) {
+        of(sid).remove(o)
+    }
+
+    /** Local text of a request, for queued messages. */
+    fun text(sid: String, requestId: String): String? = bySession[sid]?.firstOrNull { it.requestId == requestId }?.text
+}
