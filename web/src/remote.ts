@@ -25,7 +25,7 @@ import {
 } from "./crypto";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import type { Event } from "./gen/remoteagent/v1/event_pb";
-import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
+import { SessionSchema, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
   ClientService,
@@ -415,19 +415,29 @@ export class Remote {
 
   // --- commands ---
 
-  /** Seals cmd, forwards it and returns the opened result. Network
-   * failures are retried with the same request ID, which the daemon
-   * runs at most once. */
+  /** Sends a command about a session. */
   async command(sid: string, cmd: CommandKind): Promise<CommandResult> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
+    return this.forward(s.machineId, sid, cmd);
+  }
+
+  /** Sends a command about a machine, such as starting a session. */
+  machineCommand(machineId: string, cmd: CommandKind): Promise<CommandResult> {
+    return this.forward(machineId, "", cmd);
+  }
+
+  /** Seals cmd, forwards it and returns the opened result. Network
+   * failures are retried with the same request ID, which the daemon
+   * runs at most once. */
+  private async forward(machineId: string, sid: string, cmd: CommandKind): Promise<CommandResult> {
     const requestId = newRequestID();
     const deadline = Date.now() + COMMAND_TTL_MS;
     const env = await sealMessage(
       this.keys.command,
       {
         kind: PayloadKind.COMMAND,
-        machineId: s.machineId,
+        machineId,
         sessionId: sid,
         requestId,
         deadlineMs: BigInt(deadline),
@@ -438,11 +448,11 @@ export class Remote {
     );
     for (let attempt = 0; ; attempt++) {
       try {
-        const res = await this.api.forward({ machineId: s.machineId, command: env });
+        const res = await this.api.forward({ machineId, command: env });
         const { msg } = await openMessage(
           this.keys.command,
           res.result,
-          { kind: PayloadKind.COMMAND_RESULT, machineId: s.machineId, sessionId: sid, requestId },
+          { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: sid, requestId },
           CommandResultSchema,
         );
         if (msg.errorCode) throw new CommandError(msg.errorCode, msg.errorMessage);
@@ -464,6 +474,22 @@ export class Remote {
         throw e;
       }
     }
+  }
+
+  private models = new Map<string, Promise<ListModelsResponse>>();
+
+  /** The models a machine's Codex offers, fetched once per page load. */
+  listModels(machineId: string): Promise<ListModelsResponse> {
+    let p = this.models.get(machineId);
+    if (!p) {
+      p = this.machineCommand(machineId, { case: "listModels", value: {} }).then((r) => {
+        if (r.kind.case !== "listModels") throw new Error("意外的回复");
+        return r.kind.value;
+      });
+      p.catch(() => this.models.delete(machineId));
+      this.models.set(machineId, p);
+    }
+    return p;
   }
 
   private report(e: unknown) {

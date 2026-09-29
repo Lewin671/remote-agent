@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovalRequested, Event, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
-import { ApprovalDecision, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "../gen/remoteagent/v1/event_pb";
-import { decisionText, derive, hhmm, machineName, optionLabel, projectKey, projectName, shortPath, statusOf, titleOf, type Derived } from "../model";
+import { ApprovalDecision, ApprovalMode, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "../gen/remoteagent/v1/event_pb";
+import { contextPercent, decisionText, derive, hhmm, machineName, optionLabel, projectKey, projectName, shortPath, statusOf, titleOf, type Derived } from "../model";
 import { errorText, type CommandKind, type Remote, type SessionView } from "../remote";
+import { ModeSheet, PlanCard, SessionSheet } from "../sheets";
 import { Chips, Dot, Rich, useNow, useRemote } from "../ui";
 
 interface Outgoing {
@@ -22,6 +23,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [outgoing, setOutgoing] = useState<Outgoing[]>([]);
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
+  const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 
@@ -93,7 +95,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
               {projectName(projectKey(session))} · {machineName(machine)}
             </span>
             <span className="dh-chips">
-              <Chips s={session} />
+              <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
             </span>
           </>
         ) : (
@@ -173,6 +175,13 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         {[...derived.questions.values()].map((q) => (
           <QuestionCard key={q.questionId} q={q} run={run} sessionId={session.id} />
         ))}
+        {session.info?.planOpen && derived.plan && <PlanCard plan={derived.plan} run={run} sessionId={session.id} />}
+        {!ended && (contextPercent(session) ?? 0) >= 80 && (
+          <div className="ctxwarn">
+            上下文已用 {contextPercent(session)}%
+            <b onClick={() => !derived.running && void run("压缩", { case: "compact", value: { sessionId: session.id } })}>压缩</b>
+          </div>
+        )}
         {blocked && (
           <div className="banner">
             ⚠ 终端里有弹窗：{blocked}
@@ -207,9 +216,11 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       )}
       {!wide && (
         <div className="chips">
-          <Chips s={session} />
+          <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
         </div>
       )}
+      {sheet === "mode" && <ModeSheet s={session} run={run} onClose={() => setSheet("")} />}
+      {sheet === "model" && <SessionSheet remote={remote} s={session} run={run} running={derived.running} onClose={() => setSheet("")} />}
       {ended ? (
         <div className="comp ended">会话已结束</div>
       ) : (
@@ -294,6 +305,30 @@ function EventRow({ e, d, cwd }: { e: Event; d: Derived; cwd: string }) {
     case "inputState":
       if (k.value.status === InputStatus.CANCELED) return <div className="sysline">取消了一条排队的消息</div>;
       return k.value.status === InputStatus.UNCONFIRMED ? <div className="sysline warn">有一条消息已送到终端，但没能确认 Codex 收到，没有重发</div> : null;
+    case "settingsChanged": {
+      const c = k.value;
+      if (c.compacted) return <div className="compacted">上下文已压缩</div>;
+      if (c.model) {
+        return (
+          <div className="sysline">
+            切换到 <b>{c.model}</b> · {c.effort}
+          </div>
+        );
+      }
+      const name = { [ApprovalMode.ASK]: "询问", [ApprovalMode.AUTO]: "自动", [ApprovalMode.PLAN]: "计划", [ApprovalMode.FULL_ACCESS]: "完全放行" }[c.mode as number];
+      return name ? (
+        <div className="sysline">
+          模式切换到 <b>{name}</b>
+        </div>
+      ) : null;
+    }
+    case "planProposed":
+      return (
+        <details className="think plan-log">
+          <summary>▸ 计划</summary>
+          <div>{k.value.text}</div>
+        </details>
+      );
     case "sessionState":
       return k.value.status === SessionStatus.EXITED ? <div className="sysline">会话已结束{k.value.detail ? `（${k.value.detail}）` : ""}</div> : null;
     default:

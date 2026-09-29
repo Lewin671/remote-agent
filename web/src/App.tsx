@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Remote } from "./remote";
 import { useRemote } from "./ui";
 import { Home, ProjectPage, Sidebar, WideHome, type Go } from "./views/Lists";
@@ -37,15 +37,20 @@ function useRoute(): [string, Go] {
   return [route, (r: string) => (location.hash = "/" + r)];
 }
 
+const wideQuery = matchMedia("(min-width: 900px)");
+
+function subscribeWide(fn: () => void) {
+  wideQuery.addEventListener("change", fn);
+  addEventListener("resize", fn);
+  return () => {
+    wideQuery.removeEventListener("change", fn);
+    removeEventListener("resize", fn);
+  };
+}
+
+/** Whether the window is wide enough for the sidebar layout. */
 function useWide() {
-  const q = matchMedia("(min-width: 900px)");
-  const [wide, setWide] = useState(q.matches);
-  useEffect(() => {
-    const on = () => setWide(q.matches);
-    q.addEventListener("change", on);
-    return () => q.removeEventListener("change", on);
-  }, [q]);
-  return wide;
+  return useSyncExternalStore(subscribeWide, () => wideQuery.matches);
 }
 
 function Main({ remote }: { remote: Remote }) {

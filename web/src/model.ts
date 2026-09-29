@@ -2,7 +2,7 @@
 // what a session's events say is pending.
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
-import type { ApprovalRequested, Event, QuestionAsked, TokenUsage } from "./gen/remoteagent/v1/event_pb";
+import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage } from "./gen/remoteagent/v1/event_pb";
 import { ApprovalDecision, InputStatus, SessionStatus } from "./gen/remoteagent/v1/event_pb";
 import type { MachineView, Remote, SessionView } from "./remote";
 
@@ -146,6 +146,7 @@ export interface Derived {
   inputs: Map<string, InputStatus>; // latest state per request ID
   running: boolean;
   usage?: TokenUsage;
+  plan?: PlanProposed; // the latest plan
 }
 
 /** Pending approvals and questions, input states and the running turn. */
@@ -183,6 +184,9 @@ export function derive(events: Event[]): Derived {
         break;
       case "tokenUsage":
         d.usage = k.value;
+        break;
+      case "planProposed":
+        d.plan = k.value;
         break;
       case "sessionState":
         if (k.value.status === SessionStatus.EXITED) {

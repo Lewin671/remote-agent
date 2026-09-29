@@ -44,22 +44,44 @@ export function Rich({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
-/** Approval mode, model, effort and context use, as read from Codex. */
-export function Chips({ s }: { s: SessionView }) {
+/** Approval mode, model, effort and context use, as read from Codex.
+ * With handlers the chips open the sheets that change them. */
+export function Chips({ s, onMode, onModel }: { s: SessionView; onMode?: () => void; onModel?: () => void }) {
   const mode = modeOf(s);
   const pct = contextPercent(s);
   const i = s.info;
   if (!mode && !i?.model && pct === undefined) return null;
+  const Chip = ({ cls, onClick, children }: { cls: string; onClick?: () => void; children: ReactNode }) =>
+    onClick ? (
+      <button className={cls} onClick={onClick}>
+        {children}
+      </button>
+    ) : (
+      <span className={cls}>{children}</span>
+    );
   return (
     <>
-      {mode && <span className={"chip " + mode.cls}>{mode.text}</span>}
-      {i?.model && <span className="chip">{i.model}</span>}
-      {i?.effort && <span className="chip">{i.effort}</span>}
+      {mode && (
+        <Chip cls={"chip " + mode.cls} onClick={onMode}>
+          {mode.text}
+        </Chip>
+      )}
+      {i?.model && (
+        <Chip cls="chip" onClick={onModel}>
+          {i.model}
+          {onModel && " ▾"}
+        </Chip>
+      )}
+      {i?.effort && (
+        <Chip cls="chip" onClick={onModel}>
+          {i.effort}
+        </Chip>
+      )}
       {pct !== undefined && (
-        <span className={"chip" + (pct >= 80 ? " warn" : "")} title="上下文占用">
+        <Chip cls={"chip" + (pct >= 80 ? " warn" : "")} onClick={onModel}>
           <span className="ring" style={{ ["--p" as string]: pct, ["--c" as string]: pct >= 80 ? "var(--orange)" : undefined }} />
           {pct}%
-        </span>
+        </Chip>
       )}
     </>
   );

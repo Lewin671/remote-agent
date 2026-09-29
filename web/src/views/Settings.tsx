@@ -2,6 +2,7 @@ import { useState } from "react";
 import { machineName, when } from "../model";
 import { errorText, join, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
+import { getTheme, setTheme, type Theme } from "../theme";
 import { Dot, useRemote } from "../ui";
 
 export function Settings({ remote }: { remote: Remote }) {
@@ -26,6 +27,12 @@ export function Settings({ remote }: { remote: Remote }) {
             </span>
           </div>
         ))}
+      </div>
+      <div className="glabel">外观</div>
+      <div className="grp">
+        <div className="row">
+          <ThemePicker />
+        </div>
       </div>
       <div className="glabel">添加设备</div>
       <div className="grp">
@@ -86,6 +93,31 @@ export function Setup({ onDone }: { onDone: () => void }) {
       <button className="big" disabled={busy || !text.trim()} onClick={submit}>
         {busy ? "连接中…" : "连接"}
       </button>
+    </div>
+  );
+}
+
+function ThemePicker() {
+  const [theme, set] = useState<Theme>(getTheme);
+  const opts: [Theme, string][] = [
+    ["auto", "自动"],
+    ["light", "亮色"],
+    ["dark", "暗色"],
+  ];
+  return (
+    <div className="seg full">
+      {opts.map(([t, name]) => (
+        <button
+          key={t}
+          className={t === theme ? "on" : ""}
+          onClick={() => {
+            setTheme(t);
+            set(t);
+          }}
+        >
+          {name}
+        </button>
+      ))}
     </div>
   );
 }

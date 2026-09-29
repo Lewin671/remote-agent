@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NewSessionSheet } from "../sheets";
 import { exited, machineName, needsAttention, plain, projectKey, projectName, projects, shortPath, statusOf, titleOf, when, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
 import { Avatar, Dot, useNow, useRemote } from "../ui";
@@ -57,12 +58,26 @@ function ProjectRow({ p, go }: { p: Project; go: Go }) {
   );
 }
 
+/** The ＋ button and the new-session sheet it opens. */
+export function NewSessionButton({ remote, go, project }: { remote: Remote; go: Go; project?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="fab" onClick={() => setOpen(true)} aria-label="新会话">
+        ＋
+      </button>
+      {open && <NewSessionSheet remote={remote} project={project} onClose={() => setOpen(false)} onCreated={(id) => (setOpen(false), go("s/" + id))} />}
+    </>
+  );
+}
+
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
   useNow(30_000);
   const list = projects(remote);
   return (
     <div className="body">
+      <NewSessionButton remote={remote} go={go} />
       <div className="large">
         <h3>项目</h3>
         <ConnState remote={remote} />
@@ -139,6 +154,7 @@ export function ProjectPage({ remote, name, go, onBack }: { remote: Remote; name
           <SessionRow key={s.id} s={s} remote={remote} go={go} />
         ))}
       </div>
+      <NewSessionButton remote={remote} go={go} project={name} />
     </>
   );
 }
@@ -153,6 +169,7 @@ export function Sidebar({ remote, go, selected }: { remote: Remote; go: Go; sele
       <div className="side-head">
         <b>项目</b>
         <ConnState remote={remote} />
+        <NewSessionButton remote={remote} go={go} />
       </div>
       {list.map((p) => {
         const live = p.sessions.filter((s) => !exited(s) || s.id === selected);
