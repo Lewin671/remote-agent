@@ -9,6 +9,7 @@ import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from
 import {
   agentName,
   ago,
+  findModel,
   inheritConfig,
   machineAgents,
   machineName,
@@ -71,7 +72,7 @@ export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) 
 export function describe(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>): string {
   const def = defaultsOf(info.settings, cfg.agent);
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
-  const model = info.models?.models.find((x) => x.slug === slug);
+  const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
   const modelText = slug ? `${model?.displayName || slug}${effort ? " " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
   const mode = modeName(cfg.mode || def.mode) || "默认审批";
@@ -313,7 +314,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
       </div>
     );
   else if (pick === "model") {
-    const chosen = info.models?.models.find((m) => m.slug === (cfg.model || def.model || info.models?.defaultModel));
+    const chosen = findModel(info.models?.models, cfg.model || def.model || info.models?.defaultModel || "");
     body = (
       <>
         {info.error && (
@@ -332,7 +333,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
           {info.models?.models.map((m) => (
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
               <div className="mt">{m.displayName || m.slug}</div>
-              {m.slug === cfg.model && <span className="ck">✓</span>}
+              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck">✓</span>}
             </button>
           ))}
         </div>

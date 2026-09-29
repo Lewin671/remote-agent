@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { RateLimit } from "../gen/remoteagent/v1/event_pb";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
-import { agentName, ago, machineAgents, machineName, modeName, projects, shortPath } from "../model";
+import { agentName, ago, findModel, machineAgents, machineName, modeName, projects, shortPath } from "../model";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
@@ -253,7 +253,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
   const meta = m.meta;
   const codex = meta?.agents.find((a) => a.agent === Agent.CODEX) ?? (meta?.codexVersion ? { agent: Agent.CODEX, version: meta.codexVersion, verified: meta.codexVerified } : undefined);
   const versions = [codex, ...(meta?.agents.filter((a) => a.agent !== Agent.CODEX) ?? [])].filter((v): v is NonNullable<typeof v> => !!v?.version);
-  const modelName = (a: Agent, slug: string) => models.get(a)?.models.find((x) => x.slug === slug)?.displayName ?? slug;
+  const modelName = (a: Agent, slug: string) => findModel(models.get(a)?.models, slug)?.displayName ?? slug;
 
   let sheet;
   if (pick && st) {
@@ -276,7 +276,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
       const a = pick.agent;
       const def = defaultsFor(st, a);
       const list = models.get(a);
-      const cur = list?.models.find((x) => x.slug === (def.model || list.defaultModel));
+      const cur = findModel(list?.models, def.model || list?.defaultModel || "");
       const follow = `跟随 ${agentName(a)} 配置`;
       const opts: { key: string; label: string; on: boolean; next: DaemonSettings }[] =
         pick.what === "model"

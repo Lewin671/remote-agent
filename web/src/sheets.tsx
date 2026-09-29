@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, CONTEXT_WARN, contextPercent, modeOf } from "./model";
+import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet } from "./ui";
 
@@ -110,7 +110,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const pct = contextPercent(s);
   const model = s.info?.model ?? "";
   const effort = s.info?.effort ?? "";
-  const cur = models?.models.find((m) => m.slug === model);
+  const cur = findModel(models?.models, model);
   const list = models?.models ?? [];
   // The current model stays in view even when it is not among the first three.
   const shown = all ? list : [...list.slice(0, 3), ...(cur && !list.slice(0, 3).includes(cur) ? [cur] : [])];
@@ -166,12 +166,12 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
       {!models && !error && <div className="hint">读取模型列表…</div>}
       <div className="list">
         {shown.map((m) => (
-          <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m.slug !== model && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
+          <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
             <div className="mt">
               {m.displayName || m.slug}
               {m.efforts.length > 0 && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
             </div>
-            {m.slug === model && <span className="ck">✓</span>}
+            {m === cur && <span className="ck">✓</span>}
           </button>
         ))}
         {models && !all && list.length > 3 && (

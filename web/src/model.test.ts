@@ -11,6 +11,7 @@ import {
   askTitle,
   derive,
   dockItems,
+  findModel,
   inheritConfig,
   machineAgents,
   minutesLeft,
@@ -258,6 +259,20 @@ describe("new sessions follow the project", () => {
 
   it("has nothing to copy for a new project", () => {
     expect(inheritConfig(undefined, machines(true, true))).toBeUndefined();
+  });
+});
+
+describe("models", () => {
+  const list = [{ slug: "opus" }, { slug: "sonnet" }, { slug: "haiku" }, { slug: "gpt-6-astra" }];
+  it("finds Claude's alias for the full model ID a session reports", () => {
+    expect(findModel(list, "claude-sonnet-5-5")?.slug).toBe("sonnet");
+    expect(findModel(list, "claude-haiku-4-5-20251001")?.slug).toBe("haiku");
+    expect(findModel(list, "sonnet")?.slug).toBe("sonnet");
+  });
+  it("matches Codex slugs exactly", () => {
+    expect(findModel(list, "gpt-6-astra")?.slug).toBe("gpt-6-astra");
+    expect(findModel(list, "gpt-6-sol")).toBeUndefined();
+    expect(findModel(list, "")).toBeUndefined();
   });
 });
 
