@@ -47,6 +47,7 @@ const proxy = target
   ? {
       "/remoteagent.v1.": { target, changeOrigin: true },
       "/v1/stream": { target, changeOrigin: true, ws: true },
+      "/v1/term": { target, changeOrigin: true, ws: true },
     }
   : undefined;
 
