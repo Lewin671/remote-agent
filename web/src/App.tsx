@@ -7,10 +7,22 @@ import { ProjectPage } from "./views/Project";
 import { SessionPage } from "./views/Session";
 import { MachinePage, Settings } from "./views/Settings";
 
+// ?demo in development shows made-up machines and sessions in every state
+// the mockup draws, with no server. It is compiled out of builds.
+const demo = import.meta.env.DEV && new URLSearchParams(location.search).has("demo");
+
+async function loadRemote(): Promise<Remote | undefined> {
+  if (import.meta.env.DEV && demo) {
+    const { DemoRemote } = await import("./dev/demo");
+    return DemoRemote.create(new URLSearchParams(location.search));
+  }
+  return Remote.load();
+}
+
 export function App() {
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const load = () =>
-    Remote.load().then(
+    loadRemote().then(
       (r) => setRemote(r ?? null),
       () => setRemote(null),
     );
