@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { exited, machineName, needsAttention, plain, projectKey, projects, shortPath, statusOf, titleOf, when, type Project } from "../model";
+import { exited, machineName, needsAttention, plain, projectKey, projectName, projects, shortPath, statusOf, titleOf, when, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
 import { Avatar, Dot, useNow, useRemote } from "../ui";
 
@@ -21,7 +21,7 @@ function TodoCards({ remote, go }: { remote: Remote; go: Go }) {
             </div>
             <div className="t">{titleOf(s)}</div>
             <div className="m">
-              {projectKey(s)} · {machineName(remote.machines.get(s.machineId))}
+              {projectName(projectKey(s))} · {machineName(remote.machines.get(s.machineId))}
             </div>
           </button>
         ))}
@@ -118,9 +118,9 @@ export function ProjectPage({ remote, name, go, onBack }: { remote: Remote; name
       </header>
       <div className="body">
         <div className="pad proj-head">
-          <Avatar name={name} size="lg" />
+          <Avatar name={p?.name ?? projectName(name)} size="lg" />
           <div>
-            <div className="proj-name">{name}</div>
+            <div className="proj-name">{p?.name ?? projectName(name)}</div>
             <div className="muted small">{[...(p?.paths.map(shortPath) ?? []), ...(p?.machines ?? [])].join(" · ")}</div>
           </div>
         </div>

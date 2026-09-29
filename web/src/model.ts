@@ -17,11 +17,15 @@ export interface Project {
   machines: string[];
 }
 
-/** The project a session belongs to. Until the project rule in
- * docs/architecture.md §8 is settled, it is the working directory's name. */
+/** The project a session belongs to: its working directory's absolute
+ * path, the same on every machine. */
 export function projectKey(s: SessionView): string {
-  const cwd = s.info?.cwd ?? "";
-  return cwd.split("/").filter(Boolean).pop() || "未知项目";
+  return s.info?.cwd || "";
+}
+
+/** A project's name: the last folder of its path. */
+export function projectName(key: string): string {
+  return key.split("/").filter(Boolean).pop() || "未知项目";
 }
 
 export function projects(remote: Remote): Project[] {
@@ -30,7 +34,7 @@ export function projects(remote: Remote): Project[] {
     const key = projectKey(s);
     let p = byKey.get(key);
     if (!p) {
-      p = { key, name: key, sessions: [], updatedMs: 0, paths: [], machines: [] };
+      p = { key, name: projectName(key), sessions: [], updatedMs: 0, paths: [], machines: [] };
       byKey.set(key, p);
     }
     p.sessions.push(s);

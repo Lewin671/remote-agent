@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovalRequested, Event, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { ApprovalDecision, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "../gen/remoteagent/v1/event_pb";
-import { decisionText, derive, hhmm, machineName, optionLabel, projectKey, shortPath, statusOf, titleOf, type Derived } from "../model";
+import { decisionText, derive, hhmm, machineName, optionLabel, projectKey, projectName, shortPath, statusOf, titleOf, type Derived } from "../model";
 import { errorText, type CommandKind, type Remote, type SessionView } from "../remote";
 import { Chips, Dot, Rich, useNow, useRemote } from "../ui";
 
@@ -90,7 +90,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             <Dot tone={st.tone} />
             <b className="ellipsis">{titleOf(session)}</b>
             <span className="muted small nowrap">
-              {projectKey(session)} · {machineName(machine)}
+              {projectName(projectKey(session))} · {machineName(machine)}
             </span>
             <span className="dh-chips">
               <Chips s={session} />

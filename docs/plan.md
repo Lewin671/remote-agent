@@ -123,7 +123,6 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 **范围和产品**
 
-- 项目判定规则：[architecture.md](architecture.md) 第 8 节的提案是否采用。定下来之前，网页暂时按工作目录名分组（`web/src/model.ts` 的 `projectKey`）
 - 终端视图默认可以输入还是只读（倾向可以输入）
 - 客户端显示 Codex 账户额度是否放进 MVP（界面稿里画了）
 - 客户端切换审批模式（[architecture.md](architecture.md) 第 7 节）和 fast 模式是否放进 MVP（优先级低）
