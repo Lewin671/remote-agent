@@ -65,7 +65,9 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
   **`transcript_path` 直接给出了 rollout 的路径**，可以用来把会话和 rollout 对应起来。同样的字段很可能也出现在 `SessionStart` hook 里，但尚未验证
 - **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问。所以 **hook 命令必须固定**，二进制的路径一变，就得重新信任
 - 用了 `-c` 之后，Codex 会提示 `Running without the shared background server`，也就是改为嵌入模式运行，每个会话在自己的进程里。目前没发现功能上的差异
-- 带上 hook 的会话里，审批请求交给了 hook，没有再经过 `auto_review`。两者的先后顺序能不能配置，尚未验证
+- **和 `auto_review` 的先后顺序：先调用 hook，hook 没给决定时再交给 `auto_review`。** 实测结果：hook 返回 deny，请求直接被拒绝，`auto_review` 不再参与；hook 什么都不输出、正常退出（exit 0）时，`auto_review` 接着处理，并批准了写 home 目录的请求
+- `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据（依据提示词推断，**被拒绝的情况尚未实测**）
+- 注意：`workspace-write` 沙箱下 `/tmp` 默认可写，写 `/tmp` 不会触发提权。测试提权要写 home 目录之类的位置
 
 ## 4. 启动时的弹窗和环境
 
