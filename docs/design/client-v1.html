@@ -11,7 +11,7 @@
     --chip: #eff0f2; --seg: #eceef0; --track: #d9dce0; --frame: #1b1d21;
     --blue: #2563d9; --blue-bg: #2f6feb; --blue-soft: #edf3ff; --on-solid: #fff;
     --orange: #e07a12; --orange-ink: #8a4a06; --orange-soft: #fff3e3;
-    --green: #22a05a; --red: #c62f2f; --red-bg: #c62f2f; --red-soft: #fdecec; --gray: #b3b9c0;
+    --green: #22a05a; --green-ink: #177a43; --red: #c62f2f; --red-bg: #c62f2f; --red-soft: #fdecec; --gray: #b3b9c0;
     --purple: #6d43c4; --purple-soft: #f1ebfd;
   }
   [data-theme="dark"] {
@@ -19,7 +19,7 @@
     --chip: #272a2f; --seg: #212327; --track: #3a3e44; --frame: #3a3d42;
     --blue: #7aa7ff; --blue-bg: #2f6feb; --blue-soft: rgba(90,145,255,.16); --on-solid: #fff;
     --orange: #f0a04b; --orange-ink: #f3bd82; --orange-soft: rgba(240,160,75,.14);
-    --green: #3fbf73; --red: #ff7b7b; --red-bg: #c62f2f; --red-soft: rgba(255,107,107,.14); --gray: #555b62;
+    --green: #3fbf73; --green-ink: #5fd08b; --red: #ff7b7b; --red-bg: #c62f2f; --red-soft: rgba(255,107,107,.14); --gray: #555b62;
     --purple: #b79cf5; --purple-soft: rgba(169,139,240,.16);
   }
   * { box-sizing: border-box; }
@@ -114,7 +114,7 @@
   .sess .pv { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sess .mc { font-size: 12px; color: var(--muted); margin-top: 1px; }
   .sess .mc .stw { font-weight: 600; }
-  .sess .mc .stw.run { color: var(--blue); } .sess .mc .stw.wait { color: var(--orange-ink); } .sess .mc .stw.idle { color: var(--green); }
+  .sess .mc .stw.run { color: var(--blue); } .sess .mc .stw.wait { color: var(--orange-ink); } .sess .mc .stw.idle { color: var(--green-ink); }
   .sess.ended .row1 b { font-weight: 500; color: var(--fg2); }
   .sess.sel { background: var(--blue-soft); }
 
@@ -139,7 +139,6 @@
   .me > div { background: var(--blue-bg); color: var(--on-solid); border-radius: 18px 18px 5px 18px; padding: 8px 12px; max-width: 80%; font-size: 15px; }
   .me small { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .me small b { color: var(--blue); font-weight: 600; margin-left: 6px; }
-  .me.pending > div { opacity: .6; }
   .me.warn small { color: var(--orange-ink); }
   .me.fail > div { background: var(--chip); color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--red); }
   .me.fail small { color: var(--red); }
@@ -160,7 +159,7 @@
   .tool .ok { color: var(--green); } .tool .sp { color: var(--blue); } .tool .x { color: var(--red); }
   .tool.grp b { font-weight: 500; flex: 1; }
   .tool .exit { color: var(--red); font-size: 12px; white-space: nowrap; }
-  .toolout { margin: 0 0 6px 20px; background: #16181c; color: #c9d1d9; border-radius: 8px; padding: 6px 9px; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre; overflow: hidden; }
+  .toolout { margin: 0 0 6px 20px; background: #16181c; color: #c9d1d9; border-radius: 8px; padding: 6px 9px; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre; overflow-x: auto; }
   .toolout .more { color: #8b949e; }
   .sep { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin: 12px 0; }
   .sep::before, .sep::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
@@ -256,7 +255,7 @@
   .ttool { flex: none; display: flex; align-items: center; gap: 8px; background: #161b22; color: #8b949e; font-size: 12px; padding: 6px 12px; border-bottom: 1px solid #21262d; }
   .ttool b { margin-left: auto; color: #79c0ff; font-weight: 600; padding: 4px 0; }
   .keys { display: flex; gap: 5px; padding: 8px 8px 20px; background: #161b22; flex: none; }
-  .keys span { flex: 1; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 13px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .keys span { flex: 1; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 13px; height: 44px; display: flex; align-items: center; justify-content: center; }
   .tstate { position: absolute; left: 20px; right: 20px; top: 150px; background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 16px; text-align: center;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; white-space: normal; }
   .tstate b { display: block; color: #e6edf3; font-size: 15px; }
@@ -295,10 +294,17 @@
   .sr .v { margin-left: auto; color: var(--fg2); display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; white-space: nowrap; }
   .sr .v em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
   .sr .v::after { content: "›"; color: var(--faint); font-size: 18px; margin-left: 2px; }
+  .plist .pi { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid var(--line); }
+  .plist .pi > div:not(.av) { flex: 1; min-width: 0; }
+  .plist .pi b { font-size: 15px; display: block; }
+  .plist .pi small { font-size: 12px; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plist .pi .chev { color: var(--faint); font-size: 18px; }
+  .plist .pi.add { color: var(--blue); font-weight: 600; border: none; }
+  .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
   .recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-top: 10px; align-items: center; }
   .recent small { font-size: 12px; color: var(--muted); flex: none; }
-  .recent span { font-size: 13px; background: var(--chip); border-radius: 14px; padding: 4px 10px; color: var(--fg2); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
-  .recent span.on { background: var(--blue-soft); color: var(--blue); box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .recent > span { font-size: 13px; background: var(--chip); border-radius: 14px; padding: 4px 10px; color: var(--fg2); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+  .recent > span.on { background: var(--blue-soft); color: var(--blue); box-shadow: inset 0 0 0 1.5px var(--blue); }
 
   /* 列表选择（模式、模型、机器、目录） */
   .list .mi { display: flex; gap: 10px; align-items: center; padding: 0 2px; min-height: 44px; border-bottom: 1px solid var(--line); font-size: 15px; }
@@ -463,16 +469,16 @@
     <li><b>会话状态只显示一种</b>：按「状态优先级」取最高的一种。已结束或电脑离线时，输入框换成一张状态卡。和服务器断线另用导航栏下的一条提示，不和会话状态混在一起</li>
     <li><b>要你处理的东西停靠在输入框上方</b>：审批、模型提问、计划、终端弹窗固定在底部，最高占聊天区的 45%，长内容在卡片里滚动或「展开全文」，按钮始终可见；键盘弹出时收成一行。处理完在聊天里留一行记录</li>
     <li><b>主页直接列出进行中的会话</b>：「需要处理」竖排，最多完整显示 3 张，其余收进「还有 N 项」；命令审批可以在主页直接处理，带请求说明、附理由拒绝和「查看会话」</li>
-    <li><b>新建会话只有一个入口</b>：去掉项目行上的 ＋，主页和项目页的右上角各一个，项目页里的会预填项目。面板里「最近」一栏一点就换机器和目录，行里写实际的机器、目录、模型和审批模式；不写第一句也能开始</li>
-    <li><b>项目页不用分段</b>：进行中和最近结束上下排，「最近结束」标题旁有「全部」直达</li>
+    <li><b>新建会话先选项目</b>：去掉项目行上的 ＋。主页右上角的 ＋ 先列出项目（最近的在前），最后一项「新项目…」选机器和目录；选好再写第一句话。项目页右上角的 ＋ 跳过选项目。面板里写实际的机器、模型和审批模式；不写第一句也能开始</li>
+    <li><b>项目页不用分段</b>：进行中和最近结束上下排；项目名下面就有「已结束 N」入口，不用滚过所有进行中的会话</li>
     <li><b>项目副标题带路径</b>，同名项目也能分清；会话标题不再统一叫「新会话」</li>
-    <li><b>消息的每一步都有反馈</b>：发送中、已送达电脑、没能送达（可重试）、已送到终端但没能确认（不建议重发）；排队的消息逐条显示，可以取消</li>
+    <li><b>消息的每一步都有反馈</b>：发送中、已送达电脑、没能确认送达（可重试，重试不会重复发送）、已送到终端但没能确认 Codex 收到（不给重试）；排队的消息逐条显示，可以取消；和服务器断线时消息留在输入框里，不偷偷排队</li>
     <li><b>聊天正文按 Markdown 排版</b>：列表、代码块、表格正常显示，代码块和表格横向滚动；文件引用是等宽字，不像链接；连续完成的工具调用折成一行；往上翻时来了新消息显示「回到最新」</li>
     <li><b>终端</b>：顶部一条工具栏显示电脑上的尺寸和「适配屏幕」，适配后可以还原；断线换成居中的状态卡</li>
     <li><b>宽屏</b>：侧栏分需要处理、进行中、项目三段，项目区列出全部项目，点名字进项目页，点箭头展开最近结束的会话。没选会话时主区域是新建输入框。会话顶栏分两行；并排时输入框和停靠区只在聊天那一栏</li>
     <li><b>底部标签「项目」改名「会话」</b>，上面显示待处理数</li>
     <li><b>上下文超过 80%</b>：上下文 chip 变橙，点开会话设置里压缩，不再另起横幅</li>
-    <li><b>可读性和尺寸</b>：字号收成 12 / 13 / 15 / 17 / 22 / 30 六档；文字色和实心按钮底色分开，亮暗两套正文对比度都不低于 4.5:1；可点区域不小于 44×44（终端按键栏见说明）；状态除了颜色还写状态词</li>
+    <li><b>可读性和尺寸</b>：字号收成 12 / 13 / 15 / 17 / 22 / 30 六档；文字色和实心按钮底色分开，亮暗两套正文对比度都不低于 4.5:1；可点区域不小于 44×44（终端按键栏宽度见说明）；状态除了颜色还写状态词</li>
     <li><b>补画</b>：首次配对、加载和空账户、审批和提问的各个阶段、新建时选机器和目录、会话菜单、恢复、历史读取失败、通知权限的几种情况、设置和设备页的完整内容；新增暗色稿；「Reasoning effort」改叫「推理强度」</li>
   </ul>
 </div>
@@ -537,17 +543,17 @@
       <div class="body">
         <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
           <div class="av lg c1">f</div>
-          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div></div>
+          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div></div>
         </div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv">请求执行 go test ./... -count=1</div><div class="mc"><span class="stw wait">等待审批</span> · VPS-dev</div></div></div>
         <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · MacBook</div></div></div>
-        <div class="label">最近结束 <a>全部 12 ›</a></div>
+        <div class="label">最近结束</div>
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · MacBook</div></div></div>
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · MacBook</div></div></div>
       </div>
     </div>
-    <div class="cap">项目页：进行中和最近结束上下排，「全部」直达完整的已结束列表；右上角 ＋ 在这个项目里新建</div>
+    <div class="cap">项目页：进行中和最近结束上下排；「已结束 12」在项目名下面，会话再多也不用往下翻；右上角 ＋ 在这个项目里新建</div>
   </div>
 
   <div>
@@ -557,22 +563,63 @@
       <div class="dim"></div>
       <div class="sheet">
         <div class="grab"></div>
-        <div class="ns-head"><b>新会话</b><span>取消</span></div>
+        <div class="ns-head"><b>新会话 · 选项目</b><span>取消</span></div>
+        <div class="plist">
+          <div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · MacBook、VPS-dev</small></div><span class="chev">›</span></div>
+          <div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · iMac（不在线）</small></div><span class="chev">›</span></div>
+          <div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · MacBook</small></div><span class="chev">›</span></div>
+          <div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/work/blog · VPS-dev</small></div><span class="chev">›</span></div>
+          <div class="pi add">＋ 新项目…<small style="font-weight:400">选机器和目录</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">新建第一步：选项目，最近的在前；副标题是路径和机器，同名的也能分清。「新项目…」去选机器和目录</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="ns-head"><span class="back2">‹</span><div class="av sm c1">f</div><b>foo</b><span>取消</span></div>
         <div class="prompt">
           <div class="ph">要 Codex 做什么？</div>
           <div class="pf"><small>可以不写，直接开始</small><div class="go">↑</div></div>
         </div>
-        <div class="recent"><small>最近</small><span class="on"><div class="av xs c1">f</div>foo</span><span><div class="av xs c2">b</div>billing</span><span><div class="av xs c3">b</div>blog</span></div>
         <div class="setrows">
           <div class="sr"><span class="lbl">机器</span><span class="v"><span class="dot idle"></span>MacBook</span></div>
-          <div class="sr"><span class="lbl">目录</span><span class="v"><em>~/Code/foo</em></span></div>
+          <div class="sr"><span class="lbl">目录</span><span class="v">~/Code/foo</span></div>
           <div class="sr"><span class="lbl">模型</span><span class="v">GPT-6-Astra · medium</span></div>
-          <div class="sr"><span class="lbl">审批</span><span class="v">自动</span></div>
+          <div class="sr"><span class="lbl">审批</span><span class="v">询问</span></div>
         </div>
         <div class="hint">第一次在某个目录启动时，Codex 会问是否信任它，需要去终端确认</div>
       </div>
     </div>
-    <div class="cap">新建：项目就是「机器 + 目录」。点「最近」一次换两项；改了机器要重选目录；选了别的目录，最近一栏的高亮跟着变</div>
+    <div class="cap">第二步：写第一句话。机器只能在这个项目出现过的机器里换；目录可以选项目里的子目录。项目页的 ＋ 直接到这一步</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="ns-head"><span class="back2">‹</span><b>新项目 · 选目录</b><span>取消</span></div>
+        <div class="recent" style="margin:0 0 10px"><small>机器</small><span class="on"><span class="dot idle"></span>MacBook</span><span><span class="dot idle"></span>VPS-dev</span><span style="opacity:.45"><span class="dot off"></span>iMac</span></div>
+        <div class="crumb">~ / Code / <b>ai-bot</b></div>
+        <div class="list">
+          <div class="mi"><div class="mt">‹ 上一级</div></div>
+          <div class="mi"><div class="mt">remote-agent</div><span class="muted">›</span></div>
+          <div class="mi"><div class="mt">happy</div><span class="muted">›</span></div>
+          <div class="mi"><div class="mt">notes-sync</div><span class="muted">›</span></div>
+        </div>
+        <div class="btns" style="margin-top:10px"><div class="btn pri">用 ai-bot 这个目录</div></div>
+      </div>
+    </div>
+    <div class="cap">新项目：先选机器（离线的置灰），再浏览目录；选好后进入第二步。项目在第一个会话开始后才出现在列表里</div>
   </div>
 </div>
 
@@ -642,6 +689,27 @@
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
     <div class="cap">键盘弹出时，停靠区收成一行，点「展开」先收起键盘再展开卡片</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>审批详情</b><span>重构 API 层 · 剩 7 分钟</span></span><span class="more"></span></div>
+      <div class="body" style="padding:0 14px">
+        <div class="desc small" style="color:var(--fg2);margin-bottom:6px">清理旧的生成文件后重新生成 protobuf 代码</div>
+        <pre style="background:#16181c;color:#e6edf3;border-radius:10px;padding:8px 10px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:0;white-space:pre-wrap;height:150px;overflow:hidden">rm -rf gen/remoteagent &amp;&amp; \
+buf generate --template buf.gen.yaml &amp;&amp; \
+go build ./... &amp;&amp; \
+go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
+git status --short gen/</pre>
+      </div>
+      <div class="dock" style="box-shadow:0 0 0 1.5px var(--red),0 -4px 18px rgba(0,0,0,.08)">
+        <div class="field" style="margin:0 0 8px;font-size:15px;color:var(--fg)">别删 gen，直接 buf generate 覆盖就行</div>
+        <div class="btns"><div class="btn danger">发送理由并拒绝</div></div>
+      </div>
+      <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
+    </div>
+    <div class="cap">长命令点「展开全文」进整页，命令可以滚动；附理由拒绝时，理由框和按钮贴在键盘上方，不会被收起</div>
   </div>
 
   <div>
@@ -758,7 +826,7 @@
   enter continue · esc quit<span class="cur"> </span></div>
       <div class="keys"><span>esc</span><span>tab</span><span>^C</span><span>↑</span><span>↓</span><span>⏎</span><span>⌨</span></div>
     </div>
-    <div class="cap">适配后：字号正常，处理信任目录这类弹窗。按键栏七个键平铺，高 40</div>
+    <div class="cap">适配后：字号正常，处理信任目录这类弹窗。按键栏七个键平铺，高 44</div>
   </div>
 </div>
 
@@ -812,12 +880,11 @@
       <div class="body chat">
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
-        <div class="me pending"><div>顺便补一个测试</div><small>等连接恢复后发送</small></div>
       </div>
       <div class="chips"><span class="chip m-auto dis">自动</span><span class="chip grow dis"><em>GPT-6-Astra · medium</em> ▾</span></div>
-      <div class="comp"><div class="in">消息</div><div class="go">↑</div></div>
+      <div class="comp"><div class="in typed">顺便补一个测试</div><div class="go" style="opacity:.35">↑</div></div>
     </div>
-    <div class="cap">和服务器断线：导航栏下一条提示，和会话状态分开；设置类操作暂停，消息先留在本机</div>
+    <div class="cap">和服务器断线：导航栏下一条提示，和会话状态分开；发送和设置类操作暂停，写好的消息留在输入框里，连上后自己点发送</div>
   </div>
 
   <div>
@@ -868,7 +935,8 @@
   <ul>
     <li>同时有多项时，按上表顺序只停靠最前面的一项，右上角写「还有 1 项」，处理完自动换下一项</li>
     <li>最高占聊天区的 45%：命令最多显示 4 行、计划最多 4 行，超出的点「展开全文」在整页里看，按钮在整页底部也有一份</li>
-    <li>键盘弹出时收成一行：类型 + 摘要 + 「展开」</li>
+    <li>在聊天输入框里打字、键盘弹出时，停靠区收成一行：类型 + 摘要 + 「展开」</li>
+    <li>在停靠区里输入拒绝理由时不收起：卡片只留理由输入框和「发送理由并拒绝」，贴在键盘上方，聊天区让出高度</li>
   </ul>
   <h4>会话标题</h4>
   <ul>
@@ -883,7 +951,7 @@
   <h4>尺寸</h4>
   <ul>
     <li>可点区域不小于 44×44；图标本身可以更小（如 36 的圆形新建按钮），点击区由外层补足</li>
-    <li>例外：终端按键栏七个键平铺，每键约 37×40。改成横向滚动会把常用键藏起来，所以保留平铺</li>
+    <li>例外：终端按键栏七个键平铺，每键约 37×44，宽度不到 44。改成横向滚动会把常用键藏起来，所以保留平铺；这个例外只限按键栏</li>
     <li>手机上主要内容左右留 16，停靠区和状态卡左右留 12</li>
   </ul>
 </div>
@@ -894,16 +962,16 @@
 
   <div class="st">
     <div class="st-h">消息 · 发送中 / 已送达</div>
-    <div class="me pending"><div>顺便补一个测试</div><small>发送中…</small></div>
+    <div class="me pending"><div>顺便补一个测试</div><small>◌ 发送中…</small></div>
     <div class="me"><div>把 lint 也跑一下</div><small>已送达电脑</small></div>
     <div class="st-c">送达电脑后提示消失，Codex 开始处理时和普通消息一样</div>
   </div>
 
   <div class="st">
-    <div class="st-h">消息 · 没能送达 / 无法确认</div>
-    <div class="me fail"><div>顺便补一个测试</div><small>没能送到电脑：连接超时<b>重试</b><b>删除</b></small></div>
+    <div class="st-h">消息 · 没能确认送达 / 无法确认收到</div>
+    <div class="me fail"><div>顺便补一个测试</div><small>没能确认送达：连接超时<b>重试</b><b>移除此提示</b></small></div>
     <div class="me warn"><div>把 lint 也跑一下</div><small>已送到终端，但没能确认 Codex 收到，不会自动重发</small></div>
-    <div class="st-c">第二种不给「重试」，去终端看一眼再决定，免得发两遍</div>
+    <div class="st-c">第一种可能其实已经送到：重试用同一条消息，电脑收到过就不会再写一遍。第二种不给「重试」，去终端看一眼再决定</div>
   </div>
 
   <div class="st">
@@ -997,7 +1065,7 @@
     <div class="st-h">聊天 · 历史读取</div>
     <div class="skel" style="width:70%"></div><div class="skel" style="width:90%"></div><div class="skel" style="width:40%"></div>
     <div class="banner err" style="margin-top:10px">后面的记录没读到<b>重试</b></div>
-    <div class="sysline">有 1 条记录无法解密，已跳过</div>
+    <div class="banner warn" style="margin-top:8px">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</div>
     <div class="st-c">会话不存在或已删除时，整页显示「找不到这个会话」和「返回」，不一直转圈</div>
   </div>
 
@@ -1065,6 +1133,42 @@
     <div class="hint">这一轮在运行，结束后才能切换模型和推理强度</div>
     <div class="banner err" style="margin-top:8px">没能读取模型列表<b>重试</b></div>
     <div class="banner" style="margin-top:8px">正在切换到 GPT-6-Sol…</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">提问 · 回答没送到</div>
+    <div class="dock ask">
+      <div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
+      <div class="q">大版本也一起升吗？</div>
+      <div class="ans on"><span class="ck">✓</span><div>只升小版本<small style="color:var(--red)">没能提交，终端里的问题可能已经变了</small></div></div>
+      <div class="foot"><span></span><b>重试</b></div>
+    </div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">新建 · 读取设置</div>
+    <div class="setrows" style="margin-top:0">
+      <div class="sr"><span class="lbl">模型</span><span class="v muted">读取 MacBook 的设置…</span></div>
+      <div class="sr"><span class="lbl">审批</span><span class="v">询问</span></div>
+    </div>
+    <div class="banner warn" style="margin-top:8px">没能读取模型列表，会用 Codex 自己的默认模型<b>重试</b></div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">会话设置 · 切换失败 / 压缩中</div>
+    <div class="banner err">没能切到 GPT-6-Sol：Codex 的菜单和预期不一样<b>去终端</b></div>
+    <div class="ctxbox" style="margin-top:8px"><div class="ring big" style="--p:86;--c:var(--orange)"></div><div><div class="num">86%</div><div class="muted small">◌ 正在压缩…</div></div></div>
+    <div class="st-c">上下文未知时 chip 不显示；模型未知时写「模型读取中」</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">设备 · 保存失败 / 移除</div>
+    <div class="banner err">没能保存默认模型：MacBook 不在线<b>重试</b></div>
+    <div class="alert" style="position:static;box-shadow:none;border:1px solid var(--line);margin-top:10px">
+      <h5 class="red">移除 iMac？</h5>
+      <p>它的会话记录会从服务器上删除，它要重新加入账户才能再连上。</p>
+      <div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div>
+    </div>
   </div>
 </div>
 
@@ -1169,13 +1273,12 @@
         <div class="tool"><span class="ok">✓</span><code>编辑 9 个文件  +412 −288</code></div>
         <div class="ai">支付回调和退款流程都已迁移到新接口，测试全部通过。</div>
         <div class="sep">4 分 12 秒 · 96k tokens</div>
-        <div class="sysline">上下文已压缩 · 86% → 14%</div>
         <div class="me"><div>继续把对账逻辑也迁过去</div></div>
       </div>
       <div class="chips"><span class="chip m-auto">自动</span><span class="chip grow"><em>GPT-6-Sol · high</em> ▾</span><span class="chip warn"><span class="ring" style="--p:86"></span>86%</span></div>
       <div class="comp"><div class="in">消息</div><div class="go">↑</div></div>
     </div>
-    <div class="cap">超过 80%：上下文 chip 变橙，点开会话设置压缩；压缩后在聊天里留一行</div>
+    <div class="cap">超过 80%：上下文 chip 变橙，点开会话设置压缩；压缩后在聊天里留一行「上下文已压缩 · 86% → 14%」，chip 恢复正常</div>
   </div>
 
   <div>
@@ -1296,6 +1399,7 @@
     <div class="banner">◌ 正在把密钥交给新电脑…</div>
     <div class="banner" style="margin-top:8px">✓ 新电脑已加入<b>完成</b></div>
     <div class="banner err" style="margin-top:8px">配对码过期了<b>换一个</b></div>
+    <div class="banner warn" style="margin-top:8px">不确定新电脑收到没有，到新电脑上看一眼是否已加入<b>重试</b></div>
   </div>
   <div class="st">
     <div class="st-h">配对 · 新设备这边</div>
@@ -1321,7 +1425,7 @@
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · foo · MacBook</div></div></div>
         <div class="label">项目</div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">2 进行中</span></div>
+        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 进行中</span></div>
         <div class="ph"><i class="arr">▸</i><div class="av sm c2">b</div>bar<span class="live">1 进行中</span></div>
         <div class="ph"><i class="arr">▾</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
         <div class="sub-sess"><span>发布秋季文章</span><span>2 小时前</span></div>
@@ -1335,7 +1439,7 @@
       <div class="start">
         <h3>要 Codex 做什么？</h3>
         <div class="prompt"><div class="ph">描述任务，⌘↵ 开始；也可以不写</div><div class="pf"><small></small><div class="go">↑</div></div></div>
-        <div class="opts"><span class="chip"><span class="dot idle"></span>MacBook ▾</span><span class="chip">~/Code/foo ▾</span><span class="chip">GPT-6-Astra · medium ▾</span><span class="chip m-auto">自动 ▾</span></div>
+        <div class="opts"><span class="chip"><div class="av xs c1">f</div>foo · ~/Code/foo ▾</span><span class="chip"><span class="dot idle"></span>MacBook ▾</span><span class="chip">GPT-6-Astra · medium ▾</span><span class="chip m-auto">自动 ▾</span></div>
         <div class="label">需要处理</div>
         <div class="todo">
           <div class="k"><span>● 请求执行</span><span>剩 8 分钟，超时拒绝</span></div>
@@ -1348,7 +1452,7 @@
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏三段，项目区列出全部项目，点名字进项目页、点箭头展开最近结束的；主区域直接是新建会话，下面列出要处理的</div>
+<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏三段，项目区列出全部项目，点名字进项目页、点箭头展开最近结束的；主区域直接是新建会话，第一个 chip 选项目（列表同手机第一步），下面列出要处理的</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 并排</span></div>
@@ -1371,7 +1475,7 @@
     <div class="dm">
       <div class="dh">
         <div class="r1"><span class="dot wait"></span><b>重构 API 层</b><span class="muted">等待审批 · foo · VPS-dev</span><span class="mr">⋯</span></div>
-        <div class="r2"><span class="chip m-auto">自动</span><span class="chip">GPT-6-Astra · medium ▾</span><span class="chip"><span class="ring" style="--p:23"></span>23%</span><div class="seg"><div>聊天</div><div>终端</div><div class="on">并排</div></div></div>
+        <div class="r2"><span class="chip">询问</span><span class="chip">GPT-6-Astra · medium ▾</span><span class="chip"><span class="ring" style="--p:23"></span>23%</span><div class="seg"><div>聊天</div><div>终端</div><div class="on">并排</div></div></div>
       </div>
       <div class="ds">
         <div class="ccol">
@@ -1383,8 +1487,10 @@
           </div>
           <div class="dock">
             <div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+            <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
             <pre>go test ./... -count=1</pre>
             <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
+            <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
           </div>
           <div class="comp"><div class="in">消息 · ⌘↵ 发送</div><div class="go">↑</div></div>
         </div>
@@ -1393,21 +1499,19 @@
           <div class="term" style="font-size:11px"><span class="d">• Edited</span> 5 files (+84 -61)
 <span class="d">• Ran</span> mkdir -p internal/handler
 
-  Would you like to run the following command?
+拆分完成，跑一下测试确认没有破坏现有行为。
 
-  <span class="b">$ go test ./... -count=1</span>
+<span class="b">◦ Working (2m 10s • esc to interrupt)</span>
 
-<span class="b">› 1. Yes, proceed</span>
-  2. Yes, and don't ask again for this command
-  3. No, and tell Codex what to do differently
 
-  Press enter to confirm or esc to cancel</div>
+
+  gpt-6-astra medium · 23% context used · ~/Code/foo</div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏会话：顶栏两行，第一行是身份和 ⋯，第二行是设置和视图。并排时停靠区、排队和输入框只在聊天那一栏，终端一栏保留自己的输入。主区域宽度不到 1000 时不提供「并排」</div>
+<div class="cap" style="width:auto;text-align:left">宽屏会话：顶栏两行，第一行是身份和 ⋯，第二行是设置和视图。并排时停靠区、排队和输入框只在聊天那一栏，终端一栏保留自己的输入。主区域宽度不到 840 时不提供「并排」</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目页</span></div>
@@ -1446,7 +1550,7 @@
   <ul>
     <li>侧栏和主区域各自滚动；侧栏的「⚙︎ 设置」和连接状态固定在底部</li>
     <li>正在看的会话即使状态变了（比如从等待审批变成运行中、已结束），也继续留在侧栏里高亮，直到切走</li>
-    <li>窗口宽 900 以上用宽屏布局；主区域宽度不到 1000 时只有聊天和终端两个视图</li>
+    <li>窗口宽 900 以上用宽屏布局；主区域宽度不到 840（窗口约 1120）时只有聊天和终端两个视图，「并排」不出现</li>
   </ul>
 </div>
 
