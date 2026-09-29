@@ -69,7 +69,7 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
 
 - ~~hook 应该装在哪里~~：已验证，启动时用 `-c` 传入，只对该会话生效（见 codex-notes 第 3 节）
 - ~~中断一轮该发什么键~~：已验证，运行中发 Esc，输入框草稿保留；绝不发 Ctrl-C（见 codex-notes 第 8 节）
-- 多个会话同时运行时，怎样把每个会话和它自己的 rollout 可靠地对应起来。线索：hook 的 payload 里带有 `transcript_path`，还要验证 `SessionStart` hook 是否一启动就提供这个字段
+- ~~多个会话怎么对应各自的 rollout~~：已验证，启动 Codex 时设置环境变量 `RA_SESSION`，`SessionStart` hook（发出第一条消息时触发）把它和 `transcript_path` 一起报给 daemon（见 codex-notes 第 3 节）
 - ~~审批和 `auto_review` 的配合~~：**已决定先让 `auto_review` 处理，它拒绝的再由你决定**。实测 Codex 的顺序是先 hook、后 `auto_review`，所以做法是：
   - 会话开着 `auto_review` 时，hook 一律不表态，交给 `auto_review`；被拒绝后，模型会在对话里向你说明风险并请求批准，你在手机上直接回复就行
   - 会话没开 `auto_review` 时，hook 把请求转到手机，超时拒绝

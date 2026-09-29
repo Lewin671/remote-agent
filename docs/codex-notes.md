@@ -62,8 +62,11 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
   }
   ```
 
-  **`transcript_path` 直接给出了 rollout 的路径**，可以用来把会话和 rollout 对应起来。同样的字段很可能也出现在 `SessionStart` hook 里，但尚未验证
+  **`transcript_path` 直接给出了 rollout 的路径**，可以用来把会话和 rollout 对应起来，见下面的 `SessionStart`
 - **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问。所以 **hook 命令必须固定**，二进制的路径一变，就得重新信任
+- **`SessionStart` hook 可以把会话和 rollout 对应起来**：同样用 `-c 'hooks.SessionStart=[{hooks=[{type="command",command="…"}]}]'` 传入。实测它不是在启动时触发，而是在**发出第一条消息时**触发，这时 rollout 文件已经创建好了。payload 为 `{"session_id","transcript_path","cwd","hook_event_name":"SessionStart","model","permission_mode","source":"startup"}`
+- **hook 进程会继承 Codex 的环境变量**。daemon 启动 Codex 时设置 `RA_SESSION=<remote-agent 的会话 ID>`，hook 读取它，再连同 `transcript_path` 一起报给 daemon，就能确定"哪个会话对应哪个 rollout"。实测同一目录同时开两个会话，两边各自对应正确
+- 信任记录里的 hash 只和 hook 的定义有关（命令字符串等），**和脚本内容无关**：改了脚本内容，没有要求重新信任
 - 用了 `-c` 之后，Codex 会提示 `Running without the shared background server`，也就是改为嵌入模式运行，每个会话在自己的进程里。目前没发现功能上的差异
 - **和 `auto_review` 的先后顺序：先调用 hook，hook 没给决定时再交给 `auto_review`。** 实测结果：hook 返回 deny，请求直接被拒绝，`auto_review` 不再参与；hook 什么都不输出、正常退出（exit 0）时，`auto_review` 接着处理，并批准了写 home 目录的请求
 - `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据
