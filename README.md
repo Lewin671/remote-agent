@@ -45,6 +45,7 @@ cd web && pnpm install && pnpm build && pnpm preview        # 在 http://localho
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](docs/architecture.md) 第 1 节
 - 账户密钥能解开所有会话，只粘贴到自己的设备上
 - daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
+- 网页能登录但一直「未连接」时，多半是浏览器的拦截扩展挡住了 WebSocket，见 [docs/browser-notes.md](docs/browser-notes.md)
 
 ## 开发
 

@@ -136,7 +136,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 **P1 遗留**
 
 - 手机实测：P1 只在本机 Chrome 上验证过；手机需要通过 HTTPS 打开网页（Web Crypto 只在安全上下文里可用），等 P2 部署到 Cloudflare Pages 后再测
-- 本机 Chrome 装的 AdGuard 会立即拦掉 localhost 页面发往 `ra.remote-agent.top` 的 WebSocket（从 `ra.remote-agent.top` 自己的页面发起则正常，Happy 的 WebSocket 同样被拦）；网页部署到 `app.<域名>` 后还会不会被拦，未验证
+- 网页部署到 `app.<域名>` 后，AdGuard 是否把它和 server 当成同站、不再拦截 WebSocket（原因见 [browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）
 
 **Codex 待实测**
 
