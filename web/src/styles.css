@@ -297,6 +297,9 @@ a { color: var(--blue); }
 .btn:disabled, .btn.dis { opacity: .45; }
 .field { display: block; width: 100%; background: var(--soft); border: 0; border-radius: 12px; padding: 11px 14px; font-size: 15px; color: var(--fg); outline: none; resize: none; }
 .field.reason { margin: 0 0 8px; field-sizing: content; min-height: 44px; max-height: 120px; }
+/* In the capped dock the reason gives way first: it shrinks down to one
+   line and scrolls, so 发送理由并拒绝 below it always keeps its room. */
+.dock > .field.reason { flex-grow: 0; flex-shrink: 1; flex-basis: auto; overflow-y: auto; }
 .field small { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .field input { border: 0; background: none; outline: none; width: 100%; padding: 0; font-size: 15px; }
 
