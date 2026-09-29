@@ -181,9 +181,8 @@ func TestSendWaitsForLocalDraftAndPopups(t *testing.T) {
 	if w[0] != string(codex.PasteBytes("first")) || w[1] != string(codex.PasteBytes("second")) {
 		t.Fatalf("writes %q", w)
 	}
-	if h.s.info().QueuedInputs != 0 {
-		t.Fatal("queue not drained")
-	}
+	// A written message leaves the queue once it is settled.
+	eventually(t, "queue drained", func() bool { return h.s.info().QueuedInputs == 0 })
 }
 
 func (h *harness) writeRollout(lines ...string) {
