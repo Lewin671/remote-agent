@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package remoteagent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "remoteagent/v1/event.proto";
+
+// LocalService is served by the daemon on a unix socket. The local CLI and
+// the Codex hooks use it; in P1 the same session operations are reached
+// from clients through the server.
+service LocalService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc Send(SendRequest) returns (SendResponse);
+  rpc Interrupt(InterruptRequest) returns (InterruptResponse);
+  rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
+  rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
+  rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
+  // Hook is called by `remote-agent hook codex`. For PermissionRequest it
+  // blocks until the request is decided.
+  rpc Hook(HookRequest) returns (HookResponse);
+}
+
+message Session {
+  string id = 1;
+  string cwd = 2;
+  string tmux_session = 3;
+  SessionStatus status = 4;
+  string status_detail = 5;
+  string codex_session_id = 6;
+  string rollout_path = 7;
+  google.protobuf.Timestamp created_at = 8;
+  uint64 last_seq = 9;
+  string model = 10;
+  string effort = 11;
+  int32 pending_approvals = 12;
+  int32 pending_questions = 13;
+  int32 queued_inputs = 14;
+}
+
+message CreateSessionRequest {
+  string cwd = 1;
+  // Extra arguments passed to codex unchanged.
+  repeated string args = 2;
+  // Environment for the Codex process, e.g. proxy variables of the caller.
+  map<string, string> env = 3;
+}
+
+message CreateSessionResponse {
+  Session session = 1;
+}
+
+message ListSessionsRequest {
+  bool include_exited = 1;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message GetSessionRequest {
+  // Full ID or a unique prefix.
+  string session_id = 1;
+}
+
+message GetSessionResponse {
+  Session session = 1;
+}
+
+message SendRequest {
+  string session_id = 1;
+  string text = 2;
+  // Stable ID chosen by the caller; retries with the same ID are not sent twice.
+  string request_id = 3;
+}
+
+message SendResponse {
+  // Position in the input queue when accepted, 0 if already submitted.
+  int32 queue_position = 1;
+}
+
+message InterruptRequest {
+  string session_id = 1;
+}
+
+message InterruptResponse {
+  // False when no turn was running.
+  bool interrupted = 1;
+}
+
+message StopSessionRequest {
+  string session_id = 1;
+}
+
+message StopSessionResponse {}
+
+message ResolveApprovalRequest {
+  string session_id = 1;
+  string approval_id = 2;
+  bool allow = 3;
+  // Optional reason shown to the model on deny.
+  string message = 4;
+}
+
+message ResolveApprovalResponse {}
+
+message AnswerQuestionRequest {
+  string session_id = 1;
+  string question_id = 2;
+  // 1-based option number of the current question.
+  int32 option = 3;
+}
+
+message AnswerQuestionResponse {}
+
+message WatchEventsRequest {
+  string session_id = 1;
+  // Only events with seq greater than this are sent.
+  uint64 after_seq = 2;
+  // Keep the stream open and send new events as they arrive.
+  bool follow = 3;
+}
+
+message WatchEventsResponse {
+  Event event = 1;
+}
+
+message HookRequest {
+  // remote-agent session ID from the RA_SESSION environment variable.
+  string session_id = 1;
+  // Raw JSON payload Codex wrote to the hook's stdin.
+  bytes payload = 2;
+}
+
+message HookResponse {
+  // JSON the hook must print to stdout; empty means print nothing.
+  bytes output = 1;
+}

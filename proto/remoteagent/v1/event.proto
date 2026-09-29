@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package remoteagent.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Event is one entry in a session's unified event stream. It is the content
+// that P1 will encrypt as the inner layer, so it may carry message text but
+// must never be exposed to the server in plaintext.
+message Event {
+  // Per-session sequence number, starting at 1, contiguous and never reused.
+  uint64 seq = 1;
+  string session_id = 2;
+  google.protobuf.Timestamp time = 3;
+  // Codex turn the event belongs to, if any.
+  string turn_id = 4;
+
+  oneof kind {
+    UserMessage user_message = 10;
+    AgentMessage agent_message = 11;
+    Reasoning reasoning = 12;
+    ToolCall tool_call = 13;
+    TurnStarted turn_started = 14;
+    TurnEnded turn_ended = 15;
+    TokenUsage token_usage = 16;
+    TurnContext turn_context = 17;
+    ApprovalRequested approval_requested = 18;
+    ApprovalResolved approval_resolved = 19;
+    QuestionAsked question_asked = 20;
+    QuestionAnswered question_answered = 21;
+    SessionState session_state = 22;
+  }
+}
+
+message UserMessage {
+  string text = 1;
+  // Number of images attached to the message.
+  int32 image_count = 2;
+}
+
+message AgentMessage {
+  string text = 1;
+  // "commentary" for progress updates, "final_answer" for the turn's answer.
+  string phase = 2;
+}
+
+// Reasoning carries only the summary Codex writes to the rollout.
+message Reasoning {
+  string text = 1;
+}
+
+enum ToolKind {
+  TOOL_KIND_UNSPECIFIED = 0;
+  TOOL_KIND_COMMAND = 1;
+  TOOL_KIND_FILE_CHANGE = 2;
+  TOOL_KIND_MCP = 3;
+  TOOL_KIND_WEB_SEARCH = 4;
+  TOOL_KIND_OTHER = 5;
+}
+
+// ToolCall is a completed tool invocation together with its result.
+message ToolCall {
+  string call_id = 1;
+  ToolKind kind = 2;
+  // Short human-readable name, e.g. the command line or "server.tool".
+  string title = 3;
+  // Tool input, JSON or plain text.
+  string input = 4;
+  // Tool output, truncated to a bounded size.
+  string output = 5;
+  bool output_truncated = 6;
+  // "completed", "failed", ...
+  string status = 7;
+  optional int32 exit_code = 8;
+  int64 duration_ms = 9;
+  // Original Codex item type, e.g. "CommandExecution".
+  string item_type = 10;
+}
+
+message TurnStarted {}
+
+enum TurnOutcome {
+  TURN_OUTCOME_UNSPECIFIED = 0;
+  TURN_OUTCOME_COMPLETED = 1;
+  TURN_OUTCOME_ABORTED = 2;
+}
+
+message TurnEnded {
+  TurnOutcome outcome = 1;
+  string reason = 2;
+  int64 duration_ms = 3;
+}
+
+message TokenUsage {
+  int64 input_tokens = 1;
+  int64 cached_input_tokens = 2;
+  int64 output_tokens = 3;
+  int64 reasoning_output_tokens = 4;
+  int64 total_tokens = 5;
+  // Tokens in the context window after the last request.
+  int64 last_total_tokens = 6;
+  int64 context_window = 7;
+}
+
+// TurnContext is the configuration Codex recorded at the start of a turn.
+message TurnContext {
+  string model = 1;
+  string effort = 2;
+  string approval_policy = 3;
+  // "user" or "auto_review".
+  string approvals_reviewer = 4;
+  string sandbox = 5;
+  string collaboration_mode = 6;
+}
+
+message ApprovalRequested {
+  string approval_id = 1;
+  string tool_name = 2;
+  string description = 3;
+  // Command line for shell tools.
+  string command = 4;
+  string tool_input_json = 5;
+  google.protobuf.Timestamp deadline = 6;
+}
+
+enum ApprovalDecision {
+  APPROVAL_DECISION_UNSPECIFIED = 0;
+  APPROVAL_DECISION_ALLOW = 1;
+  APPROVAL_DECISION_DENY = 2;
+  // Nobody answered before the deadline; the request was denied.
+  APPROVAL_DECISION_TIMEOUT = 3;
+  // The hook went away (Codex gave up on it) before a decision was made.
+  APPROVAL_DECISION_CANCELED = 4;
+}
+
+message ApprovalResolved {
+  string approval_id = 1;
+  ApprovalDecision decision = 2;
+  string message = 3;
+}
+
+message QuestionOption {
+  string label = 1;
+  string description = 2;
+}
+
+message Question {
+  string id = 1;
+  string header = 2;
+  string text = 3;
+  repeated QuestionOption options = 4;
+}
+
+message QuestionAsked {
+  // Codex tool call ID; also used to answer the question.
+  string question_id = 1;
+  repeated Question questions = 2;
+  // request_user_input_async: the model does not wait for the answer.
+  bool async = 3;
+}
+
+message QuestionAnswer {
+  string question_id = 1;
+  repeated string answers = 2;
+}
+
+message QuestionAnswered {
+  string question_id = 1;
+  repeated QuestionAnswer answers = 2;
+}
+
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  SESSION_STATUS_STARTING = 1;
+  SESSION_STATUS_IDLE = 2;
+  SESSION_STATUS_RUNNING = 3;
+  // A popup in the terminal needs attention.
+  SESSION_STATUS_BLOCKED = 4;
+  SESSION_STATUS_EXITED = 5;
+}
+
+message SessionState {
+  SessionStatus status = 1;
+  // Popup title when blocked, exit reason when exited.
+  string detail = 2;
+}
