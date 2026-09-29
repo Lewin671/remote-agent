@@ -51,7 +51,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		if err := proto.Unmarshal(plain, cmd); err != nil {
 			return &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "malformed command"}
 		}
-		return c.r.execute(ctx, h.SessionId, cmd)
+		return c.execute(ctx, h.SessionId, cmd)
 	})
 	env, err := e2e.SealMessage(c.keys.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: h.SessionId,
@@ -65,7 +65,8 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 }
 
 // execute runs a command on the session named in its sealed header.
-func (r *Relay) execute(ctx context.Context, sessionID string, cmd *pb.Command) *pb.CommandResult {
+func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *pb.CommandResult {
+	r := c.r
 	l := r.backend.Local()
 	out := &pb.CommandResult{}
 	// on checks that a session command names the session its header binds
@@ -130,6 +131,14 @@ func (r *Relay) execute(ctx context.Context, sessionID string, cmd *pb.Command) 
 	case *pb.Command_AnswerPlan:
 		err = on(k.AnswerPlan.SessionId, func() error {
 			return call(ctx, l.AnswerPlan, k.AnswerPlan, func(m *pb.AnswerPlanResponse) { out.Kind = &pb.CommandResult_AnswerPlan{AnswerPlan: m} })
+		})
+	case *pb.Command_OpenTerminal:
+		err = on(k.OpenTerminal.SessionId, func() error {
+			if err := c.openTerminal(ctx, sessionID, k.OpenTerminal.StreamId); err != nil {
+				return connect.NewError(connect.CodeFailedPrecondition, err)
+			}
+			out.Kind = &pb.CommandResult_OpenTerminal{OpenTerminal: &pb.OpenTerminalResponse{}}
+			return nil
 		})
 	case *pb.Command_CreateSession:
 		err = machine(func() error {

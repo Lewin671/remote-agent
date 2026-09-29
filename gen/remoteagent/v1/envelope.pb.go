@@ -38,6 +38,11 @@ const (
 	PayloadKind_PAYLOAD_KIND_COMMAND PayloadKind = 5
 	// The daemon's CommandResult, sealed with the command key.
 	PayloadKind_PAYLOAD_KIND_COMMAND_RESULT PayloadKind = 6
+	// TerminalFrames of a terminal stream, sealed with the session key; the
+	// header's request_id is the stream ID and seq counts the frames each
+	// side sends.
+	PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT PayloadKind = 7
+	PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT  PayloadKind = 8
 )
 
 // Enum value maps for PayloadKind.
@@ -50,15 +55,19 @@ var (
 		4: "PAYLOAD_KIND_MACHINE_META",
 		5: "PAYLOAD_KIND_COMMAND",
 		6: "PAYLOAD_KIND_COMMAND_RESULT",
+		7: "PAYLOAD_KIND_TERMINAL_OUTPUT",
+		8: "PAYLOAD_KIND_TERMINAL_INPUT",
 	}
 	PayloadKind_value = map[string]int32{
-		"PAYLOAD_KIND_UNSPECIFIED":    0,
-		"PAYLOAD_KIND_EVENT":          1,
-		"PAYLOAD_KIND_SESSION_META":   2,
-		"PAYLOAD_KIND_SESSION_KEY":    3,
-		"PAYLOAD_KIND_MACHINE_META":   4,
-		"PAYLOAD_KIND_COMMAND":        5,
-		"PAYLOAD_KIND_COMMAND_RESULT": 6,
+		"PAYLOAD_KIND_UNSPECIFIED":     0,
+		"PAYLOAD_KIND_EVENT":           1,
+		"PAYLOAD_KIND_SESSION_META":    2,
+		"PAYLOAD_KIND_SESSION_KEY":     3,
+		"PAYLOAD_KIND_MACHINE_META":    4,
+		"PAYLOAD_KIND_COMMAND":         5,
+		"PAYLOAD_KIND_COMMAND_RESULT":  6,
+		"PAYLOAD_KIND_TERMINAL_OUTPUT": 7,
+		"PAYLOAD_KIND_TERMINAL_INPUT":  8,
 	}
 )
 
@@ -288,7 +297,7 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"request_id\x18\x06 \x01(\tR\trequestId\x12\x1f\n" +
 	"\vdeadline_ms\x18\a \x01(\x03R\n" +
 	"deadlineMs\x12\x16\n" +
-	"\x06sender\x18\b \x01(\tR\x06sender*\xda\x01\n" +
+	"\x06sender\x18\b \x01(\tR\x06sender*\x9d\x02\n" +
 	"\vPayloadKind\x12\x1c\n" +
 	"\x18PAYLOAD_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PAYLOAD_KIND_EVENT\x10\x01\x12\x1d\n" +
@@ -296,7 +305,9 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\x18PAYLOAD_KIND_SESSION_KEY\x10\x03\x12\x1d\n" +
 	"\x19PAYLOAD_KIND_MACHINE_META\x10\x04\x12\x18\n" +
 	"\x14PAYLOAD_KIND_COMMAND\x10\x05\x12\x1f\n" +
-	"\x1bPAYLOAD_KIND_COMMAND_RESULT\x10\x06B\xbf\x01\n" +
+	"\x1bPAYLOAD_KIND_COMMAND_RESULT\x10\x06\x12 \n" +
+	"\x1cPAYLOAD_KIND_TERMINAL_OUTPUT\x10\a\x12\x1f\n" +
+	"\x1bPAYLOAD_KIND_TERMINAL_INPUT\x10\bB\xbf\x01\n" +
 	"\x12com.remoteagent.v1B\rEnvelopeProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
 var (

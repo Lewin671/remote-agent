@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ type fakeBackend struct {
 	mu       sync.Mutex
 	sessions map[string]*eventlog.Log
 	sends    []*pb.SendRequest
+	term     *fakeTerminal
 	resolved []*pb.ResolveApprovalRequest
 }
 
@@ -91,6 +93,39 @@ func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struc
 }
 
 func (b *fakeBackend) SessionDir(id string) string { return filepath.Join(b.dir, id) }
+
+func (b *fakeBackend) OpenTerminal(id string) (relay.Terminal, error) {
+	if _, err := b.log(id); err != nil {
+		return nil, err
+	}
+	t := &fakeTerminal{out: make(chan []byte, 16), done: make(chan struct{}), input: make(chan []byte, 16), resized: make(chan string, 4)}
+	b.mu.Lock()
+	b.term = t
+	b.mu.Unlock()
+	return t, nil
+}
+
+type fakeTerminal struct {
+	out     chan []byte
+	done    chan struct{}
+	input   chan []byte
+	resized chan string
+	once    sync.Once
+}
+
+func (t *fakeTerminal) Snapshot() (*pb.TerminalSnapshot, error) {
+	return &pb.TerminalSnapshot{Data: []byte("screen " + marker), Cols: 80, Rows: 24}, nil
+}
+func (t *fakeTerminal) Output() <-chan []byte        { return t.out }
+func (t *fakeTerminal) SizeChanged() <-chan struct{} { return nil }
+func (t *fakeTerminal) Done() <-chan struct{}        { return t.done }
+func (t *fakeTerminal) Reason() string               { return "gone" }
+func (t *fakeTerminal) Input(b []byte) error         { t.input <- b; return nil }
+func (t *fakeTerminal) Resize(c, r int, fit bool) error {
+	t.resized <- fmt.Sprintf("%dx%d %v", c, r, fit)
+	return nil
+}
+func (t *fakeTerminal) Close() error { t.once.Do(func() { close(t.done) }); return nil }
 
 func (b *fakeBackend) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()
@@ -489,5 +524,62 @@ func TestMachineCommands(t *testing.T) {
 	// Without one it reaches the daemon (whose fake does not implement it).
 	if _, err := e.client.DoMachine(ctx, s.MachineID, list); !errors.As(err, &ce) || ce.Code != "unimplemented" {
 		t.Fatalf("machine command: %v", err)
+	}
+}
+
+func TestTerminalStream(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	term, err := e.client.OpenTerminal(ctx, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := term.Read(ctx)
+	if err != nil || string(f.GetSnapshot().GetData()) != "screen "+marker || f.GetSnapshot().Cols != 80 {
+		t.Fatalf("snapshot: %v %v", f, err)
+	}
+	e.backend.mu.Lock()
+	ft := e.backend.term
+	e.backend.mu.Unlock()
+	ft.out <- []byte("live " + marker)
+	if f, err = term.Read(ctx); err != nil || string(f.GetOutput()) != "live "+marker {
+		t.Fatalf("output: %v %v", f, err)
+	}
+	if err := term.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("ls\r")}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-ft.input; string(got) != "ls\r" {
+		t.Fatalf("input %q", got)
+	}
+	term.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 60, Rows: 30, Fit: true}}})
+	if got := <-ft.resized; got != "60x30 true" {
+		t.Fatalf("resize %q", got)
+	}
+	// A replayed frame ends the stream on the daemon's side.
+	term.SendRaw(ctx, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("again")}})
+	select {
+	case <-ft.done:
+	case <-ctx.Done():
+		t.Fatal("replayed frame accepted")
+	}
+	select {
+	case got := <-ft.input:
+		t.Fatalf("replayed input typed: %q", got)
+	default:
+	}
+	term.Close()
+
+	// The terminal's content never reaches the server's database.
+	e.stopRelay()
+	e.srv.Close()
+	for _, name := range []string{e.dbPath, e.dbPath + "-wal"} {
+		if b, err := os.ReadFile(name); err == nil && bytes.Contains(b, []byte(marker)) {
+			t.Fatalf("%s contains terminal content", name)
+		}
 	}
 }

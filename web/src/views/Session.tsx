@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovalRequested, Event, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { ApprovalDecision, ApprovalMode, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "../gen/remoteagent/v1/event_pb";
-import { contextPercent, decisionText, derive, hhmm, machineName, optionLabel, projectKey, projectName, shortPath, statusOf, titleOf, type Derived } from "../model";
+import {
+  contextPercent,
+  decisionText,
+  derive,
+  hhmm,
+  machineName,
+  optionLabel,
+  projectKey,
+  projectName,
+  shortPath,
+  statusOf,
+  titleOf,
+  type Derived,
+} from "../model";
 import { errorText, type CommandKind, type Remote, type SessionView } from "../remote";
 import { ModeSheet, PlanCard, SessionSheet } from "../sheets";
+import { TerminalView } from "./Terminal";
 import { Chips, Dot, Rich, useNow, useRemote } from "../ui";
 
 interface Outgoing {
@@ -24,6 +38,27 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
+  const [tabPick, setTab] = useState<"chat" | "term" | "split">("chat");
+  const tab = tabPick === "split" && !wide ? "term" : tabPick;
+  const tabs: ["chat" | "term" | "split", string][] = wide
+    ? [
+        ["chat", "聊天"],
+        ["term", "终端"],
+        ["split", "并排"],
+      ]
+    : [
+        ["chat", "聊天"],
+        ["term", "终端"],
+      ];
+  const seg = (
+    <div className="seg tabs">
+      {tabs.map(([t, name]) => (
+        <button key={t} className={t === tab ? "on" : ""} onClick={() => setTab(t)}>
+          {name}
+        </button>
+      ))}
+    </div>
+  );
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 
@@ -97,6 +132,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             <span className="dh-chips">
               <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
             </span>
+            {seg}
           </>
         ) : (
           <span className="title">
@@ -132,105 +168,114 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           )}
         </span>
       </header>
+      {!wide && <div className="pad seg-row">{seg}</div>}
 
-      <div
-        className="body chat"
-        ref={scroller}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-        }}
-      >
-        <div className="sep">
-          {events[0] ? hhmm(Number(events[0].time?.seconds ?? 0n) * 1000) + " · " : ""}
-          {shortPath(session.info?.cwd ?? "")}
-        </div>
-        {!remote.loaded(session.id) && events.length === 0 && <p className="sysline">加载中…</p>}
-        {events.map((e) => (
-          <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} />
-        ))}
-        {pending.map((o) => (
-          <div key={o.requestId} className="me pending">
-            <div>{o.text}</div>
-            <small>{o.status === "sending" ? "发送中…" : "已送达电脑"}</small>
-          </div>
-        ))}
-        {failed.map((o) => (
-          <div key={o.requestId} className="me failed">
-            <div>{o.text}</div>
-            <small>
-              没能确认送达：{o.error}
-              <button className="link" onClick={() => void deliver(o.requestId, o.text)}>
-                重试
-              </button>
-              <button className="link muted" onClick={() => setOutgoing((l) => l.filter((x) => x.requestId !== o.requestId))}>
-                忽略
-              </button>
-            </small>
-          </div>
-        ))}
-        {[...derived.approvals.values()].map((a) => (
-          <ApprovalCard key={a.approvalId} a={a} run={run} sessionId={session.id} />
-        ))}
-        {[...derived.questions.values()].map((q) => (
-          <QuestionCard key={q.questionId} q={q} run={run} sessionId={session.id} />
-        ))}
-        {session.info?.planOpen && derived.plan && <PlanCard plan={derived.plan} run={run} sessionId={session.id} />}
-        {!ended && (contextPercent(session) ?? 0) >= 80 && (
-          <div className="ctxwarn">
-            上下文已用 {contextPercent(session)}%
-            <b onClick={() => !derived.running && void run("压缩", { case: "compact", value: { sessionId: session.id } })}>压缩</b>
+      <div className={"panes " + tab}>
+        {tab !== "term" && (
+          <div className="chatpane">
+            <div
+              className="body chat"
+              ref={scroller}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              }}
+            >
+              <div className="sep">
+                {events[0] ? hhmm(Number(events[0].time?.seconds ?? 0n) * 1000) + " · " : ""}
+                {shortPath(session.info?.cwd ?? "")}
+              </div>
+              {!remote.loaded(session.id) && events.length === 0 && <p className="sysline">加载中…</p>}
+              {events.map((e) => (
+                <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} />
+              ))}
+              {pending.map((o) => (
+                <div key={o.requestId} className="me pending">
+                  <div>{o.text}</div>
+                  <small>{o.status === "sending" ? "发送中…" : "已送达电脑"}</small>
+                </div>
+              ))}
+              {failed.map((o) => (
+                <div key={o.requestId} className="me failed">
+                  <div>{o.text}</div>
+                  <small>
+                    没能确认送达：{o.error}
+                    <button className="link" onClick={() => void deliver(o.requestId, o.text)}>
+                      重试
+                    </button>
+                    <button className="link muted" onClick={() => setOutgoing((l) => l.filter((x) => x.requestId !== o.requestId))}>
+                      忽略
+                    </button>
+                  </small>
+                </div>
+              ))}
+              {[...derived.approvals.values()].map((a) => (
+                <ApprovalCard key={a.approvalId} a={a} run={run} sessionId={session.id} />
+              ))}
+              {[...derived.questions.values()].map((q) => (
+                <QuestionCard key={q.questionId} q={q} run={run} sessionId={session.id} />
+              ))}
+              {session.info?.planOpen && derived.plan && <PlanCard plan={derived.plan} run={run} sessionId={session.id} />}
+              {!ended && (contextPercent(session) ?? 0) >= 80 && (
+                <div className="ctxwarn">
+                  上下文已用 {contextPercent(session)}%
+                  <b onClick={() => !derived.running && void run("压缩", { case: "compact", value: { sessionId: session.id } })}>压缩</b>
+                </div>
+              )}
+              {blocked && (
+                <div className="banner">
+                  ⚠ 终端里有弹窗：{blocked}
+                  <b onClick={() => setTab("term")}>去终端处理 ›</b>
+                </div>
+              )}
+              {!machine?.online && <div className="banner">⚠ 这台电脑不在线，只能查看历史</div>}
+            </div>
+
+            {toast && (
+              <div className="toast" onClick={() => setToast("")}>
+                {toast}
+              </div>
+            )}
+            {queued.length > 0 && (
+              <div className="queued">
+                排队{" "}
+                {queued.map((id) => (
+                  <span key={id}>
+                    {localText.get(id) ?? "一条消息"}
+                    <button
+                      className="x"
+                      aria-label="取消这条消息"
+                      onClick={() => void run("取消", { case: "cancelInput", value: { sessionId: session.id, requestId: id } })}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}{" "}
+                {blocked ? "已暂停" : derived.questions.size > 0 ? "答完再发" : derived.running ? "本轮结束后发" : ""}
+              </div>
+            )}
+            {!wide && (
+              <div className="chips">
+                <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
+              </div>
+            )}
+            {ended ? (
+              <div className="comp ended">会话已结束</div>
+            ) : (
+              <Composer
+                running={derived.running}
+                wide={wide}
+                onSend={send}
+                onInterrupt={() => void run("中断", { case: "interrupt", value: { sessionId: session.id } })}
+              />
+            )}
           </div>
         )}
-        {blocked && (
-          <div className="banner">
-            ⚠ 终端里有弹窗：{blocked}
-            <b>去终端处理</b>
-          </div>
-        )}
-        {!machine?.online && <div className="banner">⚠ 这台电脑不在线，只能查看历史</div>}
+        {tab !== "chat" &&
+          (ended ? <div className="center muted">会话已结束，终端已关闭</div> : <TerminalView remote={remote} session={session} compact={tab === "split"} />)}
       </div>
-
-      {toast && (
-        <div className="toast" onClick={() => setToast("")}>
-          {toast}
-        </div>
-      )}
-      {queued.length > 0 && (
-        <div className="queued">
-          排队{" "}
-          {queued.map((id) => (
-            <span key={id}>
-              {localText.get(id) ?? "一条消息"}
-              <button
-                className="x"
-                aria-label="取消这条消息"
-                onClick={() => void run("取消", { case: "cancelInput", value: { sessionId: session.id, requestId: id } })}
-              >
-                ✕
-              </button>
-            </span>
-          ))}{" "}
-          {blocked ? "已暂停" : derived.questions.size > 0 ? "答完再发" : derived.running ? "本轮结束后发" : ""}
-        </div>
-      )}
-      {!wide && (
-        <div className="chips">
-          <Chips s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} />
-        </div>
-      )}
       {sheet === "mode" && <ModeSheet s={session} run={run} onClose={() => setSheet("")} />}
       {sheet === "model" && <SessionSheet remote={remote} s={session} run={run} running={derived.running} onClose={() => setSheet("")} />}
-      {ended ? (
-        <div className="comp ended">会话已结束</div>
-      ) : (
-        <Composer
-          running={derived.running}
-          wide={wide}
-          onSend={send}
-          onInterrupt={() => void run("中断", { case: "interrupt", value: { sessionId: session.id } })}
-        />
-      )}
     </div>
   );
 }
@@ -315,7 +360,9 @@ function EventRow({ e, d, cwd }: { e: Event; d: Derived; cwd: string }) {
           </div>
         );
       }
-      const name = { [ApprovalMode.ASK]: "询问", [ApprovalMode.AUTO]: "自动", [ApprovalMode.PLAN]: "计划", [ApprovalMode.FULL_ACCESS]: "完全放行" }[c.mode as number];
+      const name = { [ApprovalMode.ASK]: "询问", [ApprovalMode.AUTO]: "自动", [ApprovalMode.PLAN]: "计划", [ApprovalMode.FULL_ACCESS]: "完全放行" }[
+        c.mode as number
+      ];
       return name ? (
         <div className="sysline">
           模式切换到 <b>{name}</b>

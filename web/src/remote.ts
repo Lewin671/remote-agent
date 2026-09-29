@@ -23,7 +23,7 @@ import {
   expect,
   type Keys,
 } from "./crypto";
-import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
+import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import type { Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -33,11 +33,12 @@ import {
   DeviceRegistrationSchema,
   PeerFrameSchema,
   ServerFrameSchema,
+  TermHelloSchema,
   type Machine as RemoteMachine,
   type RemoteSession,
   type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
-import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResult, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, CommandSchema, MachineMetaSchema, TerminalFrameSchema, type CommandResult, type MachineMeta, type TerminalFrame } from "./gen/remoteagent/v1/remote_pb";
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
@@ -82,6 +83,11 @@ export class CommandError extends Error {
  * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
 export function apiBase(server: string): string {
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : server;
+}
+
+export interface TermConn {
+  send(frame: MessageInitShape<typeof TerminalFrameSchema>): void;
+  close(): void;
 }
 
 export type ConnState = "connecting" | "online" | "offline";
@@ -474,6 +480,79 @@ export class Remote {
         throw e;
       }
     }
+  }
+
+  /** Joins a session's terminal stream. Frames are sealed with the session
+   * key and numbered; each side refuses frames out of order. */
+  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void, onClose: (reason: string) => void): Promise<TermConn> {
+    const s = this.sessions.get(sid);
+    if (!s) throw new Error("未知会话");
+    const streamId = newRequestID();
+    const ws = new WebSocket(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term");
+    ws.binaryType = "arraybuffer";
+    let closed = false;
+    const finish = (reason: string) => {
+      if (closed) return;
+      closed = true;
+      onClose(reason);
+    };
+    await new Promise<void>((resolve, reject) => {
+      ws.onopen = () => {
+        ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
+        resolve();
+      };
+      ws.onerror = () => reject(new Error("连不上终端"));
+    });
+    let last = 0n;
+    let queue = Promise.resolve();
+    ws.onmessage = (m) => {
+      // Open in arrival order.
+      queue = queue.then(async () => {
+        try {
+          const env = fromBinary(EnvelopeSchema, new Uint8Array(m.data as ArrayBuffer));
+          const { header, msg } = await openMessage(
+            s.key,
+            env,
+            { kind: PayloadKind.TERMINAL_OUTPUT, machineId: s.machineId, sessionId: sid, requestId: streamId },
+            TerminalFrameSchema,
+          );
+          if (header.seq <= last) throw new Error("终端帧顺序不对");
+          last = header.seq;
+          onFrame(msg);
+        } catch (e) {
+          finish(errorText(e));
+          ws.close();
+        }
+      });
+    };
+    ws.onclose = () => finish("终端连接断开");
+    try {
+      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
+    } catch (e) {
+      ws.close();
+      throw e;
+    }
+    let seq = 0n;
+    let sending = Promise.resolve();
+    return {
+      send: (frame) => {
+        sending = sending.then(async () => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          seq++;
+          const env = await sealMessage(
+            s.key,
+            { kind: PayloadKind.TERMINAL_INPUT, machineId: s.machineId, sessionId: sid, requestId: streamId, seq, sender: this.account.deviceId },
+            TerminalFrameSchema,
+            create(TerminalFrameSchema, frame),
+          );
+          ws.send(toBinary(EnvelopeSchema, env));
+        });
+      },
+      close: () => {
+        closed = true;
+        ws.close();
+      },
+    };
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();

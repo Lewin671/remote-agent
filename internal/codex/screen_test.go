@@ -41,7 +41,7 @@ const (
 	screenDraftBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m hello draft\x1b[0m\x1b[48;2;57;57;57m\n" +
 		"  GPT-6-Sol medium · ~/w\n"
 	// A draft colored like the placeholder's RGB arguments must not pass.
-	screenDraftRGB2 = "\x1b[1m›\x1b[0m\x1b[38;2;2;2;2m draft\x1b[0m\n"
+	screenDraftRGB2      = "\x1b[1m›\x1b[0m\x1b[38;2;2;2;2m draft\x1b[0m\n"
 	screenBareBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m \x1b[0m\n" +
 		"  second line of a local draft\n"
 	screenPlanPrompt = "• Proposed Plan\n  1. Create hello.txt\n" +

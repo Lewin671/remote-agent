@@ -36,6 +36,8 @@ type Backend interface {
 	Local() remoteagentv1connect.LocalServiceHandler
 	// MachineMeta describes the machine.
 	MachineMeta() *pb.MachineMeta
+	// OpenTerminal starts streaming a session's terminal.
+	OpenTerminal(sessionID string) (Terminal, error)
 }
 
 // Relay keeps the daemon connected to the server.
@@ -111,6 +113,7 @@ type conn struct {
 	keys    *e2e.Keys
 	machine remoteagentv1connect.MachineServiceClient
 	ws      *websocket.Conn
+	token   string
 }
 
 // session logs in, opens the stream, and serves until an error.
@@ -126,7 +129,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		return fmt.Errorf("login: %w", err)
 	}
 	hc := httpClient()
-	c := &conn{r: r, acct: acct, keys: keys,
+	c := &conn{r: r, acct: acct, keys: keys, token: token,
 		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"

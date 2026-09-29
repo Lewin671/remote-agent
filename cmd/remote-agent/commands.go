@@ -98,7 +98,7 @@ func runDaemon(args []string) error {
 		HistoryPath:     filepath.Join(codexHome, "history.jsonl"),
 		Env:             env,
 		ApprovalTimeout: *approvalTimeout,
-		Started:         func(ctx context.Context) { relay.New(d).Run(ctx) },
+		Started:         func(ctx context.Context) { relay.New(backend{d}).Run(ctx) },
 	})
 	slog.Info("starting daemon", "codex", *codexBin, "approval_timeout", *approvalTimeout)
 	return d.Run(ctx)
@@ -473,4 +473,15 @@ func loadEnvFile(path string) error {
 		}
 	}
 	return nil
+}
+
+// backend adapts the daemon to what the relay needs.
+type backend struct{ *daemon.Daemon }
+
+func (b backend) OpenTerminal(id string) (relay.Terminal, error) {
+	t, err := b.Daemon.OpenTerminal(id)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }

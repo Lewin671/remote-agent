@@ -321,3 +321,22 @@ button.chip { cursor: pointer; }
 .big { margin-top: 12px; width: 100%; }
 
 .seg.full { flex: 1; margin: 0; }
+
+/* ---------- terminal ---------- */
+.seg-row { flex: none; padding-bottom: 6px; }
+.seg.tabs { margin: 0; }
+.dh .seg.tabs { width: 190px; flex: none; }
+.panes { flex: 1; min-height: 0; display: flex; }
+.panes.split { display: grid; grid-template-columns: 1fr 1fr; }
+.chatpane { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.panes.split .chatpane { border-right: 1px solid var(--line); }
+.termview { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0d1117; min-height: 0; }
+.term { flex: 1; min-height: 0; position: relative; padding: 6px; overflow: auto; }
+.term .xterm { height: auto; }
+.term .xterm-viewport { background: #0d1117 !important; }
+.fit { position: absolute; right: 10px; top: 8px; background: rgba(255,255,255,.14); color: #e6edf3; font-size: 11.5px; border-radius: 12px;
+  padding: 3px 10px; backdrop-filter: blur(6px); z-index: 2; }
+.term-state { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: #8b949e; font-size: 13px; }
+.keys { display: flex; gap: 5px; padding: 8px 8px calc(12px + env(safe-area-inset-bottom)); background: #161b22; flex: none; }
+.keys button { flex: 1; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 12px; padding: 6px 0; text-align: center; }
+.banner b { cursor: pointer; }

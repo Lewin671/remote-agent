@@ -30,6 +30,11 @@ enum PayloadKind {
   PAYLOAD_KIND_COMMAND = 5;
   // The daemon's CommandResult, sealed with the command key.
   PAYLOAD_KIND_COMMAND_RESULT = 6;
+  // TerminalFrames of a terminal stream, sealed with the session key; the
+  // header's request_id is the stream ID and seq counts the frames each
+  // side sends.
+  PAYLOAD_KIND_TERMINAL_OUTPUT = 7;
+  PAYLOAD_KIND_TERMINAL_INPUT = 8;
 }
 
 // Header binds an envelope to its place. The receiver checks every field

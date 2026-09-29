@@ -59,6 +59,7 @@ type Server struct {
 	cfg   Config
 	store *store
 	hub   *hub
+	term  *termHub
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -86,6 +87,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}}
 	s.hub = newHub(s)
+	s.term = newTermHub(s)
 	return s, nil
 }
 
@@ -101,6 +103,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(remoteagentv1connect.NewClientServiceHandler(&clientService{s: s}, authed...))
 	mux.Handle(remoteagentv1connect.NewMachineServiceHandler(&machineService{s: s}, authed...))
 	mux.HandleFunc("/v1/stream", s.hub.serve)
+	mux.HandleFunc("/v1/term", s.term.serve)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	return s.cors(mux)
 }

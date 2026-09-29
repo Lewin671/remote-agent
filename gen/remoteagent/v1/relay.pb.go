@@ -2018,6 +2018,70 @@ func (x *ForwardReply) GetError() string {
 	return ""
 }
 
+// Terminal streams use a WebSocket at /v1/term. Each side first sends a
+// TermHello; afterwards every binary message is a serialized Envelope,
+// which the server passes to the other side without storing it.
+type TermHello struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Token    string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	StreamId string                 `protobuf:"bytes,2,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	// Set by the client: the machine that must join the stream.
+	MachineId     string `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TermHello) Reset() {
+	*x = TermHello{}
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TermHello) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TermHello) ProtoMessage() {}
+
+func (x *TermHello) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_relay_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TermHello.ProtoReflect.Descriptor instead.
+func (*TermHello) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_relay_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *TermHello) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *TermHello) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *TermHello) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
 var File_remoteagent_v1_relay_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_relay_proto_rawDesc = "" +
@@ -2141,7 +2205,12 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\fForwardReply\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\x04R\x06callId\x120\n" +
 	"\x06result\x18\x02 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x06result\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error*Z\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"]\n" +
+	"\tTermHello\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
+	"\tstream_id\x18\x02 \x01(\tR\bstreamId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x03 \x01(\tR\tmachineId*Z\n" +
 	"\n" +
 	"DeviceKind\x12\x1b\n" +
 	"\x17DEVICE_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
@@ -2179,7 +2248,7 @@ func file_remoteagent_v1_relay_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_remoteagent_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_remoteagent_v1_relay_proto_goTypes = []any{
 	(DeviceKind)(0),                    // 0: remoteagent.v1.DeviceKind
 	(*DeviceRegistration)(nil),         // 1: remoteagent.v1.DeviceRegistration
@@ -2218,22 +2287,23 @@ var file_remoteagent_v1_relay_proto_goTypes = []any{
 	(*MachineUpdated)(nil),             // 34: remoteagent.v1.MachineUpdated
 	(*ForwardCall)(nil),                // 35: remoteagent.v1.ForwardCall
 	(*ForwardReply)(nil),               // 36: remoteagent.v1.ForwardReply
-	(*Envelope)(nil),                   // 37: remoteagent.v1.Envelope
+	(*TermHello)(nil),                  // 37: remoteagent.v1.TermHello
+	(*Envelope)(nil),                   // 38: remoteagent.v1.Envelope
 }
 var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.v1.DeviceRegistration.kind:type_name -> remoteagent.v1.DeviceKind
-	37, // 1: remoteagent.v1.Machine.meta:type_name -> remoteagent.v1.Envelope
-	37, // 2: remoteagent.v1.RemoteSession.key:type_name -> remoteagent.v1.Envelope
-	37, // 3: remoteagent.v1.RemoteSession.meta:type_name -> remoteagent.v1.Envelope
-	37, // 4: remoteagent.v1.StoredEvent.envelope:type_name -> remoteagent.v1.Envelope
+	38, // 1: remoteagent.v1.Machine.meta:type_name -> remoteagent.v1.Envelope
+	38, // 2: remoteagent.v1.RemoteSession.key:type_name -> remoteagent.v1.Envelope
+	38, // 3: remoteagent.v1.RemoteSession.meta:type_name -> remoteagent.v1.Envelope
+	38, // 4: remoteagent.v1.StoredEvent.envelope:type_name -> remoteagent.v1.Envelope
 	8,  // 5: remoteagent.v1.ListMachinesResponse.machines:type_name -> remoteagent.v1.Machine
 	9,  // 6: remoteagent.v1.ListRemoteSessionsResponse.sessions:type_name -> remoteagent.v1.RemoteSession
 	10, // 7: remoteagent.v1.GetEventsResponse.events:type_name -> remoteagent.v1.StoredEvent
-	37, // 8: remoteagent.v1.ForwardRequest.command:type_name -> remoteagent.v1.Envelope
-	37, // 9: remoteagent.v1.ForwardResponse.result:type_name -> remoteagent.v1.Envelope
-	37, // 10: remoteagent.v1.PutMachineRequest.meta:type_name -> remoteagent.v1.Envelope
-	37, // 11: remoteagent.v1.PutSessionRequest.key:type_name -> remoteagent.v1.Envelope
-	37, // 12: remoteagent.v1.PutSessionRequest.meta:type_name -> remoteagent.v1.Envelope
+	38, // 8: remoteagent.v1.ForwardRequest.command:type_name -> remoteagent.v1.Envelope
+	38, // 9: remoteagent.v1.ForwardResponse.result:type_name -> remoteagent.v1.Envelope
+	38, // 10: remoteagent.v1.PutMachineRequest.meta:type_name -> remoteagent.v1.Envelope
+	38, // 11: remoteagent.v1.PutSessionRequest.key:type_name -> remoteagent.v1.Envelope
+	38, // 12: remoteagent.v1.PutSessionRequest.meta:type_name -> remoteagent.v1.Envelope
 	10, // 13: remoteagent.v1.UploadEventsRequest.events:type_name -> remoteagent.v1.StoredEvent
 	26, // 14: remoteagent.v1.ListSessionHeadsResponse.sessions:type_name -> remoteagent.v1.SessionHead
 	28, // 15: remoteagent.v1.PeerFrame.hello:type_name -> remoteagent.v1.StreamHello
@@ -2246,8 +2316,8 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	10, // 22: remoteagent.v1.EventsAppended.events:type_name -> remoteagent.v1.StoredEvent
 	9,  // 23: remoteagent.v1.SessionUpdated.session:type_name -> remoteagent.v1.RemoteSession
 	8,  // 24: remoteagent.v1.MachineUpdated.machine:type_name -> remoteagent.v1.Machine
-	37, // 25: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
-	37, // 26: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
+	38, // 25: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
+	38, // 26: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
 	2,  // 27: remoteagent.v1.AuthService.RegisterDevice:input_type -> remoteagent.v1.RegisterDeviceRequest
 	4,  // 28: remoteagent.v1.AuthService.GetChallenge:input_type -> remoteagent.v1.GetChallengeRequest
 	6,  // 29: remoteagent.v1.AuthService.Login:input_type -> remoteagent.v1.LoginRequest
@@ -2300,7 +2370,7 @@ func file_remoteagent_v1_relay_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_relay_proto_rawDesc), len(file_remoteagent_v1_relay_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   36,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

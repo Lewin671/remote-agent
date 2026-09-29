@@ -313,3 +313,79 @@ func (c *Client) Stream(ctx context.Context) (<-chan *pb.ServerFrame, error) {
 	}
 	return out, nil
 }
+
+// Term is an open terminal stream.
+type Term struct {
+	c      *Client
+	s      Session
+	ws     *websocket.Conn
+	stream string
+	seq    uint64
+	last   uint64
+}
+
+// OpenTerminal joins a session's terminal stream.
+func (c *Client) OpenTerminal(ctx context.Context, s Session) (*Term, error) {
+	stream := NewRequestID()
+	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.Server, "http")+"/v1/term", nil)
+	if err != nil {
+		return nil, err
+	}
+	ws.SetReadLimit(4 << 20)
+	hello, _ := proto.Marshal(&pb.TermHello{Token: c.token, StreamId: stream, MachineId: s.MachineID})
+	if err := ws.Write(ctx, websocket.MessageBinary, hello); err != nil {
+		ws.CloseNow()
+		return nil, err
+	}
+	if _, err := c.Do(ctx, s, &pb.Command{Kind: &pb.Command_OpenTerminal{OpenTerminal: &pb.OpenTerminalRequest{SessionId: s.ID, StreamId: stream}}}); err != nil {
+		ws.CloseNow()
+		return nil, err
+	}
+	return &Term{c: c, s: s, ws: ws, stream: stream}, nil
+}
+
+// Read returns the next frame from the daemon.
+func (t *Term) Read(ctx context.Context) (*pb.TerminalFrame, error) {
+	_, b, err := t.ws.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+	env := &pb.Envelope{}
+	if err := proto.Unmarshal(b, env); err != nil {
+		return nil, err
+	}
+	f := &pb.TerminalFrame{}
+	h, err := e2e.OpenMessage(t.s.Key, env, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT, MachineId: t.s.MachineID, SessionId: t.s.ID, RequestId: t.stream,
+	}, f)
+	if err != nil {
+		return nil, err
+	}
+	if h.Seq <= t.last {
+		return nil, errors.New("terminal frame out of order")
+	}
+	t.last = h.Seq
+	return f, nil
+}
+
+// Send seals and sends a frame to the daemon.
+func (t *Term) Send(ctx context.Context, f *pb.TerminalFrame) error {
+	t.seq++
+	return t.SendRaw(ctx, t.seq, f)
+}
+
+// SendRaw sends a frame with the given sequence number, for tests.
+func (t *Term) SendRaw(ctx context.Context, seq uint64, f *pb.TerminalFrame) error {
+	env, err := e2e.SealMessage(t.s.Key, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT, MachineId: t.s.MachineID, SessionId: t.s.ID,
+		RequestId: t.stream, Seq: seq, Sender: t.c.DeviceID,
+	}, f)
+	if err != nil {
+		return err
+	}
+	b, _ := proto.Marshal(env)
+	return t.ws.Write(ctx, websocket.MessageBinary, b)
+}
+
+// Close leaves the stream.
+func (t *Term) Close() { t.ws.Close(websocket.StatusNormalClosure, "") }

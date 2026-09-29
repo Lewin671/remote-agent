@@ -254,3 +254,13 @@ message ForwardReply {
   // envelope did not open. The text never contains content.
   string error = 3;
 }
+
+// Terminal streams use a WebSocket at /v1/term. Each side first sends a
+// TermHello; afterwards every binary message is a serialized Envelope,
+// which the server passes to the other side without storing it.
+message TermHello {
+  string token = 1;
+  string stream_id = 2;
+  // Set by the client: the machine that must join the stream.
+  string machine_id = 3;
+}

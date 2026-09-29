@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/remote.proto.
  */
 export const file_remoteagent_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIrIBCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCSKXBwoHQ29tbWFuZBIrCgRzZW5kGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU2VuZFJlcXVlc3RIABI1CglpbnRlcnJ1cHQYAiABKAsyIC5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXF1ZXN0SAASQgoQcmVzb2x2ZV9hcHByb3ZhbBgDIAEoCzImLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlcXVlc3RIABJACg9hbnN3ZXJfcXVlc3Rpb24YBCABKAsyJS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlcXVlc3RIABI6CgxzdG9wX3Nlc3Npb24YBSABKAsyIi5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlcXVlc3RIABI6CgxjYW5jZWxfaW5wdXQYBiABKAsyIi5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlcXVlc3RIABI0CglzZXRfbW9kZWwYByABKAsyHy5yZW1vdGVhZ2VudC52MS5TZXRNb2RlbFJlcXVlc3RIABJDChFzZXRfYXBwcm92YWxfbW9kZRgIIAEoCzImLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlcXVlc3RIABIxCgdjb21wYWN0GAkgASgLMh4ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlcXVlc3RIABI4CgthbnN3ZXJfcGxhbhgKIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFuc3dlclBsYW5SZXF1ZXN0SAASPgoOY3JlYXRlX3Nlc3Npb24YFCABKAsyJC5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdEgAEjgKC2xpc3RfbW9kZWxzGBUgASgLMiEucmVtb3RlYWdlbnQudjEuTGlzdE1vZGVsc1JlcXVlc3RIABJCChBsaXN0X2RpcmVjdG9yaWVzGBYgASgLMiYucmVtb3RlYWdlbnQudjEuTGlzdERpcmVjdG9yaWVzUmVxdWVzdEgAEjoKDGdldF9zZXR0aW5ncxgXIAEoCzIiLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVxdWVzdEgAEkAKD3VwZGF0ZV9zZXR0aW5ncxgYIAEoCzIlLnJlbW90ZWFnZW50LnYxLlVwZGF0ZVNldHRpbmdzUmVxdWVzdEgAQgYKBGtpbmQi1wcKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSAASOwoMY2FuY2VsX2lucHV0GA8gASgLMiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZUgAEjUKCXNldF9tb2RlbBgQIAEoCzIgLnJlbW90ZWFnZW50LnYxLlNldE1vZGVsUmVzcG9uc2VIABJEChFzZXRfYXBwcm92YWxfbW9kZRgRIAEoCzInLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlc3BvbnNlSAASMgoHY29tcGFjdBgSIAEoCzIfLnJlbW90ZWFnZW50LnYxLkNvbXBhY3RSZXNwb25zZUgAEjkKC2Fuc3dlcl9wbGFuGBMgASgLMiIucmVtb3RlYWdlbnQudjEuQW5zd2VyUGxhblJlc3BvbnNlSAASPwoOY3JlYXRlX3Nlc3Npb24YHiABKAsyJS5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVzcG9uc2VIABI5CgtsaXN0X21vZGVscxgfIAEoCzIiLnJlbW90ZWFnZW50LnYxLkxpc3RNb2RlbHNSZXNwb25zZUgAEkMKEGxpc3RfZGlyZWN0b3JpZXMYICABKAsyJy5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXNwb25zZUgAEjsKDGdldF9zZXR0aW5ncxghIAEoCzIjLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVzcG9uc2VIABJBCg91cGRhdGVfc2V0dGluZ3MYIiABKAsyJi5yZW1vdGVhZ2VudC52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlSABCBgoEa2luZGIGcHJvdG8z", [file_remoteagent_v1_event, file_remoteagent_v1_local]);
+  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIrIBCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCSLVBwoHQ29tbWFuZBIrCgRzZW5kGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU2VuZFJlcXVlc3RIABI1CglpbnRlcnJ1cHQYAiABKAsyIC5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXF1ZXN0SAASQgoQcmVzb2x2ZV9hcHByb3ZhbBgDIAEoCzImLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlcXVlc3RIABJACg9hbnN3ZXJfcXVlc3Rpb24YBCABKAsyJS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlcXVlc3RIABI6CgxzdG9wX3Nlc3Npb24YBSABKAsyIi5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlcXVlc3RIABI6CgxjYW5jZWxfaW5wdXQYBiABKAsyIi5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlcXVlc3RIABI0CglzZXRfbW9kZWwYByABKAsyHy5yZW1vdGVhZ2VudC52MS5TZXRNb2RlbFJlcXVlc3RIABJDChFzZXRfYXBwcm92YWxfbW9kZRgIIAEoCzImLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlcXVlc3RIABIxCgdjb21wYWN0GAkgASgLMh4ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlcXVlc3RIABI4CgthbnN3ZXJfcGxhbhgKIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFuc3dlclBsYW5SZXF1ZXN0SAASPAoNb3Blbl90ZXJtaW5hbBgLIAEoCzIjLnJlbW90ZWFnZW50LnYxLk9wZW5UZXJtaW5hbFJlcXVlc3RIABI+Cg5jcmVhdGVfc2Vzc2lvbhgUIAEoCzIkLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0SAASOAoLbGlzdF9tb2RlbHMYFSABKAsyIS5yZW1vdGVhZ2VudC52MS5MaXN0TW9kZWxzUmVxdWVzdEgAEkIKEGxpc3RfZGlyZWN0b3JpZXMYFiABKAsyJi5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXF1ZXN0SAASOgoMZ2V0X3NldHRpbmdzGBcgASgLMiIucmVtb3RlYWdlbnQudjEuR2V0U2V0dGluZ3NSZXF1ZXN0SAASQAoPdXBkYXRlX3NldHRpbmdzGBggASgLMiUucmVtb3RlYWdlbnQudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0SABCBgoEa2luZCKWCAoNQ29tbWFuZFJlc3VsdBISCgplcnJvcl9jb2RlGAEgASgJEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSLAoEc2VuZBgKIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlbmRSZXNwb25zZUgAEjYKCWludGVycnVwdBgLIAEoCzIhLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlc3BvbnNlSAASQwoQcmVzb2x2ZV9hcHByb3ZhbBgMIAEoCzInLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlc3BvbnNlSAASQQoPYW5zd2VyX3F1ZXN0aW9uGA0gASgLMiYucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXNwb25zZUgAEjsKDHN0b3Bfc2Vzc2lvbhgOIAEoCzIjLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVzcG9uc2VIABI7CgxjYW5jZWxfaW5wdXQYDyABKAsyIy5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlc3BvbnNlSAASNQoJc2V0X21vZGVsGBAgASgLMiAucmVtb3RlYWdlbnQudjEuU2V0TW9kZWxSZXNwb25zZUgAEkQKEXNldF9hcHByb3ZhbF9tb2RlGBEgASgLMicucmVtb3RlYWdlbnQudjEuU2V0QXBwcm92YWxNb2RlUmVzcG9uc2VIABIyCgdjb21wYWN0GBIgASgLMh8ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlc3BvbnNlSAASOQoLYW5zd2VyX3BsYW4YEyABKAsyIi5yZW1vdGVhZ2VudC52MS5BbnN3ZXJQbGFuUmVzcG9uc2VIABI9Cg1vcGVuX3Rlcm1pbmFsGBQgASgLMiQucmVtb3RlYWdlbnQudjEuT3BlblRlcm1pbmFsUmVzcG9uc2VIABI/Cg5jcmVhdGVfc2Vzc2lvbhgeIAEoCzIlLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZUgAEjkKC2xpc3RfbW9kZWxzGB8gASgLMiIucmVtb3RlYWdlbnQudjEuTGlzdE1vZGVsc1Jlc3BvbnNlSAASQwoQbGlzdF9kaXJlY3RvcmllcxggIAEoCzInLnJlbW90ZWFnZW50LnYxLkxpc3REaXJlY3Rvcmllc1Jlc3BvbnNlSAASOwoMZ2V0X3NldHRpbmdzGCEgASgLMiMucmVtb3RlYWdlbnQudjEuR2V0U2V0dGluZ3NSZXNwb25zZUgAEkEKD3VwZGF0ZV9zZXR0aW5ncxgiIAEoCzImLnJlbW90ZWFnZW50LnYxLlVwZGF0ZVNldHRpbmdzUmVzcG9uc2VIAEIGCgRraW5kIjwKE09wZW5UZXJtaW5hbFJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglzdHJlYW1faWQYAiABKAkiFgoUT3BlblRlcm1pbmFsUmVzcG9uc2UitAEKDVRlcm1pbmFsRnJhbWUSNAoIc25hcHNob3QYASABKAsyIC5yZW1vdGVhZ2VudC52MS5UZXJtaW5hbFNuYXBzaG90SAASEAoGb3V0cHV0GAIgASgMSAASEAoGY2xvc2VkGAMgASgJSAASDwoFaW5wdXQYCiABKAxIABIwCgZyZXNpemUYCyABKAsyHi5yZW1vdGVhZ2VudC52MS5UZXJtaW5hbFJlc2l6ZUgAQgYKBGtpbmQiPAoQVGVybWluYWxTbmFwc2hvdBIMCgRkYXRhGAEgASgMEgwKBGNvbHMYAiABKAUSDAoEcm93cxgDIAEoBSI5Cg5UZXJtaW5hbFJlc2l6ZRIMCgRjb2xzGAEgASgFEgwKBHJvd3MYAiABKAUSCwoDZml0GAMgASgIYgZwcm90bzM", [file_remoteagent_v1_event, file_remoteagent_v1_local]);
 
 /**
  * MachineMeta describes a computer running a daemon.
@@ -135,6 +135,12 @@ export type Command = Message<"remoteagent.v1.Command"> & {
      */
     value: AnswerPlanRequest;
     case: "answerPlan";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.OpenTerminalRequest open_terminal = 11;
+     */
+    value: OpenTerminalRequest;
+    case: "openTerminal";
   } | {
     /**
      * Commands for the machine rather than a session; their envelope
@@ -263,6 +269,12 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
     case: "answerPlan";
   } | {
     /**
+     * @generated from field: remoteagent.v1.OpenTerminalResponse open_terminal = 20;
+     */
+    value: OpenTerminalResponse;
+    case: "openTerminal";
+  } | {
+    /**
      * @generated from field: remoteagent.v1.CreateSessionResponse create_session = 30;
      */
     value: CreateSessionResponse;
@@ -300,4 +312,160 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
  */
 export const CommandResultSchema: GenMessage<CommandResult> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_remote, 2);
+
+/**
+ * OpenTerminalRequest asks the daemon to stream a session's terminal. The
+ * client and the daemon each connect to the server's /v1/term with the
+ * stream ID, and the server joins the two connections.
+ *
+ * @generated from message remoteagent.v1.OpenTerminalRequest
+ */
+export type OpenTerminalRequest = Message<"remoteagent.v1.OpenTerminalRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * 128 random bits, hex.
+   *
+   * @generated from field: string stream_id = 2;
+   */
+  streamId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.OpenTerminalRequest.
+ * Use `create(OpenTerminalRequestSchema)` to create a new message.
+ */
+export const OpenTerminalRequestSchema: GenMessage<OpenTerminalRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 3);
+
+/**
+ * @generated from message remoteagent.v1.OpenTerminalResponse
+ */
+export type OpenTerminalResponse = Message<"remoteagent.v1.OpenTerminalResponse"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.OpenTerminalResponse.
+ * Use `create(OpenTerminalResponseSchema)` to create a new message.
+ */
+export const OpenTerminalResponseSchema: GenMessage<OpenTerminalResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 4);
+
+/**
+ * TerminalFrame is the content of a TERMINAL_OUTPUT or TERMINAL_INPUT
+ * envelope.
+ *
+ * @generated from message remoteagent.v1.TerminalFrame
+ */
+export type TerminalFrame = Message<"remoteagent.v1.TerminalFrame"> & {
+  /**
+   * @generated from oneof remoteagent.v1.TerminalFrame.kind
+   */
+  kind: {
+    /**
+     * Daemon to client.
+     *
+     * @generated from field: remoteagent.v1.TerminalSnapshot snapshot = 1;
+     */
+    value: TerminalSnapshot;
+    case: "snapshot";
+  } | {
+    /**
+     * @generated from field: bytes output = 2;
+     */
+    value: Uint8Array;
+    case: "output";
+  } | {
+    /**
+     * Why the daemon ended the stream.
+     *
+     * @generated from field: string closed = 3;
+     */
+    value: string;
+    case: "closed";
+  } | {
+    /**
+     * Client to daemon: bytes typed, as if on the local keyboard.
+     *
+     * @generated from field: bytes input = 10;
+     */
+    value: Uint8Array;
+    case: "input";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.TerminalResize resize = 11;
+     */
+    value: TerminalResize;
+    case: "resize";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message remoteagent.v1.TerminalFrame.
+ * Use `create(TerminalFrameSchema)` to create a new message.
+ */
+export const TerminalFrameSchema: GenMessage<TerminalFrame> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 5);
+
+/**
+ * TerminalSnapshot is the screen as it is now; output continues from it.
+ *
+ * @generated from message remoteagent.v1.TerminalSnapshot
+ */
+export type TerminalSnapshot = Message<"remoteagent.v1.TerminalSnapshot"> & {
+  /**
+   * @generated from field: bytes data = 1;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: int32 cols = 2;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: int32 rows = 3;
+   */
+  rows: number;
+};
+
+/**
+ * Describes the message remoteagent.v1.TerminalSnapshot.
+ * Use `create(TerminalSnapshotSchema)` to create a new message.
+ */
+export const TerminalSnapshotSchema: GenMessage<TerminalSnapshot> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 6);
+
+/**
+ * TerminalResize with fit set resizes the tmux window to the client's
+ * screen; without it the window goes back to following attached terminals.
+ *
+ * @generated from message remoteagent.v1.TerminalResize
+ */
+export type TerminalResize = Message<"remoteagent.v1.TerminalResize"> & {
+  /**
+   * @generated from field: int32 cols = 1;
+   */
+  cols: number;
+
+  /**
+   * @generated from field: int32 rows = 2;
+   */
+  rows: number;
+
+  /**
+   * @generated from field: bool fit = 3;
+   */
+  fit: boolean;
+};
+
+/**
+ * Describes the message remoteagent.v1.TerminalResize.
+ * Use `create(TerminalResizeSchema)` to create a new message.
+ */
+export const TerminalResizeSchema: GenMessage<TerminalResize> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 7);
 

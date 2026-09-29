@@ -35,6 +35,7 @@ message Command {
     SetApprovalModeRequest set_approval_mode = 8;
     CompactRequest compact = 9;
     AnswerPlanRequest answer_plan = 10;
+    OpenTerminalRequest open_terminal = 11;
     // Commands for the machine rather than a session; their envelope
     // header names no session.
     CreateSessionRequest create_session = 20;
@@ -64,10 +65,52 @@ message CommandResult {
     SetApprovalModeResponse set_approval_mode = 17;
     CompactResponse compact = 18;
     AnswerPlanResponse answer_plan = 19;
+    OpenTerminalResponse open_terminal = 20;
     CreateSessionResponse create_session = 30;
     ListModelsResponse list_models = 31;
     ListDirectoriesResponse list_directories = 32;
     GetSettingsResponse get_settings = 33;
     UpdateSettingsResponse update_settings = 34;
   }
+}
+
+// OpenTerminalRequest asks the daemon to stream a session's terminal. The
+// client and the daemon each connect to the server's /v1/term with the
+// stream ID, and the server joins the two connections.
+message OpenTerminalRequest {
+  string session_id = 1;
+  // 128 random bits, hex.
+  string stream_id = 2;
+}
+
+message OpenTerminalResponse {}
+
+// TerminalFrame is the content of a TERMINAL_OUTPUT or TERMINAL_INPUT
+// envelope.
+message TerminalFrame {
+  oneof kind {
+    // Daemon to client.
+    TerminalSnapshot snapshot = 1;
+    bytes output = 2;
+    // Why the daemon ended the stream.
+    string closed = 3;
+    // Client to daemon: bytes typed, as if on the local keyboard.
+    bytes input = 10;
+    TerminalResize resize = 11;
+  }
+}
+
+// TerminalSnapshot is the screen as it is now; output continues from it.
+message TerminalSnapshot {
+  bytes data = 1;
+  int32 cols = 2;
+  int32 rows = 3;
+}
+
+// TerminalResize with fit set resizes the tmux window to the client's
+// screen; without it the window goes back to following attached terminals.
+message TerminalResize {
+  int32 cols = 1;
+  int32 rows = 2;
+  bool fit = 3;
 }

@@ -115,6 +115,15 @@ func (c *Client) NewSession(opts NewSessionOptions) error {
 	return err
 }
 
+// Run runs a tmux command against this server and returns its output.
+func (c *Client) Run(args ...string) (string, error) { return c.run(args...) }
+
+// Display formats information about a session's pane, as display-message.
+func (c *Client) Display(session, format string) (string, error) {
+	out, err := c.run("display-message", "-p", "-t", exactPane(session), format)
+	return strings.TrimSpace(out), err
+}
+
 // SetSessionOption sets a session option such as a user option "@name".
 func (c *Client) SetSessionOption(session, key, value string) error {
 	_, err := c.run("set-option", "-t", exactPane(session), key, value)
