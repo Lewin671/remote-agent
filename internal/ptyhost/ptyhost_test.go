@@ -119,3 +119,37 @@ func TestDisconnectReleasesHold(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// A second controller can neither take over nor break a hold.
+func TestHoldIsExclusive(t *testing.T) {
+	dir := shortTempDir(t)
+	sock := filepath.Join(dir, "c.sock")
+	stdinR, stdinW, _ := os.Pipe()
+	defer stdinW.Close()
+	go run(sock, []string{"/bin/sh", "-c", "sleep 5"}, stdinR, io.Discard)
+	a := waitForSocket(t, sock)
+	defer a.Close()
+	b := waitForSocket(t, sock)
+	defer b.Close()
+	if _, err := a.Hold(time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Hold(time.Second); err == nil {
+		t.Fatal("second controller took the hold")
+	}
+	if err := b.Write([]byte("x")); err == nil {
+		t.Fatal("second controller wrote during the hold")
+	}
+	if err := b.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := a.Status(); !st.Held {
+		t.Fatal("another controller's release ended the hold")
+	}
+	if err := a.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Hold(time.Second); err != nil {
+		t.Fatalf("hold after release: %v", err)
+	}
+}

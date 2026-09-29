@@ -9,8 +9,8 @@ import (
 type Screen struct {
 	// ComposerReady: the input box is showing and no menu or popup covers it.
 	ComposerReady bool
-	// DraftEmpty: the input box holds no unsent text (only the dim
-	// placeholder, or nothing).
+	// DraftEmpty: the input box shows its dim placeholder, so it holds no
+	// unsent text.
 	DraftEmpty bool
 	// Popup names the menu or dialog in front of the input box, if any.
 	Popup string
@@ -89,10 +89,10 @@ func AnalyzeScreen(styled string) Screen {
 		s.ComposerReady = true
 		rest := strings.TrimPrefix(lines[composer], composerPrompt)
 		rest = strings.TrimPrefix(rest, " ")
-		// Continuation lines of a multi-line draft follow the prompt line
-		// indented; the footer lines are indented too, so only the first
-		// line decides.
-		s.DraftEmpty = strings.TrimSpace(StripANSI(rest)) == "" || strings.HasPrefix(rest, dim)
+		// Only the placeholder proves the box is empty. A bare prompt may
+		// head a multi-line draft whose text is on later lines, and those
+		// cannot be told apart from the footer, so it counts as a draft.
+		s.DraftEmpty = strings.HasPrefix(rest, dim) && strings.TrimSpace(StripANSI(rest)) != ""
 	}
 	return s
 }

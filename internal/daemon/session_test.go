@@ -31,6 +31,7 @@ type fakeTerm struct {
 	writes  []string
 	held    bool
 	history string
+	ops     []string // hold, release and write, in order
 }
 
 func (f *fakeTerm) Capture() (string, error) {
@@ -67,6 +68,7 @@ func (c *fakeControl) Write(b []byte) error {
 		panic("pasted without holding local input")
 	}
 	c.f.writes = append(c.f.writes, string(b))
+	c.f.ops = append(c.f.ops, "write")
 	if text, ok := strings.CutPrefix(string(b), "\x1b[200~"); ok {
 		text = strings.TrimSuffix(text, "\x1b[201~\r")
 		line, _ := json.Marshal(map[string]string{"session_id": "x", "text": text})

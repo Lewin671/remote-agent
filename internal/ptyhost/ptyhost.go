@@ -53,6 +53,8 @@ type Host struct {
 
 	mu        sync.Mutex // guards writes to ptmx and the fields below
 	held      bool
+	holder    int // connection that holds input, 0 when not held
+	nextConn  int
 	holdTimer *time.Timer
 	pending   []byte
 	lastLocal time.Time
@@ -183,36 +185,56 @@ func (h *Host) local(b []byte) {
 	_, _ = h.ptmx.Write(b)
 }
 
-func (h *Host) hold(d time.Duration) {
+// errHeld is returned when another connection already holds input.
+var errHeld = errors.New("input is held by another controller")
+
+// hold holds local input on behalf of connection conn. Only one connection
+// may hold at a time, so that one controller's release cannot cut short
+// another's check-and-write.
+func (h *Host) hold(conn int, d time.Duration) error {
 	if d <= 0 || d > MaxHold {
 		d = MaxHold
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.held = true
+	if h.held && h.holder != conn {
+		return errHeld
+	}
+	h.held, h.holder = true, conn
 	if h.holdTimer != nil {
 		h.holdTimer.Stop()
 	}
-	h.holdTimer = time.AfterFunc(d, h.release)
+	h.holdTimer = time.AfterFunc(d, func() { h.release(conn) })
+	return nil
 }
 
-func (h *Host) release() {
+// release ends conn's hold and flushes buffered local input. It does
+// nothing if conn does not hold input.
+func (h *Host) release(conn int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if !h.held || h.holder != conn {
+		return
+	}
 	if h.holdTimer != nil {
 		h.holdTimer.Stop()
 		h.holdTimer = nil
 	}
-	h.held = false
+	h.held, h.holder = false, 0
 	if len(h.pending) > 0 {
 		_, _ = h.ptmx.Write(h.pending)
 		h.pending = nil
 	}
 }
 
-func (h *Host) write(b []byte) error {
+// write sends b to the CLI. While input is held, only the holder may
+// write.
+func (h *Host) write(conn int, b []byte) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.held && h.holder != conn {
+		return errHeld
+	}
 	_, err := h.ptmx.Write(b)
 	return err
 }
@@ -242,14 +264,13 @@ func (h *Host) serve(ln net.Listener) {
 
 func (h *Host) handle(c net.Conn) {
 	defer c.Close()
-	heldHere := false
-	defer func() {
-		// A controller that disconnects while holding must not leave the
-		// terminal blocked.
-		if heldHere {
-			h.release()
-		}
-	}()
+	h.mu.Lock()
+	h.nextConn++
+	conn := h.nextConn
+	h.mu.Unlock()
+	// A controller that disconnects while holding must not leave the
+	// terminal blocked.
+	defer h.release(conn)
 	sc := bufio.NewScanner(c)
 	sc.Buffer(make([]byte, 64*1024), 16*1024*1024)
 	enc := json.NewEncoder(c)
@@ -261,15 +282,16 @@ func (h *Host) handle(c net.Conn) {
 		} else {
 			switch req.Op {
 			case "hold":
-				h.hold(time.Duration(req.HoldMS) * time.Millisecond)
-				heldHere = true
-				resp = h.status()
+				if err := h.hold(conn, time.Duration(req.HoldMS)*time.Millisecond); err != nil {
+					resp = Response{Error: err.Error()}
+				} else {
+					resp = h.status()
+				}
 			case "release":
-				h.release()
-				heldHere = false
+				h.release(conn)
 				resp = h.status()
 			case "write":
-				if err := h.write(req.Data); err != nil {
+				if err := h.write(conn, req.Data); err != nil {
 					resp = Response{Error: err.Error()}
 				} else {
 					resp = Response{OK: true}

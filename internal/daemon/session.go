@@ -42,6 +42,7 @@ type session struct {
 	log  *eventlog.Log
 
 	readMu sync.Mutex // serializes rollout reads
+	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
 	parser *codex.Parser
 	reader *tail.Reader
 
@@ -56,21 +57,18 @@ type session struct {
 	detail      string
 	approvals   map[string]*approval
 	questions   map[string]*pb.QuestionAsked
-	queue       []input
-	seen        map[string]bool // request IDs already accepted
-	wake        chan struct{}   // pokes the injector
-	done        chan struct{}   // closed when the session's goroutines stop
+	queue       *queueState
+	wake        chan struct{} // pokes the injector
+	done        chan struct{} // closed when the session's goroutines stop
 	stop        context.CancelFunc
-}
-
-type input struct {
-	text      string
-	requestID string
 }
 
 type approval struct {
 	id       string
 	decision chan decision
+	// claimed is set, under s.mu, by whoever settles the approval first:
+	// a reply, the timeout, a canceled hook, or the session exiting.
+	claimed bool
 }
 
 type decision struct {
@@ -79,6 +77,11 @@ type decision struct {
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
+	q, err := loadQueue(dir)
+	if err != nil {
+		slog.Warn("load input queue; starting empty", "session", m.ID, "err", err)
+		q = &queueState{}
+	}
 	s := &session{
 		d:         d,
 		dir:       dir,
@@ -88,11 +91,12 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		meta:      m,
 		approvals: map[string]*approval{},
 		questions: map[string]*pb.QuestionAsked{},
-		seen:      map[string]bool{},
 		wake:      make(chan struct{}, 1),
 		done:      make(chan struct{}),
 		status:    pb.SessionStatus_SESSION_STATUS_STARTING,
+		queue:     q,
 	}
+	s.recoverInflight()
 	// Rebuild derived state from the events already logged.
 	log.Each(s.observe)
 	if m.Exited {
@@ -268,16 +272,18 @@ func (s *session) markExited(detail string) {
 	}
 	s.meta.Exited = true
 	m := s.meta
-	pending := s.approvals
-	s.approvals = map[string]*approval{}
-	s.queue = nil
-	s.mu.Unlock()
-	for _, a := range pending {
-		select {
-		case a.decision <- decision{allow: false, message: "remote-agent: session exited"}:
-		default:
+	for id, a := range s.approvals {
+		if !a.claimed {
+			a.claimed = true
+			a.decision <- decision{allow: false, message: "remote-agent: session exited"}
 		}
+		delete(s.approvals, id)
 	}
+	s.queue.Queue = nil
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", m.ID, "err", err)
+	}
+	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", err)
 	}
@@ -309,7 +315,7 @@ func (s *session) info() *pb.Session {
 		LastSeq:          s.log.LastSeq(),
 		PendingApprovals: int32(len(s.approvals)),
 		PendingQuestions: int32(len(s.questions)),
-		QueuedInputs:     int32(len(s.queue)),
+		QueuedInputs:     int32(len(s.queue.Queue)),
 	}
 	if s.context != nil {
 		out.Model, out.Effort = s.context.Model, s.context.Effort
@@ -317,50 +323,71 @@ func (s *session) info() *pb.Session {
 	return out
 }
 
-// send queues text for injection. It returns the queue position.
+// send queues text for injection and saves the queue before returning,
+// so an accepted message survives a daemon restart. It returns the queue
+// position; a retried request ID is accepted once.
 func (s *session) send(text, requestID string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.meta.Exited {
 		return 0, errExited
 	}
-	if requestID != "" {
-		if s.seen[requestID] {
-			return 0, nil
-		}
-		s.seen[requestID] = true
+	if requestID != "" && s.queue.seen(requestID) {
+		return 0, nil
 	}
-	s.queue = append(s.queue, input{text: text, requestID: requestID})
+	s.queue.Queue = append(s.queue.Queue, input{Text: text, RequestID: requestID})
+	if requestID != "" {
+		s.queue.remember(requestID)
+	}
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue = s.queue.Queue[:len(s.queue.Queue)-1]
+		return 0, fmt.Errorf("save input queue: %w", err)
+	}
 	select {
 	case s.wake <- struct{}{}:
 	default:
 	}
-	return len(s.queue), nil
+	return len(s.queue.Queue), nil
+}
+
+// recoverInflight settles a message that was being written when a previous
+// daemon stopped: if history.jsonl shows it was submitted it is dropped,
+// otherwise it is sent again.
+func (s *session) recoverInflight() {
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].Inflight == nil {
+		return
+	}
+	head := s.queue.Queue[0]
+	hist := newHistory(s.d.cfg.HistoryPath, *head.Inflight)
+	if hist.submitted(head.Text, s.meta.CodexSessionID) {
+		s.queue.Queue = s.queue.Queue[1:]
+	} else {
+		s.queue.Queue[0].Inflight = nil
+	}
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+	}
 }
 
 // injectLoop submits queued input one message at a time, in order.
 func (s *session) injectLoop(ctx context.Context) {
-	hist := newHistory(s.d.cfg.HistoryPath)
 	retry := time.NewTimer(time.Hour)
 	defer retry.Stop()
 	for {
 		s.mu.Lock()
-		var next *input
-		if len(s.queue) > 0 && !s.meta.Exited {
-			next = &s.queue[0]
+		var next input
+		ok := len(s.queue.Queue) > 0 && !s.meta.Exited
+		if ok {
+			next = s.queue.Queue[0]
 		}
 		s.mu.Unlock()
-		if next != nil {
-			ok, err := s.inject(ctx, hist, next.text)
+		if ok {
+			done, err := s.inject(ctx, next.Text)
 			if err != nil {
 				slog.Warn("inject", "session", s.meta.ID, "err", err)
 			}
-			if ok {
-				s.mu.Lock()
-				if len(s.queue) > 0 {
-					s.queue = s.queue[1:]
-				}
-				s.mu.Unlock()
+			if done {
+				s.popInput()
 				continue
 			}
 			retry.Reset(s.d.cfg.RetryInterval)
@@ -374,10 +401,35 @@ func (s *session) injectLoop(ctx context.Context) {
 	}
 }
 
+func (s *session) popInput() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.queue.Queue) > 0 {
+		s.queue.Queue = s.queue.Queue[1:]
+	}
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+	}
+}
+
+// markInflight records, before the head message is written, where
+// history.jsonl stood.
+func (s *session) markInflight(offset int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.queue.Queue) == 0 {
+		return errors.New("input queue is empty")
+	}
+	s.queue.Queue[0].Inflight = &offset
+	return s.queue.save(s.dir)
+}
+
 // inject tries once to submit text. It returns false, leaving the input
 // queued, when the terminal is not ready: a popup is open or the local
 // user has an unsent draft, which is never overwritten or merged.
-func (s *session) inject(ctx context.Context, hist *history, text string) (bool, error) {
+func (s *session) inject(ctx context.Context, text string) (bool, error) {
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
 	if err != nil {
 		return false, err
@@ -401,7 +453,10 @@ func (s *session) inject(ctx context.Context, hist *history, text string) (bool,
 	if !scr.ComposerReady || !scr.DraftEmpty {
 		return false, nil
 	}
-	hist.skip()
+	hist := newHistory(s.d.cfg.HistoryPath, -1)
+	if err := s.markInflight(hist.r.Offset()); err != nil {
+		return false, err
+	}
 	if err := c.Write(codex.PasteBytes(text)); err != nil {
 		return false, err
 	}
@@ -412,12 +467,16 @@ func (s *session) inject(ctx context.Context, hist *history, text string) (bool,
 
 	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
 	for time.Now().Before(deadline) {
-		if hist.submitted(text) {
+		s.mu.Lock()
+		codexID := s.meta.CodexSessionID
+		s.mu.Unlock()
+		if hist.submitted(text, codexID) {
 			return true, nil
 		}
 		select {
 		case <-ctx.Done():
-			return true, ctx.Err()
+			// Stay inflight; the next daemon settles it from history.
+			return false, ctx.Err()
 		case <-time.After(50 * time.Millisecond):
 		}
 	}
@@ -438,6 +497,8 @@ func (s *session) interrupt() (bool, error) {
 	if !running {
 		return false, nil
 	}
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
 	if err != nil {
 		return false, err
@@ -462,6 +523,8 @@ func (s *session) answer(questionID string, option int) error {
 	if option < 1 || option > 9 {
 		return fmt.Errorf("option must be between 1 and 9")
 	}
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
 	if err != nil {
 		return err
@@ -565,6 +628,10 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 		req.Command, req.Description = shell.Command, shell.Description
 	}
 	s.mu.Lock()
+	if s.meta.Exited {
+		s.mu.Unlock()
+		return codex.PermissionDecision(false, "remote-agent: session exited"), nil
+	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
 	defer func() {
@@ -581,35 +648,57 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 	}
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
+	var d decision
 	select {
-	case d := <-a.decision:
-		if d.allow {
-			resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message)
-		} else {
-			resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message)
-		}
-		return codex.PermissionDecision(d.allow, d.message), nil
+	case d = <-a.decision:
 	case <-timer.C:
+		if !s.claim(a) {
+			d = <-a.decision // a reply won the race; honor it
+			break
+		}
 		msg := fmt.Sprintf("remote-agent: no answer within %s, denied", timeout)
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg)
 		return codex.PermissionDecision(false, msg), nil
 	case <-ctx.Done():
+		if !s.claim(a) {
+			d = <-a.decision
+			break
+		}
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "")
 		return nil, ctx.Err()
 	}
+	if d.allow {
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message)
+	} else {
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message)
+	}
+	return codex.PermissionDecision(d.allow, d.message), nil
 }
 
-// resolve answers a pending approval.
+// claim settles a for the caller unless someone else already did.
+func (s *session) claim(a *approval) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if a.claimed {
+		return false
+	}
+	a.claimed = true
+	delete(s.approvals, a.id)
+	return true
+}
+
+// resolve answers a pending approval. Success means the answer is the one
+// Codex receives.
 func (s *session) resolve(id string, allow bool, message string) error {
 	s.mu.Lock()
 	a, ok := s.approvals[id]
-	if ok {
-		delete(s.approvals, id)
-	}
-	s.mu.Unlock()
-	if !ok {
+	if !ok || a.claimed {
+		s.mu.Unlock()
 		return fmt.Errorf("approval %s: %w", id, errNotFound)
 	}
+	a.claimed = true
+	delete(s.approvals, id)
+	s.mu.Unlock()
 	a.decision <- decision{allow: allow, message: message}
 	return nil
 }

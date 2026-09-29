@@ -28,6 +28,9 @@ const (
 		"  \x1b[1;7m› 1. Go (Recommended)   \x1b[0;7mUse Go.\x1b[0m\n" +
 		"    2. Python             \x1b[2mUse Python.\x1b[0m\n" +
 		"    3. None of the above  \x1b[2mOptionally, add details in notes (tab)\x1b[0m\n"
+	screenBlankFirstLine = "\x1b[1m›\x1b[0m \n" +
+		"  second line of a local draft\n" +
+		"  GPT-6-Sol medium · /tmp/w\n"
 	screenUnknownMenu = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex\x1b[0m\n" +
 		"  Some new dialog\n" +
 		"\x1b[1;7m› 1. First\n" +
@@ -46,6 +49,7 @@ func TestAnalyzeScreen(t *testing.T) {
 		{"approval", screenApproval, Screen{Popup: "approval"}},
 		{"question", screenQuestion, Screen{Popup: "question", QuestionOpen: true}},
 		{"unknown menu", screenUnknownMenu, Screen{Popup: "menu"}},
+		{"draft with blank first line", screenBlankFirstLine, Screen{ComposerReady: true, DraftEmpty: false}},
 		{"empty", "", Screen{}},
 	}
 	for _, c := range cases {
