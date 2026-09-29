@@ -6,6 +6,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { derive, dockItems } from "../model";
+import { Dock } from "./Dock";
 import { Home } from "./Home";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -52,5 +55,30 @@ it("lets the home card handle one approval after another", async () => {
   const allow = button("允许", card());
   expect(allow?.disabled).toBe(false);
   expect(button("拒绝", card())?.disabled).toBe(false);
+});
+
+it("keeps the dock's buttons out of its scrolling content", () => {
+  const r = demo();
+  const s = r.sessions.get("s-appr")!;
+  mount(
+    <Dock
+      remote={r}
+      sid="s-appr"
+      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
+      agent={Agent.CODEX}
+      collapsed={false}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />,
+  );
+  const dock = host.querySelector(".dock")!;
+  const scroll = dock.querySelector(".dscroll")!;
+  expect(scroll.textContent).toContain("rm -rf gen/remoteagent");
+  for (const b of ["拒绝", "允许"]) {
+    const el = button(b, dock)!;
+    expect(scroll.contains(el)).toBe(false);
+  }
 });
 

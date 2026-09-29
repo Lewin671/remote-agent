@@ -150,7 +150,7 @@ function ApprovalDock({ remote, sid, a, agent, more, onDetail }: { remote: Remot
   return (
     <div className={"dock" + (reasoning ? " reasoning" : "")}>
       {!reasoning && (
-        <>
+        <div className="dscroll">
           <div className="h">
             <b>{approvalTitle(a)}</b>
             <span className="muted">
@@ -161,7 +161,7 @@ function ApprovalDock({ remote, sid, a, agent, more, onDetail }: { remote: Remot
           </div>
           {a.description && <div className="desc">{a.description}</div>}
           <Cut text={approvalText(a)} onMore={onDetail} />
-        </>
+        </div>
       )}
       <ApprovalActions remote={remote} sid={sid} a={a} agent={agent} onReasonOpen={setReasoning} />
     </div>
@@ -198,6 +198,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
           </span>
         </span>
       </div>
+      <div className="dscroll">
       <div className="q">{item.text}</div>
       <div className="answers">
         {item.options.map((o, i) => {
@@ -214,6 +215,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
             </button>
           );
         })}
+      </div>
       </div>
       <div className="foot">
         {ans.error ? (
@@ -279,7 +281,9 @@ function PlanDock({ remote, sid, plan, more, onFull }: { remote: Remote; sid: st
           )}
         </span>
       </div>
-      <div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>
+      <div className="dscroll">
+        <div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>
+      </div>
       <PlanButtons remote={remote} sid={sid} />
     </div>
   );
@@ -295,7 +299,11 @@ function PopupDock({ title, agent, more, onTerminal }: { title: string; agent: A
           {agentName(agent)} 在等你
         </span>
       </div>
-      {title && <div className="q light">{title}</div>}
+      {title && (
+        <div className="dscroll">
+          <div className="q light">{title}</div>
+        </div>
+      )}
       <div className="btns">
         <button className="btn pri" onClick={onTerminal}>
           去终端处理

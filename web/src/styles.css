@@ -241,8 +241,14 @@ a { color: var(--blue); }
 .toast { margin: 0 12px 6px; background: var(--red-soft); color: var(--red); border-radius: 12px; padding: 7px 11px; font-size: 13px; cursor: pointer; flex: none; }
 
 /* the dock: above the input, at most 45% of the chat, buttons always in view */
-.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; max-height: 45%; overflow-y: auto;
-  box-shadow: 0 0 0 1.5px var(--orange), 0 -4px 18px rgba(0,0,0,.08); }
+/* The content scrolls inside the card; the buttons below it never leave
+   the view. */
+.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; max-height: 45%; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: 0 0 0 1.5px var(--orange), 0 -4px 18px rgba(0,0,0,.08); }
+.dock > * { flex: none; }
+.dock > .dscroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.dockwrap { display: contents; }
+.dockwrap[hidden] { display: none; }
 .dock .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 .dock .h b { color: var(--orange-ink); }
 .dock .h > span { white-space: nowrap; }
@@ -250,7 +256,9 @@ a { color: var(--blue); }
 .cutbox { position: relative; }
 .cutbox pre, pre.cmd { background: var(--code-bg); border: 1px solid var(--code-border); color: #e6edf3; border-radius: 10px; padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .cutbox pre { max-height: 80px; overflow: hidden; }
-.cutmore { position: absolute; right: 7px; bottom: 5px; font-weight: 600; font-size: 12px; color: #79c0ff; background: var(--code-bg); padding: 0 0 0 12px; min-height: 22px; }
+/* 44×44 to tap, drawn as a label in the code block's corner. */
+.cutmore { position: absolute; right: 1px; bottom: 1px; font-weight: 600; font-size: 12px; color: #79c0ff; min-width: 44px; min-height: 44px; padding: 20px 7px 4px 24px;
+  display: flex; align-items: flex-end; border-radius: 0 0 10px 0; background: linear-gradient(to right, transparent, var(--code-bg) 18px); }
 .dock.ask { box-shadow: 0 0 0 1.5px var(--blue), 0 -4px 18px rgba(0,0,0,.08); }
 .dock.ask .h b { color: var(--blue); }
 .dock.plan { box-shadow: 0 0 0 1.5px var(--purple), 0 -4px 18px rgba(0,0,0,.08); }
@@ -263,13 +271,14 @@ a { color: var(--blue); }
 .dock .plan-body ol, .dock .plan-body ul { padding-left: 18px; }
 .dock .plan-body code { background: var(--chip); padding: 0 3px; border-radius: 4px; }
 .dock .foot { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.dock .foot .link { font-size: 12px; }
+/* Small text links with a 44 high target that does not grow the row. */
+.dock .foot .link, .dock .h .link { font-size: 12px; min-height: 44px; margin: -12px 0; padding: 0 0 0 8px; }
 .dock .banner { margin-top: 8px; }
-.dock.mini { padding: 4px 4px 4px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; overflow: hidden; }
+.dock.mini { padding: 0 0 0 12px; display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; overflow: hidden; }
 .dock.mini b { color: var(--orange-ink); white-space: nowrap; }
 .dock.mini.ask b { color: var(--blue); } .dock.mini.plan b { color: var(--purple); }
 .dock.mini code { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
-.dock.mini button { color: var(--blue); font-weight: 600; white-space: nowrap; min-height: 36px; padding: 0 8px; }
+.dock.mini button { color: var(--blue); font-weight: 600; white-space: nowrap; min-height: 44px; min-width: 44px; padding: 0 12px; }
 .steps { display: flex; gap: 4px; align-items: center; }
 .steps i { width: 16px; height: 4px; border-radius: 2px; background: var(--track); display: inline-block; }
 .steps i.done { background: var(--blue); }
