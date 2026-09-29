@@ -26,6 +26,9 @@ import (
 const (
 	pairingTTL      = 5 * time.Minute
 	pairingAttempts = 3
+	// pairingDeliveredTTL keeps a delivered pairing for the initiator to
+	// see that it went through.
+	pairingDeliveredTTL = time.Minute
 	maxPairings     = 64
 	// badCodesPerMinute bounds wrong codes across all callers.
 	badCodesPerMinute = 30
@@ -44,12 +47,15 @@ type pairing struct {
 	initPub    []byte
 	payload    *pb.Envelope
 	canceled   bool
+	delivered  bool
 }
 
 func (p *pairing) state() pb.PairingState {
 	switch {
 	case p.canceled:
 		return pb.PairingState_PAIRING_STATE_CANCELED
+	case p.delivered:
+		return pb.PairingState_PAIRING_STATE_DELIVERED
 	case p.payload != nil:
 		return pb.PairingState_PAIRING_STATE_APPROVED
 	case p.initPub != nil:
@@ -215,8 +221,11 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 	defer ps.mu.Unlock()
 	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub}
 	if !initiator && p.payload != nil {
+		// Delivered once. The initiator learns of it from the state.
 		res.Payload = p.payload
-		ps.dropLocked(p) // delivered once
+		p.payload, p.delivered = nil, true
+		p.expires = time.Now().Add(pairingDeliveredTTL)
+		delete(ps.byCode, p.code)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -250,7 +259,7 @@ func (ps *pairingService) ApprovePairing(ctx context.Context, req *connect.Reque
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	if p.initPub == nil || p.canceled {
+	if p.initPub == nil || p.canceled || p.delivered {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the pairing is not ready"))
 	}
 	p.payload = req.Msg.Payload

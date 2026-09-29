@@ -263,20 +263,14 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	}
 
 	env := sessionEnv(req.Env, d.cfg.Env)
-	env["RA_SESSION"] = id
-	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
-		env["REMOTE_AGENT_HOME"] = h
-	}
-	// The environment goes through a private file, not tmux's command
-	// line, where every local user could read secrets such as API keys.
-	envFile := filepath.Join(dir, "env.json")
-	if err := writeEnvFile(envFile, env); err != nil {
+	d.ownEnv(env, id)
+	envFile, err := startEnv(dir, env)
+	if err != nil {
 		log.Close()
 		return nil, err
 	}
-	hookCmd := shellQuote(d.cfg.Exe) + " hook codex"
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
-	argv = append(argv, codex.Args(hookCmd, args)...)
+	argv = append(argv, codex.Args(args)...)
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	})
@@ -379,12 +373,22 @@ func (d *Daemon) list(includeExited bool) []*pb.Session {
 	return out
 }
 
+// ownEnv sets the variables remote-agent itself needs in a session:
+// which session it is, and the executable the hooks run (see codex.Args).
+func (d *Daemon) ownEnv(env map[string]string, id string) {
+	env["RA_SESSION"] = id
+	env["RA_EXE"] = d.cfg.Exe
+	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
+		env["REMOTE_AGENT_HOME"] = h
+	}
+}
+
 // skipEnv lists variables that belong to the caller's terminal rather than
 // to the Codex process.
 var skipEnv = map[string]bool{
 	"TMUX": true, "TMUX_PANE": true, "TERM": true, "TERM_PROGRAM": true, "TERM_PROGRAM_VERSION": true,
 	"TERM_SESSION_ID": true, "COLUMNS": true, "LINES": true, "SHLVL": true, "PWD": true, "OLDPWD": true,
-	"_": true, "RA_SESSION": true, "COLORTERM": true, "ITERM_SESSION_ID": true,
+	"_": true, "RA_SESSION": true, "RA_EXE": true, "COLORTERM": true, "ITERM_SESSION_ID": true,
 }
 
 func sessionEnv(fromClient, extra map[string]string) map[string]string {
@@ -400,18 +404,64 @@ func sessionEnv(fromClient, extra map[string]string) map[string]string {
 	return env
 }
 
-// shellQuote quotes s for a POSIX shell.
-func shellQuote(s string) string {
-	if s != "" && strings.IndexFunc(s, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+:@", r))
-	}) < 0 {
-		return s
+// startEnv keeps the session's environment in env.json, for resuming, and
+// writes the copy the PTY host reads and deletes. The environment goes
+// through private files, not tmux's command line, where every local user
+// could read secrets such as API keys.
+func startEnv(dir string, env map[string]string) (string, error) {
+	if err := writeEnvFile(filepath.Join(dir, "env.json"), env); err != nil {
+		return "", err
 	}
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+	start := filepath.Join(dir, "env.start.json")
+	return start, writeEnvFile(start, env)
 }
 
-// writeEnvFile stores env for the PTY host, readable by the owner only.
-// The PTY host deletes it once read.
+func readEnvFile(path string) (map[string]string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	env := map[string]string{}
+	return env, json.Unmarshal(b, &env)
+}
+
+// valueFlags are codex options that take a value.
+var valueFlags = map[string]bool{
+	"-c": true, "--config": true, "-m": true, "--model": true, "-p": true, "--profile": true,
+	"-s": true, "--sandbox": true, "-a": true, "--ask-for-approval": true, "-C": true, "--cd": true,
+	"--add-dir": true, "-i": true, "--image": true, "--enable": true, "--disable": true, "--local-provider": true,
+}
+
+// approvalFlags are codex options that set the approval mode.
+var approvalFlags = []string{"-s", "--sandbox", "-a", "--ask-for-approval", "--full-auto", "--dangerously-bypass-approvals-and-sandbox", "--yolo"}
+
+// flagArgs keeps the options in codex arguments, except those in drop,
+// and drops positional ones, which for resume would be read as a session
+// ID or prompt.
+func flagArgs(args []string, drop map[string]bool) []string {
+	var out []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if !strings.HasPrefix(a, "-") {
+			continue
+		}
+		name, _, inline := strings.Cut(a, "=")
+		n := 1
+		if !inline && valueFlags[name] && i+1 < len(args) {
+			n = 2
+		}
+		if !drop[name] {
+			out = append(out, args[i:i+n]...)
+		}
+		i += n - 1
+	}
+	return out
+}
+
+// writeEnvFile stores env, readable by the owner only.
 func writeEnvFile(path string, env map[string]string) error {
 	b, err := json.Marshal(env)
 	if err != nil {
@@ -452,36 +502,48 @@ func (d *Daemon) resume(id string) (*session, error) {
 	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}
-	// Start it the way it last ran: model, effort and approval mode from
-	// the latest turn context.
-	var args []string
+	// Start it with its original options, minus positional arguments such
+	// as a first prompt, then the model, effort and approval mode it last
+	// ran with, which may have been changed since.
+	// Codex refuses a repeated -m, and its approval flags win over -c, so
+	// the options overridden are dropped from the original ones first.
+	var over []string
+	drop := map[string]bool{}
 	if ctx != nil {
 		if ctx.Model != "" && safeValue.MatchString(ctx.Model) {
-			args = append(args, "-m", ctx.Model)
+			over = append(over, "-m", ctx.Model)
+			drop["-m"], drop["--model"] = true, true
 		}
 		if _, ok := effortLabels[ctx.Effort]; ok {
-			args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", ctx.Effort))
+			over = append(over, "-c", fmt.Sprintf("model_reasoning_effort=%q", ctx.Effort))
 		}
-		args = append(args, modeArgs(contextMode(ctx))...)
+		if ma := modeArgs(contextMode(ctx)); ma != nil {
+			over = append(over, ma...)
+			for _, f := range approvalFlags {
+				drop[f] = true
+			}
+		}
 	}
-	env := sessionEnv(nil, d.cfg.Env)
-	env["RA_SESSION"] = id
-	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
-		env["REMOTE_AGENT_HOME"] = h
+	args := append(flagArgs(m.Args, drop), over...)
+	// The same environment it started with: the caller's shell may have
+	// provided credentials or proxies. Older sessions did not keep it.
+	env, err := readEnvFile(filepath.Join(s.dir, "env.json"))
+	if err != nil {
+		env = sessionEnv(nil, d.cfg.Env)
 	}
-	envFile := filepath.Join(s.dir, "env.json")
-	if err := writeEnvFile(envFile, env); err != nil {
+	d.ownEnv(env, id)
+	envFile, err := startEnv(s.dir, env)
+	if err != nil {
 		return nil, err
 	}
-	hookCmd := shellQuote(d.cfg.Exe) + " hook codex"
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
 	if m.CodexSessionID != "" {
 		argv = append(argv, "resume")
-		argv = append(argv, codex.Args(hookCmd, args)...)
+		argv = append(argv, codex.Args(args)...)
 		argv = append(argv, m.CodexSessionID)
 	} else {
 		// Nothing was ever sent: there is no conversation to resume.
-		argv = append(argv, codex.Args(hookCmd, args)...)
+		argv = append(argv, codex.Args(args)...)
 	}
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,

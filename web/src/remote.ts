@@ -132,9 +132,11 @@ export class Remote {
   error = "";
 
   private buffers = new Map<string, EventBuffer>();
-  // Pushes seen per machine, so that a list fetched before a push cannot
-  // undo the online state it reported.
+  // Pushes seen per machine, session and machine removal, so that a list
+  // fetched before a push cannot undo it.
   private machinePushes = new Map<string, number>();
+  private sessionPushes = new Map<string, number>();
+  private removedPushes = new Map<string, number>();
   private token = "";
   private api: Client<typeof ClientService>;
   private ws?: WebSocket;
@@ -251,6 +253,7 @@ export class Remote {
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
         break;
       case "machineRemoved":
+        this.bump(this.removedPushes, kind.value.machineId);
         this.machines.delete(kind.value.machineId);
         for (const [id, s] of this.sessions) if (s.machineId === kind.value.machineId) this.sessions.delete(id);
         this.changed();
@@ -258,12 +261,15 @@ export class Remote {
       case "machineUpdated":
         if (kind.value.machine) {
           const id = kind.value.machine.id;
-          this.machinePushes.set(id, (this.machinePushes.get(id) ?? 0) + 1);
+          this.bump(this.machinePushes, id);
           await this.putMachine(kind.value.machine);
         }
         break;
       case "sessionUpdated":
-        if (kind.value.session) await this.putSession(kind.value.session);
+        if (kind.value.session) {
+          this.bump(this.sessionPushes, kind.value.session.sessionId);
+          await this.putSession(kind.value.session);
+        }
         break;
       case "eventsAppended": {
         const sid = kind.value.sessionId;
@@ -279,22 +285,31 @@ export class Remote {
     }
   }
 
-  /** Reloads machines and sessions. */
+  private bump(pushes: Map<string, number>, id: string) {
+    pushes.set(id, (pushes.get(id) ?? 0) + 1);
+  }
+
+  /** Reloads machines and sessions. Pushes that arrive while the lists
+   * are in flight are newer than them and win. */
   async refresh() {
     try {
-      const pushes = new Map(this.machinePushes);
+      const mp = new Map(this.machinePushes);
+      const sp = new Map(this.sessionPushes);
+      const rp = new Map(this.removedPushes);
+      const pushed = (now: Map<string, number>, then: Map<string, number>, id: string) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
       const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({})]);
       // Forget what the server no longer has, e.g. a machine another
       // device removed while this one was offline.
       const machines = new Set(ms.machines.map((m) => m.id));
       const sessions = new Set(ss.sessions.map((s) => s.sessionId));
-      for (const id of this.machines.keys()) if (!machines.has(id)) this.machines.delete(id);
-      for (const id of this.sessions.keys()) if (!sessions.has(id)) this.sessions.delete(id);
+      for (const id of this.machines.keys()) if (!machines.has(id) && !pushed(this.machinePushes, mp, id)) this.machines.delete(id);
+      for (const id of this.sessions.keys()) if (!sessions.has(id) && !pushed(this.sessionPushes, sp, id)) this.sessions.delete(id);
+      const removed = (id: string) => pushed(this.removedPushes, rp, id);
       for (const m of ms.machines) {
-        const stale = (this.machinePushes.get(m.id) ?? 0) !== (pushes.get(m.id) ?? 0);
-        await this.putMachine(m, stale);
+        if (removed(m.id)) continue;
+        await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
       }
-      for (const s of ss.sessions) await this.putSession(s);
+      for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
     } catch (e) {
       this.report(e);
     }

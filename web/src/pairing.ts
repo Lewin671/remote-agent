@@ -111,13 +111,16 @@ export async function initiate(remote: Remote): Promise<Initiation> {
         create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server }),
       );
       await pc.approvePairing({ pairingId: id, payload: env });
-      // The server deletes the pairing once the new device took the key;
-      // only that counts as success. Other errors are retried.
+      // Only the new device taking the key counts as success. A pairing
+      // that disappears meanwhile leaves the outcome unknown.
       for (let i = 0; i < 120 && !stopped; i++) {
         try {
-          await pc.getPairing({ pairingId: id });
+          const res = await pc.getPairing({ pairingId: id });
+          if (res.state === PairingState.DELIVERED) return;
+          if (res.state === PairingState.CANCELED) throw new Error("另一台设备取消了配对");
         } catch (e) {
-          if (ConnectError.from(e).code === Code.NotFound) return;
+          if (ConnectError.from(e).code === Code.NotFound) throw new Error("配对已过期，不确定新设备有没有拿到账户密钥。请在新设备上确认，必要时重新配对。");
+          if (!(e instanceof ConnectError)) throw e;
         }
         await sleep(1000);
       }

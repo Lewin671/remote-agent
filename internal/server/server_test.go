@@ -406,8 +406,12 @@ func TestPairingLimits(t *testing.T) {
 	if res, err := get(); err != nil || res.Msg.Payload == nil {
 		t.Fatalf("payload: %v %v", res, err)
 	}
-	if _, err := get(); connect.CodeOf(err) != connect.CodeNotFound {
-		t.Fatalf("payload delivered twice: %v", err)
+	if res, err := get(); err != nil || res.Msg.Payload != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
+		t.Fatalf("payload delivered twice: %v %v", res, err)
+	}
+	// The initiator learns that the key was taken.
+	if res, err := pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId})); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {
+		t.Fatalf("initiator after delivery: %v %v", res, err)
 	}
 	// Wrong codes are limited.
 	var last error

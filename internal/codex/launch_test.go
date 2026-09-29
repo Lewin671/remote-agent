@@ -6,11 +6,11 @@ import (
 )
 
 func TestArgs(t *testing.T) {
-	args := Args(`/opt/ra "x"/remote-agent hook codex`, []string{"-m", "gpt-6-sol"})
+	args := Args([]string{"-m", "gpt-6-sol"})
 	joined := strings.Join(args, "\n")
 	for _, want := range []string{
-		`hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="/opt/ra \"x\"/remote-agent hook codex",timeout=3600}]}]`,
-		`hooks.SessionStart=[{hooks=[{type="command",command="/opt/ra \"x\"/remote-agent hook codex",timeout=30}]}]`,
+		`hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="\"$RA_EXE\" hook codex",timeout=3600}]}]`,
+		`hooks.SessionStart=[{hooks=[{type="command",command="\"$RA_EXE\" hook codex",timeout=30}]}]`,
 		"check_for_update_on_startup=false",
 	} {
 		if !strings.Contains(joined, want) {

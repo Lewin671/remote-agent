@@ -12,15 +12,24 @@ import (
 // changes the hook definition, which makes Codex ask to trust it again.
 const HookTimeoutSeconds = 3600
 
-// Args returns the codex arguments that install remote-agent's hooks for
-// this session only and turn off startup popups that can be turned off,
-// followed by the user's own arguments.
 // TestedVersions are the codex-cli versions the screen analysis, menus and
 // rollout parsing were checked against (docs/codex-notes.md). Others may
 // work; `remote-agent doctor` checks the installed one.
 var TestedVersions = []string{"0.157.1", "0.159.0"}
 
-func Args(hookCommand string, userArgs []string) []string {
+// hookCommand runs remote-agent's hook. Codex asks the user to trust a
+// hook once per definition and remembers one definition per hook slot, so
+// the command must not depend on where the executable is: a second binary
+// (another build, a test) would otherwise replace the trust of the first
+// and every new session would ask again. The session environment names
+// the executable in RA_EXE.
+const hookCommand = `"$RA_EXE" hook codex`
+
+// Args returns the codex arguments that install remote-agent's hooks for
+// this session only and turn off startup popups that can be turned off,
+// followed by the user's own arguments. The session needs RA_EXE and
+// RA_SESSION in its environment.
+func Args(userArgs []string) []string {
 	cmd := tomlString(hookCommand)
 	args := []string{
 		"-c", "hooks.PermissionRequest=[{matcher=\"*\",hooks=[{type=\"command\",command=" + cmd +

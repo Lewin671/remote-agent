@@ -425,12 +425,6 @@ func TestSessionEnv(t *testing.T) {
 	if env["PATH"] != "/bin" || env["HTTP_PROXY"] != "b" || env["TMUX"] != "" || env["TERM"] != "" {
 		t.Fatalf("env %v", env)
 	}
-	if got := shellQuote("/opt/my dir/ra's"); got != `'/opt/my dir/ra'\''s'` {
-		t.Fatalf("quote %s", got)
-	}
-	if got := shellQuote("/usr/local/bin/remote-agent"); got != "/usr/local/bin/remote-agent" {
-		t.Fatalf("quote %s", got)
-	}
 }
 
 func TestInfoSummarizesTheSession(t *testing.T) {

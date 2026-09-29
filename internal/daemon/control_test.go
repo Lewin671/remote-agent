@@ -264,3 +264,18 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 		t.Fatal("accepted a bad model name")
 	}
 }
+
+func TestFlagArgs(t *testing.T) {
+	args := []string{"-m", "gpt-6-luna", "--search", "-c", `a="b c"`, "fix the bug", "--profile", "work", "--add-dir=/x", "-s", "read-only", "--model=o", "--", "rest"}
+	for _, c := range []struct {
+		drop map[string]bool
+		want []string
+	}{
+		{nil, []string{"-m", "gpt-6-luna", "--search", "-c", `a="b c"`, "--profile", "work", "--add-dir=/x", "-s", "read-only", "--model=o"}},
+		{map[string]bool{"-m": true, "--model": true, "-s": true}, []string{"--search", "-c", `a="b c"`, "--profile", "work", "--add-dir=/x"}},
+	} {
+		if got := flagArgs(args, c.drop); strings.Join(got, "|") != strings.Join(c.want, "|") {
+			t.Errorf("drop %v: got %q", c.drop, got)
+		}
+	}
+}

@@ -35,7 +35,7 @@ rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jso
 - 在档位列表里直接按数字键会怎样，**没有验证**，推测会按全局默认生效
 - 模型的顺序和数量随版本、账号变化，编号不是固定的
 - 光标初始停在当前选中项，不在第一项，`›` 标出光标所在的行
-- `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 可以用新的模型和档位恢复会话
+- `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 可以用新的模型和档位恢复会话。同一个选项不能给两次：`-m` 重复时报 `the argument '--model <MODEL>' cannot be used multiple times` 并退出（0.159.0）；`-c` 可以重复
 - 按 `s` 以后，底部状态栏立刻变成新的模型和档位（如 `GPT-6-Luna high`）；rollout 要到下一轮开头才有 `thread_settings_applied` 和新的 `turn_context`（0.157.1 实测）
 
 ## 3. 审批 hook（PermissionRequest）
@@ -65,7 +65,7 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
   ```
 
   **`transcript_path` 直接给出了 rollout 的路径**，可以用来把会话和 rollout 对应起来，见下面的 `SessionStart`
-- **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问；**hook 命令一变（比如二进制的路径变了），就得重新信任**
+- **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问；**hook 命令一变（比如二进制的路径变了），就得重新信任**。每个位置（如 `permission_request:0:0`）只记一个 `trusted_hash`：两份路径不同的二进制交替启动会话，会互相顶掉信任，每次都问。命令写成 `"$RA_EXE" hook codex`、路径放进环境变量，hook 照常运行（Codex 用 shell 执行 hook 命令），换路径后 hash 不变（0.159.0 实测）
 - **`SessionStart` hook 可以把会话和 rollout 对应起来**：同样用 `-c 'hooks.SessionStart=[{hooks=[{type="command",command="…"}]}]'` 传入。实测它不是在启动时触发，而是在**发出第一条消息时**触发，这时 rollout 文件已经创建好了。payload 为 `{"session_id","transcript_path","cwd","hook_event_name":"SessionStart","model","permission_mode","source":"startup"}`
 - **hook 进程会继承 Codex 的环境变量**。实测：启动 Codex 时设置 `RA_SESSION`，`SessionStart` hook 能读到它，连同 `transcript_path` 一起上报；同一目录同时开两个会话，两边各自对应正确
 - 信任记录里的 hash 只和 hook 的定义有关（命令字符串等），**和脚本内容无关**：改了脚本内容，没有要求重新信任

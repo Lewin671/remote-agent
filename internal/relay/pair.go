@@ -19,7 +19,12 @@ import (
 // Pairing from the command line, in both roles. The protocol is described
 // in internal/e2e/pair.go.
 
-const pairPoll = time.Second
+const (
+	pairPoll = time.Second
+	// pairDeliverWait bounds how long the initiator waits for the new
+	// device to take the key after approving.
+	pairDeliverWait = 2 * time.Minute
+)
 
 // PairLink is what a QR code carries: the code, the initiator's
 // commitment, and the server.
@@ -111,8 +116,18 @@ func Initiate(ctx context.Context, acct *Account, show func(PairLink), confirm f
 		cancel()
 		return err
 	}
-	_, err = pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env}))
-	return err
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: id, Payload: env})); err != nil {
+		cancel()
+		return err
+	}
+	// Only the new device taking the key counts as success.
+	wctx, stop := context.WithTimeout(ctx, pairDeliverWait)
+	defer stop()
+	if _, err := waitPairing(wctx, pc, id, "", pb.PairingState_PAIRING_STATE_DELIVERED); err != nil {
+		cancel()
+		return fmt.Errorf("the new device did not take the account key (%v); check it, and pair again if needed", err)
+	}
+	return nil
 }
 
 // JoinByPairing joins an account through a code shown by an existing

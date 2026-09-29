@@ -85,6 +85,9 @@ const (
 	// The initiator sent the sealed root key.
 	PairingState_PAIRING_STATE_APPROVED PairingState = 4
 	PairingState_PAIRING_STATE_CANCELED PairingState = 5
+	// The joiner took the sealed root key. Only this tells the initiator
+	// that pairing went through; the pairing is kept a minute to say so.
+	PairingState_PAIRING_STATE_DELIVERED PairingState = 6
 )
 
 // Enum value maps for PairingState.
@@ -96,6 +99,7 @@ var (
 		3: "PAIRING_STATE_REVEALED",
 		4: "PAIRING_STATE_APPROVED",
 		5: "PAIRING_STATE_CANCELED",
+		6: "PAIRING_STATE_DELIVERED",
 	}
 	PairingState_value = map[string]int32{
 		"PAIRING_STATE_UNSPECIFIED": 0,
@@ -104,6 +108,7 @@ var (
 		"PAIRING_STATE_REVEALED":    3,
 		"PAIRING_STATE_APPROVED":    4,
 		"PAIRING_STATE_CANCELED":    5,
+		"PAIRING_STATE_DELIVERED":   6,
 	}
 )
 
@@ -3422,14 +3427,15 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"DeviceKind\x12\x1b\n" +
 	"\x17DEVICE_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13DEVICE_KIND_MACHINE\x10\x01\x12\x16\n" +
-	"\x12DEVICE_KIND_CLIENT\x10\x02*\xb3\x01\n" +
+	"\x12DEVICE_KIND_CLIENT\x10\x02*\xd0\x01\n" +
 	"\fPairingState\x12\x1d\n" +
 	"\x19PAIRING_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PAIRING_STATE_OPEN\x10\x01\x12\x18\n" +
 	"\x14PAIRING_STATE_JOINED\x10\x02\x12\x1a\n" +
 	"\x16PAIRING_STATE_REVEALED\x10\x03\x12\x1a\n" +
 	"\x16PAIRING_STATE_APPROVED\x10\x04\x12\x1a\n" +
-	"\x16PAIRING_STATE_CANCELED\x10\x05*`\n" +
+	"\x16PAIRING_STATE_CANCELED\x10\x05\x12\x1b\n" +
+	"\x17PAIRING_STATE_DELIVERED\x10\x06*`\n" +
 	"\n" +
 	"NotifyKind\x12\x1b\n" +
 	"\x17NOTIFY_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
