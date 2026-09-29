@@ -36,7 +36,44 @@ rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jso
 - 以屏幕上出现 `for this session only` 为成功；认不出菜单或结果对不上，就按 Esc 退出并报错
 - 兜底：退出 Codex，用 `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 重新启动
 
-## 3. 踩过的坑
+## 3. 审批 hook（PermissionRequest）
+
+**hook 可以只对单个会话生效**：启动时用 `-c` 传入即可，不需要写全局的 `~/.codex/hooks.json`。实测命令：
+
+```
+codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="<hook 命令>"}]}]'
+```
+
+- 不带这个参数直接运行的 `codex` **不会触发**这个 hook（实测：普通会话里同样发生了提权，由 `auto_review` 处理，hook 没有被调用）
+- hook 通过 stdin 收到 JSON，通过 stdout 返回决定：`{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"|"deny","message":"…"}}}`。返回 deny 后，界面显示 `Blocked by hook`，模型会看到 message
+- 收到的 payload（已脱敏）：
+
+  ```json
+  {
+    "session_id": "01a0ed1c-…",
+    "turn_id": "01a0ed1d-…",
+    "transcript_path": "~/.codex/sessions/2026/09/29/rollout-…-01a0ed1c-….jsonl",
+    "cwd": "/private/tmp/ra-hooktest/work",
+    "hook_event_name": "PermissionRequest",
+    "model": "gpt-6-sol",
+    "permission_mode": "default",
+    "tool_name": "Bash",
+    "tool_input": { "command": "printf 'hi' > hello.txt", "description": "May I create …?" }
+  }
+  ```
+
+  **`transcript_path` 直接给出了 rollout 的路径**，可以用来把会话和 rollout 对应起来。同样的字段很可能也出现在 `SessionStart` hook 里，但尚未验证
+- **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问。所以 **hook 命令必须固定**，二进制的路径一变，就得重新信任
+- 用了 `-c` 之后，Codex 会提示 `Running without the shared background server`，也就是改为嵌入模式运行，每个会话在自己的进程里。目前没发现功能上的差异
+- 带上 hook 的会话里，审批请求交给了 hook，没有再经过 `auto_review`。两者的先后顺序能不能配置，尚未验证
+
+## 4. 启动时的弹窗和环境
+
+- 启动时的弹窗依次可能有：`Update available`（选 `2. Skip`）、`Trust this folder?`（按数字只会移动光标，**还要再按回车**才生效）、`Hooks need review`。每一个都会吞掉紧接着发的按键
+- `-a untrusted` 在这个版本里已经删除，`-a` 只接受 `on-request`、`never`
+- Codex 要通过代理才能联网，而本机是靠 shell 函数 `ai_cli_with_clash_proxy` 设置的代理环境变量（`HTTP_PROXY` 等）。daemon 启动 Codex 时要带上这些变量；尤其是 daemon 由 launchd 启动时，读不到 shell 里的配置
+
+## 5. 踩过的坑
 
 | 现象 | 后果 | 对策 |
 |---|---|---|
@@ -46,7 +83,7 @@ rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jso
 | 抓屏里混有历史对话、“Update available” 提示框、状态栏 | 全屏搜关键词会误判 | 只认屏幕底部的菜单标题和选项区域 |
 | 切换模型后，rollout 的 `turn_context` 要到下一轮才会记录新模型（推测，**未验证**） | 客户端显示滞后 | 先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对 |
 
-## 4. 做实测时的注意事项
+## 6. 做实测时的注意事项
 
 - 用独立的 tmux socket（`tmux -L <名字>`），不影响平时用的 tmux，测完 `kill-server`
 - 实测会改到真实的 `~/.codex/config.toml`，比如目录信任记录。测前记下文件的校验值，测后对比

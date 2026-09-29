@@ -67,9 +67,10 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
 
 ### 要先实测的
 
-- hook 应该装在哪里：写进全局的 `~/.codex/hooks.json`，会影响你直接运行的 `codex`；最好能只对 remote-agent 启动的会话生效
+- ~~hook 应该装在哪里~~：已验证，启动时用 `-c` 传入，只对该会话生效（见 codex-notes 第 3 节）
 - 中断一轮该发什么键（Esc 还是 Ctrl-C），以及会不会顺带清掉输入框里的内容
-- 多个会话同时运行时，怎样把每个会话和它自己的 rollout 可靠地对应起来
+- 多个会话同时运行时，怎样把每个会话和它自己的 rollout 可靠地对应起来。线索：hook 的 payload 里带有 `transcript_path`，还要验证 `SessionStart` hook 是否一启动就提供这个字段
+- 审批和 `auto_review` 的配合：**已决定先让 `auto_review` 处理，只把它拿不准的发到手机**。要验证 Codex 能不能做到这一点，做不到的话怎么变通
 
 结果记到 [codex-notes.md](codex-notes.md)。
 
