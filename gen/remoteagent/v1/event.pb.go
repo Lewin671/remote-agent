@@ -783,9 +783,14 @@ func (*Event_ToolStarted) isEvent_Kind() {}
 // the call completes. Codex gives the two no common ID, so call_id is empty
 // and they pair in order; Claude Code runs tools in parallel and sets it.
 type ToolStarted struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	CallId        string                 `protobuf:"bytes,2,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Title  string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	CallId string                 `protobuf:"bytes,2,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	// What the ToolCall will carry, when known at the start (Claude Code).
+	Kind  ToolKind `protobuf:"varint,3,opt,name=kind,proto3,enum=remoteagent.v1.ToolKind" json:"kind,omitempty"`
+	Input string   `protobuf:"bytes,4,opt,name=input,proto3" json:"input,omitempty"`
+	// The CLI's tool name, e.g. "Bash".
+	ItemType      string `protobuf:"bytes,5,opt,name=item_type,json=itemType,proto3" json:"item_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -830,6 +835,27 @@ func (x *ToolStarted) GetTitle() string {
 func (x *ToolStarted) GetCallId() string {
 	if x != nil {
 		return x.CallId
+	}
+	return ""
+}
+
+func (x *ToolStarted) GetKind() ToolKind {
+	if x != nil {
+		return x.Kind
+	}
+	return ToolKind_TOOL_KIND_UNSPECIFIED
+}
+
+func (x *ToolStarted) GetInput() string {
+	if x != nil {
+		return x.Input
+	}
+	return ""
+}
+
+func (x *ToolStarted) GetItemType() string {
+	if x != nil {
+		return x.ItemType
 	}
 	return ""
 }
@@ -1387,8 +1413,10 @@ func (x *RateLimit) GetResetsAt() int64 {
 // ExitPlanMode call). The CLI then asks in the terminal whether to carry it
 // out.
 type PlanProposed struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Text  string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// Claude Code's ExitPlanMode call ID; empty for Codex.
+	CallId        string `protobuf:"bytes,2,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1426,6 +1454,13 @@ func (*PlanProposed) Descriptor() ([]byte, []int) {
 func (x *PlanProposed) GetText() string {
 	if x != nil {
 		return x.Text
+	}
+	return ""
+}
+
+func (x *PlanProposed) GetCallId() string {
+	if x != nil {
+		return x.CallId
 	}
 	return ""
 }
@@ -2184,10 +2219,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\rplan_proposed\x18\x18 \x01(\v2\x1c.remoteagent.v1.PlanProposedH\x00R\fplanProposed\x12L\n" +
 	"\x10settings_changed\x18\x19 \x01(\v2\x1f.remoteagent.v1.SettingsChangedH\x00R\x0fsettingsChanged\x12@\n" +
 	"\ftool_started\x18\x1a \x01(\v2\x1b.remoteagent.v1.ToolStartedH\x00R\vtoolStartedB\x06\n" +
-	"\x04kind\"<\n" +
+	"\x04kind\"\x9d\x01\n" +
 	"\vToolStarted\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x17\n" +
-	"\acall_id\x18\x02 \x01(\tR\x06callId\"B\n" +
+	"\acall_id\x18\x02 \x01(\tR\x06callId\x12,\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x18.remoteagent.v1.ToolKindR\x04kind\x12\x14\n" +
+	"\x05input\x18\x04 \x01(\tR\x05input\x12\x1b\n" +
+	"\titem_type\x18\x05 \x01(\tR\bitemType\"B\n" +
 	"\vUserMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
 	"\vimage_count\x18\x02 \x01(\x05R\n" +
@@ -2234,9 +2272,10 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\tRateLimit\x12!\n" +
 	"\fused_percent\x18\x01 \x01(\x01R\vusedPercent\x12%\n" +
 	"\x0ewindow_minutes\x18\x02 \x01(\x03R\rwindowMinutes\x12\x1b\n" +
-	"\tresets_at\x18\x03 \x01(\x03R\bresetsAt\"\"\n" +
+	"\tresets_at\x18\x03 \x01(\x03R\bresetsAt\";\n" +
 	"\fPlanProposed\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"\x8f\x01\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x17\n" +
+	"\acall_id\x18\x02 \x01(\tR\x06callId\"\x8f\x01\n" +
 	"\x0fSettingsChanged\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +
@@ -2402,23 +2441,24 @@ var file_remoteagent_v1_event_proto_depIdxs = []int32{
 	17, // 15: remoteagent.v1.Event.plan_proposed:type_name -> remoteagent.v1.PlanProposed
 	18, // 16: remoteagent.v1.Event.settings_changed:type_name -> remoteagent.v1.SettingsChanged
 	8,  // 17: remoteagent.v1.Event.tool_started:type_name -> remoteagent.v1.ToolStarted
-	1,  // 18: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
-	2,  // 19: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
-	16, // 20: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
-	16, // 21: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
-	3,  // 22: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
-	29, // 23: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
-	4,  // 24: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
-	22, // 25: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
-	23, // 26: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
-	25, // 27: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
-	5,  // 28: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
-	6,  // 29: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	1,  // 18: remoteagent.v1.ToolStarted.kind:type_name -> remoteagent.v1.ToolKind
+	1,  // 19: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
+	2,  // 20: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
+	16, // 21: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
+	16, // 22: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
+	3,  // 23: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
+	29, // 24: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
+	4,  // 25: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
+	22, // 26: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
+	23, // 27: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
+	25, // 28: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
+	5,  // 29: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
+	6,  // 30: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
+	31, // [31:31] is the sub-list for method output_type
+	31, // [31:31] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_event_proto_init() }

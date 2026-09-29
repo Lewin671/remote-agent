@@ -42,6 +42,11 @@ message Event {
 message ToolStarted {
   string title = 1;
   string call_id = 2;
+  // What the ToolCall will carry, when known at the start (Claude Code).
+  ToolKind kind = 3;
+  string input = 4;
+  // The CLI's tool name, e.g. "Bash".
+  string item_type = 5;
 }
 
 // Agent is the CLI a session runs. Sessions recorded before Claude Code
@@ -139,6 +144,8 @@ message RateLimit {
 // out.
 message PlanProposed {
   string text = 1;
+  // Claude Code's ExitPlanMode call ID; empty for Codex.
+  string call_id = 2;
 }
 
 // ApprovalMode is what a client can switch a session to. ASK, AUTO and
