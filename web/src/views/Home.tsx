@@ -83,7 +83,8 @@ function TodoCard({ remote, s, go, wide }: { remote: Remote; s: SessionView; go:
         <>
           {!wide && a.description && <div className="desc">{a.description}</div>}
           <pre>{approvalText(a)}</pre>
-          <ApprovalActions remote={remote} sid={s.id} a={a} agent={agent} wideRow={wide} />
+          {/* Keyed by approval: the next one must not inherit this one's locked buttons. */}
+          <ApprovalActions key={a.approvalId} remote={remote} sid={s.id} a={a} agent={agent} wideRow={wide} />
         </>
       )}
     </div>
