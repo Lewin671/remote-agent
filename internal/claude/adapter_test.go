@@ -465,3 +465,12 @@ func TestAnswerPlanWrapped(t *testing.T) {
 		t.Fatalf("implement: %v %q", err, f.writes)
 	}
 }
+
+func TestConfirmedEffortUnchanged(t *testing.T) {
+	if !confirmed("  ⎿  Set model to Sonnet 5.5 for this session only\n", "Sonnet", "low") {
+		t.Fatal("an unchanged effort is not named")
+	}
+	if confirmed("  ⎿  Set model to Sonnet 5.5 for this session only with high effort\n", "Sonnet", "low") {
+		t.Fatal("wrong effort accepted")
+	}
+}

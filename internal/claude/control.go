@@ -270,14 +270,15 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 
 // confirmed reports whether the latest "Set model to …" note names the
 // model and effort, e.g. "Set model to Sonnet 5.5 for this session only
-// with low effort".
+// with low effort"; an effort that did not change is not named.
 func confirmed(plain, name, effort string) bool {
 	lines := strings.Split(plain, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		if strings.Contains(lines[i], "Set model to") {
 			l := lines[i]
+			// The effort is named only when it changed.
 			return strings.Contains(l, name) && strings.Contains(l, "for this session only") &&
-				(effort == "" || strings.Contains(l, "with "+effort+" effort"))
+				(effort == "" || !strings.Contains(l, " effort") || strings.Contains(l, "with "+effort+" effort"))
 		}
 	}
 	return false
