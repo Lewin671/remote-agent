@@ -251,8 +251,11 @@ func (f *fakeClaude) Write(b []byte) error {
 			}
 			break
 		}
-	case k == "/model":
+	case k == "/model" || k == "/plan":
 		f.typed = k
+	case k == agent.KeyEnter && f.typed == "/plan":
+		f.typed = ""
+		f.mode = index("plan")
 	case k == agent.KeyEnter && f.typed == "/model":
 		f.typed = ""
 		f.menu = []string{"Default (recommended)", "Opus", "Fable", "Sonnet", "Haiku ✔"}
@@ -275,13 +278,34 @@ func TestSetMode(t *testing.T) {
 	if !errors.Is(err, agent.ErrUnsupported) || cycle[f.mode] != "default" {
 		t.Fatalf("bypass: %v %s", err, cycle[f.mode])
 	}
-	// While a turn runs, never pass through a looser mode.
+	// Idle, Plan is entered with /plan, passing no other mode.
+	f = &fakeClaude{}
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false); err != nil || cycle[f.mode] != "plan" || strings.Join(f.writes, "|") != "/plan|\r" {
+		t.Fatalf("/plan: %v %q", err, f.writes)
+	}
+	// While a turn runs, never pass through a looser mode (review C1).
+	for _, c := range []struct {
+		from string
+		to   pb.ApprovalMode
+		ok   bool
+	}{
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_ASK, false},        // via bypass and auto
+		{"default", pb.ApprovalMode_APPROVAL_MODE_PLAN, false},    // via accept edits
+		{"acceptEdits", pb.ApprovalMode_APPROVAL_MODE_PLAN, true}, // next
+		{"auto", pb.ApprovalMode_APPROVAL_MODE_ASK, true},         // next
+		{"bypassPermissions", pb.ApprovalMode_APPROVAL_MODE_AUTO, true},
+		{"default", pb.ApprovalMode_APPROVAL_MODE_AUTO, false}, // via bypass, or back via it
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+	} {
+		f = &fakeClaude{}
+		f.mode = index(c.from)
+		err := a.SetMode(f, c.to, true)
+		if c.ok != (err == nil) || !c.ok && (!errors.Is(err, agent.ErrBusy) || len(f.writes) != 0) {
+			t.Errorf("running %s → %v: %v %q", c.from, c.to, err, f.writes)
+		}
+	}
 	f = &fakeClaude{}
 	f.mode = index("plan")
-	n := len(f.writes)
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true); !errors.Is(err, agent.ErrBusy) || len(f.writes) != n {
-		t.Fatalf("running: %v %q", err, f.writes)
-	}
 	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); err != nil || cycle[f.mode] != "default" {
 		t.Fatalf("idle: %v %s", err, cycle[f.mode])
 	}

@@ -296,14 +296,34 @@ func lastLines(plain string, n int) string {
 // are skipped (claude-code-notes §5).
 var cycle = []string{"default", "acceptEdits", "plan", "bypassPermissions", "auto"}
 
-// looser are the modes that let tools run without asking.
-var looser = map[string]bool{"bypassPermissions": true, "auto": true}
+// looseness orders the modes by what they let through without asking.
+var looseness = map[string]int{"plan": 0, "default": 1, "acceptEdits": 2, "auto": 3, "bypassPermissions": 4}
 
-// SetMode presses Shift+Tab, reading the mode line after each press, until
-// it shows the mode. A mode not on offer is never reached: after a full
-// turn the original mode is restored and an error returned. While a turn
-// runs it refuses to pass through a looser mode on the way, which could
-// let a tool call through in that moment.
+// crosses reports whether cycling from one mode to another passes a mode
+// looser than limit on the way.
+func crosses(from, to string, limit int) bool {
+	for i := index(from) + 1; ; i++ {
+		m := cycle[i%len(cycle)]
+		if m == to {
+			return false
+		}
+		if looseness[m] > limit {
+			return true
+		}
+	}
+}
+
+// SetMode switches the permission mode. Plan, while idle, is /plan, which
+// goes there directly. Otherwise it presses Shift+Tab, reading the mode
+// line after each press, until it shows the mode; a mode not on offer is
+// never reached, and after a full turn the original mode is restored and
+// an error returned.
+//
+// While a turn runs, no mode on the way, nor on the way back should the
+// mode not be on offer, may be looser than the one asked for: a tool call
+// could get through in that moment. Idle, Shift+Tab has no other way
+// round (there is no reverse key, and /plan only enters Plan mode), and no
+// tool call is made then, so the way may pass looser modes.
 func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) error {
 	want, ok := permissionModes[mode]
 	if !ok {
@@ -320,16 +340,16 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) erro
 	if start == want {
 		return nil
 	}
-	if running {
-		for i := index(start) + 1; ; i++ {
-			m := cycle[i%len(cycle)]
-			if m == want {
-				break
-			}
-			if looser[m] {
-				return agent.ErrBusy
-			}
+	limit := looseness[want]
+	if running && (crosses(start, want, limit) || (want == "auto" || want == "bypassPermissions") && crosses(want, start, limit)) {
+		return agent.ErrBusy
+	}
+	if want == "plan" && !running {
+		if err := agent.Slash(t, "/plan"); err != nil {
+			return err
 		}
+		_, err := waitFor(t, "Plan mode", func(s agent.Screen, _ string) bool { return s.ComposerReady && s.Mode == "plan" })
+		return err
 	}
 	press := func() (string, error) {
 		before, _, err := screenNow(t)
