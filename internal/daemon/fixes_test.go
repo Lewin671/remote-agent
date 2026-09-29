@@ -33,6 +33,10 @@ func TestQueueSurvivesRestart(t *testing.T) {
 	defer cancel()
 	h.s.start(ctx)
 	eventually(t, "delivery after restart", func() bool { return len(h.term.written()) == 1 })
+	// Let the session finish settling the message before the test's
+	// directory is removed.
+	cancel()
+	<-h.s.done
 }
 
 // A message that was being written when the daemon died is settled from
