@@ -25,7 +25,7 @@ rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jso
 
 `/model` 不支持带参数，只能操作菜单。只在会话空闲时执行。
 
-1. 输入 `/model`，回车 → 出现 `Select Model and Effort`，模型带编号，当前模型标 `(current)`
+1. 输入 `/model`，回车 → 出现 `Select Model and Effort`，模型带编号，当前模型标 `(current)`，默认模型标 `(default)`。列出的是 `models_cache.json` 里 `visibility` 为 `list` 的模型，按 `priority` 排序
 2. 按模型对应的编号 → **直接选中**，进入 `Select Reasoning Level for <模型>`
 3. 档位列表：`Low`、`Medium`、`High`、`Extra high`，第 5 项 `More reasoning…` 是子菜单，里面是 `Max`、`Ultra`（有些模型没有 Ultra）
 4. 用方向键移到目标档位，按 **`s`** → 屏幕出现 `Model changed to <模型> <档位> for this session only`
@@ -36,6 +36,7 @@ rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jso
 - 模型的顺序和数量随版本、账号变化，编号不是固定的
 - 光标初始停在当前选中项，不在第一项，`›` 标出光标所在的行
 - `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 可以用新的模型和档位恢复会话
+- 按 `s` 以后，底部状态栏立刻变成新的模型和档位（如 `GPT-6-Luna high`）；rollout 要到下一轮开头才有 `thread_settings_applied` 和新的 `turn_context`（0.157.1 实测）
 
 ## 3. 审批 hook（PermissionRequest）
 
@@ -85,8 +86,12 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 | 权限 | `/permissions` 菜单里的 3 档：`Ask for approval`、`Approve for me`、`Full Access` | 空闲时输入 `/permissions`，回车，方向键选，回车；屏幕出现 `Permission selection requested: <档位>` | rollout 的 `turn_context`：`approval_policy`、`sandbox_policy`、`approvals_reviewer`（`user` 或 `auto_review`）；`/status` 的 `Permissions` 一行 |
 | 协作模式 | `Default`、`Plan` | Shift+Tab 开关 | `turn_context.collaboration_mode.mode`；屏幕右下角出现 `Plan mode` |
 
+**计划模式怎么结束**：模型给出计划后，rollout 里先有一条 `item_completed`，`item.type` 为 `Plan`、`item.text` 是计划正文，再有一条正文包在 `<proposed_plan>` 里的助手消息，然后这一轮以 `task_complete` 正常结束。同时屏幕上弹出 `Implement this plan?`：`1. Yes, implement this plan`（切回 Default 并开始执行）、`2. Yes, clear context and implement`、`3. No, stay in Plan mode`，数字键直接选。选 1 后 Codex 自己发起新的一轮，用户消息是 `Implement the plan.`，`turn_context` 的 `collaboration_mode` 变回 `default`
+
 - `/permissions` 的选择**只对当前会话生效**：实测切换后 `config.toml` 没有变化
-- 三档和配置项的对应关系：`Ask for approval` 实测为 `on-request` + `workspace-write` + reviewer `user`；`Approve for me` 对应 `approvals_reviewer = "auto_review"`（本机默认值）；`Full Access` 未实测
+- 三档和配置项的对应关系：`Ask for approval` 实测为 `on-request` + `workspace-write` + reviewer `user`；`Approve for me` 是 `on-request` + `workspace-write` + reviewer `auto_review`（本机默认值）；`Full Access` 是 `never` + `danger-full-access` + reviewer `user`
+- 菜单标题是 `Update Model Permissions`，当前档位标 `(current)`。**按数字键直接选中**，不用方向键加回车。选 `Full Access` 会再弹一个 `Enable full access?`，`1. Yes, continue anyway` 才生效，`2. Cancel` 返回
+- **一轮运行中也能用** `/permissions`：输入框在运行中照样可以输入斜杠命令并回车打开菜单。选中后屏幕立刻出现 `Permission selection requested`，但这一轮的 `turn_context` 不变，下一轮才按新档位记录；下一轮开头还会有一条 `event_msg.thread_settings_applied`
 - 原生审批框的选项：`1. Yes, proceed (y)`、`2. Yes, and don't ask again for commands that start with <前缀> (p)`、`3. No, and tell Codex what to do differently (esc)`。hook 只能返回 allow 或 deny 加 message，做不到第 2 项
 - 在 `workspace-write` 下联网命令先在沙箱里失败，模型要再申请提权才会弹审批，不一定每次都会申请
 - `Approve for me` 和 hook 的配合见第 3 节：hook 不表态时才交给 `auto_review`

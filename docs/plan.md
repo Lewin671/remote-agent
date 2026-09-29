@@ -139,11 +139,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 
 **Codex 待实测**
 
-- `Full Access` 对应的配置项
-- 切换模型后，rollout 的 `turn_context` 是否要到下一轮才记录新模型
-- 运行中能否执行 `/permissions`
 - `auto_review` 直接拒绝时，模型是否会在对话里请求批准（目前没复现出来）
-- 计划模式怎么结束，能否在手机上批准计划
 - 模型提问：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
 
