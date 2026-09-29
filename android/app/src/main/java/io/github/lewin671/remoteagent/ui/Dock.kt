@@ -245,7 +245,10 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     val p = pal
     DockFrame(more) {
         DockTitle("计划待批准")
-        Text(text.lines().filter { it.isNotBlank() }.take(4).joinToString("\n"), style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
+        Text(
+            text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(4).joinToString("\n"),
+            style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis,
+        )
         Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onFull))
         PlanButtons(s, full = false)
     }

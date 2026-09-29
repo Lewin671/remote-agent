@@ -59,6 +59,9 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
     val requested = HashMap<String, String>()
     var turnTokens = 0L
     var lastTotal = 0L
+    var lastPct: Int? = null
+    // A compaction note waiting for the usage after it: its index and the percent before.
+    var compacted: Pair<Int, Int?>? = null
     fun flushTools() {
         if (tools.isNotEmpty()) out += ChatItem.Tools(toolKey, tools.toList())
         tools.clear()
@@ -110,6 +113,13 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
             Event.KindCase.TOKEN_USAGE -> {
                 if (lastTotal > 0) turnTokens += (e.tokenUsage.totalTokens - lastTotal).coerceAtLeast(0)
                 lastTotal = e.tokenUsage.totalTokens
+                val u = e.tokenUsage
+                lastPct = if (u.contextWindow > 0) minOf(100, (u.lastTotalTokens * 100 / u.contextWindow).toInt()) else null
+                compacted?.let { (i, before) ->
+                    val note = out[i] as ChatItem.Note
+                    if (before != null && lastPct != null) out[i] = note.copy(text = "上下文已压缩 · $before% → $lastPct%")
+                    compacted = null
+                }
             }
             Event.KindCase.TURN_STARTED -> turnTokens = 0
             Event.KindCase.TURN_ENDED -> {
@@ -129,7 +139,10 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
                     c.model.isNotEmpty() -> "已切换到 ${c.model} · ${c.effort}"
                     else -> modeOf(c.mode)?.let { "审批模式切到了 ${it.text}" }
                 }
-                if (text != null) out += ChatItem.Note(k, text)
+                if (text != null) {
+                    if (c.compacted) compacted = out.size to lastPct
+                    out += ChatItem.Note(k, text)
+                }
             }
             Event.KindCase.TURN_CONTEXT -> d.terminalChanges[e.seq]?.let {
                 flushTools()
@@ -206,7 +219,11 @@ fun ChatItemView(item: ChatItem, agent: String) {
                 Text("计划", style = MaterialTheme.typography.titleSmall, color = p.purple)
                 var open by rememberSaveable(item.key) { mutableStateOf(false) }
                 Box(Modifier.animateContentSize()) {
-                    if (open) Markdown(item.text) else Text(item.text.lines().take(6).joinToString("\n"), style = MaterialTheme.typography.bodyMedium, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                    if (open) Markdown(item.text)
+                    else Text(
+                        item.text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(6).joinToString("\n"),
+                        style = MaterialTheme.typography.bodyMedium, maxLines = 6, overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 if (item.text.lines().size > 6) Text(if (open) "收起" else "展开全文 ›", color = p.blue, modifier = Modifier.clickable { open = !open }.padding(top = 6.dp))
             }

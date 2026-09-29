@@ -226,7 +226,8 @@ private fun ChatPane(
     }
     var seen by remember { mutableStateOf(items.size) }
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
-    LaunchedEffect(items.size, outbox.size, d.tools.size, ime) {
+    // The dock appearing or going also moves the bottom.
+    LaunchedEffect(items.size, outbox.size, d.tools.size, ime, d.approvals.size, d.questions.size, s.info?.planOpen, status) {
         // Past the end: the list stops at its last item, even before its first layout.
         if (follow && items.isNotEmpty()) list.scrollToItem(items.size + d.tools.size + outbox.size + 3)
         if (follow) seen = items.size
@@ -437,7 +438,13 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
                 color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
                 bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
             ) { sheet = 1 }
-            val model = s.info?.model.orEmpty()
+            // Claude Code records full model IDs; show the alias the list offers.
+            var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+            LaunchedEffect(s.machineId, s.agent()) {
+                if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+            }
+            val raw = s.info?.model.orEmpty()
+            val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
             val effort = s.info?.effort.orEmpty()
             Chip(if (model.isEmpty()) "模型读取中" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { sheet = 2 }
             contextPercent(s)?.let { pc ->
