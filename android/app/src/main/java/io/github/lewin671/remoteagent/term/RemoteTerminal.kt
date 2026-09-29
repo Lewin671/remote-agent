@@ -212,9 +212,12 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         /** Bytes received but not yet shown before the stream is restarted. */
         const val MAX_BACKLOG = 2L * 1024 * 1024
 
-        // The terminal's own messages carry no content, but keep them short anyway.
+        // The emulator's messages can quote terminal output (a bad OSC 52
+        // payload, an unknown control string): only their size is logged.
         private fun log(m: String?) {
-            Log.w("remote-agent", "terminal: " + (m ?: "").take(120))
+            Log.w("remote-agent", redact(m))
         }
+
+        fun redact(m: String?): String = "terminal: emulator message of ${m?.length ?: 0} chars"
     }
 }
