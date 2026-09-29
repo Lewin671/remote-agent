@@ -190,6 +190,10 @@ Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程�
 | C3 Claude Code adapter | 实现三组接口；transcript 解析有脱敏的 fixture 测试；`remote-agent doctor` 同样检查 Claude Code | 用真实的 Claude Code 走一遍 P0 的验收标准 2–7 |
 | C4 客户端 | 网页和 App 新建会话时选 CLI，文案按会话的 CLI 显示 | 在网页和 App 上各完整操作一次 Claude Code 会话 |
 
+C1–C3 已完成。C3 的验收在本机用真实的 Claude Code 2.1.284（haiku）手动走了一遍，全部通过（2026-09-29）：send 和本地草稿时排队、`events --follow` 按顺序输出一轮、approve / deny 附理由 / 超时拒绝、终端里先答时收回卡片、interrupt、单问 / 两问 / 多选提问的远程回答和本地先答、计划的远程批准、切换模型和审批模式（不可用的模式报错并回到原模式）、压缩、stop 后 resume 接着同一段对话、重启 daemon 后序号接着走；`remote-agent doctor claude` 全部通过。Codex 这边 `scripts/acceptance.sh` 照常通过。还没有 Claude Code 版的 `scripts/acceptance.sh`。
+
+C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`full_access_unavailable`；`Question.multi_select` 和 `AnswerQuestionRequest.options`；`APPROVAL_DECISION_TERMINAL`；`TurnContext.permission_mode`；`MachineMeta.agents`；`ListModelsRequest.agent`；`DaemonSettings.claude`。Claude Code 不支持计划的「清空上下文再执行」，没有账户额度，haiku 没有推理强度，也没有 auto 模式。
+
 ## W 网页按 v1 改版
 
 按 [design/client-v1.html](design/client-v1.html) 改网页，手机和宽屏一起改，亮色和暗色都要一致。验收：界面稿里的每个画面和状态集在本机 Chrome 上逐一对照；`cd web && pnpm test` 覆盖状态优先级、停靠区顺序、消息发送状态和 Markdown 渲染。

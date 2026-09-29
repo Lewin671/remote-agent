@@ -392,7 +392,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 下面是 Claude Code 这一侧的具体做法，括号里的「notes §n」指 [claude-code-notes.md](claude-code-notes.md) 的第 n 节。
 
-- **启动**：`remote-agent pty-host -- claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
+- **启动**：`remote-agent pty-host -- claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`，以及只匹配 AskUserQuestion 和 ExitPlanMode 的 `PreToolUse`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
 - **模型、推理强度、审批模式**：新建时换成 `--model`、`--effort`、`--permission-mode`；没指定就不传，沿用 Claude Code 自己的配置。「完全放行」对应 `bypassPermissions`：只有启动时就允许了 bypass 的会话能切过去（notes §5），daemon 按启动参数和 `~/.claude/settings.json` 的 `defaultMode` 判断，不可用时会话信息里标出来，客户端置灰。remote-agent 不替用户加 `--allow-dangerously-skip-permissions`
 - **恢复会话**：transcript 已经存在时用 `--resume <id>`，否则（从没发过消息）仍用 `--session-id <id>`；沿用原来的参数，再用最近一轮的模型、推理强度和审批模式覆盖，同名选项先从原参数里去掉。恢复时 transcript 里的 `permission-mode` 记录是上次的模式（notes §2），所以当前模式以屏幕上的模式行为准
 - **启动弹窗**：信任目录的光标默认在 `No, exit`，回车就退出（notes §1），和 Codex 一样留给用户在终端里处理，客户端提示去终端
@@ -400,8 +400,9 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **解析 transcript**：带 `origin.kind: human` 的用户记录是新一轮的开始和用户消息；`turn_duration` 是正常结束，`[Request interrupted by user…]` 是被中断，两者可能先后都有，只记第一个；`isMeta`、斜杠命令、压缩摘要都不算用户消息；运行中并入这一轮的消息（`queued_command` 附件）记为用户消息但不开新的一轮。`tool_use` 记为 `ToolStarted`（带调用 ID），`tool_result` 按调用 ID 配成 `ToolCall`；`thinking` 记为推理（终端里默认折叠，按 ctrl+o 能看到同样的内容）。`compact_boundary` 记为「上下文已压缩」。模型和推理强度取自 `assistant` 记录，上下文占用由 `usage` 算出，窗口大小按模型推断（notes §2）
 - **输入**：和 Codex 相同的排队、暂存本地按键、bracketed paste。输入框的判断按 Claude Code 的画法：两条横线之间只有一行，`❯` 后面没有普通样式的字（光标是反色的一格，占位提示是淡色）才算空（notes §4）。运行中也可以注入，Claude Code 会把它排进当前这一轮；以 transcript 里出现这条用户消息或 `queue-operation` 的 `enqueue` 记录为已提交
 - **中断**：只在运行中发 Esc
-- **模型提问**：让原生选择框照常出现，问题从 transcript 的 `tool_use` 读出；回答时暂存本地按键、确认屏幕上是这个问题，再按选项编号（多选时按几个编号再按 →），出现提交页就按 1。以 transcript 的 `tool_result` 为准，本地先答了就收回卡片。**不用阻塞 `PreToolUse` hook 回答**：那样虽然能直接把答案交给模型，但 hook 等待期间电脑终端里看不到问题，违背「电脑和手机操作同一个会话」（notes §7 两条路的实测对比）
-- **计划**：`ExitPlanMode` 的 `tool_use` 记为 `PlanProposed`，屏幕上的计划框让会话处于「计划待批准」。批准（`IMPLEMENT`）按「Yes, manually approve edits」那一项，执行后回到 manual；继续规划（`KEEP_PLANNING`）按 Esc，留在 Plan 模式；Claude Code 没有「清空上下文再执行」，这一项返回不支持。hook 批准计划不起作用（notes §8）
+- **模型提问**：让原生选择框照常出现。问题由 `PreToolUse` hook 报给 daemon（hook 立即返回、不表态），因为 transcript 可能要等回答之后才写入这次调用（notes §2）；transcript 里随后出现的同一调用不再重复。回答时暂存本地按键、确认屏幕上是这个问题，再按选项编号（多选时按几个编号再按 →），出现提交页就按 1。以 transcript 的 `tool_result` 为准，本地先答了就收回卡片。**不用阻塞 `PreToolUse` hook 回答**：那样虽然能直接把答案交给模型，但 hook 等待期间电脑终端里看不到问题，违背「电脑和手机操作同一个会话」（notes §7 两条路的实测对比）
+- **计划**：`ExitPlanMode` 同样由 `PreToolUse` hook 报来，记为 `PlanProposed`，屏幕上的计划框让会话处于「计划待批准」。批准（`IMPLEMENT`）按「Yes, manually approve edits」那一项，执行后回到 manual；继续规划（`KEEP_PLANNING`）按 Esc，留在 Plan 模式；Claude Code 没有「清空上下文再执行」，这一项返回不支持。hook 批准计划不起作用（notes §8）
+- **当前审批模式**：以屏幕上的模式行为准。在电脑终端里用 Shift+Tab 切的，daemon 从屏幕看到后记一条 `TurnContext`（`permission_mode`），不用等下一条消息；会话信息的 `mode` 按第 7 节的对应关系给出，accept edits 这类没有对应的给 UNSPECIFIED，原名在 `permission_mode` 里
 - **切换审批模式**：用 Shift+Tab 在模式行上一格一格地走到目标模式，每按一次都读模式行确认；转一圈都没遇到目标就报错。运行中也能切（notes §5），但途中要经过比目标更宽松的模式（bypass、auto）时，只在空闲时切，免得那一瞬间放行了工具调用
 - **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、←/→ 调推理强度，按 `s` 只改当前会话；弹出 `Switch model?` 时按 1。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID
 - **压缩**：空闲时 `/compact`，以屏幕出现 `Compacting conversation` 或 transcript 出现 `compact_boundary` 为开始
