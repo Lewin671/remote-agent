@@ -263,6 +263,37 @@ func TestApprovalReplyRacingTimeout(t *testing.T) {
 	}
 }
 
+// A reply after the deadline is refused even if the timer has not fired,
+// e.g. when the machine was asleep.
+func TestApprovalReplyAfterDeadline(t *testing.T) {
+	h := newHarness(t, Config{ApprovalTimeout: time.Minute})
+	h.writeRollout(turnContextLine("user"))
+	out := make(chan []byte, 1)
+	go func() {
+		b, _ := h.s.hook(context.Background(), permissionPayload(h))
+		out <- b
+	}()
+	var id string
+	for id == "" {
+		h.s.mu.Lock()
+		for k, a := range h.s.approvals {
+			id = k
+			a.deadline = time.Now().Add(-time.Second)
+		}
+		h.s.mu.Unlock()
+		time.Sleep(time.Millisecond)
+	}
+	if err := h.s.resolve(id, true, ""); !errors.Is(err, errExpired) {
+		t.Fatalf("late reply: %v", err)
+	}
+	h.s.mu.Lock()
+	a := h.s.approvals[id]
+	h.s.mu.Unlock()
+	if a == nil || a.claimed {
+		t.Fatal("a refused late reply must leave the approval to the timer")
+	}
+}
+
 // Control operations do not interleave: nothing is written between another
 // operation's hold and release.
 func TestControlOperationsAreSerialized(t *testing.T) {

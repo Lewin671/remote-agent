@@ -24,6 +24,7 @@ import (
 var (
 	errExited       = errors.New("session has exited")
 	errNotFound     = errors.New("not found")
+	errExpired      = errors.New("the approval has timed out")
 	errNotAnswering = errors.New("the question is not showing in the terminal")
 	errHeadChanged  = errors.New("the queue head changed")
 	errWriting      = errors.New("the message is being written to the terminal and can no longer be canceled")
@@ -81,6 +82,9 @@ type approval struct {
 	// claimed is set, under s.mu, by whoever settles the approval first:
 	// a reply, the timeout, a canceled hook, or the session exiting.
 	claimed bool
+	// deadline is when the approval times out. A reply after it is refused
+	// even if the timer has not fired yet.
+	deadline time.Time
 }
 
 type decision struct {
@@ -819,13 +823,13 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 		return nil, nil
 	}
 
-	a := &approval{id: newID(4), decision: make(chan decision, 1)}
 	timeout := s.d.approvalTimeout()
+	a := &approval{id: newID(4), decision: make(chan decision, 1), deadline: time.Now().Add(timeout)}
 	req := &pb.ApprovalRequested{
 		ApprovalId:    a.id,
 		ToolName:      p.ToolName,
 		ToolInputJson: string(p.ToolInput),
-		Deadline:      timestamppb.New(time.Now().Add(timeout)),
+		Deadline:      timestamppb.New(a.deadline),
 	}
 	var shell codex.ShellInput
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
@@ -899,6 +903,10 @@ func (s *session) resolve(id string, allow bool, message string) error {
 	if !ok || a.claimed {
 		s.mu.Unlock()
 		return fmt.Errorf("approval %s: %w", id, errNotFound)
+	}
+	if !time.Now().Before(a.deadline) {
+		s.mu.Unlock()
+		return fmt.Errorf("approval %s: %w", id, errExpired)
 	}
 	a.claimed = true
 	delete(s.approvals, id)
