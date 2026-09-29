@@ -140,6 +140,13 @@ func (t *TermStream) Snapshot() (*pb.TerminalSnapshot, error) {
 	if _, err := fmt.Sscan(info, &cols, &rows, &cx, &cy, &visible); err != nil {
 		return nil, fmt.Errorf("read the pane size: %w", err)
 	}
+	// Pass on output from before the capture: some of it may be in the
+	// snapshot already and is drawn again, which for a TUI that positions
+	// its cursor absolutely changes nothing, while output lost between
+	// the capture and the switch would leave the screen wrong.
+	t.mu.Lock()
+	t.live = true
+	t.mu.Unlock()
 	screen, err := tc.Capture(t.name, true)
 	if err != nil {
 		return nil, err
@@ -161,13 +168,6 @@ func (t *TermStream) Snapshot() (*pb.TerminalSnapshot, error) {
 		b.WriteString("\x1b[?25l")
 	} else {
 		b.WriteString("\x1b[?25h")
-	}
-	// Output from before the capture is in the snapshot already.
-	t.mu.Lock()
-	t.live = true
-	t.mu.Unlock()
-	for len(t.out) > 0 {
-		<-t.out
 	}
 	return &pb.TerminalSnapshot{Data: []byte(b.String()), Cols: int32(cols), Rows: int32(rows)}, nil
 }

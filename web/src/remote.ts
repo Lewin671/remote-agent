@@ -284,6 +284,12 @@ export class Remote {
     try {
       const pushes = new Map(this.machinePushes);
       const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({})]);
+      // Forget what the server no longer has, e.g. a machine another
+      // device removed while this one was offline.
+      const machines = new Set(ms.machines.map((m) => m.id));
+      const sessions = new Set(ss.sessions.map((s) => s.sessionId));
+      for (const id of this.machines.keys()) if (!machines.has(id)) this.machines.delete(id);
+      for (const id of this.sessions.keys()) if (!sessions.has(id)) this.sessions.delete(id);
       for (const m of ms.machines) {
         const stale = (this.machinePushes.get(m.id) ?? 0) !== (pushes.get(m.id) ?? 0);
         await this.putMachine(m, stale);

@@ -111,15 +111,17 @@ export async function initiate(remote: Remote): Promise<Initiation> {
         create(PairingPayloadSchema, { root: acct.rootRaw, server: acct.server }),
       );
       await pc.approvePairing({ pairingId: id, payload: env });
-      // The pairing disappears once the new device took the key.
+      // The server deletes the pairing once the new device took the key;
+      // only that counts as success. Other errors are retried.
       for (let i = 0; i < 120 && !stopped; i++) {
         try {
           await pc.getPairing({ pairingId: id });
-        } catch {
-          return;
+        } catch (e) {
+          if (ConnectError.from(e).code === Code.NotFound) return;
         }
         await sleep(1000);
       }
+      throw new Error(stopped ? "已取消" : "新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。");
     },
     cancel: () => {
       stopped = true;

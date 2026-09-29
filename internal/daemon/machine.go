@@ -224,8 +224,11 @@ func modeArgs(mode pb.ApprovalMode) []string {
 func (d *Daemon) sessionArgs(req *pb.CreateSessionRequest) ([]string, error) {
 	st := d.settings()
 	model, effort, mode := req.Model, req.Effort, req.Mode
-	if model == "" && effort == "" {
-		model, effort = st.DefaultModel, st.DefaultEffort
+	if model == "" {
+		model = st.DefaultModel
+	}
+	if effort == "" {
+		effort = st.DefaultEffort
 	}
 	if mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		mode = st.DefaultMode

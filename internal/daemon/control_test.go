@@ -256,6 +256,10 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-luna") || !strings.Contains(j, `sandbox_mode="danger-full-access"`) {
 		t.Fatalf("explicit: %q", args)
 	}
+	args, _ = d.sessionArgs(&pb.CreateSessionRequest{Effort: "low"})
+	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-sol") || !strings.Contains(j, `model_reasoning_effort="low"`) {
+		t.Fatalf("effort only: %q", args)
+	}
 	if _, err := d.sessionArgs(&pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
 		t.Fatal("accepted a bad model name")
 	}
