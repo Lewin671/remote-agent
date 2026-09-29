@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
 func composer(footer string) string {
@@ -68,7 +69,7 @@ func fakeCodex(footer *string) func(f *fakeTerm, b string) {
 		case strings.Contains(f.screen, "Select Model and Effort") && b == "3":
 			cursor = 1
 			f.screen = effortMenu(cursor)
-		case strings.Contains(f.screen, "Select Reasoning Level") && b == keyDown:
+		case strings.Contains(f.screen, "Select Reasoning Level") && b == agent.KeyDown:
 			cursor++
 			f.screen = effortMenu(cursor)
 		case strings.Contains(f.screen, "Select Reasoning Level") && b == "s":
@@ -81,21 +82,25 @@ func fakeCodex(footer *string) func(f *fakeTerm, b string) {
 			f.screen = "• Permission selection requested: X\n" + composer(*footer)
 		case strings.Contains(f.screen, "Enable full access?") && b == "1":
 			f.screen = "• Permission selection requested: Full Access\n" + composer(*footer)
-		case b == keyBTab:
+		case b == agent.KeyBTab:
 			if strings.HasSuffix(*footer, "Plan mode") {
 				*footer = strings.TrimSuffix(*footer, "   Plan mode")
 			} else {
 				*footer += "   Plan mode"
 			}
 			f.screen = composer(*footer)
-		case b == keyEsc:
+		case b == agent.KeyEsc:
 			f.screen = composer(*footer)
 		}
 	}
 }
 
 func controlHarness(t *testing.T) (*harness, *string) {
-	h := newHarness(t, Config{})
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, "models_cache.json"), []byte(`{"models":[
+		{"slug":"gpt-6-sol","display_name":"GPT-6-Sol","visibility":"list","priority":2},
+		{"slug":"gpt-6-luna","display_name":"GPT-6-Luna","visibility":"list","priority":3}]}`), 0o600)
+	h := newHarness(t, Config{CodexHome: home})
 	footer := "GPT-6-Sol medium · /tmp/w"
 	h.term.mu.Lock()
 	h.term.screen = composer(footer)
@@ -116,14 +121,14 @@ func lastSettings(h *harness) *pb.SettingsChanged {
 
 func TestSetModel(t *testing.T) {
 	h, footer := controlHarness(t)
-	if err := h.s.setModel("gpt-6-luna", "high", "GPT-6-Luna"); err != nil {
+	if err := h.s.setModel("gpt-6-luna", "high"); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(*footer, "GPT-6-Luna high") {
 		t.Fatalf("footer %q", *footer)
 	}
 	w := h.term.written()
-	want := []string{"/model", "\r", "3", keyDown, "s"}
+	want := []string{"/model", "\r", "3", agent.KeyDown, "s"}
 	if strings.Join(w, "|") != strings.Join(want, "|") {
 		t.Fatalf("keys %q, want %q", w, want)
 	}
@@ -137,7 +142,7 @@ func TestSetModel(t *testing.T) {
 
 func TestSetModelRefusesUnknownScreens(t *testing.T) {
 	h, _ := controlHarness(t)
-	if err := h.s.setModel("gpt-9", "high", "GPT-9"); err == nil {
+	if err := h.s.setModel("gpt-9", "high"); err == nil {
 		t.Fatal("picked a model the menu does not list")
 	}
 	// The menu was left with Esc and nothing else was chosen.
@@ -149,7 +154,7 @@ func TestSetModelRefusesUnknownScreens(t *testing.T) {
 	// A draft in the input box is never typed over.
 	h.term.setScreen("\x1b[1m›\x1b[0m my draft\n  GPT-6-Sol medium\n")
 	n := len(h.term.written())
-	if err := h.s.setModel("gpt-6-luna", "high", "GPT-6-Luna"); !errors.Is(err, errNotReady) {
+	if err := h.s.setModel("gpt-6-luna", "high"); !errors.Is(err, errNotReady) {
 		t.Fatalf("with a draft: %v", err)
 	}
 	if len(h.term.written()) != n {
@@ -210,7 +215,7 @@ func TestListModelsAndDirectories(t *testing.T) {
 		{"slug":"a","display_name":"A","visibility":"list","priority":2,"supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}`), 0o600)
 	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model = \"a\"\n[profiles.x]\nmodel = \"b\"\n"), 0o600)
 	d := New(Config{CodexHome: home})
-	res, err := d.listModels()
+	res, err := d.listModels(pb.Agent_AGENT_UNSPECIFIED)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,51 +253,20 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	if d.approvalTimeout().Seconds() != 300 {
 		t.Fatal("timeout not applied")
 	}
-	args, err := d.sessionArgs(&pb.CreateSessionRequest{})
+	args, err := d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{})
 	if err != nil || !strings.Contains(strings.Join(args, " "), `-m gpt-6-sol -c model_reasoning_effort="high" -c approvals_reviewer="auto_review"`) {
 		t.Fatalf("defaults: %q %v", args, err)
 	}
-	args, _ = d.sessionArgs(&pb.CreateSessionRequest{Model: "gpt-6-luna", Mode: pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS})
+	args, _ = d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Model: "gpt-6-luna", Mode: pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS})
 	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-luna") || !strings.Contains(j, `sandbox_mode="danger-full-access"`) {
 		t.Fatalf("explicit: %q", args)
 	}
-	args, _ = d.sessionArgs(&pb.CreateSessionRequest{Effort: "low"})
+	args, _ = d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Effort: "low"})
 	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-sol") || !strings.Contains(j, `model_reasoning_effort="low"`) {
 		t.Fatalf("effort only: %q", args)
 	}
-	if _, err := d.sessionArgs(&pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
+	if _, err := d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
 		t.Fatal("accepted a bad model name")
 	}
 }
 
-func TestFlagArgs(t *testing.T) {
-	args := []string{"-m", "gpt-6-luna", "--search", "-c", `a="b c"`, "fix the bug", "--profile", "work", "--add-dir=/x", "-s", "read-only", "--model=o", "--", "rest"}
-	for _, c := range []struct {
-		drop map[string]bool
-		want []string
-	}{
-		{nil, []string{"-m", "gpt-6-luna", "--search", "-c", `a="b c"`, "--profile", "work", "--add-dir=/x", "-s", "read-only", "--model=o"}},
-		{map[string]bool{"-m": true, "--model": true, "-s": true}, []string{"--search", "-c", `a="b c"`, "--profile", "work", "--add-dir=/x"}},
-	} {
-		if got := flagArgs(args, c.drop); strings.Join(got, "|") != strings.Join(c.want, "|") {
-			t.Errorf("drop %v: got %q", c.drop, got)
-		}
-	}
-}
-
-func TestExactMode(t *testing.T) {
-	for _, c := range []struct {
-		ctx  *pb.TurnContext
-		want pb.ApprovalMode
-	}{
-		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "on-request", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_ASK},
-		{&pb.TurnContext{ApprovalsReviewer: "auto_review", ApprovalPolicy: "on-request", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_AUTO},
-		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "never", Sandbox: "danger-full-access"}, pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS},
-		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "on-request", Sandbox: "read-only"}, pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED},
-		{&pb.TurnContext{ApprovalsReviewer: "user", ApprovalPolicy: "untrusted", Sandbox: "workspace-write"}, pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED},
-	} {
-		if got := exactMode(c.ctx); got != c.want {
-			t.Errorf("%v: got %v, want %v", c.ctx, got, c.want)
-		}
-	}
-}

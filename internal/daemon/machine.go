@@ -1,18 +1,16 @@
 package daemon
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -20,74 +18,13 @@ import (
 
 // --- models ---
 
-// listModels reads the models Codex offers in /model from its cache.
-func (d *Daemon) listModels() (*pb.ListModelsResponse, error) {
-	b, err := os.ReadFile(filepath.Join(d.cfg.CodexHome, "models_cache.json"))
+// listModels lists the models a CLI's sessions can switch to.
+func (d *Daemon) listModels(k pb.Agent) (*pb.ListModelsResponse, error) {
+	ag, err := d.knownAgent(k)
 	if err != nil {
-		return nil, fmt.Errorf("read Codex's model list: %w", err)
+		return nil, err
 	}
-	var cache struct {
-		Models []struct {
-			Slug         string `json:"slug"`
-			DisplayName  string `json:"display_name"`
-			Description  string `json:"description"`
-			Visibility   string `json:"visibility"`
-			Priority     int    `json:"priority"`
-			DefaultLevel string `json:"default_reasoning_level"`
-			Levels       []struct {
-				Effort string `json:"effort"`
-			} `json:"supported_reasoning_levels"`
-		} `json:"models"`
-	}
-	if err := json.Unmarshal(b, &cache); err != nil {
-		return nil, fmt.Errorf("read Codex's model list: %w", err)
-	}
-	sort.SliceStable(cache.Models, func(i, j int) bool { return cache.Models[i].Priority < cache.Models[j].Priority })
-	out := &pb.ListModelsResponse{DefaultModel: codexDefaultModel(d.cfg.CodexHome)}
-	for _, m := range cache.Models {
-		if m.Visibility != "list" {
-			continue
-		}
-		info := &pb.ModelInfo{Slug: m.Slug, DisplayName: m.DisplayName, Description: m.Description, DefaultEffort: m.DefaultLevel}
-		for _, l := range m.Levels {
-			info.Efforts = append(info.Efforts, l.Effort)
-		}
-		out.Models = append(out.Models, info)
-	}
-	return out, nil
-}
-
-var configModel = regexp.MustCompile(`(?m)^\s*model\s*=\s*"([^"]+)"`)
-
-// codexDefaultModel is the model set at the top of Codex's config.toml.
-func codexDefaultModel(codexHome string) string {
-	b, err := os.ReadFile(filepath.Join(codexHome, "config.toml"))
-	if err != nil {
-		return ""
-	}
-	// Only the part before the first table holds the top-level keys.
-	top := string(b)
-	if i := strings.Index(top, "\n["); i >= 0 {
-		top = top[:i]
-	}
-	if m := configModel.FindStringSubmatch(top); m != nil {
-		return m[1]
-	}
-	return ""
-}
-
-// displayName is the name /model shows for a model slug.
-func (d *Daemon) displayName(slug string) (string, error) {
-	models, err := d.listModels()
-	if err != nil {
-		return "", err
-	}
-	for _, m := range models.Models {
-		if m.Slug == slug {
-			return m.DisplayName, nil
-		}
-	}
-	return "", fmt.Errorf("model %s: %w", slug, errNotFound)
+	return ag.Models()
 }
 
 // --- directories ---
@@ -156,8 +93,8 @@ func (d *Daemon) settings() *pb.DaemonSettings {
 }
 
 // maxApprovalTimeout keeps the timeout below the hook's own, after which
-// Codex would ask in the terminal instead (architecture §7).
-var maxApprovalTimeout = time.Duration(codex.HookTimeoutSeconds-60) * time.Second
+// the CLI would ask in the terminal instead (architecture §7).
+var maxApprovalTimeout = time.Duration(agent.HookTimeoutSeconds-60) * time.Second
 
 func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, error) {
 	t := time.Duration(st.ApprovalTimeoutSeconds) * time.Second
@@ -165,8 +102,8 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 		return nil, fmt.Errorf("approval timeout must be between 30s and %s", maxApprovalTimeout)
 	}
 	if st.DefaultEffort != "" {
-		if _, ok := effortLabels[st.DefaultEffort]; !ok {
-			return nil, fmt.Errorf("unknown effort %q", st.DefaultEffort)
+		if err := d.agents[pb.Agent_AGENT_CODEX].CheckEffort(st.DefaultEffort); err != nil {
+			return nil, err
 		}
 	}
 	if st.DefaultMode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
@@ -206,50 +143,20 @@ func writeFileAtomic(path string, b []byte) error {
 
 // --- new sessions ---
 
-// modeArgs are the codex flags that start a session in mode.
-func modeArgs(mode pb.ApprovalMode) []string {
-	switch mode {
-	case pb.ApprovalMode_APPROVAL_MODE_ASK:
-		return []string{"-c", `approvals_reviewer="user"`, "-c", `approval_policy="on-request"`, "-c", `sandbox_mode="workspace-write"`}
-	case pb.ApprovalMode_APPROVAL_MODE_AUTO:
-		return []string{"-c", `approvals_reviewer="auto_review"`, "-c", `approval_policy="on-request"`, "-c", `sandbox_mode="workspace-write"`}
-	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
-		return []string{"-c", `approvals_reviewer="user"`, "-c", `approval_policy="never"`, "-c", `sandbox_mode="danger-full-access"`}
-	}
-	return nil
-}
-
-// sessionArgs turns a create request's choices, or the daemon's defaults,
-// into codex flags.
-func (d *Daemon) sessionArgs(req *pb.CreateSessionRequest) ([]string, error) {
+// sessionArgs turns a create request's choices, or the daemon's defaults
+// for the CLI, into its arguments.
+func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]string, error) {
 	st := d.settings()
 	model, effort, mode := req.Model, req.Effort, req.Mode
+	def := &pb.AgentDefaults{Model: st.DefaultModel, Effort: st.DefaultEffort, Mode: st.DefaultMode}
 	if model == "" {
-		model = st.DefaultModel
+		model = def.Model
 	}
 	if effort == "" {
-		effort = st.DefaultEffort
+		effort = def.Effort
 	}
 	if mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
-		mode = st.DefaultMode
+		mode = def.Mode
 	}
-	if mode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
-		return nil, errors.New("sessions cannot start in Plan mode; switch to it once the session runs")
-	}
-	args := append([]string{}, req.Args...)
-	if model != "" {
-		if !safeValue.MatchString(model) {
-			return nil, fmt.Errorf("invalid model %q", model)
-		}
-		args = append(args, "-m", model)
-	}
-	if effort != "" {
-		if _, ok := effortLabels[effort]; !ok {
-			return nil, fmt.Errorf("unknown effort %q", effort)
-		}
-		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", effort))
-	}
-	return append(args, modeArgs(mode)...), nil
+	return ag.Options(req.Args, model, effort, mode)
 }
-
-var safeValue = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)

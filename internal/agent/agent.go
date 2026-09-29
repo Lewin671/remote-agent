@@ -1,0 +1,277 @@
+// Package agent defines what the daemon needs from each AI coding CLI it
+// runs, so that the daemon itself knows nothing about a CLI's screen,
+// menus, arguments or file formats. Each CLI has its own package (codex,
+// claude) implementing Adapter.
+package agent
+
+import (
+	"encoding/json"
+	"errors"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+)
+
+// Errors an adapter returns for conditions the caller can fix by waiting or
+// by changing its request.
+var (
+	ErrBusy        = errors.New("the CLI is busy; try again when the turn has ended")
+	ErrNotReady    = errors.New("the input box is not ready: a popup is open or the terminal holds an unsent draft")
+	ErrNoPlan      = errors.New("the CLI is not asking about a plan")
+	ErrUnsupported = errors.New("this CLI does not support that")
+	ErrNotFound    = errors.New("not found")
+)
+
+// HookTimeoutSeconds is the timeout the CLIs give the PermissionRequest
+// hook. Approvals must be decided before it, because a hook that times out
+// leaves the decision to the terminal. Changing it changes Codex's hook
+// definition, which makes Codex ask to trust it again.
+const HookTimeoutSeconds = 3600
+
+// Adapter is one CLI: how to start it, where its output comes from, and how
+// to operate its terminal.
+type Adapter interface {
+	Launcher
+	Source
+	Controller
+}
+
+// Launcher starts and resumes the CLI.
+type Launcher interface {
+	// Kind is the CLI's protocol value.
+	Kind() pb.Agent
+	// Name is the CLI's name for messages, e.g. "Codex".
+	Name() string
+	// Bin is the CLI's executable.
+	Bin() string
+	// Version is the installed CLI's version, read once; empty if unknown.
+	Version() string
+	// Tested reports whether the adapter was checked against version.
+	Tested(version string) bool
+	// Models lists the models a session can switch to.
+	Models() (*pb.ListModelsResponse, error)
+	// CheckEffort rejects an effort level the CLI does not know.
+	CheckEffort(effort string) error
+	// Options turns the options chosen for a new session into CLI
+	// arguments, which the session keeps for resuming.
+	Options(extra []string, model, effort string, mode pb.ApprovalMode) ([]string, error)
+	// Argv is the command line after the executable that starts or resumes
+	// a session. It may write files the CLI reads into l.Dir and set
+	// l.SessionID when the adapter chooses the CLI's session ID.
+	Argv(l *Launch) ([]string, error)
+}
+
+// Launch describes a session being started or resumed.
+type Launch struct {
+	// Dir is the session's private state directory.
+	Dir string
+	// Args are the arguments kept for the session.
+	Args []string
+	// SessionID is the CLI's own session ID, if known.
+	SessionID string
+	// Transcript is where the CLI writes the session, if known.
+	Transcript string
+	// Resume starts the CLI again for a session that ran before.
+	Resume bool
+	// Context holds the settings the session last ran with, when resuming.
+	Context *pb.TurnContext
+}
+
+// Source reads what the CLI records.
+type Source interface {
+	// NewParser returns a parser for the session's transcript.
+	NewParser() Parser
+	// SubmitLog is the file where the CLI records submitted input, given
+	// the session's transcript path (possibly empty).
+	SubmitLog(transcript string) string
+	// Submitted reports whether a line of the submit log records text as
+	// submitted in the CLI session cliSessionID (empty if unknown).
+	Submitted(line []byte, text, cliSessionID string) bool
+	// ForwardPermission reports whether a PermissionRequest hook call
+	// should wait for a client's decision. If not, the hook stays silent
+	// and the CLI decides on its own.
+	ForwardPermission(h *Hook, ctx *pb.TurnContext) bool
+	// ApplySettings updates the session's settings after a change made
+	// through remote-agent, before the CLI records it.
+	ApplySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext
+	// Mode is the approval mode the settings amount to; UNSPECIFIED when
+	// they match none of the four.
+	Mode(ctx *pb.TurnContext) pb.ApprovalMode
+}
+
+// Parser turns transcript lines into unified events.
+type Parser interface {
+	// Parse converts one line into zero or more events without seq and
+	// session ID.
+	Parse(line []byte) ([]*pb.Event, error)
+	// Replay feeds an event logged earlier, so that a parser created after
+	// a restart knows what it needs about the past.
+	Replay(e *pb.Event)
+}
+
+// Controller operates the CLI's terminal. Methods that take a Term run
+// while the daemon holds the terminal for them: local keys are held back
+// and the status check is paused.
+type Controller interface {
+	// Analyze reads a capture made with escape sequences kept.
+	Analyze(styled string) Screen
+	// Paste is what to write to submit text.
+	Paste(text string) []byte
+	// Interrupt is what to write to interrupt a running turn.
+	Interrupt() []byte
+	// Answer picks options of the question showing. index, if set, is the
+	// question of the call being answered; options are 1-based.
+	Answer(t Term, q *pb.QuestionAsked, index *int32, options []int32) error
+	// SetModel switches the model and effort for this session only.
+	SetModel(t Term, model, effort string) error
+	// SetMode switches the approval mode. running tells whether a turn is
+	// in progress.
+	SetMode(t Term, mode pb.ApprovalMode, running bool) error
+	// Compact starts compacting the context; started reports whether the
+	// CLI has recorded a turn start meanwhile.
+	Compact(t Term, started func() bool) error
+	// AnswerPlan answers the CLI's prompt about a proposed plan.
+	AnswerPlan(t Term, choice pb.PlanChoice) error
+}
+
+// Screen is what the daemon needs to know from the terminal.
+type Screen struct {
+	// ComposerReady: the input box is showing and no popup covers it.
+	ComposerReady bool
+	// DraftEmpty: the input box holds no unsent text.
+	DraftEmpty bool
+	// Popup names the dialog in front of the input box, if any.
+	Popup string
+	// QuestionOpen: the model's question is waiting for an answer.
+	QuestionOpen bool
+	// PlanOpen: the CLI asks whether to carry out the plan it proposed.
+	PlanOpen bool
+	// PermissionOpen: the CLI's own permission prompt is showing.
+	PermissionOpen bool
+	// Footer is the status line under the input box, for diagnostics.
+	Footer string
+}
+
+// Hook is a hook call's payload. Codex and Claude Code use the same field
+// names for what remote-agent reads.
+type Hook struct {
+	SessionID      string          `json:"session_id"`
+	TurnID         string          `json:"turn_id"`
+	TranscriptPath string          `json:"transcript_path"`
+	Cwd            string          `json:"cwd"`
+	HookEventName  string          `json:"hook_event_name"`
+	Model          string          `json:"model"`
+	PermissionMode string          `json:"permission_mode"`
+	Source         string          `json:"source"`
+	ToolName       string          `json:"tool_name"`
+	ToolInput      json.RawMessage `json:"tool_input"`
+	ToolUseID      string          `json:"tool_use_id"`
+}
+
+// ShellInput is the tool_input of a shell PermissionRequest.
+type ShellInput struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
+}
+
+// PermissionDecision is the PermissionRequest hook output that allows or
+// denies a request; Codex and Claude Code read the same format.
+func PermissionDecision(allow bool, message string) []byte {
+	type decision struct {
+		Behavior string `json:"behavior"`
+		Message  string `json:"message,omitempty"`
+	}
+	behavior := "deny"
+	if allow {
+		behavior = "allow"
+	}
+	out := map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName": "PermissionRequest",
+			"decision":      decision{Behavior: behavior, Message: message},
+		},
+	}
+	b, _ := json.Marshal(out)
+	return b
+}
+
+// PasteBytes wraps text in a bracketed paste followed by Enter, the way a
+// terminal delivers pasted text and a key press. Control characters other
+// than newline and tab are removed so the text cannot end the paste early
+// or send keys of its own.
+func PasteBytes(text string) []byte {
+	var b strings.Builder
+	b.WriteString("\x1b[200~")
+	for _, r := range strings.ReplaceAll(text, "\r\n", "\n") {
+		if r == utf8.RuneError {
+			continue
+		}
+		if r == '\n' || r == '\t' || (r >= 0x20 && r != 0x7f && !(r >= 0x80 && r < 0xa0)) {
+			b.WriteRune(r)
+		}
+	}
+	b.WriteString("\x1b[201~\r")
+	return []byte(b.String())
+}
+
+// Term is a session's terminal while the daemon holds it for an adapter.
+type Term interface {
+	// Capture returns the screen with escape sequences kept.
+	Capture() (string, error)
+	// Write sends keys.
+	Write(b []byte) error
+}
+
+// Keys shared by the CLIs.
+const (
+	KeyUp    = "\x1b[A"
+	KeyDown  = "\x1b[B"
+	KeyRight = "\x1b[C"
+	KeyLeft  = "\x1b[D"
+	KeyEsc   = "\x1b"
+	KeyEnter = "\r"
+	KeyBTab  = "\x1b[Z"
+)
+
+// MenuWait bounds how long a step waits for its screen.
+const MenuWait = 4 * time.Second
+
+// WaitFor polls the screen until ok accepts it and returns that capture.
+func WaitFor(t Term, what string, ok func(styled string) bool) (string, error) {
+	deadline := time.Now().Add(MenuWait)
+	for {
+		styled, err := t.Capture()
+		if err == nil && ok(styled) {
+			return styled, nil
+		}
+		if time.Now().After(deadline) {
+			return styled, errors.New("timed out waiting for " + what)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// Slash types a slash command and presses Enter.
+func Slash(t Term, cmd string) error {
+	if err := t.Write([]byte(cmd)); err != nil {
+		return err
+	}
+	time.Sleep(150 * time.Millisecond) // let the command popup catch up
+	return t.Write([]byte(KeyEnter))
+}
+
+// Checkable is implemented by adapters that `remote-agent doctor` can
+// check against the installed CLI.
+type Checkable interface {
+	// DoctorModels are a cheap model and effort to run the check with,
+	// and another to switch to and back.
+	DoctorModels() (model, effort, other, otherEffort string)
+	// DoctorModes are the approval modes to switch through, ending in the
+	// one the check started in.
+	DoctorModes() []pb.ApprovalMode
+	// StartupKeys are the tmux key names a local user presses to get past
+	// a startup popup; nil if there is nothing to press.
+	StartupKeys(popup string) []string
+}

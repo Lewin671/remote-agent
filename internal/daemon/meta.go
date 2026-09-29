@@ -5,18 +5,25 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // meta is the persisted description of a session, session.json.
 type meta struct {
-	ID             string    `json:"id"`
-	Cwd            string    `json:"cwd"`
-	Tmux           string    `json:"tmux"`
-	Args           []string  `json:"args,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	CodexSessionID string    `json:"codex_session_id,omitempty"`
-	RolloutPath    string    `json:"rollout_path,omitempty"`
-	Exited         bool      `json:"exited,omitempty"`
+	ID string `json:"id"`
+	// Agent is the CLI; sessions from before Claude Code support have none
+	// and run Codex.
+	Agent     pb.Agent  `json:"agent,omitempty"`
+	Cwd       string    `json:"cwd"`
+	Tmux      string    `json:"tmux"`
+	Args      []string  `json:"args,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	// CodexSessionID is the CLI's own session ID, and RolloutPath its
+	// transcript; the names date from when only Codex was supported.
+	CodexSessionID string `json:"codex_session_id,omitempty"`
+	RolloutPath    string `json:"rollout_path,omitempty"`
+	Exited         bool   `json:"exited,omitempty"`
 }
 
 func loadMeta(dir string) (*meta, error) {

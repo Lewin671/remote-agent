@@ -9,21 +9,26 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
-// CodexVersion is the installed Codex's version.
-func (d *Daemon) CodexVersion() string { return d.codexVersion() }
-
-// Doctor checks, against the installed Codex, everything remote-agent
-// relies on in its screen and rollout: it starts a real session in dir and
+// Doctor checks, against the installed CLI, everything remote-agent relies
+// on in its screen and transcript: it starts a real session in dir and
 // goes through recognizing the input box, drafts, sending, parsing,
 // switching model and approval mode, interrupting, and the terminal view.
 // The daemon must be running (Run) with its own state directory and tmux
 // socket. Startup prompts for dir are answered the way a local user would.
 // It uses a small model at low effort to spend little. The caller marks
 // the version verified when it passes.
-func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, error) {
+func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.Writer) (bool, error) {
+	ag, err := d.knownAgent(kind)
+	if err != nil {
+		return false, err
+	}
+	chk, isCheckable := ag.(agent.Checkable)
+	if !isCheckable {
+		return false, fmt.Errorf("%s: %w", ag.Name(), agent.ErrUnsupported)
+	}
 	ok := true
 	var s *session
 	step := func(name string, fn func() error) bool {
@@ -45,10 +50,10 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 		return true
 	}
 
-	version := d.codexVersion()
-	if !step("codex --version", func() error {
+	version := ag.Version()
+	if !step(ag.Name()+" --version", func() error {
 		if version == "" {
-			return errors.New("cannot run codex --version")
+			return fmt.Errorf("cannot run %s --version", ag.Bin())
 		}
 		fmt.Fprintf(out, "%s ", version)
 		return nil
@@ -56,10 +61,10 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 		return false, nil
 	}
 
-	const model, effort = "gpt-6-luna", "low"
+	model, effort, other, otherEffort := chk.DoctorModels()
 	if !step("start a session", func() error {
 		var err error
-		s, err = d.create(&pb.CreateSessionRequest{Cwd: dir, Model: model, Effort: effort, Mode: pb.ApprovalMode_APPROVAL_MODE_ASK})
+		s, err = d.create(&pb.CreateSessionRequest{Agent: ag.Kind(), Cwd: dir, Model: model, Effort: effort, Mode: pb.ApprovalMode_APPROVAL_MODE_ASK})
 		return err
 	}) {
 		return false, nil
@@ -72,7 +77,7 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 
 	// until polls the screen, answering startup prompts, until cond has
 	// held for three polls in a row: a single frame can be a passing one.
-	until := func(what string, limit time.Duration, cond func(codex.Screen) bool) error {
+	until := func(what string, limit time.Duration, cond func(agent.Screen) bool) error {
 		deadline := time.Now().Add(limit)
 		held := 0
 		for time.Now().Before(deadline) {
@@ -81,15 +86,11 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 			}
 			scr, _, err := s.screenNow()
 			if err == nil {
-				switch scr.Popup {
-				case "trust folder":
-					keys("Enter")
-				case "hooks need review":
-					keys("Down")
-					time.Sleep(300 * time.Millisecond)
-					keys("Enter")
-				case "update available":
-					keys("Escape")
+				for i, k := range chk.StartupKeys(scr.Popup) {
+					if i > 0 {
+						time.Sleep(300 * time.Millisecond)
+					}
+					keys(k)
 				}
 				if cond(scr) {
 					if held++; held >= 3 {
@@ -120,9 +121,9 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 	}
 
 	if !step("recognize the empty input box", func() error {
-		err := until("the input box", 90*time.Second, func(scr codex.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
+		err := until("the input box", 90*time.Second, func(scr agent.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
 		if err != nil {
-			return fmt.Errorf("%w; the screen analysis may not match this Codex version", err)
+			return fmt.Errorf("%w; the screen analysis may not match this %s version", err, ag.Name())
 		}
 		return nil
 	}) {
@@ -131,14 +132,14 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 
 	step("tell a local draft apart", func() error {
 		keys("-l", "doctor draft")
-		err := until("the draft", 10*time.Second, func(scr codex.Screen) bool { return scr.ComposerReady && !scr.DraftEmpty })
+		err := until("the draft", 10*time.Second, func(scr agent.Screen) bool { return scr.ComposerReady && !scr.DraftEmpty })
 		for range len("doctor draft") {
 			keys("BSpace")
 		}
 		if err != nil {
 			return errors.New("a draft in the input box looks empty; remote input could be mixed into it")
 		}
-		return until("the empty input box again", 10*time.Second, func(scr codex.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
+		return until("the empty input box again", 10*time.Second, func(scr agent.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
 	})
 
 	step("send a message and read the reply", func() error {
@@ -161,25 +162,21 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 			{"the end of the turn", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }},
 		} {
 			if _, err := event(seq, 60*time.Second, want.match); err != nil {
-				return fmt.Errorf("no %s in the rollout; its format may have changed", want.what)
+				return fmt.Errorf("no %s in the transcript; its format may have changed", want.what)
 			}
 		}
-		return until("the input box after the turn", 20*time.Second, func(scr codex.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
+		return until("the input box after the turn", 20*time.Second, func(scr agent.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
 	})
 
 	step("switch model and effort", func() error {
-		name, err := d.displayName(model)
-		if err != nil {
+		if err := s.setModel(other, otherEffort); err != nil {
 			return err
 		}
-		if err := s.setModel(model, "medium", name); err != nil {
-			return err
-		}
-		return s.setModel(model, effort, name)
+		return s.setModel(model, effort)
 	})
 
 	step("switch approval mode and Plan mode", func() error {
-		for _, m := range []pb.ApprovalMode{pb.ApprovalMode_APPROVAL_MODE_AUTO, pb.ApprovalMode_APPROVAL_MODE_PLAN, pb.ApprovalMode_APPROVAL_MODE_ASK} {
+		for _, m := range chk.DoctorModes() {
 			if err := s.setApprovalMode(m); err != nil {
 				return fmt.Errorf("%s: %w", m, err)
 			}
@@ -216,7 +213,9 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 		if err != nil {
 			return err
 		}
-		if snap.Cols <= 0 || !strings.Contains(codex.StripANSI(string(snap.Data)), promptMark) {
+		// The snapshot positions text with cursor moves, so only look for
+		// the input box's prompt mark: Codex's › or Claude Code's ❯.
+		if snap.Cols <= 0 || !strings.ContainsAny(agent.StripANSI(string(snap.Data)), "›❯") {
 			return errors.New("the snapshot does not show the input box")
 		}
 		return nil
@@ -224,5 +223,3 @@ func (d *Daemon) Doctor(ctx context.Context, dir string, out io.Writer) (bool, e
 
 	return ok, nil
 }
-
-const promptMark = "›"

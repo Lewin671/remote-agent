@@ -29,11 +29,3 @@ func TestPasteBytes(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
-
-func TestPermissionDecision(t *testing.T) {
-	got := string(PermissionDecision(false, "timed out"))
-	want := `{"hookSpecificOutput":{"decision":{"behavior":"deny","message":"timed out"},"hookEventName":"PermissionRequest"}}`
-	if got != want {
-		t.Fatalf("got %s", got)
-	}
-}

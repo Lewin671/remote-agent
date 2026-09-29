@@ -1,5 +1,5 @@
-// Package daemon manages Codex sessions running in tmux and serves the
-// local API.
+// Package daemon manages AI coding CLI sessions running in tmux and serves
+// the local API. What is particular to each CLI is behind agent.Adapter.
 package daemon
 
 import (
@@ -21,6 +21,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
@@ -39,7 +40,7 @@ type Config struct {
 	CodexHome string
 	// HistoryPath is Codex's history.jsonl.
 	HistoryPath string
-	// Env is added to every Codex session, e.g. proxy variables.
+	// Env is added to every session, e.g. proxy variables.
 	Env map[string]string
 
 	ApprovalTimeout time.Duration
@@ -80,8 +81,9 @@ func (c *Config) defaults() {
 
 // Daemon owns all sessions.
 type Daemon struct {
-	cfg Config
-	ctx context.Context
+	cfg    Config
+	ctx    context.Context
+	agents map[pb.Agent]agent.Adapter
 
 	mu       sync.Mutex
 	sessions map[string]*session
@@ -93,15 +95,36 @@ type Daemon struct {
 	// resumeMu makes resumes one at a time: two for the same session
 	// would both pass the checks and share its startup files.
 	resumeMu sync.Mutex
-
-	versionOnce sync.Once
-	version     string
 }
 
 // New returns a daemon; call Run to start it.
 func New(cfg Config) *Daemon {
 	cfg.defaults()
-	return &Daemon{cfg: cfg, sessions: map[string]*session{}}
+	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}}
+	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
+	return d
+}
+
+// adapter is the adapter for a session's CLI. Sessions from before Claude
+// Code support name none and are Codex sessions.
+func (d *Daemon) adapter(k pb.Agent) agent.Adapter {
+	if a, ok := d.agents[k]; ok {
+		return a
+	}
+	return d.agents[pb.Agent_AGENT_CODEX]
+}
+
+// knownAgent returns the adapter for a request's CLI, refusing ones this
+// daemon cannot run.
+func (d *Daemon) knownAgent(k pb.Agent) (agent.Adapter, error) {
+	if k == pb.Agent_AGENT_UNSPECIFIED {
+		k = pb.Agent_AGENT_CODEX
+	}
+	a, ok := d.agents[k]
+	if !ok {
+		return nil, fmt.Errorf("%v: %w", k, agent.ErrUnsupported)
+	}
+	return a, nil
 }
 
 // Run takes the daemon lock, restores sessions, and serves the local API on
@@ -123,8 +146,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := d.restore(); err != nil {
 		return err
 	}
-	if v := d.codexVersion(); v != "" && !d.codexVerified() {
-		slog.Warn("this Codex version has not been checked with remote-agent; run `remote-agent doctor`", "codex", v)
+	for _, a := range d.agents {
+		if v := a.Version(); v != "" && !d.verified(a) {
+			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
+		}
 	}
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
@@ -247,7 +272,7 @@ func (s *session) cancelStaleApprovals() {
 	}
 }
 
-// create starts a new Codex session in tmux.
+// create starts a new CLI session in tmux.
 func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	cwd := req.Cwd
 	if cwd == "" {
@@ -259,16 +284,29 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	if st, err := os.Stat(cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("cwd %s is not a directory", cwd)
 	}
-	args, err := d.sessionArgs(req)
+	ag, err := d.knownAgent(req.Agent)
+	if err != nil {
+		return nil, err
+	}
+	if ag.Bin() == "" {
+		return nil, fmt.Errorf("%s is not installed on this machine", ag.Name())
+	}
+	args, err := d.sessionArgs(ag, req)
 	if err != nil {
 		return nil, err
 	}
 	id := newID(8)
-	m := meta{ID: id, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC()}
+	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC()}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}
+	launch := &agent.Launch{Dir: dir, Args: args}
+	cliArgs, err := ag.Argv(launch)
+	if err != nil {
+		return nil, err
+	}
+	m.CodexSessionID = launch.SessionID
 	if err := m.save(dir); err != nil {
 		return nil, err
 	}
@@ -284,8 +322,8 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 		log.Close()
 		return nil, err
 	}
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
-	argv = append(argv, codex.Args(args)...)
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", ag.Bin()}
+	argv = append(argv, cliArgs...)
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	})
@@ -299,7 +337,7 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 		log.Close()
 		return nil, err
 	}
-	// The tmux status line is not part of the Codex experience.
+	// The tmux status line is not part of the CLI's experience.
 	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
 
 	s := newSession(d, dir, m, d.terminal(&m), log)
@@ -312,7 +350,7 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	s.start(d.ctx)
 	slog.Info("created session", "session", id)
 	if strings.TrimSpace(req.Prompt) != "" {
-		// Queued like any message: it is written once Codex shows its
+		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered.
 		if _, err := s.send(req.Prompt, ""); err != nil {
 			slog.Warn("queue first message", "session", id, "err", err)
@@ -335,7 +373,8 @@ func (d *Daemon) noteLimits(u *pb.TokenUsage) {
 func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()
 	home, _ := os.UserHomeDir()
-	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: d.codexVersion(), CodexVerified: d.codexVerified()}
+	cx := d.agents[pb.Agent_AGENT_CODEX]
+	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
 	d.mu.Lock()
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
@@ -389,7 +428,7 @@ func (d *Daemon) list(includeExited bool) []*pb.Session {
 }
 
 // ownEnv sets the variables remote-agent itself needs in a session:
-// which session it is, and the executable the hooks run (see codex.Args).
+// which session it is, and the executable the hooks run.
 func (d *Daemon) ownEnv(env map[string]string, id string) {
 	env["RA_SESSION"] = id
 	env["RA_EXE"] = d.cfg.Exe
@@ -399,7 +438,7 @@ func (d *Daemon) ownEnv(env map[string]string, id string) {
 }
 
 // skipEnv lists variables that belong to the caller's terminal rather than
-// to the Codex process.
+// to the CLI process.
 var skipEnv = map[string]bool{
 	"TMUX": true, "TMUX_PANE": true, "TERM": true, "TERM_PROGRAM": true, "TERM_PROGRAM_VERSION": true,
 	"TERM_SESSION_ID": true, "COLUMNS": true, "LINES": true, "SHLVL": true, "PWD": true, "OLDPWD": true,
@@ -440,42 +479,6 @@ func readEnvFile(path string) (map[string]string, error) {
 	return env, json.Unmarshal(b, &env)
 }
 
-// valueFlags are codex options that take a value.
-var valueFlags = map[string]bool{
-	"-c": true, "--config": true, "-m": true, "--model": true, "-p": true, "--profile": true,
-	"-s": true, "--sandbox": true, "-a": true, "--ask-for-approval": true, "-C": true, "--cd": true,
-	"--add-dir": true, "-i": true, "--image": true, "--enable": true, "--disable": true, "--local-provider": true,
-}
-
-// approvalFlags are codex options that set the approval mode.
-var approvalFlags = []string{"-s", "--sandbox", "-a", "--ask-for-approval", "--full-auto", "--dangerously-bypass-approvals-and-sandbox", "--yolo"}
-
-// flagArgs keeps the options in codex arguments, except those in drop,
-// and drops positional ones, which for resume would be read as a session
-// ID or prompt.
-func flagArgs(args []string, drop map[string]bool) []string {
-	var out []string
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		if a == "--" {
-			break
-		}
-		if !strings.HasPrefix(a, "-") {
-			continue
-		}
-		name, _, inline := strings.Cut(a, "=")
-		n := 1
-		if !inline && valueFlags[name] && i+1 < len(args) {
-			n = 2
-		}
-		if !drop[name] {
-			out = append(out, args[i:i+n]...)
-		}
-		i += n - 1
-	}
-	return out
-}
-
 // writeEnvFile stores env, readable by the owner only.
 func writeEnvFile(path string, env map[string]string) error {
 	b, err := json.Marshal(env)
@@ -495,9 +498,9 @@ func writeEnvFile(path string, env map[string]string) error {
 
 var errRunning = errors.New("the session is still running")
 
-// resume starts Codex again for an exited session, in its directory and
-// tmux session name, continuing the same Codex conversation. The session
-// keeps its ID and history; Codex appends to the same rollout, which is
+// resume starts the CLI again for an exited session, in its directory and
+// tmux session name, continuing the same conversation. The session keeps
+// its ID and history; the CLI appends to the same transcript, which is
 // read on from where it stopped.
 func (d *Daemon) resume(id string) (*session, error) {
 	d.resumeMu.Lock()
@@ -519,29 +522,15 @@ func (d *Daemon) resume(id string) (*session, error) {
 	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}
-	// Start it with its original options, minus positional arguments such
-	// as a first prompt, then the model, effort and approval mode it last
-	// ran with, which may have been changed since.
-	// Codex refuses a repeated -m, and its approval flags win over -c, so
-	// the options overridden are dropped from the original ones first.
-	var over []string
-	drop := map[string]bool{}
-	if ctx != nil {
-		if ctx.Model != "" && safeValue.MatchString(ctx.Model) {
-			over = append(over, "-m", ctx.Model)
-			drop["-m"], drop["--model"] = true, true
-		}
-		if _, ok := effortLabels[ctx.Effort]; ok {
-			over = append(over, "-c", fmt.Sprintf("model_reasoning_effort=%q", ctx.Effort))
-		}
-		if ma := modeArgs(exactMode(ctx)); ma != nil {
-			over = append(over, ma...)
-			for _, f := range approvalFlags {
-				drop[f] = true
-			}
-		}
+	if s.ag.Bin() == "" {
+		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
-	args := append(flagArgs(m.Args, drop), over...)
+	cliArgs, err := s.ag.Argv(&agent.Launch{
+		Dir: s.dir, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx,
+	})
+	if err != nil {
+		return nil, err
+	}
 	// The same environment it started with: the caller's shell may have
 	// provided credentials or proxies. Older sessions did not keep it.
 	env, err := readEnvFile(filepath.Join(s.dir, "env.json"))
@@ -553,15 +542,8 @@ func (d *Daemon) resume(id string) (*session, error) {
 	if err != nil {
 		return nil, err
 	}
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
-	if m.CodexSessionID != "" {
-		argv = append(argv, "resume")
-		argv = append(argv, codex.Args(args)...)
-		argv = append(argv, m.CodexSessionID)
-	} else {
-		// Nothing was ever sent: there is no conversation to resume.
-		argv = append(argv, codex.Args(args)...)
-	}
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", s.ag.Bin()}
+	argv = append(argv, cliArgs...)
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	}); err != nil {
@@ -589,30 +571,4 @@ func (d *Daemon) resume(id string) (*session, error) {
 	s.start(d.ctx)
 	slog.Info("resumed session", "session", id)
 	return s, nil
-}
-
-// contextMode is the approval mode a turn context shows; Plan mode is not
-// kept across a restart.
-// exactMode is the approval mode whose settings the turn context has
-// exactly, or UNSPECIFIED. Unlike contextMode it does not round, so that
-// resuming never loosens a sandbox, e.g. a read-only one.
-func exactMode(c *pb.TurnContext) pb.ApprovalMode {
-	m := contextMode(c)
-	want := fmt.Sprintf("-c|approvals_reviewer=%q|-c|approval_policy=%q|-c|sandbox_mode=%q", c.ApprovalsReviewer, c.ApprovalPolicy, c.Sandbox)
-	if strings.Join(modeArgs(m), "|") != want {
-		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
-	}
-	return m
-}
-
-func contextMode(c *pb.TurnContext) pb.ApprovalMode {
-	switch {
-	case c.Sandbox == "danger-full-access" && c.ApprovalPolicy == "never":
-		return pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS
-	case c.ApprovalsReviewer == "auto_review":
-		return pb.ApprovalMode_APPROVAL_MODE_AUTO
-	case c.ApprovalsReviewer == "user":
-		return pb.ApprovalMode_APPROVAL_MODE_ASK
-	}
-	return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 }

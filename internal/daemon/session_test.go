@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 )
@@ -210,8 +211,8 @@ func turnContextLine(reviewer string) string {
 	return `{"timestamp":"2026-09-29T10:00:00Z","type":"turn_context","payload":{"turn_id":"t1","model":"gpt-6-sol","effort":"high","approvals_reviewer":"` + reviewer + `"}}`
 }
 
-func permissionPayload(h *harness) *codex.HookPayload {
-	return &codex.HookPayload{
+func permissionPayload(h *harness) *agent.Hook {
+	return &agent.Hook{
 		HookEventName:  "PermissionRequest",
 		SessionID:      "codex-1",
 		TurnID:         "t1",

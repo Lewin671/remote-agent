@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
@@ -78,17 +79,18 @@ func runDoctor(args []string) error {
 
 	fmt.Println("Checking the installed Codex with a throwaway session (GPT-6-Luna, low effort)")
 	fmt.Printf("in %s. Startup prompts there are answered for you.\n\n", work)
-	ok, err := d.Doctor(ctx, work, os.Stdout)
+	ok, err := d.Doctor(ctx, pb.Agent_AGENT_CODEX, work, os.Stdout)
 	fmt.Println()
 	switch {
 	case err != nil:
 		return err
 	case ok:
 		restore()
-		if err := daemon.MarkVerified(d.CodexVersion()); err != nil {
+		v := d.Version(pb.Agent_AGENT_CODEX)
+		if err := daemon.MarkVerified(pb.Agent_AGENT_CODEX, v); err != nil {
 			return err
 		}
-		fmt.Printf("All checks passed; Codex %s is marked as verified.\n", d.CodexVersion())
+		fmt.Printf("All checks passed; Codex %s is marked as verified.\n", v)
 		return nil
 	default:
 		return errors.New("some checks failed; remote-agent may not work with this Codex version. Please report the failing check")

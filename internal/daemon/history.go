@@ -1,60 +1,64 @@
 package daemon
 
 import (
-	"encoding/json"
 	"os"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/tail"
 )
 
-// history follows ~/.codex/history.jsonl, where Codex appends one line per
-// submitted message. It is how remote-agent confirms that injected input
-// was actually submitted.
+// history follows the file where the CLI records submitted input: Codex's
+// history.jsonl, Claude Code's transcript. It is how remote-agent confirms
+// that injected input was actually submitted.
 type history struct {
-	r *tail.Reader
+	r  *tail.Reader
+	ag agent.Adapter
 }
 
-type historyEntry struct {
-	SessionID string `json:"session_id"`
-	Text      string `json:"text"`
-}
-
-// newHistory starts reading path at offset; a negative offset means the
-// current end of the file, found without reading it.
-func newHistory(path string, offset int64) *history {
+// newHistory starts reading the session's submit log at offset; a negative
+// offset means the current end of the file, found without reading it.
+func (s *session) newHistory(offset int64) *history {
+	s.mu.Lock()
+	path := s.ag.SubmitLog(s.meta.RolloutPath)
+	s.mu.Unlock()
 	if offset < 0 {
 		offset = 0
 		if st, err := os.Stat(path); err == nil {
 			offset = st.Size()
 		}
 	}
-	return &history{r: tail.NewReader(path, offset)}
+	h := &history{ag: s.ag}
+	if path != "" {
+		h.r = tail.NewReader(path, offset)
+	}
+	return h
 }
 
-// submitted reports whether a line with text was appended since the last
-// call. When the Codex session ID is known, only that session's lines
-// count, so identical text sent to another session is not mistaken for
-// this one's.
-func (h *history) submitted(text, codexSessionID string) bool {
+// submitted reports whether a line recording text was appended since the
+// last call.
+func (h *history) submitted(text, cliSessionID string) bool {
+	if h.r == nil {
+		return false
+	}
 	lines, _, err := h.r.Next()
 	if err != nil {
 		return false
 	}
-	want := normalizeText(text)
 	for _, l := range lines {
-		var e historyEntry
-		if json.Unmarshal(l.Data, &e) != nil {
-			continue
-		}
-		if codexSessionID != "" && e.SessionID != codexSessionID {
-			continue
-		}
-		if normalizeText(e.Text) == want {
+		if h.ag.Submitted(l.Data, text, cliSessionID) {
 			return true
 		}
 	}
 	return false
+}
+
+// offset is where reading stands.
+func (h *history) offset() int64 {
+	if h.r == nil {
+		return 0
+	}
+	return h.r.Offset()
 }
 
 func normalizeText(s string) string { return strings.Join(strings.Fields(s), " ") }

@@ -8,13 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,7 +22,7 @@ import (
 // Errors returned by session operations; the RPC layer maps them to codes.
 var (
 	errExited       = errors.New("session has exited")
-	errNotFound     = errors.New("not found")
+	errNotFound     = agent.ErrNotFound
 	errExpired      = errors.New("the approval has timed out")
 	errNotAnswering = errors.New("the question is not showing in the terminal")
 	errHeadChanged  = errors.New("the queue head changed")
@@ -38,16 +37,17 @@ const holdFor = 3 * time.Second
 // hold, so that the screen check sees them.
 const settle = 80 * time.Millisecond
 
-// session is one Codex session managed by the daemon.
+// session is one CLI session managed by the daemon.
 type session struct {
 	d    *Daemon
+	ag   agent.Adapter
 	dir  string
 	term terminal
 	log  *eventlog.Log
 
 	readMu sync.Mutex // serializes rollout reads
 	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
-	parser *codex.Parser
+	parser agent.Parser
 	reader *tail.Reader
 
 	mu          sync.Mutex
@@ -57,8 +57,8 @@ type session struct {
 	usage       *pb.TokenUsage
 	title       string
 	preview     string
-	screen      codex.Screen
-	prevScreen  codex.Screen
+	screen      agent.Screen
+	prevScreen  agent.Screen
 	sawComposer bool
 	planOpen    bool
 	driving     bool // a control operation is using the terminal's menus
@@ -98,12 +98,14 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		slog.Warn("load input queue; starting empty", "session", m.ID, "err", err)
 		q = &queueState{}
 	}
+	ag := d.adapter(m.Agent)
 	s := &session{
 		d:         d,
+		ag:        ag,
 		dir:       dir,
 		term:      term,
 		log:       log,
-		parser:    codex.NewParser(),
+		parser:    ag.NewParser(),
 		meta:      m,
 		approvals: map[string]*approval{},
 		questions: map[string]*pb.QuestionAsked{},
@@ -115,9 +117,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	// Rebuild derived state from the events already logged.
 	log.Each(func(e *pb.Event) {
 		s.observe(e)
-		if q := e.GetQuestionAsked(); q != nil {
-			s.parser.RememberQuestion(q.QuestionId)
-		}
+		s.parser.Replay(e)
 	})
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
@@ -146,7 +146,7 @@ func (s *session) observe(e *pb.Event) {
 		s.usage = k.TokenUsage
 		s.d.noteLimits(k.TokenUsage)
 	case *pb.Event_SettingsChanged:
-		s.context = applySettings(s.context, k.SettingsChanged)
+		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
 	case *pb.Event_UserMessage:
 		if s.title == "" {
 			s.title = summary(k.UserMessage.Text, 60)
@@ -280,7 +280,7 @@ func (s *session) checkScreen() bool {
 	if err != nil {
 		return true
 	}
-	scr := codex.AnalyzeScreen(styled)
+	scr := s.ag.Analyze(styled)
 	s.mu.Lock()
 	s.screen = scr
 	// Act only on a screen seen twice in a row, so that frames drawn
@@ -475,7 +475,7 @@ func (s *session) cancelInput(requestID string) error {
 const unrecognizedAfter = 20 * time.Second
 
 // noteWait records why queued input cannot be written now.
-func (s *session) noteWait(scr codex.Screen) {
+func (s *session) noteWait(scr agent.Screen) {
 	reason := ""
 	switch {
 	case scr.ComposerReady && scr.DraftEmpty:
@@ -494,8 +494,8 @@ func (s *session) noteWait(scr codex.Screen) {
 	if reason == "unrecognized" && !s.warned && time.Since(s.waitSince) > unrecognizedAfter {
 		s.warned = true
 		// Only the version and the fact are logged, never the screen.
-		slog.Warn("cannot recognize Codex's input box; queued input waits. A Codex update may have changed its screen; run `remote-agent doctor`",
-			"session", s.meta.ID, "codex", s.d.codexVersion())
+		slog.Warn("cannot recognize the CLI's input box; queued input waits. A CLI update may have changed its screen; run `remote-agent doctor`",
+			"session", s.meta.ID, "agent", s.ag.Name(), "version", s.ag.Version())
 	}
 }
 
@@ -548,15 +548,15 @@ func (s *session) injectLoop(ctx context.Context) {
 // records the outcome and removes it from the queue. It returns false if
 // ctx ended first.
 func (s *session) settle(ctx context.Context, in input) bool {
-	hist := newHistory(s.d.cfg.HistoryPath, *in.Inflight)
+	hist := s.newHistory(*in.Inflight)
 	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
 	status := pb.InputStatus_INPUT_STATUS_UNCONFIRMED
 	for time.Now().Before(deadline) {
 		s.readRollout()
 		s.mu.Lock()
-		codexID := s.meta.CodexSessionID
+		cliID := s.meta.CodexSessionID
 		s.mu.Unlock()
-		if hist.submitted(in.Text, codexID) || s.loggedUserMessage(in.InflightSeq, in.Text) {
+		if hist.submitted(in.Text, cliID) || s.loggedUserMessage(in.InflightSeq, in.Text) {
 			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
 			break
 		}
@@ -638,7 +638,7 @@ func (s *session) inject(in input) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	scr := codex.AnalyzeScreen(styled)
+	scr := s.ag.Analyze(styled)
 	if !scr.ComposerReady || !scr.DraftEmpty {
 		s.noteWait(scr)
 		return false, nil
@@ -652,14 +652,14 @@ func (s *session) inject(in input) (bool, error) {
 		return false, nil
 	}
 	s.noteWait(scr)
-	hist := newHistory(s.d.cfg.HistoryPath, -1)
-	if err := s.markInflight(hist.r.Offset(), in.RequestID); err != nil {
+	hist := s.newHistory(-1)
+	if err := s.markInflight(hist.offset(), in.RequestID); err != nil {
 		if errors.Is(err, errHeadChanged) {
 			return false, nil // canceled meanwhile; the loop picks the new head
 		}
 		return false, err
 	}
-	if err := c.Write(codex.PasteBytes(in.Text)); err != nil {
+	if err := c.Write(s.ag.Paste(in.Text)); err != nil {
 		// A failed reply does not prove the bytes were not written, so
 		// the message is only settled from Codex's records, never resent.
 		return true, err
@@ -695,12 +695,12 @@ func (s *session) interrupt() (bool, error) {
 		return false, err
 	}
 	defer c.Close()
-	return true, c.Write([]byte{0x1b})
+	return true, c.Write(s.ag.Interrupt())
 }
 
-// answer picks option (1-based) of the question that is showing. With
+// answer picks options (1-based) of the question that is showing. With
 // index set, that must be the index-th question of the call.
-func (s *session) answer(questionID string, option int, index *int32) error {
+func (s *session) answer(questionID string, options []int32, index *int32) error {
 	s.readRollout()
 	s.mu.Lock()
 	_, ok := s.questions[questionID]
@@ -712,8 +712,13 @@ func (s *session) answer(questionID string, option int, index *int32) error {
 	if !ok {
 		return fmt.Errorf("question %s: %w", questionID, errNotFound)
 	}
-	if option < 1 || option > 9 {
-		return fmt.Errorf("option must be between 1 and 9")
+	if len(options) == 0 {
+		return fmt.Errorf("no option given")
+	}
+	for _, o := range options {
+		if o < 1 || o > 9 {
+			return fmt.Errorf("option must be between 1 and 9")
+		}
 	}
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
@@ -747,10 +752,10 @@ func (s *session) answer(questionID string, option int, index *int32) error {
 		}
 		items = items[*index : *index+1]
 	}
-	if !codex.AnalyzeScreen(styled).QuestionOpen || !showsQuestion(styled, items) {
+	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items) {
 		return errNotAnswering
 	}
-	return c.Write([]byte(strconv.Itoa(option)))
+	return s.ag.Answer(heldTerm{s.term, c}, q, index, options)
 }
 
 func (s *session) kill() error {
@@ -767,8 +772,8 @@ func (s *session) kill() error {
 	return nil
 }
 
-// bindRollout records where the Codex session writes its rollout.
-func (s *session) bindRollout(codexSessionID, path string) {
+// bindRollout records where the CLI writes the session's transcript.
+func (s *session) bindRollout(cliSessionID, path string) {
 	if path == "" {
 		return
 	}
@@ -778,11 +783,11 @@ func (s *session) bindRollout(codexSessionID, path string) {
 		return
 	}
 	s.meta.RolloutPath = path
-	if codexSessionID != "" {
-		s.meta.CodexSessionID = codexSessionID
+	if cliSessionID != "" {
+		s.meta.CodexSessionID = cliSessionID
 	}
 	s.reader = tail.NewReader(path, 0)
-	s.parser = codex.NewParser()
+	s.parser = s.ag.NewParser()
 	m := s.meta
 	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
@@ -791,8 +796,8 @@ func (s *session) bindRollout(codexSessionID, path string) {
 	s.readRollout()
 }
 
-// hook handles one Codex hook call and returns what the hook prints.
-func (s *session) hook(ctx context.Context, p *codex.HookPayload) ([]byte, error) {
+// hook handles one hook call and returns what the hook prints.
+func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	switch p.HookEventName {
 	case "SessionStart":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
@@ -804,22 +809,20 @@ func (s *session) hook(ctx context.Context, p *codex.HookPayload) ([]byte, error
 	return nil, nil
 }
 
-// permission decides a PermissionRequest. With auto_review on, the hook
-// stays silent and Codex's reviewer decides. Otherwise the request waits
-// for a remote answer and is denied when the time runs out.
-func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte, error) {
+// permission decides a PermissionRequest. When the adapter says the CLI
+// decides on its own (Codex's auto_review), the hook stays silent.
+// Otherwise the request waits for a remote answer and is denied when the
+// time runs out.
+func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	s.readRollout()
 	s.mu.Lock()
-	reviewer := ""
-	if s.context != nil {
-		reviewer = s.context.ApprovalsReviewer
-	}
+	tc := s.context
 	exited := s.meta.Exited
 	s.mu.Unlock()
 	if exited {
-		return codex.PermissionDecision(false, "remote-agent: session exited"), nil
+		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}
-	if reviewer == "auto_review" {
+	if !s.ag.ForwardPermission(p, tc) {
 		return nil, nil
 	}
 
@@ -831,14 +834,14 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 		ToolInputJson: string(p.ToolInput),
 		Deadline:      timestamppb.New(a.deadline),
 	}
-	var shell codex.ShellInput
+	var shell agent.ShellInput
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
 		req.Command, req.Description = shell.Command, shell.Description
 	}
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
-		return codex.PermissionDecision(false, "remote-agent: session exited"), nil
+		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
@@ -866,7 +869,7 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 		}
 		msg := fmt.Sprintf("remote-agent: no answer within %s, denied", timeout)
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg)
-		return codex.PermissionDecision(false, msg), nil
+		return agent.PermissionDecision(false, msg), nil
 	case <-ctx.Done():
 		if !s.claim(a) {
 			d = <-a.decision
@@ -880,7 +883,7 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 	} else {
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message)
 	}
-	return codex.PermissionDecision(d.allow, d.message), nil
+	return agent.PermissionDecision(d.allow, d.message), nil
 }
 
 // claim settles a for the caller unless someone else already did.
@@ -896,7 +899,7 @@ func (s *session) claim(a *approval) bool {
 }
 
 // resolve answers a pending approval. Success means the answer is the one
-// Codex receives.
+// the CLI receives.
 func (s *session) resolve(id string, allow bool, message string) error {
 	s.mu.Lock()
 	a, ok := s.approvals[id]
@@ -918,7 +921,7 @@ func (s *session) resolve(id string, allow bool, message string) error {
 // showsQuestion reports whether the screen shows one of the questions. The
 // start of the text is enough and survives line wrapping.
 func showsQuestion(styled string, questions []*pb.Question) bool {
-	screen := normalizeText(codex.StripANSI(styled))
+	screen := normalizeText(agent.StripANSI(styled))
 	for _, item := range questions {
 		words := strings.Fields(item.Text)
 		prefix := []rune(strings.Join(words, " "))

@@ -25,8 +25,8 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/client"
-	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/ptyhost"
@@ -57,7 +57,7 @@ func runDaemon(args []string) error {
 	codexBin := fs.String("codex", os.Getenv("REMOTE_AGENT_CODEX"), "codex executable (default: codex in PATH)")
 	fs.Parse(args)
 
-	if max := time.Duration(codex.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
+	if max := time.Duration(agent.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
 	ensureUTF8()
@@ -424,12 +424,12 @@ func runHook(args []string) int {
 	if err != nil || sessionID == "" {
 		return 0
 	}
-	var head codex.HookPayload
+	var head agent.Hook
 	_ = jsonUnmarshal(payload, &head)
 	wait := 25 * time.Second
 	retryFor := time.Duration(0)
 	if head.HookEventName == "PermissionRequest" {
-		wait = time.Duration(codex.HookTimeoutSeconds-30) * time.Second
+		wait = time.Duration(agent.HookTimeoutSeconds-30) * time.Second
 		// Ride out a daemon restart.
 		retryFor = 30 * time.Second
 	}

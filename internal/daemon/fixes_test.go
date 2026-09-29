@@ -138,12 +138,12 @@ func TestAnswerRevalidates(t *testing.T) {
 	}}})
 	other := "  \x1b[2mQuestion 1/1 (1 unanswered)\x1b[0m\n  Which database should we pick?\n  \x1b[1;7m› 1. Postgres\n"
 	h.term.setScreen(other)
-	if err := h.s.answer("q1", 1, nil); err == nil {
+	if err := h.s.answer("q1", []int32{1}, nil); err == nil {
 		t.Fatal("answered a different question")
 	}
 	mine := "  \x1b[2mQuestion 1/1 (1 unanswered)\x1b[0m\n  Which language should the\n  script use?\n  \x1b[1;7m› 1. Go\n"
 	h.term.setScreen(mine)
-	if err := h.s.answer("q1", 1, nil); err != nil {
+	if err := h.s.answer("q1", []int32{1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if w := h.term.written(); len(w) != 1 || w[0] != "1" {
@@ -160,13 +160,13 @@ func TestAnswerChecksQuestionIndex(t *testing.T) {
 	}}})
 	h.term.setScreen("  \x1b[2mQuestion 2/2 (1 unanswered)\x1b[0m\n  Which database should we pick?\n  \x1b[1;7m› 1. Postgres\n")
 	first, second, bad := int32(0), int32(1), int32(2)
-	if err := h.s.answer("q1", 1, &first); err == nil {
+	if err := h.s.answer("q1", []int32{1}, &first); err == nil {
 		t.Fatal("answered question 1 while question 2 is showing")
 	}
-	if err := h.s.answer("q1", 1, &bad); err == nil {
+	if err := h.s.answer("q1", []int32{1}, &bad); err == nil {
 		t.Fatal("accepted an index out of range")
 	}
-	if err := h.s.answer("q1", 2, &second); err != nil {
+	if err := h.s.answer("q1", []int32{2}, &second); err != nil {
 		t.Fatal(err)
 	}
 	if w := h.term.written(); len(w) != 1 || w[0] != "2" {
@@ -212,8 +212,9 @@ func TestAsyncQuestionSurvivesRestart(t *testing.T) {
 // Identical text submitted by another Codex session does not confirm
 // this session's injection.
 func TestHistoryMatchesSession(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "history.jsonl")
-	hist := newHistory(path, -1)
+	h := newHarness(t, Config{})
+	path := h.d.cfg.HistoryPath
+	hist := h.s.newHistory(-1)
 	os.WriteFile(path, []byte(`{"session_id":"other","text":"same"}`+"\n"), 0o600)
 	if hist.submitted("same", "mine") {
 		t.Fatal("another session's line counted")

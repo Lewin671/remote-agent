@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
 type handler struct {
@@ -23,7 +23,7 @@ func rpcErr(err error) error {
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning),
-		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan):
+		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, agent.ErrUnsupported):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	var ce *connect.Error
@@ -107,7 +107,7 @@ func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.An
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.answer(req.Msg.QuestionId, int(req.Msg.Option), req.Msg.QuestionIndex); err != nil {
+	if err := s.answer(req.Msg.QuestionId, []int32{req.Msg.Option}, req.Msg.QuestionIndex); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil
@@ -143,7 +143,7 @@ func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	var p codex.HookPayload
+	var p agent.Hook
 	if err := json.Unmarshal(req.Msg.Payload, &p); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -170,18 +170,17 @@ func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModel
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	name, err := h.d.displayName(req.Msg.Model)
-	if err != nil {
-		return nil, rpcErr(err)
-	}
-	if err := s.setModel(req.Msg.Model, req.Msg.Effort, name); err != nil {
+	if err := s.setModel(req.Msg.Model, req.Msg.Effort); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetModelResponse{}), nil
 }
 
 func (h *handler) ListModels(ctx context.Context, req *connect.Request[pb.ListModelsRequest]) (*connect.Response[pb.ListModelsResponse], error) {
-	res, err := h.d.listModels()
+	res, err := h.d.listModels(req.Msg.Agent)
+	if errors.Is(err, agent.ErrUnsupported) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
