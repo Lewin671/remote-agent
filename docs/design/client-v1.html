@@ -305,6 +305,18 @@
   .cfgline { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 16px 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
   .cfgline em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
   .cfgline b { margin-left: auto; color: var(--blue); font-weight: 600; flex: none; padding: 4px 0; }
+  /* 项目页底部的「新会话」卡片：和聊天输入框区分开 */
+  .newbox { flex: none; margin: 4px 10px 20px; background: var(--card); border-radius: 18px; padding: 10px 12px 8px;
+    box-shadow: 0 0 0 1px var(--line), 0 -4px 18px rgba(0,0,0,.06); }
+  .newbox .nh { font-size: 12px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
+  .newbox .row2 { display: flex; gap: 8px; align-items: center; }
+  .newbox .in { flex: 1; background: var(--chip); border-radius: 20px; padding: 10px 14px; color: var(--muted); font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .newbox .in.typed { color: var(--fg); }
+  .newbox .go { width: 40px; height: 40px; border-radius: 50%; background: var(--blue-bg); color: var(--on-solid); display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
+  .newbox .cfg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 7px; white-space: nowrap; }
+  .newbox .cfg em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+  .newbox .cfg b { margin-left: auto; color: var(--blue); font-weight: 600; flex: none; }
+  .step { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--blue-bg); color: #fff; font-size: 12px; font-weight: 700; align-items: center; justify-content: center; margin-right: 4px; }
   .recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-top: 10px; align-items: center; }
   .recent small { font-size: 12px; color: var(--muted); flex: none; }
   .recent > span { font-size: 13px; background: var(--chip); border-radius: 14px; padding: 4px 10px; color: var(--fg2); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
@@ -473,7 +485,7 @@
     <li><b>会话状态只显示一种</b>：按「状态优先级」取最高的一种。已结束或电脑离线时，输入框换成一张状态卡。和服务器断线另用导航栏下的一条提示，不和会话状态混在一起</li>
     <li><b>要你处理的东西停靠在输入框上方</b>：审批、模型提问、计划、终端弹窗固定在底部，最高占聊天区的 45%，长内容在卡片里滚动或「展开全文」，按钮始终可见；键盘弹出时收成一行。处理完在聊天里留一行记录</li>
     <li><b>主页直接列出进行中的会话</b>：「需要处理」竖排，最多完整显示 3 张，其余收进「还有 N 项」；命令审批可以在主页直接处理，带请求说明、附理由拒绝和「查看会话」</li>
-    <li><b>在项目里直接开始新会话</b>：项目页底部就是输入框，打字发送即开始，配置跟着项目走（沿用这个项目最近一个会话的机器、模型、推理强度和审批模式），输入框上方一行小字写明，要改才点「更改」。主页右上角的 ＋ 先选项目，选中后进项目页、输入框已聚焦；最后一项「新项目…」选机器和目录。去掉项目行上的 ＋</li>
+    <li><b>在项目里直接开始新会话</b>：项目页底部有一张「新会话」卡片，打字发送即开始（见「新建会话」一节的三步），配置跟着项目走（沿用这个项目最近一个会话的机器、模型、推理强度和审批模式），输入框上方一行小字写明，要改才点「更改」。主页右上角的 ＋ 先选项目，选中后进项目页、输入框已聚焦；最后一项「新项目…」选机器和目录。去掉项目行上的 ＋</li>
     <li><b>项目页不用分段</b>：进行中和最近结束上下排；项目名下面就有「已结束 N」入口，不用滚过所有进行中的会话</li>
     <li><b>项目副标题带路径</b>，同名项目也能分清；会话标题不再统一叫「新会话」</li>
     <li><b>消息的每一步都有反馈</b>：发送中、已送达电脑、没能确认送达（可重试，重试不会重复发送）、已送到终端但没能确认 Codex 收到（不给重试）；排队的消息逐条显示，可以取消；和服务器断线时消息留在输入框里，不偷偷排队</li>
@@ -488,7 +500,7 @@
 </div>
 
 <!-- ============================= -->
-<h2>主页与项目</h2>
+<h2>主页</h2>
 <div class="screens">
 
   <div>
@@ -540,6 +552,16 @@
     <div class="cap">没有待处理时，进行中在最上面。项目按最近活动排序，副标题是路径，同名的也能分清</div>
   </div>
 
+
+
+
+
+</div>
+
+<!-- ============================= -->
+<h2>新建会话</h2>
+<div class="note" style="margin:0 0 20px">新建只有一种做法：<b>在项目页底部的「新会话」卡片里打字，发送</b>。配置跟着项目走，不用每次选。主页的 ＋ 只是先帮你选项目；「新项目…」选好机器和目录后也回到这张卡片。</div>
+<div class="screens">
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
@@ -556,12 +578,51 @@
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · MacBook</div></div></div>
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · MacBook</div></div></div>
       </div>
-      <div class="cfgline"><span class="dot idle"></span><em>MacBook · GPT-6-Astra medium · 询问</em><b>更改</b></div>
-      <div class="comp"><div class="in">在 foo 里开始新会话</div><div class="go">↑</div></div>
+      <div class="newbox">
+        <div class="nh">＋ 新会话</div>
+        <div class="row2"><div class="in">在 foo 里要 Codex 做什么？</div><div class="go">↑</div></div>
+        <div class="cfg"><span class="dot idle"></span><em>MacBook · GPT-6-Astra medium · 询问</em><b>更改</b></div>
+      </div>
     </div>
-    <div class="cap">项目页：底部直接开始新会话，配置沿用这个项目最近的会话；进行中和最近结束上下排，「已结束 12」在项目名下面</div>
+    <div class="cap"><span class="step">1</span>在项目页：底部的「新会话」卡片就是新建入口。配置已经按这个项目最近的会话填好，写在卡片最下面一行</div>
   </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>foo</b><span>~/Code/foo</span></span><span class="more"></span></div>
+      <div class="body">
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · VPS-dev</div></div></div>
+        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · MacBook</div></div></div>
+      </div>
+      <div class="newbox" style="margin-bottom:6px">
+        <div class="nh">＋ 新会话</div>
+        <div class="row2"><div class="in typed">给登录接口加限流</div><div class="go">↑</div></div>
+        <div class="cfg"><span class="dot idle"></span><em>MacBook · GPT-6-Astra medium · 询问</em><b>更改</b></div>
+      </div>
+      <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
+    </div>
+    <div class="cap"><span class="step">2</span>点卡片直接打字，不弹面板、不用选配置，点 ↑ 发送。空着发送也行，只打开会话，比如先去终端</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>给登录接口加限流</b><span><span class="dot run"></span>启动中 · foo · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="sep">9:41 · ~/Code/foo</div>
+        <div class="me"><div>给登录接口加限流</div><small>已送达电脑，等 Codex 就绪后发出</small></div>
+        <div class="sysline">正在 MacBook 上启动 Codex…</div>
+      </div>
+      <div class="chips"><span class="chip">询问</span><span class="chip grow"><em>GPT-6-Astra · medium</em> ▾</span></div>
+      <div class="comp"><div class="in">消息</div><div class="go">↑</div></div>
+    </div>
+    <div class="cap"><span class="step">3</span>发送后直接跳进新会话：第一句话已经在聊天里，Codex 启动好就开始干活。项目页的「进行中」里也多了这一条</div>
+  </div>
+</div>
+<div class="screens" style="margin-top:32px">
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
@@ -579,23 +640,7 @@
         </div>
       </div>
     </div>
-    <div class="cap">主页 ＋：选项目，最近的在前；副标题是路径和机器，同名的也能分清。选中就进项目页，输入框已聚焦</div>
-  </div>
-
-  <div>
-    <div class="phone">
-      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b>foo</b><span>~/Code/foo</span></span><span class="more"></span></div>
-      <div class="body">
-        <div class="label">进行中 <span>2</span></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · VPS-dev</div></div></div>
-        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · MacBook</div></div></div>
-      </div>
-      <div class="cfgline"><span class="dot idle"></span><em>MacBook · GPT-6-Astra medium · 询问</em><b>更改</b></div>
-      <div class="comp"><div class="in typed">给登录接口加限流</div><div class="go">↑</div></div>
-      <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
-    </div>
-    <div class="cap">从主页 ＋ 选了 foo：直接打字，发送后跳进新会话。空着发送也行，只打开会话，比如先去终端</div>
+    <div class="cap">从主页新建：右上角 ＋ 只是帮你先选项目。选中后进入第 2 步，卡片已聚焦、键盘已弹出</div>
   </div>
 
   <div>
@@ -615,7 +660,7 @@
         <div class="hint">默认沿用 foo 最近一个会话（修复登录超时）。改了之后，这个项目下次也会沿用新的设置。机器只在这个项目用过的机器里选；目录可以选项目里的子目录</div>
       </div>
     </div>
-    <div class="cap">点「更改」才打开，平时不用碰</div>
+    <div class="cap">点卡片里的「更改」才打开，只在想换机器、模型或审批模式时用</div>
   </div>
 
   <div>
