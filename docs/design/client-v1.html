@@ -459,9 +459,9 @@
     <h1>remote-agent 客户端</h1>
     <div class="sub">PWA 设计稿 · v1 · 2026-09-29 · 上一版 <a href="client-v0.html">v0</a></div>
   </div>
-  <div class="theme" id="theme"><button class="on" data-t="light">亮色</button><button data-t="dark">暗色</button></div>
+  <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
-<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换亮色和暗色。完整的手机画面之外，各种中间状态和出错状态画在「状态集」里。</div>
+<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。完整的手机画面之外，各种中间状态和出错状态画在「状态集」里。</div>
 
 <div class="note">
   <h4>相对 v0 的改动</h4>
@@ -1557,11 +1557,18 @@ git status --short gen/</pre>
 </div>
 <script>
   // Theme switch for reviewing the mockup; not part of the design.
+  // "auto" follows the system, like the client's default.
   const t = document.getElementById("theme");
+  const dark = matchMedia("(prefers-color-scheme: dark)");
+  let mode = "auto";
+  const apply = () => (document.documentElement.dataset.theme = mode === "auto" ? (dark.matches ? "dark" : "light") : mode);
+  dark.addEventListener("change", apply);
+  apply();
   t.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
-    document.documentElement.dataset.theme = b.dataset.t;
+    mode = b.dataset.t;
+    apply();
     t.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
   });
 </script>
