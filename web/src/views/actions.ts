@@ -21,24 +21,31 @@ function useCommand(remote: Remote, sid: string) {
   const last = useRef<{ key: string; slot: RequestSlot }>(undefined);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  // The last failure left the outcome unknown: only a retry of the same
+  // command may follow.
+  const [unknown, setUnknown] = useState(false);
   const run = async (key: string, cmd: CommandKind): Promise<boolean> => {
     const slot = last.current?.key === key ? last.current.slot : newSlot();
     last.current = { key, slot };
     setBusy(key);
     setError("");
+    setUnknown(false);
     try {
       await remote.command(sid, cmd, slot);
       return true;
     } catch (e) {
       // Only an uncertain outcome keeps the slot for the retry.
       if (!uncertain(e)) last.current = { key, slot: newSlot() };
+      setUnknown(uncertain(e));
       setError(errorText(e));
       setBusy("");
       return false;
     }
   };
   const retry = () => last.current?.key;
-  return { run, busy, error, retry, setBusy };
+  // Dismisses a definite failure, e.g. once the user changes the answer.
+  const clearError = () => setError("");
+  return { run, busy, error, unknown, retry, setBusy, clearError };
 }
 
 /** Allow or deny an approval. After success the buttons stay locked until
@@ -69,7 +76,7 @@ export function useAnswer(remote: Remote, sid: string, questionId: string) {
   const key = c.busy || c.retry() || "";
   const [i, o] = key ? key.split(":") : ["-1", ""];
   const chosen = { index: Number(i), options: o ? o.split(",").map(Number) : [] };
-  return { answer, busy: c.busy, error: c.error, chosen, done: () => c.setBusy("") };
+  return { answer, busy: c.busy, error: c.error, unknown: c.unknown, clearError: c.clearError, chosen, done: () => c.setBusy("") };
 }
 
 export function usePlan(remote: Remote, sid: string) {

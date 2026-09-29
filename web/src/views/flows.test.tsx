@@ -288,3 +288,67 @@ it("offers the full command of an approval that arrived while the dock was colla
   act(() => root!.render(dock(false)));
   expect(button("展开全文")).toBeTruthy();
 });
+
+function ClaudeAsk({ r }: { r: DemoRemote }) {
+  const s = r.sessions.get("s-claude")!;
+  return (
+    <Dock
+      remote={r}
+      sid="s-claude"
+      items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
+      agent={Agent.CLAUDE}
+      collapsed={false}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />
+  );
+}
+
+function failingAnswers(r: DemoRemote, first: CommandError) {
+  const sent: number[][] = [];
+  const slots: string[] = [];
+  const real = r.command.bind(r);
+  r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "answerQuestion") {
+      sent.push([...(cmd.value.options ?? [])]);
+      slots.push(slot?.requestId ?? "");
+      if (sent.length === 1) throw first;
+    }
+    return real(sid, cmd, slot);
+  };
+  return { sent, slots };
+}
+
+it("lets a multi-select answer be changed and sent again after a definite failure", async () => {
+  const r = demo();
+  const { sent } = failingAnswers(r, new CommandError("failed_precondition", "问题已经变了"));
+  mount(<ClaudeAsk r={r} />);
+  await click(button(/^按 IP/));
+  await click(button("提交 1 项"));
+  await vi.waitFor(() => expect(host.textContent).toContain("没能提交"));
+  // Change the answer: the error goes and 提交 comes back.
+  await click(button(/^按账户/));
+  expect(host.textContent).not.toContain("没能提交");
+  await click(button("提交 2 项"));
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).toEqual([1, 2]);
+});
+
+it("retries a multi-select answer of unknown outcome unchanged", async () => {
+  const r = demo();
+  const { sent, slots } = failingAnswers(r, new CommandError("unknown", "连接超时"));
+  mount(<ClaudeAsk r={r} />);
+  await click(button(/^按 IP/));
+  await click(button(/^按设备/));
+  await click(button("提交 2 项"));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  // The ticks are locked to what was sent; only 重试 remains.
+  expect(button(/^按账户/)?.disabled).toBe(true);
+  expect(button(/^提交/)).toBeUndefined();
+  await click(button("重试"));
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).toEqual([1, 3]);
+  expect(slots[1]).toBe(slots[0]);
+});

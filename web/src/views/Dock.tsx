@@ -205,7 +205,14 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
   const retry = () => {
     if (sent.length) void pick(sent);
   };
-  const tick = (o: number) => setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
+  // After a definite failure the ticks can change and be submitted again;
+  // while the outcome is unknown they stay as sent, and only a retry of
+  // that answer may follow.
+  const frozen = !!ans.busy || (!!ans.error && ans.unknown);
+  const tick = (o: number) => {
+    if (ans.error) ans.clearError();
+    setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
+  };
   return (
     <div className="dock ask">
       <div className="h">
@@ -224,7 +231,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
         <div className="answers">
           {item.options.map((o, i) => {
             const { text, recommended } = optionLabel(o.label);
-            const on = multi ? (ans.busy || ans.error ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
+            const on = multi ? (frozen ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
             const status = on && sent.includes(i + 1) && (ans.busy ? "提交中…" : ans.error ? "err" : "");
             return (
               <button
@@ -232,7 +239,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
                 className={"ans" + (on ? " on" : "") + (multi ? " multi" : "")}
                 role={multi ? "checkbox" : undefined}
                 aria-checked={multi ? on : undefined}
-                disabled={!!ans.busy}
+                disabled={multi ? frozen : !!ans.busy}
                 onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
               >
                 {multi ? <span className={"box" + (on ? " on" : "")}>{on ? "✓" : ""}</span> : on && <span className="ck">✓</span>}
@@ -252,16 +259,18 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
           })}
         </div>
       </div>
-      {multi && !ans.error && (
+      {multi && !(ans.error && ans.unknown) && (
         <div className="btns">
           <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
             {ans.busy ? "提交中…" : ticked.length ? `提交 ${ticked.length} 项` : "选好后提交"}
           </button>
         </div>
       )}
-      {multi && ans.error && <div className="red small">没能提交，终端里的问题可能已经变了</div>}
+      {multi && ans.error && (
+        <div className="red small">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>
+      )}
       <div className="foot">
-        {ans.error ? (
+        {ans.error && (!multi || ans.unknown) ? (
           <>
             <span />
             <button className="link" onClick={retry}>
