@@ -6,7 +6,7 @@ services:
     image: remote-agent-server:local
     container_name: remote-agent-server
     restart: unless-stopped
-    env_file: .env # RA_SETUP_TOKEN, ALLOWED_ORIGINS
+    env_file: .env # RA_SETUP_TOKEN, ALLOWED_ORIGINS, RA_FCM_SERVICE_ACCOUNT (optional)
     command: ["--allowed-origins", "${ALLOWED_ORIGINS:-}"]
     volumes:
       - ./data:/data

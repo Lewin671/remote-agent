@@ -373,7 +373,7 @@ App 在前台时保持主 WebSocket；进入后台就断开，改靠推送；回
 
 ### 推送和通知里审批
 
-- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。手机有 GMS，不做 UnifiedPush
+- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。手机有 GMS，不做 UnifiedPush
 - **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
 - **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
 - **显示**：通知用 `VISIBILITY_PRIVATE`，锁屏上只显示通用文案。默认解锁后也只显示通用文案，点开直接进审批页；App 设置里打开「在通知里显示内容并直接审批」后，才显示会话标题、命令和按钮（scope 第 4 节）。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知
