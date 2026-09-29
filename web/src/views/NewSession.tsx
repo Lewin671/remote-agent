@@ -21,7 +21,11 @@ import {
   type MachineLike,
   type NewConfig,
 } from "../model";
-import { errorText, newSlot, uncertain, type MachineView, type Remote, type RequestSlot } from "../remote";
+import { Attempt } from "../attempt";
+import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
+import { errorText, type MachineView, type Remote } from "../remote";
+
+type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
 
@@ -95,27 +99,26 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const last = useRef<{ key: string; slot: RequestSlot }>(undefined);
+  const attempt = useRef(new Attempt<{ machineId: string; req: CreateReq }>());
 
   const create = async (prompt: string) => {
-    const req = { cwd: cfg.cwd, prompt, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
-    // A retry of the same request reuses its slot: the daemon starts it once.
-    const k = cfg.machineId + JSON.stringify(req);
-    const slot = last.current?.key === k ? last.current.slot : newSlot();
-    last.current = { key: k, slot };
+    const req: CreateReq = { cwd: cfg.cwd, prompt, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
+    // While an earlier attempt's outcome is unknown, only it is retried.
+    const { payload, slot } = attempt.current.next({ machineId: cfg.machineId, req });
     setBusy(true);
     setError("");
     try {
-      const res = await remote.machineCommand(cfg.machineId, { case: "createSession", value: req }, slot);
+      const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
+      attempt.current.settle();
       if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error("意外的回复");
       const sid = res.kind.value.session.id;
-      if (prompt) remote.prompts.set(sid, prompt);
+      if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
       remote.draftMachines.delete(key);
       go("s/" + sid);
       return true;
     } catch (e) {
-      if (!uncertain(e)) last.current = { key: k, slot: newSlot() };
+      attempt.current.settle(e);
       setError(errorText(e));
       return false;
     } finally {
@@ -123,7 +126,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     }
   };
   const blocked = !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
-  return { remote, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
+  return { remote, frozen: attempt.current.frozen, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -182,8 +185,8 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
     </div>
   );
   const error = ns.error && (
-    <Banner kind="err" action="重试" onAction={() => void submit()}>
-      启动失败：{ns.error}
+    <Banner kind={ns.frozen ? "warn" : "err"} action="重试" onAction={() => void submit()}>
+      {ns.frozen ? `不确定是否已经启动：${ns.error}。重试会发送同一个请求，不会重复启动` : `启动失败：${ns.error}`}
     </Banner>
   );
   return (
