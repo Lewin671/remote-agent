@@ -22,6 +22,7 @@ public  final class PlanProposed extends
     PlanProposedOrBuilder {
   private PlanProposed() {
     text_ = "";
+    callId_ = "";
   }
   public static final int TEXT_FIELD_NUMBER = 1;
   private java.lang.String text_;
@@ -68,6 +69,74 @@ public  final class PlanProposed extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     text_ = value.toStringUtf8();
+
+  }
+
+  public static final int CALL_ID_FIELD_NUMBER = 2;
+  private java.lang.String callId_;
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @return The callId.
+   */
+  @java.lang.Override
+  public java.lang.String getCallId() {
+    return callId_;
+  }
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @return The bytes for callId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getCallIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(callId_);
+  }
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @param value The callId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCallId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    callId_ = value;
+  }
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   */
+  private void clearCallId() {
+
+    callId_ = getDefaultInstance().getCallId();
+  }
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @param value The bytes for callId to set.
+   */
+  private void setCallIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    callId_ = value.toStringUtf8();
 
   }
 
@@ -223,6 +292,75 @@ public  final class PlanProposed extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Claude Code's ExitPlanMode call ID; empty for Codex.
+     * </pre>
+     *
+     * <code>string call_id = 2 [json_name = "callId"];</code>
+     * @return The callId.
+     */
+    @java.lang.Override
+    public java.lang.String getCallId() {
+      return instance.getCallId();
+    }
+    /**
+     * <pre>
+     * Claude Code's ExitPlanMode call ID; empty for Codex.
+     * </pre>
+     *
+     * <code>string call_id = 2 [json_name = "callId"];</code>
+     * @return The bytes for callId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getCallIdBytes() {
+      return instance.getCallIdBytes();
+    }
+    /**
+     * <pre>
+     * Claude Code's ExitPlanMode call ID; empty for Codex.
+     * </pre>
+     *
+     * <code>string call_id = 2 [json_name = "callId"];</code>
+     * @param value The callId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCallId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setCallId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's ExitPlanMode call ID; empty for Codex.
+     * </pre>
+     *
+     * <code>string call_id = 2 [json_name = "callId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCallId() {
+      copyOnWrite();
+      instance.clearCallId();
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code's ExitPlanMode call ID; empty for Codex.
+     * </pre>
+     *
+     * <code>string call_id = 2 [json_name = "callId"];</code>
+     * @param value The bytes for callId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCallIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setCallIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PlanProposed)
   }
   @java.lang.Override
@@ -240,9 +378,11 @@ public  final class PlanProposed extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "text_",
+            "callId_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u0208";
+              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

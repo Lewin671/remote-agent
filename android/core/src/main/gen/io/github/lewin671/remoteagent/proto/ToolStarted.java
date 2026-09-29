@@ -23,6 +23,8 @@ public  final class ToolStarted extends
   private ToolStarted() {
     title_ = "";
     callId_ = "";
+    input_ = "";
+    itemType_ = "";
   }
   public static final int TITLE_FIELD_NUMBER = 1;
   private java.lang.String title_;
@@ -117,6 +119,184 @@ public  final class ToolStarted extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     callId_ = value.toStringUtf8();
+
+  }
+
+  public static final int KIND_FIELD_NUMBER = 3;
+  private int kind_;
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  @java.lang.Override
+  public int getKindValue() {
+    return kind_;
+  }
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ToolKind getKind() {
+    io.github.lewin671.remoteagent.proto.ToolKind result = io.github.lewin671.remoteagent.proto.ToolKind.forNumber(kind_);
+    return result == null ? io.github.lewin671.remoteagent.proto.ToolKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @param value The enum numeric value on the wire for kind to set.
+   */
+  private void setKindValue(int value) {
+      kind_ = value;
+  }
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @param value The kind to set.
+   */
+  private void setKind(io.github.lewin671.remoteagent.proto.ToolKind value) {
+    kind_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   */
+  private void clearKind() {
+
+    kind_ = 0;
+  }
+
+  public static final int INPUT_FIELD_NUMBER = 4;
+  private java.lang.String input_;
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @return The input.
+   */
+  @java.lang.Override
+  public java.lang.String getInput() {
+    return input_;
+  }
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @return The bytes for input.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getInputBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(input_);
+  }
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @param value The input to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setInput(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    input_ = value;
+  }
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   */
+  private void clearInput() {
+
+    input_ = getDefaultInstance().getInput();
+  }
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @param value The bytes for input to set.
+   */
+  private void setInputBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    input_ = value.toStringUtf8();
+
+  }
+
+  public static final int ITEM_TYPE_FIELD_NUMBER = 5;
+  private java.lang.String itemType_;
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @return The itemType.
+   */
+  @java.lang.Override
+  public java.lang.String getItemType() {
+    return itemType_;
+  }
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @return The bytes for itemType.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getItemTypeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(itemType_);
+  }
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @param value The itemType to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setItemType(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    itemType_ = value;
+  }
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   */
+  private void clearItemType() {
+
+    itemType_ = getDefaultInstance().getItemType();
+  }
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @param value The bytes for itemType to set.
+   */
+  private void setItemTypeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    itemType_ = value.toStringUtf8();
 
   }
 
@@ -321,6 +501,190 @@ public  final class ToolStarted extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What the ToolCall will carry, when known at the start (Claude Code).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+     * @return The enum numeric value on the wire for kind.
+     */
+    @java.lang.Override
+    public int getKindValue() {
+      return instance.getKindValue();
+    }
+    /**
+     * <pre>
+     * What the ToolCall will carry, when known at the start (Claude Code).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+     * @param value The kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKindValue(int value) {
+      copyOnWrite();
+      instance.setKindValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the ToolCall will carry, when known at the start (Claude Code).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+     * @return The kind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ToolKind getKind() {
+      return instance.getKind();
+    }
+    /**
+     * <pre>
+     * What the ToolCall will carry, when known at the start (Claude Code).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+     * @param value The enum numeric value on the wire for kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKind(io.github.lewin671.remoteagent.proto.ToolKind value) {
+      copyOnWrite();
+      instance.setKind(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the ToolCall will carry, when known at the start (Claude Code).
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearKind() {
+      copyOnWrite();
+      instance.clearKind();
+      return this;
+    }
+
+    /**
+     * <code>string input = 4 [json_name = "input"];</code>
+     * @return The input.
+     */
+    @java.lang.Override
+    public java.lang.String getInput() {
+      return instance.getInput();
+    }
+    /**
+     * <code>string input = 4 [json_name = "input"];</code>
+     * @return The bytes for input.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getInputBytes() {
+      return instance.getInputBytes();
+    }
+    /**
+     * <code>string input = 4 [json_name = "input"];</code>
+     * @param value The input to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInput(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setInput(value);
+      return this;
+    }
+    /**
+     * <code>string input = 4 [json_name = "input"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInput() {
+      copyOnWrite();
+      instance.clearInput();
+      return this;
+    }
+    /**
+     * <code>string input = 4 [json_name = "input"];</code>
+     * @param value The bytes for input to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setInputBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * The CLI's tool name, e.g. "Bash".
+     * </pre>
+     *
+     * <code>string item_type = 5 [json_name = "itemType"];</code>
+     * @return The itemType.
+     */
+    @java.lang.Override
+    public java.lang.String getItemType() {
+      return instance.getItemType();
+    }
+    /**
+     * <pre>
+     * The CLI's tool name, e.g. "Bash".
+     * </pre>
+     *
+     * <code>string item_type = 5 [json_name = "itemType"];</code>
+     * @return The bytes for itemType.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getItemTypeBytes() {
+      return instance.getItemTypeBytes();
+    }
+    /**
+     * <pre>
+     * The CLI's tool name, e.g. "Bash".
+     * </pre>
+     *
+     * <code>string item_type = 5 [json_name = "itemType"];</code>
+     * @param value The itemType to set.
+     * @return This builder for chaining.
+     */
+    public Builder setItemType(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setItemType(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The CLI's tool name, e.g. "Bash".
+     * </pre>
+     *
+     * <code>string item_type = 5 [json_name = "itemType"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearItemType() {
+      copyOnWrite();
+      instance.clearItemType();
+      return this;
+    }
+    /**
+     * <pre>
+     * The CLI's tool name, e.g. "Bash".
+     * </pre>
+     *
+     * <code>string item_type = 5 [json_name = "itemType"];</code>
+     * @param value The bytes for itemType to set.
+     * @return This builder for chaining.
+     */
+    public Builder setItemTypeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setItemTypeBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolStarted)
   }
   @java.lang.Override
@@ -339,10 +703,13 @@ public  final class ToolStarted extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "title_",
             "callId_",
+            "kind_",
+            "input_",
+            "itemType_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\f\u0004\u0208\u0005\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

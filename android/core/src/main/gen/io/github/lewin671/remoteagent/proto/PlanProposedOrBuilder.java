@@ -21,4 +21,24 @@ public interface PlanProposedOrBuilder extends
    */
   com.google.protobuf.ByteString
       getTextBytes();
+
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @return The callId.
+   */
+  java.lang.String getCallId();
+  /**
+   * <pre>
+   * Claude Code's ExitPlanMode call ID; empty for Codex.
+   * </pre>
+   *
+   * <code>string call_id = 2 [json_name = "callId"];</code>
+   * @return The bytes for callId.
+   */
+  com.google.protobuf.ByteString
+      getCallIdBytes();
 }

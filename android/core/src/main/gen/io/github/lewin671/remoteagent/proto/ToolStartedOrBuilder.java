@@ -33,4 +33,55 @@ public interface ToolStartedOrBuilder extends
    */
   com.google.protobuf.ByteString
       getCallIdBytes();
+
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  int getKindValue();
+  /**
+   * <pre>
+   * What the ToolCall will carry, when known at the start (Claude Code).
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolKind kind = 3 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  io.github.lewin671.remoteagent.proto.ToolKind getKind();
+
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @return The input.
+   */
+  java.lang.String getInput();
+  /**
+   * <code>string input = 4 [json_name = "input"];</code>
+   * @return The bytes for input.
+   */
+  com.google.protobuf.ByteString
+      getInputBytes();
+
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @return The itemType.
+   */
+  java.lang.String getItemType();
+  /**
+   * <pre>
+   * The CLI's tool name, e.g. "Bash".
+   * </pre>
+   *
+   * <code>string item_type = 5 [json_name = "itemType"];</code>
+   * @return The bytes for itemType.
+   */
+  com.google.protobuf.ByteString
+      getItemTypeBytes();
 }
