@@ -66,3 +66,15 @@ func TestFitEventFallsBack(t *testing.T) {
 		t.Fatalf("fallback: %d bytes, %T", proto.Size(got), got.Kind)
 	}
 }
+
+func TestFitEventMarksOnlyCutOutput(t *testing.T) {
+	e := &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{Input: strings.Repeat("x", 2<<20), Output: "short"}}}
+	got := fitEvent(e).GetToolCall()
+	if got.OutputTruncated || got.Output != "short" {
+		t.Fatalf("output %q truncated=%v", got.Output, got.OutputTruncated)
+	}
+	e = &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{Output: strings.Repeat("x", 2<<20)}}}
+	if !fitEvent(e).GetToolCall().OutputTruncated {
+		t.Fatal("cut output not marked")
+	}
+}

@@ -29,7 +29,12 @@ func fitEvent(e *pb.Event) *pb.Event {
 		fields = []*string{&k.Reasoning.Text}
 	case *pb.Event_ToolCall:
 		fields = []*string{&k.ToolCall.Output, &k.ToolCall.Input, &k.ToolCall.Title}
-		defer func() { k.ToolCall.OutputTruncated = true }()
+		output := k.ToolCall.Output
+		defer func() {
+			if k.ToolCall.Output != output {
+				k.ToolCall.OutputTruncated = true
+			}
+		}()
 	case *pb.Event_ApprovalRequested:
 		fields = []*string{&k.ApprovalRequested.ToolInputJson, &k.ApprovalRequested.Command, &k.ApprovalRequested.Description}
 	}
