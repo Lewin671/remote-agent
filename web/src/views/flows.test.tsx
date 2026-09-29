@@ -12,6 +12,7 @@ import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { Dock } from "./Dock";
 import { Home } from "./Home";
+import { ProjectPage } from "./Project";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -130,5 +131,18 @@ it("keeps the dock's buttons out of its scrolling content", () => {
     const el = button(b, dock)!;
     expect(scroll.contains(el)).toBe(false);
   }
+});
+
+it("follows the project's latest session as sessions change", () => {
+  const r = demo();
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  const line = () => host.querySelector(".newbox .cfg em")!.textContent ?? "";
+  expect(line()).not.toContain("Claude Code");
+  // The Claude Code session in foo becomes the most recent one.
+  act(() => {
+    r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
+    (r as unknown as { changed(): void }).changed();
+  });
+  expect(line()).toContain("Claude Code");
 });
 

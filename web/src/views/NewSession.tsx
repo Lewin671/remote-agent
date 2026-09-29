@@ -3,7 +3,7 @@
 // session's machine, CLI, model, effort and mode) and is written in one
 // line under the box; 更改 opens the sheet to change it.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 import {
@@ -89,7 +89,9 @@ function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig
 
 /** The configuration and the create call of a new session in project key. */
 export function useNewSession(remote: Remote, key: string, go: Go) {
-  const p = useMemo(() => projects(remote.sessions.values()).find((x) => x.key === key), [remote, key, remote.sessions.size]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Recomputed on every render: which session is latest changes with any
+  // session's activity, not only when sessions come or go.
+  const p = projects(remote.sessions.values()).find((x) => x.key === key);
   const inherited = inheritConfig(p, remote.machines, key);
   const [override, setOverride] = useState<NewConfig>();
   // Changes apply to this project only; switching projects starts over.
