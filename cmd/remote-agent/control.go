@@ -72,3 +72,15 @@ func runPlan(args []string) error {
 	_, err := dial().AnswerPlan(context.Background(), connect.NewRequest(&pb.AnswerPlanRequest{SessionId: args[0], Choice: choice}))
 	return explain(err)
 }
+
+func runResume(args []string) error {
+	if err := needArgs(args, 1, "resume <id>"); err != nil {
+		return err
+	}
+	res, err := dial().ResumeSession(context.Background(), connect.NewRequest(&pb.ResumeSessionRequest{SessionId: args[0]}))
+	if err != nil {
+		return explain(err)
+	}
+	fmt.Printf("resumed %s; attach with `remote-agent attach %s`\n", res.Msg.Session.Id, res.Msg.Session.Id[:8])
+	return nil
+}

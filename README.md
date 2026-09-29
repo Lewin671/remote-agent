@@ -32,6 +32,7 @@ remote-agent events <id> -f    # 持续查看事件
 - Codex 需要的代理等环境变量写进 `~/.remote-agent/codex.env`，一行一个 `KEY=VALUE`，daemon 启动每个会话时都会带上
 - 二进制的路径要固定：它是 Codex hook 的命令，路径一变 Codex 就会要求重新信任 hook
 - 第一次在某个目录启动时，Codex 会问是否信任这个目录、是否信任 hook，需要在终端里回答
+- **升级 Codex 后运行 `remote-agent doctor`**：它用一个临时会话（GPT-6-Luna，低档位）检查 remote-agent 依赖的各项行为，并记下这个版本已验证
 
 ## 连接 server 和网页
 

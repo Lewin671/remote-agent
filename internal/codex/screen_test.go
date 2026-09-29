@@ -1,6 +1,9 @@
 package codex
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // Captures from codex-cli 0.157.1 (capture-pane -p -e), trimmed.
 const (
@@ -100,5 +103,41 @@ func TestScreenFooter(t *testing.T) {
 		"  GPT-6-Sol medium · /tmp/w                                   Plan mode\n")
 	if !plan.PlanMode || !plan.DraftEmpty {
 		t.Fatalf("%+v", plan)
+	}
+}
+
+// The same marks written with other escape sequences, as other Codex
+// versions do.
+func TestAnalyzeScreenStyleVariants(t *testing.T) {
+	cases := []struct {
+		name   string
+		screen string
+		want   Screen
+	}{
+		{"prompt reset then bold", "\x1b[0;1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n  f\n", Screen{ComposerReady: true, DraftEmpty: true}},
+		{"prompt bold with color", "\x1b[1;39m›\x1b[39;22m \x1b[38;5;245;2mAsk Codex\x1b[0m\n  f\n", Screen{ComposerReady: true, DraftEmpty: true}},
+		{"prompt split sequences", "\x1b[0m\x1b[1m›\x1b[22m \x1b[2mAsk Codex\x1b[22m\n  f\n", Screen{ComposerReady: true, DraftEmpty: true}},
+		{"draft after a bold prompt", "\x1b[0;1m›\x1b[0m my draft\n  f\n", Screen{ComposerReady: true}},
+		{"earlier message is not the prompt", "\x1b[0;1;2m› \x1b[0mhello\n  f\n", Screen{}},
+		{"selection reset then reversed", "  Trust this folder?\n\x1b[0;1;7m› 1. Trust and continue\n\x1b[0m  2. Quit\n", Screen{Popup: "trust folder"}},
+		{"selection reversed only", "  Some menu\n  \x1b[7m› 1. First\x1b[27m\n", Screen{Popup: "menu"}},
+	}
+	for _, c := range cases {
+		got := AnalyzeScreen(c.screen)
+		got.Footer = ""
+		if got != c.want {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
+		}
+	}
+}
+
+// A capture from codex-cli 0.159.0, which writes the prompt as ESC[0;1m.
+func TestAnalyzeScreen0159(t *testing.T) {
+	b, err := os.ReadFile("testdata/screen-0.159.0-idle.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scr := AnalyzeScreen(string(b)); !scr.ComposerReady || !scr.DraftEmpty || scr.Popup != "" {
+		t.Fatalf("%+v", scr)
 	}
 }

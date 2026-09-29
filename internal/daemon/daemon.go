@@ -89,6 +89,9 @@ type Daemon struct {
 
 	settingsMu sync.Mutex
 	cached     *pb.DaemonSettings
+
+	versionOnce sync.Once
+	version     string
 }
 
 // New returns a daemon; call Run to start it.
@@ -115,6 +118,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.ctx = ctx
 	if err := d.restore(); err != nil {
 		return err
+	}
+	if v := d.codexVersion(); v != "" && !d.codexVerified() {
+		slog.Warn("this Codex version has not been checked with remote-agent; run `remote-agent doctor`", "codex", v)
 	}
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
@@ -320,7 +326,7 @@ func (d *Daemon) noteLimits(u *pb.TokenUsage) {
 func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()
 	home, _ := os.UserHomeDir()
-	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home}
+	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: d.codexVersion(), CodexVerified: d.codexVerified()}
 	d.mu.Lock()
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
@@ -420,4 +426,102 @@ func writeEnvFile(path string, env map[string]string) error {
 		return err
 	}
 	return f.Close()
+}
+
+var errRunning = errors.New("the session is still running")
+
+// resume starts Codex again for an exited session, in its directory and
+// tmux session name, continuing the same Codex conversation. The session
+// keeps its ID and history; Codex appends to the same rollout, which is
+// read on from where it stopped.
+func (d *Daemon) resume(id string) (*session, error) {
+	s, err := d.exact(id)
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	m := s.meta
+	ctx := s.context
+	s.mu.Unlock()
+	if !m.Exited {
+		return nil, errRunning
+	}
+	if d.cfg.Tmux.HasSession(m.Tmux) {
+		return nil, errRunning
+	}
+	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
+		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
+	}
+	// Start it the way it last ran: model, effort and approval mode from
+	// the latest turn context.
+	var args []string
+	if ctx != nil {
+		if ctx.Model != "" && safeValue.MatchString(ctx.Model) {
+			args = append(args, "-m", ctx.Model)
+		}
+		if _, ok := effortLabels[ctx.Effort]; ok {
+			args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", ctx.Effort))
+		}
+		args = append(args, modeArgs(contextMode(ctx))...)
+	}
+	env := sessionEnv(nil, d.cfg.Env)
+	env["RA_SESSION"] = id
+	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
+		env["REMOTE_AGENT_HOME"] = h
+	}
+	envFile := filepath.Join(s.dir, "env.json")
+	if err := writeEnvFile(envFile, env); err != nil {
+		return nil, err
+	}
+	hookCmd := shellQuote(d.cfg.Exe) + " hook codex"
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
+	if m.CodexSessionID != "" {
+		argv = append(argv, "resume")
+		argv = append(argv, codex.Args(hookCmd, args)...)
+		argv = append(argv, m.CodexSessionID)
+	} else {
+		// Nothing was ever sent: there is no conversation to resume.
+		argv = append(argv, codex.Args(hookCmd, args)...)
+	}
+	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
+		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
+	}); err != nil {
+		os.Remove(envFile)
+		return nil, err
+	}
+	if err := d.cfg.Tmux.SetSessionOption(m.Tmux, "@ra_session_id", id); err != nil {
+		_ = d.cfg.Tmux.KillSession(m.Tmux)
+		return nil, err
+	}
+	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
+
+	s.mu.Lock()
+	s.meta.Exited = false
+	s.sawComposer = false
+	s.done = make(chan struct{})
+	m = s.meta
+	s.mu.Unlock()
+	if err := m.save(s.dir); err != nil {
+		slog.Error("save session", "session", id, "err", err)
+	}
+	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+		Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed",
+	}}})
+	s.start(d.ctx)
+	slog.Info("resumed session", "session", id)
+	return s, nil
+}
+
+// contextMode is the approval mode a turn context shows; Plan mode is not
+// kept across a restart.
+func contextMode(c *pb.TurnContext) pb.ApprovalMode {
+	switch {
+	case c.Sandbox == "danger-full-access" && c.ApprovalPolicy == "never":
+		return pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS
+	case c.ApprovalsReviewer == "auto_review":
+		return pb.ApprovalMode_APPROVAL_MODE_AUTO
+	case c.ApprovalsReviewer == "user":
+		return pb.ApprovalMode_APPROVAL_MODE_ASK
+	}
+	return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 }

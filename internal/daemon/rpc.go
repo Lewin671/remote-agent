@@ -22,7 +22,7 @@ func rpcErr(err error) error {
 		return nil
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, errExited), errors.Is(err, errNotAnswering), errors.Is(err, errWriting),
+	case errors.Is(err, errExited), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning),
 		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
@@ -242,4 +242,15 @@ func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.Up
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	return connect.NewResponse(&pb.UpdateSettingsResponse{Settings: st}), nil
+}
+
+func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.ResumeSessionRequest]) (*connect.Response[pb.ResumeSessionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if _, err := h.d.resume(s.meta.ID); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil
 }

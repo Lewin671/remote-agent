@@ -26,6 +26,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
             💻 {machineName(m)}
             <span className="v">
+              {m.meta?.codexVersion && !m.meta.codexVerified && <span className="warn-text">Codex 未验证 · </span>}
               {quota(m.meta?.primaryLimit) && <>额度 {quota(m.meta?.primaryLimit)} · </>}
               <Dot tone={m.online ? "idle" : "off"} />
               {m.online ? "在线" : when(m.lastSeenMs) || "离线"} ›
@@ -188,6 +189,21 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             <div className="grp">
               {limitRow("主额度", m.meta?.primaryLimit)}
               {limitRow("次额度", m.meta?.secondaryLimit)}
+            </div>
+          </>
+        )}
+        {m.meta?.codexVersion && (
+          <>
+            <div className="glabel">Codex</div>
+            <div className="grp">
+              <div className="row">
+                版本<span className="v">{m.meta.codexVersion}</span>
+              </div>
+              {!m.meta.codexVerified && (
+                <div className="row help">
+                  这个版本还没有和 remote-agent 一起验证过。在这台电脑上运行 <code>remote-agent doctor</code>，它会用一个临时会话检查各项功能。
+                </div>
+              )}
             </div>
           </>
         )}

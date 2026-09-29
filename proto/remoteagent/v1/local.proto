@@ -15,6 +15,9 @@ service LocalService {
   rpc Send(SendRequest) returns (SendResponse);
   rpc Interrupt(InterruptRequest) returns (InterruptResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  // ResumeSession starts Codex again for an exited session, continuing its
+  // conversation.
+  rpc ResumeSession(ResumeSessionRequest) returns (ResumeSessionResponse);
   // CancelInput removes a queued message that has not been written yet.
   rpc CancelInput(CancelInputRequest) returns (CancelInputResponse);
   // SetModel switches the model and effort for this session only.
@@ -67,6 +70,10 @@ message Session {
   int64 context_window = 22;
   // Codex is asking whether to implement the plan it proposed.
   bool plan_open = 23;
+  // Why queued input waits: "draft" (the terminal holds unsent text),
+  // "popup", or "unrecognized" (the input box cannot be found, likely
+  // after a Codex update); empty when nothing waits or it is being sent.
+  string input_wait = 24;
 }
 
 message CreateSessionRequest {
@@ -279,4 +286,12 @@ message UpdateSettingsRequest {
 
 message UpdateSettingsResponse {
   DaemonSettings settings = 1;
+}
+
+message ResumeSessionRequest {
+  string session_id = 1;
+}
+
+message ResumeSessionResponse {
+  Session session = 1;
 }

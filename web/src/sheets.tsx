@@ -251,7 +251,16 @@ export function NewSessionSheet({ remote, project, onClose, onCreated }: { remot
   const [model, setModel] = useState("");
   const [effort, setEffort] = useState("");
   const [mode, setMode] = useState<ApprovalMode>(ApprovalMode.UNSPECIFIED);
-  const [picking, setPicking] = useState<"" | "machine" | "dir" | "model" | "mode">("");
+  const [picking, setPicking] = useState<"" | "machine" | "dirs" | "dir" | "model" | "mode">("");
+  // Folders this machine already has sessions in, most recent first.
+  const knownProjects = [
+    ...new Set(
+      [...remote.sessions.values()]
+        .filter((s) => s.machineId === machineId && s.info?.cwd)
+        .sort((a, b) => Number(b.updatedMs - a.updatedMs))
+        .map((s) => s.info!.cwd),
+    ),
+  ];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -327,12 +336,26 @@ export function NewSessionSheet({ remote, project, onClose, onCreated }: { remot
               {m.id === machineId && <span className="ck">✓</span>}
             </button>
           ))}
-        <button className="sr" onClick={() => setPicking("dir")}>
+        <button className="sr" onClick={() => setPicking(picking === "dirs" ? "" : "dirs")}>
           <span className="ico" style={{ background: "#f0a35a" }}>
             ▤
           </span>
           目录<span className="v">{shortPath(cwd) || "选择"}</span>
         </button>
+        {picking === "dirs" && (
+          <div className="sr sub pickers">
+            <div className="opts">
+              {knownProjects.map((p) => (
+                <button key={p} className={"opt" + (p === cwd ? " on" : "")} onClick={() => (setCwd(p), setPicking(""))} title={p}>
+                  {projectName(p)}
+                </button>
+              ))}
+              <button className="opt" onClick={() => setPicking("dir")}>
+                浏览…
+              </button>
+            </div>
+          </div>
+        )}
         <button className="sr" onClick={() => setPicking(picking === "model" ? "" : "model")}>
           <span className="ico" style={{ background: "#8a5fd6" }}>
             ✦

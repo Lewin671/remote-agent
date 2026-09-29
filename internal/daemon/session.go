@@ -61,14 +61,18 @@ type session struct {
 	sawComposer bool
 	planOpen    bool
 	driving     bool // a control operation is using the terminal's menus
-	status      pb.SessionStatus
-	detail      string
-	approvals   map[string]*approval
-	questions   map[string]*pb.QuestionAsked
-	queue       *queueState
-	wake        chan struct{} // pokes the injector
-	done        chan struct{} // closed when the session's goroutines stop
-	stop        context.CancelFunc
+	// Why queued input is not being written, and since when.
+	waitReason string
+	waitSince  time.Time
+	warned     bool
+	status     pb.SessionStatus
+	detail     string
+	approvals  map[string]*approval
+	questions  map[string]*pb.QuestionAsked
+	queue      *queueState
+	wake       chan struct{} // pokes the injector
+	done       chan struct{} // closed when the session's goroutines stop
+	stop       context.CancelFunc
 }
 
 type approval struct {
@@ -189,11 +193,12 @@ func (s *session) emit(evs ...*pb.Event) {
 // start runs the session's background loops until it exits or ctx ends.
 func (s *session) start(ctx context.Context) {
 	ctx, s.stop = context.WithCancel(ctx)
+	done := s.done
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); s.pollLoop(ctx) }()
 	go func() { defer wg.Done(); s.injectLoop(ctx) }()
-	go func() { wg.Wait(); close(s.done) }()
+	go func() { wg.Wait(); close(done) }()
 }
 
 func (s *session) pollLoop(ctx context.Context) {
@@ -361,6 +366,12 @@ func (s *session) info() *pb.Session {
 		QueuedInputs:     int32(len(s.queue.Queue)),
 		PlanOpen:         s.planOpen,
 	}
+	if len(s.queue.Queue) > 0 {
+		out.InputWait = s.waitReason
+		if s.waitReason == "unrecognized" && !s.warned {
+			out.InputWait = "" // not yet: it may be a passing frame
+		}
+	}
 	if c := s.context; c != nil {
 		out.Model, out.Effort = c.Model, c.Effort
 		out.ApprovalsReviewer, out.ApprovalPolicy, out.Sandbox, out.CollaborationMode = c.ApprovalsReviewer, c.ApprovalPolicy, c.Sandbox, c.CollaborationMode
@@ -452,6 +463,36 @@ func (s *session) cancelInput(requestID string) error {
 	s.mu.Unlock()
 	s.emitInput(requestID, pb.InputStatus_INPUT_STATUS_CANCELED)
 	return nil
+}
+
+// unrecognizedAfter is how long the input box may go unrecognized, with
+// no popup in front of it, before it is reported: likely a Codex update
+// changed how it draws the screen.
+const unrecognizedAfter = 20 * time.Second
+
+// noteWait records why queued input cannot be written now.
+func (s *session) noteWait(scr codex.Screen) {
+	reason := ""
+	switch {
+	case scr.ComposerReady && scr.DraftEmpty:
+	case scr.ComposerReady:
+		reason = "draft"
+	case scr.Popup != "":
+		reason = "popup"
+	default:
+		reason = "unrecognized"
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if reason != s.waitReason {
+		s.waitReason, s.waitSince, s.warned = reason, time.Now(), false
+	}
+	if reason == "unrecognized" && !s.warned && time.Since(s.waitSince) > unrecognizedAfter {
+		s.warned = true
+		// Only the version and the fact are logged, never the screen.
+		slog.Warn("cannot recognize Codex's input box; queued input waits. A Codex update may have changed its screen; run `remote-agent doctor`",
+			"session", s.meta.ID, "codex", s.d.codexVersion())
+	}
 }
 
 // injectLoop submits queued input one message at a time, in order.
@@ -595,8 +636,18 @@ func (s *session) inject(in input) (bool, error) {
 	}
 	scr := codex.AnalyzeScreen(styled)
 	if !scr.ComposerReady || !scr.DraftEmpty {
+		s.noteWait(scr)
 		return false, nil
 	}
+	// While Codex starts, its input box can flash before a startup dialog
+	// covers it; wait until the status check has seen a settled screen.
+	s.mu.Lock()
+	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
+	s.mu.Unlock()
+	if starting {
+		return false, nil
+	}
+	s.noteWait(scr)
 	hist := newHistory(s.d.cfg.HistoryPath, -1)
 	if err := s.markInflight(hist.r.Offset(), in.RequestID); err != nil {
 		if errors.Is(err, errHeadChanged) {

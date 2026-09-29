@@ -140,6 +140,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 			out.Kind = &pb.CommandResult_OpenTerminal{OpenTerminal: &pb.OpenTerminalResponse{}}
 			return nil
 		})
+	case *pb.Command_ResumeSession:
+		err = on(k.ResumeSession.SessionId, func() error {
+			return call(ctx, l.ResumeSession, k.ResumeSession, func(m *pb.ResumeSessionResponse) {
+				out.Kind = &pb.CommandResult_ResumeSession{ResumeSession: m}
+			})
+		})
 	case *pb.Command_CreateSession:
 		err = machine(func() error {
 			req := k.CreateSession

@@ -58,12 +58,26 @@ function ProjectRow({ p, go }: { p: Project; go: Go }) {
   );
 }
 
+function ProjectItem({ p, go, remote }: { p: Project; go: Go; remote: Remote }) {
+  return (
+    <div className="proj-item">
+      <ProjectRow p={p} go={go} />
+      <NewSessionButton remote={remote} go={go} project={p.key} small />
+    </div>
+  );
+}
+
 /** The ＋ button and the new-session sheet it opens. */
-export function NewSessionButton({ remote, go, project }: { remote: Remote; go: Go; project?: string }) {
+export function NewSessionButton({ remote, go, project, small }: { remote: Remote; go: Go; project?: string; small?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className="fab" onClick={() => setOpen(true)} aria-label="新会话">
+      <button
+        className={small ? "ph-add" : "fab"}
+        onClick={(e) => (e.stopPropagation(), setOpen(true))}
+        aria-label={project ? `在 ${projectName(project)} 下新建会话` : "新会话"}
+        title={project ? `在 ${projectName(project)} 下新建会话` : "新会话"}
+      >
         ＋
       </button>
       {open && <NewSessionSheet remote={remote} project={project} onClose={() => setOpen(false)} onCreated={(id) => (setOpen(false), go("s/" + id))} />}
@@ -90,7 +104,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         </p>
       )}
       {list.map((p) => (
-        <ProjectRow key={p.key} p={p} go={go} />
+        <ProjectItem key={p.key} p={p} go={go} remote={remote} />
       ))}
     </div>
   );
@@ -175,11 +189,14 @@ export function Sidebar({ remote, go, selected }: { remote: Remote; go: Go; sele
         const live = p.sessions.filter((s) => !exited(s) || s.id === selected);
         return (
           <div key={p.key}>
-            <button className="ph" onClick={() => go("p/" + encodeURIComponent(p.key))}>
-              <Avatar name={p.name} size="sm" />
-              {p.name}
-              <span>{live.length}</span>
-            </button>
+            <div className="ph">
+              <button className="ph-main" onClick={() => go("p/" + encodeURIComponent(p.key))}>
+                <Avatar name={p.name} size="sm" />
+                {p.name}
+                <span>{live.length}</span>
+              </button>
+              <NewSessionButton remote={remote} go={go} project={p.key} small />
+            </div>
             {live.map((s) => (
               <SessionRow key={s.id} s={s} remote={remote} go={go} selected={s.id === selected} compact />
             ))}

@@ -21,12 +21,14 @@ Usage:
   remote-agent answer <id> <question-id> <option>
   remote-agent interrupt <id>              interrupt the running turn
   remote-agent stop <id>                   end the session
+  remote-agent resume <id>                 start an ended session again
   remote-agent model [<id> <model> <effort>]
                                            list models, or switch a session's model
   remote-agent mode <id> ask|auto|full|plan switch the approval mode
   remote-agent compact <id>                compact the session's context
   remote-agent plan <id> implement|clear|keep
                                            answer "Implement this plan?"
+  remote-agent doctor                      check that the installed Codex works with remote-agent
   remote-agent account init|join|secret|status
                                            connect this machine to a server
 
@@ -65,6 +67,8 @@ func main() {
 		err = runInterrupt(args)
 	case "stop":
 		err = runStop(args)
+	case "resume":
+		err = runResume(args)
 	case "model":
 		err = runModel(args)
 	case "mode":
@@ -73,6 +77,8 @@ func main() {
 		err = runCompact(args)
 	case "plan":
 		err = runPlan(args)
+	case "doctor":
+		err = runDoctor(args)
 	case "account":
 		err = runAccount(args)
 	case "hook":

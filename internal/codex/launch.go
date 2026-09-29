@@ -15,6 +15,11 @@ const HookTimeoutSeconds = 3600
 // Args returns the codex arguments that install remote-agent's hooks for
 // this session only and turn off startup popups that can be turned off,
 // followed by the user's own arguments.
+// TestedVersions are the codex-cli versions the screen analysis, menus and
+// rollout parsing were checked against (docs/codex-notes.md). Others may
+// work; `remote-agent doctor` checks the installed one.
+var TestedVersions = []string{"0.157.1", "0.159.0"}
+
 func Args(hookCommand string, userArgs []string) []string {
 	cmd := tomlString(hookCommand)
 	args := []string{

@@ -190,7 +190,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
                 <EventRow key={String(e.seq)} e={e} d={derived} cwd={session.info?.cwd ?? ""} machine={machineName(machine)} />
               ))}
               {derived.running && derived.tools.map((t, i) => <RunningTool key={i} title={t.title} since={t.since} />)}
-        {pending.map((o) => (
+              {pending.map((o) => (
                 <div key={o.requestId} className="me pending">
                   <div>{o.text}</div>
                   <small>{o.status === "sending" ? "发送中…" : "已送达电脑"}</small>
@@ -230,6 +230,13 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
                 </div>
               )}
               {!machine?.online && <div className="banner">⚠ 这台电脑不在线，只能查看历史</div>}
+              {session.info?.inputWait === "unrecognized" && (
+                <div className="banner">
+                  ⚠ 认不出 Codex 的输入框，排队的消息发不出去。可能是 Codex 升级改了界面
+                  {machine?.meta?.codexVersion ? `（${machine.meta.codexVersion}）` : ""}，请在电脑上运行 remote-agent doctor
+                  <b onClick={() => setTab("term")}>去终端 ›</b>
+                </div>
+              )}
             </div>
 
             {toast && (
@@ -252,7 +259,15 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
                     </button>
                   </span>
                 ))}{" "}
-                {blocked ? "已暂停" : derived.questions.size > 0 ? "答完再发" : derived.running ? "本轮结束后发" : ""}
+                {session.info?.inputWait === "draft"
+                  ? "终端里有没发出的草稿，发完或清掉后再发"
+                  : blocked || session.info?.inputWait === "popup"
+                    ? "已暂停"
+                    : derived.questions.size > 0
+                      ? "答完再发"
+                      : derived.running
+                        ? "本轮结束后发"
+                        : ""}
               </div>
             )}
             {!wide && (
@@ -261,7 +276,14 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
               </div>
             )}
             {ended ? (
-              <div className="comp ended">会话已结束</div>
+              <div className="comp ended">
+                会话已结束
+                {machine?.online && (
+                  <button className="resume" onClick={() => void run("恢复会话", { case: "resumeSession", value: { sessionId: session.id } })}>
+                    恢复会话
+                  </button>
+                )}
+              </div>
             ) : (
               <Composer
                 running={derived.running}

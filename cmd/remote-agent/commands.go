@@ -59,49 +59,56 @@ func runDaemon(args []string) error {
 	if max := time.Duration(codex.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
-	tc := tmuxClient()
-	if _, err := tc.CheckVersion(); err != nil {
+	cfg, err := daemonConfig(*codexBin, tmuxClient())
+	if err != nil {
 		return err
 	}
-	if *codexBin == "" {
+	cfg.ApprovalTimeout = *approvalTimeout
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	var d *daemon.Daemon
+	cfg.Started = func(ctx context.Context) { relay.New(backend{d}).Run(ctx) }
+	d = daemon.New(cfg)
+	slog.Info("starting daemon", "codex", cfg.CodexBin, "approval_timeout", *approvalTimeout)
+	return d.Run(ctx)
+}
+
+// daemonConfig finds codex, this binary and Codex's files.
+func daemonConfig(codexBin string, tc *tmux.Client) (daemon.Config, error) {
+	if _, err := tc.CheckVersion(); err != nil {
+		return daemon.Config{}, err
+	}
+	if codexBin == "" {
 		p, err := exec.LookPath("codex")
 		if err != nil {
-			return errors.New("codex not found in PATH; pass --codex")
+			return daemon.Config{}, errors.New("codex not found in PATH; pass --codex")
 		}
-		*codexBin = p
+		codexBin = p
 	}
 	exe, err := os.Executable()
 	if err != nil {
-		return err
+		return daemon.Config{}, err
 	}
 	if exe, err = filepath.EvalSymlinks(exe); err != nil {
-		return err
+		return daemon.Config{}, err
 	}
 	env, err := readEnvFile(filepath.Join(paths.Dir(), "codex.env"))
 	if err != nil {
-		return err
+		return daemon.Config{}, err
 	}
 	codexHome := os.Getenv("CODEX_HOME")
 	if codexHome == "" {
 		home, _ := os.UserHomeDir()
 		codexHome = filepath.Join(home, ".codex")
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	var d *daemon.Daemon
-	d = daemon.New(daemon.Config{
-		Exe:             exe,
-		CodexBin:        *codexBin,
-		CodexHome:       codexHome,
-		Tmux:            tc,
-		HistoryPath:     filepath.Join(codexHome, "history.jsonl"),
-		Env:             env,
-		ApprovalTimeout: *approvalTimeout,
-		Started:         func(ctx context.Context) { relay.New(backend{d}).Run(ctx) },
-	})
-	slog.Info("starting daemon", "codex", *codexBin, "approval_timeout", *approvalTimeout)
-	return d.Run(ctx)
+	return daemon.Config{
+		Exe:         exe,
+		CodexBin:    codexBin,
+		CodexHome:   codexHome,
+		Tmux:        tc,
+		HistoryPath: filepath.Join(codexHome, "history.jsonl"),
+		Env:         env,
+	}, nil
 }
 
 // readEnvFile reads KEY=VALUE lines; a missing file is not an error.

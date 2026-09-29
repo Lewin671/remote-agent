@@ -30,12 +30,15 @@ var sgrRE = regexp.MustCompile("\x1b\\[[0-9;:]*[A-Za-z]")
 // StripANSI removes SGR and other CSI sequences.
 func StripANSI(s string) string { return sgrRE.ReplaceAllString(s, "") }
 
-const (
-	// The composer prompt is a bold "›" followed by a reset.
-	composerPrompt = "\x1b[1m›\x1b[0m"
-	// The highlighted row of a selection list is bold and reversed.
-	selectionCursor = "\x1b[1;7m›"
-)
+// Codex draws a few marks that tell the screen's state. They are told
+// apart by their style, not by exact escape sequences: versions write the
+// same style differently ("\x1b[1m", "\x1b[0;1m", "\x1b[1;39m", ...).
+//
+//   - the input box prompt: "›" in bold, not dim, not reversed
+//   - earlier user messages: "›" in bold and dim
+//   - the highlighted row of a selection list: "›" reversed
+//   - the empty input box's placeholder: dim text after the prompt
+const promptMark = "›"
 
 // bottomLines is how much of the screen bottom is inspected. Only the
 // bottom holds the live composer and dialogs; older conversation above it
@@ -80,10 +83,10 @@ func AnalyzeScreen(styled string) Screen {
 				s.Popup = p.name
 			}
 		}
-		if strings.HasPrefix(l, selectionCursor) || strings.Contains(l, " "+selectionCursor) {
+		if st, rest := leadingStyle(l, true); strings.HasPrefix(rest, promptMark) && st.reverse {
 			selection = true
 		}
-		if strings.HasPrefix(l, composerPrompt) {
+		if st, rest := leadingStyle(l, false); strings.HasPrefix(rest, promptMark) && st.bold && !st.dim && !st.reverse {
 			composer = i
 		}
 	}
@@ -116,47 +119,36 @@ func AnalyzeScreen(styled string) Screen {
 		// Only the placeholder proves the box is empty. A bare prompt may
 		// head a multi-line draft whose text is on later lines, and those
 		// cannot be told apart from the footer, so it counts as a draft.
-		s.DraftEmpty = startsDim(strings.TrimPrefix(lines[composer], composerPrompt))
+		_, rest := leadingStyle(lines[composer], false)
+		s.DraftEmpty = startsDim(strings.TrimPrefix(rest, promptMark))
 	}
 	return s
 }
 
-// startsDim reports whether the first visible text of s is drawn dim.
-// Codex may color the input box's background first, when the attached
-// terminal reports its own background color, so leading spaces and other
-// style changes are skipped.
-func startsDim(s string) bool {
-	dimOn := false
-	for s != "" {
-		if s[0] == ' ' {
-			s = s[1:]
-			continue
-		}
-		loc := sgrRE.FindStringIndex(s)
-		if loc == nil || loc[0] != 0 {
-			return dimOn // visible text
-		}
-		seq := s[:loc[1]]
-		s = s[loc[1]:]
-		if strings.HasSuffix(seq, "m") {
-			dimOn = applyDim(dimOn, strings.TrimSuffix(strings.TrimPrefix(seq, "\x1b["), "m"))
-		}
-	}
-	return false // nothing visible: a bare prompt
-}
+// style is the SGR state that matters here.
+type style struct{ bold, dim, reverse bool }
 
-// applyDim tracks the dim attribute through one SGR sequence's parameters.
-func applyDim(on bool, params string) bool {
+// apply updates st with one SGR sequence's parameters.
+func (st *style) apply(params string) {
 	ps := strings.FieldsFunc(params, func(r rune) bool { return r == ';' || r == ':' })
 	if len(ps) == 0 {
-		return false // ESC[m resets
+		*st = style{} // ESC[m resets
+		return
 	}
 	for i := 0; i < len(ps); i++ {
 		switch ps[i] {
-		case "0", "22":
-			on = false
+		case "0":
+			*st = style{}
+		case "1":
+			st.bold = true
 		case "2":
-			on = true
+			st.dim = true
+		case "7":
+			st.reverse = true
+		case "22":
+			st.bold, st.dim = false, false
+		case "27":
+			st.reverse = false
 		case "38", "48", "58":
 			// Extended colors carry their own arguments: 5;n or 2;r;g;b.
 			if i+1 < len(ps) && ps[i+1] == "5" {
@@ -166,5 +158,34 @@ func applyDim(on bool, params string) bool {
 			}
 		}
 	}
-	return on
+}
+
+// leadingStyle skips the escape sequences, and with skipSpaces the spaces,
+// at the start of s. It returns the style in effect and the rest.
+func leadingStyle(s string, skipSpaces bool) (style, string) {
+	var st style
+	for s != "" {
+		if skipSpaces && s[0] == ' ' {
+			s = s[1:]
+			continue
+		}
+		loc := sgrRE.FindStringIndex(s)
+		if loc == nil || loc[0] != 0 {
+			break
+		}
+		if seq := s[:loc[1]]; strings.HasSuffix(seq, "m") {
+			st.apply(strings.TrimSuffix(strings.TrimPrefix(seq, "\x1b["), "m"))
+		}
+		s = s[loc[1]:]
+	}
+	return st, s
+}
+
+// startsDim reports whether the first visible text of s is drawn dim.
+// Codex may color the input box's background first, when the attached
+// terminal reports its own background color, so leading spaces and other
+// style changes are skipped.
+func startsDim(s string) bool {
+	st, rest := leadingStyle(s, true)
+	return rest != "" && st.dim
 }

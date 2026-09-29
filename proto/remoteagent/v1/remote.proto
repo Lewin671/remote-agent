@@ -18,6 +18,10 @@ message MachineMeta {
   string plan_type = 5;
   // Home folder, for choosing where to start sessions.
   string home = 6;
+  // `codex --version`, and whether this remote-agent has been checked
+  // against it (by its tests or `remote-agent doctor`).
+  string codex_version = 7;
+  bool codex_verified = 8;
 }
 
 // Command is what a client asks a daemon to do. The session operations
@@ -36,6 +40,7 @@ message Command {
     CompactRequest compact = 9;
     AnswerPlanRequest answer_plan = 10;
     OpenTerminalRequest open_terminal = 11;
+    ResumeSessionRequest resume_session = 12;
     // Commands for the machine rather than a session; their envelope
     // header names no session.
     CreateSessionRequest create_session = 20;
@@ -66,6 +71,7 @@ message CommandResult {
     CompactResponse compact = 18;
     AnswerPlanResponse answer_plan = 19;
     OpenTerminalResponse open_terminal = 20;
+    ResumeSessionResponse resume_session = 21;
     CreateSessionResponse create_session = 30;
     ListModelsResponse list_models = 31;
     ListDirectoriesResponse list_directories = 32;
