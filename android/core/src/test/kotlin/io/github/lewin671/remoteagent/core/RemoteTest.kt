@@ -57,9 +57,9 @@ class RemoteTest {
     private fun user(t: String) = Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText(t))
     private fun agent(t: String) = Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(t))
 
-    private suspend fun client(cache: CipherCache? = null): Remote {
+    private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024): Remote {
         val acct = joinWithRoot(root, server.url, http)
-        val r = Remote(acct, http, cache)
+        val r = Remote(acct, http, cache, frameQueue = frameQueue)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -196,6 +196,51 @@ class RemoteTest {
         assertEquals(5, cached.events.size)
         assertEquals(false, again.state.value.machines[daemon.id]!!.online)
     }
+
+    @Test
+    fun aSlowCacheWriteDoesNotRollBackNewerMetadata() = runBlocking<Unit> {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val blocked = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val cache = object : CipherCache by MemoryCache() {
+            override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
+                blocked.complete(Unit)
+                gate.await()
+            }
+        }
+        val r = client(cache)
+        r.start()
+        r.awaitState("session") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
+        // Loading the history writes it to the cache, which hangs here.
+        r.events("s1")
+        withTimeout(10_000) { blocked.await() }
+        // Meanwhile newer metadata arrives through the stream.
+        daemon.putSession("s1", session("/Users/me/Code/foo", "新的标题"))
+        r.awaitState("new title") { it.sessions["s1"]?.info?.title == "新的标题" }
+        gate.complete(Unit)
+        r.awaitEvents("s1", 3)
+        kotlinx.coroutines.delay(200)
+        assertEquals("新的标题", r.state.value.sessions["s1"]?.info?.title)
+    }
+
+    @Test
+    fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.stop()
+        kotlinx.coroutines.delay(3000)
+        assertTrue(r.state.value.conn != ConnState.ONLINE)
+    }
+
+    @Test
+    fun aReaderThatFallsBehindCatchesUpFromHistory() = runBlocking<Unit> {
+        val r = client(frameQueue = 1)
+        r.start()
+        r.awaitEvents("s1", 3)
+        repeat(40) { daemon.upload("s1", agent("快速的第 $it 条")) }
+        val ev = withTimeout(40_000) { r.events("s1").first { it.events.size >= 43 } }
+        assertEquals((1L..43L).toList(), ev.events.map { it.seq })
+    }
+
 }
 
 /** A CipherCache in memory, as the Room one behaves. */

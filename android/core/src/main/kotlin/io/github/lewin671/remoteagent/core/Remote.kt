@@ -145,6 +145,8 @@ class Remote(
     private val cache: CipherCache? = null,
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Stream frames waiting to be handled before the stream is dropped and caught up from history. */
+    private val frameQueue: Int = 1024,
 ) {
     private val keys = Keys.derive(account.root)
     val api = Api(account.server, http)
@@ -174,6 +176,9 @@ class Remote(
     private var retry = 1000L
     private var running = false
     private var reconnect: Job? = null
+    // Bumped by stop: a connection attempt suspended in login when the app
+    // went to the background must not open the stream afterwards.
+    private var generation = 0
     private var cacheRead = false
     private val models = HashMap<String, Deferred<ListModelsResponse>>()
 
@@ -202,6 +207,7 @@ class Remote(
     fun stop() {
         scope.launch {
             running = false
+            generation++
             reconnect?.cancel()
             reconnect = null
             ws?.close(1000, null)
@@ -247,16 +253,20 @@ class Remote(
 
     private suspend fun connect() {
         if (!running) return
+        val gen = generation
         conn = ConnState.CONNECTING
         publish()
         try {
             token = login(api, account)
         } catch (e: Exception) {
-            fail(e)
+            if (gen == generation) fail(e)
             return
         }
+        if (!running || gen != generation) return
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
-        val frames = Channel<ByteArray?>(Channel.UNLIMITED)
+        // Bounded: a reader that falls behind drops the stream and catches up
+        // from history after reconnecting, instead of queueing without end.
+        val frames = Channel<ByteArray>(frameQueue)
         val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
         val socket = http.newWebSocket(
             Request.Builder().url(url).build(),
@@ -266,27 +276,30 @@ class Remote(
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                    frames.trySend(bytes.toByteArray())
+                    if (frames.trySend(bytes.toByteArray()).isFailure) {
+                        webSocket.cancel()
+                        frames.close()
+                    }
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                     webSocket.close(1000, null)
-                    frames.trySend(null)
+                    frames.close()
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    frames.trySend(null)
+                    frames.close()
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    frames.trySend(null)
+                    frames.close()
                 }
             },
         )
         ws = socket
         scope.launch {
             for (b in frames) {
-                if (b == null || ws !== socket) break
+                if (ws !== socket) break
                 val f = try {
                     ServerFrame.parseFrom(b)
                 } catch (e: Exception) {
@@ -295,7 +308,7 @@ class Remote(
                 }
                 onFrame(f)
             }
-            frames.close()
+            frames.cancel()
             if (ws === socket) {
                 ws = null
                 fail(Exception("与 server 的连接断开"))
@@ -560,7 +573,9 @@ class Remote(
                 report(e)
             }
         }
-        sessions[sid] = s.copy(lastSeq = umax(s.lastSeq, b.events.size.toLong()))
+        // The cache write suspended: newer metadata may have arrived, or the
+        // session gone. Only the event progress is ours to update.
+        sessions[sid]?.let { cur -> sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong())) }
         if (fillGaps && b.pending.isNotEmpty()) scope.launch { fetchEvents(sid) }
         publishEvents(sid, b)
         publish()
