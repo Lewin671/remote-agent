@@ -17,6 +17,8 @@
 | `--effort <档位>` | `low`、`medium`、`high`、`xhigh`、`max` |
 | `--permission-mode <模式>` | `acceptEdits`、`auto`、`bypassPermissions`、`manual`、`dontAsk`、`plan`；`default` 也接受，就是 manual |
 | `--allow-dangerously-skip-permissions` | 把 bypass 加进 Shift+Tab 的循环，但不直接进入 |
+| `--bare`、`--safe-mode` | 按 `--help` 的说明，不运行 settings 里的 hook（未实测） |
+| `--add-dir`、`--allowedTools`、`--disallowedTools`、`--mcp-config`、`--tools`、`--betas`、`--file` | 按 `--help`，取多个值（`<tools...>`），一直取到下一个选项 |
 
 - **信任目录**：第一次在某个目录启动时弹出 `Accessing workspace:` / `Quick safety check: Is this a project you created or one you trust?`，选项是 `❯ No, exit`、`Yes, I trust this folder`，**光标默认停在 `No, exit`**，这时按回车会直接退出。按数字键没有反应，要按 ↓ 再回车。信任记录写在 `~/.claude.json` 的 `projects["<真实路径>"].hasTrustDialogAccepted`，路径是解析过软链接的（`/tmp/x` 记成 `/private/tmp/x`）
 - 信任之前 hook 都不运行；信任之后立刻触发 `SessionStart`（第 3 节）
@@ -111,6 +113,7 @@
   - bypass 只有在以 bypass 启动（本机是 `defaultMode` 设成了 bypass）、带 `--permission-mode bypassPermissions` 或带 `--allow-dangerously-skip-permissions` 时才在循环里。以 `--permission-mode auto` 或 `default` 启动的会话，循环里没有 bypass；恢复时带 `--permission-mode default` 也一样
   - auto 要模型支持：haiku 下状态栏右侧显示 `auto mode unavailable for this model`，循环里没有 auto；sonnet 下有
 - **运行中也能 Shift+Tab**：实测一轮运行时连按两次，模式行从 bypass 变到 manual、再到 accept edits
+- **没有反向的按键**，模式只能沿上面的顺序往前走。`/plan`（`Enable plan mode or view the current session plan`）空闲时直接进入 Plan 模式，对话里记 `Enabled plan mode`，不经过别的模式；运行中输入 `/plan` 只会排队，这一轮结束后才生效。没有找到直接离开 Plan 模式或切到其他模式的命令（`/permissions` 管的是允许和拒绝规则）
 - 切换不写 `~/.claude/settings.json`（实测前后校验值相同）
 
 ## 6. 审批（PermissionRequest）
@@ -157,7 +160,7 @@
 - 底部：`Enter to set as default · s to use this session only · Esc to cancel`。和 Codex 一样，**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
 - **按数字键等于移到那一行再按回车**（走「设为默认」这条路），不能用
 - 对话已有缓存时，按 `s` 后还会弹 `Switch model?` / `❯ 1. Yes, switch to Haiku 4.5` / `2. No, go back`，按 1 确认后仍然只改当前会话
-- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（haiku 没有 effort 部分），transcript 里也有同样文字的 `<local-command-stdout>`；状态栏右侧显示 `○ low · /effort`
+- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（haiku 没有 effort 部分；effort 没变时也不写这一段），transcript 里也有同样文字的 `<local-command-stdout>`；状态栏右侧显示 `○ low · /effort`
 - 下一次回复的 `assistant` 记录里 `message.model`、`perTurnEffort` 随之变化
 
 ## 10. 中断和运行中的输入
