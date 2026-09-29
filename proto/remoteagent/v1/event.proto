@@ -129,6 +129,9 @@ message TokenUsage {
   RateLimit primary_limit = 8;
   RateLimit secondary_limit = 9;
   string plan_type = 10;
+  // The reply whose usage the count ends with (Claude Code writes a reply's
+  // usage on each of its lines), so that a reply is counted once.
+  string message_id = 11;
 }
 
 // RateLimit is one of the account's usage windows.

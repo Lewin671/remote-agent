@@ -16,6 +16,7 @@ public  final class TokenUsage extends
     TokenUsageOrBuilder {
   private TokenUsage() {
     planType_ = "";
+    messageId_ = "";
   }
   private int bitField0_;
   public static final int INPUT_TOKENS_FIELD_NUMBER = 1;
@@ -373,6 +374,79 @@ public  final class TokenUsage extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     planType_ = value.toStringUtf8();
+
+  }
+
+  public static final int MESSAGE_ID_FIELD_NUMBER = 11;
+  private java.lang.String messageId_;
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @return The messageId.
+   */
+  @java.lang.Override
+  public java.lang.String getMessageId() {
+    return messageId_;
+  }
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @return The bytes for messageId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getMessageIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(messageId_);
+  }
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @param value The messageId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMessageId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    messageId_ = value;
+  }
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   */
+  private void clearMessageId() {
+
+    messageId_ = getDefaultInstance().getMessageId();
+  }
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @param value The bytes for messageId to set.
+   */
+  private void setMessageIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    messageId_ = value.toStringUtf8();
 
   }
 
@@ -848,6 +922,80 @@ public  final class TokenUsage extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The reply whose usage the count ends with (Claude Code writes a reply's
+     * usage on each of its lines), so that a reply is counted once.
+     * </pre>
+     *
+     * <code>string message_id = 11 [json_name = "messageId"];</code>
+     * @return The messageId.
+     */
+    @java.lang.Override
+    public java.lang.String getMessageId() {
+      return instance.getMessageId();
+    }
+    /**
+     * <pre>
+     * The reply whose usage the count ends with (Claude Code writes a reply's
+     * usage on each of its lines), so that a reply is counted once.
+     * </pre>
+     *
+     * <code>string message_id = 11 [json_name = "messageId"];</code>
+     * @return The bytes for messageId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMessageIdBytes() {
+      return instance.getMessageIdBytes();
+    }
+    /**
+     * <pre>
+     * The reply whose usage the count ends with (Claude Code writes a reply's
+     * usage on each of its lines), so that a reply is counted once.
+     * </pre>
+     *
+     * <code>string message_id = 11 [json_name = "messageId"];</code>
+     * @param value The messageId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMessageId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setMessageId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The reply whose usage the count ends with (Claude Code writes a reply's
+     * usage on each of its lines), so that a reply is counted once.
+     * </pre>
+     *
+     * <code>string message_id = 11 [json_name = "messageId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMessageId() {
+      copyOnWrite();
+      instance.clearMessageId();
+      return this;
+    }
+    /**
+     * <pre>
+     * The reply whose usage the count ends with (Claude Code writes a reply's
+     * usage on each of its lines), so that a reply is counted once.
+     * </pre>
+     *
+     * <code>string message_id = 11 [json_name = "messageId"];</code>
+     * @param value The bytes for messageId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMessageIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setMessageIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.TokenUsage)
   }
   @java.lang.Override
@@ -875,11 +1023,12 @@ public  final class TokenUsage extends
             "primaryLimit_",
             "secondaryLimit_",
             "planType_",
+            "messageId_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0002\u0002\u0002\u0003\u0002" +
-              "\u0004\u0002\u0005\u0002\u0006\u0002\u0007\u0002\b\u1009\u0000\t\u1009\u0001\n\u0208" +
-              "";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0002\u0002\u0002" +
+              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u0002\u0007\u0002\b\u1009\u0000\t\u1009" +
+              "\u0001\n\u0208\u000b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

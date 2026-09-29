@@ -1243,8 +1243,11 @@ type TokenUsage struct {
 	PrimaryLimit   *RateLimit `protobuf:"bytes,8,opt,name=primary_limit,json=primaryLimit,proto3" json:"primary_limit,omitempty"`
 	SecondaryLimit *RateLimit `protobuf:"bytes,9,opt,name=secondary_limit,json=secondaryLimit,proto3" json:"secondary_limit,omitempty"`
 	PlanType       string     `protobuf:"bytes,10,opt,name=plan_type,json=planType,proto3" json:"plan_type,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The reply whose usage the count ends with (Claude Code writes a reply's
+	// usage on each of its lines), so that a reply is counted once.
+	MessageId     string `protobuf:"bytes,11,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TokenUsage) Reset() {
@@ -1343,6 +1346,13 @@ func (x *TokenUsage) GetSecondaryLimit() *RateLimit {
 func (x *TokenUsage) GetPlanType() string {
 	if x != nil {
 		return x.PlanType
+	}
+	return ""
+}
+
+func (x *TokenUsage) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
 	}
 	return ""
 }
@@ -2255,7 +2265,7 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.remoteagent.v1.TurnOutcomeR\aoutcome\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1f\n" +
 	"\vduration_ms\x18\x03 \x01(\x03R\n" +
-	"durationMs\"\xd3\x03\n" +
+	"durationMs\"\xf2\x03\n" +
 	"\n" +
 	"TokenUsage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12.\n" +
@@ -2268,7 +2278,9 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\rprimary_limit\x18\b \x01(\v2\x19.remoteagent.v1.RateLimitR\fprimaryLimit\x12B\n" +
 	"\x0fsecondary_limit\x18\t \x01(\v2\x19.remoteagent.v1.RateLimitR\x0esecondaryLimit\x12\x1b\n" +
 	"\tplan_type\x18\n" +
-	" \x01(\tR\bplanType\"r\n" +
+	" \x01(\tR\bplanType\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\v \x01(\tR\tmessageId\"r\n" +
 	"\tRateLimit\x12!\n" +
 	"\fused_percent\x18\x01 \x01(\x01R\vusedPercent\x12%\n" +
 	"\x0ewindow_minutes\x18\x02 \x01(\x03R\rwindowMinutes\x12\x1b\n" +

@@ -97,4 +97,26 @@ public interface TokenUsageOrBuilder extends
    */
   com.google.protobuf.ByteString
       getPlanTypeBytes();
+
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @return The messageId.
+   */
+  java.lang.String getMessageId();
+  /**
+   * <pre>
+   * The reply whose usage the count ends with (Claude Code writes a reply's
+   * usage on each of its lines), so that a reply is counted once.
+   * </pre>
+   *
+   * <code>string message_id = 11 [json_name = "messageId"];</code>
+   * @return The bytes for messageId.
+   */
+  com.google.protobuf.ByteString
+      getMessageIdBytes();
 }
