@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package remoteagent.v1;
+
+// Envelope is the unit of end-to-end encrypted data. The server stores and
+// forwards envelopes but never holds a key that opens them.
+message Envelope {
+  // Serialized Header. It is the AES-GCM additional data exactly as
+  // transmitted: receivers authenticate these bytes and decode them, they
+  // never re-encode the header.
+  bytes header = 1;
+  // 12 random bytes.
+  bytes nonce = 2;
+  // AES-256-GCM ciphertext followed by the 16-byte tag.
+  bytes ciphertext = 3;
+}
+
+// PayloadKind says what an envelope holds and which key seals it.
+enum PayloadKind {
+  PAYLOAD_KIND_UNSPECIFIED = 0;
+  // An Event, sealed with the session key.
+  PAYLOAD_KIND_EVENT = 1;
+  // A Session describing the session, sealed with the session key.
+  PAYLOAD_KIND_SESSION_META = 2;
+  // The raw 32-byte session key, sealed with the wrap key.
+  PAYLOAD_KIND_SESSION_KEY = 3;
+  // A MachineMeta, sealed with the meta key.
+  PAYLOAD_KIND_MACHINE_META = 4;
+  // A Command from a client to a daemon, sealed with the command key.
+  PAYLOAD_KIND_COMMAND = 5;
+  // The daemon's CommandResult, sealed with the command key.
+  PAYLOAD_KIND_COMMAND_RESULT = 6;
+}
+
+// Header binds an envelope to its place. The receiver checks every field
+// against where the envelope was found, so the server cannot move an
+// envelope to another machine, session, position or request.
+message Header {
+  // Protocol version of the envelope format, currently 1.
+  uint32 version = 1;
+  PayloadKind kind = 2;
+  string machine_id = 3;
+  string session_id = 4;
+  // Event sequence number for EVENT; revision for SESSION_META and
+  // MACHINE_META, so that an older copy is never shown over a newer one.
+  uint64 seq = 5;
+  // Client-chosen ID for COMMAND and COMMAND_RESULT.
+  string request_id = 6;
+  // Unix milliseconds after which a COMMAND must not run.
+  int64 deadline_ms = 7;
+  // Device ID of the sender.
+  string sender = 8;
+}

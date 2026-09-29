@@ -1,0 +1,256 @@
+syntax = "proto3";
+
+package remoteagent.v1;
+
+import "remoteagent/v1/envelope.proto";
+
+// Services of remote-agent-server. Everything the server can read is
+// routing metadata: IDs, sequence numbers, times and sizes. Content only
+// appears inside envelopes.
+
+// AuthService registers devices and logs them in. Every device has its own
+// Ed25519 key; a device is registered with a signature by the account key,
+// which is derived from the account's root key, so only a holder of the
+// root key can add devices.
+service AuthService {
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  rpc GetChallenge(GetChallengeRequest) returns (GetChallengeResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+enum DeviceKind {
+  DEVICE_KIND_UNSPECIFIED = 0;
+  // A computer running the daemon; its device ID is its machine ID.
+  DEVICE_KIND_MACHINE = 1;
+  // A browser or other client.
+  DEVICE_KIND_CLIENT = 2;
+}
+
+// DeviceRegistration is signed by the account key.
+message DeviceRegistration {
+  bytes account_public_key = 1;
+  bytes device_public_key = 2;
+  DeviceKind kind = 3;
+  int64 created_ms = 4;
+}
+
+message RegisterDeviceRequest {
+  // Serialized DeviceRegistration.
+  bytes registration = 1;
+  // Ed25519 signature by the account key over "remote-agent/v1/register\x00"
+  // followed by registration.
+  bytes signature = 2;
+  // Required only to create the account, i.e. for the first device.
+  string setup_token = 3;
+}
+
+message RegisterDeviceResponse {
+  string device_id = 1;
+}
+
+message GetChallengeRequest {
+  string device_id = 1;
+}
+
+message GetChallengeResponse {
+  // Random bytes, valid for one login within a minute.
+  bytes challenge = 1;
+}
+
+message LoginRequest {
+  string device_id = 1;
+  bytes challenge = 2;
+  // Ed25519 signature by the device key over "remote-agent/v1/login\x00"
+  // followed by challenge.
+  bytes signature = 3;
+}
+
+message LoginResponse {
+  // Bearer token for the other services and the stream.
+  string token = 1;
+  int64 expires_ms = 2;
+}
+
+// ClientService is used by clients.
+service ClientService {
+  rpc ListMachines(ListMachinesRequest) returns (ListMachinesResponse);
+  rpc ListRemoteSessions(ListRemoteSessionsRequest) returns (ListRemoteSessionsResponse);
+  rpc GetEvents(GetEventsRequest) returns (GetEventsResponse);
+  // Forward delivers a sealed command to a daemon and waits for its sealed
+  // result. It fails with "unavailable" at once when the daemon is offline;
+  // the server never queues commands.
+  rpc Forward(ForwardRequest) returns (ForwardResponse);
+}
+
+message Machine {
+  string id = 1;
+  bool online = 2;
+  // MACHINE_META envelope, absent until the daemon uploads one.
+  Envelope meta = 3;
+  int64 last_seen_ms = 4;
+}
+
+message RemoteSession {
+  string machine_id = 1;
+  string session_id = 2;
+  // SESSION_KEY envelope.
+  Envelope key = 3;
+  // SESSION_META envelope.
+  Envelope meta = 4;
+  // Highest event sequence number stored on the server.
+  uint64 last_seq = 5;
+  int64 updated_ms = 6;
+}
+
+message StoredEvent {
+  uint64 seq = 1;
+  // EVENT envelope.
+  Envelope envelope = 2;
+}
+
+message ListMachinesRequest {}
+
+message ListMachinesResponse {
+  repeated Machine machines = 1;
+}
+
+message ListRemoteSessionsRequest {}
+
+message ListRemoteSessionsResponse {
+  repeated RemoteSession sessions = 1;
+}
+
+message GetEventsRequest {
+  string session_id = 1;
+  // Only events with seq greater than this are returned.
+  uint64 after_seq = 2;
+  // At most this many events; the server caps it.
+  uint32 limit = 3;
+}
+
+message GetEventsResponse {
+  repeated StoredEvent events = 1;
+  // More events follow the last one returned.
+  bool more = 2;
+}
+
+message ForwardRequest {
+  string machine_id = 1;
+  // COMMAND envelope.
+  Envelope command = 2;
+}
+
+message ForwardResponse {
+  // COMMAND_RESULT envelope.
+  Envelope result = 1;
+}
+
+// MachineService is used by daemons.
+service MachineService {
+  rpc PutMachine(PutMachineRequest) returns (PutMachineResponse);
+  rpc PutSession(PutSessionRequest) returns (PutSessionResponse);
+  // UploadEvents appends events in order. Events the server already has
+  // are skipped, so uploads can be retried; a gap is rejected.
+  rpc UploadEvents(UploadEventsRequest) returns (UploadEventsResponse);
+  rpc ListSessionHeads(ListSessionHeadsRequest) returns (ListSessionHeadsResponse);
+}
+
+message PutMachineRequest {
+  Envelope meta = 1;
+}
+
+message PutMachineResponse {}
+
+message PutSessionRequest {
+  string session_id = 1;
+  // Required when the session is new, ignored afterwards: the session key
+  // never changes.
+  Envelope key = 2;
+  Envelope meta = 3;
+}
+
+message PutSessionResponse {}
+
+message UploadEventsRequest {
+  string session_id = 1;
+  repeated StoredEvent events = 2;
+}
+
+message UploadEventsResponse {
+  uint64 last_seq = 1;
+}
+
+message ListSessionHeadsRequest {}
+
+message SessionHead {
+  string session_id = 1;
+  uint64 last_seq = 2;
+  // Revision of the stored SESSION_META, 0 if none.
+  uint64 meta_revision = 3;
+}
+
+message ListSessionHeadsResponse {
+  repeated SessionHead sessions = 1;
+}
+
+// The stream is a WebSocket at /v1/stream carrying binary protobuf frames.
+// The peer sends StreamHello first; the server answers with Ready or closes
+// the connection.
+
+message StreamHello {
+  string token = 1;
+}
+
+// PeerFrame is sent by a client or daemon.
+message PeerFrame {
+  oneof kind {
+    StreamHello hello = 1;
+    ForwardReply forward_reply = 2;
+  }
+}
+
+// ServerFrame is sent by the server.
+message ServerFrame {
+  oneof kind {
+    Ready ready = 1;
+    // To clients.
+    EventsAppended events_appended = 2;
+    SessionUpdated session_updated = 3;
+    MachineUpdated machine_updated = 4;
+    // To daemons.
+    ForwardCall forward_call = 5;
+  }
+}
+
+message Ready {
+  int64 server_time_ms = 1;
+}
+
+// EventsAppended is pushed after the events are stored.
+message EventsAppended {
+  string machine_id = 1;
+  string session_id = 2;
+  repeated StoredEvent events = 3;
+}
+
+message SessionUpdated {
+  RemoteSession session = 1;
+}
+
+message MachineUpdated {
+  Machine machine = 1;
+}
+
+message ForwardCall {
+  // Server-chosen ID matching the reply to the call.
+  uint64 call_id = 1;
+  Envelope command = 2;
+}
+
+message ForwardReply {
+  uint64 call_id = 1;
+  Envelope result = 2;
+  // Set when the daemon could not produce a sealed result, e.g. the
+  // envelope did not open. The text never contains content.
+  string error = 3;
+}

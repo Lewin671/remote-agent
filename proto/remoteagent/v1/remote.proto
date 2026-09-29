@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package remoteagent.v1;
+
+import "remoteagent/v1/local.proto";
+
+// Inner-layer messages exchanged between clients and daemons. They only
+// ever travel inside an Envelope.
+
+// MachineMeta describes a computer running a daemon.
+message MachineMeta {
+  string hostname = 1;
+  string os = 2;
+}
+
+// Command is what a client asks a daemon to do. The session operations
+// reuse the local API's messages; the envelope header carries the request
+// ID and deadline.
+message Command {
+  oneof kind {
+    SendRequest send = 1;
+    InterruptRequest interrupt = 2;
+    ResolveApprovalRequest resolve_approval = 3;
+    AnswerQuestionRequest answer_question = 4;
+    StopSessionRequest stop_session = 5;
+  }
+}
+
+// CommandResult is the daemon's reply to a Command. A retried request ID
+// gets the original result instead of running the command again.
+message CommandResult {
+  // Connect error code name ("not_found", "unimplemented", ...); empty on
+  // success. "unimplemented" means the daemon does not know the command.
+  string error_code = 1;
+  string error_message = 2;
+
+  oneof kind {
+    SendResponse send = 10;
+    InterruptResponse interrupt = 11;
+    ResolveApprovalResponse resolve_approval = 12;
+    AnswerQuestionResponse answer_question = 13;
+    StopSessionResponse stop_session = 14;
+  }
+}
