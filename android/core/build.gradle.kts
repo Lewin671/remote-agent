@@ -27,10 +27,21 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.serialization.json)
-    testImplementation(libs.okhttp.mockwebserver)
+}
+
+// The integration tests run against the real Go server. Without Go on the
+// PATH they are skipped.
+val testServer = layout.buildDirectory.file("ra-server").get().asFile
+val repoRoot = rootProject.file("..")
+val buildTestServer by tasks.registering(Exec::class) {
+    workingDir = repoRoot
+    commandLine("go", "build", "-o", testServer.absolutePath, "./cmd/remote-agent-server")
+    onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
 
 tasks.test {
+    dependsOn(buildTestServer)
+    systemProperty("raServer", testServer.absolutePath)
     // The test vectors are shared with Go and TypeScript.
     systemProperty("vectors", rootProject.file("../internal/e2e/testdata/vectors.json").absolutePath)
     systemProperty("kotlinVectors", rootProject.file("../internal/e2e/testdata/kotlin-vectors.json").absolutePath)
