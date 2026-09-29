@@ -50,16 +50,19 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
 **Codex adapter**
 
 - **输入**：用 `paste-buffer -p` 粘贴，再单独发 Enter；以 `~/.codex/history.jsonl` 新增的那一行确认提交成功
-- **弹窗**：注入前先抓屏，确认没有信任目录、切换模型之类的弹窗挡着
-- **找到 rollout**：把会话和它的 rollout 文件对应起来
+- **启动**：启动 Codex 时带上代理等环境变量（daemon 读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`；用 `-c` 注入 `PermissionRequest` 和 `SessionStart` 两个 hook；hook 命令的路径要固定，否则每次都要重新信任
+- **弹窗**：启动时依次处理 `Update available`、`Trust this folder?`、`Hooks need review`；注入前先抓屏，确认没有弹窗挡着。判断时只看屏幕底部几行
+- **找到 rollout**：由 `SessionStart` hook 上报 `RA_SESSION` 和 `transcript_path`（发出第一条消息时触发）
+- **中断**：只在一轮运行时发 Esc；绝不发 Ctrl-C
 - **解析 rollout**：转成统一事件，包括文本、推理摘要、工具调用和结果、轮次开始和结束、token 用量
-- **空闲判断**：以 `task_complete` 为主，屏幕底部的输入提示符为辅
+- **空闲判断**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助
 - **输入排队**：多个来源的输入按到达顺序排队注入
 
 **审批**
 
-- `remote-agent hook codex` 作为 Codex 的 `PermissionRequest` hook，把请求交给 daemon，并等待结果
-- 超时默认拒绝
+- `remote-agent hook codex` 作为 Codex 的 hook，通过 unix socket 把请求交给 daemon
+- 会话开着 `auto_review` 时，hook 不表态，交给 `auto_review`；拿不准的操作，模型会在对话里问你
+- 会话没开 `auto_review` 时，daemon 等待外部回复（P0 用 `approve` / `deny` 命令），超时默认拒绝
 
 **统一事件**
 
