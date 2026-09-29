@@ -196,10 +196,21 @@ func (d *Daemon) restore() error {
 		s := newSession(d, dir, *m, d.terminal(m), log)
 		d.sessions[m.ID] = s
 		s.cancelStaleApprovals()
-		if m.Exited {
+		alive := live[m.Tmux+"\x00"+m.ID]
+		if m.Exited && alive {
+			// Marked exited while still running, as when an earlier daemon
+			// misread tmux; stopping or ending kills the tmux session.
+			s.meta.Exited = false
+			if err := s.meta.save(dir); err != nil {
+				slog.Error("save session", "session", m.ID, "err", err)
+			}
+			s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
+			}}})
+		} else if m.Exited {
 			continue
 		}
-		if !live[m.Tmux+"\x00"+m.ID] {
+		if !alive {
 			s.markExited("tmux session gone")
 			continue
 		}

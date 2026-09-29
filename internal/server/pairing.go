@@ -29,7 +29,7 @@ const (
 	// pairingDeliveredTTL keeps a delivered pairing for the initiator to
 	// see that it went through.
 	pairingDeliveredTTL = time.Minute
-	maxPairings     = 64
+	maxPairings         = 64
 	// badCodesPerMinute bounds wrong codes across all callers.
 	badCodesPerMinute = 30
 )

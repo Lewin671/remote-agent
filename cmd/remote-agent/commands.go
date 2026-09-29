@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -59,6 +60,7 @@ func runDaemon(args []string) error {
 	if max := time.Duration(codex.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
+	ensureUTF8()
 	cfg, err := daemonConfig(*codexBin, tmuxClient())
 	if err != nil {
 		return err
@@ -491,4 +493,39 @@ func (b backend) OpenTerminal(id string) (relay.Terminal, error) {
 		return nil, err
 	}
 	return t, nil
+}
+
+// ensureUTF8 gives the daemon a UTF-8 locale when it has none, as under
+// launchd or systemd. tmux and Codex inherit it: without one, tmux
+// replaces tabs and non-ASCII characters in its output with "_", which
+// breaks reading sessions and screens.
+func ensureUTF8() {
+	for _, k := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		v := os.Getenv(k)
+		if v == "" {
+			continue
+		}
+		if isUTF8Locale(v) {
+			return
+		}
+		if k == "LC_ALL" {
+			// It overrides LC_CTYPE.
+			os.Setenv("LC_ALL", utf8Locale())
+			return
+		}
+		break
+	}
+	os.Setenv("LC_CTYPE", utf8Locale())
+}
+
+func isUTF8Locale(v string) bool {
+	v = strings.ToLower(v)
+	return strings.Contains(v, "utf-8") || strings.Contains(v, "utf8")
+}
+
+func utf8Locale() string {
+	if runtime.GOOS == "darwin" {
+		return "en_US.UTF-8"
+	}
+	return "C.UTF-8"
 }

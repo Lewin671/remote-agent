@@ -44,6 +44,21 @@ installed() {
 	fi
 }
 
+# wait_up waits until the daemon answers, so that the next command
+# reaches the new one.
+wait_up() {
+	i=0
+	while [ $i -lt 30 ]; do
+		if "$BIN" ls >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.5
+		i=$((i + 1))
+	done
+	echo "the daemon did not come up within 15s; see $0 log" >&2
+	return 1
+}
+
 install() {
 	if [ ! -x "$BIN" ]; then
 		echo "no remote-agent binary at $BIN; build it first (scripts/install.sh) or set BIN" >&2
@@ -112,6 +127,7 @@ EOF
 		systemctl --user restart remote-agent.service
 	fi
 	echo "installed $UNIT for $BIN; log: $LOG"
+	wait_up
 }
 
 cmd=${1:-status}
@@ -133,6 +149,7 @@ start)
 	else
 		systemctl --user start remote-agent.service
 	fi
+	wait_up
 	;;
 stop)
 	installed
@@ -150,6 +167,7 @@ restart)
 	else
 		systemctl --user restart remote-agent.service
 	fi
+	wait_up
 	;;
 status)
 	installed

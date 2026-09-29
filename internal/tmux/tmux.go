@@ -156,7 +156,8 @@ func (c *Client) ListSessions() ([]SessionInfo, error) {
 		}
 		f := strings.Split(line, "\t")
 		if len(f) < 3 {
-			continue
+			// tmux without a UTF-8 locale prints tabs as "_".
+			return nil, fmt.Errorf("tmux list-sessions: unexpected line %q; is the locale UTF-8?", line)
 		}
 		pid, _ := strconv.Atoi(f[2])
 		infos = append(infos, SessionInfo{Name: f[0], SessionID: f[1], PanePID: pid})
