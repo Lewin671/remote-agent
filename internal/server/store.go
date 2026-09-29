@@ -406,6 +406,7 @@ func (s *store) removeDevice(ctx context.Context, id string) (bool, error) {
 		`DELETE FROM devices WHERE id = ?`,
 		`DELETE FROM tokens WHERE device_id = ?`,
 		`DELETE FROM push_subs WHERE device_id = ?`,
+		`DELETE FROM fcm_targets WHERE device_id = ?`,
 		`DELETE FROM events WHERE session_id IN (SELECT session_id FROM sessions WHERE machine_id = ?)`,
 		`DELETE FROM sessions WHERE machine_id = ?`,
 		`DELETE FROM machines WHERE id = ?`,

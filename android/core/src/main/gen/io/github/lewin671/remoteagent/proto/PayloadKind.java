@@ -90,6 +90,16 @@ public enum PayloadKind
    * <code>PAYLOAD_KIND_PAIRING = 9;</code>
    */
   PAYLOAD_KIND_PAIRING(9),
+  /**
+   * <pre>
+   * A NotifyContent a daemon sends with Notify for the Android app, sealed
+   * with the notify key; the header's request_id is the notification's
+   * dedupe key.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_NOTIFY = 10;</code>
+   */
+  PAYLOAD_KIND_NOTIFY(10),
   UNRECOGNIZED(-1),
   ;
 
@@ -168,6 +178,16 @@ public enum PayloadKind
    * <code>PAYLOAD_KIND_PAIRING = 9;</code>
    */
   public static final int PAYLOAD_KIND_PAIRING_VALUE = 9;
+  /**
+   * <pre>
+   * A NotifyContent a daemon sends with Notify for the Android app, sealed
+   * with the notify key; the header's request_id is the notification's
+   * dedupe key.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_NOTIFY = 10;</code>
+   */
+  public static final int PAYLOAD_KIND_NOTIFY_VALUE = 10;
 
 
   @java.lang.Override
@@ -201,6 +221,7 @@ public enum PayloadKind
       case 7: return PAYLOAD_KIND_TERMINAL_OUTPUT;
       case 8: return PAYLOAD_KIND_TERMINAL_INPUT;
       case 9: return PAYLOAD_KIND_PAIRING;
+      case 10: return PAYLOAD_KIND_NOTIFY;
       default: return null;
     }
   }

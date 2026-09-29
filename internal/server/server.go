@@ -39,6 +39,9 @@ type Config struct {
 	ForwardTimeout time.Duration
 	// PingInterval is how often stream connections are checked.
 	PingInterval time.Duration
+	// FCMServiceAccount is the path of a Firebase service account key file
+	// for Android pushes; empty turns FCM off.
+	FCMServiceAccount string
 }
 
 // Limits on what peers may send.

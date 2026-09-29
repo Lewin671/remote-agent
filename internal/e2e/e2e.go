@@ -48,6 +48,9 @@ type Keys struct {
 	Meta []byte
 	// Command seals commands and their results.
 	Command []byte
+	// Notify seals push content for the Android app, which opens it in
+	// the background without unwrapping the root key.
+	Notify []byte
 }
 
 // Derive computes the keys of the account with root key root.
@@ -71,6 +74,9 @@ func Derive(root []byte) (*Keys, error) {
 		return nil, err
 	}
 	if k.Command, err = derive("command"); err != nil {
+		return nil, err
+	}
+	if k.Notify, err = derive("notify"); err != nil {
 		return nil, err
 	}
 	return k, nil

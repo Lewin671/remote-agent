@@ -183,6 +183,10 @@ service ClientService {
   // RemoveDevice unregisters a device and ends its logins; a removed
   // machine's sessions are deleted.
   rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
+  // SetPushTarget registers where this device gets notifications, one
+  // target per type: Web Push and FCM can be set side by side.
+  // SetPushSubscription is the same for Web Push.
+  rpc SetPushTarget(SetPushTargetRequest) returns (SetPushTargetResponse);
 }
 
 message Machine {
@@ -409,6 +413,34 @@ message RemoveDeviceResponse {}
 message NotifyRequest {
   string session_id = 1;
   NotifyKind kind = 2;
+  // NOTIFY envelope, sealed with the notify key. The server passes it to
+  // FCM targets as it is; Web Push only ever gets generic text.
+  Envelope content = 3;
+  // Notifications with the same key are sent once, e.g. one per approval.
+  // Without a key they are coalesced per session and kind.
+  string dedupe_key = 4;
+}
+
+enum PushType {
+  PUSH_TYPE_UNSPECIFIED = 0;
+  // A Web Push subscription as JSON.
+  PUSH_TYPE_WEB_PUSH = 1;
+  // A Firebase Cloud Messaging registration token.
+  PUSH_TYPE_FCM = 2;
+}
+
+message SetPushTargetRequest {
+  PushType type = 1;
+  // Empty removes this device's target of this type.
+  string target = 2;
+  // Kinds of notifications to send.
+  repeated NotifyKind kinds = 3;
+}
+
+message SetPushTargetResponse {
+  // False when the server cannot send this type, e.g. FCM is not
+  // configured; the target is kept for when it is.
+  bool enabled = 1;
 }
 
 message NotifyResponse {}

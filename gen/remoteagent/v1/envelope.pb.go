@@ -46,21 +46,26 @@ const (
 	// A PairingPayload, sealed with the key both pairing devices derived;
 	// the header's request_id is the pairing ID.
 	PayloadKind_PAYLOAD_KIND_PAIRING PayloadKind = 9
+	// A NotifyContent a daemon sends with Notify for the Android app, sealed
+	// with the notify key; the header's request_id is the notification's
+	// dedupe key.
+	PayloadKind_PAYLOAD_KIND_NOTIFY PayloadKind = 10
 )
 
 // Enum value maps for PayloadKind.
 var (
 	PayloadKind_name = map[int32]string{
-		0: "PAYLOAD_KIND_UNSPECIFIED",
-		1: "PAYLOAD_KIND_EVENT",
-		2: "PAYLOAD_KIND_SESSION_META",
-		3: "PAYLOAD_KIND_SESSION_KEY",
-		4: "PAYLOAD_KIND_MACHINE_META",
-		5: "PAYLOAD_KIND_COMMAND",
-		6: "PAYLOAD_KIND_COMMAND_RESULT",
-		7: "PAYLOAD_KIND_TERMINAL_OUTPUT",
-		8: "PAYLOAD_KIND_TERMINAL_INPUT",
-		9: "PAYLOAD_KIND_PAIRING",
+		0:  "PAYLOAD_KIND_UNSPECIFIED",
+		1:  "PAYLOAD_KIND_EVENT",
+		2:  "PAYLOAD_KIND_SESSION_META",
+		3:  "PAYLOAD_KIND_SESSION_KEY",
+		4:  "PAYLOAD_KIND_MACHINE_META",
+		5:  "PAYLOAD_KIND_COMMAND",
+		6:  "PAYLOAD_KIND_COMMAND_RESULT",
+		7:  "PAYLOAD_KIND_TERMINAL_OUTPUT",
+		8:  "PAYLOAD_KIND_TERMINAL_INPUT",
+		9:  "PAYLOAD_KIND_PAIRING",
+		10: "PAYLOAD_KIND_NOTIFY",
 	}
 	PayloadKind_value = map[string]int32{
 		"PAYLOAD_KIND_UNSPECIFIED":     0,
@@ -73,6 +78,7 @@ var (
 		"PAYLOAD_KIND_TERMINAL_OUTPUT": 7,
 		"PAYLOAD_KIND_TERMINAL_INPUT":  8,
 		"PAYLOAD_KIND_PAIRING":         9,
+		"PAYLOAD_KIND_NOTIFY":          10,
 	}
 )
 
@@ -302,7 +308,7 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"request_id\x18\x06 \x01(\tR\trequestId\x12\x1f\n" +
 	"\vdeadline_ms\x18\a \x01(\x03R\n" +
 	"deadlineMs\x12\x16\n" +
-	"\x06sender\x18\b \x01(\tR\x06sender*\xb7\x02\n" +
+	"\x06sender\x18\b \x01(\tR\x06sender*\xd0\x02\n" +
 	"\vPayloadKind\x12\x1c\n" +
 	"\x18PAYLOAD_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PAYLOAD_KIND_EVENT\x10\x01\x12\x1d\n" +
@@ -313,7 +319,9 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\x1bPAYLOAD_KIND_COMMAND_RESULT\x10\x06\x12 \n" +
 	"\x1cPAYLOAD_KIND_TERMINAL_OUTPUT\x10\a\x12\x1f\n" +
 	"\x1bPAYLOAD_KIND_TERMINAL_INPUT\x10\b\x12\x18\n" +
-	"\x14PAYLOAD_KIND_PAIRING\x10\tB\xbf\x01\n" +
+	"\x14PAYLOAD_KIND_PAIRING\x10\t\x12\x17\n" +
+	"\x13PAYLOAD_KIND_NOTIFY\x10\n" +
+	"B\xbf\x01\n" +
 	"\x12com.remoteagent.v1B\rEnvelopeProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
 var (

@@ -16,7 +16,9 @@ public  final class NotifyRequest extends
     NotifyRequestOrBuilder {
   private NotifyRequest() {
     sessionId_ = "";
+    dedupeKey_ = "";
   }
+  private int bitField0_;
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
   /**
@@ -105,6 +107,152 @@ public  final class NotifyRequest extends
   private void clearKind() {
 
     kind_ = 0;
+  }
+
+  public static final int CONTENT_FIELD_NUMBER = 3;
+  private io.github.lewin671.remoteagent.proto.Envelope content_;
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   */
+  @java.lang.Override
+  public boolean hasContent() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getContent() {
+    return content_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : content_;
+  }
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setContent(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    content_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeContent(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (content_ != null &&
+        content_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      content_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(content_).mergeFrom(value).buildPartial();
+    } else {
+      content_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   */
+  private void clearContent() {
+    content_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int DEDUPE_KEY_FIELD_NUMBER = 4;
+  private java.lang.String dedupeKey_;
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @return The dedupeKey.
+   */
+  @java.lang.Override
+  public java.lang.String getDedupeKey() {
+    return dedupeKey_;
+  }
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @return The bytes for dedupeKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDedupeKeyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(dedupeKey_);
+  }
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @param value The dedupeKey to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDedupeKey(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    dedupeKey_ = value;
+  }
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   */
+  private void clearDedupeKey() {
+
+    dedupeKey_ = getDefaultInstance().getDedupeKey();
+  }
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @param value The bytes for dedupeKey to set.
+   */
+  private void setDedupeKeyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    dedupeKey_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.NotifyRequest parseFrom(
@@ -299,6 +447,157 @@ public  final class NotifyRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    @java.lang.Override
+    public boolean hasContent() {
+      return instance.hasContent();
+    }
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getContent() {
+      return instance.getContent();
+    }
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    public Builder setContent(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setContent(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    public Builder setContent(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setContent(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    public Builder mergeContent(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeContent(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * NOTIFY envelope, sealed with the notify key. The server passes it to
+     * FCM targets as it is; Web Push only ever gets generic text.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+     */
+    public Builder clearContent() {  copyOnWrite();
+      instance.clearContent();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Notifications with the same key are sent once, e.g. one per approval.
+     * Without a key they are coalesced per session and kind.
+     * </pre>
+     *
+     * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+     * @return The dedupeKey.
+     */
+    @java.lang.Override
+    public java.lang.String getDedupeKey() {
+      return instance.getDedupeKey();
+    }
+    /**
+     * <pre>
+     * Notifications with the same key are sent once, e.g. one per approval.
+     * Without a key they are coalesced per session and kind.
+     * </pre>
+     *
+     * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+     * @return The bytes for dedupeKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDedupeKeyBytes() {
+      return instance.getDedupeKeyBytes();
+    }
+    /**
+     * <pre>
+     * Notifications with the same key are sent once, e.g. one per approval.
+     * Without a key they are coalesced per session and kind.
+     * </pre>
+     *
+     * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+     * @param value The dedupeKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDedupeKey(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDedupeKey(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Notifications with the same key are sent once, e.g. one per approval.
+     * Without a key they are coalesced per session and kind.
+     * </pre>
+     *
+     * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDedupeKey() {
+      copyOnWrite();
+      instance.clearDedupeKey();
+      return this;
+    }
+    /**
+     * <pre>
+     * Notifications with the same key are sent once, e.g. one per approval.
+     * Without a key they are coalesced per session and kind.
+     * </pre>
+     *
+     * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+     * @param value The bytes for dedupeKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDedupeKeyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDedupeKeyBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyRequest)
   }
   @java.lang.Override
@@ -315,12 +614,15 @@ public  final class NotifyRequest extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "sessionId_",
             "kind_",
+            "content_",
+            "dedupeKey_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u1009\u0000\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

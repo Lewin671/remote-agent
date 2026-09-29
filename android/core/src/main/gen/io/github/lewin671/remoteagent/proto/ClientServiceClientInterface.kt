@@ -37,4 +37,11 @@ public interface ClientServiceClientInterface {
    *  machine's sessions are deleted.
    */
   public suspend fun removeDevice(request: RemoveDeviceRequest, headers: Headers = emptyMap()): ResponseMessage<RemoveDeviceResponse>
+
+  /**
+   *  SetPushTarget registers where this device gets notifications, one
+   *  target per type: Web Push and FCM can be set side by side.
+   *  SetPushSubscription is the same for Web Push.
+   */
+  public suspend fun setPushTarget(request: SetPushTargetRequest, headers: Headers = emptyMap()): ResponseMessage<SetPushTargetResponse>
 }

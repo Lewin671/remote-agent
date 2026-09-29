@@ -4,6 +4,7 @@ package remoteagent.v1;
 
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
+import "remoteagent/v1/relay.proto";
 
 // Inner-layer messages exchanged between clients and daemons. They only
 // ever travel inside an Envelope.
@@ -136,4 +137,30 @@ message TerminalResize {
 message PairingPayload {
   bytes root = 1;
   string server = 2;
+}
+
+// NotifyContent is what a daemon tells the Android app in a push, sealed
+// with the notify key so that the server and FCM only see ciphertext.
+message NotifyContent {
+  string machine_id = 1;
+  string session_id = 2;
+  NotifyKind kind = 3;
+  // The session's title.
+  string title = 4;
+  // One line about what happened, e.g. the question asked.
+  string text = 5;
+  // Set for a permission request, so that it can be decided from the
+  // notification.
+  NotifyApproval approval = 6;
+}
+
+message NotifyApproval {
+  string approval_id = 1;
+  string tool_name = 2;
+  string description = 3;
+  // Shortened; truncated says whether all of it is here.
+  string command = 4;
+  bool truncated = 5;
+  // Unix milliseconds after which the request is denied.
+  int64 deadline_ms = 6;
 }

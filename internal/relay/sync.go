@@ -121,7 +121,11 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			// Once stored, clients can load what the notification is about.
 			for _, e := range evs[:n] {
 				if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-					if _, err := c.machine.Notify(ctx, connect.NewRequest(&pb.NotifyRequest{SessionId: id, Kind: kind})); err != nil {
+					req, err := c.notifyRequest(id, info, kind, e)
+					if err != nil {
+						return err
+					}
+					if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
 						slog.Warn("relay: notify", "session", id, "err", err)
 					}
 				}
@@ -164,6 +168,65 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
 	return nil
+}
+
+// Limits on what a notification carries, so that it fits FCM's 4 KB.
+const (
+	notifyTitle   = 120
+	notifyText    = 300
+	notifyCommand = 1200
+)
+
+func clip(s string, n int) (string, bool) {
+	r := []rune(s)
+	if len(r) <= n {
+		return s, false
+	}
+	return string(r[:n]) + "…", true
+}
+
+// notifyRequest describes event e for a push. The content is sealed with
+// the notify key for the Android app; the server only passes it on.
+// Approvals and questions are pushed once each, by their ID.
+func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyKind, e *pb.Event) (*pb.NotifyRequest, error) {
+	nc := &pb.NotifyContent{MachineId: c.acct.DeviceID, SessionId: sessionID, Kind: kind}
+	nc.Title, _ = clip(info.GetTitle(), notifyTitle)
+	var dedupe string
+	switch k := e.Kind.(type) {
+	case *pb.Event_ApprovalRequested:
+		a := k.ApprovalRequested
+		dedupe = a.ApprovalId
+		na := &pb.NotifyApproval{ApprovalId: a.ApprovalId, ToolName: a.ToolName}
+		na.Description, _ = clip(a.Description, notifyText)
+		cmd := a.Command
+		if cmd == "" {
+			cmd = a.ToolInputJson
+		}
+		na.Command, na.Truncated = clip(cmd, notifyCommand)
+		if a.Deadline != nil {
+			na.DeadlineMs = a.Deadline.AsTime().UnixMilli()
+		}
+		nc.Approval = na
+	case *pb.Event_QuestionAsked:
+		dedupe = k.QuestionAsked.QuestionId
+		if qs := k.QuestionAsked.Questions; len(qs) > 0 {
+			nc.Text, _ = clip(qs[0].Text, notifyText)
+		}
+	case *pb.Event_PlanProposed:
+		nc.Text = "计划待批准"
+	case *pb.Event_SessionState:
+		nc.Text, _ = clip(k.SessionState.Detail, notifyText)
+	case *pb.Event_TurnEnded:
+		nc.Text, _ = clip(info.GetPreview(), notifyText)
+	}
+	env, err := e2e.SealMessage(c.keys.Notify, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: sessionID,
+		RequestId: dedupe, Sender: c.acct.DeviceID,
+	}, nc)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.NotifyRequest{SessionId: sessionID, Kind: kind, Content: env, DedupeKey: dedupe}, nil
 }
 
 // notifyAge keeps catching up after a reconnect from notifying about the

@@ -2,8 +2,6 @@ package e2e
 
 import (
 	"crypto/ed25519"
-	"crypto/hkdf"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -85,16 +83,12 @@ func TestKotlinVectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notify, err := hkdf.Key(sha256.New, root, nil, "remote-agent/v1/notify", KeySize)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for name, pair := range map[string][2]string{
 		"account": {hex.EncodeToString(k.AccountPublicKey()), v.AccountPublicKey},
 		"wrap":    {hex.EncodeToString(k.Wrap), v.Wrap},
 		"meta":    {hex.EncodeToString(k.Meta), v.Meta},
 		"command": {hex.EncodeToString(k.Command), v.Command},
-		"notify":  {hex.EncodeToString(notify), v.Notify},
+		"notify":  {hex.EncodeToString(k.Notify), v.Notify},
 		"device":  {DeviceID(k.AccountPublicKey()), v.DeviceID},
 	} {
 		if pair[0] != pair[1] {

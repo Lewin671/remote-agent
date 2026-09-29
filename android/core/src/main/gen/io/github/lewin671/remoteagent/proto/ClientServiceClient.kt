@@ -112,4 +112,21 @@ public class ClientServiceClient(
     ),
   )
 
+
+  /**
+   *  SetPushTarget registers where this device gets notifications, one
+   *  target per type: Web Push and FCM can be set side by side.
+   *  SetPushSubscription is the same for Web Push.
+   */
+  override suspend fun setPushTarget(request: SetPushTargetRequest, headers: Headers): ResponseMessage<SetPushTargetResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/SetPushTarget",
+      io.github.lewin671.remoteagent.proto.SetPushTargetRequest::class,
+      io.github.lewin671.remoteagent.proto.SetPushTargetResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

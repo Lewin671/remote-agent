@@ -84,6 +84,9 @@ const (
 	// ClientServiceRemoveDeviceProcedure is the fully-qualified name of the ClientService's
 	// RemoveDevice RPC.
 	ClientServiceRemoveDeviceProcedure = "/remoteagent.v1.ClientService/RemoveDevice"
+	// ClientServiceSetPushTargetProcedure is the fully-qualified name of the ClientService's
+	// SetPushTarget RPC.
+	ClientServiceSetPushTargetProcedure = "/remoteagent.v1.ClientService/SetPushTarget"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -438,6 +441,10 @@ type ClientServiceClient interface {
 	// RemoveDevice unregisters a device and ends its logins; a removed
 	// machine's sessions are deleted.
 	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
+	// SetPushTarget registers where this device gets notifications, one
+	// target per type: Web Push and FCM can be set side by side.
+	// SetPushSubscription is the same for Web Push.
+	SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -493,6 +500,12 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
 			connect.WithClientOptions(opts...),
 		),
+		setPushTarget: connect.NewClient[v1.SetPushTargetRequest, v1.SetPushTargetResponse](
+			httpClient,
+			baseURL+ClientServiceSetPushTargetProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("SetPushTarget")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -505,6 +518,7 @@ type clientServiceClient struct {
 	getPushKey          *connect.Client[v1.GetPushKeyRequest, v1.GetPushKeyResponse]
 	setPushSubscription *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
 	removeDevice        *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
+	setPushTarget       *connect.Client[v1.SetPushTargetRequest, v1.SetPushTargetResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -542,6 +556,11 @@ func (c *clientServiceClient) RemoveDevice(ctx context.Context, req *connect.Req
 	return c.removeDevice.CallUnary(ctx, req)
 }
 
+// SetPushTarget calls remoteagent.v1.ClientService.SetPushTarget.
+func (c *clientServiceClient) SetPushTarget(ctx context.Context, req *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error) {
+	return c.setPushTarget.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -558,6 +577,10 @@ type ClientServiceHandler interface {
 	// RemoveDevice unregisters a device and ends its logins; a removed
 	// machine's sessions are deleted.
 	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
+	// SetPushTarget registers where this device gets notifications, one
+	// target per type: Web Push and FCM can be set side by side.
+	// SetPushSubscription is the same for Web Push.
+	SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -609,6 +632,12 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServiceSetPushTargetHandler := connect.NewUnaryHandler(
+		ClientServiceSetPushTargetProcedure,
+		svc.SetPushTarget,
+		connect.WithSchema(clientServiceMethods.ByName("SetPushTarget")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -625,6 +654,8 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceSetPushSubscriptionHandler.ServeHTTP(w, r)
 		case ClientServiceRemoveDeviceProcedure:
 			clientServiceRemoveDeviceHandler.ServeHTTP(w, r)
+		case ClientServiceSetPushTargetProcedure:
+			clientServiceSetPushTargetHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -660,6 +691,10 @@ func (UnimplementedClientServiceHandler) SetPushSubscription(context.Context, *c
 
 func (UnimplementedClientServiceHandler) RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.RemoveDevice is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.SetPushTarget is not implemented"))
 }
 
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.

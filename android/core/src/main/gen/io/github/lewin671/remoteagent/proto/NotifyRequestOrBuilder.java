@@ -32,4 +32,47 @@ public interface NotifyRequestOrBuilder extends
    * @return The kind.
    */
   io.github.lewin671.remoteagent.proto.NotifyKind getKind();
+
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   * @return Whether the content field is set.
+   */
+  boolean hasContent();
+  /**
+   * <pre>
+   * NOTIFY envelope, sealed with the notify key. The server passes it to
+   * FCM targets as it is; Web Push only ever gets generic text.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope content = 3 [json_name = "content"];</code>
+   * @return The content.
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getContent();
+
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @return The dedupeKey.
+   */
+  java.lang.String getDedupeKey();
+  /**
+   * <pre>
+   * Notifications with the same key are sent once, e.g. one per approval.
+   * Without a key they are coalesced per session and kind.
+   * </pre>
+   *
+   * <code>string dedupe_key = 4 [json_name = "dedupeKey"];</code>
+   * @return The bytes for dedupeKey.
+   */
+  com.google.protobuf.ByteString
+      getDedupeKeyBytes();
 }

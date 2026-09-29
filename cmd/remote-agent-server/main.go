@@ -22,6 +22,7 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	db := flag.String("db", "remote-agent.db", "SQLite database file")
 	origins := flag.String("allowed-origins", "", "comma-separated web origins allowed to use the API, e.g. http://localhost:5173")
+	fcmAccount := flag.String("fcm-service-account", os.Getenv("RA_FCM_SERVICE_ACCOUNT"), "Firebase service account key file for Android pushes (RA_FCM_SERVICE_ACCOUNT); empty turns them off")
 	flag.Parse()
 
 	var allowed []string
@@ -34,6 +35,8 @@ func main() {
 		DBPath:         *db,
 		SetupToken:     os.Getenv("RA_SETUP_TOKEN"),
 		AllowedOrigins: allowed,
+
+		FCMServiceAccount: *fcmAccount,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)
