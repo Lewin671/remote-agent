@@ -136,6 +136,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 **P1 遗留**
 
 - 手机实测：P1 只在本机 Chrome 上验证过；手机需要通过 HTTPS 打开网页（Web Crypto 只在安全上下文里可用），等 P2 部署到 Cloudflare Pages 后再测
+- daemon 建会话时用 `tmux new-session -e KEY=VALUE` 传入调用方的全部环境变量，会话存活期间 API key 等密钥出现在进程命令行上，本机任何进程用 `ps` 都能看到（P0 起就是这样，2026-09-29 发现）；要改成不经过命令行传递，比如写进仅自己可读的文件，由 pty-host 读取
 - 网页部署到 `app.<域名>` 后，AdGuard 是否把它和 server 当成同站、不再拦截 WebSocket（原因见 [browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）
 
 **Codex 待实测**
