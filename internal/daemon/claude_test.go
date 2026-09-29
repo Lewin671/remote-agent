@@ -230,3 +230,21 @@ func TestClaudeApprovalWithdrawnWhenCallCompletes(t *testing.T) {
 		t.Fatal("exited")
 	}
 }
+
+// A model switched through remote-agent is not undone by the transcript
+// when Plan mode starts (review V1).
+func TestClaudeSelectedModelKept(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`,
+		`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.bindRollout("cc-1", path)
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	h.writeRollout(`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"plan"}}`,
+		`{"type":"assistant","message":{"id":"m2","model":"claude-sonnet-5-5","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]},"perTurnEffort":"medium"}`)
+	h.s.readRollout()
+	if i := h.s.info(); i.Model != "sonnet" || i.Effort != "low" || i.PermissionMode != "plan" {
+		t.Fatalf("info %v %v %v", i.Model, i.Effort, i.PermissionMode)
+	}
+}

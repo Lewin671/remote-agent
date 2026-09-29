@@ -2,6 +2,7 @@ package claude
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -359,5 +360,71 @@ func TestUsageAfterRestartMidReply(t *testing.T) {
 	}
 	if u == nil || u.InputTokens != 1110+1121 || u.OutputTokens != 8 {
 		t.Fatalf("usage %v", u)
+	}
+}
+
+// A new reply after a restart counts even when its total equals the last
+// one's (review V3).
+func TestUsageAfterRestartSameTotal(t *testing.T) {
+	reply := func(id string, in, out int) []byte {
+		return []byte(fmt.Sprintf(`{"type":"assistant","message":{"id":%q,"model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","usage":{"input_tokens":%d,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":%d},"content":[{"type":"text","text":"x"}]}}`, id, in, out))
+	}
+	p := NewParser()
+	evs, _ := p.Parse(reply("m1", 100, 10))
+	q := NewParser()
+	for _, e := range evs {
+		q.Replay(e)
+	}
+	evs, _ = q.Parse(reply("m2", 105, 5)) // same total, another reply
+	var u *pb.TokenUsage
+	for _, e := range evs {
+		if e.GetTokenUsage() != nil {
+			u = e.GetTokenUsage()
+		}
+	}
+	if u == nil || u.InputTokens != 205 || u.OutputTokens != 15 || u.MessageId != "m2" {
+		t.Fatalf("usage %v", u)
+	}
+}
+
+// A model chosen through remote-agent stays the session's model through
+// Plan mode (review V1).
+func TestSelectedModelThroughPlan(t *testing.T) {
+	p := NewParser()
+	p.Parse([]byte(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`))
+	p.Parse([]byte(`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`))
+	p.Parse([]byte(`{"type":"system","subtype":"turn_duration","durationMs":1}`))
+	p.Replay(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	var ctx *pb.TurnContext
+	for _, l := range []string{
+		`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"plan"}}`,
+		`{"type":"assistant","message":{"id":"m2","model":"claude-sonnet-5-5","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]},"perTurnEffort":"medium"}`,
+	} {
+		evs, _ := p.Parse([]byte(l))
+		for _, e := range evs {
+			if c := e.GetTurnContext(); c != nil {
+				ctx = c
+			}
+		}
+	}
+	if ctx == nil || ctx.Model != "sonnet" || ctx.Effort != "low" || ctx.PermissionMode != "plan" {
+		t.Fatalf("context %v", ctx)
+	}
+}
+
+// A background task's notice starts a turn Claude Code answers by itself.
+func TestTaskNotificationTurn(t *testing.T) {
+	p := NewParser()
+	evs, _ := p.Parse([]byte(`{"type":"user","promptId":"p9","origin":{"kind":"task-notification","producer":"session-task"},"promptSource":"system","message":{"role":"user","content":"<task-notification>done</task-notification>"}}`))
+	if len(evs) == 0 || evs[0].GetTurnStarted() == nil {
+		t.Fatalf("events %v", evs)
+	}
+	for _, e := range evs {
+		if e.GetUserMessage() != nil {
+			t.Fatal("the notice is not a user message")
+		}
+	}
+	if evs, _ := p.Parse([]byte(`{"type":"system","subtype":"turn_duration","durationMs":5}`)); len(evs) != 1 || evs[0].GetTurnEnded() == nil {
+		t.Fatalf("end %v", evs)
 	}
 }

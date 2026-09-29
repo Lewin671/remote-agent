@@ -198,6 +198,15 @@ func (s *session) emit(evs ...*pb.Event) {
 		slog.Error("append events", "session", s.meta.ID, "err", err)
 		return
 	}
+	// Settings changed through remote-agent or seen on the screen: the
+	// parser must know them before the transcript shows them.
+	for _, e := range evs {
+		if e.GetSettingsChanged() != nil || e.GetTurnContext() != nil {
+			s.readMu.Lock()
+			s.parser.Replay(e)
+			s.readMu.Unlock()
+		}
+	}
 	s.mu.Lock()
 	for _, e := range evs {
 		s.observe(e)

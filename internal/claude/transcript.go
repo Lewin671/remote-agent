@@ -32,9 +32,6 @@ type Parser struct {
 	ctx       *pb.TurnContext // last context emitted
 	usage     *pb.TokenUsage  // running totals
 	lastMsgID string          // assistant message whose usage was counted
-	// restored: usage came from Replay, so the message it last counted is
-	// known only by its size.
-	restored bool
 }
 
 type call struct {
@@ -83,7 +80,11 @@ func (p *Parser) Replay(e *pb.Event) {
 	case *pb.Event_TurnContext:
 		p.ctx = k.TurnContext
 	case *pb.Event_TokenUsage:
-		p.usage, p.lastMsgID, p.restored = k.TokenUsage, "", true
+		p.usage, p.lastMsgID = k.TokenUsage, k.TokenUsage.MessageId
+	case *pb.Event_SettingsChanged:
+		// A switch made through remote-agent, which the transcript shows
+		// only with the next reply, or not at all in Plan mode.
+		p.ctx = applySettings(p.ctx, k.SettingsChanged)
 	}
 }
 
@@ -225,8 +226,12 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 			return p.endTurn(pb.TurnOutcome_TURN_OUTCOME_ABORTED, "interrupted", 0), nil
 		}
 	}
-	// Only what a person typed starts a turn: slash commands and their
+	// What a person typed starts a turn, and so does a background task's
+	// notice, which Claude Code answers by itself; slash commands and their
 	// output carry no origin.
+	if r.Origin != nil && r.Origin.Kind == "task-notification" {
+		return p.startTurn(r), nil
+	}
 	if r.Origin == nil || r.Origin.Kind != "human" {
 		return nil, nil
 	}
@@ -243,6 +248,14 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 	if len(parts) > 0 {
 		msg.Text = strings.Join(parts, "\n")
 	}
+	evs = append(evs, p.startTurn(r)...)
+	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: msg}})
+	return evs, nil
+}
+
+// startTurn opens the turn of a user record.
+func (p *Parser) startTurn(r *record) []*pb.Event {
+	var evs []*pb.Event
 	if p.inTurn {
 		// The previous turn left no end record, as when it failed.
 		evs = append(evs, p.endTurn(pb.TurnOutcome_TURN_OUTCOME_ABORTED, "no end recorded", 0)...)
@@ -252,8 +265,7 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 	if c := p.context(r.Permission, "", nil); c != nil {
 		evs = append(evs, c)
 	}
-	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: msg}})
-	return evs, nil
+	return evs
 }
 
 func (p *Parser) endTurn(outcome pb.TurnOutcome, reason string, ms int64) []*pb.Event {
@@ -331,12 +343,6 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 	}
 	// Every content block of a reply is its own line with the same usage;
 	// count it once.
-	if m.Usage != nil && m.ID != "" && m.ID != p.lastMsgID && p.restored && p.usage != nil &&
-		m.Usage.Input+m.Usage.CacheCreation+m.Usage.CacheRead+m.Usage.Output == p.usage.LastTotalTokens {
-		// After a restart between two lines of the same reply: counted.
-		p.lastMsgID = m.ID
-	}
-	p.restored = false
 	if m.Usage != nil && m.ID != "" && m.ID != p.lastMsgID {
 		p.lastMsgID = m.ID
 		u := &pb.TokenUsage{}
@@ -350,6 +356,7 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 		u.TotalTokens = u.InputTokens + u.OutputTokens
 		u.LastTotalTokens = in + m.Usage.Output
 		u.ContextWindow = ContextWindow(m.Model)
+		u.MessageId = m.ID
 		p.usage = u
 		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: proto.CloneOf(u)}})
 	}

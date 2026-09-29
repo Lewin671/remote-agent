@@ -426,6 +426,10 @@ func (a *Adapter) ForwardPermission(h *agent.Hook, _ *pb.TurnContext) bool {
 // ApplySettings records a change made through remote-agent until the
 // transcript shows it.
 func (a *Adapter) ApplySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext {
+	return applySettings(ctx, ch)
+}
+
+func applySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext {
 	if ctx == nil {
 		ctx = &pb.TurnContext{}
 	}
