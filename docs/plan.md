@@ -220,8 +220,9 @@ Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程�
 - 模型提问：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
 
-**Claude Code 待实测**（C1 里做）
+**Claude Code 待实测**
 
-- auto 模式下，`PermissionRequest` hook 是只收到分类器拦下的请求，还是全部请求
-- `ExitPlanMode` 能不能走 hook
-- 运行中能否用 Shift+Tab 切换模式
+- auto 模式下被分类器拦下的请求会不会弹权限框、触发 `PermissionRequest`（分类器放行的不触发，已实测；拦下的情况没能复现）
+- 以 bypass 启动时的风险确认弹窗（本机设置跳过了它）
+- API 出错时一轮怎么结束：transcript 里有没有 `turn_duration` 或其他结束记录；没有的话会一直显示运行中
+- AskUserQuestion 的选择框里按 Esc、选 `Type something.` 和 `Chat about this` 的结果

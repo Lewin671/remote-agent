@@ -188,6 +188,16 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **hook 的超时**：hook 定义里的 `timeout` 设为 3600 秒，审批超时必须比它短。hook 自己超时的话，Codex 会改为在终端里弹原生审批框（notes §3），就做不到「超时拒绝」了
 - **daemon 连不上**：hook 什么都不输出，交给 Codex 在终端里弹原生审批框，仍然由人决定。审批等待中 daemon 重启时，hook 会重试 30 秒，连上新的 daemon 后重新发起审批；旧的那条记为「已取消」
 
+**Claude Code** 的审批走同一个入口 `remote-agent hook claude`，但规则不同，不照搬上面的 `auto_review` 分支：
+
+| | 做法 | 依据 |
+|---|---|---|
+| 转不转给客户端 | 所有模式下都转：`PermissionRequest` 只在 Claude Code 要弹权限框时才触发，bypass 和 auto 放行的请求根本不会来 | [claude-code-notes §6](claude-code-notes.md#6-审批permissionrequest) |
+| 终端里 | 原生权限框和 hook 同时出现，电脑和手机谁先答算谁的 | 同上 |
+| 本地先答 | 屏幕上见过的权限框消失、这个工具已经有了结果或这一轮结束时，把卡片记为「已在终端处理」（`APPROVAL_DECISION_TERMINAL`）并让 hook 退出。本地选了「允许」时 Claude Code 不会结束 hook，只能靠 daemon 自己发现 | 同上 |
+| 超时 | 照样返回拒绝；原生框随之消失 | 同上 |
+| AskUserQuestion、ExitPlanMode | 它们也会触发 `PermissionRequest`，hook 直接不表态，不出审批卡；它们由第 16 节的提问和计划处理 | notes §6、§7、§8 |
+
 ### 客户端的审批模式
 
 客户端的模式切换只做 Codex 和 Claude Code 都有的 4 种，这样接入 Claude Code 时不用改界面：
@@ -375,7 +385,24 @@ App 在前台时保持主 WebSocket；进入后台就断开，改靠推送；回
 Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下，输出读 transcript，审批和轮次边界靠 hook，屏幕只用来判断状态。客户端能做的操作两者一致（第 7 节的 4 种审批模式就是按两者共有的定的）。具体做法依据 [claude-code-notes.md](claude-code-notes.md) 的实测，随实测补全。
 
 - **会话属于哪个 CLI**：会话信息、新建会话、列模型都带 `Agent`；以前的会话没有这个字段，按 Codex 处理。机器元数据列出本机装了哪些 CLI 和版本，客户端只提供装了的
-- **daemon 的分层**：会话生命周期、事件序号、持久化队列、控制锁、审批的竞争处理、同步和终端流是共用的；每个 CLI 各自实现三组接口：启动和恢复（参数、版本、模型列表）、事件来源（绑定 transcript、增量解析、确认消息已提交）、终端控制（认输入框、注入、中断、回答提问、计划、切换设置）。屏幕、菜单、参数和 JSON 格式的知识只留在各自的包里
+- **daemon 的分层**：会话生命周期、事件序号、持久化队列、控制锁、审批的竞争处理、同步和终端流是共用的；每个 CLI 各自实现三组接口（`internal/agent`）：启动和恢复（参数、版本、模型列表）、事件来源（绑定 transcript、增量解析、确认消息已提交）、终端控制（认输入框、注入、中断、回答提问、计划、切换设置）。屏幕、菜单、参数和 JSON 格式的知识只留在各自的包里（`internal/codex`、`internal/claude`）
 - **环境变量**：和 Codex 共用 `~/.remote-agent/agent.env`（第 6 节），代理这类配置属于电脑，不属于某个 CLI
 - **新建会话的默认值**：daemon 设置里 Codex 和 Claude Code 各有一套默认模型、推理强度和审批模式；「配置跟着项目走」（第 13 节）也沿用最近一个会话的 CLI
 - **工具开始**：Claude Code 会并行调用工具，`ToolStarted` 带上调用 ID 配对，不按先后顺序
+
+下面是 Claude Code 这一侧的具体做法，括号里的「notes §n」指 [claude-code-notes.md](claude-code-notes.md) 的第 n 节。
+
+- **启动**：`remote-agent pty-host -- claude --settings <会话目录>/claude-settings.json --session-id <uuid> …`。settings 文件只放 remote-agent 的 hook（`SessionStart`、`PermissionRequest`），命令同样写成 `"$RA_EXE" hook claude`；它和用户自己的 hook 一起运行，不改 `~/.claude/settings.json`，也不需要信任（notes §1、§3）。会话 ID 由 daemon 生成，记作会话的 CLI 会话 ID
+- **模型、推理强度、审批模式**：新建时换成 `--model`、`--effort`、`--permission-mode`；没指定就不传，沿用 Claude Code 自己的配置。「完全放行」对应 `bypassPermissions`：只有启动时就允许了 bypass 的会话能切过去（notes §5），daemon 按启动参数和 `~/.claude/settings.json` 的 `defaultMode` 判断，不可用时会话信息里标出来，客户端置灰。remote-agent 不替用户加 `--allow-dangerously-skip-permissions`
+- **恢复会话**：transcript 已经存在时用 `--resume <id>`，否则（从没发过消息）仍用 `--session-id <id>`；沿用原来的参数，再用最近一轮的模型、推理强度和审批模式覆盖，同名选项先从原参数里去掉。恢复时 transcript 里的 `permission-mode` 记录是上次的模式（notes §2），所以当前模式以屏幕上的模式行为准
+- **启动弹窗**：信任目录的光标默认在 `No, exit`，回车就退出（notes §1），和 Codex 一样留给用户在终端里处理，客户端提示去终端
+- **找到 transcript**：`SessionStart` hook 在信任目录后、第一条消息前就触发，带 `transcript_path`
+- **解析 transcript**：带 `origin.kind: human` 的用户记录是新一轮的开始和用户消息；`turn_duration` 是正常结束，`[Request interrupted by user…]` 是被中断，两者可能先后都有，只记第一个；`isMeta`、斜杠命令、压缩摘要都不算用户消息；运行中并入这一轮的消息（`queued_command` 附件）记为用户消息但不开新的一轮。`tool_use` 记为 `ToolStarted`（带调用 ID），`tool_result` 按调用 ID 配成 `ToolCall`；`thinking` 记为推理（终端里默认折叠，按 ctrl+o 能看到同样的内容）。`compact_boundary` 记为「上下文已压缩」。模型和推理强度取自 `assistant` 记录，上下文占用由 `usage` 算出，窗口大小按模型推断（notes §2）
+- **输入**：和 Codex 相同的排队、暂存本地按键、bracketed paste。输入框的判断按 Claude Code 的画法：两条横线之间只有一行，`❯` 后面没有普通样式的字（光标是反色的一格，占位提示是淡色）才算空（notes §4）。运行中也可以注入，Claude Code 会把它排进当前这一轮；以 transcript 里出现这条用户消息或 `queue-operation` 的 `enqueue` 记录为已提交
+- **中断**：只在运行中发 Esc
+- **模型提问**：让原生选择框照常出现，问题从 transcript 的 `tool_use` 读出；回答时暂存本地按键、确认屏幕上是这个问题，再按选项编号（多选时按几个编号再按 →），出现提交页就按 1。以 transcript 的 `tool_result` 为准，本地先答了就收回卡片。**不用阻塞 `PreToolUse` hook 回答**：那样虽然能直接把答案交给模型，但 hook 等待期间电脑终端里看不到问题，违背「电脑和手机操作同一个会话」（notes §7 两条路的实测对比）
+- **计划**：`ExitPlanMode` 的 `tool_use` 记为 `PlanProposed`，屏幕上的计划框让会话处于「计划待批准」。批准（`IMPLEMENT`）按「Yes, manually approve edits」那一项，执行后回到 manual；继续规划（`KEEP_PLANNING`）按 Esc，留在 Plan 模式；Claude Code 没有「清空上下文再执行」，这一项返回不支持。hook 批准计划不起作用（notes §8）
+- **切换审批模式**：用 Shift+Tab 在模式行上一格一格地走到目标模式，每按一次都读模式行确认；转一圈都没遇到目标就报错。运行中也能切（notes §5），但途中要经过比目标更宽松的模式（bypass、auto）时，只在空闲时切，免得那一瞬间放行了工具调用
+- **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、←/→ 调推理强度，按 `s` 只改当前会话；弹出 `Switch model?` 时按 1。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID
+- **压缩**：空闲时 `/compact`，以屏幕出现 `Compacting conversation` 或 transcript 出现 `compact_boundary` 为开始
+- **额度**：Claude Code 不把账户额度写进 transcript，机器元数据里的额度仍只有 Codex 的
