@@ -31,6 +31,9 @@ const (
 	screenBlankFirstLine = "\x1b[1m›\x1b[0m \n" +
 		"  second line of a local draft\n" +
 		"  GPT-6-Sol medium · /tmp/w\n"
+	screenTitleInChat = "• You asked about the Trust this folder? dialog and Question 1/2 counters.\n" +
+		"\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n" +
+		"  GPT-6-Sol medium · /tmp/w\n"
 	screenUnknownMenu = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex\x1b[0m\n" +
 		"  Some new dialog\n" +
 		"\x1b[1;7m› 1. First\n" +
@@ -49,6 +52,7 @@ func TestAnalyzeScreen(t *testing.T) {
 		{"approval", screenApproval, Screen{Popup: "approval"}},
 		{"question", screenQuestion, Screen{Popup: "question", QuestionOpen: true}},
 		{"unknown menu", screenUnknownMenu, Screen{Popup: "menu"}},
+		{"dialog title quoted in chat", screenTitleInChat, Screen{ComposerReady: true, DraftEmpty: true}},
 		{"draft with blank first line", screenBlankFirstLine, Screen{ComposerReady: true, DraftEmpty: false}},
 		{"empty", "", Screen{}},
 	}

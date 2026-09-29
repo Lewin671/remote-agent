@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,8 @@ type fakeTerm struct {
 	held    bool
 	history string
 	ops     []string // hold, release and write, in order
+	// failWrites records a write but reports an error, like a lost reply.
+	failWrites bool
 }
 
 func (f *fakeTerm) Capture() (string, error) {
@@ -69,6 +72,9 @@ func (c *fakeControl) Write(b []byte) error {
 	}
 	c.f.writes = append(c.f.writes, string(b))
 	c.f.ops = append(c.f.ops, "write")
+	if c.f.failWrites {
+		return errors.New("reply lost")
+	}
 	if text, ok := strings.CutPrefix(string(b), "\x1b[200~"); ok {
 		text = strings.TrimSuffix(text, "\x1b[201~\r")
 		line, _ := json.Marshal(map[string]string{"session_id": "x", "text": text})

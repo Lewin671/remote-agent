@@ -483,7 +483,11 @@ func (s *session) markInflight(offset int64) error {
 	}
 	s.queue.Queue[0].Inflight = &offset
 	s.queue.Queue[0].InflightSeq = seq
-	return s.queue.save(s.dir)
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq = nil, 0
+		return err
+	}
+	return nil
 }
 
 // inject tries once to write text. It returns false, leaving the input
@@ -517,14 +521,9 @@ func (s *session) inject(text string) (bool, error) {
 		return false, err
 	}
 	if err := c.Write(codex.PasteBytes(text)); err != nil {
-		// Not written: clear the mark so the message is tried again.
-		s.mu.Lock()
-		if len(s.queue.Queue) > 0 {
-			s.queue.Queue[0].Inflight = nil
-			_ = s.queue.save(s.dir)
-		}
-		s.mu.Unlock()
-		return false, err
+		// A failed reply does not prove the bytes were not written, so
+		// the message is only settled from Codex's records, never resent.
+		return true, err
 	}
 	return true, nil
 }

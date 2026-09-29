@@ -270,3 +270,39 @@ func TestControlOperationsAreSerialized(t *testing.T) {
 		}
 	}
 }
+
+// If the inflight mark cannot be saved, the message stays queued unwritten.
+func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
+	h := newHarness(t, Config{})
+	if _, err := h.s.send("x", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	os.Chmod(h.dir, 0o500)
+	written, err := h.s.inject("x")
+	os.Chmod(h.dir, 0o700)
+	if err == nil {
+		t.Skip("directory is writable despite chmod")
+	}
+	if written || len(h.term.written()) != 0 {
+		t.Fatal("wrote although the mark was not saved")
+	}
+	if h.s.queue.Queue[0].Inflight != nil {
+		t.Fatal("inflight mark left in memory")
+	}
+}
+
+// A write whose reply fails counts as possibly written: it is settled from
+// Codex's records and never written again.
+func TestAmbiguousWriteIsNotRetried(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
+	h.term.failWrites = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h.s.start(ctx)
+	h.s.send("x", "r1")
+	eventually(t, "unconfirmed", func() bool { return inputStatus(h, "r1") == pb.InputStatus_INPUT_STATUS_UNCONFIRMED })
+	time.Sleep(50 * time.Millisecond)
+	if n := len(h.term.written()); n != 1 {
+		t.Fatalf("written %d times", n)
+	}
+}

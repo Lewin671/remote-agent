@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/internal/tail"
@@ -20,20 +21,15 @@ type historyEntry struct {
 }
 
 // newHistory starts reading path at offset; a negative offset means the
-// current end of the file.
+// current end of the file, found without reading it.
 func newHistory(path string, offset int64) *history {
 	if offset < 0 {
-		h := &history{r: tail.NewReader(path, 0)}
-		h.skip()
-		return h
+		offset = 0
+		if st, err := os.Stat(path); err == nil {
+			offset = st.Size()
+		}
 	}
 	return &history{r: tail.NewReader(path, offset)}
-}
-
-// skip moves past everything written so far and returns the new offset.
-func (h *history) skip() int64 {
-	_, _, _ = h.r.Next()
-	return h.r.Offset()
 }
 
 // submitted reports whether a line with text was appended since the last

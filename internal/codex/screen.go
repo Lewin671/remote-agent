@@ -79,12 +79,14 @@ func AnalyzeScreen(styled string) Screen {
 			composer = i
 		}
 	}
-	if s.Popup == "question" {
-		s.QuestionOpen = true
-	}
-	if selection && s.Popup == "" {
+	// A dialog always shows a selection list. Its title only names it:
+	// the same words in the conversation above an input box mean nothing.
+	if !selection {
+		s.Popup = ""
+	} else if s.Popup == "" {
 		s.Popup = "menu"
 	}
+	s.QuestionOpen = s.Popup == "question"
 	if composer >= 0 && s.Popup == "" {
 		s.ComposerReady = true
 		rest := strings.TrimPrefix(lines[composer], composerPrompt)
