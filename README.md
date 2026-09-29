@@ -38,7 +38,8 @@ remote-agent events <id> -f    # 持续查看事件
 ```sh
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
 remote-agent account init --server https://ra.example.com   # 建账户，输入 setup token
-remote-agent account secret              # 输出账户密钥，粘贴到网页或另一台电脑的 account join
+remote-agent account pair --web https://app.example.com   # 添加设备：显示二维码和配对码
+remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入
 cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cloudflare Pages（先 npx wrangler login）
 ```
 
