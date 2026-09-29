@@ -63,6 +63,7 @@
 - **聊天视图**：文本、推理摘要、工具调用和结果、轮次开始和结束、token 用量
 - **终端视图**：通过 tmux control mode 获取实时字节流，加密后经 server 转发，**不落库**；默认不改变 tmux 尺寸，可手动「适配我的屏幕」；手机上提供特殊按键栏
 - **权限审批**：Codex 的 `PermissionRequest` hook 转到客户端；**超时默认拒绝**
+- **回答模型提问**：Codex 的 `request_user_input` 在客户端显示成选项卡片，点选即回答
 - **多端输入**：按到达顺序注入，不加锁
 - **按项目分组**：分组在客户端完成（见第 7 节）
 - **推送**：Web Push，在一轮结束和有审批请求时提醒
@@ -99,6 +100,8 @@
 | 输入注入 | `load-buffer` 加 `paste-buffer -p`（bracketed paste），再单独发 Enter | Codex 会把裸换行当作提交 |
 | 输出来源 | Codex rollout jsonl，轮次以 `task_started` / `task_complete` 为准 | 屏幕内容不可靠 |
 | 审批超时 | 拒绝 | 安全优先 |
+| 模型提问 | `PreToolUse` hook 把问题转给 daemon 后立即返回，不阻塞；回答时抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问不单独处理，一轮结束后当普通消息回复 | hook 没法代答；hook 阻塞的话，本地终端在它返回前看不到问题。细节见 [codex-notes.md](codex-notes.md) 第 9 节 |
+| 启动弹窗 | 用 `-c` 关掉检查更新、限额换模型提示等；关不掉的信任目录、hook 确认，每个目录或每套 hook 只问一次，客户端提示去终端处理 | 能不弹就不弹；信任目录是安全决定，留给用户在终端里做 |
 | 切换模型和 effort | 空闲时操作 Codex 的 `/model` 菜单，只改当前会话（按 `s`，不按回车）；认不出菜单时退回到 `codex resume` 带新参数重启 | 不用重启会话；细节见 [codex-notes.md](codex-notes.md) |
 | 上下文提示 | 占用超过 80% 时提示，并提供“压缩”按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
 | `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到 |

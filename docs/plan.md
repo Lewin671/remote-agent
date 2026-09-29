@@ -35,6 +35,7 @@
 | `remote-agent send <id> <文字>` | 发一条消息 |
 | `remote-agent events <id> [--follow]` | 查看统一事件，`--follow` 持续输出新事件 |
 | `remote-agent approve / deny <id> <审批ID>` | 回复审批请求 |
+| `remote-agent answer <id> <提问ID> <选项编号>` | 回答模型提问 |
 | `remote-agent interrupt <id>` | 中断当前这一轮 |
 | `remote-agent stop <id>` | 结束会话 |
 
@@ -51,9 +52,10 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
 
 - **输入**：用 `paste-buffer -p` 粘贴，再单独发 Enter；以 `~/.codex/history.jsonl` 新增的那一行确认提交成功
 - **启动**：启动 Codex 时带上代理等环境变量（daemon 读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`；用 `-c` 注入 `PermissionRequest` 和 `SessionStart` 两个 hook；hook 命令的路径要固定，否则每次都要重新信任
-- **弹窗**：启动时依次处理 `Update available`、`Trust this folder?`、`Hooks need review`；注入前先抓屏，确认没有弹窗挡着。判断时只看屏幕底部几行
+- **弹窗**：启动时用 `-c` 关掉能关的弹窗（见 [scope.md](scope.md) 第 6 节），剩下的 `Trust this folder?`、`Hooks need review` 依次处理；注入前先抓屏，确认没有弹窗挡着。判断时只看屏幕底部几行
 - **找到 rollout**：由 `SessionStart` hook 上报 `RA_SESSION` 和 `transcript_path`（发出第一条消息时触发）
 - **中断**：只在一轮运行时发 Esc；绝不发 Ctrl-C
+- **模型提问**：用 `-c` 再注入一个 `PreToolUse` hook，把 `request_user_input` 转成统一事件；回答时注入选项编号
 - **解析 rollout**：转成统一事件，包括文本、推理摘要、工具调用和结果、轮次开始和结束、token 用量
 - **空闲判断**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助
 - **输入排队**：多个来源的输入按到达顺序排队注入
@@ -78,6 +80,8 @@ CLI、hook 和 daemon 之间走 ConnectRPC over unix socket，接口在 proto �
   - 会话没开 `auto_review` 时，hook 把请求转到手机，超时拒绝
   - 已实测：拿不准的操作，模型会在对话里问你，回复确认后 `auto_review` 放行
 
+- 模型提问的细节：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
+
 结果记到 [codex-notes.md](codex-notes.md)。
 
 ### 不做
@@ -91,5 +95,6 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 3. `events --follow` 能完整、按顺序地输出一轮对话的所有事件
 4. Codex 请求权限时，`approve` 和 `deny` 都能生效；不回复的话，超时后自动拒绝
 5. `interrupt` 能打断正在进行的一轮
-6. 重启 daemon 后，`ls` 仍能看到原来的会话，事件接着输出
-7. rollout 解析有 fixture 测试，样本已脱敏
+6. Codex 提问时，`events` 能看到问题和选项，`answer` 能回答；在本地终端里先答了，`events` 里能看到答案
+7. 重启 daemon 后，`ls` 仍能看到原来的会话，事件接着输出
+8. rollout 解析有 fixture 测试，样本已脱敏

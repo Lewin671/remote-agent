@@ -92,6 +92,8 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 ## 5. 启动时的弹窗和环境
 
 - 启动时的弹窗依次可能有：`Update available`（选 `2. Skip`）、`Trust this folder?`（按数字只会移动光标，**还要再按回车**才生效）、`Hooks need review`。每一个都会吞掉紧接着发的按键
+- 能在启动时用 `-c` 关掉的：`check_for_update_on_startup=false`（`Update available`）；`[notice]` 下的开关，如 `hide_rate_limit_model_nudge`（快到限额时的 `Switch to a cheaper model?`）、`hide_full_access_warning`、`hide_world_writable_warning`、`hide_gpt5_1_migration_prompt`。键名取自二进制；本机 `config.toml` 里的 `hide_rate_limit_model_nudge = true` 是 TUI 自己写入的，说明这个键有效。其余几个没有逐个触发验证
+- `Trust this folder?` **不能**用 `-c 'projects."<路径>".trust_level="trusted"'` 跳过（`/tmp` 和 `/private/tmp` 两种写法都试过），信任只从 `config.toml` 文件读
 - `-a untrusted` 在这个版本里已经删除，`-a` 只接受 `on-request`、`never`
 - Codex 要通过代理才能联网，而本机是靠 shell 函数 `ai_cli_with_clash_proxy` 设置的代理环境变量（`HTTP_PROXY` 等）。daemon 启动 Codex 时要带上这些变量；尤其是 daemon 由 launchd 启动时，读不到 shell 里的配置
 
@@ -126,3 +128,22 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 中断只打断这一轮对话，**已经启动的后台命令还会继续运行**（实测 `sleep 60` 在中断后仍在跑，界面显示 `1 background terminal running`，要用 `/stop` 关掉）
 - 中断后 rollout 记录的是 `turn_aborted`，不是 `task_complete`
 - 不带 `-c` 启动时，Codex 用共享的后台服务运行，退出界面后这一轮**还在继续**（退出时提示 `Stop the current turn: run codex agents…`）。remote-agent 用 `-c` 注入 hook，走嵌入模式，不受影响
+
+## 9. 模型提问（request_user_input）
+
+模型有两个向用户提问的工具，都会触发 `PreToolUse` / `PostToolUse` hook，`tool_name` 分别是 `request_user_input`、`request_user_input_async`。在 Plan 模式下实测。
+
+| | `request_user_input` | `request_user_input_async` |
+|---|---|---|
+| 内容 | 1 个或多个问题，每个带 `header`、`id`、`question`、`options`（`label` + `description`） | 只有自由文本问题：`questions[].title` |
+| 模型 | **停下来等**回答 | 不等，继续干活；工具立即返回 `{"accepted":true}` |
+| 界面 | 输入框位置变成选择框，末尾自动加一项 `None of the above`（Tab 加备注） | 输入框上方显示 `? 1 question`，按 `shift+←` 进入回答框，`ctrl+]` 跳过 |
+| 回答 | 按选项编号**直接提交**，不用再按回车（单个问题） | 在回答框里输入，回车 |
+
+- 问题：`PreToolUse` hook 的 `tool_input` 和 rollout 里 `function_call` 的 `arguments`（JSON 字符串）内容相同；hook 的 `tool_use_id` 就是 rollout 的 `call_id`
+- 答案：rollout 的 `function_call_output`，`output` 为 `{"answers":{"<id>":{"answers":["Python"]}}}`，另有一条 `retained_context`（`type: verified_answer`）；`PostToolUse` 的 `tool_response` 是同一个字符串
+- `PreToolUse` 的输出字段只有 `permissionDecision`、`permissionDecisionReason`、`updatedInput`、`additionalContext`（取自二进制里的 schema）。`updatedInput` 只能改问题，没有答案字段，**hook 没法代替用户回答**
+- 异步提问：实测模型问完很快就结束了这一轮，回答框随之消失，之后输入的文字落进主输入框，回车后作为普通消息发出，模型能接上
+
+据此的做法见 [scope.md](scope.md) 第 6 节。
+
