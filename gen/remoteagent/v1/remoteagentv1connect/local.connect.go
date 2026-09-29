@@ -48,6 +48,9 @@ const (
 	// LocalServiceStopSessionProcedure is the fully-qualified name of the LocalService's StopSession
 	// RPC.
 	LocalServiceStopSessionProcedure = "/remoteagent.v1.LocalService/StopSession"
+	// LocalServiceCancelInputProcedure is the fully-qualified name of the LocalService's CancelInput
+	// RPC.
+	LocalServiceCancelInputProcedure = "/remoteagent.v1.LocalService/CancelInput"
 	// LocalServiceResolveApprovalProcedure is the fully-qualified name of the LocalService's
 	// ResolveApproval RPC.
 	LocalServiceResolveApprovalProcedure = "/remoteagent.v1.LocalService/ResolveApproval"
@@ -69,6 +72,8 @@ type LocalServiceClient interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	Interrupt(context.Context, *connect.Request[v1.InterruptRequest]) (*connect.Response[v1.InterruptResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	// CancelInput removes a queued message that has not been written yet.
+	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest]) (*connect.ServerStreamForClient[v1.WatchEventsResponse], error)
@@ -124,6 +129,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("StopSession")),
 			connect.WithClientOptions(opts...),
 		),
+		cancelInput: connect.NewClient[v1.CancelInputRequest, v1.CancelInputResponse](
+			httpClient,
+			baseURL+LocalServiceCancelInputProcedure,
+			connect.WithSchema(localServiceMethods.ByName("CancelInput")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveApproval: connect.NewClient[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse](
 			httpClient,
 			baseURL+LocalServiceResolveApprovalProcedure,
@@ -159,6 +170,7 @@ type localServiceClient struct {
 	send            *connect.Client[v1.SendRequest, v1.SendResponse]
 	interrupt       *connect.Client[v1.InterruptRequest, v1.InterruptResponse]
 	stopSession     *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	cancelInput     *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
 	resolveApproval *connect.Client[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse]
 	answerQuestion  *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	watchEvents     *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
@@ -195,6 +207,11 @@ func (c *localServiceClient) StopSession(ctx context.Context, req *connect.Reque
 	return c.stopSession.CallUnary(ctx, req)
 }
 
+// CancelInput calls remoteagent.v1.LocalService.CancelInput.
+func (c *localServiceClient) CancelInput(ctx context.Context, req *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {
+	return c.cancelInput.CallUnary(ctx, req)
+}
+
 // ResolveApproval calls remoteagent.v1.LocalService.ResolveApproval.
 func (c *localServiceClient) ResolveApproval(ctx context.Context, req *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {
 	return c.resolveApproval.CallUnary(ctx, req)
@@ -223,6 +240,8 @@ type LocalServiceHandler interface {
 	Send(context.Context, *connect.Request[v1.SendRequest]) (*connect.Response[v1.SendResponse], error)
 	Interrupt(context.Context, *connect.Request[v1.InterruptRequest]) (*connect.Response[v1.InterruptResponse], error)
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
+	// CancelInput removes a queued message that has not been written yet.
+	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest], *connect.ServerStream[v1.WatchEventsResponse]) error
@@ -274,6 +293,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("StopSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceCancelInputHandler := connect.NewUnaryHandler(
+		LocalServiceCancelInputProcedure,
+		svc.CancelInput,
+		connect.WithSchema(localServiceMethods.ByName("CancelInput")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceResolveApprovalHandler := connect.NewUnaryHandler(
 		LocalServiceResolveApprovalProcedure,
 		svc.ResolveApproval,
@@ -312,6 +337,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceInterruptHandler.ServeHTTP(w, r)
 		case LocalServiceStopSessionProcedure:
 			localServiceStopSessionHandler.ServeHTTP(w, r)
+		case LocalServiceCancelInputProcedure:
+			localServiceCancelInputHandler.ServeHTTP(w, r)
 		case LocalServiceResolveApprovalProcedure:
 			localServiceResolveApprovalHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerQuestionProcedure:
@@ -351,6 +378,10 @@ func (UnimplementedLocalServiceHandler) Interrupt(context.Context, *connect.Requ
 
 func (UnimplementedLocalServiceHandler) StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.StopSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.CancelInput is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {

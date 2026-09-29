@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/local.proto.
  */
 export const file_remoteagent_v1_local: GenFile = /*@__PURE__*/
-  fileDesc("ChpyZW1vdGVhZ2VudC92MS9sb2NhbC5wcm90bxIOcmVtb3RlYWdlbnQudjEijgQKB1Nlc3Npb24SCgoCaWQYASABKAkSCwoDY3dkGAIgASgJEhQKDHRtdXhfc2Vzc2lvbhgDIAEoCRItCgZzdGF0dXMYBCABKA4yHS5yZW1vdGVhZ2VudC52MS5TZXNzaW9uU3RhdHVzEhUKDXN0YXR1c19kZXRhaWwYBSABKAkSGAoQY29kZXhfc2Vzc2lvbl9pZBgGIAEoCRIUCgxyb2xsb3V0X3BhdGgYByABKAkSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIbGFzdF9zZXEYCSABKAQSDQoFbW9kZWwYCiABKAkSDgoGZWZmb3J0GAsgASgJEhkKEXBlbmRpbmdfYXBwcm92YWxzGAwgASgFEhkKEXBlbmRpbmdfcXVlc3Rpb25zGA0gASgFEhUKDXF1ZXVlZF9pbnB1dHMYDiABKAUSDQoFdGl0bGUYDyABKAkSDwoHcHJldmlldxgQIAEoCRIaChJhcHByb3ZhbHNfcmV2aWV3ZXIYESABKAkSFwoPYXBwcm92YWxfcG9saWN5GBIgASgJEg8KB3NhbmRib3gYEyABKAkSGgoSY29sbGFib3JhdGlvbl9tb2RlGBQgASgJEhYKDmNvbnRleHRfdG9rZW5zGBUgASgDEhYKDmNvbnRleHRfd2luZG93GBYgASgDIpkBChRDcmVhdGVTZXNzaW9uUmVxdWVzdBILCgNjd2QYASABKAkSDAoEYXJncxgCIAMoCRI6CgNlbnYYAyADKAsyLS5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdC5FbnZFbnRyeRoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIkEKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIoCgdzZXNzaW9uGAEgASgLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiItChNMaXN0U2Vzc2lvbnNSZXF1ZXN0EhYKDmluY2x1ZGVfZXhpdGVkGAEgASgIIkEKFExpc3RTZXNzaW9uc1Jlc3BvbnNlEikKCHNlc3Npb25zGAEgAygLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiInChFHZXRTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIj4KEkdldFNlc3Npb25SZXNwb25zZRIoCgdzZXNzaW9uGAEgASgLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiJDCgtTZW5kUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEgwKBHRleHQYAiABKAkSEgoKcmVxdWVzdF9pZBgDIAEoCSImCgxTZW5kUmVzcG9uc2USFgoOcXVldWVfcG9zaXRpb24YASABKAUiJgoQSW50ZXJydXB0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIigKEUludGVycnVwdFJlc3BvbnNlEhMKC2ludGVycnVwdGVkGAEgASgIIigKElN0b3BTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIhUKE1N0b3BTZXNzaW9uUmVzcG9uc2UiYQoWUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhMKC2FwcHJvdmFsX2lkGAIgASgJEg0KBWFsbG93GAMgASgIEg8KB21lc3NhZ2UYBCABKAkiGQoXUmVzb2x2ZUFwcHJvdmFsUmVzcG9uc2UigAEKFUFuc3dlclF1ZXN0aW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhMKC3F1ZXN0aW9uX2lkGAIgASgJEg4KBm9wdGlvbhgDIAEoBRIbCg5xdWVzdGlvbl9pbmRleBgEIAEoBUgAiAEBQhEKD19xdWVzdGlvbl9pbmRleCIYChZBbnN3ZXJRdWVzdGlvblJlc3BvbnNlIksKEldhdGNoRXZlbnRzUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhEKCWFmdGVyX3NlcRgCIAEoBBIOCgZmb2xsb3cYAyABKAgiOwoTV2F0Y2hFdmVudHNSZXNwb25zZRIkCgVldmVudBgBIAEoCzIVLnJlbW90ZWFnZW50LnYxLkV2ZW50IjIKC0hvb2tSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSDwoHcGF5bG9hZBgCIAEoDCIeCgxIb29rUmVzcG9uc2USDgoGb3V0cHV0GAEgASgMMusGCgxMb2NhbFNlcnZpY2USXAoNQ3JlYXRlU2Vzc2lvbhIkLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0GiUucmVtb3RlYWdlbnQudjEuQ3JlYXRlU2Vzc2lvblJlc3BvbnNlElkKDExpc3RTZXNzaW9ucxIjLnJlbW90ZWFnZW50LnYxLkxpc3RTZXNzaW9uc1JlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5MaXN0U2Vzc2lvbnNSZXNwb25zZRJTCgpHZXRTZXNzaW9uEiEucmVtb3RlYWdlbnQudjEuR2V0U2Vzc2lvblJlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5HZXRTZXNzaW9uUmVzcG9uc2USQQoEU2VuZBIbLnJlbW90ZWFnZW50LnYxLlNlbmRSZXF1ZXN0GhwucmVtb3RlYWdlbnQudjEuU2VuZFJlc3BvbnNlElAKCUludGVycnVwdBIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3QaIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZRJWCgtTdG9wU2Vzc2lvbhIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdBojLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVzcG9uc2USYgoPUmVzb2x2ZUFwcHJvdmFsEiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdBonLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlc3BvbnNlEl8KDkFuc3dlclF1ZXN0aW9uEiUucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXF1ZXN0GiYucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXNwb25zZRJYCgtXYXRjaEV2ZW50cxIiLnJlbW90ZWFnZW50LnYxLldhdGNoRXZlbnRzUmVxdWVzdBojLnJlbW90ZWFnZW50LnYxLldhdGNoRXZlbnRzUmVzcG9uc2UwARJBCgRIb29rEhsucmVtb3RlYWdlbnQudjEuSG9va1JlcXVlc3QaHC5yZW1vdGVhZ2VudC52MS5Ib29rUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp, file_remoteagent_v1_event]);
+  fileDesc("ChpyZW1vdGVhZ2VudC92MS9sb2NhbC5wcm90bxIOcmVtb3RlYWdlbnQudjEijgQKB1Nlc3Npb24SCgoCaWQYASABKAkSCwoDY3dkGAIgASgJEhQKDHRtdXhfc2Vzc2lvbhgDIAEoCRItCgZzdGF0dXMYBCABKA4yHS5yZW1vdGVhZ2VudC52MS5TZXNzaW9uU3RhdHVzEhUKDXN0YXR1c19kZXRhaWwYBSABKAkSGAoQY29kZXhfc2Vzc2lvbl9pZBgGIAEoCRIUCgxyb2xsb3V0X3BhdGgYByABKAkSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIbGFzdF9zZXEYCSABKAQSDQoFbW9kZWwYCiABKAkSDgoGZWZmb3J0GAsgASgJEhkKEXBlbmRpbmdfYXBwcm92YWxzGAwgASgFEhkKEXBlbmRpbmdfcXVlc3Rpb25zGA0gASgFEhUKDXF1ZXVlZF9pbnB1dHMYDiABKAUSDQoFdGl0bGUYDyABKAkSDwoHcHJldmlldxgQIAEoCRIaChJhcHByb3ZhbHNfcmV2aWV3ZXIYESABKAkSFwoPYXBwcm92YWxfcG9saWN5GBIgASgJEg8KB3NhbmRib3gYEyABKAkSGgoSY29sbGFib3JhdGlvbl9tb2RlGBQgASgJEhYKDmNvbnRleHRfdG9rZW5zGBUgASgDEhYKDmNvbnRleHRfd2luZG93GBYgASgDIpkBChRDcmVhdGVTZXNzaW9uUmVxdWVzdBILCgNjd2QYASABKAkSDAoEYXJncxgCIAMoCRI6CgNlbnYYAyADKAsyLS5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdC5FbnZFbnRyeRoqCghFbnZFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIkEKFUNyZWF0ZVNlc3Npb25SZXNwb25zZRIoCgdzZXNzaW9uGAEgASgLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiItChNMaXN0U2Vzc2lvbnNSZXF1ZXN0EhYKDmluY2x1ZGVfZXhpdGVkGAEgASgIIkEKFExpc3RTZXNzaW9uc1Jlc3BvbnNlEikKCHNlc3Npb25zGAEgAygLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiInChFHZXRTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIj4KEkdldFNlc3Npb25SZXNwb25zZRIoCgdzZXNzaW9uGAEgASgLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbiJDCgtTZW5kUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEgwKBHRleHQYAiABKAkSEgoKcmVxdWVzdF9pZBgDIAEoCSImCgxTZW5kUmVzcG9uc2USFgoOcXVldWVfcG9zaXRpb24YASABKAUiJgoQSW50ZXJydXB0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIigKEUludGVycnVwdFJlc3BvbnNlEhMKC2ludGVycnVwdGVkGAEgASgIIigKElN0b3BTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIhUKE1N0b3BTZXNzaW9uUmVzcG9uc2UiPAoSQ2FuY2VsSW5wdXRSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEgoKcmVxdWVzdF9pZBgCIAEoCSIVChNDYW5jZWxJbnB1dFJlc3BvbnNlImEKFlJlc29sdmVBcHByb3ZhbFJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRITCgthcHByb3ZhbF9pZBgCIAEoCRINCgVhbGxvdxgDIAEoCBIPCgdtZXNzYWdlGAQgASgJIhkKF1Jlc29sdmVBcHByb3ZhbFJlc3BvbnNlIoABChVBbnN3ZXJRdWVzdGlvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRITCgtxdWVzdGlvbl9pZBgCIAEoCRIOCgZvcHRpb24YAyABKAUSGwoOcXVlc3Rpb25faW5kZXgYBCABKAVIAIgBAUIRCg9fcXVlc3Rpb25faW5kZXgiGAoWQW5zd2VyUXVlc3Rpb25SZXNwb25zZSJLChJXYXRjaEV2ZW50c1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglhZnRlcl9zZXEYAiABKAQSDgoGZm9sbG93GAMgASgIIjsKE1dhdGNoRXZlbnRzUmVzcG9uc2USJAoFZXZlbnQYASABKAsyFS5yZW1vdGVhZ2VudC52MS5FdmVudCIyCgtIb29rUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEg8KB3BheWxvYWQYAiABKAwiHgoMSG9va1Jlc3BvbnNlEg4KBm91dHB1dBgBIAEoDDLDBwoMTG9jYWxTZXJ2aWNlElwKDUNyZWF0ZVNlc3Npb24SJC5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdBolLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZRJZCgxMaXN0U2Vzc2lvbnMSIy5yZW1vdGVhZ2VudC52MS5MaXN0U2Vzc2lvbnNSZXF1ZXN0GiQucmVtb3RlYWdlbnQudjEuTGlzdFNlc3Npb25zUmVzcG9uc2USUwoKR2V0U2Vzc2lvbhIhLnJlbW90ZWFnZW50LnYxLkdldFNlc3Npb25SZXF1ZXN0GiIucmVtb3RlYWdlbnQudjEuR2V0U2Vzc2lvblJlc3BvbnNlEkEKBFNlbmQSGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdBocLnJlbW90ZWFnZW50LnYxLlNlbmRSZXNwb25zZRJQCglJbnRlcnJ1cHQSIC5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXF1ZXN0GiEucmVtb3RlYWdlbnQudjEuSW50ZXJydXB0UmVzcG9uc2USVgoLU3RvcFNlc3Npb24SIi5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlcXVlc3QaIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlElYKC0NhbmNlbElucHV0EiIucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXF1ZXN0GiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZRJiCg9SZXNvbHZlQXBwcm92YWwSJi5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXF1ZXN0GicucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVzcG9uc2USXwoOQW5zd2VyUXVlc3Rpb24SJS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlcXVlc3QaJi5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlc3BvbnNlElgKC1dhdGNoRXZlbnRzEiIucmVtb3RlYWdlbnQudjEuV2F0Y2hFdmVudHNSZXF1ZXN0GiMucmVtb3RlYWdlbnQudjEuV2F0Y2hFdmVudHNSZXNwb25zZTABEkEKBEhvb2sSGy5yZW1vdGVhZ2VudC52MS5Ib29rUmVxdWVzdBocLnJlbW90ZWFnZW50LnYxLkhvb2tSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp, file_remoteagent_v1_event]);
 
 /**
  * @generated from message remoteagent.v1.Session
@@ -379,6 +379,41 @@ export const StopSessionResponseSchema: GenMessage<StopSessionResponse> = /*@__P
   messageDesc(file_remoteagent_v1_local, 12);
 
 /**
+ * @generated from message remoteagent.v1.CancelInputRequest
+ */
+export type CancelInputRequest = Message<"remoteagent.v1.CancelInputRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string request_id = 2;
+   */
+  requestId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.CancelInputRequest.
+ * Use `create(CancelInputRequestSchema)` to create a new message.
+ */
+export const CancelInputRequestSchema: GenMessage<CancelInputRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_local, 13);
+
+/**
+ * @generated from message remoteagent.v1.CancelInputResponse
+ */
+export type CancelInputResponse = Message<"remoteagent.v1.CancelInputResponse"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.CancelInputResponse.
+ * Use `create(CancelInputResponseSchema)` to create a new message.
+ */
+export const CancelInputResponseSchema: GenMessage<CancelInputResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_local, 14);
+
+/**
  * @generated from message remoteagent.v1.ResolveApprovalRequest
  */
 export type ResolveApprovalRequest = Message<"remoteagent.v1.ResolveApprovalRequest"> & {
@@ -410,7 +445,7 @@ export type ResolveApprovalRequest = Message<"remoteagent.v1.ResolveApprovalRequ
  * Use `create(ResolveApprovalRequestSchema)` to create a new message.
  */
 export const ResolveApprovalRequestSchema: GenMessage<ResolveApprovalRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 13);
+  messageDesc(file_remoteagent_v1_local, 15);
 
 /**
  * @generated from message remoteagent.v1.ResolveApprovalResponse
@@ -423,7 +458,7 @@ export type ResolveApprovalResponse = Message<"remoteagent.v1.ResolveApprovalRes
  * Use `create(ResolveApprovalResponseSchema)` to create a new message.
  */
 export const ResolveApprovalResponseSchema: GenMessage<ResolveApprovalResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 14);
+  messageDesc(file_remoteagent_v1_local, 16);
 
 /**
  * @generated from message remoteagent.v1.AnswerQuestionRequest
@@ -461,7 +496,7 @@ export type AnswerQuestionRequest = Message<"remoteagent.v1.AnswerQuestionReques
  * Use `create(AnswerQuestionRequestSchema)` to create a new message.
  */
 export const AnswerQuestionRequestSchema: GenMessage<AnswerQuestionRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 15);
+  messageDesc(file_remoteagent_v1_local, 17);
 
 /**
  * @generated from message remoteagent.v1.AnswerQuestionResponse
@@ -474,7 +509,7 @@ export type AnswerQuestionResponse = Message<"remoteagent.v1.AnswerQuestionRespo
  * Use `create(AnswerQuestionResponseSchema)` to create a new message.
  */
 export const AnswerQuestionResponseSchema: GenMessage<AnswerQuestionResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 16);
+  messageDesc(file_remoteagent_v1_local, 18);
 
 /**
  * @generated from message remoteagent.v1.WatchEventsRequest
@@ -505,7 +540,7 @@ export type WatchEventsRequest = Message<"remoteagent.v1.WatchEventsRequest"> & 
  * Use `create(WatchEventsRequestSchema)` to create a new message.
  */
 export const WatchEventsRequestSchema: GenMessage<WatchEventsRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 17);
+  messageDesc(file_remoteagent_v1_local, 19);
 
 /**
  * @generated from message remoteagent.v1.WatchEventsResponse
@@ -522,7 +557,7 @@ export type WatchEventsResponse = Message<"remoteagent.v1.WatchEventsResponse"> 
  * Use `create(WatchEventsResponseSchema)` to create a new message.
  */
 export const WatchEventsResponseSchema: GenMessage<WatchEventsResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 18);
+  messageDesc(file_remoteagent_v1_local, 20);
 
 /**
  * @generated from message remoteagent.v1.HookRequest
@@ -548,7 +583,7 @@ export type HookRequest = Message<"remoteagent.v1.HookRequest"> & {
  * Use `create(HookRequestSchema)` to create a new message.
  */
 export const HookRequestSchema: GenMessage<HookRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 19);
+  messageDesc(file_remoteagent_v1_local, 21);
 
 /**
  * @generated from message remoteagent.v1.HookResponse
@@ -567,7 +602,7 @@ export type HookResponse = Message<"remoteagent.v1.HookResponse"> & {
  * Use `create(HookResponseSchema)` to create a new message.
  */
 export const HookResponseSchema: GenMessage<HookResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_local, 20);
+  messageDesc(file_remoteagent_v1_local, 22);
 
 /**
  * LocalService is served by the daemon on a unix socket. The local CLI and
@@ -624,6 +659,16 @@ export const LocalService: GenService<{
     methodKind: "unary";
     input: typeof StopSessionRequestSchema;
     output: typeof StopSessionResponseSchema;
+  },
+  /**
+   * CancelInput removes a queued message that has not been written yet.
+   *
+   * @generated from rpc remoteagent.v1.LocalService.CancelInput
+   */
+  cancelInput: {
+    methodKind: "unary";
+    input: typeof CancelInputRequestSchema;
+    output: typeof CancelInputResponseSchema;
   },
   /**
    * @generated from rpc remoteagent.v1.LocalService.ResolveApproval

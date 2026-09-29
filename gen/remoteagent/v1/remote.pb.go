@@ -86,6 +86,7 @@ type Command struct {
 	//	*Command_ResolveApproval
 	//	*Command_AnswerQuestion
 	//	*Command_StopSession
+	//	*Command_CancelInput
 	Kind          isCommand_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -173,6 +174,15 @@ func (x *Command) GetStopSession() *StopSessionRequest {
 	return nil
 }
 
+func (x *Command) GetCancelInput() *CancelInputRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_CancelInput); ok {
+			return x.CancelInput
+		}
+	}
+	return nil
+}
+
 type isCommand_Kind interface {
 	isCommand_Kind()
 }
@@ -197,6 +207,10 @@ type Command_StopSession struct {
 	StopSession *StopSessionRequest `protobuf:"bytes,5,opt,name=stop_session,json=stopSession,proto3,oneof"`
 }
 
+type Command_CancelInput struct {
+	CancelInput *CancelInputRequest `protobuf:"bytes,6,opt,name=cancel_input,json=cancelInput,proto3,oneof"`
+}
+
 func (*Command_Send) isCommand_Kind() {}
 
 func (*Command_Interrupt) isCommand_Kind() {}
@@ -206,6 +220,8 @@ func (*Command_ResolveApproval) isCommand_Kind() {}
 func (*Command_AnswerQuestion) isCommand_Kind() {}
 
 func (*Command_StopSession) isCommand_Kind() {}
+
+func (*Command_CancelInput) isCommand_Kind() {}
 
 // CommandResult is the daemon's reply to a Command. A retried request ID
 // gets the original result instead of running the command again.
@@ -222,6 +238,7 @@ type CommandResult struct {
 	//	*CommandResult_ResolveApproval
 	//	*CommandResult_AnswerQuestion
 	//	*CommandResult_StopSession
+	//	*CommandResult_CancelInput
 	Kind          isCommandResult_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -323,6 +340,15 @@ func (x *CommandResult) GetStopSession() *StopSessionResponse {
 	return nil
 }
 
+func (x *CommandResult) GetCancelInput() *CancelInputResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_CancelInput); ok {
+			return x.CancelInput
+		}
+	}
+	return nil
+}
+
 type isCommandResult_Kind interface {
 	isCommandResult_Kind()
 }
@@ -347,6 +373,10 @@ type CommandResult_StopSession struct {
 	StopSession *StopSessionResponse `protobuf:"bytes,14,opt,name=stop_session,json=stopSession,proto3,oneof"`
 }
 
+type CommandResult_CancelInput struct {
+	CancelInput *CancelInputResponse `protobuf:"bytes,15,opt,name=cancel_input,json=cancelInput,proto3,oneof"`
+}
+
 func (*CommandResult_Send) isCommandResult_Kind() {}
 
 func (*CommandResult_Interrupt) isCommandResult_Kind() {}
@@ -357,6 +387,8 @@ func (*CommandResult_AnswerQuestion) isCommandResult_Kind() {}
 
 func (*CommandResult_StopSession) isCommandResult_Kind() {}
 
+func (*CommandResult_CancelInput) isCommandResult_Kind() {}
+
 var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_remote_proto_rawDesc = "" +
@@ -364,14 +396,15 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/local.proto\"9\n" +
 	"\vMachineMeta\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
-	"\x02os\x18\x02 \x01(\tR\x02os\"\xf6\x02\n" +
+	"\x02os\x18\x02 \x01(\tR\x02os\"\xbf\x03\n" +
 	"\aCommand\x121\n" +
 	"\x04send\x18\x01 \x01(\v2\x1b.remoteagent.v1.SendRequestH\x00R\x04send\x12@\n" +
 	"\tinterrupt\x18\x02 \x01(\v2 .remoteagent.v1.InterruptRequestH\x00R\tinterrupt\x12S\n" +
 	"\x10resolve_approval\x18\x03 \x01(\v2&.remoteagent.v1.ResolveApprovalRequestH\x00R\x0fresolveApproval\x12P\n" +
 	"\x0fanswer_question\x18\x04 \x01(\v2%.remoteagent.v1.AnswerQuestionRequestH\x00R\x0eanswerQuestion\x12G\n" +
-	"\fstop_session\x18\x05 \x01(\v2\".remoteagent.v1.StopSessionRequestH\x00R\vstopSessionB\x06\n" +
-	"\x04kind\"\xc5\x03\n" +
+	"\fstop_session\x18\x05 \x01(\v2\".remoteagent.v1.StopSessionRequestH\x00R\vstopSession\x12G\n" +
+	"\fcancel_input\x18\x06 \x01(\v2\".remoteagent.v1.CancelInputRequestH\x00R\vcancelInputB\x06\n" +
+	"\x04kind\"\x8f\x04\n" +
 	"\rCommandResult\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\tR\terrorCode\x12#\n" +
@@ -381,7 +414,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\tinterrupt\x18\v \x01(\v2!.remoteagent.v1.InterruptResponseH\x00R\tinterrupt\x12T\n" +
 	"\x10resolve_approval\x18\f \x01(\v2'.remoteagent.v1.ResolveApprovalResponseH\x00R\x0fresolveApproval\x12Q\n" +
 	"\x0fanswer_question\x18\r \x01(\v2&.remoteagent.v1.AnswerQuestionResponseH\x00R\x0eanswerQuestion\x12H\n" +
-	"\fstop_session\x18\x0e \x01(\v2#.remoteagent.v1.StopSessionResponseH\x00R\vstopSessionB\x06\n" +
+	"\fstop_session\x18\x0e \x01(\v2#.remoteagent.v1.StopSessionResponseH\x00R\vstopSession\x12H\n" +
+	"\fcancel_input\x18\x0f \x01(\v2#.remoteagent.v1.CancelInputResponseH\x00R\vcancelInputB\x06\n" +
 	"\x04kindB\xbd\x01\n" +
 	"\x12com.remoteagent.v1B\vRemoteProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
@@ -407,11 +441,13 @@ var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(*ResolveApprovalRequest)(nil),  // 5: remoteagent.v1.ResolveApprovalRequest
 	(*AnswerQuestionRequest)(nil),   // 6: remoteagent.v1.AnswerQuestionRequest
 	(*StopSessionRequest)(nil),      // 7: remoteagent.v1.StopSessionRequest
-	(*SendResponse)(nil),            // 8: remoteagent.v1.SendResponse
-	(*InterruptResponse)(nil),       // 9: remoteagent.v1.InterruptResponse
-	(*ResolveApprovalResponse)(nil), // 10: remoteagent.v1.ResolveApprovalResponse
-	(*AnswerQuestionResponse)(nil),  // 11: remoteagent.v1.AnswerQuestionResponse
-	(*StopSessionResponse)(nil),     // 12: remoteagent.v1.StopSessionResponse
+	(*CancelInputRequest)(nil),      // 8: remoteagent.v1.CancelInputRequest
+	(*SendResponse)(nil),            // 9: remoteagent.v1.SendResponse
+	(*InterruptResponse)(nil),       // 10: remoteagent.v1.InterruptResponse
+	(*ResolveApprovalResponse)(nil), // 11: remoteagent.v1.ResolveApprovalResponse
+	(*AnswerQuestionResponse)(nil),  // 12: remoteagent.v1.AnswerQuestionResponse
+	(*StopSessionResponse)(nil),     // 13: remoteagent.v1.StopSessionResponse
+	(*CancelInputResponse)(nil),     // 14: remoteagent.v1.CancelInputResponse
 }
 var file_remoteagent_v1_remote_proto_depIdxs = []int32{
 	3,  // 0: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
@@ -419,16 +455,18 @@ var file_remoteagent_v1_remote_proto_depIdxs = []int32{
 	5,  // 2: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
 	6,  // 3: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
 	7,  // 4: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
-	8,  // 5: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
-	9,  // 6: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
-	10, // 7: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
-	11, // 8: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
-	12, // 9: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	8,  // 5: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
+	9,  // 6: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
+	10, // 7: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
+	11, // 8: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
+	12, // 9: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
+	13, // 10: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
+	14, // 11: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_remote_proto_init() }
@@ -443,6 +481,7 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*Command_ResolveApproval)(nil),
 		(*Command_AnswerQuestion)(nil),
 		(*Command_StopSession)(nil),
+		(*Command_CancelInput)(nil),
 	}
 	file_remoteagent_v1_remote_proto_msgTypes[2].OneofWrappers = []any{
 		(*CommandResult_Send)(nil),
@@ -450,6 +489,7 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*CommandResult_ResolveApproval)(nil),
 		(*CommandResult_AnswerQuestion)(nil),
 		(*CommandResult_StopSession)(nil),
+		(*CommandResult_CancelInput)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -23,6 +23,7 @@ message Command {
     ResolveApprovalRequest resolve_approval = 3;
     AnswerQuestionRequest answer_question = 4;
     StopSessionRequest stop_session = 5;
+    CancelInputRequest cancel_input = 6;
   }
 }
 
@@ -40,5 +41,6 @@ message CommandResult {
     ResolveApprovalResponse resolve_approval = 12;
     AnswerQuestionResponse answer_question = 13;
     StopSessionResponse stop_session = 14;
+    CancelInputResponse cancel_input = 15;
   }
 }

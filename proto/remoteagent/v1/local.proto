@@ -15,6 +15,8 @@ service LocalService {
   rpc Send(SendRequest) returns (SendResponse);
   rpc Interrupt(InterruptRequest) returns (InterruptResponse);
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+  // CancelInput removes a queued message that has not been written yet.
+  rpc CancelInput(CancelInputRequest) returns (CancelInputResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
@@ -107,6 +109,13 @@ message StopSessionRequest {
 }
 
 message StopSessionResponse {}
+
+message CancelInputRequest {
+  string session_id = 1;
+  string request_id = 2;
+}
+
+message CancelInputResponse {}
 
 message ResolveApprovalRequest {
   string session_id = 1;

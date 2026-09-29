@@ -191,7 +191,16 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <div className="queued">
           排队{" "}
           {queued.map((id) => (
-            <span key={id}>{localText.get(id) ?? "一条消息"}</span>
+            <span key={id}>
+              {localText.get(id) ?? "一条消息"}
+              <button
+                className="x"
+                aria-label="取消这条消息"
+                onClick={() => void run("取消", { case: "cancelInput", value: { sessionId: session.id, requestId: id } })}
+              >
+                ✕
+              </button>
+            </span>
           ))}{" "}
           {blocked ? "已暂停" : derived.questions.size > 0 ? "答完再发" : derived.running ? "本轮结束后发" : ""}
         </div>
@@ -283,6 +292,7 @@ function EventRow({ e, d, cwd }: { e: Event; d: Derived; cwd: string }) {
       ) : null;
     }
     case "inputState":
+      if (k.value.status === InputStatus.CANCELED) return <div className="sysline">取消了一条排队的消息</div>;
       return k.value.status === InputStatus.UNCONFIRMED ? <div className="sysline warn">有一条消息已送到终端，但没能确认 Codex 收到，没有重发</div> : null;
     case "sessionState":
       return k.value.status === SessionStatus.EXITED ? <div className="sysline">会话已结束{k.value.detail ? `（${k.value.detail}）` : ""}</div> : null;

@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { AnswerQuestionRequest, AnswerQuestionResponse, InterruptRequest, InterruptResponse, ResolveApprovalRequest, ResolveApprovalResponse, SendRequest, SendResponse, StopSessionRequest, StopSessionResponse } from "./local_pb";
+import type { AnswerQuestionRequest, AnswerQuestionResponse, CancelInputRequest, CancelInputResponse, InterruptRequest, InterruptResponse, ResolveApprovalRequest, ResolveApprovalResponse, SendRequest, SendResponse, StopSessionRequest, StopSessionResponse } from "./local_pb";
 import { file_remoteagent_v1_local } from "./local_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/remote.proto.
  */
 export const file_remoteagent_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIisKC01hY2hpbmVNZXRhEhAKCGhvc3RuYW1lGAEgASgJEgoKAm9zGAIgASgJIrcCCgdDb21tYW5kEisKBHNlbmQYASABKAsyGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdEgAEjUKCWludGVycnVwdBgCIAEoCzIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3RIABJCChByZXNvbHZlX2FwcHJvdmFsGAMgASgLMiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdEgAEkAKD2Fuc3dlcl9xdWVzdGlvbhgEIAEoCzIlLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVxdWVzdEgAEjoKDHN0b3Bfc2Vzc2lvbhgFIAEoCzIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdEgAQgYKBGtpbmQi7QIKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSABCBgoEa2luZGIGcHJvdG8z", [file_remoteagent_v1_local]);
+  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIisKC01hY2hpbmVNZXRhEhAKCGhvc3RuYW1lGAEgASgJEgoKAm9zGAIgASgJIvMCCgdDb21tYW5kEisKBHNlbmQYASABKAsyGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdEgAEjUKCWludGVycnVwdBgCIAEoCzIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3RIABJCChByZXNvbHZlX2FwcHJvdmFsGAMgASgLMiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdEgAEkAKD2Fuc3dlcl9xdWVzdGlvbhgEIAEoCzIlLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVxdWVzdEgAEjoKDHN0b3Bfc2Vzc2lvbhgFIAEoCzIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdEgAEjoKDGNhbmNlbF9pbnB1dBgGIAEoCzIiLnJlbW90ZWFnZW50LnYxLkNhbmNlbElucHV0UmVxdWVzdEgAQgYKBGtpbmQiqgMKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSAASOwoMY2FuY2VsX2lucHV0GA8gASgLMiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZUgAQgYKBGtpbmRiBnByb3RvMw", [file_remoteagent_v1_local]);
 
 /**
  * MachineMeta describes a computer running a daemon.
@@ -79,6 +79,12 @@ export type Command = Message<"remoteagent.v1.Command"> & {
      */
     value: StopSessionRequest;
     case: "stopSession";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CancelInputRequest cancel_input = 6;
+     */
+    value: CancelInputRequest;
+    case: "cancelInput";
   } | { case: undefined; value?: undefined };
 };
 
@@ -142,6 +148,12 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
      */
     value: StopSessionResponse;
     case: "stopSession";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CancelInputResponse cancel_input = 15;
+     */
+    value: CancelInputResponse;
+    case: "cancelInput";
   } | { case: undefined; value?: undefined };
 };
 

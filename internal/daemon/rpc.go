@@ -22,7 +22,7 @@ func rpcErr(err error) error {
 		return nil
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, errExited), errors.Is(err, errNotAnswering):
+	case errors.Is(err, errExited), errors.Is(err, errNotAnswering), errors.Is(err, errWriting):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	var ce *connect.Error
@@ -151,4 +151,15 @@ func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.HookResponse{Output: out}), nil
+}
+
+func (h *handler) CancelInput(ctx context.Context, req *connect.Request[pb.CancelInputRequest]) (*connect.Response[pb.CancelInputResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.cancelInput(req.Msg.RequestId); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.CancelInputResponse{}), nil
 }

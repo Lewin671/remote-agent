@@ -25,6 +25,8 @@ var (
 	errExited       = errors.New("session has exited")
 	errNotFound     = errors.New("not found")
 	errNotAnswering = errors.New("the question is not showing in the terminal")
+	errHeadChanged  = errors.New("the queue head changed")
+	errWriting      = errors.New("the message is being written to the terminal and can no longer be canceled")
 )
 
 // holdFor bounds how long local input is held while remote input is
@@ -404,6 +406,38 @@ func (s *session) emitInput(requestID string, status pb.InputStatus) {
 	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status}}})
 }
 
+// cancelInput removes a queued message unless it is already being
+// written.
+func (s *session) cancelInput(requestID string) error {
+	s.mu.Lock()
+	idx := -1
+	for i, in := range s.queue.Queue {
+		if in.RequestID == requestID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		s.mu.Unlock()
+		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
+	}
+	if s.queue.Queue[idx].Inflight != nil {
+		s.mu.Unlock()
+		return errWriting
+	}
+	prev := s.queue.Queue
+	q := append([]input{}, prev[:idx]...)
+	s.queue.Queue = append(q, prev[idx+1:]...)
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue = prev
+		s.mu.Unlock()
+		return fmt.Errorf("save input queue: %w", err)
+	}
+	s.mu.Unlock()
+	s.emitInput(requestID, pb.InputStatus_INPUT_STATUS_CANCELED)
+	return nil
+}
+
 // injectLoop submits queued input one message at a time, in order.
 func (s *session) injectLoop(ctx context.Context) {
 	retry := time.NewTimer(time.Hour)
@@ -418,7 +452,7 @@ func (s *session) injectLoop(ctx context.Context) {
 		s.mu.Unlock()
 		if ok {
 			if next.Inflight == nil {
-				written, err := s.inject(next.Text)
+				written, err := s.inject(next)
 				if err != nil {
 					slog.Warn("inject", "session", s.meta.ID, "err", err)
 				}
@@ -505,12 +539,12 @@ func (s *session) popInput() {
 
 // markInflight records, before the head message is written, where
 // history.jsonl and the event log stood.
-func (s *session) markInflight(offset int64) error {
+func (s *session) markInflight(offset int64, requestID string) error {
 	seq := s.log.LastSeq()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.queue.Queue) == 0 {
-		return errors.New("input queue is empty")
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		return errHeadChanged
 	}
 	s.queue.Queue[0].Inflight = &offset
 	s.queue.Queue[0].InflightSeq = seq
@@ -524,7 +558,7 @@ func (s *session) markInflight(offset int64) error {
 // inject tries once to write text. It returns false, leaving the input
 // queued, when the terminal is not ready: a popup is open or the local
 // user has an unsent draft, which is never overwritten or merged.
-func (s *session) inject(text string) (bool, error) {
+func (s *session) inject(in input) (bool, error) {
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
@@ -548,10 +582,13 @@ func (s *session) inject(text string) (bool, error) {
 		return false, nil
 	}
 	hist := newHistory(s.d.cfg.HistoryPath, -1)
-	if err := s.markInflight(hist.r.Offset()); err != nil {
+	if err := s.markInflight(hist.r.Offset(), in.RequestID); err != nil {
+		if errors.Is(err, errHeadChanged) {
+			return false, nil // canceled meanwhile; the loop picks the new head
+		}
 		return false, err
 	}
-	if err := c.Write(codex.PasteBytes(text)); err != nil {
+	if err := c.Write(codex.PasteBytes(in.Text)); err != nil {
 		// A failed reply does not prove the bytes were not written, so
 		// the message is only settled from Codex's records, never resent.
 		return true, err

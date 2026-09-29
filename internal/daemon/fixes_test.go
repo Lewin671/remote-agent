@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/codex"
 )
 
 // Accepted input and request IDs survive a daemon restart.
@@ -269,7 +271,7 @@ func TestControlOperationsAreSerialized(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		wg.Add(2)
-		go func() { defer wg.Done(); h.s.inject("msg") }()
+		go func() { defer wg.Done(); h.s.inject(input{Text: "msg"}) }()
 		go func() { defer wg.Done(); h.s.interrupt() }()
 	}
 	wg.Wait()
@@ -305,7 +307,7 @@ func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Chmod(h.dir, 0o500)
-	written, err := h.s.inject("x")
+	written, err := h.s.inject(input{Text: "x", RequestID: "r1"})
 	os.Chmod(h.dir, 0o700)
 	if err == nil {
 		t.Skip("directory is writable despite chmod")
@@ -331,5 +333,46 @@ func TestAmbiguousWriteIsNotRetried(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	if n := len(h.term.written()); n != 1 {
 		t.Fatalf("written %d times", n)
+	}
+}
+
+// A queued message can be canceled until it is being written.
+func TestCancelInput(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() { cancel(); <-h.s.done }()
+	h.s.start(ctx)
+	for _, id := range []string{"r1", "r2", "r3"} {
+		if _, err := h.s.send("msg "+id, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.s.cancelInput("r1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.cancelInput("r1"); !errors.Is(err, errNotFound) {
+		t.Fatalf("second cancel: %v", err)
+	}
+	if n := h.s.info().QueuedInputs; n != 2 {
+		t.Fatalf("queued %d", n)
+	}
+	if inputStatus(h, "r1") != pb.InputStatus_INPUT_STATUS_CANCELED {
+		t.Fatal("no canceled state")
+	}
+	h.term.setScreen(idleScreen)
+	eventually(t, "remaining messages", func() bool { return len(h.term.written()) == 2 })
+	w := h.term.written()
+	if w[0] != string(codex.PasteBytes("msg r2")) || w[1] != string(codex.PasteBytes("msg r3")) {
+		t.Fatalf("writes %q", w)
+	}
+
+	// A message marked as being written stays.
+	h.s.mu.Lock()
+	off := int64(0)
+	h.s.queue.Queue = []input{{Text: "x", RequestID: "r4", Inflight: &off}}
+	h.s.mu.Unlock()
+	if err := h.s.cancelInput("r4"); !errors.Is(err, errWriting) {
+		t.Fatalf("cancel while writing: %v", err)
 	}
 }

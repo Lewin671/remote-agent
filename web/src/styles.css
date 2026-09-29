@@ -157,6 +157,7 @@ textarea, input { font: inherit; color: inherit; }
 .toast { margin: 0 12px; background: #fdecec; color: var(--red); border-radius: 12px; padding: 7px 11px; font-size: 13px; cursor: pointer; flex: none; }
 
 .queued { font-size: 12px; color: var(--muted); padding: 6px 16px 0; flex: none; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.queued .x { color: var(--faint); margin-left: 5px; font-size: 11px; }
 .queued span { background: #f0f1f3; border-radius: 10px; padding: 2px 9px; color: var(--fg); max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chips { display: flex; gap: 5px; padding: 6px 12px 0; flex: none; align-items: center; overflow-x: auto; scrollbar-width: none; }
 .chips:empty { display: none; }

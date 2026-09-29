@@ -256,6 +256,8 @@ const (
 	// The keys were delivered but Codex did not record the message in time.
 	// It is not sent again, to avoid submitting it twice.
 	InputStatus_INPUT_STATUS_UNCONFIRMED InputStatus = 3
+	// Removed from the queue before it was written.
+	InputStatus_INPUT_STATUS_CANCELED InputStatus = 4
 )
 
 // Enum value maps for InputStatus.
@@ -265,12 +267,14 @@ var (
 		1: "INPUT_STATUS_QUEUED",
 		2: "INPUT_STATUS_SUBMITTED",
 		3: "INPUT_STATUS_UNCONFIRMED",
+		4: "INPUT_STATUS_CANCELED",
 	}
 	InputStatus_value = map[string]int32{
 		"INPUT_STATUS_UNSPECIFIED": 0,
 		"INPUT_STATUS_QUEUED":      1,
 		"INPUT_STATUS_SUBMITTED":   2,
 		"INPUT_STATUS_UNCONFIRMED": 3,
+		"INPUT_STATUS_CANCELED":    4,
 	}
 )
 
@@ -1839,12 +1843,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x13SESSION_STATUS_IDLE\x10\x02\x12\x1a\n" +
 	"\x16SESSION_STATUS_RUNNING\x10\x03\x12\x1a\n" +
 	"\x16SESSION_STATUS_BLOCKED\x10\x04\x12\x19\n" +
-	"\x15SESSION_STATUS_EXITED\x10\x05*~\n" +
+	"\x15SESSION_STATUS_EXITED\x10\x05*\x99\x01\n" +
 	"\vInputStatus\x12\x1c\n" +
 	"\x18INPUT_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13INPUT_STATUS_QUEUED\x10\x01\x12\x1a\n" +
 	"\x16INPUT_STATUS_SUBMITTED\x10\x02\x12\x1c\n" +
-	"\x18INPUT_STATUS_UNCONFIRMED\x10\x03B\xbc\x01\n" +
+	"\x18INPUT_STATUS_UNCONFIRMED\x10\x03\x12\x19\n" +
+	"\x15INPUT_STATUS_CANCELED\x10\x04B\xbc\x01\n" +
 	"\x12com.remoteagent.v1B\n" +
 	"EventProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 

@@ -195,6 +195,8 @@ enum InputStatus {
   // The keys were delivered but Codex did not record the message in time.
   // It is not sent again, to avoid submitting it twice.
   INPUT_STATUS_UNCONFIRMED = 3;
+  // Removed from the queue before it was written.
+  INPUT_STATUS_CANCELED = 4;
 }
 
 // InputState tracks a message sent with Send. The text itself appears in
