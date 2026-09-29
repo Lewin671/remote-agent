@@ -65,7 +65,10 @@ class RaApp : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 foreground = true
-                _remote.value?.start()
+                _remote.value?.let { r ->
+                    r.start()
+                    scope.launch { Push.register(this@RaApp, r) }
+                }
             }
 
             override fun onStop(owner: LifecycleOwner) {
@@ -83,8 +86,11 @@ class RaApp : Application() {
     private fun use(acct: Account) {
         val r = Remote(acct, http, RoomCache(db.dao()), log = { Log.i(TAG, it) })
         _remote.value = r
-        if (foreground) r.start()
-        scope.launch { Push.register(this@RaApp, r) }
+        // Only in the foreground: a process started for a push just shows it.
+        if (foreground) {
+            r.start()
+            scope.launch { Push.register(this@RaApp, r) }
+        }
     }
 
     /** Stores a newly joined account and starts syncing. */

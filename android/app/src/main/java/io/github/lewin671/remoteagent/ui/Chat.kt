@@ -128,7 +128,7 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
                 val parts = mutableListOf<String>()
                 if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断"
                 if (t.durationMs > 0) parts += duration(t.durationMs)
-                if (turnTokens > 0) parts += "${(turnTokens + 500) / 1000}k tokens"
+                if (turnTokens > 0) parts += if (turnTokens >= 1000) "${(turnTokens + 500) / 1000}k tokens" else "$turnTokens tokens"
                 if (parts.isNotEmpty()) out += ChatItem.TurnEnd(k, parts.joinToString(" · "))
             }
             Event.KindCase.SETTINGS_CHANGED -> {
