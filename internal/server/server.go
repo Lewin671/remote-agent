@@ -201,7 +201,15 @@ func internal(err error) error {
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
-func (s *Server) newChallenge(deviceID string) []byte {
+// maxChallenges bounds outstanding login challenges, which anyone can
+// request without logging in.
+const maxChallenges = 1024
+
+var errTooManyChallenges = errors.New("too many pending logins; try again in a minute")
+
+// newChallenge issues a one-time login challenge for deviceID, which the
+// caller has checked to be a well-formed device ID.
+func (s *Server) newChallenge(deviceID string) ([]byte, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
@@ -209,13 +217,18 @@ func (s *Server) newChallenge(deviceID string) []byte {
 	s.challengeMu.Lock()
 	defer s.challengeMu.Unlock()
 	now := time.Now()
-	for k, c := range s.challenges {
-		if now.After(c.expires) {
-			delete(s.challenges, k)
+	if len(s.challenges) >= maxChallenges {
+		for k, c := range s.challenges {
+			if now.After(c.expires) {
+				delete(s.challenges, k)
+			}
+		}
+		if len(s.challenges) >= maxChallenges {
+			return nil, errTooManyChallenges
 		}
 	}
 	s.challenges[string(b)] = challenge{deviceID: deviceID, expires: now.Add(time.Minute)}
-	return b
+	return b, nil
 }
 
 // takeChallenge consumes a challenge issued to deviceID.

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -199,5 +200,23 @@ func TestCORS(t *testing.T) {
 		if got := res.Header.Get("Access-Control-Allow-Origin"); got != want {
 			t.Errorf("origin %s: allow-origin %q", origin, got)
 		}
+	}
+}
+
+func TestChallengesAreBounded(t *testing.T) {
+	ts := newTestServer(t)
+	ctx := context.Background()
+	for _, id := range []string{"", "short", string(make([]byte, 32)), strings.Repeat("x", 1<<16)} {
+		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("device ID %.10q: %v", id, err)
+		}
+	}
+	id := strings.Repeat("ab", 16)
+	var err error
+	for i := 0; i <= maxChallenges && err == nil; i++ {
+		_, err = ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id}))
+	}
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("after %d challenges: %v", maxChallenges, err)
 	}
 }

@@ -266,8 +266,13 @@ func (c *conn) reply(ctx context.Context, r *pb.ForwardReply) {
 	}
 }
 
-// sessionKey returns the session's key, creating it on first use.
-func (c *conn) sessionKey(id string) ([]byte, error) {
+// errKeyLost means the server holds a session whose key is missing here.
+var errKeyLost = errors.New("the session's key is missing locally but the server already has the session")
+
+// sessionKey returns the session's key. A new key is only created for a
+// session the server does not have yet: the server keeps the first key it
+// gets, so a replacement would make later events unreadable.
+func (c *conn) sessionKey(id string, onServer bool) ([]byte, error) {
 	dir := c.r.backend.SessionDir(id)
 	if dir == "" {
 		return nil, fmt.Errorf("session %s has no state directory", id)
@@ -279,6 +284,9 @@ func (c *conn) sessionKey(id string) ([]byte, error) {
 	}
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
+	}
+	if onServer {
+		return nil, errKeyLost
 	}
 	key := e2e.NewKey()
 	if err := writeFileSync(path, key); err != nil {

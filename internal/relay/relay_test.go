@@ -431,3 +431,39 @@ func TestCommandsRejected(t *testing.T) {
 		t.Fatalf("a command ran after reconnecting: %d", n)
 	}
 }
+
+func TestLostSessionKeyIsNotReplaced(t *testing.T) {
+	e := setup(t)
+	l := e.backend.add(t, "sess1")
+	appendText(t, l, "sess1", "one")
+	l2 := e.backend.add(t, "sess2")
+	e.startRelay()
+	s := e.session(t, "sess1", 1)
+	e.session(t, "sess2", 0)
+	e.stopRelay()
+
+	// The key file is lost; new events must not be sealed with a new key.
+	if err := os.Remove(filepath.Join(e.backend.SessionDir("sess1"), "relay.key")); err != nil {
+		t.Fatal(err)
+	}
+	appendText(t, l, "sess1", "two")
+	appendText(t, l2, "sess2", "other")
+	e.startRelay()
+	e.session(t, "sess2", 1) // other sessions keep syncing
+	ss, err := e.client.Sessions(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range ss {
+		if x.ID == "sess1" && x.LastSeq != 1 {
+			t.Fatalf("sess1 has %d events on the server", x.LastSeq)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(e.backend.SessionDir("sess1"), "relay.key")); !os.IsNotExist(err) {
+		t.Fatalf("a new key was created: %v", err)
+	}
+	evs, err := e.client.Events(context.Background(), s, 0)
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("events: %v %v", evs, err)
+	}
+}

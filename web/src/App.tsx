@@ -510,23 +510,35 @@ function ApprovalCard({ a, run, sessionId }: { a: ApprovalRequested; run: Run; s
 
 function QuestionCard({ q, run, sessionId }: { q: QuestionAsked; run: Run; sessionId: string }) {
   const [busy, setBusy] = useState(false);
-  const first = q.questions[0];
-  if (!first) return null;
+  // Each answer moves Codex to the next question of the same call, so the
+  // next option number applies to it.
+  const [current, setCurrent] = useState(0);
+  const item = q.questions[current];
+  const multi = q.questions.length > 1;
+  if (!item) {
+    return <div className="appr question muted">已回答全部 {q.questions.length} 题，等待 Codex 继续</div>;
+  }
   return (
     <div className="appr question">
       <div className="h">
-        <b>{first.header || "Codex 在提问"}</b>
-        {q.questions.length > 1 && <span className="muted">共 {q.questions.length} 题，先回答第 1 题</span>}
+        <b>{item.header || "Codex 在提问"}</b>
+        {multi && (
+          <span className="muted">
+            第 {current + 1} / {q.questions.length} 题
+          </span>
+        )}
       </div>
-      <p>{first.text}</p>
+      <p>{item.text}</p>
+      {multi && <p className="small muted">多个问题会逐题提交；如果已经在终端里答过，请以终端为准。</p>}
       <div className="options">
-        {first.options.map((o, i) => (
+        {item.options.map((o, i) => (
           <button
             key={i}
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              await run("回答", { case: "answerQuestion", value: { sessionId, questionId: q.questionId, option: i + 1 } });
+              const res = await run("回答", { case: "answerQuestion", value: { sessionId, questionId: q.questionId, option: i + 1 } });
+              if (res) setCurrent((c) => c + 1);
               setBusy(false);
             }}
           >

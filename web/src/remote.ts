@@ -353,9 +353,12 @@ export class Remote {
       do {
         b.refetch = false;
         for (;;) {
-          const res = await this.api.getEvents({ sessionId: sid, afterSeq: BigInt(b.events.length), limit: 500 });
+          const before = b.events.length;
+          const res = await this.api.getEvents({ sessionId: sid, afterSeq: BigInt(before), limit: 500 });
           await this.ingest(s, res.events, false);
-          if (!res.more || res.events.length === 0) break;
+          // An event that does not open stops progress; asking for the
+          // same page again would not help.
+          if (!res.more || b.events.length === before) break;
         }
       } while (b.refetch);
       b.loaded = true;

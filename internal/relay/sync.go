@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -59,7 +60,12 @@ func (c *conn) syncLoop(ctx context.Context) error {
 
 // syncSession keeps one session's metadata and events on the server.
 func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead) error {
-	key, err := c.sessionKey(id)
+	key, err := c.sessionKey(id, head != nil)
+	if errors.Is(err, errKeyLost) {
+		// Other sessions keep syncing; this one needs its key back.
+		slog.Error("relay: not syncing session", "session", id, "err", err)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

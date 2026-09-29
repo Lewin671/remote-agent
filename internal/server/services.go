@@ -91,10 +91,14 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 }
 
 func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.GetChallengeRequest]) (*connect.Response[pb.GetChallengeResponse], error) {
-	if req.Msg.DeviceId == "" {
-		return nil, invalid("missing device ID")
+	if !validDeviceID(req.Msg.DeviceId) {
+		return nil, invalid("malformed device ID")
 	}
-	return connect.NewResponse(&pb.GetChallengeResponse{Challenge: a.s.newChallenge(req.Msg.DeviceId)}), nil
+	ch, err := a.s.newChallenge(req.Msg.DeviceId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeResourceExhausted, err)
+	}
+	return connect.NewResponse(&pb.GetChallengeResponse{Challenge: ch}), nil
 }
 
 func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRequest]) (*connect.Response[pb.LoginResponse], error) {
@@ -289,4 +293,17 @@ func (m *machineService) ListSessionHeads(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: heads}), nil
+}
+
+// validDeviceID reports whether id looks like e2e.DeviceID's output.
+func validDeviceID(id string) bool {
+	if len(id) != 32 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }
