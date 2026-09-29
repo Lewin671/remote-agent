@@ -186,6 +186,10 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
       setCurrent(index + 1);
     }
   };
+  // A retry is the same pick: on success it moves on like the first try.
+  const retry = () => {
+    if (ci === index && co > 0) void pick(co);
+  };
   return (
     <div className="dock ask">
       <div className="h">
@@ -221,7 +225,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
         {ans.error ? (
           <>
             <span />
-            <button className="link" onClick={ans.retry}>
+            <button className="link" onClick={retry}>
               重试
             </button>
           </>
@@ -339,29 +343,41 @@ export function Dock({
   const item = items[0];
   if (!item) return null;
   const more = items.length - 1;
-  if (collapsed) {
-    const [kind, text] = summary(item, agent);
-    const cls = item.kind === "question" ? " ask" : item.kind === "plan" ? " plan" : "";
-    return (
-      <div className={"dock mini" + cls}>
-        <b>{kind}</b>
-        <code>{text}</code>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={onExpand}>
-          展开
-        </button>
-      </div>
-    );
-  }
+  let full;
   switch (item.kind) {
     case "approval":
-      return <ApprovalDock key={item.id} remote={remote} sid={sid} a={item.approval} agent={agent} more={more} onDetail={() => onDetail(item.approval.approvalId)} />;
+      full = <ApprovalDock key={item.id} remote={remote} sid={sid} a={item.approval} agent={agent} more={more} onDetail={() => onDetail(item.approval.approvalId)} />;
+      break;
     case "question":
-      return <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} more={more} onTerminal={onTerminal} />;
+      full = <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} more={more} onTerminal={onTerminal} />;
+      break;
     case "plan":
-      return <PlanDock remote={remote} sid={sid} plan={item.plan} more={more} onFull={onPlan} />;
+      full = <PlanDock key={item.id} remote={remote} sid={sid} plan={item.plan} more={more} onFull={onPlan} />;
+      break;
     case "popup":
-      return <PopupDock title={item.title} agent={agent} more={more} onTerminal={onTerminal} />;
+      full = <PopupDock key={item.id} title={item.title} agent={agent} more={more} onTerminal={onTerminal} />;
+      break;
   }
+  // Collapsing only hides the card: it stays mounted, so a question's
+  // progress or a half-typed reason survives the keyboard.
+  const [kind, text] = summary(item, agent);
+  const cls = item.kind === "question" ? " ask" : item.kind === "plan" ? " plan" : "";
+  return (
+    <>
+      {collapsed && (
+        <div className={"dock mini" + cls}>
+          <b>{kind}</b>
+          <code>{text}</code>
+          <button onMouseDown={(e) => e.preventDefault()} onClick={onExpand}>
+            展开
+          </button>
+        </div>
+      )}
+      <div className="dockwrap" hidden={collapsed}>
+        {full}
+      </div>
+    </>
+  );
 }
 
 /** An approval on its own page: the whole command, scrollable, with the

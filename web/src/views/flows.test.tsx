@@ -8,6 +8,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
+import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
+import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { Dock } from "./Dock";
 import { Home } from "./Home";
 
@@ -55,6 +57,54 @@ it("lets the home card handle one approval after another", async () => {
   const allow = button("允许", card());
   expect(allow?.disabled).toBe(false);
   expect(button("拒绝", card())?.disabled).toBe(false);
+});
+
+function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
+  const s = r.sessions.get("s-ask")!;
+  const d = derive(r.events("s-ask"));
+  return (
+    <Dock
+      remote={r}
+      sid="s-ask"
+      items={dockItems(s, d, r.machines.get(s.machineId))}
+      agent={Agent.CODEX}
+      collapsed={collapsed}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />
+  );
+}
+
+it("keeps a question's progress across collapsing the dock", async () => {
+  const r = demo();
+  mount(<AskDock r={r} collapsed={false} />);
+  await click(button(/^只升小版本/));
+  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  // The keyboard comes up, then goes away again.
+  act(() => root!.render(<AskDock r={r} collapsed />));
+  expect(host.querySelector(".dock.mini")).toBeTruthy();
+  act(() => root!.render(<AskDock r={r} collapsed={false} />));
+  expect(host.textContent).toContain("第 2 题，共 2 题");
+  expect(host.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
+});
+
+it("moves to the next question when a retried answer goes through", async () => {
+  const r = demo();
+  // The first answer's outcome is lost; the retry succeeds.
+  let calls = 0;
+  const real = r.command.bind(r);
+  r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "answerQuestion" && calls++ === 0) throw new CommandError("unknown", "连接超时");
+    return real(sid, cmd, slot);
+  };
+  mount(<AskDock r={r} collapsed={false} />);
+  await click(button(/^只升小版本/));
+  await vi.waitFor(() => expect(button("重试")).toBeTruthy(), { timeout: 3000 });
+  await click(button("重试"));
+  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  expect(button(/^更新到 1.27/)?.disabled).toBe(false);
 });
 
 it("keeps the dock's buttons out of its scrolling content", () => {
