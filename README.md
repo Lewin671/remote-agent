@@ -1,6 +1,6 @@
 # remote-agent
 
-在任何设备上远程操作跑在自己电脑上的 AI 编程 CLI（先支持 Codex）。
+在任何设备上远程操作跑在自己电脑上的 AI 编程 CLI（Codex 和 Claude Code）。
 
 - **原生 CLI**：agent 以原生交互形态跑在 tmux 里，不走 SDK；电脑终端和手机同时可用
 - **端到端加密**：自部署中继服务器只转发和存储密文

@@ -2,7 +2,7 @@
 
 按风险从高到低推进：先把最依赖实测、最容易出意外的本地这一侧跑通，再接 server、加密和客户端。每个阶段完成后打 tag。
 
-MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前重点是 Android 原生 App**；P3 以及「不做」里的功能先不碰。
+MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前并行推进三件事**：Android 原生 App、接入 Claude Code、网页按界面稿 v1 改版；P3 以及「不做」里的功能先不碰。
 
 | 阶段 | 内容 | 做完后能证明什么 |
 |---|---|---|
@@ -10,7 +10,9 @@ MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已�
 | **P1 端到端打通**（已完成） | 定义协议，写 server 并部署到 VPS，接入加密，做一个最简单的网页：看消息、发消息、审批 | 手机上真的能用 |
 | **P2 可以日常使用**（已完成） | 终端视图、切换模型和压缩上下文、按项目分组、推送、配对流程、网页部署到 Cloudflare Pages | 能替代现有的工作方式 |
 | **A Android 原生 App**（进行中） | 纯 Kotlin 的原生客户端：原生终端、富通知、在通知里审批 | 手机上的体验达到原生水平，手机上不再需要 PWA |
-| **P3 以后** | Claude Code 等其他 CLI、附件等 | |
+| **C 接入 Claude Code**（进行中） | daemon 抽出每个 CLI 的接口，Claude Code 和 Codex 同等支持 | 在手机上操作 Claude Code 和操作 Codex 没有区别 |
+| **W 网页按 v1 改版**（进行中） | 按 [design/client-v1.html](design/client-v1.html) 改网页，手机和宽屏一起改 | 网页和界面稿一致 |
+| **P3 以后** | 附件等 | |
 
 ## P0 本地打通
 
@@ -167,11 +169,30 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 | A2 `:core` 加密和登录 | 加密、签名、配对的 Kotlin 实现；ConnectRPC 和主 WebSocket | `vectors.json` 和反向向量在 Go、TS、Kotlin 三边都通过；能注册、登录线上 server，拉到会话和事件 |
 | A3 日常功能 | 扫码配对；会话列表、聊天、发消息、审批卡片、提问、中断；新建会话；切换模型和审批模式；Room 缓存 | PWA 能做的操作都能做；断网重连后事件不丢不重，指令不重复执行 |
 | A4 推送和通知里审批 | server 的 FCM 发送和推送目标登记；daemon 生成 `notify` 密文、审批存绝对截止时间；App 的富通知和审批按钮 | 进程被系统回收后仍能收到通知；锁屏只显示通用文案；解锁后在通知里审批生效；过期、重复的审批被拒绝 |
-| A5 完整界面 | 按 Android 版界面稿补齐所有页面，亮色和暗色 | 和界面稿一致；真机连续使用一天没有 ANR 和崩溃 |
+| A5 完整界面 | 按 [client-v1](design/client-v1.html) 的手机画面补齐所有页面，交互照 Material 3 和 Android 的返回、键盘习惯，亮色和暗色 | 和界面稿一致；真机连续使用一天没有 ANR 和崩溃 |
 
 ### 不做
 
 iOS 和桌面原生 App、上架应用商店。
+
+## C 接入 Claude Code
+
+### 目标
+
+Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程新建和恢复、聊天、发消息、审批、模型提问、计划、切换模型和审批模式、压缩、中断、终端视图。设计见 [architecture.md](architecture.md) 第 16 节。
+
+### 步骤
+
+| 步骤 | 内容 | 验收 |
+|---|---|---|
+| C1 实测 | 按当前版本实测启动、transcript、hook、输入框、弹窗、模式、模型、中断、提问、计划，写进 [claude-code-notes.md](claude-code-notes.md) | 每一项有版本和证据等级 |
+| C2 抽接口 | 把 Codex 的做法收进 architecture 第 16 节的三组接口，daemon 只依赖接口 | Codex 的测试和 `scripts/acceptance.sh` 全部照常通过 |
+| C3 Claude Code adapter | 实现三组接口；transcript 解析有脱敏的 fixture 测试；`remote-agent doctor` 同样检查 Claude Code | 用真实的 Claude Code 走一遍 P0 的验收标准 2–7 |
+| C4 客户端 | 网页和 App 新建会话时选 CLI，文案按会话的 CLI 显示 | 在网页和 App 上各完整操作一次 Claude Code 会话 |
+
+## W 网页按 v1 改版
+
+按 [design/client-v1.html](design/client-v1.html) 改网页，手机和宽屏一起改，亮色和暗色都要一致。验收：界面稿里的每个画面和状态集在本机 Chrome 上逐一对照；`cd web && pnpm test` 覆盖状态优先级、停靠区顺序、消息发送状态和 Markdown 渲染。
 
 ## 待确认
 
@@ -180,7 +201,6 @@ iOS 和桌面原生 App、上架应用商店。
 **范围和产品**
 
 - 客户端切换 fast 模式是否要做（优先级低）
-- 界面稿 [v1](design/client-v1.html) 待评审：确认后排进计划，按它改网页（手机和宽屏一起改）
 
 **Android App**
 
@@ -188,7 +208,6 @@ iOS 和桌面原生 App、上架应用商店。
 - 手机上有没有 GMS：有就用 FCM，没有要改用 UnifiedPush，并多部署一个 distributor
 - 是否接受审批内容进入系统通知（可能留在通知历史里、被有通知读取权限的 App 读到）：不接受的话，A4 只发通用提醒
 - 以后做不做原生 iOS：做的话，再比较把 `:core` 迁到 KMP 和改用 gomobile 复用 Go
-- Android 版界面稿：基于 [client-v1](design/client-v1.html) 做，A5 之前定稿
 - 待验证：connect-kotlin 和现有 server 能否直接互通；Termux 的 `TerminalView` 改接远程字节流的工作量；平台 JCA 能否导入导出原始 32 字节的 X25519、Ed25519 密钥；FCM 冷启动时解密并发出通知的耗时
 
 **P1、P2 遗留**
@@ -201,7 +220,7 @@ iOS 和桌面原生 App、上架应用商店。
 - 模型提问：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
 
-**Claude Code 待实测**（P3 之前不急）
+**Claude Code 待实测**（C1 里做）
 
 - auto 模式下，`PermissionRequest` hook 是只收到分类器拦下的请求，还是全部请求
 - `ExitPlanMode` 能不能走 hook

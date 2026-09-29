@@ -74,6 +74,7 @@ message Session {
   // "popup", or "unrecognized" (the input box cannot be found, likely
   // after a Codex update); empty when nothing waits or it is being sent.
   string input_wait = 24;
+  Agent agent = 25;
 }
 
 message CreateSessionRequest {
@@ -89,6 +90,8 @@ message CreateSessionRequest {
   string model = 5;
   string effort = 6;
   ApprovalMode mode = 7;
+  // The CLI to start; unspecified means Codex.
+  Agent agent = 8;
 }
 
 message CreateSessionResponse {
@@ -203,7 +206,10 @@ message SetModelRequest {
 
 message SetModelResponse {}
 
-message ListModelsRequest {}
+message ListModelsRequest {
+  // Unspecified means Codex.
+  Agent agent = 1;
+}
 
 message ModelInfo {
   string slug = 1;
@@ -272,6 +278,14 @@ message DaemonSettings {
   string default_model = 2;
   string default_effort = 3;
   ApprovalMode default_mode = 4;
+  // Defaults for new Claude Code sessions; the fields above are Codex's.
+  AgentDefaults claude = 5;
+}
+
+message AgentDefaults {
+  string model = 1;
+  string effort = 2;
+  ApprovalMode mode = 3;
 }
 
 message GetSettingsRequest {}

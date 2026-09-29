@@ -37,9 +37,19 @@ message Event {
 }
 
 // ToolStarted says the model called a tool; its ToolCall event follows when
-// the call completes. The two carry no common ID.
+// the call completes. Codex gives the two no common ID, so call_id is empty
+// and they pair in order; Claude Code runs tools in parallel and sets it.
 message ToolStarted {
   string title = 1;
+  string call_id = 2;
+}
+
+// Agent is the CLI a session runs. Sessions recorded before Claude Code
+// support carry AGENT_UNSPECIFIED and are Codex sessions.
+enum Agent {
+  AGENT_UNSPECIFIED = 0;
+  AGENT_CODEX = 1;
+  AGENT_CLAUDE = 2;
 }
 
 message UserMessage {

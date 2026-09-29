@@ -76,11 +76,13 @@
 
 ### MVP 之后要做
 
+- **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
+- **网页按界面稿 v1 改版**：见 [design/client-v1.html](design/client-v1.html)
 - **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店。选型见 [architecture.md](architecture.md) 第 15 节，进度见 [plan.md](plan.md)
 
 ### 不做（MVP 之后再评估）
 
-- Claude Code 和其他 CLI（P3；已有的实测是预研，见 [claude-code-notes.md](claude-code-notes.md)）
+- Codex 和 Claude Code 以外的 CLI
 - 附件和图片上传
 - 接管不是由 `remote-agent` 启动的 CLI 进程
 - 原生 App（iOS、桌面端）

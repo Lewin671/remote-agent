@@ -22,6 +22,17 @@ message MachineMeta {
   // against it (by its tests or `remote-agent doctor`).
   string codex_version = 7;
   bool codex_verified = 8;
+  // The CLIs installed on this machine; a client offers only these when
+  // starting a session. Empty from daemons older than Claude Code support,
+  // which only run Codex.
+  repeated AgentInfo agents = 9;
+}
+
+message AgentInfo {
+  Agent agent = 1;
+  string version = 2;
+  // Whether this remote-agent has been checked against that version.
+  bool verified = 3;
 }
 
 // Command is what a client asks a daemon to do. The session operations

@@ -1,6 +1,6 @@
 # Claude Code 实测记录
 
-Claude Code 在 MVP 之后（P3）才接入，本文先存下为了让设计兼容它而顺带测到的结果。写法和 [codex-notes.md](codex-notes.md) 一样：只写 Claude Code 实际怎么表现；remote-agent 据此的设计见 [architecture.md](architecture.md) 第 7 节，还没测的见 [plan.md](plan.md) 的「待确认」。
+本文记录 remote-agent 接入 Claude Code 所依据的实测结果。写法和 [codex-notes.md](codex-notes.md) 一样：只写 Claude Code 实际怎么表现；remote-agent 据此的设计见 [architecture.md](architecture.md) 第 7、16 节，还没测的见 [plan.md](plan.md) 的「待确认」。
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标出。接入前要按当时的版本重新验证。
 
