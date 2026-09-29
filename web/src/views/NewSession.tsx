@@ -102,17 +102,25 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const attempt = useRef(new Attempt<{ machineId: string; req: CreateReq }>());
+  // One pending attempt per project: the wide home reuses this hook when
+  // switching projects, and an unknown start in one project must never be
+  // what another project's box sends.
+  const attempts = useRef(new Map<string, Attempt<{ machineId: string; req: CreateReq }>>());
+  let attempt = attempts.current.get(key);
+  if (!attempt) attempts.current.set(key, (attempt = new Attempt()));
+  const current = attempt;
+  // A failure shown for one project is not the next one's.
+  useEffect(() => setError(""), [key]);
 
   const create = async (prompt: string) => {
     const req: CreateReq = { cwd: cfg.cwd, prompt, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = attempt.current.next({ machineId: cfg.machineId, req });
+    const { payload, slot } = current.next({ machineId: cfg.machineId, req });
     setBusy(true);
     setError("");
     try {
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
-      attempt.current.settle();
+      current.settle();
       if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error("意外的回复");
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
@@ -121,7 +129,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       go("s/" + sid);
       return true;
     } catch (e) {
-      attempt.current.settle(e);
+      current.settle(e);
       setError(errorText(e));
       return false;
     } finally {
@@ -129,7 +137,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     }
   };
   const blocked = !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
-  return { remote, frozen: attempt.current.frozen, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
+  return { remote, frozen: current.frozen, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;

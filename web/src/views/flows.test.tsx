@@ -13,6 +13,7 @@ import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, PlanPage } from "./Dock";
 import { Home } from "./Home";
+import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -233,4 +234,34 @@ it("offers no clear-and-implement on a Claude Code plan", () => {
   expect(button("清空上下文后执行")).toBeUndefined();
   act(() => root!.render(<PlanPage remote={r} sid="s-plan" plan={plan} title="t" onBack={() => undefined} />));
   expect(button("清空上下文后执行")).toBeTruthy();
+});
+
+it("never sends one project's unknown start from another project's box", async () => {
+  const r = demo();
+  const sent: { cwd?: string; prompt?: string; requestId?: string }[] = [];
+  r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push({ cwd: cmd.value.cwd, prompt: cmd.value.prompt, requestId: slot?.requestId });
+      throw new CommandError("unknown", "连接超时");
+    }
+    throw new CommandError("unavailable", "no");
+  };
+  let ns: ReturnType<typeof useNewSession> | undefined;
+  function Box({ pkey }: { pkey: string }) {
+    ns = useNewSession(r, pkey, () => undefined);
+    return null;
+  }
+  // The wide home keeps one box and switches its project.
+  mount(<Box pkey="/Users/me/Code/foo" />);
+  await act(async () => void (await ns!.create("在 foo 里做")));
+  expect(ns!.frozen).toBe(true);
+  act(() => root!.render(<Box pkey="/Users/me/Code/shop" />));
+  expect(ns!.frozen).toBe(false);
+  await act(async () => void (await ns!.create("在 shop 里做")));
+  expect(sent[1]).toMatchObject({ cwd: "/Users/me/Code/shop", prompt: "在 shop 里做" });
+  expect(sent[1].requestId).not.toBe(sent[0].requestId);
+  // Back in foo, the unknown start is still the one retried.
+  act(() => root!.render(<Box pkey="/Users/me/Code/foo" />));
+  await act(async () => void (await ns!.create("改了的文字")));
+  expect(sent[2]).toEqual(sent[0]);
 });
