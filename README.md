@@ -14,7 +14,7 @@
 | `remote-agent-server` | Go | 部署在 VPS：鉴权、密文转发与存储、推送 |
 | `web` | TypeScript（React） | PWA 客户端：聊天视图、终端视图、权限审批 |
 
-> 状态：P0 完成，本地 `remote-agent` 可用；server 和客户端尚未开始。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
+> 状态：P1 完成，可以在浏览器里经自部署的 server 查看会话、发消息、审批；扫码配对、终端视图、推送等在 P2。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
 
 ## 本地使用
 
@@ -33,8 +33,22 @@ remote-agent events <id> -f    # 持续查看事件
 - 二进制的路径要固定：它是 Codex hook 的命令，路径一变 Codex 就会要求重新信任 hook
 - 第一次在某个目录启动时，Codex 会问是否信任这个目录、是否信任 hook，需要在终端里回答
 
+## 连接 server 和网页
+
+```sh
+deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
+remote-agent account init --server https://ra.example.com   # 建账户，输入 setup token
+remote-agent account secret              # 输出账户密钥，粘贴到网页或另一台电脑的 account join
+cd web && pnpm install && pnpm build && pnpm preview        # 在 http://localhost:4173 打开网页
+```
+
+- server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](docs/architecture.md) 第 1 节
+- 账户密钥能解开所有会话，只粘贴到自己的设备上
+- daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
+
 ## 开发
 
 - `go test ./...`：单元测试，不依赖真实的 Codex
 - `scripts/acceptance.sh`：用真实的 Codex 跑 P0 验收
-- 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），生成的代码在 `gen/`，一并提交
+- `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量
+- 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/` 和 `web/src/gen/`，一并提交
