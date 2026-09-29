@@ -351,18 +351,23 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
         )}
       </>
     );
-  } else if (pick === "mode")
+  } else if (pick === "mode") {
+    // Claude Code's haiku has no auto mode.
+    const noAuto = cfg.agent === Agent.CLAUDE && /haiku/i.test(cfg.model || def.model);
     body = (
       <div className="list">
         {[
           { mode: ApprovalMode.UNSPECIFIED, name: "默认", desc: def.mode ? `${machineName(machine)} 的默认：${modeName(def.mode)}` : `跟随 ${agentName(cfg.agent)} 自己的配置` },
           { mode: ApprovalMode.ASK, name: "询问", desc: "需要审批时由你确认，超时拒绝" },
-          { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(cfg.agent)} 自己判断，拿不准的在对话里问你` },
+          noAuto
+            ? { mode: ApprovalMode.AUTO, name: "自动", desc: "Haiku 没有自动模式", off: true }
+            : { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(cfg.agent)} 自己判断，拿不准的在对话里问你` },
           { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批，每次新建都要确认", danger: true },
-        ].map((m) => (
+        ].map((m: { mode: ApprovalMode; name: string; desc: string; danger?: boolean; off?: boolean }) => (
           <button
             key={m.mode}
             className={"mi" + (m.danger ? " danger" : "")}
+            disabled={m.off}
             onClick={() => {
               if (m.mode === ApprovalMode.FULL_ACCESS && cfg.mode !== m.mode) return setConfirmFull(true);
               set({ mode: m.mode });
@@ -378,6 +383,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
         ))}
       </div>
     );
+  }
   const titles: Record<Pick, string> = { "": "这次的设置", machine: "机器", agent: "CLI", dir: "目录", model: "模型", mode: "审批" };
   const modelLine = describe(cfg, machine, info).split(" · ").slice(-2, -1)[0];
   return (

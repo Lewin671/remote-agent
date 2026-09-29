@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalMode, EventSchema, InputStatus, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
@@ -9,12 +9,15 @@ import {
   agentOf,
   ago,
   askTitle,
+  decisionText,
   derive,
   dockItems,
   findModel,
   inheritConfig,
   machineAgents,
   minutesLeft,
+  modeOf,
+  noAutoMode,
   optionLabel,
   phaseOf,
   plain,
@@ -259,6 +262,47 @@ describe("new sessions follow the project", () => {
 
   it("has nothing to copy for a new project", () => {
     expect(inheritConfig(undefined, machines(true, true))).toBeUndefined();
+  });
+});
+
+describe("approval modes", () => {
+  it("prefers Session.mode, for either CLI", () => {
+    expect(modeOf(sess({ mode: ApprovalMode.AUTO, approvalsReviewer: "user", approvalPolicy: "on-request" }))?.text).toBe("自动");
+    expect(modeOf(sess({ agent: Agent.CLAUDE, mode: ApprovalMode.FULL_ACCESS, permissionMode: "bypassPermissions" }))).toMatchObject({ text: "完全放行", mode: ApprovalMode.FULL_ACCESS });
+  });
+
+  it("shows a Claude Code mode outside the four by its own name", () => {
+    expect(modeOf(sess({ agent: Agent.CLAUDE, permissionMode: "acceptEdits" }))).toEqual({ cls: "", text: "acceptEdits", mode: ApprovalMode.UNSPECIFIED });
+  });
+
+  it("falls back to Codex's approval fields for older daemons", () => {
+    expect(modeOf(sess({ approvalsReviewer: "auto_review", approvalPolicy: "on-request", sandbox: "workspace-write", collaborationMode: "default" }))?.text).toBe("自动");
+  });
+
+  it("knows haiku has no auto mode", () => {
+    expect(noAutoMode(sess({ agent: Agent.CLAUDE, model: "claude-haiku-4-5-20251001" }))).toBe(true);
+    expect(noAutoMode(sess({ agent: Agent.CLAUDE, model: "claude-sonnet-5-5" }))).toBe(false);
+  });
+
+  it("notes Claude Code mode changes made in the terminal, not model aliases set here", () => {
+    const ctx = (permissionMode: string, model = "claude-haiku-4-5-20251001") => ({ case: "turnContext", value: { permissionMode, model } });
+    const d = derive(
+      events(
+        ctx("default"),
+        ctx("acceptEdits", ""), // Shift+Tab in the terminal, read off the screen
+        { case: "settingsChanged", value: { model: "sonnet" } }, // switched here, by alias
+        ctx("acceptEdits", "claude-sonnet-5-5"),
+        ctx("plan", "claude-sonnet-5-5"),
+      ),
+    );
+    expect([...d.terminalChanges.entries()]).toEqual([
+      [2n, "模式切到了 acceptEdits"],
+      [5n, "模式切到了 计划"],
+    ]);
+  });
+
+  it("records approvals answered in the terminal", () => {
+    expect(decisionText(ApprovalDecision.TERMINAL)).toBe("已在终端处理");
   });
 });
 

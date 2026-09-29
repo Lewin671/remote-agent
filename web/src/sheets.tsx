@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf } from "./model";
+import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet } from "./ui";
 
@@ -32,11 +32,19 @@ export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; 
   );
 }
 
+/** Why a session cannot switch to mode, or "" if it can. */
+export function unavailable(s: SessionView, mode: ApprovalMode): string {
+  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "这个会话启动时没有允许完全放行，Claude Code 切不过去；要用就新建会话时选它";
+  if (mode === ApprovalMode.AUTO && noAutoMode(s)) return "Haiku 没有自动模式";
+  return "";
+}
+
 export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionView; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmFull, setConfirmFull] = useState(false);
-  const cur = modeOf(s)?.mode;
+  const mode = modeOf(s);
+  const cur = mode?.mode || undefined;
   const online = remote.conn === "online";
   const pick = async (mode: ApprovalMode) => {
     setBusy(true);
@@ -63,21 +71,25 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     <Sheet onClose={onClose}>
       <h4>审批模式</h4>
       <div className="list">
-        {modeList(agentOf(s)).map((m) => (
-          <button
-            key={m.mode}
-            className={"mi" + (m.danger ? " danger" : "")}
-            disabled={busy || !online}
-            onClick={() => (m.mode === cur ? onClose() : m.danger ? setConfirmFull(true) : void pick(m.mode))}
-          >
-            <div className="mt">
-              <b>{m.name}</b>
-              <div className="md">{m.desc}</div>
-            </div>
-            {m.mode === cur && <span className="ck">✓</span>}
-          </button>
-        ))}
+        {modeList(agentOf(s)).map((m) => {
+          const why = unavailable(s, m.mode);
+          return (
+            <button
+              key={m.mode}
+              className={"mi" + (m.danger ? " danger" : "") + (why ? " dis" : "")}
+              disabled={busy || !online || !!why}
+              onClick={() => (m.mode === cur ? onClose() : m.danger ? setConfirmFull(true) : void pick(m.mode))}
+            >
+              <div className="mt">
+                <b>{m.name}</b>
+                <div className="md">{why || m.desc}</div>
+              </div>
+              {m.mode === cur && <span className="ck">✓</span>}
+            </button>
+          );
+        })}
       </div>
+      {!cur && mode && <div className="hint">现在是 {agentName(agentOf(s))} 的 {mode.text} 模式，不在这四种里；选一种就会切过去</div>}
       {error && (
         <Banner kind="err" action="去终端" onAction={onClose}>
           没能切换：{error}
@@ -137,6 +149,8 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
       setCompacting(false);
     }
   };
+  // Some models have no effort levels at all (Claude Code's haiku).
+  const noEffort = !!cur && cur.efforts.length === 0;
   const offered = cur?.efforts.length ? cur.efforts : efforts;
   const at = Math.max(0, offered.indexOf(effort));
   const pos = (i: number) => `${(i / Math.max(1, offered.length - 1)) * 100}%`;
@@ -181,6 +195,10 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
         )}
       </div>
       <div className="fl">推理强度</div>
+      {noEffort ? (
+        <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
+      ) : (
+        <>
       <div className={"slider" + (locked || !cur ? " dis" : "")}>
         <div className="track" />
         <div className="fill" style={{ width: pos(at) }} />
@@ -196,6 +214,8 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           </button>
         ))}
       </div>
+        </>
+      )}
       {switching && <Banner>正在切换到 {switching}…</Banner>}
       {failed && (
         <Banner kind="err" action="知道了" onAction={() => setFailed("")}>

@@ -567,3 +567,7 @@ a { color: var(--blue); }
 .wpage > .banner { margin-top: 8px; }
 .connbar + .segrow { padding-top: 6px; }
 .comp .stop:disabled { opacity: .35; }
+.ans .box { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--faint); flex: none; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--on-solid); margin-top: 1px; }
+.ans .box.on { background: var(--blue-bg); box-shadow: none; }
+.dock.ask > .btns { margin-top: 4px; }

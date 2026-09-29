@@ -459,7 +459,9 @@ function Row({ it, d, cwd, machine, agent, textOf }: { it: Item; d: Derived; cwd
       const r = d.resolved.get(k.value.approvalId);
       if (!r) return null;
       const ok = r.decision === ApprovalDecision.ALLOW;
-      const canceled = r.decision === ApprovalDecision.CANCELED;
+      // Canceled, or answered in the CLI's own prompt: what happened shows
+      // in the tool call that follows.
+      const canceled = r.decision === ApprovalDecision.CANCELED || r.decision === ApprovalDecision.TERMINAL;
       return (
         <div className="record">
           <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? "–" : ok ? "✓" : "✕"}</span>

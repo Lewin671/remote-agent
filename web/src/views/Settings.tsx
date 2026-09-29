@@ -287,7 +287,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
           : pick.what === "effort"
             ? [
                 { key: "", label: follow, on: !def.effort, next: withDefaults(st, a, { effort: "" }) },
-                ...(cur?.efforts ?? ["low", "medium", "high", "xhigh"]).map((e) => ({ key: e, label: e, on: e === def.effort, next: withDefaults(st, a, { effort: e }) })),
+                ...(cur ? cur.efforts : ["low", "medium", "high", "xhigh"]).map((e) => ({ key: e, label: e, on: e === def.effort, next: withDefaults(st, a, { effort: e }) })),
               ]
             : [ApprovalMode.UNSPECIFIED, ApprovalMode.ASK, ApprovalMode.AUTO, ApprovalMode.FULL_ACCESS].map((x) => ({
                 key: String(x),

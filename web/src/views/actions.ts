@@ -55,19 +55,20 @@ export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
   return { resolve, retry, busy: c.busy, error: c.error };
 }
 
-/** Answer question index of a question call with a 1-based option. */
+/** Answer question index of a question call: one 1-based option, or
+ * several for a multi-select question. */
 export function useAnswer(remote: Remote, sid: string, questionId: string) {
   const c = useCommand(remote, sid);
-  const answer = (index: number, option: number) =>
-    c.run(`${index}:${option}`, { case: "answerQuestion", value: { sessionId: sid, questionId, option, questionIndex: index } });
-  const retry = () => {
-    const key = c.retry();
-    if (!key) return;
-    const [i, o] = key.split(":").map(Number);
-    void answer(i, o);
-  };
-  const chosen = c.busy || c.retry() || "";
-  return { answer, retry, busy: c.busy, error: c.error, chosen, done: () => c.setBusy("") };
+  const answer = (index: number, options: number[], multi = false) =>
+    c.run(`${index}:${options.join(",")}`, {
+      case: "answerQuestion",
+      value: multi ? { sessionId: sid, questionId, questionIndex: index, options } : { sessionId: sid, questionId, option: options[0], questionIndex: index },
+    });
+  // The question index and options of the pick in flight or last tried.
+  const key = c.busy || c.retry() || "";
+  const [i, o] = key ? key.split(":") : ["-1", ""];
+  const chosen = { index: Number(i), options: o ? o.split(",").map(Number) : [] };
+  return { answer, busy: c.busy, error: c.error, chosen, done: () => c.setBusy("") };
 }
 
 export function usePlan(remote: Remote, sid: string) {

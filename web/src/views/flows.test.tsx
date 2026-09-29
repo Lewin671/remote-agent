@@ -10,7 +10,8 @@ import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
-import { Dock } from "./Dock";
+import { ModeSheet, SessionSheet } from "../sheets";
+import { Dock, PlanPage } from "./Dock";
 import { Home } from "./Home";
 import { ProjectPage } from "./Project";
 
@@ -173,4 +174,63 @@ it("shows a failed first listing and lists again", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("answers a multi-select question with every ticked option", async () => {
+  const r = demo();
+  const sent: unknown[] = [];
+  const real = r.command.bind(r);
+  r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "answerQuestion") sent.push(cmd.value);
+    return real(sid, cmd, slot);
+  };
+  const s = r.sessions.get("s-claude")!;
+  mount(
+    <Dock
+      remote={r}
+      sid="s-claude"
+      items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
+      agent={Agent.CLAUDE}
+      collapsed={false}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />,
+  );
+  expect(host.textContent).toContain("Claude Code 在问你");
+  expect(button("选好后提交")?.disabled).toBe(true);
+  await click(button(/^按 IP/));
+  await click(button(/^按设备/));
+  // Ticking sends nothing yet.
+  expect(sent).toEqual([]);
+  await click(button("提交 2 项"));
+  await vi.waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0]).toMatchObject({ questionId: "cq", questionIndex: 0, options: [1, 3] });
+});
+
+it("greys out modes a Claude Code session cannot switch to, and effort for haiku", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-claude-idle")!;
+  mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
+  expect(button(/^完全放行/)?.disabled).toBe(true);
+  expect(host.textContent).toContain("启动时没有允许完全放行");
+  expect(button(/^自动/)?.disabled).toBe(true);
+  expect(button(/^询问/)?.disabled).toBe(false);
+  // acceptEdits is none of the four: nothing is ticked, and it says so.
+  expect(host.querySelector(".ck")).toBeNull();
+  expect(host.textContent).toContain("acceptEdits");
+  act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
+  await vi.waitFor(() => expect(host.textContent).toContain("Haiku 没有推理强度可调"), { timeout: 3000 });
+  expect(host.querySelector(".slider")).toBeNull();
+});
+
+it("offers no clear-and-implement on a Claude Code plan", () => {
+  const r = demo();
+  const plan = { $typeName: "remoteagent.v1.PlanProposed", text: "1. do it" } as const;
+  mount(<PlanPage remote={r} sid="s-claude" plan={plan} title="t" onBack={() => undefined} />);
+  expect(button("批准执行")).toBeTruthy();
+  expect(button("清空上下文后执行")).toBeUndefined();
+  act(() => root!.render(<PlanPage remote={r} sid="s-plan" plan={plan} title="t" onBack={() => undefined} />));
+  expect(button("清空上下文后执行")).toBeTruthy();
 });

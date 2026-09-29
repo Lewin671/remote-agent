@@ -3,10 +3,11 @@
 // opens a full page, and the buttons stay in view.
 
 import { useLayoutEffect, useRef, useState } from "react";
-import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
+import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { Markdown } from "../markdown";
-import { agentName, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
+import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
 import { Banner, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
@@ -174,22 +175,27 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
   // than answering another question.
   const [current, setCurrent] = useState(0);
   const ans = useAnswer(remote, sid, q.questionId);
+  // Options ticked on a multi-select question, before submitting.
+  const [ticked, setTicked] = useState<number[]>([]);
   const n = q.questions.length;
   const index = Math.min(current, n - 1);
   const item = q.questions[index];
   if (!item) return null;
-  const [ci, co] = ans.chosen ? ans.chosen.split(":").map(Number) : [-1, -1];
-  const pick = async (option: number) => {
-    const ok = await ans.answer(index, option);
+  const multi = item.multiSelect;
+  const sent = ans.chosen.index === index ? ans.chosen.options : [];
+  const pick = async (options: number[]) => {
+    const ok = await ans.answer(index, options, multi);
     if (ok && index < n - 1) {
       ans.done();
+      setTicked([]);
       setCurrent(index + 1);
     }
   };
   // A retry is the same pick: on success it moves on like the first try.
   const retry = () => {
-    if (ci === index && co > 0) void pick(co);
+    if (sent.length) void pick(sent);
   };
+  const tick = (o: number) => setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
   return (
     <div className="dock ask">
       <div className="h">
@@ -199,28 +205,51 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
           <span className="muted">
             {more > 0 && `还有 ${more} 项 · `}
             {n > 1 ? `第 ${index + 1} 题，共 ${n} 题` : item.header}
+            {multi && (n > 1 || item.header ? " · " : "") + (multi ? "可多选" : "")}
           </span>
         </span>
       </div>
       <div className="dscroll">
-      <div className="q">{item.text}</div>
-      <div className="answers">
-        {item.options.map((o, i) => {
-          const { text, recommended } = optionLabel(o.label);
-          const on = ci === index && co === i + 1;
-          return (
-            <button key={i} className={"ans" + (on ? " on" : "")} disabled={!!ans.busy} onClick={() => void pick(i + 1)}>
-              {on && <span className="ck">✓</span>}
-              <div>
-                {text}
-                {on && ans.busy ? <small>提交中…</small> : on && ans.error ? <small className="red">没能提交，终端里的问题可能已经变了</small> : o.description && <small>{o.description}</small>}
-              </div>
-              {recommended && <span className="tag">推荐</span>}
-            </button>
-          );
-        })}
+        <div className="q">{item.text}</div>
+        <div className="answers">
+          {item.options.map((o, i) => {
+            const { text, recommended } = optionLabel(o.label);
+            const on = multi ? (ans.busy || ans.error ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
+            const status = on && sent.includes(i + 1) && (ans.busy ? "提交中…" : ans.error ? "err" : "");
+            return (
+              <button
+                key={i}
+                className={"ans" + (on ? " on" : "") + (multi ? " multi" : "")}
+                role={multi ? "checkbox" : undefined}
+                aria-checked={multi ? on : undefined}
+                disabled={!!ans.busy}
+                onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
+              >
+                {multi ? <span className={"box" + (on ? " on" : "")}>{on ? "✓" : ""}</span> : on && <span className="ck">✓</span>}
+                <div>
+                  {text}
+                  {status === "err" && !multi ? (
+                    <small className="red">没能提交，终端里的问题可能已经变了</small>
+                  ) : status && status !== "err" && !multi ? (
+                    <small>{status}</small>
+                  ) : (
+                    o.description && <small>{o.description}</small>
+                  )}
+                </div>
+                {recommended && <span className="tag">推荐</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      </div>
+      {multi && !ans.error && (
+        <div className="btns">
+          <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
+            {ans.busy ? "提交中…" : ticked.length ? `提交 ${ticked.length} 项` : "选好后提交"}
+          </button>
+        </div>
+      )}
+      {multi && ans.error && <div className="red small">没能提交，终端里的问题可能已经变了</div>}
       <div className="foot">
         {ans.error ? (
           <>
@@ -243,6 +272,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
 }
 
 export function PlanButtons({ remote, sid, full }: { remote: Remote; sid: string; full?: boolean }) {
+  // Claude Code has no "clear the context, then implement".
   const plan = usePlan(remote, sid);
   const b = plan.busy;
   return (
@@ -255,7 +285,7 @@ export function PlanButtons({ remote, sid, full }: { remote: Remote; sid: string
           {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : "批准执行"}
         </button>
       </div>
-      {full && (
+      {full && agentOf(remote.sessions.get(sid)) !== Agent.CLAUDE && (
         <div className="btns" style={{ marginTop: 8 }}>
           <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
             {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}

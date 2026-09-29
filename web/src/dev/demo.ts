@@ -142,7 +142,7 @@ function fixtures(): Record<string, Fixture> {
     "s-claude": {
       machine: "mac",
       updated: now - 30 * min,
-      info: { title: "给登录接口加限流", cwd: "/Users/me/Code/foo", status: SessionStatus.RUNNING, pendingQuestions: 1, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "high", ...ctxAsk },
+      info: { title: "给登录接口加限流", cwd: "/Users/me/Code/foo", status: SessionStatus.RUNNING, pendingQuestions: 1, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "high", mode: ApprovalMode.ASK, permissionMode: "default" },
       events: [
         { case: "userMessage", value: { text: "给登录接口加限流" } },
         { case: "turnStarted", value: {} },
@@ -150,13 +150,37 @@ function fixtures(): Record<string, Fixture> {
         { case: "toolStarted", value: { title: "Read auth/limit.go", callId: "t2" } },
         { case: "toolStarted", value: { title: "Grep RateLimit", callId: "t3" } },
         { case: "toolCall", value: { title: "Read auth/limit.go", callId: "t2", kind: ToolKind.OTHER, status: "completed" } },
-        { case: "questionAsked", value: { questionId: "cq", questions: [{ text: "限流按 IP 还是按账户？", options: [{ label: "按 IP" }, { label: "按账户" }] }] } },
+        { case: "approvalRequested", value: { approvalId: "ct", command: "npm test", toolName: "Bash" } },
+        { case: "approvalResolved", value: { approvalId: "ct", decision: ApprovalDecision.TERMINAL } },
+        {
+          case: "questionAsked",
+          value: {
+            questionId: "cq",
+            questions: [
+              {
+                id: "限流按哪些维度？",
+                text: "限流按哪些维度？",
+                multiSelect: true,
+                options: [{ label: "按 IP" }, { label: "按账户", description: "登录后才有" }, { label: "按设备" }],
+              },
+            ],
+          },
+        },
       ],
     },
     "s-claude-idle": {
       machine: "mac",
       updated: now - 35 * min,
-      info: { title: "整理错误码", cwd: "/Users/me/Code/bar", status: SessionStatus.IDLE, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "medium", ...ctxAsk, preview: "错误码已按模块分组" },
+      info: {
+        title: "整理错误码",
+        cwd: "/Users/me/Code/bar",
+        status: SessionStatus.IDLE,
+        agent: Agent.CLAUDE,
+        model: "claude-haiku-4-5-20251001",
+        permissionMode: "acceptEdits",
+        fullAccessUnavailable: true,
+        preview: "错误码已按模块分组",
+      },
       events: [
         { case: "userMessage", value: { text: "整理错误码" } },
         { case: "agentMessage", value: { text: "错误码已按模块分组。" } },
@@ -288,8 +312,9 @@ const models = create(ListModelsResponseSchema, {
 const claudeModels = create(ListModelsResponseSchema, {
   defaultModel: "sonnet",
   models: [
-    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high"], defaultEffort: "medium" },
-    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high"], defaultEffort: "high" },
+    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
+    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
+    { slug: "haiku", displayName: "Haiku", efforts: [] },
   ],
 });
 

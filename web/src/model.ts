@@ -254,7 +254,17 @@ export function tailPath(p: string, max = 28): string {
 // --- modes and chips ---
 
 /** The approval mode named from turn-context fields. */
-export function contextMode(reviewer: string, policy: string, sandbox: string, collaboration: string): string {
+/** Claude Code's permission mode as one of the four client modes; a mode
+ * outside them, such as acceptEdits, keeps its own name (architecture §7:
+ * shown as the CLI has it). */
+export function permissionModeName(pm: string): string {
+  return ({ default: "询问", auto: "自动", plan: "计划", bypassPermissions: "完全放行" } as Record<string, string>)[pm] ?? pm;
+}
+
+/** The approval mode named from turn-context fields: Claude Code's
+ * permission mode, or Codex's approval fields. */
+export function contextMode(reviewer: string, policy: string, sandbox: string, collaboration: string, permission = ""): string {
+  if (permission) return permissionModeName(permission);
   if (!reviewer && !policy && !collaboration) return "";
   if (collaboration === "plan") return "计划";
   if (sandbox === "danger-full-access" && policy === "never") return "完全放行";
@@ -289,8 +299,20 @@ export interface ModeChip {
 export function modeOf(s: SessionLike): ModeChip | undefined {
   const i = s.info;
   if (!i) return undefined;
-  const text = contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode);
-  return text ? { cls: modeClass[text], text, mode: modeByName(text) } : undefined;
+  // Session.mode is either CLI's mode as a client mode; UNSPECIFIED with a
+  // permission mode is one of Claude Code's own, shown by its name. Older
+  // daemons set neither: name it from the approval fields.
+  const text = i.mode
+    ? modeName(i.mode)
+    : i.permissionMode
+      ? permissionModeName(i.permissionMode)
+      : contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode);
+  return text ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) } : undefined;
+}
+
+/** Whether a session's model lacks the auto mode (Claude Code's haiku). */
+export function noAutoMode(s: SessionLike): boolean {
+  return agentOf(s) === Agent.CLAUDE && /haiku/i.test(s.info?.model ?? "");
 }
 
 export function contextPercent(s: SessionLike): number | undefined {
@@ -471,7 +493,10 @@ export function derive(events: Event[]): Derived {
         break;
       case "settingsChanged":
         // Changed through remote-agent; recorded as such already.
-        if (k.value.model) model = `${k.value.model} ${k.value.effort}`;
+        // The client names models by slug or alias, contexts by the CLI's
+        // own ID (Claude Code: the full one): start over from the next
+        // context rather than compare the two.
+        if (k.value.model) model = "";
         if (k.value.mode) mode = modeName(k.value.mode);
         if (k.value.compacted) {
           d.compactions.set(e.seq, { before: usagePercent(d.usage) });
@@ -480,15 +505,18 @@ export function derive(events: Event[]): Derived {
         break;
       case "turnContext": {
         const c = k.value;
-        const m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode);
+        const m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode);
+        const planning = c.collaborationMode === "plan" || c.permissionMode === "plan";
         const mm = `${c.model} ${c.effort}`;
         const changes: string[] = [];
         if (mode && m && m !== mode) changes.push(`模式切到了 ${m}`);
         // Plan mode runs at its own effort; only a model change counts there.
-        if (model && mm !== model && c.collaborationMode !== "plan") changes.push(`模型切到了 ${c.model} · ${c.effort}`);
+        // A context without a model is Claude Code's mode, read off the
+        // screen; it says nothing about the model.
+        if (model && c.model && mm !== model && !planning) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
         if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
         if (m) mode = m;
-        if (c.collaborationMode !== "plan") model = mm;
+        if (!planning && c.model) model = mm;
         break;
       }
       case "sessionState":
@@ -518,6 +546,8 @@ export function decisionText(d: ApprovalDecision): string {
       return "超时，已拒绝";
     case ApprovalDecision.CANCELED:
       return "已取消";
+    case ApprovalDecision.TERMINAL:
+      return "已在终端处理";
   }
   return "";
 }
