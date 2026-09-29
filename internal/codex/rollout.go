@@ -120,6 +120,19 @@ type usage struct {
 	TotalTokens           int64 `json:"total_tokens"`
 }
 
+type rateLimit struct {
+	UsedPercent   float64 `json:"used_percent"`
+	WindowMinutes int64   `json:"window_minutes"`
+	ResetsAt      int64   `json:"resets_at"`
+}
+
+func (r *rateLimit) pb() *pb.RateLimit {
+	if r == nil {
+		return nil
+	}
+	return &pb.RateLimit{UsedPercent: r.UsedPercent, WindowMinutes: r.WindowMinutes, ResetsAt: r.ResetsAt}
+}
+
 func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 	var m struct {
 		Info *struct {
@@ -127,6 +140,11 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 			Last    usage `json:"last_token_usage"`
 			Context int64 `json:"model_context_window"`
 		} `json:"info"`
+		RateLimits *struct {
+			Primary   *rateLimit `json:"primary"`
+			Secondary *rateLimit `json:"secondary"`
+			PlanType  string     `json:"plan_type"`
+		} `json:"rate_limits"`
 	}
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
@@ -134,7 +152,7 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 	if m.Info == nil {
 		return nil, nil
 	}
-	return one("", &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: &pb.TokenUsage{
+	u := &pb.TokenUsage{
 		InputTokens:           m.Info.Total.InputTokens,
 		CachedInputTokens:     m.Info.Total.CachedInputTokens,
 		OutputTokens:          m.Info.Total.OutputTokens,
@@ -142,7 +160,11 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 		TotalTokens:           m.Info.Total.TotalTokens,
 		LastTotalTokens:       m.Info.Last.TotalTokens,
 		ContextWindow:         m.Info.Context,
-	}}}), nil
+	}
+	if r := m.RateLimits; r != nil {
+		u.PrimaryLimit, u.SecondaryLimit, u.PlanType = r.Primary.pb(), r.Secondary.pb(), r.PlanType
+	}
+	return one("", &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: u}}), nil
 }
 
 func turnContext(raw json.RawMessage) ([]*pb.Event, error) {
@@ -237,9 +259,24 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 		for _, c := range it.Content {
 			parts = append(parts, c.Text)
 		}
+		text := strings.Join(parts, "\n")
+		// In Plan mode the plan comes twice: as a Plan item, which becomes
+		// the event, and as this message wrapped in <proposed_plan>.
+		if strings.HasPrefix(strings.TrimSpace(text), "<proposed_plan>") {
+			return nil, nil
+		}
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{
-			Text: strings.Join(parts, "\n"), Phase: it.Phase,
+			Text: text, Phase: it.Phase,
 		}}}), nil
+
+	case "Plan":
+		var it struct {
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal(m.Item, &it); err != nil {
+			return nil, err
+		}
+		return one(m.TurnID, &pb.Event{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: it.Text}}}), nil
 
 	case "Reasoning":
 		var it struct {
@@ -377,6 +414,11 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 			CallId: it.ID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "view image " + strings.TrimPrefix(it.Path, "file://"),
 			Status: "completed", ItemType: head.Type,
 		}}}), nil
+
+	case "ContextCompaction":
+		// Recorded however it was started: /compact typed in the
+		// terminal, or sent through remote-agent.
+		return one(m.TurnID, &pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Compacted: true}}}), nil
 	}
 
 	// Other item types (sub-agents, compaction, ...) are kept as generic

@@ -22,7 +22,8 @@ func rpcErr(err error) error {
 		return nil
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, errExited), errors.Is(err, errNotAnswering), errors.Is(err, errWriting):
+	case errors.Is(err, errExited), errors.Is(err, errNotAnswering), errors.Is(err, errWriting),
+		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	var ce *connect.Error
@@ -162,4 +163,83 @@ func (h *handler) CancelInput(ctx context.Context, req *connect.Request[pb.Cance
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.CancelInputResponse{}), nil
+}
+
+func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModelRequest]) (*connect.Response[pb.SetModelResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	name, err := h.d.displayName(req.Msg.Model)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.setModel(req.Msg.Model, req.Msg.Effort, name); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.SetModelResponse{}), nil
+}
+
+func (h *handler) ListModels(ctx context.Context, req *connect.Request[pb.ListModelsRequest]) (*connect.Response[pb.ListModelsResponse], error) {
+	res, err := h.d.listModels()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.SetApprovalModeRequest]) (*connect.Response[pb.SetApprovalModeResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.setApprovalMode(req.Msg.Mode); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.SetApprovalModeResponse{}), nil
+}
+
+func (h *handler) Compact(ctx context.Context, req *connect.Request[pb.CompactRequest]) (*connect.Response[pb.CompactResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.compact(); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.CompactResponse{}), nil
+}
+
+func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.AnswerPlanRequest]) (*connect.Response[pb.AnswerPlanResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.answerPlan(req.Msg.Choice); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.AnswerPlanResponse{}), nil
+}
+
+func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.ListDirectoriesRequest]) (*connect.Response[pb.ListDirectoriesResponse], error) {
+	res, err := listDirectories(req.Msg.Path)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
+	return connect.NewResponse(&pb.GetSettingsResponse{Settings: h.d.settings()}), nil
+}
+
+func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.UpdateSettingsRequest]) (*connect.Response[pb.UpdateSettingsResponse], error) {
+	if req.Msg.Settings == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required"))
+	}
+	st, err := h.d.updateSettings(req.Msg.Settings)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	return connect.NewResponse(&pb.UpdateSettingsResponse{Settings: st}), nil
 }

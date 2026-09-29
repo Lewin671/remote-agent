@@ -76,6 +76,13 @@ func (r *Relay) execute(ctx context.Context, sessionID string, cmd *pb.Command) 
 		}
 		return run()
 	}
+	// machine runs a command for the machine; its header names no session.
+	machine := func(run func() error) error {
+		if sessionID != "" {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("a machine command must not name a session"))
+		}
+		return run()
+	}
 	var err error
 	switch k := cmd.Kind.(type) {
 	case *pb.Command_Send:
@@ -105,6 +112,52 @@ func (r *Relay) execute(ctx context.Context, sessionID string, cmd *pb.Command) 
 	case *pb.Command_CancelInput:
 		err = on(k.CancelInput.SessionId, func() error {
 			return call(ctx, l.CancelInput, k.CancelInput, func(m *pb.CancelInputResponse) { out.Kind = &pb.CommandResult_CancelInput{CancelInput: m} })
+		})
+	case *pb.Command_SetModel:
+		err = on(k.SetModel.SessionId, func() error {
+			return call(ctx, l.SetModel, k.SetModel, func(m *pb.SetModelResponse) { out.Kind = &pb.CommandResult_SetModel{SetModel: m} })
+		})
+	case *pb.Command_SetApprovalMode:
+		err = on(k.SetApprovalMode.SessionId, func() error {
+			return call(ctx, l.SetApprovalMode, k.SetApprovalMode, func(m *pb.SetApprovalModeResponse) {
+				out.Kind = &pb.CommandResult_SetApprovalMode{SetApprovalMode: m}
+			})
+		})
+	case *pb.Command_Compact:
+		err = on(k.Compact.SessionId, func() error {
+			return call(ctx, l.Compact, k.Compact, func(m *pb.CompactResponse) { out.Kind = &pb.CommandResult_Compact{Compact: m} })
+		})
+	case *pb.Command_AnswerPlan:
+		err = on(k.AnswerPlan.SessionId, func() error {
+			return call(ctx, l.AnswerPlan, k.AnswerPlan, func(m *pb.AnswerPlanResponse) { out.Kind = &pb.CommandResult_AnswerPlan{AnswerPlan: m} })
+		})
+	case *pb.Command_CreateSession:
+		err = machine(func() error {
+			req := k.CreateSession
+			// A remote client's environment means nothing here; the
+			// session gets the daemon's.
+			req.Env = nil
+			return call(ctx, l.CreateSession, req, func(m *pb.CreateSessionResponse) { out.Kind = &pb.CommandResult_CreateSession{CreateSession: m} })
+		})
+	case *pb.Command_ListModels:
+		err = machine(func() error {
+			return call(ctx, l.ListModels, k.ListModels, func(m *pb.ListModelsResponse) { out.Kind = &pb.CommandResult_ListModels{ListModels: m} })
+		})
+	case *pb.Command_ListDirectories:
+		err = machine(func() error {
+			return call(ctx, l.ListDirectories, k.ListDirectories, func(m *pb.ListDirectoriesResponse) {
+				out.Kind = &pb.CommandResult_ListDirectories{ListDirectories: m}
+			})
+		})
+	case *pb.Command_GetSettings:
+		err = machine(func() error {
+			return call(ctx, l.GetSettings, k.GetSettings, func(m *pb.GetSettingsResponse) { out.Kind = &pb.CommandResult_GetSettings{GetSettings: m} })
+		})
+	case *pb.Command_UpdateSettings:
+		err = machine(func() error {
+			return call(ctx, l.UpdateSettings, k.UpdateSettings, func(m *pb.UpdateSettingsResponse) {
+				out.Kind = &pb.CommandResult_UpdateSettings{UpdateSettings: m}
+			})
 		})
 	default:
 		err = connect.NewError(connect.CodeUnimplemented, errors.New("this daemon does not know the command; update remote-agent"))

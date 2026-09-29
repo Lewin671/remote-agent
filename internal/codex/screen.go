@@ -16,6 +16,13 @@ type Screen struct {
 	Popup string
 	// QuestionOpen: a request_user_input question is waiting for an answer.
 	QuestionOpen bool
+	// PlanOpen: Codex asks whether to implement the plan it proposed.
+	PlanOpen bool
+	// PlanMode: the footer shows Plan mode is on.
+	PlanMode bool
+	// Footer is the plain status line under the input box, e.g.
+	// "GPT-6-Sol medium · ~/code/foo".
+	Footer string
 }
 
 var sgrRE = regexp.MustCompile("\x1b\\[[0-9;:]*[A-Za-z]")
@@ -46,6 +53,9 @@ var popupTitles = []struct{ text, name string }{
 	{"Select Reasoning Level", "model menu"},
 	{"Question 1/", "question"},
 	{"unanswered)", "question"},
+	{"Implement this plan?", "plan"},
+	{"Update Model Permissions", "permissions menu"},
+	{"Enable full access?", "permissions menu"},
 }
 
 // AnalyzeScreen inspects a capture made with escape sequences kept
@@ -85,6 +95,22 @@ func AnalyzeScreen(styled string) Screen {
 		s.Popup = "menu"
 	}
 	s.QuestionOpen = s.Popup == "question"
+	s.PlanOpen = s.Popup == "plan"
+	for _, l := range lines {
+		if strings.HasSuffix(strings.TrimSpace(StripANSI(l)), "Plan mode") {
+			s.PlanMode = true
+		}
+	}
+	if composer >= 0 {
+		// The status line is the first non-blank line under the input box;
+		// Codex may leave a blank line in between.
+		for _, l := range lines[composer+1:] {
+			if f := strings.TrimSpace(StripANSI(l)); f != "" {
+				s.Footer = f
+				break
+			}
+		}
+	}
 	if composer >= 0 && s.Popup == "" {
 		s.ComposerReady = true
 		// Only the placeholder proves the box is empty. A bare prompt may

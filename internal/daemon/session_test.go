@@ -35,6 +35,9 @@ type fakeTerm struct {
 	ops     []string // hold, release and write, in order
 	// failWrites records a write but reports an error, like a lost reply.
 	failWrites bool
+	// onWrite, if set, lets a test react to keys like Codex would; it runs
+	// with the lock held and may change the screen.
+	onWrite func(f *fakeTerm, b string)
 }
 
 func (f *fakeTerm) Capture() (string, error) {
@@ -75,6 +78,9 @@ func (c *fakeControl) Write(b []byte) error {
 	if c.f.failWrites {
 		return errors.New("reply lost")
 	}
+	if c.f.onWrite != nil {
+		c.f.onWrite(c.f, string(b))
+	}
 	if text, ok := strings.CutPrefix(string(b), "\x1b[200~"); ok {
 		text = strings.TrimSuffix(text, "\x1b[201~\r")
 		line, _ := json.Marshal(map[string]string{"session_id": "x", "text": text})
@@ -96,6 +102,8 @@ type harness struct {
 }
 
 func newHarness(t *testing.T, cfg Config) *harness {
+	// Keep settings and other state out of the real ~/.remote-agent.
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	t.Helper()
 	dir := t.TempDir()
 	cfg.HistoryPath = filepath.Join(dir, "history.jsonl")

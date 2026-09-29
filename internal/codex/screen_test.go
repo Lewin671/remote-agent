@@ -44,6 +44,12 @@ const (
 	screenDraftRGB2 = "\x1b[1m›\x1b[0m\x1b[38;2;2;2;2m draft\x1b[0m\n"
 	screenBareBackground = "\x1b[1m›\x1b[0m\x1b[48;2;57;57;57m \x1b[0m\n" +
 		"  second line of a local draft\n"
+	screenPlanPrompt = "• Proposed Plan\n  1. Create hello.txt\n" +
+		"  Implement this plan?\n" +
+		"\x1b[1;7m› 1. Yes, implement this plan          Switch to Default and start coding\n" +
+		"\x1b[0m  2. Yes, clear context and implement  Start a fresh thread\n" +
+		"  3. No, stay in Plan mode             Continue planning with the model\n" +
+		"  enter select · esc back                                            Plan mode\n"
 	screenUnknownMenu = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex\x1b[0m\n" +
 		"  Some new dialog\n" +
 		"\x1b[1;7m› 1. First\n" +
@@ -68,11 +74,31 @@ func TestAnalyzeScreen(t *testing.T) {
 		{"draft with background", screenDraftBackground, Screen{ComposerReady: true, DraftEmpty: false}},
 		{"draft colored 2;2;2", screenDraftRGB2, Screen{ComposerReady: true, DraftEmpty: false}},
 		{"bare prompt with background", screenBareBackground, Screen{ComposerReady: true, DraftEmpty: false}},
+		{"plan prompt", screenPlanPrompt, Screen{Popup: "plan", PlanOpen: true, PlanMode: true}},
 		{"empty", "", Screen{}},
 	}
 	for _, c := range cases {
-		if got := AnalyzeScreen(c.screen); got != c.want {
+		got := AnalyzeScreen(c.screen)
+		got.Footer = "" // checked in TestScreenFooter
+		if got != c.want {
 			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
 		}
+	}
+}
+
+func TestScreenFooter(t *testing.T) {
+	scr := AnalyzeScreen(screenIdle)
+	if scr.Footer != "GPT-6-Sol medium · /tmp/w" || scr.PlanMode {
+		t.Fatalf("%+v", scr)
+	}
+	// Seen with codex-cli 0.157.1: a blank line under the input box.
+	gap := AnalyzeScreen("\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n\n  GPT-6-Luna medium · /tmp/w\n  ? for shortcuts\n")
+	if gap.Footer != "GPT-6-Luna medium · /tmp/w" {
+		t.Fatalf("footer after a blank line: %q", gap.Footer)
+	}
+	plan := AnalyzeScreen("\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n" +
+		"  GPT-6-Sol medium · /tmp/w                                   Plan mode\n")
+	if !plan.PlanMode || !plan.DraftEmpty {
+		t.Fatalf("%+v", plan)
 	}
 }

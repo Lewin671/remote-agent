@@ -54,7 +54,7 @@ func TestParseBasicRollout(t *testing.T) {
 		"tool_call turn-1",
 		"tool_call turn-1",
 		"tool_call turn-1",
-		"tool_call turn-1",
+		"settings_changed turn-1",
 		"token_usage ",
 		"agent_message turn-1",
 		"turn_ended turn-1",
@@ -85,7 +85,7 @@ func TestParseBasicRollout(t *testing.T) {
 	check(6, `turn_id:"turn-1" tool_call:{call_id:"exec-2" kind:TOOL_KIND_FILE_CHANGE title:"/work/demo/b.txt" output:"add /work/demo/b.txt\n@@ -0,0 +1 @@\n+hello\n" status:"completed" item_type:"FileChange"}`)
 	check(7, `turn_id:"turn-1" tool_call:{call_id:"call-mcp" kind:TOOL_KIND_MCP title:"docs.search" input:"{\"q\":\"tmux\"}" output:"{\"message\":\"tool call error\"}" status:"failed" duration_ms:5 item_type:"McpToolCall"}`)
 	check(8, `turn_id:"turn-1" tool_call:{call_id:"ws-1" kind:TOOL_KIND_WEB_SEARCH title:"tmux control mode" item_type:"Extension:web.search"}`)
-	check(10, `token_usage:{input_tokens:2000 cached_input_tokens:1000 output_tokens:50 reasoning_output_tokens:20 total_tokens:2050 last_total_tokens:1530 context_window:760000}`)
+	check(10, `token_usage:{input_tokens:2000 cached_input_tokens:1000 output_tokens:50 reasoning_output_tokens:20 total_tokens:2050 last_total_tokens:1530 context_window:760000 primary_limit:{used_percent:35}}`)
 	check(12, `turn_id:"turn-1" turn_ended:{outcome:TURN_OUTCOME_COMPLETED duration_ms:3000}`)
 	check(14, `question_asked:{question_id:"call-q1" questions:{id:"lang" header:"Language" text:"Which language?" options:{label:"Go (Recommended)" description:"Single binary"} options:{label:"Python" description:"Quick to write"}}}`)
 	check(15, `question_answered:{question_id:"call-q1" answers:{question_id:"lang" answers:"Python"}}`)
@@ -121,4 +121,25 @@ func TestParseRealRollouts(t *testing.T) {
 		return nil
 	})
 	t.Logf("parsed %d events", n)
+}
+
+// In Plan mode the plan arrives as a Plan item and again as a message
+// wrapped in <proposed_plan>; only the plan event is kept.
+func TestParsePlan(t *testing.T) {
+	p := NewParser()
+	evs, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"Plan","id":"t-plan","text":"1. Do it."}}}`))
+	if err != nil || len(evs) != 1 || evs[0].GetPlanProposed().GetText() != "1. Do it." {
+		t.Fatalf("plan: %v %v", evs, err)
+	}
+	evs, err = p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"AgentMessage","id":"m","content":[{"text":"<proposed_plan>\n1. Do it.\n</proposed_plan>"}]}}}`))
+	if err != nil || len(evs) != 0 {
+		t.Fatalf("duplicate plan message: %v %v", evs, err)
+	}
+}
+
+func TestParseCompaction(t *testing.T) {
+	evs, err := NewParser().Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"ContextCompaction","id":"c"}}}`))
+	if err != nil || len(evs) != 1 || !evs[0].GetSettingsChanged().GetCompacted() {
+		t.Fatalf("%v %v", evs, err)
+	}
 }

@@ -22,6 +22,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type PlanChoice int32
+
+const (
+	PlanChoice_PLAN_CHOICE_UNSPECIFIED PlanChoice = 0
+	// Switch to Default mode and start implementing.
+	PlanChoice_PLAN_CHOICE_IMPLEMENT PlanChoice = 1
+	// Start a fresh thread with the plan and implement it.
+	PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT PlanChoice = 2
+	// Stay in Plan mode.
+	PlanChoice_PLAN_CHOICE_KEEP_PLANNING PlanChoice = 3
+)
+
+// Enum value maps for PlanChoice.
+var (
+	PlanChoice_name = map[int32]string{
+		0: "PLAN_CHOICE_UNSPECIFIED",
+		1: "PLAN_CHOICE_IMPLEMENT",
+		2: "PLAN_CHOICE_CLEAR_AND_IMPLEMENT",
+		3: "PLAN_CHOICE_KEEP_PLANNING",
+	}
+	PlanChoice_value = map[string]int32{
+		"PLAN_CHOICE_UNSPECIFIED":         0,
+		"PLAN_CHOICE_IMPLEMENT":           1,
+		"PLAN_CHOICE_CLEAR_AND_IMPLEMENT": 2,
+		"PLAN_CHOICE_KEEP_PLANNING":       3,
+	}
+)
+
+func (x PlanChoice) Enum() *PlanChoice {
+	p := new(PlanChoice)
+	*p = x
+	return p
+}
+
+func (x PlanChoice) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PlanChoice) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_v1_local_proto_enumTypes[0].Descriptor()
+}
+
+func (PlanChoice) Type() protoreflect.EnumType {
+	return &file_remoteagent_v1_local_proto_enumTypes[0]
+}
+
+func (x PlanChoice) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PlanChoice.Descriptor instead.
+func (PlanChoice) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{0}
+}
+
 type Session struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -50,6 +105,8 @@ type Session struct {
 	// Context window use from the latest token count, 0 when unknown.
 	ContextTokens int64 `protobuf:"varint,21,opt,name=context_tokens,json=contextTokens,proto3" json:"context_tokens,omitempty"`
 	ContextWindow int64 `protobuf:"varint,22,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
+	// Codex is asking whether to implement the plan it proposed.
+	PlanOpen      bool `protobuf:"varint,23,opt,name=plan_open,json=planOpen,proto3" json:"plan_open,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -238,13 +295,27 @@ func (x *Session) GetContextWindow() int64 {
 	return 0
 }
 
+func (x *Session) GetPlanOpen() bool {
+	if x != nil {
+		return x.PlanOpen
+	}
+	return false
+}
+
 type CreateSessionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Cwd   string                 `protobuf:"bytes,1,opt,name=cwd,proto3" json:"cwd,omitempty"`
 	// Extra arguments passed to codex unchanged.
 	Args []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
 	// Environment for the Codex process, e.g. proxy variables of the caller.
-	Env           map[string]string `protobuf:"bytes,3,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Env map[string]string `protobuf:"bytes,3,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// First message, sent once Codex is ready.
+	Prompt string `protobuf:"bytes,4,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	// Model, effort and approval mode to start with; empty means the
+	// daemon's defaults, then Codex's own configuration.
+	Model         string       `protobuf:"bytes,5,opt,name=model,proto3" json:"model,omitempty"`
+	Effort        string       `protobuf:"bytes,6,opt,name=effort,proto3" json:"effort,omitempty"`
+	Mode          ApprovalMode `protobuf:"varint,7,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,6 +369,34 @@ func (x *CreateSessionRequest) GetEnv() map[string]string {
 		return x.Env
 	}
 	return nil
+}
+
+func (x *CreateSessionRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+func (x *CreateSessionRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CreateSessionRequest) GetEffort() string {
+	if x != nil {
+		return x.Effort
+	}
+	return ""
+}
+
+func (x *CreateSessionRequest) GetMode() ApprovalMode {
+	if x != nil {
+		return x.Mode
+	}
+	return ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 }
 
 type CreateSessionResponse struct {
@@ -1302,11 +1401,885 @@ func (x *HookResponse) GetOutput() []byte {
 	return nil
 }
 
+type SetModelRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// Model slug, e.g. "gpt-6-sol".
+	Model string `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	// "low", "medium", "high", "xhigh", "max" or "ultra".
+	Effort        string `protobuf:"bytes,3,opt,name=effort,proto3" json:"effort,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetModelRequest) Reset() {
+	*x = SetModelRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetModelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetModelRequest) ProtoMessage() {}
+
+func (x *SetModelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetModelRequest.ProtoReflect.Descriptor instead.
+func (*SetModelRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SetModelRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SetModelRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *SetModelRequest) GetEffort() string {
+	if x != nil {
+		return x.Effort
+	}
+	return ""
+}
+
+type SetModelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetModelResponse) Reset() {
+	*x = SetModelResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetModelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetModelResponse) ProtoMessage() {}
+
+func (x *SetModelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetModelResponse.ProtoReflect.Descriptor instead.
+func (*SetModelResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{24}
+}
+
+type ListModelsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListModelsRequest) Reset() {
+	*x = ListModelsRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListModelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListModelsRequest) ProtoMessage() {}
+
+func (x *ListModelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListModelsRequest.ProtoReflect.Descriptor instead.
+func (*ListModelsRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{25}
+}
+
+type ModelInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Efforts       []string               `protobuf:"bytes,4,rep,name=efforts,proto3" json:"efforts,omitempty"`
+	DefaultEffort string                 `protobuf:"bytes,5,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModelInfo) Reset() {
+	*x = ModelInfo{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModelInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModelInfo) ProtoMessage() {}
+
+func (x *ModelInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModelInfo.ProtoReflect.Descriptor instead.
+func (*ModelInfo) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ModelInfo) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *ModelInfo) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *ModelInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *ModelInfo) GetEfforts() []string {
+	if x != nil {
+		return x.Efforts
+	}
+	return nil
+}
+
+func (x *ModelInfo) GetDefaultEffort() string {
+	if x != nil {
+		return x.DefaultEffort
+	}
+	return ""
+}
+
+type ListModelsResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Models []*ModelInfo           `protobuf:"bytes,1,rep,name=models,proto3" json:"models,omitempty"`
+	// Model new sessions use unless told otherwise.
+	DefaultModel  string `protobuf:"bytes,2,opt,name=default_model,json=defaultModel,proto3" json:"default_model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListModelsResponse) Reset() {
+	*x = ListModelsResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListModelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListModelsResponse) ProtoMessage() {}
+
+func (x *ListModelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListModelsResponse.ProtoReflect.Descriptor instead.
+func (*ListModelsResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ListModelsResponse) GetModels() []*ModelInfo {
+	if x != nil {
+		return x.Models
+	}
+	return nil
+}
+
+func (x *ListModelsResponse) GetDefaultModel() string {
+	if x != nil {
+		return x.DefaultModel
+	}
+	return ""
+}
+
+type SetApprovalModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Mode          ApprovalMode           `protobuf:"varint,2,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetApprovalModeRequest) Reset() {
+	*x = SetApprovalModeRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetApprovalModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetApprovalModeRequest) ProtoMessage() {}
+
+func (x *SetApprovalModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetApprovalModeRequest.ProtoReflect.Descriptor instead.
+func (*SetApprovalModeRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SetApprovalModeRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SetApprovalModeRequest) GetMode() ApprovalMode {
+	if x != nil {
+		return x.Mode
+	}
+	return ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+}
+
+type SetApprovalModeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetApprovalModeResponse) Reset() {
+	*x = SetApprovalModeResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetApprovalModeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetApprovalModeResponse) ProtoMessage() {}
+
+func (x *SetApprovalModeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetApprovalModeResponse.ProtoReflect.Descriptor instead.
+func (*SetApprovalModeResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{29}
+}
+
+type CompactRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompactRequest) Reset() {
+	*x = CompactRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactRequest) ProtoMessage() {}
+
+func (x *CompactRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactRequest.ProtoReflect.Descriptor instead.
+func (*CompactRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CompactRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type CompactResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompactResponse) Reset() {
+	*x = CompactResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactResponse) ProtoMessage() {}
+
+func (x *CompactResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactResponse.ProtoReflect.Descriptor instead.
+func (*CompactResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{31}
+}
+
+type AnswerPlanRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Choice        PlanChoice             `protobuf:"varint,2,opt,name=choice,proto3,enum=remoteagent.v1.PlanChoice" json:"choice,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnswerPlanRequest) Reset() {
+	*x = AnswerPlanRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerPlanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerPlanRequest) ProtoMessage() {}
+
+func (x *AnswerPlanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerPlanRequest.ProtoReflect.Descriptor instead.
+func (*AnswerPlanRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AnswerPlanRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AnswerPlanRequest) GetChoice() PlanChoice {
+	if x != nil {
+		return x.Choice
+	}
+	return PlanChoice_PLAN_CHOICE_UNSPECIFIED
+}
+
+type AnswerPlanResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnswerPlanResponse) Reset() {
+	*x = AnswerPlanResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerPlanResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerPlanResponse) ProtoMessage() {}
+
+func (x *AnswerPlanResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerPlanResponse.ProtoReflect.Descriptor instead.
+func (*AnswerPlanResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{33}
+}
+
+type ListDirectoriesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Absolute path or one starting with "~"; empty means the home folder.
+	Path          string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDirectoriesRequest) Reset() {
+	*x = ListDirectoriesRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDirectoriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDirectoriesRequest) ProtoMessage() {}
+
+func (x *ListDirectoriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDirectoriesRequest.ProtoReflect.Descriptor instead.
+func (*ListDirectoriesRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ListDirectoriesRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+type ListDirectoriesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The listed directory, absolute.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Its parent, empty at the root.
+	Parent string `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
+	Home   string `protobuf:"bytes,3,opt,name=home,proto3" json:"home,omitempty"`
+	// Names of the folders in it, hidden ones left out.
+	Dirs          []string `protobuf:"bytes,4,rep,name=dirs,proto3" json:"dirs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDirectoriesResponse) Reset() {
+	*x = ListDirectoriesResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDirectoriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDirectoriesResponse) ProtoMessage() {}
+
+func (x *ListDirectoriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDirectoriesResponse.ProtoReflect.Descriptor instead.
+func (*ListDirectoriesResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ListDirectoriesResponse) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ListDirectoriesResponse) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
+}
+
+func (x *ListDirectoriesResponse) GetHome() string {
+	if x != nil {
+		return x.Home
+	}
+	return ""
+}
+
+func (x *ListDirectoriesResponse) GetDirs() []string {
+	if x != nil {
+		return x.Dirs
+	}
+	return nil
+}
+
+// DaemonSettings are kept by the daemon in settings.json.
+type DaemonSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Permission requests nobody answers are denied after this long.
+	ApprovalTimeoutSeconds int32 `protobuf:"varint,1,opt,name=approval_timeout_seconds,json=approvalTimeoutSeconds,proto3" json:"approval_timeout_seconds,omitempty"`
+	// Defaults for sessions started from a client.
+	DefaultModel  string       `protobuf:"bytes,2,opt,name=default_model,json=defaultModel,proto3" json:"default_model,omitempty"`
+	DefaultEffort string       `protobuf:"bytes,3,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
+	DefaultMode   ApprovalMode `protobuf:"varint,4,opt,name=default_mode,json=defaultMode,proto3,enum=remoteagent.v1.ApprovalMode" json:"default_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DaemonSettings) Reset() {
+	*x = DaemonSettings{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DaemonSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DaemonSettings) ProtoMessage() {}
+
+func (x *DaemonSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DaemonSettings.ProtoReflect.Descriptor instead.
+func (*DaemonSettings) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *DaemonSettings) GetApprovalTimeoutSeconds() int32 {
+	if x != nil {
+		return x.ApprovalTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *DaemonSettings) GetDefaultModel() string {
+	if x != nil {
+		return x.DefaultModel
+	}
+	return ""
+}
+
+func (x *DaemonSettings) GetDefaultEffort() string {
+	if x != nil {
+		return x.DefaultEffort
+	}
+	return ""
+}
+
+func (x *DaemonSettings) GetDefaultMode() ApprovalMode {
+	if x != nil {
+		return x.DefaultMode
+	}
+	return ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+}
+
+type GetSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsRequest) Reset() {
+	*x = GetSettingsRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsRequest) ProtoMessage() {}
+
+func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{37}
+}
+
+type GetSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsResponse) Reset() {
+	*x = GetSettingsResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsResponse) ProtoMessage() {}
+
+func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *GetSettingsResponse) GetSettings() *DaemonSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type UpdateSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSettingsRequest) Reset() {
+	*x = UpdateSettingsRequest{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *UpdateSettingsRequest) GetSettings() *DaemonSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type UpdateSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSettingsResponse) Reset() {
+	*x = UpdateSettingsResponse{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *UpdateSettingsResponse) GetSettings() *DaemonSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\x99\x06\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xb6\x06\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -1331,11 +2304,16 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\asandbox\x18\x13 \x01(\tR\asandbox\x12-\n" +
 	"\x12collaboration_mode\x18\x14 \x01(\tR\x11collaborationMode\x12%\n" +
 	"\x0econtext_tokens\x18\x15 \x01(\x03R\rcontextTokens\x12%\n" +
-	"\x0econtext_window\x18\x16 \x01(\x03R\rcontextWindow\"\xb5\x01\n" +
+	"\x0econtext_window\x18\x16 \x01(\x03R\rcontextWindow\x12\x1b\n" +
+	"\tplan_open\x18\x17 \x01(\bR\bplanOpen\"\xad\x02\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +
-	"\x03env\x18\x03 \x03(\v2-.remoteagent.v1.CreateSessionRequest.EnvEntryR\x03env\x1a6\n" +
+	"\x03env\x18\x03 \x03(\v2-.remoteagent.v1.CreateSessionRequest.EnvEntryR\x03env\x12\x16\n" +
+	"\x06prompt\x18\x04 \x01(\tR\x06prompt\x12\x14\n" +
+	"\x05model\x18\x05 \x01(\tR\x05model\x12\x16\n" +
+	"\x06effort\x18\x06 \x01(\tR\x06effort\x120\n" +
+	"\x04mode\x18\a \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"J\n" +
@@ -1402,7 +2380,62 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\fR\apayload\"&\n" +
 	"\fHookResponse\x12\x16\n" +
-	"\x06output\x18\x01 \x01(\fR\x06output2\xc3\a\n" +
+	"\x06output\x18\x01 \x01(\fR\x06output\"^\n" +
+	"\x0fSetModelRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\x12\x16\n" +
+	"\x06effort\x18\x03 \x01(\tR\x06effort\"\x12\n" +
+	"\x10SetModelResponse\"\x13\n" +
+	"\x11ListModelsRequest\"\xa5\x01\n" +
+	"\tModelInfo\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
+	"\aefforts\x18\x04 \x03(\tR\aefforts\x12%\n" +
+	"\x0edefault_effort\x18\x05 \x01(\tR\rdefaultEffort\"l\n" +
+	"\x12ListModelsResponse\x121\n" +
+	"\x06models\x18\x01 \x03(\v2\x19.remoteagent.v1.ModelInfoR\x06models\x12#\n" +
+	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\"i\n" +
+	"\x16SetApprovalModeRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x120\n" +
+	"\x04mode\x18\x02 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\"\x19\n" +
+	"\x17SetApprovalModeResponse\"/\n" +
+	"\x0eCompactRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x11\n" +
+	"\x0fCompactResponse\"f\n" +
+	"\x11AnswerPlanRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
+	"\x06choice\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.PlanChoiceR\x06choice\"\x14\n" +
+	"\x12AnswerPlanResponse\",\n" +
+	"\x16ListDirectoriesRequest\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\"m\n" +
+	"\x17ListDirectoriesResponse\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
+	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x12\n" +
+	"\x04home\x18\x03 \x01(\tR\x04home\x12\x12\n" +
+	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\xd7\x01\n" +
+	"\x0eDaemonSettings\x128\n" +
+	"\x18approval_timeout_seconds\x18\x01 \x01(\x05R\x16approvalTimeoutSeconds\x12#\n" +
+	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\x12%\n" +
+	"\x0edefault_effort\x18\x03 \x01(\tR\rdefaultEffort\x12?\n" +
+	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\"\x14\n" +
+	"\x12GetSettingsRequest\"Q\n" +
+	"\x13GetSettingsResponse\x12:\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\"S\n" +
+	"\x15UpdateSettingsRequest\x12:\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\"T\n" +
+	"\x16UpdateSettingsResponse\x12:\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings*\x88\x01\n" +
+	"\n" +
+	"PlanChoice\x12\x1b\n" +
+	"\x17PLAN_CHOICE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15PLAN_CHOICE_IMPLEMENT\x10\x01\x12#\n" +
+	"\x1fPLAN_CHOICE_CLEAR_AND_IMPLEMENT\x10\x02\x12\x1d\n" +
+	"\x19PLAN_CHOICE_KEEP_PLANNING\x10\x032\x89\r\n" +
 	"\fLocalService\x12\\\n" +
 	"\rCreateSession\x12$.remoteagent.v1.CreateSessionRequest\x1a%.remoteagent.v1.CreateSessionResponse\x12Y\n" +
 	"\fListSessions\x12#.remoteagent.v1.ListSessionsRequest\x1a$.remoteagent.v1.ListSessionsResponse\x12S\n" +
@@ -1411,7 +2444,17 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x04Send\x12\x1b.remoteagent.v1.SendRequest\x1a\x1c.remoteagent.v1.SendResponse\x12P\n" +
 	"\tInterrupt\x12 .remoteagent.v1.InterruptRequest\x1a!.remoteagent.v1.InterruptResponse\x12V\n" +
 	"\vStopSession\x12\".remoteagent.v1.StopSessionRequest\x1a#.remoteagent.v1.StopSessionResponse\x12V\n" +
-	"\vCancelInput\x12\".remoteagent.v1.CancelInputRequest\x1a#.remoteagent.v1.CancelInputResponse\x12b\n" +
+	"\vCancelInput\x12\".remoteagent.v1.CancelInputRequest\x1a#.remoteagent.v1.CancelInputResponse\x12M\n" +
+	"\bSetModel\x12\x1f.remoteagent.v1.SetModelRequest\x1a .remoteagent.v1.SetModelResponse\x12S\n" +
+	"\n" +
+	"ListModels\x12!.remoteagent.v1.ListModelsRequest\x1a\".remoteagent.v1.ListModelsResponse\x12b\n" +
+	"\x0fSetApprovalMode\x12&.remoteagent.v1.SetApprovalModeRequest\x1a'.remoteagent.v1.SetApprovalModeResponse\x12J\n" +
+	"\aCompact\x12\x1e.remoteagent.v1.CompactRequest\x1a\x1f.remoteagent.v1.CompactResponse\x12S\n" +
+	"\n" +
+	"AnswerPlan\x12!.remoteagent.v1.AnswerPlanRequest\x1a\".remoteagent.v1.AnswerPlanResponse\x12b\n" +
+	"\x0fListDirectories\x12&.remoteagent.v1.ListDirectoriesRequest\x1a'.remoteagent.v1.ListDirectoriesResponse\x12V\n" +
+	"\vGetSettings\x12\".remoteagent.v1.GetSettingsRequest\x1a#.remoteagent.v1.GetSettingsResponse\x12_\n" +
+	"\x0eUpdateSettings\x12%.remoteagent.v1.UpdateSettingsRequest\x1a&.remoteagent.v1.UpdateSettingsResponse\x12b\n" +
 	"\x0fResolveApproval\x12&.remoteagent.v1.ResolveApprovalRequest\x1a'.remoteagent.v1.ResolveApprovalResponse\x12_\n" +
 	"\x0eAnswerQuestion\x12%.remoteagent.v1.AnswerQuestionRequest\x1a&.remoteagent.v1.AnswerQuestionResponse\x12X\n" +
 	"\vWatchEvents\x12\".remoteagent.v1.WatchEventsRequest\x1a#.remoteagent.v1.WatchEventsResponse0\x01\x12A\n" +
@@ -1431,71 +2474,116 @@ func file_remoteagent_v1_local_proto_rawDescGZIP() []byte {
 	return file_remoteagent_v1_local_proto_rawDescData
 }
 
-var file_remoteagent_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_remoteagent_v1_local_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_remoteagent_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_remoteagent_v1_local_proto_goTypes = []any{
-	(*Session)(nil),                 // 0: remoteagent.v1.Session
-	(*CreateSessionRequest)(nil),    // 1: remoteagent.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),   // 2: remoteagent.v1.CreateSessionResponse
-	(*ListSessionsRequest)(nil),     // 3: remoteagent.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),    // 4: remoteagent.v1.ListSessionsResponse
-	(*GetSessionRequest)(nil),       // 5: remoteagent.v1.GetSessionRequest
-	(*GetSessionResponse)(nil),      // 6: remoteagent.v1.GetSessionResponse
-	(*SendRequest)(nil),             // 7: remoteagent.v1.SendRequest
-	(*SendResponse)(nil),            // 8: remoteagent.v1.SendResponse
-	(*InterruptRequest)(nil),        // 9: remoteagent.v1.InterruptRequest
-	(*InterruptResponse)(nil),       // 10: remoteagent.v1.InterruptResponse
-	(*StopSessionRequest)(nil),      // 11: remoteagent.v1.StopSessionRequest
-	(*StopSessionResponse)(nil),     // 12: remoteagent.v1.StopSessionResponse
-	(*CancelInputRequest)(nil),      // 13: remoteagent.v1.CancelInputRequest
-	(*CancelInputResponse)(nil),     // 14: remoteagent.v1.CancelInputResponse
-	(*ResolveApprovalRequest)(nil),  // 15: remoteagent.v1.ResolveApprovalRequest
-	(*ResolveApprovalResponse)(nil), // 16: remoteagent.v1.ResolveApprovalResponse
-	(*AnswerQuestionRequest)(nil),   // 17: remoteagent.v1.AnswerQuestionRequest
-	(*AnswerQuestionResponse)(nil),  // 18: remoteagent.v1.AnswerQuestionResponse
-	(*WatchEventsRequest)(nil),      // 19: remoteagent.v1.WatchEventsRequest
-	(*WatchEventsResponse)(nil),     // 20: remoteagent.v1.WatchEventsResponse
-	(*HookRequest)(nil),             // 21: remoteagent.v1.HookRequest
-	(*HookResponse)(nil),            // 22: remoteagent.v1.HookResponse
-	nil,                             // 23: remoteagent.v1.CreateSessionRequest.EnvEntry
-	(SessionStatus)(0),              // 24: remoteagent.v1.SessionStatus
-	(*timestamppb.Timestamp)(nil),   // 25: google.protobuf.Timestamp
-	(*Event)(nil),                   // 26: remoteagent.v1.Event
+	(PlanChoice)(0),                 // 0: remoteagent.v1.PlanChoice
+	(*Session)(nil),                 // 1: remoteagent.v1.Session
+	(*CreateSessionRequest)(nil),    // 2: remoteagent.v1.CreateSessionRequest
+	(*CreateSessionResponse)(nil),   // 3: remoteagent.v1.CreateSessionResponse
+	(*ListSessionsRequest)(nil),     // 4: remoteagent.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),    // 5: remoteagent.v1.ListSessionsResponse
+	(*GetSessionRequest)(nil),       // 6: remoteagent.v1.GetSessionRequest
+	(*GetSessionResponse)(nil),      // 7: remoteagent.v1.GetSessionResponse
+	(*SendRequest)(nil),             // 8: remoteagent.v1.SendRequest
+	(*SendResponse)(nil),            // 9: remoteagent.v1.SendResponse
+	(*InterruptRequest)(nil),        // 10: remoteagent.v1.InterruptRequest
+	(*InterruptResponse)(nil),       // 11: remoteagent.v1.InterruptResponse
+	(*StopSessionRequest)(nil),      // 12: remoteagent.v1.StopSessionRequest
+	(*StopSessionResponse)(nil),     // 13: remoteagent.v1.StopSessionResponse
+	(*CancelInputRequest)(nil),      // 14: remoteagent.v1.CancelInputRequest
+	(*CancelInputResponse)(nil),     // 15: remoteagent.v1.CancelInputResponse
+	(*ResolveApprovalRequest)(nil),  // 16: remoteagent.v1.ResolveApprovalRequest
+	(*ResolveApprovalResponse)(nil), // 17: remoteagent.v1.ResolveApprovalResponse
+	(*AnswerQuestionRequest)(nil),   // 18: remoteagent.v1.AnswerQuestionRequest
+	(*AnswerQuestionResponse)(nil),  // 19: remoteagent.v1.AnswerQuestionResponse
+	(*WatchEventsRequest)(nil),      // 20: remoteagent.v1.WatchEventsRequest
+	(*WatchEventsResponse)(nil),     // 21: remoteagent.v1.WatchEventsResponse
+	(*HookRequest)(nil),             // 22: remoteagent.v1.HookRequest
+	(*HookResponse)(nil),            // 23: remoteagent.v1.HookResponse
+	(*SetModelRequest)(nil),         // 24: remoteagent.v1.SetModelRequest
+	(*SetModelResponse)(nil),        // 25: remoteagent.v1.SetModelResponse
+	(*ListModelsRequest)(nil),       // 26: remoteagent.v1.ListModelsRequest
+	(*ModelInfo)(nil),               // 27: remoteagent.v1.ModelInfo
+	(*ListModelsResponse)(nil),      // 28: remoteagent.v1.ListModelsResponse
+	(*SetApprovalModeRequest)(nil),  // 29: remoteagent.v1.SetApprovalModeRequest
+	(*SetApprovalModeResponse)(nil), // 30: remoteagent.v1.SetApprovalModeResponse
+	(*CompactRequest)(nil),          // 31: remoteagent.v1.CompactRequest
+	(*CompactResponse)(nil),         // 32: remoteagent.v1.CompactResponse
+	(*AnswerPlanRequest)(nil),       // 33: remoteagent.v1.AnswerPlanRequest
+	(*AnswerPlanResponse)(nil),      // 34: remoteagent.v1.AnswerPlanResponse
+	(*ListDirectoriesRequest)(nil),  // 35: remoteagent.v1.ListDirectoriesRequest
+	(*ListDirectoriesResponse)(nil), // 36: remoteagent.v1.ListDirectoriesResponse
+	(*DaemonSettings)(nil),          // 37: remoteagent.v1.DaemonSettings
+	(*GetSettingsRequest)(nil),      // 38: remoteagent.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil),     // 39: remoteagent.v1.GetSettingsResponse
+	(*UpdateSettingsRequest)(nil),   // 40: remoteagent.v1.UpdateSettingsRequest
+	(*UpdateSettingsResponse)(nil),  // 41: remoteagent.v1.UpdateSettingsResponse
+	nil,                             // 42: remoteagent.v1.CreateSessionRequest.EnvEntry
+	(SessionStatus)(0),              // 43: remoteagent.v1.SessionStatus
+	(*timestamppb.Timestamp)(nil),   // 44: google.protobuf.Timestamp
+	(ApprovalMode)(0),               // 45: remoteagent.v1.ApprovalMode
+	(*Event)(nil),                   // 46: remoteagent.v1.Event
 }
 var file_remoteagent_v1_local_proto_depIdxs = []int32{
-	24, // 0: remoteagent.v1.Session.status:type_name -> remoteagent.v1.SessionStatus
-	25, // 1: remoteagent.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	23, // 2: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
-	0,  // 3: remoteagent.v1.CreateSessionResponse.session:type_name -> remoteagent.v1.Session
-	0,  // 4: remoteagent.v1.ListSessionsResponse.sessions:type_name -> remoteagent.v1.Session
-	0,  // 5: remoteagent.v1.GetSessionResponse.session:type_name -> remoteagent.v1.Session
-	26, // 6: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
-	1,  // 7: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
-	3,  // 8: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
-	5,  // 9: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
-	7,  // 10: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
-	9,  // 11: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
-	11, // 12: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
-	13, // 13: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
-	15, // 14: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
-	17, // 15: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
-	19, // 16: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
-	21, // 17: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
-	2,  // 18: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
-	4,  // 19: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
-	6,  // 20: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
-	8,  // 21: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
-	10, // 22: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
-	12, // 23: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
-	14, // 24: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
-	16, // 25: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
-	18, // 26: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
-	20, // 27: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
-	22, // 28: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
-	18, // [18:29] is the sub-list for method output_type
-	7,  // [7:18] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	43, // 0: remoteagent.v1.Session.status:type_name -> remoteagent.v1.SessionStatus
+	44, // 1: remoteagent.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	42, // 2: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
+	45, // 3: remoteagent.v1.CreateSessionRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	1,  // 4: remoteagent.v1.CreateSessionResponse.session:type_name -> remoteagent.v1.Session
+	1,  // 5: remoteagent.v1.ListSessionsResponse.sessions:type_name -> remoteagent.v1.Session
+	1,  // 6: remoteagent.v1.GetSessionResponse.session:type_name -> remoteagent.v1.Session
+	46, // 7: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
+	27, // 8: remoteagent.v1.ListModelsResponse.models:type_name -> remoteagent.v1.ModelInfo
+	45, // 9: remoteagent.v1.SetApprovalModeRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	0,  // 10: remoteagent.v1.AnswerPlanRequest.choice:type_name -> remoteagent.v1.PlanChoice
+	45, // 11: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
+	37, // 12: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	37, // 13: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
+	37, // 14: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	2,  // 15: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
+	4,  // 16: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
+	6,  // 17: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
+	8,  // 18: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
+	10, // 19: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
+	12, // 20: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
+	14, // 21: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
+	24, // 22: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
+	26, // 23: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
+	29, // 24: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
+	31, // 25: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
+	33, // 26: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
+	35, // 27: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
+	38, // 28: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
+	40, // 29: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
+	16, // 30: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
+	18, // 31: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
+	20, // 32: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
+	22, // 33: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
+	3,  // 34: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
+	5,  // 35: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
+	7,  // 36: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
+	9,  // 37: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
+	11, // 38: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
+	13, // 39: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
+	15, // 40: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
+	25, // 41: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
+	28, // 42: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
+	30, // 43: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
+	32, // 44: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
+	34, // 45: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
+	36, // 46: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
+	39, // 47: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
+	41, // 48: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
+	17, // 49: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
+	19, // 50: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
+	21, // 51: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
+	23, // 52: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
+	34, // [34:53] is the sub-list for method output_type
+	15, // [15:34] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_local_proto_init() }
@@ -1510,13 +2598,14 @@ func file_remoteagent_v1_local_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_local_proto_rawDesc), len(file_remoteagent_v1_local_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   24,
+			NumEnums:      1,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_remoteagent_v1_local_proto_goTypes,
 		DependencyIndexes: file_remoteagent_v1_local_proto_depIdxs,
+		EnumInfos:         file_remoteagent_v1_local_proto_enumTypes,
 		MessageInfos:      file_remoteagent_v1_local_proto_msgTypes,
 	}.Build()
 	File_remoteagent_v1_local_proto = out.File

@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"sync"
 	"time"
 )
 
-// Conn is a control connection to a running Host.
+// Conn is a control connection to a running Host. It is safe for
+// concurrent use: each request waits for its reply before the next is sent.
 type Conn struct {
+	mu  sync.Mutex
 	c   net.Conn
 	r   *bufio.Reader
 	enc *json.Encoder
@@ -28,6 +31,8 @@ func Dial(path string) (*Conn, error) {
 func (c *Conn) Close() error { return c.c.Close() }
 
 func (c *Conn) do(req Request) (Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	_ = c.c.SetDeadline(time.Now().Add(5 * time.Second))
 	if err := c.enc.Encode(req); err != nil {
 		return Response{}, err

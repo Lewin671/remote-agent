@@ -8,7 +8,6 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +34,8 @@ type Backend interface {
 	SessionDir(id string) string
 	// Local serves the commands.
 	Local() remoteagentv1connect.LocalServiceHandler
+	// MachineMeta describes the machine.
+	MachineMeta() *pb.MachineMeta
 }
 
 // Relay keeps the daemon connected to the server.
@@ -145,7 +146,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	} else if f.GetReady() == nil {
 		return errors.New("server did not accept the stream")
 	}
-	if err := c.putMachine(ctx); err != nil {
+	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
 		return err
 	}
 	r.mu.Lock()
@@ -230,11 +231,10 @@ func revision() uint64 {
 	return lastRev
 }
 
-func (c *conn) putMachine(ctx context.Context) error {
-	host, _ := os.Hostname()
+func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 	env, err := e2e.SealMessage(c.keys.Meta, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: revision(), Sender: c.acct.DeviceID,
-	}, &pb.MachineMeta{Hostname: host, Os: runtime.GOOS})
+	}, meta)
 	if err != nil {
 		return err
 	}

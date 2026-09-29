@@ -93,6 +93,7 @@ func runDaemon(args []string) error {
 	d = daemon.New(daemon.Config{
 		Exe:             exe,
 		CodexBin:        *codexBin,
+		CodexHome:       codexHome,
 		Tmux:            tc,
 		HistoryPath:     filepath.Join(codexHome, "history.jsonl"),
 		Env:             env,

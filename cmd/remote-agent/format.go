@@ -120,6 +120,18 @@ func formatEvent(e *pb.Event) string {
 		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
 			body += " (delivered but not recorded by Codex; not sent again)"
 		}
+	case *pb.Event_PlanProposed:
+		body = "plan proposed: " + oneLine(k.PlanProposed.Text)
+	case *pb.Event_SettingsChanged:
+		c := k.SettingsChanged
+		switch {
+		case c.Compacted:
+			body = "context compacted"
+		case c.Model != "":
+			body = fmt.Sprintf("model set to %s %s", c.Model, c.Effort)
+		default:
+			body = "approval mode set to " + strings.ToLower(strings.TrimPrefix(c.Mode.String(), "APPROVAL_MODE_"))
+		}
 	case *pb.Event_SessionState:
 		body = "session " + statusName(k.SessionState.Status)
 		if d := k.SessionState.Detail; d != "" {
@@ -148,4 +160,13 @@ func clip(s string, maxLines int) string {
 		return s
 	}
 	return strings.Join(lines[:maxLines], "\n") + fmt.Sprintf("\n… %d more lines", len(lines)-maxLines)
+}
+
+// oneLine shortens text to its first line.
+func oneLine(text string) string {
+	line, rest, _ := strings.Cut(strings.TrimSpace(text), "\n")
+	if rest != "" {
+		line += " …"
+	}
+	return line
 }

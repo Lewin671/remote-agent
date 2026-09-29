@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.v1;
 
+import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 
 // Inner-layer messages exchanged between clients and daemons. They only
@@ -11,6 +12,12 @@ import "remoteagent/v1/local.proto";
 message MachineMeta {
   string hostname = 1;
   string os = 2;
+  // The Codex account's latest usage limits seen on this machine.
+  RateLimit primary_limit = 3;
+  RateLimit secondary_limit = 4;
+  string plan_type = 5;
+  // Home folder, for choosing where to start sessions.
+  string home = 6;
 }
 
 // Command is what a client asks a daemon to do. The session operations
@@ -24,6 +31,17 @@ message Command {
     AnswerQuestionRequest answer_question = 4;
     StopSessionRequest stop_session = 5;
     CancelInputRequest cancel_input = 6;
+    SetModelRequest set_model = 7;
+    SetApprovalModeRequest set_approval_mode = 8;
+    CompactRequest compact = 9;
+    AnswerPlanRequest answer_plan = 10;
+    // Commands for the machine rather than a session; their envelope
+    // header names no session.
+    CreateSessionRequest create_session = 20;
+    ListModelsRequest list_models = 21;
+    ListDirectoriesRequest list_directories = 22;
+    GetSettingsRequest get_settings = 23;
+    UpdateSettingsRequest update_settings = 24;
   }
 }
 
@@ -42,5 +60,14 @@ message CommandResult {
     AnswerQuestionResponse answer_question = 13;
     StopSessionResponse stop_session = 14;
     CancelInputResponse cancel_input = 15;
+    SetModelResponse set_model = 16;
+    SetApprovalModeResponse set_approval_mode = 17;
+    CompactResponse compact = 18;
+    AnswerPlanResponse answer_plan = 19;
+    CreateSessionResponse create_session = 30;
+    ListModelsResponse list_models = 31;
+    ListDirectoriesResponse list_directories = 32;
+    GetSettingsResponse get_settings = 33;
+    UpdateSettingsResponse update_settings = 34;
   }
 }

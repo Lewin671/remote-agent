@@ -51,6 +51,26 @@ const (
 	// LocalServiceCancelInputProcedure is the fully-qualified name of the LocalService's CancelInput
 	// RPC.
 	LocalServiceCancelInputProcedure = "/remoteagent.v1.LocalService/CancelInput"
+	// LocalServiceSetModelProcedure is the fully-qualified name of the LocalService's SetModel RPC.
+	LocalServiceSetModelProcedure = "/remoteagent.v1.LocalService/SetModel"
+	// LocalServiceListModelsProcedure is the fully-qualified name of the LocalService's ListModels RPC.
+	LocalServiceListModelsProcedure = "/remoteagent.v1.LocalService/ListModels"
+	// LocalServiceSetApprovalModeProcedure is the fully-qualified name of the LocalService's
+	// SetApprovalMode RPC.
+	LocalServiceSetApprovalModeProcedure = "/remoteagent.v1.LocalService/SetApprovalMode"
+	// LocalServiceCompactProcedure is the fully-qualified name of the LocalService's Compact RPC.
+	LocalServiceCompactProcedure = "/remoteagent.v1.LocalService/Compact"
+	// LocalServiceAnswerPlanProcedure is the fully-qualified name of the LocalService's AnswerPlan RPC.
+	LocalServiceAnswerPlanProcedure = "/remoteagent.v1.LocalService/AnswerPlan"
+	// LocalServiceListDirectoriesProcedure is the fully-qualified name of the LocalService's
+	// ListDirectories RPC.
+	LocalServiceListDirectoriesProcedure = "/remoteagent.v1.LocalService/ListDirectories"
+	// LocalServiceGetSettingsProcedure is the fully-qualified name of the LocalService's GetSettings
+	// RPC.
+	LocalServiceGetSettingsProcedure = "/remoteagent.v1.LocalService/GetSettings"
+	// LocalServiceUpdateSettingsProcedure is the fully-qualified name of the LocalService's
+	// UpdateSettings RPC.
+	LocalServiceUpdateSettingsProcedure = "/remoteagent.v1.LocalService/UpdateSettings"
 	// LocalServiceResolveApprovalProcedure is the fully-qualified name of the LocalService's
 	// ResolveApproval RPC.
 	LocalServiceResolveApprovalProcedure = "/remoteagent.v1.LocalService/ResolveApproval"
@@ -74,6 +94,19 @@ type LocalServiceClient interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	// CancelInput removes a queued message that has not been written yet.
 	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
+	// SetModel switches the model and effort for this session only.
+	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
+	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
+	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
+	// Compact runs /compact while the session is idle.
+	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
+	// AnswerPlan answers Codex's "Implement this plan?" prompt.
+	AnswerPlan(context.Context, *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error)
+	// ListDirectories lists the folders in a directory, for choosing where
+	// to start a session.
+	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest]) (*connect.ServerStreamForClient[v1.WatchEventsResponse], error)
@@ -135,6 +168,54 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("CancelInput")),
 			connect.WithClientOptions(opts...),
 		),
+		setModel: connect.NewClient[v1.SetModelRequest, v1.SetModelResponse](
+			httpClient,
+			baseURL+LocalServiceSetModelProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetModel")),
+			connect.WithClientOptions(opts...),
+		),
+		listModels: connect.NewClient[v1.ListModelsRequest, v1.ListModelsResponse](
+			httpClient,
+			baseURL+LocalServiceListModelsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListModels")),
+			connect.WithClientOptions(opts...),
+		),
+		setApprovalMode: connect.NewClient[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse](
+			httpClient,
+			baseURL+LocalServiceSetApprovalModeProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetApprovalMode")),
+			connect.WithClientOptions(opts...),
+		),
+		compact: connect.NewClient[v1.CompactRequest, v1.CompactResponse](
+			httpClient,
+			baseURL+LocalServiceCompactProcedure,
+			connect.WithSchema(localServiceMethods.ByName("Compact")),
+			connect.WithClientOptions(opts...),
+		),
+		answerPlan: connect.NewClient[v1.AnswerPlanRequest, v1.AnswerPlanResponse](
+			httpClient,
+			baseURL+LocalServiceAnswerPlanProcedure,
+			connect.WithSchema(localServiceMethods.ByName("AnswerPlan")),
+			connect.WithClientOptions(opts...),
+		),
+		listDirectories: connect.NewClient[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse](
+			httpClient,
+			baseURL+LocalServiceListDirectoriesProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ListDirectories")),
+			connect.WithClientOptions(opts...),
+		),
+		getSettings: connect.NewClient[v1.GetSettingsRequest, v1.GetSettingsResponse](
+			httpClient,
+			baseURL+LocalServiceGetSettingsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSettings: connect.NewClient[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse](
+			httpClient,
+			baseURL+LocalServiceUpdateSettingsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("UpdateSettings")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveApproval: connect.NewClient[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse](
 			httpClient,
 			baseURL+LocalServiceResolveApprovalProcedure,
@@ -171,6 +252,14 @@ type localServiceClient struct {
 	interrupt       *connect.Client[v1.InterruptRequest, v1.InterruptResponse]
 	stopSession     *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
 	cancelInput     *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
+	setModel        *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
+	listModels      *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
+	setApprovalMode *connect.Client[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse]
+	compact         *connect.Client[v1.CompactRequest, v1.CompactResponse]
+	answerPlan      *connect.Client[v1.AnswerPlanRequest, v1.AnswerPlanResponse]
+	listDirectories *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
+	getSettings     *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	updateSettings  *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
 	resolveApproval *connect.Client[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse]
 	answerQuestion  *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	watchEvents     *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
@@ -212,6 +301,46 @@ func (c *localServiceClient) CancelInput(ctx context.Context, req *connect.Reque
 	return c.cancelInput.CallUnary(ctx, req)
 }
 
+// SetModel calls remoteagent.v1.LocalService.SetModel.
+func (c *localServiceClient) SetModel(ctx context.Context, req *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error) {
+	return c.setModel.CallUnary(ctx, req)
+}
+
+// ListModels calls remoteagent.v1.LocalService.ListModels.
+func (c *localServiceClient) ListModels(ctx context.Context, req *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
+	return c.listModels.CallUnary(ctx, req)
+}
+
+// SetApprovalMode calls remoteagent.v1.LocalService.SetApprovalMode.
+func (c *localServiceClient) SetApprovalMode(ctx context.Context, req *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error) {
+	return c.setApprovalMode.CallUnary(ctx, req)
+}
+
+// Compact calls remoteagent.v1.LocalService.Compact.
+func (c *localServiceClient) Compact(ctx context.Context, req *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error) {
+	return c.compact.CallUnary(ctx, req)
+}
+
+// AnswerPlan calls remoteagent.v1.LocalService.AnswerPlan.
+func (c *localServiceClient) AnswerPlan(ctx context.Context, req *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error) {
+	return c.answerPlan.CallUnary(ctx, req)
+}
+
+// ListDirectories calls remoteagent.v1.LocalService.ListDirectories.
+func (c *localServiceClient) ListDirectories(ctx context.Context, req *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error) {
+	return c.listDirectories.CallUnary(ctx, req)
+}
+
+// GetSettings calls remoteagent.v1.LocalService.GetSettings.
+func (c *localServiceClient) GetSettings(ctx context.Context, req *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return c.getSettings.CallUnary(ctx, req)
+}
+
+// UpdateSettings calls remoteagent.v1.LocalService.UpdateSettings.
+func (c *localServiceClient) UpdateSettings(ctx context.Context, req *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
+	return c.updateSettings.CallUnary(ctx, req)
+}
+
 // ResolveApproval calls remoteagent.v1.LocalService.ResolveApproval.
 func (c *localServiceClient) ResolveApproval(ctx context.Context, req *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {
 	return c.resolveApproval.CallUnary(ctx, req)
@@ -242,6 +371,19 @@ type LocalServiceHandler interface {
 	StopSession(context.Context, *connect.Request[v1.StopSessionRequest]) (*connect.Response[v1.StopSessionResponse], error)
 	// CancelInput removes a queued message that has not been written yet.
 	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
+	// SetModel switches the model and effort for this session only.
+	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
+	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
+	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
+	// Compact runs /compact while the session is idle.
+	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
+	// AnswerPlan answers Codex's "Implement this plan?" prompt.
+	AnswerPlan(context.Context, *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error)
+	// ListDirectories lists the folders in a directory, for choosing where
+	// to start a session.
+	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest], *connect.ServerStream[v1.WatchEventsResponse]) error
@@ -299,6 +441,54 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("CancelInput")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceSetModelHandler := connect.NewUnaryHandler(
+		LocalServiceSetModelProcedure,
+		svc.SetModel,
+		connect.WithSchema(localServiceMethods.ByName("SetModel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceListModelsHandler := connect.NewUnaryHandler(
+		LocalServiceListModelsProcedure,
+		svc.ListModels,
+		connect.WithSchema(localServiceMethods.ByName("ListModels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceSetApprovalModeHandler := connect.NewUnaryHandler(
+		LocalServiceSetApprovalModeProcedure,
+		svc.SetApprovalMode,
+		connect.WithSchema(localServiceMethods.ByName("SetApprovalMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceCompactHandler := connect.NewUnaryHandler(
+		LocalServiceCompactProcedure,
+		svc.Compact,
+		connect.WithSchema(localServiceMethods.ByName("Compact")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceAnswerPlanHandler := connect.NewUnaryHandler(
+		LocalServiceAnswerPlanProcedure,
+		svc.AnswerPlan,
+		connect.WithSchema(localServiceMethods.ByName("AnswerPlan")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceListDirectoriesHandler := connect.NewUnaryHandler(
+		LocalServiceListDirectoriesProcedure,
+		svc.ListDirectories,
+		connect.WithSchema(localServiceMethods.ByName("ListDirectories")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceGetSettingsHandler := connect.NewUnaryHandler(
+		LocalServiceGetSettingsProcedure,
+		svc.GetSettings,
+		connect.WithSchema(localServiceMethods.ByName("GetSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceUpdateSettingsHandler := connect.NewUnaryHandler(
+		LocalServiceUpdateSettingsProcedure,
+		svc.UpdateSettings,
+		connect.WithSchema(localServiceMethods.ByName("UpdateSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceResolveApprovalHandler := connect.NewUnaryHandler(
 		LocalServiceResolveApprovalProcedure,
 		svc.ResolveApproval,
@@ -339,6 +529,22 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceStopSessionHandler.ServeHTTP(w, r)
 		case LocalServiceCancelInputProcedure:
 			localServiceCancelInputHandler.ServeHTTP(w, r)
+		case LocalServiceSetModelProcedure:
+			localServiceSetModelHandler.ServeHTTP(w, r)
+		case LocalServiceListModelsProcedure:
+			localServiceListModelsHandler.ServeHTTP(w, r)
+		case LocalServiceSetApprovalModeProcedure:
+			localServiceSetApprovalModeHandler.ServeHTTP(w, r)
+		case LocalServiceCompactProcedure:
+			localServiceCompactHandler.ServeHTTP(w, r)
+		case LocalServiceAnswerPlanProcedure:
+			localServiceAnswerPlanHandler.ServeHTTP(w, r)
+		case LocalServiceListDirectoriesProcedure:
+			localServiceListDirectoriesHandler.ServeHTTP(w, r)
+		case LocalServiceGetSettingsProcedure:
+			localServiceGetSettingsHandler.ServeHTTP(w, r)
+		case LocalServiceUpdateSettingsProcedure:
+			localServiceUpdateSettingsHandler.ServeHTTP(w, r)
 		case LocalServiceResolveApprovalProcedure:
 			localServiceResolveApprovalHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerQuestionProcedure:
@@ -382,6 +588,38 @@ func (UnimplementedLocalServiceHandler) StopSession(context.Context, *connect.Re
 
 func (UnimplementedLocalServiceHandler) CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.CancelInput is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.SetModel is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.ListModels is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.SetApprovalMode is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.Compact is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) AnswerPlan(context.Context, *connect.Request[v1.AnswerPlanRequest]) (*connect.Response[v1.AnswerPlanResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.AnswerPlan is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.ListDirectories is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.GetSettings is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.UpdateSettings is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {

@@ -92,6 +92,11 @@ func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struc
 
 func (b *fakeBackend) SessionDir(id string) string { return filepath.Join(b.dir, id) }
 
+func (b *fakeBackend) MachineMeta() *pb.MachineMeta {
+	host, _ := os.Hostname()
+	return &pb.MachineMeta{Hostname: host}
+}
+
 func (b *fakeBackend) Local() remoteagentv1connect.LocalServiceHandler { return &fakeLocal{b: b} }
 
 type fakeLocal struct {
@@ -465,5 +470,24 @@ func TestLostSessionKeyIsNotReplaced(t *testing.T) {
 	evs, err := e.client.Events(context.Background(), s, 0)
 	if err != nil || len(evs) != 1 {
 		t.Fatalf("events: %v %v", evs, err)
+	}
+}
+
+func TestMachineCommands(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+	ctx := context.Background()
+	list := &pb.Command{Kind: &pb.Command_ListModels{ListModels: &pb.ListModelsRequest{}}}
+	// A machine command sealed for a session is refused.
+	var ce *remoteclient.CommandError
+	if _, err := e.client.Do(ctx, s, list); !errors.As(err, &ce) || ce.Code != "invalid_argument" {
+		t.Fatalf("machine command with a session: %v", err)
+	}
+	// Without one it reaches the daemon (whose fake does not implement it).
+	if _, err := e.client.DoMachine(ctx, s.MachineID, list); !errors.As(err, &ce) || ce.Code != "unimplemented" {
+		t.Fatalf("machine command: %v", err)
 	}
 }

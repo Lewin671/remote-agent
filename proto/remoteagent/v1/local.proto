@@ -17,6 +17,19 @@ service LocalService {
   rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
   // CancelInput removes a queued message that has not been written yet.
   rpc CancelInput(CancelInputRequest) returns (CancelInputResponse);
+  // SetModel switches the model and effort for this session only.
+  rpc SetModel(SetModelRequest) returns (SetModelResponse);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc SetApprovalMode(SetApprovalModeRequest) returns (SetApprovalModeResponse);
+  // Compact runs /compact while the session is idle.
+  rpc Compact(CompactRequest) returns (CompactResponse);
+  // AnswerPlan answers Codex's "Implement this plan?" prompt.
+  rpc AnswerPlan(AnswerPlanRequest) returns (AnswerPlanResponse);
+  // ListDirectories lists the folders in a directory, for choosing where
+  // to start a session.
+  rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse);
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
@@ -52,6 +65,8 @@ message Session {
   // Context window use from the latest token count, 0 when unknown.
   int64 context_tokens = 21;
   int64 context_window = 22;
+  // Codex is asking whether to implement the plan it proposed.
+  bool plan_open = 23;
 }
 
 message CreateSessionRequest {
@@ -60,6 +75,13 @@ message CreateSessionRequest {
   repeated string args = 2;
   // Environment for the Codex process, e.g. proxy variables of the caller.
   map<string, string> env = 3;
+  // First message, sent once Codex is ready.
+  string prompt = 4;
+  // Model, effort and approval mode to start with; empty means the
+  // daemon's defaults, then Codex's own configuration.
+  string model = 5;
+  string effort = 6;
+  ApprovalMode mode = 7;
 }
 
 message CreateSessionResponse {
@@ -162,4 +184,99 @@ message HookRequest {
 message HookResponse {
   // JSON the hook must print to stdout; empty means print nothing.
   bytes output = 1;
+}
+
+message SetModelRequest {
+  string session_id = 1;
+  // Model slug, e.g. "gpt-6-sol".
+  string model = 2;
+  // "low", "medium", "high", "xhigh", "max" or "ultra".
+  string effort = 3;
+}
+
+message SetModelResponse {}
+
+message ListModelsRequest {}
+
+message ModelInfo {
+  string slug = 1;
+  string display_name = 2;
+  string description = 3;
+  repeated string efforts = 4;
+  string default_effort = 5;
+}
+
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+  // Model new sessions use unless told otherwise.
+  string default_model = 2;
+}
+
+message SetApprovalModeRequest {
+  string session_id = 1;
+  ApprovalMode mode = 2;
+}
+
+message SetApprovalModeResponse {}
+
+message CompactRequest {
+  string session_id = 1;
+}
+
+message CompactResponse {}
+
+enum PlanChoice {
+  PLAN_CHOICE_UNSPECIFIED = 0;
+  // Switch to Default mode and start implementing.
+  PLAN_CHOICE_IMPLEMENT = 1;
+  // Start a fresh thread with the plan and implement it.
+  PLAN_CHOICE_CLEAR_AND_IMPLEMENT = 2;
+  // Stay in Plan mode.
+  PLAN_CHOICE_KEEP_PLANNING = 3;
+}
+
+message AnswerPlanRequest {
+  string session_id = 1;
+  PlanChoice choice = 2;
+}
+
+message AnswerPlanResponse {}
+
+message ListDirectoriesRequest {
+  // Absolute path or one starting with "~"; empty means the home folder.
+  string path = 1;
+}
+
+message ListDirectoriesResponse {
+  // The listed directory, absolute.
+  string path = 1;
+  // Its parent, empty at the root.
+  string parent = 2;
+  string home = 3;
+  // Names of the folders in it, hidden ones left out.
+  repeated string dirs = 4;
+}
+
+// DaemonSettings are kept by the daemon in settings.json.
+message DaemonSettings {
+  // Permission requests nobody answers are denied after this long.
+  int32 approval_timeout_seconds = 1;
+  // Defaults for sessions started from a client.
+  string default_model = 2;
+  string default_effort = 3;
+  ApprovalMode default_mode = 4;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  DaemonSettings settings = 1;
+}
+
+message UpdateSettingsRequest {
+  DaemonSettings settings = 1;
+}
+
+message UpdateSettingsResponse {
+  DaemonSettings settings = 1;
 }

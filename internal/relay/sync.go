@@ -33,7 +33,15 @@ func (c *conn) syncLoop(ctx context.Context) error {
 	errc := make(chan error, 1)
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
+	sentMeta := c.r.backend.MachineMeta()
 	for {
+		// Usage limits change as sessions report them.
+		if meta := c.r.backend.MachineMeta(); !proto.Equal(meta, sentMeta) {
+			if err := c.putMachine(ctx, meta); err != nil {
+				return fmt.Errorf("put machine: %w", err)
+			}
+			sentMeta = meta
+		}
 		for _, id := range c.r.backend.SessionIDs() {
 			if started[id] {
 				continue

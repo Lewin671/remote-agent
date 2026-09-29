@@ -229,6 +229,16 @@ func (c *Client) Do(ctx context.Context, s Session, cmd *pb.Command) (*pb.Comman
 	return c.Forward(ctx, s.MachineID, env)
 }
 
+// DoMachine sends a command for the machine itself, such as creating a
+// session; its header names no session.
+func (c *Client) DoMachine(ctx context.Context, machineID string, cmd *pb.Command) (*pb.CommandResult, error) {
+	env, err := c.Seal(machineID, "", NewRequestID(), time.Now().Add(c.CommandTTL), cmd)
+	if err != nil {
+		return nil, err
+	}
+	return c.Forward(ctx, machineID, env)
+}
+
 // Forward sends a sealed command and opens the result.
 func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope) (*pb.CommandResult, error) {
 	h := &pb.Header{}

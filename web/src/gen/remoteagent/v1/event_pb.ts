@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/event.proto.
  */
 export const file_remoteagent_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("ChpyZW1vdGVhZ2VudC92MS9ldmVudC5wcm90bxIOcmVtb3RlYWdlbnQudjEi5gYKBUV2ZW50EgsKA3NlcRgBIAEoBBISCgpzZXNzaW9uX2lkGAIgASgJEigKBHRpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3R1cm5faWQYBCABKAkSMwoMdXNlcl9tZXNzYWdlGAogASgLMhsucmVtb3RlYWdlbnQudjEuVXNlck1lc3NhZ2VIABI1Cg1hZ2VudF9tZXNzYWdlGAsgASgLMhwucmVtb3RlYWdlbnQudjEuQWdlbnRNZXNzYWdlSAASLgoJcmVhc29uaW5nGAwgASgLMhkucmVtb3RlYWdlbnQudjEuUmVhc29uaW5nSAASLQoJdG9vbF9jYWxsGA0gASgLMhgucmVtb3RlYWdlbnQudjEuVG9vbENhbGxIABIzCgx0dXJuX3N0YXJ0ZWQYDiABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuU3RhcnRlZEgAEi8KCnR1cm5fZW5kZWQYDyABKAsyGS5yZW1vdGVhZ2VudC52MS5UdXJuRW5kZWRIABIxCgt0b2tlbl91c2FnZRgQIAEoCzIaLnJlbW90ZWFnZW50LnYxLlRva2VuVXNhZ2VIABIzCgx0dXJuX2NvbnRleHQYESABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuQ29udGV4dEgAEj8KEmFwcHJvdmFsX3JlcXVlc3RlZBgSIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsUmVxdWVzdGVkSAASPQoRYXBwcm92YWxfcmVzb2x2ZWQYEyABKAsyIC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbFJlc29sdmVkSAASNwoOcXVlc3Rpb25fYXNrZWQYFCABKAsyHS5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFza2VkSAASPQoRcXVlc3Rpb25fYW5zd2VyZWQYFSABKAsyIC5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFuc3dlcmVkSAASNQoNc2Vzc2lvbl9zdGF0ZRgWIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlc3Npb25TdGF0ZUgAEjEKC2lucHV0X3N0YXRlGBcgASgLMhoucmVtb3RlYWdlbnQudjEuSW5wdXRTdGF0ZUgAQgYKBGtpbmQiMAoLVXNlck1lc3NhZ2USDAoEdGV4dBgBIAEoCRITCgtpbWFnZV9jb3VudBgCIAEoBSIrCgxBZ2VudE1lc3NhZ2USDAoEdGV4dBgBIAEoCRINCgVwaGFzZRgCIAEoCSIZCglSZWFzb25pbmcSDAoEdGV4dBgBIAEoCSLpAQoIVG9vbENhbGwSDwoHY2FsbF9pZBgBIAEoCRImCgRraW5kGAIgASgOMhgucmVtb3RlYWdlbnQudjEuVG9vbEtpbmQSDQoFdGl0bGUYAyABKAkSDQoFaW5wdXQYBCABKAkSDgoGb3V0cHV0GAUgASgJEhgKEG91dHB1dF90cnVuY2F0ZWQYBiABKAgSDgoGc3RhdHVzGAcgASgJEhYKCWV4aXRfY29kZRgIIAEoBUgAiAEBEhMKC2R1cmF0aW9uX21zGAkgASgDEhEKCWl0ZW1fdHlwZRgKIAEoCUIMCgpfZXhpdF9jb2RlIg0KC1R1cm5TdGFydGVkIl4KCVR1cm5FbmRlZBIsCgdvdXRjb21lGAEgASgOMhsucmVtb3RlYWdlbnQudjEuVHVybk91dGNvbWUSDgoGcmVhc29uGAIgASgJEhMKC2R1cmF0aW9uX21zGAMgASgDIsABCgpUb2tlblVzYWdlEhQKDGlucHV0X3Rva2VucxgBIAEoAxIbChNjYWNoZWRfaW5wdXRfdG9rZW5zGAIgASgDEhUKDW91dHB1dF90b2tlbnMYAyABKAMSHwoXcmVhc29uaW5nX291dHB1dF90b2tlbnMYBCABKAMSFAoMdG90YWxfdG9rZW5zGAUgASgDEhkKEWxhc3RfdG90YWxfdG9rZW5zGAYgASgDEhYKDmNvbnRleHRfd2luZG93GAcgASgDIo4BCgtUdXJuQ29udGV4dBINCgVtb2RlbBgBIAEoCRIOCgZlZmZvcnQYAiABKAkSFwoPYXBwcm92YWxfcG9saWN5GAMgASgJEhoKEmFwcHJvdmFsc19yZXZpZXdlchgEIAEoCRIPCgdzYW5kYm94GAUgASgJEhoKEmNvbGxhYm9yYXRpb25fbW9kZRgGIAEoCSKoAQoRQXBwcm92YWxSZXF1ZXN0ZWQSEwoLYXBwcm92YWxfaWQYASABKAkSEQoJdG9vbF9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg8KB2NvbW1hbmQYBCABKAkSFwoPdG9vbF9pbnB1dF9qc29uGAUgASgJEiwKCGRlYWRsaW5lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJsChBBcHByb3ZhbFJlc29sdmVkEhMKC2FwcHJvdmFsX2lkGAEgASgJEjIKCGRlY2lzaW9uGAIgASgOMiAucmVtb3RlYWdlbnQudjEuQXBwcm92YWxEZWNpc2lvbhIPCgdtZXNzYWdlGAMgASgJIjQKDlF1ZXN0aW9uT3B0aW9uEg0KBWxhYmVsGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJImUKCFF1ZXN0aW9uEgoKAmlkGAEgASgJEg4KBmhlYWRlchgCIAEoCRIMCgR0ZXh0GAMgASgJEi8KB29wdGlvbnMYBCADKAsyHi5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbk9wdGlvbiJgCg1RdWVzdGlvbkFza2VkEhMKC3F1ZXN0aW9uX2lkGAEgASgJEisKCXF1ZXN0aW9ucxgCIAMoCzIYLnJlbW90ZWFnZW50LnYxLlF1ZXN0aW9uEg0KBWFzeW5jGAMgASgIIjYKDlF1ZXN0aW9uQW5zd2VyEhMKC3F1ZXN0aW9uX2lkGAEgASgJEg8KB2Fuc3dlcnMYAiADKAkiWAoQUXVlc3Rpb25BbnN3ZXJlZBITCgtxdWVzdGlvbl9pZBgBIAEoCRIvCgdhbnN3ZXJzGAIgAygLMh4ucmVtb3RlYWdlbnQudjEuUXVlc3Rpb25BbnN3ZXIiTQoMU2Vzc2lvblN0YXRlEi0KBnN0YXR1cxgBIAEoDjIdLnJlbW90ZWFnZW50LnYxLlNlc3Npb25TdGF0dXMSDgoGZGV0YWlsGAIgASgJIk0KCklucHV0U3RhdGUSEgoKcmVxdWVzdF9pZBgBIAEoCRIrCgZzdGF0dXMYAiABKA4yGy5yZW1vdGVhZ2VudC52MS5JbnB1dFN0YXR1cyqZAQoIVG9vbEtpbmQSGQoVVE9PTF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRVE9PTF9LSU5EX0NPTU1BTkQQARIZChVUT09MX0tJTkRfRklMRV9DSEFOR0UQAhIRCg1UT09MX0tJTkRfTUNQEAMSGAoUVE9PTF9LSU5EX1dFQl9TRUFSQ0gQBBITCg9UT09MX0tJTkRfT1RIRVIQBSphCgtUdXJuT3V0Y29tZRIcChhUVVJOX09VVENPTUVfVU5TUEVDSUZJRUQQABIaChZUVVJOX09VVENPTUVfQ09NUExFVEVEEAESGAoUVFVSTl9PVVRDT01FX0FCT1JURUQQAiqtAQoQQXBwcm92YWxEZWNpc2lvbhIhCh1BUFBST1ZBTF9ERUNJU0lPTl9VTlNQRUNJRklFRBAAEhsKF0FQUFJPVkFMX0RFQ0lTSU9OX0FMTE9XEAESGgoWQVBQUk9WQUxfREVDSVNJT05fREVOWRACEh0KGUFQUFJPVkFMX0RFQ0lTSU9OX1RJTUVPVVQQAxIeChpBUFBST1ZBTF9ERUNJU0lPTl9DQU5DRUxFRBAEKrgBCg1TZXNzaW9uU3RhdHVzEh4KGlNFU1NJT05fU1RBVFVTX1VOU1BFQ0lGSUVEEAASGwoXU0VTU0lPTl9TVEFUVVNfU1RBUlRJTkcQARIXChNTRVNTSU9OX1NUQVRVU19JRExFEAISGgoWU0VTU0lPTl9TVEFUVVNfUlVOTklORxADEhoKFlNFU1NJT05fU1RBVFVTX0JMT0NLRUQQBBIZChVTRVNTSU9OX1NUQVRVU19FWElURUQQBSqZAQoLSW5wdXRTdGF0dXMSHAoYSU5QVVRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTSU5QVVRfU1RBVFVTX1FVRVVFRBABEhoKFklOUFVUX1NUQVRVU19TVUJNSVRURUQQAhIcChhJTlBVVF9TVEFUVVNfVU5DT05GSVJNRUQQAxIZChVJTlBVVF9TVEFUVVNfQ0FOQ0VMRUQQBGIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChpyZW1vdGVhZ2VudC92MS9ldmVudC5wcm90bxIOcmVtb3RlYWdlbnQudjEi2gcKBUV2ZW50EgsKA3NlcRgBIAEoBBISCgpzZXNzaW9uX2lkGAIgASgJEigKBHRpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3R1cm5faWQYBCABKAkSMwoMdXNlcl9tZXNzYWdlGAogASgLMhsucmVtb3RlYWdlbnQudjEuVXNlck1lc3NhZ2VIABI1Cg1hZ2VudF9tZXNzYWdlGAsgASgLMhwucmVtb3RlYWdlbnQudjEuQWdlbnRNZXNzYWdlSAASLgoJcmVhc29uaW5nGAwgASgLMhkucmVtb3RlYWdlbnQudjEuUmVhc29uaW5nSAASLQoJdG9vbF9jYWxsGA0gASgLMhgucmVtb3RlYWdlbnQudjEuVG9vbENhbGxIABIzCgx0dXJuX3N0YXJ0ZWQYDiABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuU3RhcnRlZEgAEi8KCnR1cm5fZW5kZWQYDyABKAsyGS5yZW1vdGVhZ2VudC52MS5UdXJuRW5kZWRIABIxCgt0b2tlbl91c2FnZRgQIAEoCzIaLnJlbW90ZWFnZW50LnYxLlRva2VuVXNhZ2VIABIzCgx0dXJuX2NvbnRleHQYESABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuQ29udGV4dEgAEj8KEmFwcHJvdmFsX3JlcXVlc3RlZBgSIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsUmVxdWVzdGVkSAASPQoRYXBwcm92YWxfcmVzb2x2ZWQYEyABKAsyIC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbFJlc29sdmVkSAASNwoOcXVlc3Rpb25fYXNrZWQYFCABKAsyHS5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFza2VkSAASPQoRcXVlc3Rpb25fYW5zd2VyZWQYFSABKAsyIC5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFuc3dlcmVkSAASNQoNc2Vzc2lvbl9zdGF0ZRgWIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlc3Npb25TdGF0ZUgAEjEKC2lucHV0X3N0YXRlGBcgASgLMhoucmVtb3RlYWdlbnQudjEuSW5wdXRTdGF0ZUgAEjUKDXBsYW5fcHJvcG9zZWQYGCABKAsyHC5yZW1vdGVhZ2VudC52MS5QbGFuUHJvcG9zZWRIABI7ChBzZXR0aW5nc19jaGFuZ2VkGBkgASgLMh8ucmVtb3RlYWdlbnQudjEuU2V0dGluZ3NDaGFuZ2VkSABCBgoEa2luZCIwCgtVc2VyTWVzc2FnZRIMCgR0ZXh0GAEgASgJEhMKC2ltYWdlX2NvdW50GAIgASgFIisKDEFnZW50TWVzc2FnZRIMCgR0ZXh0GAEgASgJEg0KBXBoYXNlGAIgASgJIhkKCVJlYXNvbmluZxIMCgR0ZXh0GAEgASgJIukBCghUb29sQ2FsbBIPCgdjYWxsX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5yZW1vdGVhZ2VudC52MS5Ub29sS2luZBINCgV0aXRsZRgDIAEoCRINCgVpbnB1dBgEIAEoCRIOCgZvdXRwdXQYBSABKAkSGAoQb3V0cHV0X3RydW5jYXRlZBgGIAEoCBIOCgZzdGF0dXMYByABKAkSFgoJZXhpdF9jb2RlGAggASgFSACIAQESEwoLZHVyYXRpb25fbXMYCSABKAMSEQoJaXRlbV90eXBlGAogASgJQgwKCl9leGl0X2NvZGUiDQoLVHVyblN0YXJ0ZWQiXgoJVHVybkVuZGVkEiwKB291dGNvbWUYASABKA4yGy5yZW1vdGVhZ2VudC52MS5UdXJuT3V0Y29tZRIOCgZyZWFzb24YAiABKAkSEwoLZHVyYXRpb25fbXMYAyABKAMiuQIKClRva2VuVXNhZ2USFAoMaW5wdXRfdG9rZW5zGAEgASgDEhsKE2NhY2hlZF9pbnB1dF90b2tlbnMYAiABKAMSFQoNb3V0cHV0X3Rva2VucxgDIAEoAxIfChdyZWFzb25pbmdfb3V0cHV0X3Rva2VucxgEIAEoAxIUCgx0b3RhbF90b2tlbnMYBSABKAMSGQoRbGFzdF90b3RhbF90b2tlbnMYBiABKAMSFgoOY29udGV4dF93aW5kb3cYByABKAMSMAoNcHJpbWFyeV9saW1pdBgIIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIyCg9zZWNvbmRhcnlfbGltaXQYCSABKAsyGS5yZW1vdGVhZ2VudC52MS5SYXRlTGltaXQSEQoJcGxhbl90eXBlGAogASgJIkwKCVJhdGVMaW1pdBIUCgx1c2VkX3BlcmNlbnQYASABKAESFgoOd2luZG93X21pbnV0ZXMYAiABKAMSEQoJcmVzZXRzX2F0GAMgASgDIhwKDFBsYW5Qcm9wb3NlZBIMCgR0ZXh0GAEgASgJIm8KD1NldHRpbmdzQ2hhbmdlZBINCgVtb2RlbBgBIAEoCRIOCgZlZmZvcnQYAiABKAkSKgoEbW9kZRgDIAEoDjIcLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsTW9kZRIRCgljb21wYWN0ZWQYBCABKAgijgEKC1R1cm5Db250ZXh0Eg0KBW1vZGVsGAEgASgJEg4KBmVmZm9ydBgCIAEoCRIXCg9hcHByb3ZhbF9wb2xpY3kYAyABKAkSGgoSYXBwcm92YWxzX3Jldmlld2VyGAQgASgJEg8KB3NhbmRib3gYBSABKAkSGgoSY29sbGFib3JhdGlvbl9tb2RlGAYgASgJIqgBChFBcHByb3ZhbFJlcXVlc3RlZBITCgthcHByb3ZhbF9pZBgBIAEoCRIRCgl0b29sX25hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHY29tbWFuZBgEIAEoCRIXCg90b29sX2lucHV0X2pzb24YBSABKAkSLAoIZGVhZGxpbmUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImwKEEFwcHJvdmFsUmVzb2x2ZWQSEwoLYXBwcm92YWxfaWQYASABKAkSMgoIZGVjaXNpb24YAiABKA4yIC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbERlY2lzaW9uEg8KB21lc3NhZ2UYAyABKAkiNAoOUXVlc3Rpb25PcHRpb24SDQoFbGFiZWwYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkiZQoIUXVlc3Rpb24SCgoCaWQYASABKAkSDgoGaGVhZGVyGAIgASgJEgwKBHRleHQYAyABKAkSLwoHb3B0aW9ucxgEIAMoCzIeLnJlbW90ZWFnZW50LnYxLlF1ZXN0aW9uT3B0aW9uImAKDVF1ZXN0aW9uQXNrZWQSEwoLcXVlc3Rpb25faWQYASABKAkSKwoJcXVlc3Rpb25zGAIgAygLMhgucmVtb3RlYWdlbnQudjEuUXVlc3Rpb24SDQoFYXN5bmMYAyABKAgiNgoOUXVlc3Rpb25BbnN3ZXISEwoLcXVlc3Rpb25faWQYASABKAkSDwoHYW5zd2VycxgCIAMoCSJYChBRdWVzdGlvbkFuc3dlcmVkEhMKC3F1ZXN0aW9uX2lkGAEgASgJEi8KB2Fuc3dlcnMYAiADKAsyHi5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFuc3dlciJNCgxTZXNzaW9uU3RhdGUSLQoGc3RhdHVzGAEgASgOMh0ucmVtb3RlYWdlbnQudjEuU2Vzc2lvblN0YXR1cxIOCgZkZXRhaWwYAiABKAkiTQoKSW5wdXRTdGF0ZRISCgpyZXF1ZXN0X2lkGAEgASgJEisKBnN0YXR1cxgCIAEoDjIbLnJlbW90ZWFnZW50LnYxLklucHV0U3RhdHVzKpkBCghUb29sS2luZBIZChVUT09MX0tJTkRfVU5TUEVDSUZJRUQQABIVChFUT09MX0tJTkRfQ09NTUFORBABEhkKFVRPT0xfS0lORF9GSUxFX0NIQU5HRRACEhEKDVRPT0xfS0lORF9NQ1AQAxIYChRUT09MX0tJTkRfV0VCX1NFQVJDSBAEEhMKD1RPT0xfS0lORF9PVEhFUhAFKmEKC1R1cm5PdXRjb21lEhwKGFRVUk5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhoKFlRVUk5fT1VUQ09NRV9DT01QTEVURUQQARIYChRUVVJOX09VVENPTUVfQUJPUlRFRBACKpMBCgxBcHByb3ZhbE1vZGUSHQoZQVBQUk9WQUxfTU9ERV9VTlNQRUNJRklFRBAAEhUKEUFQUFJPVkFMX01PREVfQVNLEAESFgoSQVBQUk9WQUxfTU9ERV9BVVRPEAISHQoZQVBQUk9WQUxfTU9ERV9GVUxMX0FDQ0VTUxADEhYKEkFQUFJPVkFMX01PREVfUExBThAEKq0BChBBcHByb3ZhbERlY2lzaW9uEiEKHUFQUFJPVkFMX0RFQ0lTSU9OX1VOU1BFQ0lGSUVEEAASGwoXQVBQUk9WQUxfREVDSVNJT05fQUxMT1cQARIaChZBUFBST1ZBTF9ERUNJU0lPTl9ERU5ZEAISHQoZQVBQUk9WQUxfREVDSVNJT05fVElNRU9VVBADEh4KGkFQUFJPVkFMX0RFQ0lTSU9OX0NBTkNFTEVEEAQquAEKDVNlc3Npb25TdGF0dXMSHgoaU0VTU0lPTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIbChdTRVNTSU9OX1NUQVRVU19TVEFSVElORxABEhcKE1NFU1NJT05fU1RBVFVTX0lETEUQAhIaChZTRVNTSU9OX1NUQVRVU19SVU5OSU5HEAMSGgoWU0VTU0lPTl9TVEFUVVNfQkxPQ0tFRBAEEhkKFVNFU1NJT05fU1RBVFVTX0VYSVRFRBAFKpkBCgtJbnB1dFN0YXR1cxIcChhJTlBVVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNJTlBVVF9TVEFUVVNfUVVFVUVEEAESGgoWSU5QVVRfU1RBVFVTX1NVQk1JVFRFRBACEhwKGElOUFVUX1NUQVRVU19VTkNPTkZJUk1FRBADEhkKFUlOUFVUX1NUQVRVU19DQU5DRUxFRBAEYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Event is one entry in a session's unified event stream. It is the content
@@ -133,6 +133,18 @@ export type Event = Message<"remoteagent.v1.Event"> & {
      */
     value: InputState;
     case: "inputState";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.PlanProposed plan_proposed = 24;
+     */
+    value: PlanProposed;
+    case: "planProposed";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.SettingsChanged settings_changed = 25;
+     */
+    value: SettingsChanged;
+    case: "settingsChanged";
   } | { case: undefined; value?: undefined };
 };
 
@@ -364,6 +376,23 @@ export type TokenUsage = Message<"remoteagent.v1.TokenUsage"> & {
    * @generated from field: int64 context_window = 7;
    */
   contextWindow: bigint;
+
+  /**
+   * Account usage limits Codex reported with the count.
+   *
+   * @generated from field: remoteagent.v1.RateLimit primary_limit = 8;
+   */
+  primaryLimit?: RateLimit | undefined;
+
+  /**
+   * @generated from field: remoteagent.v1.RateLimit secondary_limit = 9;
+   */
+  secondaryLimit?: RateLimit | undefined;
+
+  /**
+   * @generated from field: string plan_type = 10;
+   */
+  planType: string;
 };
 
 /**
@@ -372,6 +401,94 @@ export type TokenUsage = Message<"remoteagent.v1.TokenUsage"> & {
  */
 export const TokenUsageSchema: GenMessage<TokenUsage> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_event, 7);
+
+/**
+ * RateLimit is one of the account's usage windows.
+ *
+ * @generated from message remoteagent.v1.RateLimit
+ */
+export type RateLimit = Message<"remoteagent.v1.RateLimit"> & {
+  /**
+   * @generated from field: double used_percent = 1;
+   */
+  usedPercent: number;
+
+  /**
+   * @generated from field: int64 window_minutes = 2;
+   */
+  windowMinutes: bigint;
+
+  /**
+   * Unix seconds when the window resets.
+   *
+   * @generated from field: int64 resets_at = 3;
+   */
+  resetsAt: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.RateLimit.
+ * Use `create(RateLimitSchema)` to create a new message.
+ */
+export const RateLimitSchema: GenMessage<RateLimit> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 8);
+
+/**
+ * PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
+ * terminal whether to implement it.
+ *
+ * @generated from message remoteagent.v1.PlanProposed
+ */
+export type PlanProposed = Message<"remoteagent.v1.PlanProposed"> & {
+  /**
+   * @generated from field: string text = 1;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.PlanProposed.
+ * Use `create(PlanProposedSchema)` to create a new message.
+ */
+export const PlanProposedSchema: GenMessage<PlanProposed> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 9);
+
+/**
+ * SettingsChanged records a change made through remote-agent that Codex
+ * only writes to the rollout when the next turn starts.
+ *
+ * @generated from message remoteagent.v1.SettingsChanged
+ */
+export type SettingsChanged = Message<"remoteagent.v1.SettingsChanged"> & {
+  /**
+   * @generated from field: string model = 1;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string effort = 2;
+   */
+  effort: string;
+
+  /**
+   * @generated from field: remoteagent.v1.ApprovalMode mode = 3;
+   */
+  mode: ApprovalMode;
+
+  /**
+   * Set when the context was compacted.
+   *
+   * @generated from field: bool compacted = 4;
+   */
+  compacted: boolean;
+};
+
+/**
+ * Describes the message remoteagent.v1.SettingsChanged.
+ * Use `create(SettingsChangedSchema)` to create a new message.
+ */
+export const SettingsChangedSchema: GenMessage<SettingsChanged> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 10);
 
 /**
  * TurnContext is the configuration Codex recorded at the start of a turn.
@@ -417,7 +534,7 @@ export type TurnContext = Message<"remoteagent.v1.TurnContext"> & {
  * Use `create(TurnContextSchema)` to create a new message.
  */
 export const TurnContextSchema: GenMessage<TurnContext> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 8);
+  messageDesc(file_remoteagent_v1_event, 11);
 
 /**
  * @generated from message remoteagent.v1.ApprovalRequested
@@ -461,7 +578,7 @@ export type ApprovalRequested = Message<"remoteagent.v1.ApprovalRequested"> & {
  * Use `create(ApprovalRequestedSchema)` to create a new message.
  */
 export const ApprovalRequestedSchema: GenMessage<ApprovalRequested> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 9);
+  messageDesc(file_remoteagent_v1_event, 12);
 
 /**
  * @generated from message remoteagent.v1.ApprovalResolved
@@ -488,7 +605,7 @@ export type ApprovalResolved = Message<"remoteagent.v1.ApprovalResolved"> & {
  * Use `create(ApprovalResolvedSchema)` to create a new message.
  */
 export const ApprovalResolvedSchema: GenMessage<ApprovalResolved> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 10);
+  messageDesc(file_remoteagent_v1_event, 13);
 
 /**
  * @generated from message remoteagent.v1.QuestionOption
@@ -510,7 +627,7 @@ export type QuestionOption = Message<"remoteagent.v1.QuestionOption"> & {
  * Use `create(QuestionOptionSchema)` to create a new message.
  */
 export const QuestionOptionSchema: GenMessage<QuestionOption> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 11);
+  messageDesc(file_remoteagent_v1_event, 14);
 
 /**
  * @generated from message remoteagent.v1.Question
@@ -542,7 +659,7 @@ export type Question = Message<"remoteagent.v1.Question"> & {
  * Use `create(QuestionSchema)` to create a new message.
  */
 export const QuestionSchema: GenMessage<Question> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 12);
+  messageDesc(file_remoteagent_v1_event, 15);
 
 /**
  * @generated from message remoteagent.v1.QuestionAsked
@@ -573,7 +690,7 @@ export type QuestionAsked = Message<"remoteagent.v1.QuestionAsked"> & {
  * Use `create(QuestionAskedSchema)` to create a new message.
  */
 export const QuestionAskedSchema: GenMessage<QuestionAsked> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 13);
+  messageDesc(file_remoteagent_v1_event, 16);
 
 /**
  * @generated from message remoteagent.v1.QuestionAnswer
@@ -595,7 +712,7 @@ export type QuestionAnswer = Message<"remoteagent.v1.QuestionAnswer"> & {
  * Use `create(QuestionAnswerSchema)` to create a new message.
  */
 export const QuestionAnswerSchema: GenMessage<QuestionAnswer> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 14);
+  messageDesc(file_remoteagent_v1_event, 17);
 
 /**
  * @generated from message remoteagent.v1.QuestionAnswered
@@ -617,7 +734,7 @@ export type QuestionAnswered = Message<"remoteagent.v1.QuestionAnswered"> & {
  * Use `create(QuestionAnsweredSchema)` to create a new message.
  */
 export const QuestionAnsweredSchema: GenMessage<QuestionAnswered> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 15);
+  messageDesc(file_remoteagent_v1_event, 18);
 
 /**
  * @generated from message remoteagent.v1.SessionState
@@ -641,7 +758,7 @@ export type SessionState = Message<"remoteagent.v1.SessionState"> & {
  * Use `create(SessionStateSchema)` to create a new message.
  */
 export const SessionStateSchema: GenMessage<SessionState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 16);
+  messageDesc(file_remoteagent_v1_event, 19);
 
 /**
  * InputState tracks a message sent with Send. The text itself appears in
@@ -666,7 +783,7 @@ export type InputState = Message<"remoteagent.v1.InputState"> & {
  * Use `create(InputStateSchema)` to create a new message.
  */
 export const InputStateSchema: GenMessage<InputState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 17);
+  messageDesc(file_remoteagent_v1_event, 20);
 
 /**
  * @generated from enum remoteagent.v1.ToolKind
@@ -736,6 +853,45 @@ export const TurnOutcomeSchema: GenEnum<TurnOutcome> = /*@__PURE__*/
   enumDesc(file_remoteagent_v1_event, 1);
 
 /**
+ * ApprovalMode is what a client can switch a session to. ASK, AUTO and
+ * FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+ *
+ * @generated from enum remoteagent.v1.ApprovalMode
+ */
+export enum ApprovalMode {
+  /**
+   * @generated from enum value: APPROVAL_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: APPROVAL_MODE_ASK = 1;
+   */
+  ASK = 1,
+
+  /**
+   * @generated from enum value: APPROVAL_MODE_AUTO = 2;
+   */
+  AUTO = 2,
+
+  /**
+   * @generated from enum value: APPROVAL_MODE_FULL_ACCESS = 3;
+   */
+  FULL_ACCESS = 3,
+
+  /**
+   * @generated from enum value: APPROVAL_MODE_PLAN = 4;
+   */
+  PLAN = 4,
+}
+
+/**
+ * Describes the enum remoteagent.v1.ApprovalMode.
+ */
+export const ApprovalModeSchema: GenEnum<ApprovalMode> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 2);
+
+/**
  * @generated from enum remoteagent.v1.ApprovalDecision
  */
 export enum ApprovalDecision {
@@ -773,7 +929,7 @@ export enum ApprovalDecision {
  * Describes the enum remoteagent.v1.ApprovalDecision.
  */
 export const ApprovalDecisionSchema: GenEnum<ApprovalDecision> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 2);
+  enumDesc(file_remoteagent_v1_event, 3);
 
 /**
  * @generated from enum remoteagent.v1.SessionStatus
@@ -816,7 +972,7 @@ export enum SessionStatus {
  * Describes the enum remoteagent.v1.SessionStatus.
  */
 export const SessionStatusSchema: GenEnum<SessionStatus> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 3);
+  enumDesc(file_remoteagent_v1_event, 4);
 
 /**
  * @generated from enum remoteagent.v1.InputStatus
@@ -861,5 +1017,5 @@ export enum InputStatus {
  * Describes the enum remoteagent.v1.InputStatus.
  */
 export const InputStatusSchema: GenEnum<InputStatus> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 4);
+  enumDesc(file_remoteagent_v1_event, 5);
 

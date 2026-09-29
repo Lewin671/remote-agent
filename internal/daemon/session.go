@@ -59,6 +59,8 @@ type session struct {
 	screen      codex.Screen
 	prevScreen  codex.Screen
 	sawComposer bool
+	planOpen    bool
+	driving     bool // a control operation is using the terminal's menus
 	status      pb.SessionStatus
 	detail      string
 	approvals   map[string]*approval
@@ -134,6 +136,9 @@ func (s *session) observe(e *pb.Event) {
 		s.context = k.TurnContext
 	case *pb.Event_TokenUsage:
 		s.usage = k.TokenUsage
+		s.d.noteLimits(k.TokenUsage)
+	case *pb.Event_SettingsChanged:
+		s.context = applySettings(s.context, k.SettingsChanged)
 	case *pb.Event_UserMessage:
 		if s.title == "" {
 			s.title = summary(k.UserMessage.Text, 60)
@@ -275,9 +280,17 @@ func (s *session) checkScreen() bool {
 		s.mu.Unlock()
 		return true
 	}
+	if s.driving {
+		// Menus opened by a control operation are not the user's popups.
+		s.mu.Unlock()
+		return true
+	}
+	s.planOpen = scr.PlanOpen
 	status, detail := s.status, s.detail
 	next, nextDetail := status, detail
 	switch {
+	case scr.PlanOpen:
+		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
 	case scr.Popup != "" && scr.Popup != "question":
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_BLOCKED, scr.Popup
 	case scr.ComposerReady || scr.QuestionOpen || s.sawComposer:
@@ -344,6 +357,7 @@ func (s *session) info() *pb.Session {
 		PendingApprovals: int32(len(s.approvals)),
 		PendingQuestions: int32(len(s.questions)),
 		QueuedInputs:     int32(len(s.queue.Queue)),
+		PlanOpen:         s.planOpen,
 	}
 	if c := s.context; c != nil {
 		out.Model, out.Effort = c.Model, c.Effort
@@ -753,7 +767,7 @@ func (s *session) permission(ctx context.Context, p *codex.HookPayload) ([]byte,
 	}
 
 	a := &approval{id: newID(4), decision: make(chan decision, 1)}
-	timeout := s.d.cfg.ApprovalTimeout
+	timeout := s.d.approvalTimeout()
 	req := &pb.ApprovalRequested{
 		ApprovalId:    a.id,
 		ToolName:      p.ToolName,

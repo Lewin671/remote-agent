@@ -4,7 +4,9 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { AnswerQuestionRequest, AnswerQuestionResponse, CancelInputRequest, CancelInputResponse, InterruptRequest, InterruptResponse, ResolveApprovalRequest, ResolveApprovalResponse, SendRequest, SendResponse, StopSessionRequest, StopSessionResponse } from "./local_pb";
+import type { RateLimit } from "./event_pb";
+import { file_remoteagent_v1_event } from "./event_pb";
+import type { AnswerPlanRequest, AnswerPlanResponse, AnswerQuestionRequest, AnswerQuestionResponse, CancelInputRequest, CancelInputResponse, CompactRequest, CompactResponse, CreateSessionRequest, CreateSessionResponse, GetSettingsRequest, GetSettingsResponse, InterruptRequest, InterruptResponse, ListDirectoriesRequest, ListDirectoriesResponse, ListModelsRequest, ListModelsResponse, ResolveApprovalRequest, ResolveApprovalResponse, SendRequest, SendResponse, SetApprovalModeRequest, SetApprovalModeResponse, SetModelRequest, SetModelResponse, StopSessionRequest, StopSessionResponse, UpdateSettingsRequest, UpdateSettingsResponse } from "./local_pb";
 import { file_remoteagent_v1_local } from "./local_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/remote.proto.
  */
 export const file_remoteagent_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIisKC01hY2hpbmVNZXRhEhAKCGhvc3RuYW1lGAEgASgJEgoKAm9zGAIgASgJIvMCCgdDb21tYW5kEisKBHNlbmQYASABKAsyGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdEgAEjUKCWludGVycnVwdBgCIAEoCzIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3RIABJCChByZXNvbHZlX2FwcHJvdmFsGAMgASgLMiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdEgAEkAKD2Fuc3dlcl9xdWVzdGlvbhgEIAEoCzIlLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVxdWVzdEgAEjoKDHN0b3Bfc2Vzc2lvbhgFIAEoCzIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdEgAEjoKDGNhbmNlbF9pbnB1dBgGIAEoCzIiLnJlbW90ZWFnZW50LnYxLkNhbmNlbElucHV0UmVxdWVzdEgAQgYKBGtpbmQiqgMKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSAASOwoMY2FuY2VsX2lucHV0GA8gASgLMiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZUgAQgYKBGtpbmRiBnByb3RvMw", [file_remoteagent_v1_local]);
+  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIrIBCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCSKXBwoHQ29tbWFuZBIrCgRzZW5kGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU2VuZFJlcXVlc3RIABI1CglpbnRlcnJ1cHQYAiABKAsyIC5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXF1ZXN0SAASQgoQcmVzb2x2ZV9hcHByb3ZhbBgDIAEoCzImLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlcXVlc3RIABJACg9hbnN3ZXJfcXVlc3Rpb24YBCABKAsyJS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlcXVlc3RIABI6CgxzdG9wX3Nlc3Npb24YBSABKAsyIi5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlcXVlc3RIABI6CgxjYW5jZWxfaW5wdXQYBiABKAsyIi5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlcXVlc3RIABI0CglzZXRfbW9kZWwYByABKAsyHy5yZW1vdGVhZ2VudC52MS5TZXRNb2RlbFJlcXVlc3RIABJDChFzZXRfYXBwcm92YWxfbW9kZRgIIAEoCzImLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlcXVlc3RIABIxCgdjb21wYWN0GAkgASgLMh4ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlcXVlc3RIABI4CgthbnN3ZXJfcGxhbhgKIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFuc3dlclBsYW5SZXF1ZXN0SAASPgoOY3JlYXRlX3Nlc3Npb24YFCABKAsyJC5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdEgAEjgKC2xpc3RfbW9kZWxzGBUgASgLMiEucmVtb3RlYWdlbnQudjEuTGlzdE1vZGVsc1JlcXVlc3RIABJCChBsaXN0X2RpcmVjdG9yaWVzGBYgASgLMiYucmVtb3RlYWdlbnQudjEuTGlzdERpcmVjdG9yaWVzUmVxdWVzdEgAEjoKDGdldF9zZXR0aW5ncxgXIAEoCzIiLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVxdWVzdEgAEkAKD3VwZGF0ZV9zZXR0aW5ncxgYIAEoCzIlLnJlbW90ZWFnZW50LnYxLlVwZGF0ZVNldHRpbmdzUmVxdWVzdEgAQgYKBGtpbmQi1wcKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSAASOwoMY2FuY2VsX2lucHV0GA8gASgLMiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZUgAEjUKCXNldF9tb2RlbBgQIAEoCzIgLnJlbW90ZWFnZW50LnYxLlNldE1vZGVsUmVzcG9uc2VIABJEChFzZXRfYXBwcm92YWxfbW9kZRgRIAEoCzInLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlc3BvbnNlSAASMgoHY29tcGFjdBgSIAEoCzIfLnJlbW90ZWFnZW50LnYxLkNvbXBhY3RSZXNwb25zZUgAEjkKC2Fuc3dlcl9wbGFuGBMgASgLMiIucmVtb3RlYWdlbnQudjEuQW5zd2VyUGxhblJlc3BvbnNlSAASPwoOY3JlYXRlX3Nlc3Npb24YHiABKAsyJS5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVzcG9uc2VIABI5CgtsaXN0X21vZGVscxgfIAEoCzIiLnJlbW90ZWFnZW50LnYxLkxpc3RNb2RlbHNSZXNwb25zZUgAEkMKEGxpc3RfZGlyZWN0b3JpZXMYICABKAsyJy5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXNwb25zZUgAEjsKDGdldF9zZXR0aW5ncxghIAEoCzIjLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVzcG9uc2VIABJBCg91cGRhdGVfc2V0dGluZ3MYIiABKAsyJi5yZW1vdGVhZ2VudC52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlSABCBgoEa2luZGIGcHJvdG8z", [file_remoteagent_v1_event, file_remoteagent_v1_local]);
 
 /**
  * MachineMeta describes a computer running a daemon.
@@ -29,6 +31,30 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
    * @generated from field: string os = 2;
    */
   os: string;
+
+  /**
+   * The Codex account's latest usage limits seen on this machine.
+   *
+   * @generated from field: remoteagent.v1.RateLimit primary_limit = 3;
+   */
+  primaryLimit?: RateLimit | undefined;
+
+  /**
+   * @generated from field: remoteagent.v1.RateLimit secondary_limit = 4;
+   */
+  secondaryLimit?: RateLimit | undefined;
+
+  /**
+   * @generated from field: string plan_type = 5;
+   */
+  planType: string;
+
+  /**
+   * Home folder, for choosing where to start sessions.
+   *
+   * @generated from field: string home = 6;
+   */
+  home: string;
 };
 
 /**
@@ -85,6 +111,63 @@ export type Command = Message<"remoteagent.v1.Command"> & {
      */
     value: CancelInputRequest;
     case: "cancelInput";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.SetModelRequest set_model = 7;
+     */
+    value: SetModelRequest;
+    case: "setModel";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.SetApprovalModeRequest set_approval_mode = 8;
+     */
+    value: SetApprovalModeRequest;
+    case: "setApprovalMode";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CompactRequest compact = 9;
+     */
+    value: CompactRequest;
+    case: "compact";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.AnswerPlanRequest answer_plan = 10;
+     */
+    value: AnswerPlanRequest;
+    case: "answerPlan";
+  } | {
+    /**
+     * Commands for the machine rather than a session; their envelope
+     * header names no session.
+     *
+     * @generated from field: remoteagent.v1.CreateSessionRequest create_session = 20;
+     */
+    value: CreateSessionRequest;
+    case: "createSession";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.ListModelsRequest list_models = 21;
+     */
+    value: ListModelsRequest;
+    case: "listModels";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.ListDirectoriesRequest list_directories = 22;
+     */
+    value: ListDirectoriesRequest;
+    case: "listDirectories";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.GetSettingsRequest get_settings = 23;
+     */
+    value: GetSettingsRequest;
+    case: "getSettings";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.UpdateSettingsRequest update_settings = 24;
+     */
+    value: UpdateSettingsRequest;
+    case: "updateSettings";
   } | { case: undefined; value?: undefined };
 };
 
@@ -154,6 +237,60 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
      */
     value: CancelInputResponse;
     case: "cancelInput";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.SetModelResponse set_model = 16;
+     */
+    value: SetModelResponse;
+    case: "setModel";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.SetApprovalModeResponse set_approval_mode = 17;
+     */
+    value: SetApprovalModeResponse;
+    case: "setApprovalMode";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CompactResponse compact = 18;
+     */
+    value: CompactResponse;
+    case: "compact";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.AnswerPlanResponse answer_plan = 19;
+     */
+    value: AnswerPlanResponse;
+    case: "answerPlan";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CreateSessionResponse create_session = 30;
+     */
+    value: CreateSessionResponse;
+    case: "createSession";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.ListModelsResponse list_models = 31;
+     */
+    value: ListModelsResponse;
+    case: "listModels";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.ListDirectoriesResponse list_directories = 32;
+     */
+    value: ListDirectoriesResponse;
+    case: "listDirectories";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.GetSettingsResponse get_settings = 33;
+     */
+    value: GetSettingsResponse;
+    case: "getSettings";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.UpdateSettingsResponse update_settings = 34;
+     */
+    value: UpdateSettingsResponse;
+    case: "updateSettings";
   } | { case: undefined; value?: undefined };
 };
 

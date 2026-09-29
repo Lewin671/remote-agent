@@ -23,9 +23,15 @@ const (
 
 // MachineMeta describes a computer running a daemon.
 type MachineMeta struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Hostname      string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	Os            string                 `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Hostname string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Os       string                 `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
+	// The Codex account's latest usage limits seen on this machine.
+	PrimaryLimit   *RateLimit `protobuf:"bytes,3,opt,name=primary_limit,json=primaryLimit,proto3" json:"primary_limit,omitempty"`
+	SecondaryLimit *RateLimit `protobuf:"bytes,4,opt,name=secondary_limit,json=secondaryLimit,proto3" json:"secondary_limit,omitempty"`
+	PlanType       string     `protobuf:"bytes,5,opt,name=plan_type,json=planType,proto3" json:"plan_type,omitempty"`
+	// Home folder, for choosing where to start sessions.
+	Home          string `protobuf:"bytes,6,opt,name=home,proto3" json:"home,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -74,6 +80,34 @@ func (x *MachineMeta) GetOs() string {
 	return ""
 }
 
+func (x *MachineMeta) GetPrimaryLimit() *RateLimit {
+	if x != nil {
+		return x.PrimaryLimit
+	}
+	return nil
+}
+
+func (x *MachineMeta) GetSecondaryLimit() *RateLimit {
+	if x != nil {
+		return x.SecondaryLimit
+	}
+	return nil
+}
+
+func (x *MachineMeta) GetPlanType() string {
+	if x != nil {
+		return x.PlanType
+	}
+	return ""
+}
+
+func (x *MachineMeta) GetHome() string {
+	if x != nil {
+		return x.Home
+	}
+	return ""
+}
+
 // Command is what a client asks a daemon to do. The session operations
 // reuse the local API's messages; the envelope header carries the request
 // ID and deadline.
@@ -87,6 +121,15 @@ type Command struct {
 	//	*Command_AnswerQuestion
 	//	*Command_StopSession
 	//	*Command_CancelInput
+	//	*Command_SetModel
+	//	*Command_SetApprovalMode
+	//	*Command_Compact
+	//	*Command_AnswerPlan
+	//	*Command_CreateSession
+	//	*Command_ListModels
+	//	*Command_ListDirectories
+	//	*Command_GetSettings
+	//	*Command_UpdateSettings
 	Kind          isCommand_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -183,6 +226,87 @@ func (x *Command) GetCancelInput() *CancelInputRequest {
 	return nil
 }
 
+func (x *Command) GetSetModel() *SetModelRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_SetModel); ok {
+			return x.SetModel
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetSetApprovalMode() *SetApprovalModeRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_SetApprovalMode); ok {
+			return x.SetApprovalMode
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetCompact() *CompactRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_Compact); ok {
+			return x.Compact
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetAnswerPlan() *AnswerPlanRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_AnswerPlan); ok {
+			return x.AnswerPlan
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetCreateSession() *CreateSessionRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_CreateSession); ok {
+			return x.CreateSession
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetListModels() *ListModelsRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_ListModels); ok {
+			return x.ListModels
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetListDirectories() *ListDirectoriesRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_ListDirectories); ok {
+			return x.ListDirectories
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetGetSettings() *GetSettingsRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_GetSettings); ok {
+			return x.GetSettings
+		}
+	}
+	return nil
+}
+
+func (x *Command) GetUpdateSettings() *UpdateSettingsRequest {
+	if x != nil {
+		if x, ok := x.Kind.(*Command_UpdateSettings); ok {
+			return x.UpdateSettings
+		}
+	}
+	return nil
+}
+
 type isCommand_Kind interface {
 	isCommand_Kind()
 }
@@ -211,6 +335,44 @@ type Command_CancelInput struct {
 	CancelInput *CancelInputRequest `protobuf:"bytes,6,opt,name=cancel_input,json=cancelInput,proto3,oneof"`
 }
 
+type Command_SetModel struct {
+	SetModel *SetModelRequest `protobuf:"bytes,7,opt,name=set_model,json=setModel,proto3,oneof"`
+}
+
+type Command_SetApprovalMode struct {
+	SetApprovalMode *SetApprovalModeRequest `protobuf:"bytes,8,opt,name=set_approval_mode,json=setApprovalMode,proto3,oneof"`
+}
+
+type Command_Compact struct {
+	Compact *CompactRequest `protobuf:"bytes,9,opt,name=compact,proto3,oneof"`
+}
+
+type Command_AnswerPlan struct {
+	AnswerPlan *AnswerPlanRequest `protobuf:"bytes,10,opt,name=answer_plan,json=answerPlan,proto3,oneof"`
+}
+
+type Command_CreateSession struct {
+	// Commands for the machine rather than a session; their envelope
+	// header names no session.
+	CreateSession *CreateSessionRequest `protobuf:"bytes,20,opt,name=create_session,json=createSession,proto3,oneof"`
+}
+
+type Command_ListModels struct {
+	ListModels *ListModelsRequest `protobuf:"bytes,21,opt,name=list_models,json=listModels,proto3,oneof"`
+}
+
+type Command_ListDirectories struct {
+	ListDirectories *ListDirectoriesRequest `protobuf:"bytes,22,opt,name=list_directories,json=listDirectories,proto3,oneof"`
+}
+
+type Command_GetSettings struct {
+	GetSettings *GetSettingsRequest `protobuf:"bytes,23,opt,name=get_settings,json=getSettings,proto3,oneof"`
+}
+
+type Command_UpdateSettings struct {
+	UpdateSettings *UpdateSettingsRequest `protobuf:"bytes,24,opt,name=update_settings,json=updateSettings,proto3,oneof"`
+}
+
 func (*Command_Send) isCommand_Kind() {}
 
 func (*Command_Interrupt) isCommand_Kind() {}
@@ -222,6 +384,24 @@ func (*Command_AnswerQuestion) isCommand_Kind() {}
 func (*Command_StopSession) isCommand_Kind() {}
 
 func (*Command_CancelInput) isCommand_Kind() {}
+
+func (*Command_SetModel) isCommand_Kind() {}
+
+func (*Command_SetApprovalMode) isCommand_Kind() {}
+
+func (*Command_Compact) isCommand_Kind() {}
+
+func (*Command_AnswerPlan) isCommand_Kind() {}
+
+func (*Command_CreateSession) isCommand_Kind() {}
+
+func (*Command_ListModels) isCommand_Kind() {}
+
+func (*Command_ListDirectories) isCommand_Kind() {}
+
+func (*Command_GetSettings) isCommand_Kind() {}
+
+func (*Command_UpdateSettings) isCommand_Kind() {}
 
 // CommandResult is the daemon's reply to a Command. A retried request ID
 // gets the original result instead of running the command again.
@@ -239,6 +419,15 @@ type CommandResult struct {
 	//	*CommandResult_AnswerQuestion
 	//	*CommandResult_StopSession
 	//	*CommandResult_CancelInput
+	//	*CommandResult_SetModel
+	//	*CommandResult_SetApprovalMode
+	//	*CommandResult_Compact
+	//	*CommandResult_AnswerPlan
+	//	*CommandResult_CreateSession
+	//	*CommandResult_ListModels
+	//	*CommandResult_ListDirectories
+	//	*CommandResult_GetSettings
+	//	*CommandResult_UpdateSettings
 	Kind          isCommandResult_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -349,6 +538,87 @@ func (x *CommandResult) GetCancelInput() *CancelInputResponse {
 	return nil
 }
 
+func (x *CommandResult) GetSetModel() *SetModelResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_SetModel); ok {
+			return x.SetModel
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetSetApprovalMode() *SetApprovalModeResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_SetApprovalMode); ok {
+			return x.SetApprovalMode
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetCompact() *CompactResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_Compact); ok {
+			return x.Compact
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetAnswerPlan() *AnswerPlanResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_AnswerPlan); ok {
+			return x.AnswerPlan
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetCreateSession() *CreateSessionResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_CreateSession); ok {
+			return x.CreateSession
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetListModels() *ListModelsResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_ListModels); ok {
+			return x.ListModels
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetListDirectories() *ListDirectoriesResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_ListDirectories); ok {
+			return x.ListDirectories
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetGetSettings() *GetSettingsResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_GetSettings); ok {
+			return x.GetSettings
+		}
+	}
+	return nil
+}
+
+func (x *CommandResult) GetUpdateSettings() *UpdateSettingsResponse {
+	if x != nil {
+		if x, ok := x.Kind.(*CommandResult_UpdateSettings); ok {
+			return x.UpdateSettings
+		}
+	}
+	return nil
+}
+
 type isCommandResult_Kind interface {
 	isCommandResult_Kind()
 }
@@ -377,6 +647,42 @@ type CommandResult_CancelInput struct {
 	CancelInput *CancelInputResponse `protobuf:"bytes,15,opt,name=cancel_input,json=cancelInput,proto3,oneof"`
 }
 
+type CommandResult_SetModel struct {
+	SetModel *SetModelResponse `protobuf:"bytes,16,opt,name=set_model,json=setModel,proto3,oneof"`
+}
+
+type CommandResult_SetApprovalMode struct {
+	SetApprovalMode *SetApprovalModeResponse `protobuf:"bytes,17,opt,name=set_approval_mode,json=setApprovalMode,proto3,oneof"`
+}
+
+type CommandResult_Compact struct {
+	Compact *CompactResponse `protobuf:"bytes,18,opt,name=compact,proto3,oneof"`
+}
+
+type CommandResult_AnswerPlan struct {
+	AnswerPlan *AnswerPlanResponse `protobuf:"bytes,19,opt,name=answer_plan,json=answerPlan,proto3,oneof"`
+}
+
+type CommandResult_CreateSession struct {
+	CreateSession *CreateSessionResponse `protobuf:"bytes,30,opt,name=create_session,json=createSession,proto3,oneof"`
+}
+
+type CommandResult_ListModels struct {
+	ListModels *ListModelsResponse `protobuf:"bytes,31,opt,name=list_models,json=listModels,proto3,oneof"`
+}
+
+type CommandResult_ListDirectories struct {
+	ListDirectories *ListDirectoriesResponse `protobuf:"bytes,32,opt,name=list_directories,json=listDirectories,proto3,oneof"`
+}
+
+type CommandResult_GetSettings struct {
+	GetSettings *GetSettingsResponse `protobuf:"bytes,33,opt,name=get_settings,json=getSettings,proto3,oneof"`
+}
+
+type CommandResult_UpdateSettings struct {
+	UpdateSettings *UpdateSettingsResponse `protobuf:"bytes,34,opt,name=update_settings,json=updateSettings,proto3,oneof"`
+}
+
 func (*CommandResult_Send) isCommandResult_Kind() {}
 
 func (*CommandResult_Interrupt) isCommandResult_Kind() {}
@@ -389,22 +695,56 @@ func (*CommandResult_StopSession) isCommandResult_Kind() {}
 
 func (*CommandResult_CancelInput) isCommandResult_Kind() {}
 
+func (*CommandResult_SetModel) isCommandResult_Kind() {}
+
+func (*CommandResult_SetApprovalMode) isCommandResult_Kind() {}
+
+func (*CommandResult_Compact) isCommandResult_Kind() {}
+
+func (*CommandResult_AnswerPlan) isCommandResult_Kind() {}
+
+func (*CommandResult_CreateSession) isCommandResult_Kind() {}
+
+func (*CommandResult_ListModels) isCommandResult_Kind() {}
+
+func (*CommandResult_ListDirectories) isCommandResult_Kind() {}
+
+func (*CommandResult_GetSettings) isCommandResult_Kind() {}
+
+func (*CommandResult_UpdateSettings) isCommandResult_Kind() {}
+
 var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\n" +
-	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/local.proto\"9\n" +
+	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\"\xee\x01\n" +
 	"\vMachineMeta\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
-	"\x02os\x18\x02 \x01(\tR\x02os\"\xbf\x03\n" +
+	"\x02os\x18\x02 \x01(\tR\x02os\x12>\n" +
+	"\rprimary_limit\x18\x03 \x01(\v2\x19.remoteagent.v1.RateLimitR\fprimaryLimit\x12B\n" +
+	"\x0fsecondary_limit\x18\x04 \x01(\v2\x19.remoteagent.v1.RateLimitR\x0esecondaryLimit\x12\x1b\n" +
+	"\tplan_type\x18\x05 \x01(\tR\bplanType\x12\x12\n" +
+	"\x04home\x18\x06 \x01(\tR\x04home\"\xdc\b\n" +
 	"\aCommand\x121\n" +
 	"\x04send\x18\x01 \x01(\v2\x1b.remoteagent.v1.SendRequestH\x00R\x04send\x12@\n" +
 	"\tinterrupt\x18\x02 \x01(\v2 .remoteagent.v1.InterruptRequestH\x00R\tinterrupt\x12S\n" +
 	"\x10resolve_approval\x18\x03 \x01(\v2&.remoteagent.v1.ResolveApprovalRequestH\x00R\x0fresolveApproval\x12P\n" +
 	"\x0fanswer_question\x18\x04 \x01(\v2%.remoteagent.v1.AnswerQuestionRequestH\x00R\x0eanswerQuestion\x12G\n" +
 	"\fstop_session\x18\x05 \x01(\v2\".remoteagent.v1.StopSessionRequestH\x00R\vstopSession\x12G\n" +
-	"\fcancel_input\x18\x06 \x01(\v2\".remoteagent.v1.CancelInputRequestH\x00R\vcancelInputB\x06\n" +
-	"\x04kind\"\x8f\x04\n" +
+	"\fcancel_input\x18\x06 \x01(\v2\".remoteagent.v1.CancelInputRequestH\x00R\vcancelInput\x12>\n" +
+	"\tset_model\x18\a \x01(\v2\x1f.remoteagent.v1.SetModelRequestH\x00R\bsetModel\x12T\n" +
+	"\x11set_approval_mode\x18\b \x01(\v2&.remoteagent.v1.SetApprovalModeRequestH\x00R\x0fsetApprovalMode\x12:\n" +
+	"\acompact\x18\t \x01(\v2\x1e.remoteagent.v1.CompactRequestH\x00R\acompact\x12D\n" +
+	"\vanswer_plan\x18\n" +
+	" \x01(\v2!.remoteagent.v1.AnswerPlanRequestH\x00R\n" +
+	"answerPlan\x12M\n" +
+	"\x0ecreate_session\x18\x14 \x01(\v2$.remoteagent.v1.CreateSessionRequestH\x00R\rcreateSession\x12D\n" +
+	"\vlist_models\x18\x15 \x01(\v2!.remoteagent.v1.ListModelsRequestH\x00R\n" +
+	"listModels\x12S\n" +
+	"\x10list_directories\x18\x16 \x01(\v2&.remoteagent.v1.ListDirectoriesRequestH\x00R\x0flistDirectories\x12G\n" +
+	"\fget_settings\x18\x17 \x01(\v2\".remoteagent.v1.GetSettingsRequestH\x00R\vgetSettings\x12P\n" +
+	"\x0fupdate_settings\x18\x18 \x01(\v2%.remoteagent.v1.UpdateSettingsRequestH\x00R\x0eupdateSettingsB\x06\n" +
+	"\x04kind\"\xb5\t\n" +
 	"\rCommandResult\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\tR\terrorCode\x12#\n" +
@@ -415,7 +755,18 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x10resolve_approval\x18\f \x01(\v2'.remoteagent.v1.ResolveApprovalResponseH\x00R\x0fresolveApproval\x12Q\n" +
 	"\x0fanswer_question\x18\r \x01(\v2&.remoteagent.v1.AnswerQuestionResponseH\x00R\x0eanswerQuestion\x12H\n" +
 	"\fstop_session\x18\x0e \x01(\v2#.remoteagent.v1.StopSessionResponseH\x00R\vstopSession\x12H\n" +
-	"\fcancel_input\x18\x0f \x01(\v2#.remoteagent.v1.CancelInputResponseH\x00R\vcancelInputB\x06\n" +
+	"\fcancel_input\x18\x0f \x01(\v2#.remoteagent.v1.CancelInputResponseH\x00R\vcancelInput\x12?\n" +
+	"\tset_model\x18\x10 \x01(\v2 .remoteagent.v1.SetModelResponseH\x00R\bsetModel\x12U\n" +
+	"\x11set_approval_mode\x18\x11 \x01(\v2'.remoteagent.v1.SetApprovalModeResponseH\x00R\x0fsetApprovalMode\x12;\n" +
+	"\acompact\x18\x12 \x01(\v2\x1f.remoteagent.v1.CompactResponseH\x00R\acompact\x12E\n" +
+	"\vanswer_plan\x18\x13 \x01(\v2\".remoteagent.v1.AnswerPlanResponseH\x00R\n" +
+	"answerPlan\x12N\n" +
+	"\x0ecreate_session\x18\x1e \x01(\v2%.remoteagent.v1.CreateSessionResponseH\x00R\rcreateSession\x12E\n" +
+	"\vlist_models\x18\x1f \x01(\v2\".remoteagent.v1.ListModelsResponseH\x00R\n" +
+	"listModels\x12T\n" +
+	"\x10list_directories\x18  \x01(\v2'.remoteagent.v1.ListDirectoriesResponseH\x00R\x0flistDirectories\x12H\n" +
+	"\fget_settings\x18! \x01(\v2#.remoteagent.v1.GetSettingsResponseH\x00R\vgetSettings\x12Q\n" +
+	"\x0fupdate_settings\x18\" \x01(\v2&.remoteagent.v1.UpdateSettingsResponseH\x00R\x0eupdateSettingsB\x06\n" +
 	"\x04kindB\xbd\x01\n" +
 	"\x12com.remoteagent.v1B\vRemoteProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
@@ -436,37 +787,76 @@ var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(*MachineMeta)(nil),             // 0: remoteagent.v1.MachineMeta
 	(*Command)(nil),                 // 1: remoteagent.v1.Command
 	(*CommandResult)(nil),           // 2: remoteagent.v1.CommandResult
-	(*SendRequest)(nil),             // 3: remoteagent.v1.SendRequest
-	(*InterruptRequest)(nil),        // 4: remoteagent.v1.InterruptRequest
-	(*ResolveApprovalRequest)(nil),  // 5: remoteagent.v1.ResolveApprovalRequest
-	(*AnswerQuestionRequest)(nil),   // 6: remoteagent.v1.AnswerQuestionRequest
-	(*StopSessionRequest)(nil),      // 7: remoteagent.v1.StopSessionRequest
-	(*CancelInputRequest)(nil),      // 8: remoteagent.v1.CancelInputRequest
-	(*SendResponse)(nil),            // 9: remoteagent.v1.SendResponse
-	(*InterruptResponse)(nil),       // 10: remoteagent.v1.InterruptResponse
-	(*ResolveApprovalResponse)(nil), // 11: remoteagent.v1.ResolveApprovalResponse
-	(*AnswerQuestionResponse)(nil),  // 12: remoteagent.v1.AnswerQuestionResponse
-	(*StopSessionResponse)(nil),     // 13: remoteagent.v1.StopSessionResponse
-	(*CancelInputResponse)(nil),     // 14: remoteagent.v1.CancelInputResponse
+	(*RateLimit)(nil),               // 3: remoteagent.v1.RateLimit
+	(*SendRequest)(nil),             // 4: remoteagent.v1.SendRequest
+	(*InterruptRequest)(nil),        // 5: remoteagent.v1.InterruptRequest
+	(*ResolveApprovalRequest)(nil),  // 6: remoteagent.v1.ResolveApprovalRequest
+	(*AnswerQuestionRequest)(nil),   // 7: remoteagent.v1.AnswerQuestionRequest
+	(*StopSessionRequest)(nil),      // 8: remoteagent.v1.StopSessionRequest
+	(*CancelInputRequest)(nil),      // 9: remoteagent.v1.CancelInputRequest
+	(*SetModelRequest)(nil),         // 10: remoteagent.v1.SetModelRequest
+	(*SetApprovalModeRequest)(nil),  // 11: remoteagent.v1.SetApprovalModeRequest
+	(*CompactRequest)(nil),          // 12: remoteagent.v1.CompactRequest
+	(*AnswerPlanRequest)(nil),       // 13: remoteagent.v1.AnswerPlanRequest
+	(*CreateSessionRequest)(nil),    // 14: remoteagent.v1.CreateSessionRequest
+	(*ListModelsRequest)(nil),       // 15: remoteagent.v1.ListModelsRequest
+	(*ListDirectoriesRequest)(nil),  // 16: remoteagent.v1.ListDirectoriesRequest
+	(*GetSettingsRequest)(nil),      // 17: remoteagent.v1.GetSettingsRequest
+	(*UpdateSettingsRequest)(nil),   // 18: remoteagent.v1.UpdateSettingsRequest
+	(*SendResponse)(nil),            // 19: remoteagent.v1.SendResponse
+	(*InterruptResponse)(nil),       // 20: remoteagent.v1.InterruptResponse
+	(*ResolveApprovalResponse)(nil), // 21: remoteagent.v1.ResolveApprovalResponse
+	(*AnswerQuestionResponse)(nil),  // 22: remoteagent.v1.AnswerQuestionResponse
+	(*StopSessionResponse)(nil),     // 23: remoteagent.v1.StopSessionResponse
+	(*CancelInputResponse)(nil),     // 24: remoteagent.v1.CancelInputResponse
+	(*SetModelResponse)(nil),        // 25: remoteagent.v1.SetModelResponse
+	(*SetApprovalModeResponse)(nil), // 26: remoteagent.v1.SetApprovalModeResponse
+	(*CompactResponse)(nil),         // 27: remoteagent.v1.CompactResponse
+	(*AnswerPlanResponse)(nil),      // 28: remoteagent.v1.AnswerPlanResponse
+	(*CreateSessionResponse)(nil),   // 29: remoteagent.v1.CreateSessionResponse
+	(*ListModelsResponse)(nil),      // 30: remoteagent.v1.ListModelsResponse
+	(*ListDirectoriesResponse)(nil), // 31: remoteagent.v1.ListDirectoriesResponse
+	(*GetSettingsResponse)(nil),     // 32: remoteagent.v1.GetSettingsResponse
+	(*UpdateSettingsResponse)(nil),  // 33: remoteagent.v1.UpdateSettingsResponse
 }
 var file_remoteagent_v1_remote_proto_depIdxs = []int32{
-	3,  // 0: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
-	4,  // 1: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
-	5,  // 2: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
-	6,  // 3: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
-	7,  // 4: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
-	8,  // 5: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
-	9,  // 6: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
-	10, // 7: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
-	11, // 8: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
-	12, // 9: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
-	13, // 10: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
-	14, // 11: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	3,  // 0: remoteagent.v1.MachineMeta.primary_limit:type_name -> remoteagent.v1.RateLimit
+	3,  // 1: remoteagent.v1.MachineMeta.secondary_limit:type_name -> remoteagent.v1.RateLimit
+	4,  // 2: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
+	5,  // 3: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
+	6,  // 4: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
+	7,  // 5: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
+	8,  // 6: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
+	9,  // 7: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
+	10, // 8: remoteagent.v1.Command.set_model:type_name -> remoteagent.v1.SetModelRequest
+	11, // 9: remoteagent.v1.Command.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeRequest
+	12, // 10: remoteagent.v1.Command.compact:type_name -> remoteagent.v1.CompactRequest
+	13, // 11: remoteagent.v1.Command.answer_plan:type_name -> remoteagent.v1.AnswerPlanRequest
+	14, // 12: remoteagent.v1.Command.create_session:type_name -> remoteagent.v1.CreateSessionRequest
+	15, // 13: remoteagent.v1.Command.list_models:type_name -> remoteagent.v1.ListModelsRequest
+	16, // 14: remoteagent.v1.Command.list_directories:type_name -> remoteagent.v1.ListDirectoriesRequest
+	17, // 15: remoteagent.v1.Command.get_settings:type_name -> remoteagent.v1.GetSettingsRequest
+	18, // 16: remoteagent.v1.Command.update_settings:type_name -> remoteagent.v1.UpdateSettingsRequest
+	19, // 17: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
+	20, // 18: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
+	21, // 19: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
+	22, // 20: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
+	23, // 21: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
+	24, // 22: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
+	25, // 23: remoteagent.v1.CommandResult.set_model:type_name -> remoteagent.v1.SetModelResponse
+	26, // 24: remoteagent.v1.CommandResult.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeResponse
+	27, // 25: remoteagent.v1.CommandResult.compact:type_name -> remoteagent.v1.CompactResponse
+	28, // 26: remoteagent.v1.CommandResult.answer_plan:type_name -> remoteagent.v1.AnswerPlanResponse
+	29, // 27: remoteagent.v1.CommandResult.create_session:type_name -> remoteagent.v1.CreateSessionResponse
+	30, // 28: remoteagent.v1.CommandResult.list_models:type_name -> remoteagent.v1.ListModelsResponse
+	31, // 29: remoteagent.v1.CommandResult.list_directories:type_name -> remoteagent.v1.ListDirectoriesResponse
+	32, // 30: remoteagent.v1.CommandResult.get_settings:type_name -> remoteagent.v1.GetSettingsResponse
+	33, // 31: remoteagent.v1.CommandResult.update_settings:type_name -> remoteagent.v1.UpdateSettingsResponse
+	32, // [32:32] is the sub-list for method output_type
+	32, // [32:32] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_remote_proto_init() }
@@ -474,6 +864,7 @@ func file_remoteagent_v1_remote_proto_init() {
 	if File_remoteagent_v1_remote_proto != nil {
 		return
 	}
+	file_remoteagent_v1_event_proto_init()
 	file_remoteagent_v1_local_proto_init()
 	file_remoteagent_v1_remote_proto_msgTypes[1].OneofWrappers = []any{
 		(*Command_Send)(nil),
@@ -482,6 +873,15 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*Command_AnswerQuestion)(nil),
 		(*Command_StopSession)(nil),
 		(*Command_CancelInput)(nil),
+		(*Command_SetModel)(nil),
+		(*Command_SetApprovalMode)(nil),
+		(*Command_Compact)(nil),
+		(*Command_AnswerPlan)(nil),
+		(*Command_CreateSession)(nil),
+		(*Command_ListModels)(nil),
+		(*Command_ListDirectories)(nil),
+		(*Command_GetSettings)(nil),
+		(*Command_UpdateSettings)(nil),
 	}
 	file_remoteagent_v1_remote_proto_msgTypes[2].OneofWrappers = []any{
 		(*CommandResult_Send)(nil),
@@ -490,6 +890,15 @@ func file_remoteagent_v1_remote_proto_init() {
 		(*CommandResult_AnswerQuestion)(nil),
 		(*CommandResult_StopSession)(nil),
 		(*CommandResult_CancelInput)(nil),
+		(*CommandResult_SetModel)(nil),
+		(*CommandResult_SetApprovalMode)(nil),
+		(*CommandResult_Compact)(nil),
+		(*CommandResult_AnswerPlan)(nil),
+		(*CommandResult_CreateSession)(nil),
+		(*CommandResult_ListModels)(nil),
+		(*CommandResult_ListDirectories)(nil),
+		(*CommandResult_GetSettings)(nil),
+		(*CommandResult_UpdateSettings)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

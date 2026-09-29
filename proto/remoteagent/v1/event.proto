@@ -30,6 +30,8 @@ message Event {
     QuestionAnswered question_answered = 21;
     SessionState session_state = 22;
     InputState input_state = 23;
+    PlanProposed plan_proposed = 24;
+    SettingsChanged settings_changed = 25;
   }
 }
 
@@ -101,6 +103,44 @@ message TokenUsage {
   // Tokens in the context window after the last request.
   int64 last_total_tokens = 6;
   int64 context_window = 7;
+  // Account usage limits Codex reported with the count.
+  RateLimit primary_limit = 8;
+  RateLimit secondary_limit = 9;
+  string plan_type = 10;
+}
+
+// RateLimit is one of the account's usage windows.
+message RateLimit {
+  double used_percent = 1;
+  int64 window_minutes = 2;
+  // Unix seconds when the window resets.
+  int64 resets_at = 3;
+}
+
+// PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
+// terminal whether to implement it.
+message PlanProposed {
+  string text = 1;
+}
+
+// ApprovalMode is what a client can switch a session to. ASK, AUTO and
+// FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+enum ApprovalMode {
+  APPROVAL_MODE_UNSPECIFIED = 0;
+  APPROVAL_MODE_ASK = 1;
+  APPROVAL_MODE_AUTO = 2;
+  APPROVAL_MODE_FULL_ACCESS = 3;
+  APPROVAL_MODE_PLAN = 4;
+}
+
+// SettingsChanged records a change made through remote-agent that Codex
+// only writes to the rollout when the next turn starts.
+message SettingsChanged {
+  string model = 1;
+  string effort = 2;
+  ApprovalMode mode = 3;
+  // Set when the context was compacted.
+  bool compacted = 4;
 }
 
 // TurnContext is the configuration Codex recorded at the start of a turn.

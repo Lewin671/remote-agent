@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -34,6 +35,8 @@ type Config struct {
 	// CodexBin is the real codex executable.
 	CodexBin string
 	Tmux     *tmux.Client
+	// CodexHome is Codex's state directory, ~/.codex by default.
+	CodexHome string
 	// HistoryPath is Codex's history.jsonl.
 	HistoryPath string
 	// Env is added to every Codex session, e.g. proxy variables.
@@ -70,6 +73,9 @@ func (c *Config) defaults() {
 	if c.Width == 0 {
 		c.Width, c.Height = 160, 48
 	}
+	if c.CodexHome == "" && c.HistoryPath != "" {
+		c.CodexHome = filepath.Dir(c.HistoryPath)
+	}
 }
 
 // Daemon owns all sessions.
@@ -79,6 +85,10 @@ type Daemon struct {
 
 	mu       sync.Mutex
 	sessions map[string]*session
+	limits   *pb.TokenUsage // latest usage limits seen in any session
+
+	settingsMu sync.Mutex
+	cached     *pb.DaemonSettings
 }
 
 // New returns a daemon; call Run to start it.
@@ -228,8 +238,12 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	if st, err := os.Stat(cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("cwd %s is not a directory", cwd)
 	}
+	args, err := d.sessionArgs(req)
+	if err != nil {
+		return nil, err
+	}
 	id := newID(8)
-	m := meta{ID: id, Cwd: cwd, Tmux: "ra-" + id[:8], Args: req.Args, CreatedAt: time.Now().UTC()}
+	m := meta{ID: id, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC()}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -256,7 +270,7 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	}
 	hookCmd := shellQuote(d.cfg.Exe) + " hook codex"
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", d.cfg.CodexBin}
-	argv = append(argv, codex.Args(hookCmd, req.Args)...)
+	argv = append(argv, codex.Args(hookCmd, args)...)
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	})
@@ -281,8 +295,38 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	d.sessions[id] = s
 	d.mu.Unlock()
 	s.start(d.ctx)
-	slog.Info("created session", "session", id, "cwd", cwd)
+	slog.Info("created session", "session", id)
+	if strings.TrimSpace(req.Prompt) != "" {
+		// Queued like any message: it is written once Codex shows its
+		// input box, after startup prompts are answered.
+		if _, err := s.send(req.Prompt, ""); err != nil {
+			slog.Warn("queue first message", "session", id, "err", err)
+		}
+	}
 	return s, nil
+}
+
+// noteLimits keeps the newest usage limits Codex reported.
+func (d *Daemon) noteLimits(u *pb.TokenUsage) {
+	if u.PrimaryLimit == nil && u.SecondaryLimit == nil {
+		return
+	}
+	d.mu.Lock()
+	d.limits = u
+	d.mu.Unlock()
+}
+
+// MachineMeta describes this machine for clients.
+func (d *Daemon) MachineMeta() *pb.MachineMeta {
+	host, _ := os.Hostname()
+	home, _ := os.UserHomeDir()
+	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home}
+	d.mu.Lock()
+	if u := d.limits; u != nil {
+		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
+	}
+	d.mu.Unlock()
+	return m
 }
 
 // session finds a session by full ID or unique prefix.

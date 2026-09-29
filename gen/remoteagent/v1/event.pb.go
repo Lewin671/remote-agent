@@ -129,6 +129,63 @@ func (TurnOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{1}
 }
 
+// ApprovalMode is what a client can switch a session to. ASK, AUTO and
+// FULL_ACCESS are Codex's /permissions levels; PLAN is its Plan mode.
+type ApprovalMode int32
+
+const (
+	ApprovalMode_APPROVAL_MODE_UNSPECIFIED ApprovalMode = 0
+	ApprovalMode_APPROVAL_MODE_ASK         ApprovalMode = 1
+	ApprovalMode_APPROVAL_MODE_AUTO        ApprovalMode = 2
+	ApprovalMode_APPROVAL_MODE_FULL_ACCESS ApprovalMode = 3
+	ApprovalMode_APPROVAL_MODE_PLAN        ApprovalMode = 4
+)
+
+// Enum value maps for ApprovalMode.
+var (
+	ApprovalMode_name = map[int32]string{
+		0: "APPROVAL_MODE_UNSPECIFIED",
+		1: "APPROVAL_MODE_ASK",
+		2: "APPROVAL_MODE_AUTO",
+		3: "APPROVAL_MODE_FULL_ACCESS",
+		4: "APPROVAL_MODE_PLAN",
+	}
+	ApprovalMode_value = map[string]int32{
+		"APPROVAL_MODE_UNSPECIFIED": 0,
+		"APPROVAL_MODE_ASK":         1,
+		"APPROVAL_MODE_AUTO":        2,
+		"APPROVAL_MODE_FULL_ACCESS": 3,
+		"APPROVAL_MODE_PLAN":        4,
+	}
+)
+
+func (x ApprovalMode) Enum() *ApprovalMode {
+	p := new(ApprovalMode)
+	*p = x
+	return p
+}
+
+func (x ApprovalMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ApprovalMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_v1_event_proto_enumTypes[2].Descriptor()
+}
+
+func (ApprovalMode) Type() protoreflect.EnumType {
+	return &file_remoteagent_v1_event_proto_enumTypes[2]
+}
+
+func (x ApprovalMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ApprovalMode.Descriptor instead.
+func (ApprovalMode) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{2}
+}
+
 type ApprovalDecision int32
 
 const (
@@ -170,11 +227,11 @@ func (x ApprovalDecision) String() string {
 }
 
 func (ApprovalDecision) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_v1_event_proto_enumTypes[2].Descriptor()
+	return file_remoteagent_v1_event_proto_enumTypes[3].Descriptor()
 }
 
 func (ApprovalDecision) Type() protoreflect.EnumType {
-	return &file_remoteagent_v1_event_proto_enumTypes[2]
+	return &file_remoteagent_v1_event_proto_enumTypes[3]
 }
 
 func (x ApprovalDecision) Number() protoreflect.EnumNumber {
@@ -183,7 +240,7 @@ func (x ApprovalDecision) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ApprovalDecision.Descriptor instead.
 func (ApprovalDecision) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{2}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{3}
 }
 
 type SessionStatus int32
@@ -229,11 +286,11 @@ func (x SessionStatus) String() string {
 }
 
 func (SessionStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_v1_event_proto_enumTypes[3].Descriptor()
+	return file_remoteagent_v1_event_proto_enumTypes[4].Descriptor()
 }
 
 func (SessionStatus) Type() protoreflect.EnumType {
-	return &file_remoteagent_v1_event_proto_enumTypes[3]
+	return &file_remoteagent_v1_event_proto_enumTypes[4]
 }
 
 func (x SessionStatus) Number() protoreflect.EnumNumber {
@@ -242,7 +299,7 @@ func (x SessionStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionStatus.Descriptor instead.
 func (SessionStatus) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{3}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{4}
 }
 
 type InputStatus int32
@@ -289,11 +346,11 @@ func (x InputStatus) String() string {
 }
 
 func (InputStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_v1_event_proto_enumTypes[4].Descriptor()
+	return file_remoteagent_v1_event_proto_enumTypes[5].Descriptor()
 }
 
 func (InputStatus) Type() protoreflect.EnumType {
-	return &file_remoteagent_v1_event_proto_enumTypes[4]
+	return &file_remoteagent_v1_event_proto_enumTypes[5]
 }
 
 func (x InputStatus) Number() protoreflect.EnumNumber {
@@ -302,7 +359,7 @@ func (x InputStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InputStatus.Descriptor instead.
 func (InputStatus) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{4}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{5}
 }
 
 // Event is one entry in a session's unified event stream. It is the content
@@ -332,6 +389,8 @@ type Event struct {
 	//	*Event_QuestionAnswered
 	//	*Event_SessionState
 	//	*Event_InputState
+	//	*Event_PlanProposed
+	//	*Event_SettingsChanged
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -528,6 +587,24 @@ func (x *Event) GetInputState() *InputState {
 	return nil
 }
 
+func (x *Event) GetPlanProposed() *PlanProposed {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_PlanProposed); ok {
+			return x.PlanProposed
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSettingsChanged() *SettingsChanged {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_SettingsChanged); ok {
+			return x.SettingsChanged
+		}
+	}
+	return nil
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -588,6 +665,14 @@ type Event_InputState struct {
 	InputState *InputState `protobuf:"bytes,23,opt,name=input_state,json=inputState,proto3,oneof"`
 }
 
+type Event_PlanProposed struct {
+	PlanProposed *PlanProposed `protobuf:"bytes,24,opt,name=plan_proposed,json=planProposed,proto3,oneof"`
+}
+
+type Event_SettingsChanged struct {
+	SettingsChanged *SettingsChanged `protobuf:"bytes,25,opt,name=settings_changed,json=settingsChanged,proto3,oneof"`
+}
+
 func (*Event_UserMessage) isEvent_Kind() {}
 
 func (*Event_AgentMessage) isEvent_Kind() {}
@@ -615,6 +700,10 @@ func (*Event_QuestionAnswered) isEvent_Kind() {}
 func (*Event_SessionState) isEvent_Kind() {}
 
 func (*Event_InputState) isEvent_Kind() {}
+
+func (*Event_PlanProposed) isEvent_Kind() {}
+
+func (*Event_SettingsChanged) isEvent_Kind() {}
 
 type UserMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -995,8 +1084,12 @@ type TokenUsage struct {
 	// Tokens in the context window after the last request.
 	LastTotalTokens int64 `protobuf:"varint,6,opt,name=last_total_tokens,json=lastTotalTokens,proto3" json:"last_total_tokens,omitempty"`
 	ContextWindow   int64 `protobuf:"varint,7,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Account usage limits Codex reported with the count.
+	PrimaryLimit   *RateLimit `protobuf:"bytes,8,opt,name=primary_limit,json=primaryLimit,proto3" json:"primary_limit,omitempty"`
+	SecondaryLimit *RateLimit `protobuf:"bytes,9,opt,name=secondary_limit,json=secondaryLimit,proto3" json:"secondary_limit,omitempty"`
+	PlanType       string     `protobuf:"bytes,10,opt,name=plan_type,json=planType,proto3" json:"plan_type,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TokenUsage) Reset() {
@@ -1078,6 +1171,206 @@ func (x *TokenUsage) GetContextWindow() int64 {
 	return 0
 }
 
+func (x *TokenUsage) GetPrimaryLimit() *RateLimit {
+	if x != nil {
+		return x.PrimaryLimit
+	}
+	return nil
+}
+
+func (x *TokenUsage) GetSecondaryLimit() *RateLimit {
+	if x != nil {
+		return x.SecondaryLimit
+	}
+	return nil
+}
+
+func (x *TokenUsage) GetPlanType() string {
+	if x != nil {
+		return x.PlanType
+	}
+	return ""
+}
+
+// RateLimit is one of the account's usage windows.
+type RateLimit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UsedPercent   float64                `protobuf:"fixed64,1,opt,name=used_percent,json=usedPercent,proto3" json:"used_percent,omitempty"`
+	WindowMinutes int64                  `protobuf:"varint,2,opt,name=window_minutes,json=windowMinutes,proto3" json:"window_minutes,omitempty"`
+	// Unix seconds when the window resets.
+	ResetsAt      int64 `protobuf:"varint,3,opt,name=resets_at,json=resetsAt,proto3" json:"resets_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RateLimit) Reset() {
+	*x = RateLimit{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RateLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RateLimit) ProtoMessage() {}
+
+func (x *RateLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RateLimit.ProtoReflect.Descriptor instead.
+func (*RateLimit) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RateLimit) GetUsedPercent() float64 {
+	if x != nil {
+		return x.UsedPercent
+	}
+	return 0
+}
+
+func (x *RateLimit) GetWindowMinutes() int64 {
+	if x != nil {
+		return x.WindowMinutes
+	}
+	return 0
+}
+
+func (x *RateLimit) GetResetsAt() int64 {
+	if x != nil {
+		return x.ResetsAt
+	}
+	return 0
+}
+
+// PlanProposed is a plan Codex wrote in Plan mode. Codex then asks in the
+// terminal whether to implement it.
+type PlanProposed struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlanProposed) Reset() {
+	*x = PlanProposed{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlanProposed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlanProposed) ProtoMessage() {}
+
+func (x *PlanProposed) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlanProposed.ProtoReflect.Descriptor instead.
+func (*PlanProposed) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *PlanProposed) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+// SettingsChanged records a change made through remote-agent that Codex
+// only writes to the rollout when the next turn starts.
+type SettingsChanged struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Model  string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Effort string                 `protobuf:"bytes,2,opt,name=effort,proto3" json:"effort,omitempty"`
+	Mode   ApprovalMode           `protobuf:"varint,3,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
+	// Set when the context was compacted.
+	Compacted     bool `protobuf:"varint,4,opt,name=compacted,proto3" json:"compacted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettingsChanged) Reset() {
+	*x = SettingsChanged{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettingsChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettingsChanged) ProtoMessage() {}
+
+func (x *SettingsChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettingsChanged.ProtoReflect.Descriptor instead.
+func (*SettingsChanged) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SettingsChanged) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *SettingsChanged) GetEffort() string {
+	if x != nil {
+		return x.Effort
+	}
+	return ""
+}
+
+func (x *SettingsChanged) GetMode() ApprovalMode {
+	if x != nil {
+		return x.Mode
+	}
+	return ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+}
+
+func (x *SettingsChanged) GetCompacted() bool {
+	if x != nil {
+		return x.Compacted
+	}
+	return false
+}
+
 // TurnContext is the configuration Codex recorded at the start of a turn.
 type TurnContext struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -1094,7 +1387,7 @@ type TurnContext struct {
 
 func (x *TurnContext) Reset() {
 	*x = TurnContext{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[8]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1106,7 +1399,7 @@ func (x *TurnContext) String() string {
 func (*TurnContext) ProtoMessage() {}
 
 func (x *TurnContext) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[8]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1119,7 +1412,7 @@ func (x *TurnContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnContext.ProtoReflect.Descriptor instead.
 func (*TurnContext) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{8}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TurnContext) GetModel() string {
@@ -1179,7 +1472,7 @@ type ApprovalRequested struct {
 
 func (x *ApprovalRequested) Reset() {
 	*x = ApprovalRequested{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[9]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1191,7 +1484,7 @@ func (x *ApprovalRequested) String() string {
 func (*ApprovalRequested) ProtoMessage() {}
 
 func (x *ApprovalRequested) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[9]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,7 +1497,7 @@ func (x *ApprovalRequested) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalRequested.ProtoReflect.Descriptor instead.
 func (*ApprovalRequested) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{9}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ApprovalRequested) GetApprovalId() string {
@@ -1260,7 +1553,7 @@ type ApprovalResolved struct {
 
 func (x *ApprovalResolved) Reset() {
 	*x = ApprovalResolved{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[10]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1272,7 +1565,7 @@ func (x *ApprovalResolved) String() string {
 func (*ApprovalResolved) ProtoMessage() {}
 
 func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[10]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1285,7 +1578,7 @@ func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalResolved.ProtoReflect.Descriptor instead.
 func (*ApprovalResolved) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{10}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ApprovalResolved) GetApprovalId() string {
@@ -1319,7 +1612,7 @@ type QuestionOption struct {
 
 func (x *QuestionOption) Reset() {
 	*x = QuestionOption{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[11]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1331,7 +1624,7 @@ func (x *QuestionOption) String() string {
 func (*QuestionOption) ProtoMessage() {}
 
 func (x *QuestionOption) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[11]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1344,7 +1637,7 @@ func (x *QuestionOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionOption.ProtoReflect.Descriptor instead.
 func (*QuestionOption) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{11}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *QuestionOption) GetLabel() string {
@@ -1373,7 +1666,7 @@ type Question struct {
 
 func (x *Question) Reset() {
 	*x = Question{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1385,7 +1678,7 @@ func (x *Question) String() string {
 func (*Question) ProtoMessage() {}
 
 func (x *Question) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1398,7 +1691,7 @@ func (x *Question) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Question.ProtoReflect.Descriptor instead.
 func (*Question) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{12}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Question) GetId() string {
@@ -1442,7 +1735,7 @@ type QuestionAsked struct {
 
 func (x *QuestionAsked) Reset() {
 	*x = QuestionAsked{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1454,7 +1747,7 @@ func (x *QuestionAsked) String() string {
 func (*QuestionAsked) ProtoMessage() {}
 
 func (x *QuestionAsked) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1467,7 +1760,7 @@ func (x *QuestionAsked) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAsked.ProtoReflect.Descriptor instead.
 func (*QuestionAsked) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *QuestionAsked) GetQuestionId() string {
@@ -1501,7 +1794,7 @@ type QuestionAnswer struct {
 
 func (x *QuestionAnswer) Reset() {
 	*x = QuestionAnswer{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1513,7 +1806,7 @@ func (x *QuestionAnswer) String() string {
 func (*QuestionAnswer) ProtoMessage() {}
 
 func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1526,7 +1819,7 @@ func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAnswer.ProtoReflect.Descriptor instead.
 func (*QuestionAnswer) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *QuestionAnswer) GetQuestionId() string {
@@ -1553,7 +1846,7 @@ type QuestionAnswered struct {
 
 func (x *QuestionAnswered) Reset() {
 	*x = QuestionAnswered{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1565,7 +1858,7 @@ func (x *QuestionAnswered) String() string {
 func (*QuestionAnswered) ProtoMessage() {}
 
 func (x *QuestionAnswered) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1578,7 +1871,7 @@ func (x *QuestionAnswered) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAnswered.ProtoReflect.Descriptor instead.
 func (*QuestionAnswered) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *QuestionAnswered) GetQuestionId() string {
@@ -1606,7 +1899,7 @@ type SessionState struct {
 
 func (x *SessionState) Reset() {
 	*x = SessionState{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1618,7 +1911,7 @@ func (x *SessionState) String() string {
 func (*SessionState) ProtoMessage() {}
 
 func (x *SessionState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1631,7 +1924,7 @@ func (x *SessionState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionState.ProtoReflect.Descriptor instead.
 func (*SessionState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{16}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SessionState) GetStatus() SessionStatus {
@@ -1660,7 +1953,7 @@ type InputState struct {
 
 func (x *InputState) Reset() {
 	*x = InputState{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1672,7 +1965,7 @@ func (x *InputState) String() string {
 func (*InputState) ProtoMessage() {}
 
 func (x *InputState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1685,7 +1978,7 @@ func (x *InputState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InputState.ProtoReflect.Descriptor instead.
 func (*InputState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *InputState) GetRequestId() string {
@@ -1706,7 +1999,7 @@ var File_remoteagent_v1_event_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\b\n" +
+	"\x1aremoteagent/v1/event.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\t\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x1d\n" +
 	"\n" +
@@ -1730,7 +2023,9 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x11question_answered\x18\x15 \x01(\v2 .remoteagent.v1.QuestionAnsweredH\x00R\x10questionAnswered\x12C\n" +
 	"\rsession_state\x18\x16 \x01(\v2\x1c.remoteagent.v1.SessionStateH\x00R\fsessionState\x12=\n" +
 	"\vinput_state\x18\x17 \x01(\v2\x1a.remoteagent.v1.InputStateH\x00R\n" +
-	"inputStateB\x06\n" +
+	"inputState\x12C\n" +
+	"\rplan_proposed\x18\x18 \x01(\v2\x1c.remoteagent.v1.PlanProposedH\x00R\fplanProposed\x12L\n" +
+	"\x10settings_changed\x18\x19 \x01(\v2\x1f.remoteagent.v1.SettingsChangedH\x00R\x0fsettingsChangedB\x06\n" +
 	"\x04kind\"B\n" +
 	"\vUserMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
@@ -1761,7 +2056,7 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.remoteagent.v1.TurnOutcomeR\aoutcome\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1f\n" +
 	"\vduration_ms\x18\x03 \x01(\x03R\n" +
-	"durationMs\"\xb2\x02\n" +
+	"durationMs\"\xd3\x03\n" +
 	"\n" +
 	"TokenUsage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12.\n" +
@@ -1770,7 +2065,22 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x17reasoning_output_tokens\x18\x04 \x01(\x03R\x15reasoningOutputTokens\x12!\n" +
 	"\ftotal_tokens\x18\x05 \x01(\x03R\vtotalTokens\x12*\n" +
 	"\x11last_total_tokens\x18\x06 \x01(\x03R\x0flastTotalTokens\x12%\n" +
-	"\x0econtext_window\x18\a \x01(\x03R\rcontextWindow\"\xdc\x01\n" +
+	"\x0econtext_window\x18\a \x01(\x03R\rcontextWindow\x12>\n" +
+	"\rprimary_limit\x18\b \x01(\v2\x19.remoteagent.v1.RateLimitR\fprimaryLimit\x12B\n" +
+	"\x0fsecondary_limit\x18\t \x01(\v2\x19.remoteagent.v1.RateLimitR\x0esecondaryLimit\x12\x1b\n" +
+	"\tplan_type\x18\n" +
+	" \x01(\tR\bplanType\"r\n" +
+	"\tRateLimit\x12!\n" +
+	"\fused_percent\x18\x01 \x01(\x01R\vusedPercent\x12%\n" +
+	"\x0ewindow_minutes\x18\x02 \x01(\x03R\rwindowMinutes\x12\x1b\n" +
+	"\tresets_at\x18\x03 \x01(\x03R\bresetsAt\"\"\n" +
+	"\fPlanProposed\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"\x8f\x01\n" +
+	"\x0fSettingsChanged\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
+	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12\x1c\n" +
+	"\tcompacted\x18\x04 \x01(\bR\tcompacted\"\xdc\x01\n" +
 	"\vTurnContext\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x12'\n" +
@@ -1830,7 +2140,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\vTurnOutcome\x12\x1c\n" +
 	"\x18TURN_OUTCOME_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16TURN_OUTCOME_COMPLETED\x10\x01\x12\x18\n" +
-	"\x14TURN_OUTCOME_ABORTED\x10\x02*\xad\x01\n" +
+	"\x14TURN_OUTCOME_ABORTED\x10\x02*\x93\x01\n" +
+	"\fApprovalMode\x12\x1d\n" +
+	"\x19APPROVAL_MODE_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11APPROVAL_MODE_ASK\x10\x01\x12\x16\n" +
+	"\x12APPROVAL_MODE_AUTO\x10\x02\x12\x1d\n" +
+	"\x19APPROVAL_MODE_FULL_ACCESS\x10\x03\x12\x16\n" +
+	"\x12APPROVAL_MODE_PLAN\x10\x04*\xad\x01\n" +
 	"\x10ApprovalDecision\x12!\n" +
 	"\x1dAPPROVAL_DECISION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17APPROVAL_DECISION_ALLOW\x10\x01\x12\x1a\n" +
@@ -1865,64 +2181,73 @@ func file_remoteagent_v1_event_proto_rawDescGZIP() []byte {
 	return file_remoteagent_v1_event_proto_rawDescData
 }
 
-var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_remoteagent_v1_event_proto_goTypes = []any{
 	(ToolKind)(0),                 // 0: remoteagent.v1.ToolKind
 	(TurnOutcome)(0),              // 1: remoteagent.v1.TurnOutcome
-	(ApprovalDecision)(0),         // 2: remoteagent.v1.ApprovalDecision
-	(SessionStatus)(0),            // 3: remoteagent.v1.SessionStatus
-	(InputStatus)(0),              // 4: remoteagent.v1.InputStatus
-	(*Event)(nil),                 // 5: remoteagent.v1.Event
-	(*UserMessage)(nil),           // 6: remoteagent.v1.UserMessage
-	(*AgentMessage)(nil),          // 7: remoteagent.v1.AgentMessage
-	(*Reasoning)(nil),             // 8: remoteagent.v1.Reasoning
-	(*ToolCall)(nil),              // 9: remoteagent.v1.ToolCall
-	(*TurnStarted)(nil),           // 10: remoteagent.v1.TurnStarted
-	(*TurnEnded)(nil),             // 11: remoteagent.v1.TurnEnded
-	(*TokenUsage)(nil),            // 12: remoteagent.v1.TokenUsage
-	(*TurnContext)(nil),           // 13: remoteagent.v1.TurnContext
-	(*ApprovalRequested)(nil),     // 14: remoteagent.v1.ApprovalRequested
-	(*ApprovalResolved)(nil),      // 15: remoteagent.v1.ApprovalResolved
-	(*QuestionOption)(nil),        // 16: remoteagent.v1.QuestionOption
-	(*Question)(nil),              // 17: remoteagent.v1.Question
-	(*QuestionAsked)(nil),         // 18: remoteagent.v1.QuestionAsked
-	(*QuestionAnswer)(nil),        // 19: remoteagent.v1.QuestionAnswer
-	(*QuestionAnswered)(nil),      // 20: remoteagent.v1.QuestionAnswered
-	(*SessionState)(nil),          // 21: remoteagent.v1.SessionState
-	(*InputState)(nil),            // 22: remoteagent.v1.InputState
-	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
+	(ApprovalMode)(0),             // 2: remoteagent.v1.ApprovalMode
+	(ApprovalDecision)(0),         // 3: remoteagent.v1.ApprovalDecision
+	(SessionStatus)(0),            // 4: remoteagent.v1.SessionStatus
+	(InputStatus)(0),              // 5: remoteagent.v1.InputStatus
+	(*Event)(nil),                 // 6: remoteagent.v1.Event
+	(*UserMessage)(nil),           // 7: remoteagent.v1.UserMessage
+	(*AgentMessage)(nil),          // 8: remoteagent.v1.AgentMessage
+	(*Reasoning)(nil),             // 9: remoteagent.v1.Reasoning
+	(*ToolCall)(nil),              // 10: remoteagent.v1.ToolCall
+	(*TurnStarted)(nil),           // 11: remoteagent.v1.TurnStarted
+	(*TurnEnded)(nil),             // 12: remoteagent.v1.TurnEnded
+	(*TokenUsage)(nil),            // 13: remoteagent.v1.TokenUsage
+	(*RateLimit)(nil),             // 14: remoteagent.v1.RateLimit
+	(*PlanProposed)(nil),          // 15: remoteagent.v1.PlanProposed
+	(*SettingsChanged)(nil),       // 16: remoteagent.v1.SettingsChanged
+	(*TurnContext)(nil),           // 17: remoteagent.v1.TurnContext
+	(*ApprovalRequested)(nil),     // 18: remoteagent.v1.ApprovalRequested
+	(*ApprovalResolved)(nil),      // 19: remoteagent.v1.ApprovalResolved
+	(*QuestionOption)(nil),        // 20: remoteagent.v1.QuestionOption
+	(*Question)(nil),              // 21: remoteagent.v1.Question
+	(*QuestionAsked)(nil),         // 22: remoteagent.v1.QuestionAsked
+	(*QuestionAnswer)(nil),        // 23: remoteagent.v1.QuestionAnswer
+	(*QuestionAnswered)(nil),      // 24: remoteagent.v1.QuestionAnswered
+	(*SessionState)(nil),          // 25: remoteagent.v1.SessionState
+	(*InputState)(nil),            // 26: remoteagent.v1.InputState
+	(*timestamppb.Timestamp)(nil), // 27: google.protobuf.Timestamp
 }
 var file_remoteagent_v1_event_proto_depIdxs = []int32{
-	23, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
-	6,  // 1: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
-	7,  // 2: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
-	8,  // 3: remoteagent.v1.Event.reasoning:type_name -> remoteagent.v1.Reasoning
-	9,  // 4: remoteagent.v1.Event.tool_call:type_name -> remoteagent.v1.ToolCall
-	10, // 5: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
-	11, // 6: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
-	12, // 7: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
-	13, // 8: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
-	14, // 9: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
-	15, // 10: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
-	18, // 11: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
-	20, // 12: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
-	21, // 13: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
-	22, // 14: remoteagent.v1.Event.input_state:type_name -> remoteagent.v1.InputState
-	0,  // 15: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
-	1,  // 16: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
-	23, // 17: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
-	2,  // 18: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
-	16, // 19: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
-	17, // 20: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
-	19, // 21: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
-	3,  // 22: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
-	4,  // 23: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	27, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
+	7,  // 1: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
+	8,  // 2: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
+	9,  // 3: remoteagent.v1.Event.reasoning:type_name -> remoteagent.v1.Reasoning
+	10, // 4: remoteagent.v1.Event.tool_call:type_name -> remoteagent.v1.ToolCall
+	11, // 5: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
+	12, // 6: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
+	13, // 7: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
+	17, // 8: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
+	18, // 9: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
+	19, // 10: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
+	22, // 11: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
+	24, // 12: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
+	25, // 13: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
+	26, // 14: remoteagent.v1.Event.input_state:type_name -> remoteagent.v1.InputState
+	15, // 15: remoteagent.v1.Event.plan_proposed:type_name -> remoteagent.v1.PlanProposed
+	16, // 16: remoteagent.v1.Event.settings_changed:type_name -> remoteagent.v1.SettingsChanged
+	0,  // 17: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
+	1,  // 18: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
+	14, // 19: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
+	14, // 20: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
+	2,  // 21: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
+	27, // 22: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
+	3,  // 23: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
+	20, // 24: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
+	21, // 25: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
+	23, // 26: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
+	4,  // 27: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
+	5,  // 28: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_event_proto_init() }
@@ -1945,6 +2270,8 @@ func file_remoteagent_v1_event_proto_init() {
 		(*Event_QuestionAnswered)(nil),
 		(*Event_SessionState)(nil),
 		(*Event_InputState)(nil),
+		(*Event_PlanProposed)(nil),
+		(*Event_SettingsChanged)(nil),
 	}
 	file_remoteagent_v1_event_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
@@ -1952,8 +2279,8 @@ func file_remoteagent_v1_event_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_event_proto_rawDesc), len(file_remoteagent_v1_event_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   18,
+			NumEnums:      6,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
