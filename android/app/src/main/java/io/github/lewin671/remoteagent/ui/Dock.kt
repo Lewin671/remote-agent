@@ -180,27 +180,39 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
     var index by rememberSaveable(q.questionId) { mutableIntStateOf(0) }
     val picked = remember(q.questionId) { mutableStateMapOf<Int, Int>() }
     val act = rememberAction()
+    val multi = remember(q.questionId) { mutableStateMapOf<Int, Set<Int>>() }
     val qs = q.questionsList
     val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return
+    fun submit(options: List<Int>) {
+        val qi = index
+        act.run({
+            remote.command(s.id, remote.cmd {
+                answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(q.questionId).also { b ->
+                    if (cur.multiSelect) b.addAllOptions(options.map { it + 1 }) else b.setOption(options.first() + 1)
+                    if (qs.size > 1) b.setQuestionIndex(qi)
+                }.build()
+            })
+        }) { if (qi + 1 < qs.size) index = qi + 1 }
+    }
     DockFrame(more) {
         DockTitle("${agentName(s.agent())} 在问你", if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else "")
         Text(cur.text, style = MaterialTheme.typography.titleSmall)
         Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             cur.optionsList.forEachIndexed { i, o ->
                 val (label, rec) = optionLabel(o.label)
-                val sel = picked[index] == i
+                val sel = if (cur.multiSelect) i in (multi[index] ?: emptySet()) else picked[index] == i
                 Column(
                     Modifier.fillMaxWidth().background(if (sel) p.blueSoft else p.soft, RoundedCornerShape(12.dp))
                         .border(1.dp, if (sel) p.blue else p.line, RoundedCornerShape(12.dp))
                         .clickable(enabled = !act.running) {
-                            picked[index] = i
-                            val qi = index
-                            act.run({
-                                remote.command(s.id, remote.cmd {
-                                    answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(q.questionId)
-                                        .setOption(i + 1).also { if (qs.size > 1) it.setQuestionIndex(qi) }.build()
-                                })
-                            }) { if (qi + 1 < qs.size) index = qi + 1 }
+                            if (cur.multiSelect) {
+                                val set = (multi[index] ?: emptySet()).toMutableSet()
+                                if (!set.add(i)) set.remove(i)
+                                multi[index] = set
+                            } else {
+                                picked[index] = i
+                                submit(listOf(i))
+                            }
                         }
                         .padding(12.dp),
                 ) {
@@ -210,9 +222,15 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
                         if (rec) Chip("推荐", color = p.blue, bg = p.blueSoft)
                     }
                     if (o.description.isNotEmpty()) Text(o.description, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-                    if (sel && act.running) Text("提交中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                    if (sel && act.running && !cur.multiSelect) Text("提交中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
                 }
             }
+        }
+        if (cur.multiSelect) {
+            Button(
+                onClick = { submit((multi[index] ?: emptySet()).sorted()) },
+                enabled = !act.running && !multi[index].isNullOrEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            ) { Text(if (act.running) "提交中…" else "提交（可多选）") }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("都不合适？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
@@ -245,7 +263,10 @@ fun PlanButtons(s: SessionView, full: Boolean, onDone: () -> Unit = {}) {
         OutlinedButton(onClick = { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text("继续规划…") }
         Button(onClick = { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text(if (act.running) "提交中…" else "批准执行") }
     }
-    if (full) TextButton(onClick = { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }, enabled = !act.running) { Text("清空上下文后执行") }
+    // Claude Code has no such choice.
+    if (full && s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) {
+        TextButton(onClick = { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }, enabled = !act.running) { Text("清空上下文后执行") }
+    }
     if (act.error.isNotEmpty()) Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
 }
 

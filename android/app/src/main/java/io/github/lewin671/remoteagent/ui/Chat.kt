@@ -93,6 +93,7 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
                 val icon = when (r.decision) {
                     ApprovalDecision.APPROVAL_DECISION_ALLOW -> "✓"
                     ApprovalDecision.APPROVAL_DECISION_CANCELED -> "–"
+                    ApprovalDecision.APPROVAL_DECISION_TERMINAL -> "↗"
                     else -> "✕"
                 }
                 out += ChatItem.Note(k, listOf(what, decisionText(r.decision) + (if (r.message.isNotEmpty()) "：" + r.message else "")).filter { it.isNotEmpty() }.joinToString("  "), icon, if (ok) 1 else 2)

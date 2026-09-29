@@ -110,4 +110,19 @@ class ModelTest {
         assertEquals("foo", projectName("/Users/me/Code/foo/"))
         assertEquals("修 bug", plain("修 `bug`"))
     }
+
+    @Test
+    fun followsClaudeCodeModes() {
+        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
+        assertEquals(Mode.AUTO, modeLabel(s { mode = io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO })?.mode)
+        val own = modeLabel(s { permissionMode = "acceptEdits" })!!
+        assertEquals("acceptEdits", own.text)
+        assertEquals(null, own.mode)
+        assertEquals(Mode.PLAN, modeLabel(s { collaborationMode = "plan"; approvalPolicy = "on-request" })?.mode)
+        assertTrue(noAutoMode(s { agent = Agent.AGENT_CLAUDE; model = "claude-haiku-4-5-20251001" }))
+        val models = listOf("opus", "sonnet", "haiku")
+        assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
+        assertEquals("sonnet", findModel(models, "sonnet") { it })
+        assertEquals(null, findModel(models, "gpt-6-luna") { it })
+    }
 }

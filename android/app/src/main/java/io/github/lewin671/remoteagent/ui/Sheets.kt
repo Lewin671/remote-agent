@@ -73,6 +73,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     val act = rememberAction()
     var confirmFull by remember { mutableStateOf(false) }
     val cur = modeOf(s)
+    fun unavailable(m: Mode) = (m == Mode.FULL && s.info?.fullAccessUnavailable == true) || (m == Mode.AUTO && io.github.lewin671.remoteagent.core.noAutoMode(s))
     fun set(m: Mode) = act.run({
         remote.command(s.id, remote.cmd { setApprovalMode = SetApprovalModeRequest.newBuilder().setSessionId(s.id).setMode(m.proto).build() })
     }) { onClose() }
@@ -81,13 +82,24 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             Text("审批模式", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             for (m in Mode.entries) {
-                Row44(onClick = if (act.running) null else ({ if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m) })) {
+                val off = unavailable(m)
+                Row44(onClick = if (act.running || off) null else ({ if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m) })) {
                     Column(Modifier.weight(1f)) {
-                        Text(m.text, style = MaterialTheme.typography.titleSmall, color = if (m == Mode.FULL) p.red else p.fg)
-                        Text(modeHelp.getValue(m), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+                        Text(m.text, style = MaterialTheme.typography.titleSmall, color = if (off) p.faint else if (m == Mode.FULL) p.red else p.fg)
+                        Text(
+                            when {
+                                off && m == Mode.FULL -> "这个会话启动时没有允许，不能切到完全放行"
+                                off -> "这个模型没有自动模式"
+                                else -> modeHelp.getValue(m)
+                            },
+                            style = MaterialTheme.typography.bodyMedium, color = p.muted,
+                        )
                     }
                     if (m == cur) Text("✓", color = p.blue)
                 }
+            }
+            s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }?.let {
+                Text("现在是 ${agentName(s.agent())} 自己的模式「$it」，这里只提供两个 CLI 共有的四种", style = MaterialTheme.typography.bodySmall, color = p.muted)
             }
             Text("只改当前会话", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(top = 8.dp))
             if (act.running) Text("正在切换…", color = p.muted)
@@ -118,7 +130,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
     }
     val act = rememberAction()
     val compact = rememberAction()
-    var pickedModel by remember { mutableStateOf(s.info?.model.orEmpty()) }
+    var pickedModel by remember { mutableStateOf("") }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("会话设置", style = MaterialTheme.typography.titleMedium)
@@ -147,22 +159,31 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 }
                 ms == null -> Text("读取中…", color = p.muted)
                 else -> {
+                    val current = io.github.lewin671.remoteagent.core.findModel(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
+                    if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
                     for (m in ms.modelsList) {
                         Row44(onClick = { pickedModel = m.slug }) {
                             Column(Modifier.weight(1f)) {
                                 Text(m.displayName.ifEmpty { m.slug }, style = MaterialTheme.typography.titleSmall)
                                 if (m.description.isNotEmpty()) Text(m.description, style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2)
                             }
-                            if (m.slug == pickedModel || m.displayName == pickedModel) Text("✓", color = p.blue)
+                            if (m.slug == pickedModel) Text("✓", color = p.blue)
                         }
                     }
-                    val model = ms.modelsList.firstOrNull { it.slug == pickedModel || it.displayName == pickedModel }
-                    if (model != null) {
+                    val model = ms.modelsList.firstOrNull { it.slug == pickedModel }
+                    if (model != null && model.effortsList.isEmpty() && model != current) {
+                        Button(onClick = {
+                            act.run({
+                                remote.command(s.id, remote.cmd { setModel = SetModelRequest.newBuilder().setSessionId(s.id).setModel(model.slug).build() })
+                            }) { onClose() }
+                        }, enabled = !running && !act.running, modifier = Modifier.fillMaxWidth()) { Text("切换到 ${model.displayName.ifEmpty { model.slug }}") }
+                    }
+                    if (model != null && model.effortsList.isNotEmpty()) {
                         Text("推理强度", style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                             for (e in model.effortsList) {
                                 FilterChip(
-                                    selected = e == s.info?.effort && model.slug == s.info?.model,
+                                    selected = e == s.info?.effort && model == current,
                                     onClick = {
                                         act.run({
                                             remote.command(s.id, remote.cmd { setModel = SetModelRequest.newBuilder().setSessionId(s.id).setModel(model.slug).setEffort(e).build() })

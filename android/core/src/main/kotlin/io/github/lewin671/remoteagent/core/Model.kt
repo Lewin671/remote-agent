@@ -179,8 +179,21 @@ enum class Mode(val text: String, val proto: ApprovalMode) {
 
 fun modeOf(m: ApprovalMode): Mode? = Mode.entries.firstOrNull { it.proto == m }
 
-/** The approval mode named from turn-context fields. */
-fun contextMode(reviewer: String, policy: String, sandbox: String, collaboration: String): Mode? {
+/** Claude Code's permission mode as a client mode, or null for its own ones such as acceptEdits. */
+fun permissionMode(pm: String): Mode? = when (pm) {
+    "default" -> Mode.ASK
+    "auto" -> Mode.AUTO
+    "plan" -> Mode.PLAN
+    "bypassPermissions" -> Mode.FULL
+    else -> null
+}
+
+/** A mode as shown: one of the four, or a CLI's own mode by its name. */
+data class ModeLabel(val text: String, val mode: Mode?)
+
+/** The approval mode named from turn-context fields: Claude Code's permission mode, or Codex's approval fields. */
+fun contextMode(reviewer: String, policy: String, sandbox: String, collaboration: String, permission: String = ""): Mode? {
+    if (permission.isNotEmpty()) return permissionMode(permission)
     if (reviewer.isEmpty() && policy.isEmpty() && collaboration.isEmpty()) return null
     if (collaboration == "plan") return Mode.PLAN
     if (sandbox == "danger-full-access" && policy == "never") return Mode.FULL
@@ -188,9 +201,37 @@ fun contextMode(reviewer: String, policy: String, sandbox: String, collaboration
     return Mode.ASK
 }
 
-fun modeOf(s: SessionView): Mode? {
+fun modeOf(s: SessionView): Mode? = modeLabel(s)?.mode
+
+/**
+ * The session's mode. Session.mode is either CLI's mode as a client mode;
+ * UNSPECIFIED with a permission mode is one of Claude Code's own, shown by
+ * its name. Older daemons set neither: it is named from the approval fields.
+ */
+fun modeLabel(s: SessionView): ModeLabel? {
     val i = s.info ?: return null
-    return contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode)
+    modeOf(i.mode)?.let { return ModeLabel(it.text, it) }
+    if (i.permissionMode.isNotEmpty()) {
+        val m = permissionMode(i.permissionMode)
+        return ModeLabel(m?.text ?: i.permissionMode, m)
+    }
+    return contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode)?.let { ModeLabel(it.text, it) }
+}
+
+/** Claude Code's haiku has no auto mode. */
+fun noAutoMode(s: SessionView): Boolean = s.agent() == Agent.AGENT_CLAUDE && s.info?.model.orEmpty().contains("haiku", ignoreCase = true)
+
+/**
+ * The entry of a model list that a session's model is. Codex reports the slug
+ * it was started with; Claude Code offers aliases (sonnet, opus) but records
+ * the full ID (claude-sonnet-5-5), so an alias matches a full ID that has it
+ * as one of its words.
+ */
+fun <M> findModel(models: List<M>, id: String, slug: (M) -> String): M? {
+    if (id.isEmpty()) return null
+    models.firstOrNull { slug(it) == id }?.let { return it }
+    val words = id.lowercase().split(Regex("[-_.\\s]"))
+    return models.firstOrNull { slug(it).lowercase() in words }
 }
 
 /** Context window use in percent, or null when unknown. */
@@ -275,15 +316,20 @@ fun derive(events: List<Event>): Derived {
             }
             Event.KindCase.TURN_CONTEXT -> {
                 val c = e.turnContext
-                val m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode)
+                val m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode)
+                val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
                 val mm = "${c.model} ${c.effort}"
                 val changes = mutableListOf<String>()
                 if (mode != null && m != null && m != mode) changes += "模式切到了 ${m.text}"
-                // Plan mode runs at its own effort; only a model change counts there.
-                if (model.isNotEmpty() && mm != model && c.collaborationMode != "plan") changes += "模型切到了 ${c.model} · ${c.effort}"
+                // Plan mode runs at its own effort; only a model change counts
+                // there. A context without a model is Claude Code's mode, read
+                // off the screen; it says nothing about the model.
+                if (model.isNotEmpty() && c.model.isNotEmpty() && mm != model && !planning) {
+                    changes += "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                }
                 if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.joinToString("，")
                 if (m != null) mode = m
-                if (c.collaborationMode != "plan") model = mm
+                if (!planning && c.model.isNotEmpty()) model = mm
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                 d.running = false
@@ -303,6 +349,7 @@ fun decisionText(d: ApprovalDecision): String = when (d) {
     ApprovalDecision.APPROVAL_DECISION_DENY -> "已拒绝"
     ApprovalDecision.APPROVAL_DECISION_TIMEOUT -> "超时，已拒绝"
     ApprovalDecision.APPROVAL_DECISION_CANCELED -> "已取消"
+    ApprovalDecision.APPROVAL_DECISION_TERMINAL -> "已在终端处理"
     else -> ""
 }
 

@@ -421,14 +421,16 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     val running = status == Status.RUNNING || d.running
     Column(Modifier.fillMaxWidth().background(p.card).padding(horizontal = 12.dp, vertical = 6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            val mode = modeOf(s)
+            val label = io.github.lewin671.remoteagent.core.modeLabel(s)
+            val mode = label?.mode
             Chip(
-                mode?.text ?: "模式",
+                label?.text ?: "模式",
                 color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
                 bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
             ) { sheet = 1 }
             val model = s.info?.model.orEmpty()
-            Chip(if (model.isEmpty()) "模型读取中" else "$model · ${s.info?.effort.orEmpty()} ▾") { sheet = 2 }
+            val effort = s.info?.effort.orEmpty()
+            Chip(if (model.isEmpty()) "模型读取中" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { sheet = 2 }
             contextPercent(s)?.let { pc ->
                 Chip("$pc%", color = if (pc > 80) p.orangeInk else p.fg2, bg = if (pc > 80) p.orangeSoft else p.chip) { sheet = 2 }
             }
