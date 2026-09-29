@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/coder/websocket"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
 

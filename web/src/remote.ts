@@ -118,6 +118,9 @@ export class Remote {
   error = "";
 
   private buffers = new Map<string, EventBuffer>();
+  // Pushes seen per machine, so that a list fetched before a push cannot
+  // undo the online state it reported.
+  private machinePushes = new Map<string, number>();
   private token = "";
   private api: Client<typeof ClientService>;
   private ws?: WebSocket;
@@ -234,7 +237,11 @@ export class Remote {
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
         break;
       case "machineUpdated":
-        if (kind.value.machine) await this.putMachine(kind.value.machine);
+        if (kind.value.machine) {
+          const id = kind.value.machine.id;
+          this.machinePushes.set(id, (this.machinePushes.get(id) ?? 0) + 1);
+          await this.putMachine(kind.value.machine);
+        }
         break;
       case "sessionUpdated":
         if (kind.value.session) await this.putSession(kind.value.session);
@@ -256,21 +263,27 @@ export class Remote {
   /** Reloads machines and sessions. */
   async refresh() {
     try {
+      const pushes = new Map(this.machinePushes);
       const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({})]);
-      for (const m of ms.machines) await this.putMachine(m);
+      for (const m of ms.machines) {
+        const stale = (this.machinePushes.get(m.id) ?? 0) !== (pushes.get(m.id) ?? 0);
+        await this.putMachine(m, stale);
+      }
       for (const s of ss.sessions) await this.putSession(s);
     } catch (e) {
       this.report(e);
     }
   }
 
-  private async putMachine(m: RemoteMachine) {
+  /** Stores a machine. staleOnline: a push arrived after m was fetched,
+   * so its online flag is out of date. */
+  private async putMachine(m: RemoteMachine, staleOnline = false) {
     let view = this.machines.get(m.id);
     if (!view) {
       view = { id: m.id, online: m.online, metaRev: 0n };
       this.machines.set(m.id, view);
     }
-    view.online = m.online;
+    if (!staleOnline) view.online = m.online;
     if (m.meta) {
       try {
         const { header, msg } = await openMessage(this.keys.meta, m.meta, { kind: PayloadKind.MACHINE_META, machineId: m.id }, MachineMetaSchema);

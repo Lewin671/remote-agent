@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/coder/websocket"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
 
