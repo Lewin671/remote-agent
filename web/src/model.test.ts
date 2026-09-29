@@ -244,6 +244,18 @@ describe("new sessions follow the project", () => {
     expect(inheritConfig(projects(list)[0], machines(false, true))).toMatchObject({ machineId: "m2", model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
   });
 
+  it("picks a CLI the fallback machine has", () => {
+    const meta = (...agents: Agent[]) => create(MachineMetaSchema, { agents: agents.map((agent) => create(AgentInfoSchema, { agent })) });
+    const ms = new Map<string, MachineLike>([
+      ["m1", { id: "m1", online: false, lastSeenMs: 0n }],
+      ["m2", { id: "m2", online: true, lastSeenMs: 0n, meta: meta(Agent.CLAUDE) }],
+    ]);
+    // The latest session ran Codex on m1, which is offline; m2 only has
+    // Claude Code.
+    const list = [sess({ ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ ...ctx }, { id: "b", updatedMs: 5n })];
+    expect(inheritConfig(projects(list)[0], ms)).toMatchObject({ machineId: "m2", agent: Agent.CLAUDE });
+  });
+
   it("has nothing to copy for a new project", () => {
     expect(inheritConfig(undefined, machines(true, true))).toBeUndefined();
   });

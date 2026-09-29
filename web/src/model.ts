@@ -299,6 +299,18 @@ export function contextPercent(s: SessionLike): number | undefined {
   return Math.min(100, Number((i.contextTokens * 100n) / i.contextWindow));
 }
 
+/** The entry of a model list that a session's model is. Codex reports
+ * the slug it was started with; Claude Code offers aliases (sonnet, opus)
+ * but records the full ID (claude-sonnet-5-5), so an alias matches a full
+ * ID that has it as one of its words. */
+export function findModel<M extends { slug: string }>(models: M[] | undefined, id: string): M | undefined {
+  if (!models || !id) return undefined;
+  const exact = models.find((m) => m.slug === id);
+  if (exact) return exact;
+  const words = id.toLowerCase().split(/[-_.\s]/);
+  return models.find((m) => words.includes(m.slug.toLowerCase()));
+}
+
 /** Context above this share turns the chip orange. */
 export const CONTEXT_WARN = 80;
 
@@ -340,7 +352,9 @@ export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map
   const other = p.machines.find(online);
   const machineId = other ?? latest.machineId;
   const m = machines.get(machineId);
-  return { machineId, cwd, agent: machineAgents(m).includes(agent) ? agent : Agent.CODEX, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, from: latest };
+  // That machine may not have the same CLI; take one it has.
+  const agents = machineAgents(m);
+  return { machineId, cwd, agent: agents.includes(agent) ? agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, from: latest };
 }
 
 // --- events ---
