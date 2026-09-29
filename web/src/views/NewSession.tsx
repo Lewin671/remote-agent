@@ -21,7 +21,7 @@ import {
   type MachineLike,
   type NewConfig,
 } from "../model";
-import { errorText, newSlot, type MachineView, type Remote, type RequestSlot } from "../remote";
+import { errorText, newSlot, uncertain, type MachineView, type Remote, type RequestSlot } from "../remote";
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
 
@@ -115,6 +115,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       go("s/" + sid);
       return true;
     } catch (e) {
+      if (!uncertain(e)) last.current = { key: k, slot: newSlot() };
       setError(errorText(e));
       return false;
     } finally {

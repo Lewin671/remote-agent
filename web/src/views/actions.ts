@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { derive, type Derived } from "../model";
-import { errorText, newSlot, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import { errorText, newSlot, uncertain, type CommandKind, type Remote, type RequestSlot } from "../remote";
 
 export function useDerived(remote: Remote, sid: string): Derived {
   const events = remote.events(sid);
@@ -29,6 +29,8 @@ function useCommand(remote: Remote, sid: string) {
       await remote.command(sid, cmd, slot);
       return true;
     } catch (e) {
+      // Only an uncertain outcome keeps the slot for the retry.
+      if (!uncertain(e)) last.current = { key, slot: newSlot() };
       setError(errorText(e));
       setBusy("");
       return false;

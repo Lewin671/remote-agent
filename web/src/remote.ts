@@ -105,6 +105,15 @@ export class CommandError extends Error {
   }
 }
 
+/** Whether a command may or may not have run: a retry must then reuse
+ * its request slot, so the daemon answers from its log rather than
+ * running it again. A definite answer (done, refused, never sent) lets
+ * the next attempt start afresh. */
+export function uncertain(e: unknown): boolean {
+  if (e instanceof CommandError) return e.code === "unknown" || e.code === "aborted";
+  return e instanceof ConnectError;
+}
+
 /** Where the API is reached: the account's server, or with
  * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
 export function apiBase(server: string): string {
@@ -651,7 +660,8 @@ export class Remote {
       const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline });
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
-      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e) });
+      // The send ID still keeps the daemon from queueing the text twice.
+      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e), ...(uncertain(e) ? {} : newSlot()) });
     }
   }
 
