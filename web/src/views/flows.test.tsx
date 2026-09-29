@@ -265,3 +265,25 @@ it("never sends one project's unknown start from another project's box", async (
   await act(async () => void (await ns!.create("改了的文字")));
   expect(sent[2]).toEqual(sent[0]);
 });
+
+it("offers the full command of an approval that arrived while the dock was collapsed", () => {
+  const r = demo();
+  const s = r.sessions.get("s-appr")!;
+  const dock = (collapsed: boolean) => (
+    <Dock
+      remote={r}
+      sid="s-appr"
+      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
+      agent={Agent.CODEX}
+      collapsed={collapsed}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />
+  );
+  // The five-line command mounts while the user is typing.
+  mount(dock(true));
+  act(() => root!.render(dock(false)));
+  expect(button("展开全文")).toBeTruthy();
+});

@@ -40,7 +40,17 @@ function Cut({ text, onMore, className = "" }: { text: string; onMore?: () => vo
   const [cut, setCut] = useState(false);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el) setCut(el.scrollHeight > el.clientHeight + 2);
+    if (!el) return;
+    // More lines than the block shows is cut however it lays out; the
+    // measurement catches long lines that wrap. A block mounted hidden
+    // (the dock collapsed while typing) measures nothing, so measure again
+    // whenever its size changes, as when it is shown.
+    const measure = () => setCut(text.split("\n").length > 4 || el.scrollHeight > el.clientHeight + 2);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [text]);
   return (
     <div className={"cutbox " + className}>
