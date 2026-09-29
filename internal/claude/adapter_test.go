@@ -474,3 +474,26 @@ func TestConfirmedEffortUnchanged(t *testing.T) {
 		t.Fatal("wrong effort accepted")
 	}
 }
+
+// A session started without bypass does not resume in bypass because the
+// default mode became bypass meanwhile, even with no mode known (C9).
+func TestResumeDoesNotTakeUpALaterBypassDefault(t *testing.T) {
+	home := t.TempDir()
+	a := New("claude", home)
+	os.WriteFile(filepath.Join(home, "settings.json"), []byte(`{"permissions":{"defaultMode":"bypassPermissions"}}`), 0o600)
+	argv, _ := a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, FullAccess: false})
+	if j := strings.Join(argv, " "); !strings.Contains(j, "--permission-mode default") || strings.Contains(j, "dangerously") {
+		t.Fatalf("argv %q", j)
+	}
+	// With bypass on offer at launch, nothing is forced.
+	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true, FullAccess: true})
+	if j := strings.Join(argv, " "); strings.Contains(j, "--permission-mode") {
+		t.Fatalf("argv %q", j)
+	}
+	// Nor when the default is not bypass.
+	os.WriteFile(filepath.Join(home, "settings.json"), []byte(`{}`), 0o600)
+	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true})
+	if j := strings.Join(argv, " "); strings.Contains(j, "--permission-mode") {
+		t.Fatalf("argv %q", j)
+	}
+}

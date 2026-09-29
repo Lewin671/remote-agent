@@ -191,6 +191,16 @@ var valueFlags = map[string]bool{
 	"--settings": true, "--session-id": true, "-r": true, "--resume": true,
 }
 
+// hasFlag reports whether args give the option, as "--x v" or "--x=v".
+func hasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == name || strings.HasPrefix(a, name+"=") {
+			return true
+		}
+	}
+	return false
+}
+
 // variadic are claude options that take every value up to the next
 // option (--disallowedTools Write Edit), as its parser does.
 var variadic = map[string]bool{
@@ -315,6 +325,11 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 			over = append(over, "--permission-mode", c.PermissionMode)
 			drop["--permission-mode"], drop["--dangerously-skip-permissions"] = true, true
 		}
+	}
+	if !l.FullAccess && !drop["--permission-mode"] && !hasFlag(l.Args, "--permission-mode") && a.defaultMode() == "bypassPermissions" {
+		// Started without bypass, and the default mode has become bypass
+		// since: resume as it was, not in bypass (review C9).
+		over = append(over, "--permission-mode", "default")
 	}
 	if l.FullAccess && !slices.Contains(l.Args, "--allow-dangerously-skip-permissions") {
 		// Keep bypass on offer, as it was at launch, even when resuming in
