@@ -293,6 +293,7 @@
 
 <h1>remote-agent 客户端</h1>
 <div class="sub">PWA 设计稿 · v0.3 · 2026-09-29</div>
+<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="scope.md">scope.md</a> 为准，技术决策见 <a href="architecture.md">architecture.md</a>，还没定的问题见 <a href="plan.md">plan.md</a>。</div>
 
 <!-- ============================= -->
 <h2>项目</h2>
@@ -546,32 +547,10 @@
 </div>
 
 <div class="note">
-  <h4>只保留两边都有的 4 种（实测：codex-cli 0.157.1、Claude Code 2.1.284，2026-09-29）</h4>
-  <table>
-    <tr><th>客户端</th><th>Codex</th><th>Claude Code</th></tr>
-    <tr><td>询问</td><td>Ask for approval（<code>/permissions</code>）</td><td>manual</td></tr>
-    <tr><td>自动</td><td>Approve for me（auto_review）</td><td>auto</td></tr>
-    <tr><td>计划</td><td>Plan mode（Shift+Tab，和权限独立）</td><td>plan</td></tr>
-    <tr><td>完全放行</td><td>Full Access</td><td>bypass（启动时没允许的会话置灰）</td></tr>
-    <tr><td>不提供</td><td>—</td><td>accept edits</td></tr>
-  </table>
-
-  <h4>设计取舍</h4>
+  <h4>说明</h4>
   <ul>
-    <li><b>只做共有的</b>：模式 4 种，审批卡片只有「允许 / 拒绝」，拒绝时可以附一句说明（两边的 hook 都支持）。「总是允许」「允许并切到 auto」这类只有一边有的选项不做，需要时去终端</li>
-    <li><b>「询问」语义不完全一样</b>：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端不抹平，按 CLI 实际发来的审批请求显示</li>
-    <li><b>「自动」下手机不弹审批卡</b>：hook 不表态，交给 CLI 自己判断；它拒绝的，模型在对话里请求批准，你直接回复（Codex 已实测先 hook 后 auto_review，见 plan.md）</li>
-    <li><b>Codex 的计划</b>：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会关掉计划模式再切权限</li>
-    <li><b>模式以 CLI 为准</b>：客户端只发「切换」指令，显示的是从 rollout / transcript / 屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端里切到了不在这 4 种里的模式（如 accept edits），chip 照实显示</li>
-    <li><b>切到完全放行要二次确认</b>，新会话默认值沿用 CLI 自己的配置</li>
-  </ul>
-
-  <h4>待实测 / 待确认</h4>
-  <ul>
-    <li>Claude Code 在 auto 模式下，PermissionRequest hook 是只收到分类器拦下的请求，还是全部请求</li>
-    <li>计划结束时的交互：Claude Code 的 ExitPlanMode 能不能走 hook；Codex 计划模式怎么结束</li>
-    <li>运行中能不能切：Codex 的 <code>/permissions</code>、Claude Code 的 Shift+Tab 都只在空闲时验证过</li>
-    <li>要不要允许在手机上切到完全放行（目前设计是允许，但要二次确认）</li>
+    <li>模式和 Codex、Claude Code 的对应关系，以及设计取舍：见 <a href="architecture.md">architecture.md</a> 第 7 节</li>
+    <li>客户端切换审批模式是否放进 MVP、计划怎么结束等问题还没定：见 <a href="plan.md">plan.md</a> 的「待确认」</li>
   </ul>
 </div>
 <!-- ============================= -->

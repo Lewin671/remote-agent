@@ -1,6 +1,6 @@
-# 架构与技术选型
+# 架构与技术决策
 
-项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信，以及对应的技术选型。
+项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex，以及所有技术决策和理由。Codex 的实测行为见 [codex-notes.md](codex-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
 
 ## 1. 各端与部署
 
@@ -81,6 +81,8 @@
 
 本地 CLI、hook 和 daemon 之间的通信不经过 server，只有一层，不需要加密。
 
+发给 server 自己处理的请求（登录、拉列表和历史）只用到外层字段，返回的会话内容仍是密文。配对的报文格式还没设计，见 plan.md。
+
 ## 3. 通信方式
 
 **所有通信都通过 IDL 定义，不手写请求。** IDL 用 Protobuf，工具链用 `buf`；Go 端用 protoc-gen-go 和 connect-go，TS 端用 protobuf-es 和 connect-es。
@@ -112,9 +114,9 @@
 
 daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接。
 
-## 4. 待细化的设计要点
+## 4. 协议设计要点
 
-这些是讨论中提出的问题，写协议时要逐项落实：
+以下原则已经定下，写协议时逐项落实：
 
 - **幂等**：`Forward` 里的指令都带稳定的请求 ID，daemon 记住已经处理过的请求，重试时直接返回原来的结果，不重复注入
 - **防重放**：加密时把版本、发送方、目标机器、会话 ID、请求 ID 或序号、截止时间一起纳入认证数据；过期或重复的审批一律拒绝
@@ -122,3 +124,77 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **终端积压**：终端帧设大小上限，缓冲队列有长度上限；客户端太慢时断开终端流，重新抓快照
 - **离线**：daemon 离线时，server 立即返回"不可用"，不替它排队
 - **版本**：外层和内层各带协议版本号，遇到无法识别的指令时明确返回版本错误
+
+## 5. 技术决策
+
+| 决策 | 结论 | 理由 |
+|---|---|---|
+| 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
+| 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
+| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages | 一套代码覆盖所有设备；不上架应用商店；网页不和 server 放在一起 |
+| 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 见第 3 节 |
+| HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
+| server 存储 | SQLite | 单用户，部署简单 |
+| tmux 接入 | control mode（`tmux -C`），使用独立的 socket（`tmux -L remote-agent`） | 一条连接就能拿到全部 pane 的输出并发送命令；不影响平时用的 tmux |
+| tmux 依赖 | 必需；安装脚本和 `remote-agent` 启动时检查是否存在、版本是否满足 | |
+| 输出来源 | Codex rollout jsonl，不从屏幕解析消息 | 屏幕内容不可靠 |
+| 审批超时 | 拒绝（时长未定） | 安全优先 |
+| `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到（[codex-notes §6](codex-notes.md#6-踩过的坑)） |
+| 上下文提示 | 占用超过 80% 时提示，并提供「压缩」按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
+
+## 6. 接入 Codex
+
+下面每条做法都基于 [codex-notes.md](codex-notes.md) 里的实测，括号里的「notes §n」指它的第 n 节。升级 Codex 后要跟着复核。
+
+- **启动**：daemon 启动 Codex 时带上代理等环境变量（由 launchd 启动时读不到 shell 里的配置），并设置 `RA_SESSION=<会话 ID>`；用 `-c` 注入 `PermissionRequest`、`SessionStart`、`PreToolUse` 三个 hook，只对这个会话生效。hook 命令的路径必须固定，否则每次都要重新信任（notes §3、§5）
+- **启动弹窗**：用 `-c` 关掉检查更新、限额换模型提示等能关的弹窗；关不掉的 `Trust this folder?`、`Hooks need review` 每个目录或每套 hook 只问一次，客户端提示去终端处理。能不弹就不弹；信任目录是安全决定，留给用户在终端里做（notes §5）
+- **防弹窗挡输入**：每次注入前先抓屏，确认没有弹窗挡着。判断画面时只看屏幕底部的菜单标题和选项区域，不全屏搜关键词（notes §5、§6）
+- **等画面**：轮询屏幕，等到预期画面出现再操作，并设超时；不用固定的 sleep（notes §6）
+- **输入**：`load-buffer` 加 `paste-buffer -p`（bracketed paste），再单独发 Enter；以 `~/.codex/history.jsonl` 新增一行确认提交成功（notes §1）。Codex 会把裸换行当作提交，所以不能直接发送带换行的按键
+- **找到 rollout**：`SessionStart` hook（发出第一条消息时触发）把 `RA_SESSION` 和 `transcript_path` 一起报给 daemon（notes §3）
+- **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
+- **模型提问**：再用 `-c` 注入一个 `PreToolUse` hook，把 `request_user_input` 的问题转给 daemon 后立即返回，不阻塞，否则本地终端在它返回前看不到问题；hook 也没法代答。回答时抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
+- **中断**：只在一轮运行时发 Esc，绝不发 Ctrl-C。空闲时发 Ctrl-C 会清空输入框，再按一次会退出 Codex（notes §8）
+- **切换模型和 effort**：空闲时操作 `/model` 菜单，按模型名在屏幕上找编号，用方向键选档位后按 `s`，只改当前会话；以屏幕出现 `for this session only` 为成功，认不出菜单就按 Esc 退出并报错，退回到用 `codex resume <id> -m <模型> -c model_reasoning_effort=<档位>` 重启。客户端先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对（notes §2、§6）
+- **命令参数**：Go 代码调用 tmux 和 codex 时一律传参数数组，不拼 shell 字符串
+
+## 7. 审批
+
+`remote-agent hook codex` 作为 Codex 的 `PermissionRequest` hook，通过 unix socket 把请求交给 daemon，再按会话的审批方式处理：
+
+| 会话的审批方式 | hook 的行为 | 用户看到什么 |
+|---|---|---|
+| 开着 `auto_review`（Codex 的 `Approve for me`） | 不输出、正常退出，交给 `auto_review` | 手机上不弹审批卡；拿不准的操作，模型会在对话里问你，直接回复即可 |
+| 没开 `auto_review` | 把请求转到客户端，等待回复；超时拒绝 | 审批卡片：允许 / 拒绝，拒绝时可以附一句说明 |
+
+依据：Codex 先调用 hook，hook 不表态时才交给 `auto_review`；hook 只能返回 allow 或 deny 加 message，做不到原生审批框里的「以后不再询问」（notes §3、§4）。
+
+### 客户端的审批模式
+
+客户端的模式切换只做 Codex 和 Claude Code 都有的 4 种，这样接入 Claude Code 时不用改界面（是否放进 MVP 未定，见 plan.md）：
+
+| 客户端 | Codex | Claude Code |
+|---|---|---|
+| 询问 | `Ask for approval`（`/permissions`） | manual |
+| 自动 | `Approve for me`（`auto_review`） | auto |
+| 计划 | Plan mode（Shift+Tab，和权限相互独立） | plan |
+| 完全放行 | `Full Access` | bypass（启动时没允许的会话置灰） |
+| 不提供 | — | accept edits |
+
+各项的实测情况见 [codex-notes §4](codex-notes.md#4-审批模式) 和 [claude-code-notes.md](claude-code-notes.md)。
+
+- **只做共有的**：审批卡片只有「允许 / 拒绝」加说明；「总是允许」「允许并切到 auto」这类只有一边有的选项不做，需要时去终端
+- **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
+- **Codex 的计划模式**：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会先关掉计划模式再切权限
+- **以 CLI 为准**：客户端只发「切换」指令，显示的是从 rollout、transcript 或屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端切到了这 4 种以外的模式（如 accept edits），照实显示
+- **完全放行要二次确认**；新会话的默认模式沿用 CLI 自己的配置
+
+## 8. 项目标识
+
+**提案，尚未确认**（见 plan.md）。daemon 按以下优先级给每个会话计算项目标识：
+
+1. git `origin` 的远程地址（规范化后）：跨机器天然一致，多个 worktree 会归为同一个项目
+2. 机器 ID + git 根目录
+3. 机器 ID + 工作目录
+
+项目标识和显示名都放在加密的会话元数据里。客户端允许手动重命名、合并、拆分项目，这些覆盖规则同样加密后同步。

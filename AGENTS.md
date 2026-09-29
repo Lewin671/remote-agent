@@ -1,6 +1,6 @@
 # remote-agent
 
-在任何设备上远程操作跑在自己电脑 tmux 里的 AI 编程 CLI（先支持 Codex）。组成部分：Go 写的本地 daemon、Go 写的中继 server，以及一个 PWA 客户端。项目范围和设计取舍见 [docs/scope.md](docs/scope.md)。
+在任何设备上远程操作跑在自己电脑 tmux 里的 AI 编程 CLI（先支持 Codex）。组成部分：Go 写的本地 daemon、Go 写的中继 server，以及一个 PWA 客户端。项目范围见 [docs/scope.md](docs/scope.md)，技术决策见 [docs/architecture.md](docs/architecture.md)。
 
 有两件事是这个项目存在的理由，改动时请保住它们：
 

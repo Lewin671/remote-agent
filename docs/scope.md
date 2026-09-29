@@ -2,6 +2,7 @@
 
 本文档定义 remote-agent 做什么、不做什么，以及各组件、各信任域之间的边界。
 新需求先对照本文档：落在「不做」里的，需要先改这份文档再动代码。
+技术决策见 [architecture.md](architecture.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
 
 ## 1. 要解决的问题
 
@@ -23,7 +24,7 @@
 └──────────────────────────────────┘ + WSS  └─────────────┘ + WSS  └────────────────┘
 ```
 
-通信方式、部署和技术选型见 [architecture.md](architecture.md)。
+通信方式、部署和技术决策见 [architecture.md](architecture.md)。
 
 | 组件 | 负责 | 不负责 |
 |---|---|---|
@@ -48,7 +49,7 @@
 硬性规则：
 - 任何明文内容不得出现在 server 的日志、数据库或推送 payload 中
 - daemon 和客户端的日志里也不得打印消息正文或密钥；调试时只打印 ID 和长度
-- 加密只用标准原语：AES-256-GCM、X25519、Ed25519、HKDF，不自己发明算法或协议
+- 加密只用标准原语：AES-256-GCM、X25519、Ed25519、HKDF，不自己发明密码算法或密码学构造（应用层的报文格式照常自己设计，见 [architecture.md](architecture.md)）
 
 ## 5. MVP 范围
 
@@ -61,17 +62,18 @@
 - **本地入口**：`remote-agent codex` 在 tmux 里启动 Codex 并在当前终端 attach；断开后会话继续在后台运行
 - **daemon 重启后重新接上**仍在运行的 tmux 会话
 - **聊天视图**：文本、推理摘要、工具调用和结果、轮次开始和结束、token 用量
+- **会话设置**：切换模型和 reasoning effort；上下文占用提示和压缩
 - **终端视图**：通过 tmux control mode 获取实时字节流，加密后经 server 转发，**不落库**；默认不改变 tmux 尺寸，可手动「适配我的屏幕」；手机上提供特殊按键栏
-- **权限审批**：Codex 的 `PermissionRequest` hook 转到客户端；**超时默认拒绝**
+- **权限审批**：需要用户审批的请求经 Codex 的 `PermissionRequest` hook 转到客户端，**超时默认拒绝**；会话开着 `auto_review` 时由 Codex 自己判断（见 [architecture.md](architecture.md)）
 - **回答模型提问**：Codex 的 `request_user_input` 在客户端显示成选项卡片，点选即回答
 - **多端输入**：按到达顺序注入，不加锁
-- **按项目分组**：分组在客户端完成（见第 7 节）
+- **按项目分组**：分组在客户端完成，项目怎么判定见 [architecture.md](architecture.md)
 - **推送**：Web Push，在一轮结束和有审批请求时提醒
 - **部署**：server 部署在 VPS，TLS 必须开启
 
 ### 不做（MVP 之后再评估）
 
-- Claude Code 和其他 CLI（第二阶段）
+- Claude Code 和其他 CLI（P3；已有的实测是预研，见 [claude-code-notes.md](claude-code-notes.md)）
 - 附件和图片上传
 - 接管不是由 `remote-agent` 启动的 CLI 进程
 - 原生 App（iOS、Android、桌面端）
@@ -85,42 +87,3 @@
 - 多用户、团队、共享会话
 - 以任何形式把消息明文交给 server 或第三方
 - 靠识别屏幕内容来获取结构化消息（屏幕只用于判断状态和终端视图）
-
-## 6. 已定的技术决策
-
-| 决策 | 结论 | 理由 |
-|---|---|---|
-| 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
-| 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
-| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages | 一套代码覆盖所有设备；不上架应用商店；网页不和 server 放在一起 |
-| 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 详见 [architecture.md](architecture.md) |
-| HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
-| server 存储 | SQLite | 单用户，部署简单 |
-| tmux 接入 | control mode（`tmux -C`） | 一条连接就能拿到全部 pane 的输出并发送命令 |
-| 输入注入 | `load-buffer` 加 `paste-buffer -p`（bracketed paste），再单独发 Enter | Codex 会把裸换行当作提交 |
-| 输出来源 | Codex rollout jsonl，轮次以 `task_started` / `task_complete` 为准 | 屏幕内容不可靠 |
-| 审批超时 | 拒绝 | 安全优先 |
-| 模型提问 | `PreToolUse` hook 把问题转给 daemon 后立即返回，不阻塞；回答时抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问不单独处理，一轮结束后当普通消息回复 | hook 没法代答；hook 阻塞的话，本地终端在它返回前看不到问题。细节见 [codex-notes.md](codex-notes.md) 第 9 节 |
-| 启动弹窗 | 用 `-c` 关掉检查更新、限额换模型提示等；关不掉的信任目录、hook 确认，每个目录或每套 hook 只问一次，客户端提示去终端处理 | 能不弹就不弹；信任目录是安全决定，留给用户在终端里做 |
-| 切换模型和 effort | 空闲时操作 Codex 的 `/model` 菜单，只改当前会话（按 `s`，不按回车）；认不出菜单时退回到 `codex resume` 带新参数重启 | 不用重启会话；细节见 [codex-notes.md](codex-notes.md) |
-| 上下文提示 | 占用超过 80% 时提示，并提供“压缩”按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
-| `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到 |
-| tmux 依赖 | 必需；安装脚本和 `remote-agent` 启动时检查是否存在、版本是否满足 | |
-
-## 7. 项目的判定规则
-
-daemon 按以下优先级给每个会话计算项目标识：
-
-1. git `origin` 的远程地址（规范化后）：跨机器天然一致，多个 worktree 会归为同一个项目
-2. 机器 ID + git 根目录
-3. 机器 ID + 工作目录
-
-项目标识和显示名都放在加密的会话元数据里。客户端允许手动重命名、合并、拆分项目，这些覆盖规则同样加密后同步。
-
-## 8. 待确认
-
-- [ ] 项目判定规则（第 7 节）
-- [ ] 终端视图默认可以输入还是只读（倾向可以输入）
-- [x] PWA 使用的前端框架：React + Vite + TypeScript
-- [ ] 审批超时的时长
-- [ ] 审批模式、fast 模式的管理（优先级低）
