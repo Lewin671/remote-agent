@@ -94,6 +94,10 @@
 | 输入注入 | `load-buffer` 加 `paste-buffer -p`（bracketed paste），再单独发 Enter | Codex 会把裸换行当作提交 |
 | 输出来源 | Codex rollout jsonl，轮次以 `task_started` / `task_complete` 为准 | 屏幕内容不可靠 |
 | 审批超时 | 拒绝 | 安全优先 |
+| 切换模型和 effort | 空闲时操作 Codex 的 `/model` 菜单，只改当前会话（按 `s`，不按回车）；认不出菜单时退回到 `codex resume` 带新参数重启 | 不用重启会话；细节见 [codex-notes.md](codex-notes.md) |
+| 上下文提示 | 占用超过 80% 时提示，并提供“压缩”按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
+| `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到 |
+| tmux 依赖 | 必需；安装脚本和 `remote-agent` 启动时检查是否存在、版本是否满足 | |
 
 ## 7. 项目的判定规则
 
@@ -111,3 +115,4 @@ daemon 按以下优先级给每个会话计算项目标识：
 - [ ] 终端视图默认可以输入还是只读（倾向可以输入）
 - [ ] PWA 使用的前端框架
 - [ ] 审批超时的时长
+- [ ] 审批模式、fast 模式的管理（优先级低）
