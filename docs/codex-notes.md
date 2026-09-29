@@ -12,7 +12,7 @@ Codex adapter 依赖的行为都是实测出来的，会随 Codex 版本变化�
 | 上下文占用 | rollout 的 `event_msg.token_count`：`info.last_token_usage.total_tokens / info.model_context_window` | 窗口大小以这里为准。`models_cache.json` 里写的是 272k，实际会话报的是 760k |
 | 累计 token | 同上：`info.total_token_usage` | 含 `cached_input_tokens`、`reasoning_output_tokens` |
 | 账户额度 | 同上：`rate_limits.primary`：`used_percent`、`window_minutes`、`resets_at`；另有 `plan_type` | 账号级数据，不属于某个会话 |
-| 轮次边界 | rollout 的 `event_msg.task_started` / `task_complete` | |
+| 轮次边界 | rollout 的 `event_msg.task_started`；结束是 `task_complete`，**被中断时是 `turn_aborted`**（`reason: "interrupted"`） | 两种结束事件都要处理，否则中断后会一直以为还在运行 |
 | 消息、工具调用 | rollout 的 `response_item`：`message`、`reasoning`、`custom_tool_call`、`custom_tool_call_output` | |
 | 可选模型和档位 | `~/.codex/models_cache.json`：`slug`、`display_name`、`supported_reasoning_levels`、`default_reasoning_level` | 每个模型支持的档位不同 |
 | 输入是否已提交 | `~/.codex/history.jsonl`：每次成功提交追加一行 | rollout 文件要到第一次提交后才会创建，不能用它判断 |
@@ -66,7 +66,8 @@ codex -c 'hooks.PermissionRequest=[{matcher="*",hooks=[{type="command",command="
 - **第一次使用需要信任**：启动时弹出 `Hooks need review`，选项有 `Review hooks`、`Trust all and continue`、`Continue without trusting (hooks won't run)`。信任后，config.toml 里会写入 `[hooks.state."/<session-flags>/config.toml:permission_request:0:0"]`，并记录 `trusted_hash`。只要 hook 的定义不变，以后就不会再问。所以 **hook 命令必须固定**，二进制的路径一变，就得重新信任
 - 用了 `-c` 之后，Codex 会提示 `Running without the shared background server`，也就是改为嵌入模式运行，每个会话在自己的进程里。目前没发现功能上的差异
 - **和 `auto_review` 的先后顺序：先调用 hook，hook 没给决定时再交给 `auto_review`。** 实测结果：hook 返回 deny，请求直接被拒绝，`auto_review` 不再参与；hook 什么都不输出、正常退出（exit 0）时，`auto_review` 接着处理，并批准了写 home 目录的请求
-- `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据（依据提示词推断，**被拒绝的情况尚未实测**）
+- `auto_review` 只有批准和拒绝两种结果，**不会转给用户**。被拒绝后，Codex 的系统提示要求模型"说明风险，向用户请求批准"，模型会在对话里直接问你；你在对话里明确授权后，`auto_review` 会把这条授权当作依据
+- 实测完整流程：README 里写着"删除 home 下某个目录"，让模型按 README 初始化。模型**自己没有执行删除**，而是在对话里问"是否确认删除"；回复确认后，模型发起提权，hook 被调用且不表态，`auto_review` 批准，删除成功。所以拿不准的操作会以普通对话的形式出现，在手机上回复即可。`auto_review` 直接拒绝的情况没有复现出来
 - 注意：`workspace-write` 沙箱下 `/tmp` 默认可写，写 `/tmp` 不会触发提权。测试提权要写 home 目录之类的位置
 
 ## 4. 审批模式
@@ -99,6 +100,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 | 首次在某个目录启动时弹出“Trust this folder?” | 紧接着发的回车被弹窗接住，等于替用户点了信任 | 注入前先抓屏确认没有弹窗 |
 | 刚启动时欢迎框里模型一栏显示 `loading` | 太早操作会读到旧画面 | 轮询屏幕，等到预期画面出现再操作，并设超时；不要用固定的 sleep |
 | 抓屏里混有历史对话、“Update available” 提示框、状态栏 | 全屏搜关键词会误判 | 只认屏幕底部的菜单标题和选项区域 |
+| 跳过更新提示后，“Update available” 的文字框还留在屏幕上方 | 按全屏匹配的等待脚本以为弹窗还在，连续输入了 8 个 `2`，拼进了下一条消息 | 同上，只看底部几行 |
 | 切换模型后，rollout 的 `turn_context` 要到下一轮才会记录新模型（推测，**未验证**） | 客户端显示滞后 | 先按屏幕上的确认结果更新显示，下一轮再用 rollout 校对 |
 
 ## 7. 做实测时的注意事项
@@ -107,3 +109,17 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 实测会改到真实的 `~/.codex/config.toml`，比如目录信任记录。测前记下文件的校验值，测后对比
 - 不要在菜单里乱按回车，以免改掉全局默认值
 - shell 里不要把 `tmux -L xxx` 存进变量再执行，zsh 不会自动按空格拆分；Go 代码里一律传参数数组
+
+## 8. 中断和运行中的输入
+
+| 按键 | 运行中 | 空闲时 |
+|---|---|---|
+| Esc | **中断当前这一轮**，屏幕出现 `Conversation interrupted`；输入框里的草稿**保留** | 输入框为空时，进入"编辑上一条消息"（界面提示） |
+| Ctrl-C | 未测 | 第一次**清空输入框**；输入框为空时再按，**直接退出 Codex** |
+| Enter | 输入框里的内容**立即发送**，插入到正在进行的这一轮 | 发送 |
+| Tab | 把输入框里的内容**排队**，等这一轮结束再发（界面提示 `tab to queue message`） | 未测 |
+
+- **daemon 只用 Esc 中断，而且只在一轮运行时发**；永远不发 Ctrl-C
+- 中断只打断这一轮对话，**已经启动的后台命令还会继续运行**（实测 `sleep 60` 在中断后仍在跑，界面显示 `1 background terminal running`，要用 `/stop` 关掉）
+- 中断后 rollout 记录的是 `turn_aborted`，不是 `task_complete`
+- 不带 `-c` 启动时，Codex 用共享的后台服务运行，退出界面后这一轮**还在继续**（退出时提示 `Stop the current turn: run codex agents…`）。remote-agent 用 `-c` 注入 hook，走嵌入模式，不受影响
