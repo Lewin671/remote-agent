@@ -69,3 +69,25 @@ it("seals and opens", async () => {
   const { plaintext } = await open(key, env);
   want(new TextDecoder().decode(plaintext)).toBe("hi");
 });
+
+describe("pairing matches the Go implementation", async () => {
+  const { newPairKey, pairCommit, pairTranscript, derivePair, SAS_EMOJI } = await import("./pair");
+  const p = vectors.pairing;
+  it("derives the same commit, transcript and secrets", async () => {
+    const init = newPairKey(fromHex(p.initiator_private));
+    const join = newPairKey(fromHex(p.joiner_private));
+    want(hex(init.pub)).toBe(p.initiator_public);
+    want(hex(join.pub)).toBe(p.joiner_public);
+    want(hex(await pairCommit(init.pub))).toBe(p.commit);
+    const tr = await pairTranscript(p.pairing_id, init.pub, join.pub, p.joiner_kind);
+    want(hex(tr)).toBe(p.transcript);
+    const a = await derivePair(init, join.pub, tr);
+    const b = await derivePair(join, init.pub, tr);
+    want(hex(a.sas)).toBe(p.sas);
+    want(hex(a.key)).toBe(p.key);
+    want(hex(b.key)).toBe(p.key);
+  });
+  it("uses the same emoji table", () => {
+    want([...SAS_EMOJI]).toEqual(p.emoji);
+  });
+});

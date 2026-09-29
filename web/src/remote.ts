@@ -98,7 +98,12 @@ const COMMAND_TTL_MS = 60_000;
 /** Joins the account in secretText with a new browser device. */
 export async function join(secretText: string): Promise<StoredAccount> {
   const secret = parseSecret(secretText);
-  const root = await importRoot(secret.root);
+  return joinWithRoot(secret.root, secret.server);
+}
+
+/** Registers this browser as a device of the account with root key root. */
+export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: string): Promise<StoredAccount> {
+  const root = await importRoot(rootRaw);
   const acct = await accountKey(root);
   const device = await newDeviceKey();
   const pub = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
@@ -111,11 +116,12 @@ export async function join(secretText: string): Promise<StoredAccount> {
       createdMs: BigInt(Date.now()),
     }),
   );
-  const auth = createClient(AuthService, createConnectTransport({ baseUrl: apiBase(secret.server), useBinaryFormat: true }));
+  const auth = createClient(AuthService, createConnectTransport({ baseUrl: apiBase(server), useBinaryFormat: true }));
   const res = await auth.registerDevice({ registration: reg, signature: acct.sign(concat(new TextEncoder().encode(REGISTER_CONTEXT), reg)) });
   if (res.deviceId !== (await deviceID(pub))) throw new Error("server 返回了意外的设备 ID");
-  const stored: StoredAccount = { server: secret.server, root, devicePrivate: device.privateKey, deviceId: res.deviceId };
+  const stored: StoredAccount = { server, root, rootRaw: new Uint8Array(rootRaw), devicePrivate: device.privateKey, deviceId: res.deviceId };
   await saveAccount(stored);
+  localStorage.setItem("ra-server", server);
   return stored;
 }
 
@@ -559,6 +565,11 @@ export class Remote {
         ws.close();
       },
     };
+  }
+
+  /** Authorization for services called outside this class. */
+  authHeader(): string {
+    return "Bearer " + this.token;
   }
 
   async pushKey(): Promise<string> {

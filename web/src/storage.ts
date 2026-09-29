@@ -1,10 +1,14 @@
-// The account lives in IndexedDB. The root key and the device's private key
-// are stored as non-extractable CryptoKeys, so page scripts can use them
-// but cannot read their bytes.
+// The account lives in IndexedDB. The device's private key is a
+// non-extractable CryptoKey. The root key is kept as bytes too, since
+// pairing hands it to new devices; a script that could read it could
+// already decrypt everything through the page (docs/architecture.md §9).
 
 export interface StoredAccount {
   server: string;
   root: CryptoKey;
+  // The root key's bytes, so that this browser can pair new devices.
+  // Browsers that joined before pairing existed do not have them.
+  rootRaw?: Uint8Array<ArrayBuffer>;
   devicePrivate: CryptoKey;
   deviceId: string;
 }

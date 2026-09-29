@@ -352,3 +352,16 @@ button.chip { cursor: pointer; }
 .sw.on { background: var(--green); }
 .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .15s; }
 .sw.on::after { left: 19px; }
+
+/* ---------- pairing ---------- */
+.pairing { background: var(--card); }
+.qr { width: 200px; height: 200px; margin: 18px auto 12px; padding: 10px; border-radius: 20px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.qrsvg { width: 100%; height: 100%; display: block; }
+.code { text-align: center; font: 600 26px ui-monospace, Menlo, monospace; letter-spacing: 4px; }
+.emoji { display: flex; justify-content: center; gap: 12px; font-size: 34px; margin: 14px 0; }
+.req { background: var(--soft); border-radius: 18px; padding: 14px; margin: 16px; }
+.req-t { font-size: 13px; }
+.center-text { text-align: center; padding: 0 16px; }
+.code-in { font: 600 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; text-align: center; }
+.row.add { color: var(--blue); }
+.setup .link { align-self: center; }

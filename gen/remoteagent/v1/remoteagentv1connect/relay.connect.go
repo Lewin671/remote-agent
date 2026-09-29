@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// AuthServiceName is the fully-qualified name of the AuthService service.
 	AuthServiceName = "remoteagent.v1.AuthService"
+	// PairingServiceName is the fully-qualified name of the PairingService service.
+	PairingServiceName = "remoteagent.v1.PairingService"
 	// ClientServiceName is the fully-qualified name of the ClientService service.
 	ClientServiceName = "remoteagent.v1.ClientService"
 	// MachineServiceName is the fully-qualified name of the MachineService service.
@@ -45,6 +47,24 @@ const (
 	AuthServiceGetChallengeProcedure = "/remoteagent.v1.AuthService/GetChallenge"
 	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
 	AuthServiceLoginProcedure = "/remoteagent.v1.AuthService/Login"
+	// PairingServiceCreatePairingProcedure is the fully-qualified name of the PairingService's
+	// CreatePairing RPC.
+	PairingServiceCreatePairingProcedure = "/remoteagent.v1.PairingService/CreatePairing"
+	// PairingServiceJoinPairingProcedure is the fully-qualified name of the PairingService's
+	// JoinPairing RPC.
+	PairingServiceJoinPairingProcedure = "/remoteagent.v1.PairingService/JoinPairing"
+	// PairingServiceGetPairingProcedure is the fully-qualified name of the PairingService's GetPairing
+	// RPC.
+	PairingServiceGetPairingProcedure = "/remoteagent.v1.PairingService/GetPairing"
+	// PairingServiceRevealPairingProcedure is the fully-qualified name of the PairingService's
+	// RevealPairing RPC.
+	PairingServiceRevealPairingProcedure = "/remoteagent.v1.PairingService/RevealPairing"
+	// PairingServiceApprovePairingProcedure is the fully-qualified name of the PairingService's
+	// ApprovePairing RPC.
+	PairingServiceApprovePairingProcedure = "/remoteagent.v1.PairingService/ApprovePairing"
+	// PairingServiceCancelPairingProcedure is the fully-qualified name of the PairingService's
+	// CancelPairing RPC.
+	PairingServiceCancelPairingProcedure = "/remoteagent.v1.PairingService/CancelPairing"
 	// ClientServiceListMachinesProcedure is the fully-qualified name of the ClientService's
 	// ListMachines RPC.
 	ClientServiceListMachinesProcedure = "/remoteagent.v1.ClientService/ListMachines"
@@ -200,6 +220,206 @@ func (UnimplementedAuthServiceHandler) GetChallenge(context.Context, *connect.Re
 
 func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.AuthService.Login is not implemented"))
+}
+
+// PairingServiceClient is a client for the remoteagent.v1.PairingService service.
+type PairingServiceClient interface {
+	CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error)
+	JoinPairing(context.Context, *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error)
+	GetPairing(context.Context, *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error)
+	RevealPairing(context.Context, *connect.Request[v1.RevealPairingRequest]) (*connect.Response[v1.RevealPairingResponse], error)
+	ApprovePairing(context.Context, *connect.Request[v1.ApprovePairingRequest]) (*connect.Response[v1.ApprovePairingResponse], error)
+	CancelPairing(context.Context, *connect.Request[v1.CancelPairingRequest]) (*connect.Response[v1.CancelPairingResponse], error)
+}
+
+// NewPairingServiceClient constructs a client for the remoteagent.v1.PairingService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewPairingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PairingServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	pairingServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("PairingService").Methods()
+	return &pairingServiceClient{
+		createPairing: connect.NewClient[v1.CreatePairingRequest, v1.CreatePairingResponse](
+			httpClient,
+			baseURL+PairingServiceCreatePairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("CreatePairing")),
+			connect.WithClientOptions(opts...),
+		),
+		joinPairing: connect.NewClient[v1.JoinPairingRequest, v1.JoinPairingResponse](
+			httpClient,
+			baseURL+PairingServiceJoinPairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("JoinPairing")),
+			connect.WithClientOptions(opts...),
+		),
+		getPairing: connect.NewClient[v1.GetPairingRequest, v1.GetPairingResponse](
+			httpClient,
+			baseURL+PairingServiceGetPairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("GetPairing")),
+			connect.WithClientOptions(opts...),
+		),
+		revealPairing: connect.NewClient[v1.RevealPairingRequest, v1.RevealPairingResponse](
+			httpClient,
+			baseURL+PairingServiceRevealPairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("RevealPairing")),
+			connect.WithClientOptions(opts...),
+		),
+		approvePairing: connect.NewClient[v1.ApprovePairingRequest, v1.ApprovePairingResponse](
+			httpClient,
+			baseURL+PairingServiceApprovePairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("ApprovePairing")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelPairing: connect.NewClient[v1.CancelPairingRequest, v1.CancelPairingResponse](
+			httpClient,
+			baseURL+PairingServiceCancelPairingProcedure,
+			connect.WithSchema(pairingServiceMethods.ByName("CancelPairing")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// pairingServiceClient implements PairingServiceClient.
+type pairingServiceClient struct {
+	createPairing  *connect.Client[v1.CreatePairingRequest, v1.CreatePairingResponse]
+	joinPairing    *connect.Client[v1.JoinPairingRequest, v1.JoinPairingResponse]
+	getPairing     *connect.Client[v1.GetPairingRequest, v1.GetPairingResponse]
+	revealPairing  *connect.Client[v1.RevealPairingRequest, v1.RevealPairingResponse]
+	approvePairing *connect.Client[v1.ApprovePairingRequest, v1.ApprovePairingResponse]
+	cancelPairing  *connect.Client[v1.CancelPairingRequest, v1.CancelPairingResponse]
+}
+
+// CreatePairing calls remoteagent.v1.PairingService.CreatePairing.
+func (c *pairingServiceClient) CreatePairing(ctx context.Context, req *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error) {
+	return c.createPairing.CallUnary(ctx, req)
+}
+
+// JoinPairing calls remoteagent.v1.PairingService.JoinPairing.
+func (c *pairingServiceClient) JoinPairing(ctx context.Context, req *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error) {
+	return c.joinPairing.CallUnary(ctx, req)
+}
+
+// GetPairing calls remoteagent.v1.PairingService.GetPairing.
+func (c *pairingServiceClient) GetPairing(ctx context.Context, req *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error) {
+	return c.getPairing.CallUnary(ctx, req)
+}
+
+// RevealPairing calls remoteagent.v1.PairingService.RevealPairing.
+func (c *pairingServiceClient) RevealPairing(ctx context.Context, req *connect.Request[v1.RevealPairingRequest]) (*connect.Response[v1.RevealPairingResponse], error) {
+	return c.revealPairing.CallUnary(ctx, req)
+}
+
+// ApprovePairing calls remoteagent.v1.PairingService.ApprovePairing.
+func (c *pairingServiceClient) ApprovePairing(ctx context.Context, req *connect.Request[v1.ApprovePairingRequest]) (*connect.Response[v1.ApprovePairingResponse], error) {
+	return c.approvePairing.CallUnary(ctx, req)
+}
+
+// CancelPairing calls remoteagent.v1.PairingService.CancelPairing.
+func (c *pairingServiceClient) CancelPairing(ctx context.Context, req *connect.Request[v1.CancelPairingRequest]) (*connect.Response[v1.CancelPairingResponse], error) {
+	return c.cancelPairing.CallUnary(ctx, req)
+}
+
+// PairingServiceHandler is an implementation of the remoteagent.v1.PairingService service.
+type PairingServiceHandler interface {
+	CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error)
+	JoinPairing(context.Context, *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error)
+	GetPairing(context.Context, *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error)
+	RevealPairing(context.Context, *connect.Request[v1.RevealPairingRequest]) (*connect.Response[v1.RevealPairingResponse], error)
+	ApprovePairing(context.Context, *connect.Request[v1.ApprovePairingRequest]) (*connect.Response[v1.ApprovePairingResponse], error)
+	CancelPairing(context.Context, *connect.Request[v1.CancelPairingRequest]) (*connect.Response[v1.CancelPairingResponse], error)
+}
+
+// NewPairingServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewPairingServiceHandler(svc PairingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	pairingServiceMethods := v1.File_remoteagent_v1_relay_proto.Services().ByName("PairingService").Methods()
+	pairingServiceCreatePairingHandler := connect.NewUnaryHandler(
+		PairingServiceCreatePairingProcedure,
+		svc.CreatePairing,
+		connect.WithSchema(pairingServiceMethods.ByName("CreatePairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	pairingServiceJoinPairingHandler := connect.NewUnaryHandler(
+		PairingServiceJoinPairingProcedure,
+		svc.JoinPairing,
+		connect.WithSchema(pairingServiceMethods.ByName("JoinPairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	pairingServiceGetPairingHandler := connect.NewUnaryHandler(
+		PairingServiceGetPairingProcedure,
+		svc.GetPairing,
+		connect.WithSchema(pairingServiceMethods.ByName("GetPairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	pairingServiceRevealPairingHandler := connect.NewUnaryHandler(
+		PairingServiceRevealPairingProcedure,
+		svc.RevealPairing,
+		connect.WithSchema(pairingServiceMethods.ByName("RevealPairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	pairingServiceApprovePairingHandler := connect.NewUnaryHandler(
+		PairingServiceApprovePairingProcedure,
+		svc.ApprovePairing,
+		connect.WithSchema(pairingServiceMethods.ByName("ApprovePairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	pairingServiceCancelPairingHandler := connect.NewUnaryHandler(
+		PairingServiceCancelPairingProcedure,
+		svc.CancelPairing,
+		connect.WithSchema(pairingServiceMethods.ByName("CancelPairing")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/remoteagent.v1.PairingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case PairingServiceCreatePairingProcedure:
+			pairingServiceCreatePairingHandler.ServeHTTP(w, r)
+		case PairingServiceJoinPairingProcedure:
+			pairingServiceJoinPairingHandler.ServeHTTP(w, r)
+		case PairingServiceGetPairingProcedure:
+			pairingServiceGetPairingHandler.ServeHTTP(w, r)
+		case PairingServiceRevealPairingProcedure:
+			pairingServiceRevealPairingHandler.ServeHTTP(w, r)
+		case PairingServiceApprovePairingProcedure:
+			pairingServiceApprovePairingHandler.ServeHTTP(w, r)
+		case PairingServiceCancelPairingProcedure:
+			pairingServiceCancelPairingHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedPairingServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedPairingServiceHandler struct{}
+
+func (UnimplementedPairingServiceHandler) CreatePairing(context.Context, *connect.Request[v1.CreatePairingRequest]) (*connect.Response[v1.CreatePairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.CreatePairing is not implemented"))
+}
+
+func (UnimplementedPairingServiceHandler) JoinPairing(context.Context, *connect.Request[v1.JoinPairingRequest]) (*connect.Response[v1.JoinPairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.JoinPairing is not implemented"))
+}
+
+func (UnimplementedPairingServiceHandler) GetPairing(context.Context, *connect.Request[v1.GetPairingRequest]) (*connect.Response[v1.GetPairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.GetPairing is not implemented"))
+}
+
+func (UnimplementedPairingServiceHandler) RevealPairing(context.Context, *connect.Request[v1.RevealPairingRequest]) (*connect.Response[v1.RevealPairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.RevealPairing is not implemented"))
+}
+
+func (UnimplementedPairingServiceHandler) ApprovePairing(context.Context, *connect.Request[v1.ApprovePairingRequest]) (*connect.Response[v1.ApprovePairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.ApprovePairing is not implemented"))
+}
+
+func (UnimplementedPairingServiceHandler) CancelPairing(context.Context, *connect.Request[v1.CancelPairingRequest]) (*connect.Response[v1.CancelPairingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.PairingService.CancelPairing is not implemented"))
 }
 
 // ClientServiceClient is a client for the remoteagent.v1.ClientService service.

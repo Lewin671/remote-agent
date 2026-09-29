@@ -12,15 +12,20 @@ import (
 	"strings"
 	"time"
 
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"golang.org/x/term"
+	"rsc.io/qr"
 )
 
 const accountUsage = `Usage:
   remote-agent account init --server URL    create the account on a new server
-  remote-agent account join                 join an existing account (reads its secret from stdin)
+  remote-agent account pair [--web URL]     add a device: show a QR code and a pairing code
+  remote-agent account join --server URL --code CODE
+  remote-agent account join LINK            join with a pairing code or link from another device
+  remote-agent account join                 join with the account secret (read from stdin)
   remote-agent account secret               print the account secret for another device
   remote-agent account status               show this machine's account
 `
@@ -37,6 +42,8 @@ func runAccount(args []string) error {
 		return runAccountJoin(args[1:])
 	case "secret":
 		return runAccountSecret()
+	case "pair":
+		return runAccountPair(args[1:])
 	case "status":
 		return runAccountStatus()
 	}
@@ -72,6 +79,41 @@ func runAccountInit(args []string) error {
 }
 
 func runAccountJoin(args []string) error {
+	fs := flag.NewFlagSet("account join", flag.ExitOnError)
+	server := fs.String("server", "", "server URL, with --code")
+	code := fs.String("code", "", "pairing code shown by the other device")
+	fs.Parse(args)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	var link relay.PairLink
+	switch {
+	case *code != "":
+		if *server == "" {
+			return errors.New("--code needs --server")
+		}
+		link = relay.PairLink{Code: *code, Server: *server}
+	case fs.NArg() == 1:
+		l, err := relay.ParsePairLink(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		link = l
+	default:
+		return joinWithSecret(ctx)
+	}
+	fmt.Println("Waiting for the other device…")
+	a, err := relay.JoinByPairing(ctx, link, func(emoji []string) {
+		fmt.Printf("\nCheck that the other device shows the same four pictures:\n\n    %s\n\nthen allow the pairing there.\n", strings.Join(emoji, "  "))
+	})
+	if err != nil {
+		return explainJoin(err)
+	}
+	fmt.Printf("Joined the account on %s; this machine is %s.\n", a.Server, a.DeviceID)
+	fmt.Println("The running daemon connects within a few seconds.")
+	return nil
+}
+
+func joinWithSecret(ctx context.Context) error {
 	text, err := readLine("Account secret (from `remote-agent account secret`): ")
 	if err != nil {
 		return err
@@ -80,8 +122,6 @@ func runAccountJoin(args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
 	a, err := relay.Join(ctx, sec.Server, sec.Root, "")
 	if err != nil {
 		return explainJoin(err)
@@ -89,6 +129,87 @@ func runAccountJoin(args []string) error {
 	fmt.Printf("Joined the account on %s; this machine is %s.\n", a.Server, a.DeviceID)
 	fmt.Println("The running daemon connects within a few seconds.")
 	return nil
+}
+
+func runAccountPair(args []string) error {
+	fs := flag.NewFlagSet("account pair", flag.ExitOnError)
+	web := fs.String("web", "", "web client address for the QR code, e.g. https://app.example.com (remembered)")
+	fs.Parse(args)
+	a, err := relay.LoadAccount()
+	if err != nil {
+		return err
+	}
+	if *web != "" {
+		a.Web = strings.TrimRight(*web, "/")
+		if err := a.Save(); err != nil {
+			return err
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
+	defer cancel()
+	err = relay.Initiate(ctx, a, func(l relay.PairLink) {
+		if a.Web != "" {
+			u := l.URL(a.Web)
+			printQR(u)
+			fmt.Printf("Scan the code with the new device, or open:\n  %s\n\n", u)
+		}
+		fmt.Printf("Pairing code: %s %s  (expires in 5 minutes)\n", l.Code[:4], l.Code[4:])
+		fmt.Printf("On another computer: remote-agent account join --server %s --code %s\n\n", l.Server, l.Code)
+		fmt.Println("Waiting for the new device…")
+	}, func(emoji []string, kind pb.DeviceKind) bool {
+		what := "A browser"
+		if kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+			what = "A computer"
+		}
+		fmt.Printf("\n%s asks to join. It should show these four pictures:\n\n    %s\n\n", what, strings.Join(emoji, "  "))
+		answer, _ := readVisibleLine("Do they match? Allow it to join [y/N]: ")
+		return strings.EqualFold(strings.TrimSpace(answer), "y")
+	})
+	if err != nil {
+		return explainJoin(err)
+	}
+	fmt.Println("The new device joined the account.")
+	return nil
+}
+
+// readVisibleLine prompts and reads a line with echo.
+func readVisibleLine(prompt string) (string, error) {
+	fmt.Fprint(os.Stderr, prompt)
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil && line == "" {
+		return "", err
+	}
+	return strings.TrimSpace(line), nil
+}
+
+// printQR draws a QR code with half-block characters.
+func printQR(text string) {
+	code, err := qr.Encode(text, qr.M)
+	if err != nil {
+		return
+	}
+	n := code.Size
+	const quiet = 2
+	var b strings.Builder
+	for y := -quiet; y < n+quiet; y += 2 {
+		b.WriteString("  ")
+		for x := -quiet; x < n+quiet; x++ {
+			top := code.Black(x, y)
+			bottom := code.Black(x, y+1)
+			switch {
+			case top && bottom:
+				b.WriteString(" ")
+			case top:
+				b.WriteString("▄")
+			case bottom:
+				b.WriteString("▀")
+			default:
+				b.WriteString("█")
+			}
+		}
+		b.WriteString("\n")
+	}
+	fmt.Println(b.String())
 }
 
 func explainJoin(err error) error {

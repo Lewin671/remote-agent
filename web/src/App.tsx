@@ -3,7 +3,8 @@ import { Remote } from "./remote";
 import { useRemote } from "./ui";
 import { Home, ProjectPage, Sidebar, WideHome, type Go } from "./views/Lists";
 import { SessionPage } from "./views/Session";
-import { MachinePage, Settings, Setup } from "./views/Settings";
+import { AddDevicePage, Setup } from "./views/Pairing";
+import { MachinePage, Settings } from "./views/Settings";
 
 export function App() {
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
@@ -67,6 +68,8 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind === "p") page = <ProjectPage remote={remote} name={arg} go={go} onBack={back} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "m") page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
+  else if (kind === "add") page = <AddDevicePage remote={remote} onBack={back} />;
+  else if (kind.startsWith("pair")) page = <div className="center muted">这个浏览器已经加入了账户。要让另一台设备加入，在它上面打开这个链接。</div>;
   else page = wide ? <WideHome remote={remote} go={go} /> : <Home remote={remote} go={go} />;
 
   if (wide) {

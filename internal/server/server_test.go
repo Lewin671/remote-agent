@@ -354,3 +354,67 @@ func TestPushAndRemoveDevice(t *testing.T) {
 		t.Fatalf("removed machine still logged in: %v", err)
 	}
 }
+
+func TestPairingLimits(t *testing.T) {
+	ts := newTestServer(t)
+	priv, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, priv, id)))
+	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
+	ikey, _ := e2e.NewPairKey()
+	if _, err := anon.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(ikey.Public())})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("anonymous create: %v", err)
+	}
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairCommit(ikey.Public())}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	jkey, _ := e2e.NewPairKey()
+	join := func(code string) (*connect.Response[pb.JoinPairingResponse], error) {
+		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{Code: code, JoinerPublic: jkey.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+	}
+	joined, err := join(created.Msg.Code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One candidate at a time.
+	if _, err := join(created.Msg.Code); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("second joiner: %v", err)
+	}
+	// Another token sees nothing.
+	if _, err := anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId, CandidateToken: "wrong"})); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("wrong token: %v", err)
+	}
+	// The reveal must match the commitment.
+	other, _ := e2e.NewPairKey()
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: joined.Msg.PairingId, InitiatorPublic: other.Public()})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("reveal of another key: %v", err)
+	}
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: joined.Msg.PairingId, InitiatorPublic: ikey.Public()})); err != nil {
+		t.Fatal(err)
+	}
+	env, _ := e2e.Seal(e2e.NewKey(), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: joined.Msg.PairingId}, []byte("x"))
+	if _, err := pc.ApprovePairing(ctx, connect.NewRequest(&pb.ApprovePairingRequest{PairingId: joined.Msg.PairingId, Payload: env})); err != nil {
+		t.Fatal(err)
+	}
+	get := func() (*connect.Response[pb.GetPairingResponse], error) {
+		return anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: joined.Msg.PairingId, CandidateToken: joined.Msg.CandidateToken}))
+	}
+	if res, err := get(); err != nil || res.Msg.Payload == nil {
+		t.Fatalf("payload: %v %v", res, err)
+	}
+	if _, err := get(); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("payload delivered twice: %v", err)
+	}
+	// Wrong codes are limited.
+	var last error
+	for i := 0; i < badCodesPerMinute+1; i++ {
+		_, last = join(fmt.Sprintf("9%07d", i))
+	}
+	if connect.CodeOf(last) != connect.CodeResourceExhausted {
+		t.Fatalf("after many wrong codes: %v", last)
+	}
+}

@@ -33,6 +33,8 @@ type Account struct {
 	// DeviceSeed is the seed of this machine's Ed25519 device key.
 	DeviceSeed []byte `json:"device_seed"`
 	DeviceID   string `json:"device_id"`
+	// Web is the web client's address, for pairing links.
+	Web string `json:"web,omitempty"`
 }
 
 // ErrNoAccount means the machine has not joined an account.
@@ -56,6 +58,9 @@ func LoadAccount() (*Account, error) {
 	}
 	return a, nil
 }
+
+// Save writes account.json.
+func (a *Account) Save() error { return a.save() }
 
 func (a *Account) save() error {
 	if err := paths.EnsureDir(paths.Dir()); err != nil {

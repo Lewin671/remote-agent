@@ -114,3 +114,9 @@ message TerminalResize {
   int32 rows = 2;
   bool fit = 3;
 }
+
+// PairingPayload is what an existing device hands a new one.
+message PairingPayload {
+  bytes root = 1;
+  string server = 2;
+}

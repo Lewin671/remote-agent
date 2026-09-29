@@ -35,6 +35,9 @@ enum PayloadKind {
   // side sends.
   PAYLOAD_KIND_TERMINAL_OUTPUT = 7;
   PAYLOAD_KIND_TERMINAL_INPUT = 8;
+  // A PairingPayload, sealed with the key both pairing devices derived;
+  // the header's request_id is the pairing ID.
+  PAYLOAD_KIND_PAIRING = 9;
 }
 
 // Header binds an envelope to its place. The receiver checks every field

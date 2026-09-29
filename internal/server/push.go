@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	webpush "github.com/SherClockHolmes/webpush-go"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	webpush "github.com/SherClockHolmes/webpush-go"
 )
 
 // Web Push. Daemons say that something happened in a session; the server

@@ -56,11 +56,12 @@ const (
 
 // Server is the relay.
 type Server struct {
-	cfg   Config
-	store *store
-	hub   *hub
-	term  *termHub
-	push  *pusher
+	cfg     Config
+	store   *store
+	hub     *hub
+	term    *termHub
+	push    *pusher
+	pairing *pairingService
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -89,6 +90,7 @@ func New(cfg Config) (*Server, error) {
 	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
+	s.pairing = newPairingService(s)
 	if s.push, err = newPusher(s); err != nil {
 		st.Close()
 		return nil, err
@@ -105,6 +107,8 @@ func (s *Server) Handler() http.Handler {
 	opts := []connect.HandlerOption{connect.WithReadMaxBytes(maxRequestBytes)}
 	authed := append(opts, connect.WithInterceptors(s.authInterceptor()))
 	mux.Handle(remoteagentv1connect.NewAuthServiceHandler(&authService{s: s}, opts...))
+	// Pairing authenticates per call: the joiner has no login yet.
+	mux.Handle(remoteagentv1connect.NewPairingServiceHandler(s.pairing, opts...))
 	mux.Handle(remoteagentv1connect.NewClientServiceHandler(&clientService{s: s}, authed...))
 	mux.Handle(remoteagentv1connect.NewMachineServiceHandler(&machineService{s: s}, authed...))
 	mux.HandleFunc("/v1/stream", s.hub.serve)

@@ -157,6 +157,19 @@ type vectors struct {
 		Message   string `json:"message"`
 		Signature string `json:"signature"`
 	} `json:"register_signature"`
+	Pairing struct {
+		InitiatorPrivate string   `json:"initiator_private"`
+		JoinerPrivate    string   `json:"joiner_private"`
+		InitiatorPublic  string   `json:"initiator_public"`
+		JoinerPublic     string   `json:"joiner_public"`
+		PairingID        string   `json:"pairing_id"`
+		JoinerKind       int32    `json:"joiner_kind"`
+		Commit           string   `json:"commit"`
+		Transcript       string   `json:"transcript"`
+		SAS              string   `json:"sas"`
+		Key              string   `json:"key"`
+		Emoji            []string `json:"emoji"`
+	} `json:"pairing"`
 }
 
 func TestVectors(t *testing.T) {
@@ -187,6 +200,23 @@ func TestVectors(t *testing.T) {
 	v.RegisterSignature.Message = hex.EncodeToString(reg)
 	v.RegisterSignature.Signature = hex.EncodeToString(k.SignRegistration(reg))
 
+	ip, jp := bytes.Repeat([]byte{0x11}, 32), bytes.Repeat([]byte{0x22}, 32)
+	ik, _ := pairKeyFrom(ip)
+	jk, _ := pairKeyFrom(jp)
+	pv := &v.Pairing
+	pv.InitiatorPrivate, pv.JoinerPrivate = hex.EncodeToString(ip), hex.EncodeToString(jp)
+	pv.InitiatorPublic, pv.JoinerPublic = hex.EncodeToString(ik.Public()), hex.EncodeToString(jk.Public())
+	pv.PairingID, pv.JoinerKind = "0123456789abcdef0123456789abcdef", 2
+	pv.Commit = hex.EncodeToString(PairCommit(ik.Public()))
+	tr := PairTranscript(pv.PairingID, ik.Public(), jk.Public(), pv.JoinerKind)
+	pv.Transcript = hex.EncodeToString(tr)
+	ps, err := ik.Derive(jk.Public(), tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pv.SAS, pv.Key = hex.EncodeToString(ps.SAS[:]), hex.EncodeToString(ps.Key)
+	pv.Emoji = SASEmoji[:]
+
 	got, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		t.Fatal(err)
@@ -204,5 +234,38 @@ func TestVectors(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("%s is out of date; run go test ./internal/e2e -update", path)
+	}
+}
+
+func TestPairing(t *testing.T) {
+	init, _ := NewPairKey()
+	join, _ := NewPairKey()
+	tr := PairTranscript("pid", init.Public(), join.Public(), 2)
+	a, err := init.Derive(join.Public(), tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := join.Derive(init.Public(), tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.SAS != b.SAS || !bytes.Equal(a.Key, b.Key) {
+		t.Fatal("sides disagree")
+	}
+	// A swapped key gives other emoji (with overwhelming probability).
+	mitm, _ := NewPairKey()
+	c, _ := join.Derive(mitm.Public(), PairTranscript("pid", mitm.Public(), join.Public(), 2))
+	if c.SAS == a.SAS {
+		t.Fatal("swapped key gave the same SAS")
+	}
+	if _, err := init.Derive(make([]byte, 32), tr); err == nil {
+		t.Fatal("accepted an all-zero public key")
+	}
+	seen := map[string]bool{}
+	for _, e := range SASEmoji {
+		if e == "" || seen[e] {
+			t.Fatalf("emoji table has %q twice or empty", e)
+		}
+		seen[e] = true
 	}
 }

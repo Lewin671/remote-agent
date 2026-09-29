@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -581,5 +582,71 @@ func TestTerminalStream(t *testing.T) {
 		if b, err := os.ReadFile(name); err == nil && bytes.Contains(b, []byte(marker)) {
 			t.Fatalf("%s contains terminal content", name)
 		}
+	}
+}
+
+func TestPairingMachines(t *testing.T) {
+	e := setup(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	links := make(chan relay.PairLink, 1)
+	seen := make(chan []string, 1)
+	errc := make(chan error, 1)
+	go func() {
+		errc <- relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links <- l }, func(emoji []string, kind pb.DeviceKind) bool {
+			if kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
+				return false
+			}
+			// The user compares these with the new device's.
+			return strings.Join(emoji, "") == strings.Join(<-seen, "")
+		})
+	}()
+	link := <-links
+	if len(link.Code) != 8 {
+		t.Fatalf("code %q", link.Code)
+	}
+	parsed, err := relay.ParsePairLink(link.URL("https://app.example.com"))
+	if err != nil || parsed.Code != link.Code || !bytes.Equal(parsed.Commit, link.Commit) {
+		t.Fatalf("link round trip: %v %v", parsed, err)
+	}
+
+	// The new machine has its own state directory.
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	acct, err := relay.JoinByPairing(ctx, parsed, func(emoji []string) { seen <- emoji })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errc; err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(acct.Root, e.acct.Root) || acct.DeviceID == e.acct.DeviceID {
+		t.Fatal("joined with the wrong key or device")
+	}
+}
+
+func TestPairingRefusals(t *testing.T) {
+	e := setup(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	// A link whose commitment is not the initiator's is refused by the
+	// joiner before anything is revealed.
+	links := make(chan relay.PairLink, 1)
+	go relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links <- l }, func([]string, pb.DeviceKind) bool { return true })
+	l := <-links
+	l.Commit = bytes.Repeat([]byte{1}, 32)
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	if _, err := relay.JoinByPairing(ctx, l, func([]string) {}); err == nil || !strings.Contains(err.Error(), "commitment") {
+		t.Fatalf("swapped commitment: %v", err)
+	}
+
+	// When the user refuses, the joiner gets no key.
+	links2 := make(chan relay.PairLink, 1)
+	go relay.Initiate(ctx, e.acct, func(l relay.PairLink) { links2 <- l }, func([]string, pb.DeviceKind) bool { return false })
+	l2 := <-links2
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	if _, err := relay.JoinByPairing(ctx, l2, func([]string) {}); err == nil || !strings.Contains(err.Error(), "canceled") {
+		t.Fatalf("refused pairing: %v", err)
 	}
 }

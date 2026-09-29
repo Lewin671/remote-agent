@@ -4,7 +4,7 @@ import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 import { machineName, projects, shortPath, when } from "../model";
 import { pushPrefs, pushSupported, setPushPrefs, type PushPrefs } from "../push";
-import { errorText, join, type Remote } from "../remote";
+import { errorText, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { Dot, useRemote } from "../ui";
@@ -32,6 +32,9 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
             </span>
           </button>
         ))}
+        <button className="row add" onClick={() => go("add")}>
+          ＋ 添加设备
+        </button>
       </div>
       <div className="glabel">通知</div>
       <Notifications remote={remote} />
@@ -41,12 +44,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           <ThemePicker />
         </div>
       </div>
-      <div className="glabel">添加设备</div>
-      <div className="grp">
-        <div className="row help">
-          在已加入的电脑上运行 <code>remote-agent account secret</code>，把输出粘贴到新设备的网页，或在新电脑上运行 <code>remote-agent account join</code>。
-        </div>
-      </div>
+
       <div className="glabel">账户</div>
       <div className="grp">
         <div className="row">
@@ -292,41 +290,6 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
     </>
   );
 }
-
-export function Setup({ onDone }: { onDone: () => void }) {
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const submit = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      await join(text);
-      setText("");
-      onDone();
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="setup">
-      <div className="large">
-        <h3>添加设备</h3>
-      </div>
-      <p className="muted">
-        在已加入的电脑上运行 <code>remote-agent account secret</code>，把输出的账户密钥粘贴到这里。密钥只保存在这个浏览器里，不会发给服务器。
-      </p>
-      <textarea className="ta" value={text} onChange={(e) => setText(e.target.value)} placeholder="ra1.…" rows={4} autoComplete="off" spellCheck={false} aria-label="账户密钥" />
-      {error && <p className="error">{error}</p>}
-      <button className="big" disabled={busy || !text.trim()} onClick={submit}>
-        {busy ? "连接中…" : "连接"}
-      </button>
-    </div>
-  );
-}
-
 function ThemePicker() {
   const [theme, set] = useState<Theme>(getTheme);
   const opts: [Theme, string][] = [
@@ -351,3 +314,4 @@ function ThemePicker() {
     </div>
   );
 }
+

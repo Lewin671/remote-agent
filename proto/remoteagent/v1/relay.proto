@@ -71,6 +71,94 @@ message LoginResponse {
   int64 expires_ms = 2;
 }
 
+// PairingService moves the root key from an existing device (the
+// initiator) to a new one (the joiner) without the server learning it; see
+// internal/e2e/pair.go. The initiator is logged in; the joiner is not and
+// uses the candidate token it gets when joining.
+service PairingService {
+  rpc CreatePairing(CreatePairingRequest) returns (CreatePairingResponse);
+  rpc JoinPairing(JoinPairingRequest) returns (JoinPairingResponse);
+  rpc GetPairing(GetPairingRequest) returns (GetPairingResponse);
+  rpc RevealPairing(RevealPairingRequest) returns (RevealPairingResponse);
+  rpc ApprovePairing(ApprovePairingRequest) returns (ApprovePairingResponse);
+  rpc CancelPairing(CancelPairingRequest) returns (CancelPairingResponse);
+}
+
+message CreatePairingRequest {
+  // SHA-256 commitment to the initiator's X25519 public key.
+  bytes commit = 1;
+}
+
+message CreatePairingResponse {
+  string pairing_id = 1;
+  // Eight digits the joiner types or scans.
+  string code = 2;
+  int64 expires_ms = 3;
+}
+
+message JoinPairingRequest {
+  string code = 1;
+  bytes joiner_public = 2;
+  DeviceKind joiner_kind = 3;
+}
+
+message JoinPairingResponse {
+  string pairing_id = 1;
+  bytes commit = 2;
+  // Authorizes this joiner's GetPairing and CancelPairing.
+  string candidate_token = 3;
+}
+
+enum PairingState {
+  PAIRING_STATE_UNSPECIFIED = 0;
+  // Waiting for a joiner.
+  PAIRING_STATE_OPEN = 1;
+  // A joiner sent its key; the initiator reveals its own next.
+  PAIRING_STATE_JOINED = 2;
+  // Both keys are known; the user compares the emoji.
+  PAIRING_STATE_REVEALED = 3;
+  // The initiator sent the sealed root key.
+  PAIRING_STATE_APPROVED = 4;
+  PAIRING_STATE_CANCELED = 5;
+}
+
+message GetPairingRequest {
+  string pairing_id = 1;
+  // The joiner's token; the initiator uses its login instead.
+  string candidate_token = 2;
+}
+
+message GetPairingResponse {
+  PairingState state = 1;
+  bytes commit = 2;
+  bytes joiner_public = 3;
+  DeviceKind joiner_kind = 4;
+  bytes initiator_public = 5;
+  // PAIRING envelope, for the joiner once approved.
+  Envelope payload = 6;
+}
+
+message RevealPairingRequest {
+  string pairing_id = 1;
+  bytes initiator_public = 2;
+}
+
+message RevealPairingResponse {}
+
+message ApprovePairingRequest {
+  string pairing_id = 1;
+  Envelope payload = 2;
+}
+
+message ApprovePairingResponse {}
+
+message CancelPairingRequest {
+  string pairing_id = 1;
+  string candidate_token = 2;
+}
+
+message CancelPairingResponse {}
+
 // ClientService is used by clients.
 service ClientService {
   rpc ListMachines(ListMachinesRequest) returns (ListMachinesResponse);
