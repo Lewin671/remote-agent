@@ -319,3 +319,13 @@ func (h *hub) forward(ctx context.Context, machineID string, cmd *pb.Envelope) (
 		return nil, errUnknown("request canceled")
 	}
 }
+
+// drop disconnects a machine, e.g. after it was removed.
+func (h *hub) drop(machineID string) {
+	h.mu.Lock()
+	p := h.machines[machineID]
+	h.mu.Unlock()
+	if p != nil {
+		p.cancel()
+	}
+}

@@ -60,6 +60,7 @@ type Server struct {
 	store *store
 	hub   *hub
 	term  *termHub
+	push  *pusher
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -88,6 +89,10 @@ func New(cfg Config) (*Server, error) {
 	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
+	if s.push, err = newPusher(s); err != nil {
+		st.Close()
+		return nil, err
+	}
 	return s, nil
 }
 

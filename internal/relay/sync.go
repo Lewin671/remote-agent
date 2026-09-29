@@ -118,6 +118,14 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 				return fmt.Errorf("upload events: %w", err)
 			}
 			after = res.Msg.LastSeq
+			// Once stored, clients can load what the notification is about.
+			for _, e := range evs[:n] {
+				if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+					if _, err := c.machine.Notify(ctx, connect.NewRequest(&pb.NotifyRequest{SessionId: id, Kind: kind})); err != nil {
+						slog.Warn("relay: notify", "session", id, "err", err)
+					}
+				}
+			}
 			evs = evs[n:]
 		}
 		select {
@@ -156,4 +164,30 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
 	return nil
+}
+
+// notifyAge keeps catching up after a reconnect from notifying about the
+// past.
+const notifyAge = 2 * time.Minute
+
+// notifyKind says whether an event deserves a push notification.
+func notifyKind(e *pb.Event) pb.NotifyKind {
+	if e.Time == nil || time.Since(e.Time.AsTime()) > notifyAge {
+		return pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED
+	}
+	switch k := e.Kind.(type) {
+	case *pb.Event_ApprovalRequested, *pb.Event_PlanProposed:
+		return pb.NotifyKind_NOTIFY_KIND_ATTENTION
+	case *pb.Event_QuestionAsked:
+		if !k.QuestionAsked.Async {
+			return pb.NotifyKind_NOTIFY_KIND_ATTENTION
+		}
+	case *pb.Event_SessionState:
+		if k.SessionState.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED {
+			return pb.NotifyKind_NOTIFY_KIND_ATTENTION
+		}
+	case *pb.Event_TurnEnded:
+		return pb.NotifyKind_NOTIFY_KIND_TURN_ENDED
+	}
+	return pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED
 }

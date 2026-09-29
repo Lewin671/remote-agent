@@ -388,3 +388,32 @@ func (s *store) events(ctx context.Context, sessionID string, after uint64, limi
 	}
 	return out, more, nil
 }
+
+// removeDevice deletes a device and its logins. For a machine it also
+// deletes its sessions and their events. It reports whether the device was
+// a machine.
+func (s *store) removeDevice(ctx context.Context, id string) (bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	var kind int32
+	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE id = ?`, id).Scan(&kind); err != nil {
+		return false, err
+	}
+	stmts := []string{
+		`DELETE FROM devices WHERE id = ?`,
+		`DELETE FROM tokens WHERE device_id = ?`,
+		`DELETE FROM push_subs WHERE device_id = ?`,
+		`DELETE FROM events WHERE session_id IN (SELECT session_id FROM sessions WHERE machine_id = ?)`,
+		`DELETE FROM sessions WHERE machine_id = ?`,
+		`DELETE FROM machines WHERE id = ?`,
+	}
+	for _, q := range stmts {
+		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+			return false, err
+		}
+	}
+	return pb.DeviceKind(kind) == pb.DeviceKind_DEVICE_KIND_MACHINE, tx.Commit()
+}

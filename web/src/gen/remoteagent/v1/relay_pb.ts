@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/relay.proto.
  */
 export const file_remoteagent_v1_relay: GenFile = /*@__PURE__*/
-  fileDesc("ChpyZW1vdGVhZ2VudC92MS9yZWxheS5wcm90bxIOcmVtb3RlYWdlbnQudjEiiQEKEkRldmljZVJlZ2lzdHJhdGlvbhIaChJhY2NvdW50X3B1YmxpY19rZXkYASABKAwSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSKAoEa2luZBgDIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgEIAEoAyJVChVSZWdpc3RlckRldmljZVJlcXVlc3QSFAoMcmVnaXN0cmF0aW9uGAEgASgMEhEKCXNpZ25hdHVyZRgCIAEoDBITCgtzZXR1cF90b2tlbhgDIAEoCSIrChZSZWdpc3RlckRldmljZVJlc3BvbnNlEhEKCWRldmljZV9pZBgBIAEoCSIoChNHZXRDaGFsbGVuZ2VSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCSIpChRHZXRDaGFsbGVuZ2VSZXNwb25zZRIRCgljaGFsbGVuZ2UYASABKAwiRwoMTG9naW5SZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIRCgljaGFsbGVuZ2UYAiABKAwSEQoJc2lnbmF0dXJlGAMgASgMIjIKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSEgoKZXhwaXJlc19tcxgCIAEoAyJjCgdNYWNoaW5lEgoKAmlkGAEgASgJEg4KBm9ubGluZRgCIAEoCBImCgRtZXRhGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSFAoMbGFzdF9zZWVuX21zGAQgASgDIqwBCg1SZW1vdGVTZXNzaW9uEhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIlCgNrZXkYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRImCgRtZXRhGAQgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSEAoIbGFzdF9zZXEYBSABKAQSEgoKdXBkYXRlZF9tcxgGIAEoAyJGCgtTdG9yZWRFdmVudBILCgNzZXEYASABKAQSKgoIZW52ZWxvcGUYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIVChNMaXN0TWFjaGluZXNSZXF1ZXN0IkEKFExpc3RNYWNoaW5lc1Jlc3BvbnNlEikKCG1hY2hpbmVzGAEgAygLMhcucmVtb3RlYWdlbnQudjEuTWFjaGluZSIbChlMaXN0UmVtb3RlU2Vzc2lvbnNSZXF1ZXN0Ik0KGkxpc3RSZW1vdGVTZXNzaW9uc1Jlc3BvbnNlEi8KCHNlc3Npb25zGAEgAygLMh0ucmVtb3RlYWdlbnQudjEuUmVtb3RlU2Vzc2lvbiJIChBHZXRFdmVudHNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEQoJYWZ0ZXJfc2VxGAIgASgEEg0KBWxpbWl0GAMgASgNIk4KEUdldEV2ZW50c1Jlc3BvbnNlEisKBmV2ZW50cxgBIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50EgwKBG1vcmUYAiABKAgiTwoORm9yd2FyZFJlcXVlc3QSEgoKbWFjaGluZV9pZBgBIAEoCRIpCgdjb21tYW5kGAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiOwoPRm9yd2FyZFJlc3BvbnNlEigKBnJlc3VsdBgBIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIjsKEVB1dE1hY2hpbmVSZXF1ZXN0EiYKBG1ldGEYASABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIUChJQdXRNYWNoaW5lUmVzcG9uc2UidgoRUHV0U2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIlCgNrZXkYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRImCgRtZXRhGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiFAoSUHV0U2Vzc2lvblJlc3BvbnNlIlYKE1VwbG9hZEV2ZW50c1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIrCgZldmVudHMYAiADKAsyGy5yZW1vdGVhZ2VudC52MS5TdG9yZWRFdmVudCIoChRVcGxvYWRFdmVudHNSZXNwb25zZRIQCghsYXN0X3NlcRgBIAEoBCIZChdMaXN0U2Vzc2lvbkhlYWRzUmVxdWVzdCJKCgtTZXNzaW9uSGVhZBISCgpzZXNzaW9uX2lkGAEgASgJEhAKCGxhc3Rfc2VxGAIgASgEEhUKDW1ldGFfcmV2aXNpb24YAyABKAQiSQoYTGlzdFNlc3Npb25IZWFkc1Jlc3BvbnNlEi0KCHNlc3Npb25zGAEgAygLMhsucmVtb3RlYWdlbnQudjEuU2Vzc2lvbkhlYWQiHAoLU3RyZWFtSGVsbG8SDQoFdG9rZW4YASABKAkieAoJUGVlckZyYW1lEiwKBWhlbGxvGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU3RyZWFtSGVsbG9IABI1Cg1mb3J3YXJkX3JlcGx5GAIgASgLMhwucmVtb3RlYWdlbnQudjEuRm9yd2FyZFJlcGx5SABCBgoEa2luZCKjAgoLU2VydmVyRnJhbWUSJgoFcmVhZHkYASABKAsyFS5yZW1vdGVhZ2VudC52MS5SZWFkeUgAEjkKD2V2ZW50c19hcHBlbmRlZBgCIAEoCzIeLnJlbW90ZWFnZW50LnYxLkV2ZW50c0FwcGVuZGVkSAASOQoPc2Vzc2lvbl91cGRhdGVkGAMgASgLMh4ucmVtb3RlYWdlbnQudjEuU2Vzc2lvblVwZGF0ZWRIABI5Cg9tYWNoaW5lX3VwZGF0ZWQYBCABKAsyHi5yZW1vdGVhZ2VudC52MS5NYWNoaW5lVXBkYXRlZEgAEjMKDGZvcndhcmRfY2FsbBgFIAEoCzIbLnJlbW90ZWFnZW50LnYxLkZvcndhcmRDYWxsSABCBgoEa2luZCIfCgVSZWFkeRIWCg5zZXJ2ZXJfdGltZV9tcxgBIAEoAyJlCg5FdmVudHNBcHBlbmRlZBISCgptYWNoaW5lX2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSKwoGZXZlbnRzGAMgAygLMhsucmVtb3RlYWdlbnQudjEuU3RvcmVkRXZlbnQiQAoOU2Vzc2lvblVwZGF0ZWQSLgoHc2Vzc2lvbhgBIAEoCzIdLnJlbW90ZWFnZW50LnYxLlJlbW90ZVNlc3Npb24iOgoOTWFjaGluZVVwZGF0ZWQSKAoHbWFjaGluZRgBIAEoCzIXLnJlbW90ZWFnZW50LnYxLk1hY2hpbmUiSQoLRm9yd2FyZENhbGwSDwoHY2FsbF9pZBgBIAEoBBIpCgdjb21tYW5kGAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiWAoMRm9yd2FyZFJlcGx5Eg8KB2NhbGxfaWQYASABKAQSKAoGcmVzdWx0GAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSDQoFZXJyb3IYAyABKAkiQQoJVGVybUhlbGxvEg0KBXRva2VuGAEgASgJEhEKCXN0cmVhbV9pZBgCIAEoCRISCgptYWNoaW5lX2lkGAMgASgJKloKCkRldmljZUtpbmQSGwoXREVWSUNFX0tJTkRfVU5TUEVDSUZJRUQQABIXChNERVZJQ0VfS0lORF9NQUNISU5FEAESFgoSREVWSUNFX0tJTkRfQ0xJRU5UEAIyjwIKC0F1dGhTZXJ2aWNlEl8KDlJlZ2lzdGVyRGV2aWNlEiUucmVtb3RlYWdlbnQudjEuUmVnaXN0ZXJEZXZpY2VSZXF1ZXN0GiYucmVtb3RlYWdlbnQudjEuUmVnaXN0ZXJEZXZpY2VSZXNwb25zZRJZCgxHZXRDaGFsbGVuZ2USIy5yZW1vdGVhZ2VudC52MS5HZXRDaGFsbGVuZ2VSZXF1ZXN0GiQucmVtb3RlYWdlbnQudjEuR2V0Q2hhbGxlbmdlUmVzcG9uc2USRAoFTG9naW4SHC5yZW1vdGVhZ2VudC52MS5Mb2dpblJlcXVlc3QaHS5yZW1vdGVhZ2VudC52MS5Mb2dpblJlc3BvbnNlMvUCCg1DbGllbnRTZXJ2aWNlElkKDExpc3RNYWNoaW5lcxIjLnJlbW90ZWFnZW50LnYxLkxpc3RNYWNoaW5lc1JlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5MaXN0TWFjaGluZXNSZXNwb25zZRJrChJMaXN0UmVtb3RlU2Vzc2lvbnMSKS5yZW1vdGVhZ2VudC52MS5MaXN0UmVtb3RlU2Vzc2lvbnNSZXF1ZXN0GioucmVtb3RlYWdlbnQudjEuTGlzdFJlbW90ZVNlc3Npb25zUmVzcG9uc2USUAoJR2V0RXZlbnRzEiAucmVtb3RlYWdlbnQudjEuR2V0RXZlbnRzUmVxdWVzdBohLnJlbW90ZWFnZW50LnYxLkdldEV2ZW50c1Jlc3BvbnNlEkoKB0ZvcndhcmQSHi5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkUmVxdWVzdBofLnJlbW90ZWFnZW50LnYxLkZvcndhcmRSZXNwb25zZTL8AgoOTWFjaGluZVNlcnZpY2USUwoKUHV0TWFjaGluZRIhLnJlbW90ZWFnZW50LnYxLlB1dE1hY2hpbmVSZXF1ZXN0GiIucmVtb3RlYWdlbnQudjEuUHV0TWFjaGluZVJlc3BvbnNlElMKClB1dFNlc3Npb24SIS5yZW1vdGVhZ2VudC52MS5QdXRTZXNzaW9uUmVxdWVzdBoiLnJlbW90ZWFnZW50LnYxLlB1dFNlc3Npb25SZXNwb25zZRJZCgxVcGxvYWRFdmVudHMSIy5yZW1vdGVhZ2VudC52MS5VcGxvYWRFdmVudHNSZXF1ZXN0GiQucmVtb3RlYWdlbnQudjEuVXBsb2FkRXZlbnRzUmVzcG9uc2USZQoQTGlzdFNlc3Npb25IZWFkcxInLnJlbW90ZWFnZW50LnYxLkxpc3RTZXNzaW9uSGVhZHNSZXF1ZXN0GigucmVtb3RlYWdlbnQudjEuTGlzdFNlc3Npb25IZWFkc1Jlc3BvbnNlYgZwcm90bzM", [file_remoteagent_v1_envelope]);
+  fileDesc("ChpyZW1vdGVhZ2VudC92MS9yZWxheS5wcm90bxIOcmVtb3RlYWdlbnQudjEiiQEKEkRldmljZVJlZ2lzdHJhdGlvbhIaChJhY2NvdW50X3B1YmxpY19rZXkYASABKAwSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSKAoEa2luZBgDIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgEIAEoAyJVChVSZWdpc3RlckRldmljZVJlcXVlc3QSFAoMcmVnaXN0cmF0aW9uGAEgASgMEhEKCXNpZ25hdHVyZRgCIAEoDBITCgtzZXR1cF90b2tlbhgDIAEoCSIrChZSZWdpc3RlckRldmljZVJlc3BvbnNlEhEKCWRldmljZV9pZBgBIAEoCSIoChNHZXRDaGFsbGVuZ2VSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCSIpChRHZXRDaGFsbGVuZ2VSZXNwb25zZRIRCgljaGFsbGVuZ2UYASABKAwiRwoMTG9naW5SZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIRCgljaGFsbGVuZ2UYAiABKAwSEQoJc2lnbmF0dXJlGAMgASgMIjIKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSEgoKZXhwaXJlc19tcxgCIAEoAyJjCgdNYWNoaW5lEgoKAmlkGAEgASgJEg4KBm9ubGluZRgCIAEoCBImCgRtZXRhGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSFAoMbGFzdF9zZWVuX21zGAQgASgDIqwBCg1SZW1vdGVTZXNzaW9uEhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIlCgNrZXkYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRImCgRtZXRhGAQgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSEAoIbGFzdF9zZXEYBSABKAQSEgoKdXBkYXRlZF9tcxgGIAEoAyJGCgtTdG9yZWRFdmVudBILCgNzZXEYASABKAQSKgoIZW52ZWxvcGUYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIVChNMaXN0TWFjaGluZXNSZXF1ZXN0IkEKFExpc3RNYWNoaW5lc1Jlc3BvbnNlEikKCG1hY2hpbmVzGAEgAygLMhcucmVtb3RlYWdlbnQudjEuTWFjaGluZSIbChlMaXN0UmVtb3RlU2Vzc2lvbnNSZXF1ZXN0Ik0KGkxpc3RSZW1vdGVTZXNzaW9uc1Jlc3BvbnNlEi8KCHNlc3Npb25zGAEgAygLMh0ucmVtb3RlYWdlbnQudjEuUmVtb3RlU2Vzc2lvbiJIChBHZXRFdmVudHNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEQoJYWZ0ZXJfc2VxGAIgASgEEg0KBWxpbWl0GAMgASgNIk4KEUdldEV2ZW50c1Jlc3BvbnNlEisKBmV2ZW50cxgBIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50EgwKBG1vcmUYAiABKAgiTwoORm9yd2FyZFJlcXVlc3QSEgoKbWFjaGluZV9pZBgBIAEoCRIpCgdjb21tYW5kGAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiOwoPRm9yd2FyZFJlc3BvbnNlEigKBnJlc3VsdBgBIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIjsKEVB1dE1hY2hpbmVSZXF1ZXN0EiYKBG1ldGEYASABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIUChJQdXRNYWNoaW5lUmVzcG9uc2UidgoRUHV0U2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIlCgNrZXkYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRImCgRtZXRhGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiFAoSUHV0U2Vzc2lvblJlc3BvbnNlIlYKE1VwbG9hZEV2ZW50c1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIrCgZldmVudHMYAiADKAsyGy5yZW1vdGVhZ2VudC52MS5TdG9yZWRFdmVudCIoChRVcGxvYWRFdmVudHNSZXNwb25zZRIQCghsYXN0X3NlcRgBIAEoBCIZChdMaXN0U2Vzc2lvbkhlYWRzUmVxdWVzdCJKCgtTZXNzaW9uSGVhZBISCgpzZXNzaW9uX2lkGAEgASgJEhAKCGxhc3Rfc2VxGAIgASgEEhUKDW1ldGFfcmV2aXNpb24YAyABKAQiSQoYTGlzdFNlc3Npb25IZWFkc1Jlc3BvbnNlEi0KCHNlc3Npb25zGAEgAygLMhsucmVtb3RlYWdlbnQudjEuU2Vzc2lvbkhlYWQiHAoLU3RyZWFtSGVsbG8SDQoFdG9rZW4YASABKAkieAoJUGVlckZyYW1lEiwKBWhlbGxvGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU3RyZWFtSGVsbG9IABI1Cg1mb3J3YXJkX3JlcGx5GAIgASgLMhwucmVtb3RlYWdlbnQudjEuRm9yd2FyZFJlcGx5SABCBgoEa2luZCLeAgoLU2VydmVyRnJhbWUSJgoFcmVhZHkYASABKAsyFS5yZW1vdGVhZ2VudC52MS5SZWFkeUgAEjkKD2V2ZW50c19hcHBlbmRlZBgCIAEoCzIeLnJlbW90ZWFnZW50LnYxLkV2ZW50c0FwcGVuZGVkSAASOQoPc2Vzc2lvbl91cGRhdGVkGAMgASgLMh4ucmVtb3RlYWdlbnQudjEuU2Vzc2lvblVwZGF0ZWRIABI5Cg9tYWNoaW5lX3VwZGF0ZWQYBCABKAsyHi5yZW1vdGVhZ2VudC52MS5NYWNoaW5lVXBkYXRlZEgAEjkKD21hY2hpbmVfcmVtb3ZlZBgGIAEoCzIeLnJlbW90ZWFnZW50LnYxLk1hY2hpbmVSZW1vdmVkSAASMwoMZm9yd2FyZF9jYWxsGAUgASgLMhsucmVtb3RlYWdlbnQudjEuRm9yd2FyZENhbGxIAEIGCgRraW5kIh8KBVJlYWR5EhYKDnNlcnZlcl90aW1lX21zGAEgASgDImUKDkV2ZW50c0FwcGVuZGVkEhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIrCgZldmVudHMYAyADKAsyGy5yZW1vdGVhZ2VudC52MS5TdG9yZWRFdmVudCJACg5TZXNzaW9uVXBkYXRlZBIuCgdzZXNzaW9uGAEgASgLMh0ucmVtb3RlYWdlbnQudjEuUmVtb3RlU2Vzc2lvbiI6Cg5NYWNoaW5lVXBkYXRlZBIoCgdtYWNoaW5lGAEgASgLMhcucmVtb3RlYWdlbnQudjEuTWFjaGluZSIkCg5NYWNoaW5lUmVtb3ZlZBISCgptYWNoaW5lX2lkGAEgASgJIkkKC0ZvcndhcmRDYWxsEg8KB2NhbGxfaWQYASABKAQSKQoHY29tbWFuZBgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIlgKDEZvcndhcmRSZXBseRIPCgdjYWxsX2lkGAEgASgEEigKBnJlc3VsdBgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEg0KBWVycm9yGAMgASgJIkEKCVRlcm1IZWxsbxINCgV0b2tlbhgBIAEoCRIRCglzdHJlYW1faWQYAiABKAkSEgoKbWFjaGluZV9pZBgDIAEoCSITChFHZXRQdXNoS2V5UmVxdWVzdCIoChJHZXRQdXNoS2V5UmVzcG9uc2USEgoKcHVibGljX2tleRgBIAEoCSJiChpTZXRQdXNoU3Vic2NyaXB0aW9uUmVxdWVzdBIZChFzdWJzY3JpcHRpb25fanNvbhgBIAEoCRIpCgVraW5kcxgCIAMoDjIaLnJlbW90ZWFnZW50LnYxLk5vdGlmeUtpbmQiHQobU2V0UHVzaFN1YnNjcmlwdGlvblJlc3BvbnNlIigKE1JlbW92ZURldmljZVJlcXVlc3QSEQoJZGV2aWNlX2lkGAEgASgJIhYKFFJlbW92ZURldmljZVJlc3BvbnNlIk0KDU5vdGlmeVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIoCgRraW5kGAIgASgOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZCIQCg5Ob3RpZnlSZXNwb25zZSpaCgpEZXZpY2VLaW5kEhsKF0RFVklDRV9LSU5EX1VOU1BFQ0lGSUVEEAASFwoTREVWSUNFX0tJTkRfTUFDSElORRABEhYKEkRFVklDRV9LSU5EX0NMSUVOVBACKmAKCk5vdGlmeUtpbmQSGwoXTk9USUZZX0tJTkRfVU5TUEVDSUZJRUQQABIZChVOT1RJRllfS0lORF9BVFRFTlRJT04QARIaChZOT1RJRllfS0lORF9UVVJOX0VOREVEEAIyjwIKC0F1dGhTZXJ2aWNlEl8KDlJlZ2lzdGVyRGV2aWNlEiUucmVtb3RlYWdlbnQudjEuUmVnaXN0ZXJEZXZpY2VSZXF1ZXN0GiYucmVtb3RlYWdlbnQudjEuUmVnaXN0ZXJEZXZpY2VSZXNwb25zZRJZCgxHZXRDaGFsbGVuZ2USIy5yZW1vdGVhZ2VudC52MS5HZXRDaGFsbGVuZ2VSZXF1ZXN0GiQucmVtb3RlYWdlbnQudjEuR2V0Q2hhbGxlbmdlUmVzcG9uc2USRAoFTG9naW4SHC5yZW1vdGVhZ2VudC52MS5Mb2dpblJlcXVlc3QaHS5yZW1vdGVhZ2VudC52MS5Mb2dpblJlc3BvbnNlMpUFCg1DbGllbnRTZXJ2aWNlElkKDExpc3RNYWNoaW5lcxIjLnJlbW90ZWFnZW50LnYxLkxpc3RNYWNoaW5lc1JlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5MaXN0TWFjaGluZXNSZXNwb25zZRJrChJMaXN0UmVtb3RlU2Vzc2lvbnMSKS5yZW1vdGVhZ2VudC52MS5MaXN0UmVtb3RlU2Vzc2lvbnNSZXF1ZXN0GioucmVtb3RlYWdlbnQudjEuTGlzdFJlbW90ZVNlc3Npb25zUmVzcG9uc2USUAoJR2V0RXZlbnRzEiAucmVtb3RlYWdlbnQudjEuR2V0RXZlbnRzUmVxdWVzdBohLnJlbW90ZWFnZW50LnYxLkdldEV2ZW50c1Jlc3BvbnNlEkoKB0ZvcndhcmQSHi5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkUmVxdWVzdBofLnJlbW90ZWFnZW50LnYxLkZvcndhcmRSZXNwb25zZRJTCgpHZXRQdXNoS2V5EiEucmVtb3RlYWdlbnQudjEuR2V0UHVzaEtleVJlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5HZXRQdXNoS2V5UmVzcG9uc2USbgoTU2V0UHVzaFN1YnNjcmlwdGlvbhIqLnJlbW90ZWFnZW50LnYxLlNldFB1c2hTdWJzY3JpcHRpb25SZXF1ZXN0GisucmVtb3RlYWdlbnQudjEuU2V0UHVzaFN1YnNjcmlwdGlvblJlc3BvbnNlElkKDFJlbW92ZURldmljZRIjLnJlbW90ZWFnZW50LnYxLlJlbW92ZURldmljZVJlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5SZW1vdmVEZXZpY2VSZXNwb25zZTLFAwoOTWFjaGluZVNlcnZpY2USUwoKUHV0TWFjaGluZRIhLnJlbW90ZWFnZW50LnYxLlB1dE1hY2hpbmVSZXF1ZXN0GiIucmVtb3RlYWdlbnQudjEuUHV0TWFjaGluZVJlc3BvbnNlElMKClB1dFNlc3Npb24SIS5yZW1vdGVhZ2VudC52MS5QdXRTZXNzaW9uUmVxdWVzdBoiLnJlbW90ZWFnZW50LnYxLlB1dFNlc3Npb25SZXNwb25zZRJZCgxVcGxvYWRFdmVudHMSIy5yZW1vdGVhZ2VudC52MS5VcGxvYWRFdmVudHNSZXF1ZXN0GiQucmVtb3RlYWdlbnQudjEuVXBsb2FkRXZlbnRzUmVzcG9uc2USZQoQTGlzdFNlc3Npb25IZWFkcxInLnJlbW90ZWFnZW50LnYxLkxpc3RTZXNzaW9uSGVhZHNSZXF1ZXN0GigucmVtb3RlYWdlbnQudjEuTGlzdFNlc3Npb25IZWFkc1Jlc3BvbnNlEkcKBk5vdGlmeRIdLnJlbW90ZWFnZW50LnYxLk5vdGlmeVJlcXVlc3QaHi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlSZXNwb25zZWIGcHJvdG8z", [file_remoteagent_v1_envelope]);
 
 /**
  * DeviceRegistration is signed by the account key.
@@ -709,6 +709,12 @@ export type ServerFrame = Message<"remoteagent.v1.ServerFrame"> & {
     case: "machineUpdated";
   } | {
     /**
+     * @generated from field: remoteagent.v1.MachineRemoved machine_removed = 6;
+     */
+    value: MachineRemoved;
+    case: "machineRemoved";
+  } | {
+    /**
      * To daemons.
      *
      * @generated from field: remoteagent.v1.ForwardCall forward_call = 5;
@@ -806,6 +812,25 @@ export const MachineUpdatedSchema: GenMessage<MachineUpdated> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_relay, 33);
 
 /**
+ * MachineRemoved says a machine and its sessions were deleted.
+ *
+ * @generated from message remoteagent.v1.MachineRemoved
+ */
+export type MachineRemoved = Message<"remoteagent.v1.MachineRemoved"> & {
+  /**
+   * @generated from field: string machine_id = 1;
+   */
+  machineId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.MachineRemoved.
+ * Use `create(MachineRemovedSchema)` to create a new message.
+ */
+export const MachineRemovedSchema: GenMessage<MachineRemoved> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 34);
+
+/**
  * @generated from message remoteagent.v1.ForwardCall
  */
 export type ForwardCall = Message<"remoteagent.v1.ForwardCall"> & {
@@ -827,7 +852,7 @@ export type ForwardCall = Message<"remoteagent.v1.ForwardCall"> & {
  * Use `create(ForwardCallSchema)` to create a new message.
  */
 export const ForwardCallSchema: GenMessage<ForwardCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_relay, 34);
+  messageDesc(file_remoteagent_v1_relay, 35);
 
 /**
  * @generated from message remoteagent.v1.ForwardReply
@@ -857,7 +882,7 @@ export type ForwardReply = Message<"remoteagent.v1.ForwardReply"> & {
  * Use `create(ForwardReplySchema)` to create a new message.
  */
 export const ForwardReplySchema: GenMessage<ForwardReply> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_relay, 35);
+  messageDesc(file_remoteagent_v1_relay, 36);
 
 /**
  * Terminal streams use a WebSocket at /v1/term. Each side first sends a
@@ -890,7 +915,143 @@ export type TermHello = Message<"remoteagent.v1.TermHello"> & {
  * Use `create(TermHelloSchema)` to create a new message.
  */
 export const TermHelloSchema: GenMessage<TermHello> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_relay, 36);
+  messageDesc(file_remoteagent_v1_relay, 37);
+
+/**
+ * @generated from message remoteagent.v1.GetPushKeyRequest
+ */
+export type GetPushKeyRequest = Message<"remoteagent.v1.GetPushKeyRequest"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.GetPushKeyRequest.
+ * Use `create(GetPushKeyRequestSchema)` to create a new message.
+ */
+export const GetPushKeyRequestSchema: GenMessage<GetPushKeyRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 38);
+
+/**
+ * @generated from message remoteagent.v1.GetPushKeyResponse
+ */
+export type GetPushKeyResponse = Message<"remoteagent.v1.GetPushKeyResponse"> & {
+  /**
+   * VAPID public key, base64url.
+   *
+   * @generated from field: string public_key = 1;
+   */
+  publicKey: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.GetPushKeyResponse.
+ * Use `create(GetPushKeyResponseSchema)` to create a new message.
+ */
+export const GetPushKeyResponseSchema: GenMessage<GetPushKeyResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 39);
+
+/**
+ * @generated from message remoteagent.v1.SetPushSubscriptionRequest
+ */
+export type SetPushSubscriptionRequest = Message<"remoteagent.v1.SetPushSubscriptionRequest"> & {
+  /**
+   * The PushSubscription as JSON; empty removes this device's subscription.
+   *
+   * @generated from field: string subscription_json = 1;
+   */
+  subscriptionJson: string;
+
+  /**
+   * Kinds of notifications to send.
+   *
+   * @generated from field: repeated remoteagent.v1.NotifyKind kinds = 2;
+   */
+  kinds: NotifyKind[];
+};
+
+/**
+ * Describes the message remoteagent.v1.SetPushSubscriptionRequest.
+ * Use `create(SetPushSubscriptionRequestSchema)` to create a new message.
+ */
+export const SetPushSubscriptionRequestSchema: GenMessage<SetPushSubscriptionRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 40);
+
+/**
+ * @generated from message remoteagent.v1.SetPushSubscriptionResponse
+ */
+export type SetPushSubscriptionResponse = Message<"remoteagent.v1.SetPushSubscriptionResponse"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.SetPushSubscriptionResponse.
+ * Use `create(SetPushSubscriptionResponseSchema)` to create a new message.
+ */
+export const SetPushSubscriptionResponseSchema: GenMessage<SetPushSubscriptionResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 41);
+
+/**
+ * @generated from message remoteagent.v1.RemoveDeviceRequest
+ */
+export type RemoveDeviceRequest = Message<"remoteagent.v1.RemoveDeviceRequest"> & {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.RemoveDeviceRequest.
+ * Use `create(RemoveDeviceRequestSchema)` to create a new message.
+ */
+export const RemoveDeviceRequestSchema: GenMessage<RemoveDeviceRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 42);
+
+/**
+ * @generated from message remoteagent.v1.RemoveDeviceResponse
+ */
+export type RemoveDeviceResponse = Message<"remoteagent.v1.RemoveDeviceResponse"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.RemoveDeviceResponse.
+ * Use `create(RemoveDeviceResponseSchema)` to create a new message.
+ */
+export const RemoveDeviceResponseSchema: GenMessage<RemoveDeviceResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 43);
+
+/**
+ * @generated from message remoteagent.v1.NotifyRequest
+ */
+export type NotifyRequest = Message<"remoteagent.v1.NotifyRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: remoteagent.v1.NotifyKind kind = 2;
+   */
+  kind: NotifyKind;
+};
+
+/**
+ * Describes the message remoteagent.v1.NotifyRequest.
+ * Use `create(NotifyRequestSchema)` to create a new message.
+ */
+export const NotifyRequestSchema: GenMessage<NotifyRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 44);
+
+/**
+ * @generated from message remoteagent.v1.NotifyResponse
+ */
+export type NotifyResponse = Message<"remoteagent.v1.NotifyResponse"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.NotifyResponse.
+ * Use `create(NotifyResponseSchema)` to create a new message.
+ */
+export const NotifyResponseSchema: GenMessage<NotifyResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 45);
 
 /**
  * @generated from enum remoteagent.v1.DeviceKind
@@ -921,6 +1082,36 @@ export enum DeviceKind {
  */
 export const DeviceKindSchema: GenEnum<DeviceKind> = /*@__PURE__*/
   enumDesc(file_remoteagent_v1_relay, 0);
+
+/**
+ * @generated from enum remoteagent.v1.NotifyKind
+ */
+export enum NotifyKind {
+  /**
+   * @generated from enum value: NOTIFY_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A permission request or a question waits for the user.
+   *
+   * @generated from enum value: NOTIFY_KIND_ATTENTION = 1;
+   */
+  ATTENTION = 1,
+
+  /**
+   * A turn ended.
+   *
+   * @generated from enum value: NOTIFY_KIND_TURN_ENDED = 2;
+   */
+  TURN_ENDED = 2,
+}
+
+/**
+ * Describes the enum remoteagent.v1.NotifyKind.
+ */
+export const NotifyKindSchema: GenEnum<NotifyKind> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_relay, 1);
 
 /**
  * AuthService registers devices and logs them in. Every device has its own
@@ -1000,6 +1191,36 @@ export const ClientService: GenService<{
     input: typeof ForwardRequestSchema;
     output: typeof ForwardResponseSchema;
   },
+  /**
+   * Web Push: the server's VAPID public key, and this device's
+   * subscription with the kinds of notifications it wants.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.GetPushKey
+   */
+  getPushKey: {
+    methodKind: "unary";
+    input: typeof GetPushKeyRequestSchema;
+    output: typeof GetPushKeyResponseSchema;
+  },
+  /**
+   * @generated from rpc remoteagent.v1.ClientService.SetPushSubscription
+   */
+  setPushSubscription: {
+    methodKind: "unary";
+    input: typeof SetPushSubscriptionRequestSchema;
+    output: typeof SetPushSubscriptionResponseSchema;
+  },
+  /**
+   * RemoveDevice unregisters a device and ends its logins; a removed
+   * machine's sessions are deleted.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.RemoveDevice
+   */
+  removeDevice: {
+    methodKind: "unary";
+    input: typeof RemoveDeviceRequestSchema;
+    output: typeof RemoveDeviceResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_remoteagent_v1_relay, 1);
 
@@ -1043,6 +1264,16 @@ export const MachineService: GenService<{
     methodKind: "unary";
     input: typeof ListSessionHeadsRequestSchema;
     output: typeof ListSessionHeadsResponseSchema;
+  },
+  /**
+   * Notify asks the server to push a notification with generic text.
+   *
+   * @generated from rpc remoteagent.v1.MachineService.Notify
+   */
+  notify: {
+    methodKind: "unary";
+    input: typeof NotifyRequestSchema;
+    output: typeof NotifyResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_remoteagent_v1_relay, 2);

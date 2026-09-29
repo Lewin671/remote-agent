@@ -340,3 +340,13 @@ button.chip { cursor: pointer; }
 .keys { display: flex; gap: 5px; padding: 8px 8px calc(12px + env(safe-area-inset-bottom)); background: #161b22; flex: none; }
 .keys button { flex: 1; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 12px; padding: 6px 0; text-align: center; }
 .banner b { cursor: pointer; }
+
+/* ---------- settings ---------- */
+.row.block { display: block; }
+.row.block .line { display: flex; }
+.bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+.sw { margin-left: auto; width: 42px; height: 25px; border-radius: 13px; background: var(--track); position: relative; flex: none; transition: background .15s; }
+.sw.on { background: var(--green); }
+.sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .15s; }
+.sw.on::after { left: 19px; }

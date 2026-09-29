@@ -2,13 +2,19 @@ package server
 
 import (
 	"context"
+	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -234,4 +240,117 @@ func TestChallengesAreBounded(t *testing.T) {
 		t.Fatalf("%d challenges stored", n)
 	}
 	ts.login(t, priv, id)
+}
+
+// pushSubscription makes a browser-like subscription pointing at endpoint.
+func pushSubscription(t *testing.T, endpoint string) string {
+	t.Helper()
+	priv, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := make([]byte, 16)
+	rand.Read(auth)
+	b, _ := json.Marshal(map[string]any{"endpoint": endpoint, "keys": map[string]string{
+		"p256dh": base64.RawURLEncoding.EncodeToString(priv.PublicKey().Bytes()),
+		"auth":   base64.RawURLEncoding.EncodeToString(auth),
+	}})
+	return string(b)
+}
+
+func TestPushAndRemoveDevice(t *testing.T) {
+	ts := newTestServer(t)
+	mpriv, mid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cpriv, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	ctx := context.Background()
+	mtoken := ts.login(t, mpriv, mid)
+	m := remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, ts.url, withToken(mtoken))
+	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cpriv, cid)))
+
+	skey := e2e.NewKey()
+	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
+		t.Fatal(err)
+	}
+
+	// A fake push service: the first delivery works, later ones say the
+	// subscription is gone.
+	var mu sync.Mutex
+	var got []string
+	gone := false
+	pushSvc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		got = append(got, r.Header.Get("Content-Encoding"))
+		if gone {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer pushSvc.Close()
+	count := func() int { mu.Lock(); defer mu.Unlock(); return len(got) }
+
+	key, err := c.GetPushKey(ctx, connect.NewRequest(&pb.GetPushKeyRequest{}))
+	if err != nil || key.Msg.PublicKey == "" {
+		t.Fatalf("push key: %v %v", key, err)
+	}
+	if _, err := c.SetPushSubscription(ctx, connect.NewRequest(&pb.SetPushSubscriptionRequest{
+		SubscriptionJson: pushSubscription(t, pushSvc.URL), Kinds: []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION},
+	})); err != nil {
+		t.Fatal(err)
+	}
+	notify := func(kind pb.NotifyKind) {
+		if _, err := m.Notify(ctx, connect.NewRequest(&pb.NotifyRequest{SessionId: "s", Kind: kind})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notify(pb.NotifyKind_NOTIFY_KIND_TURN_ENDED) // not subscribed
+	notify(pb.NotifyKind_NOTIFY_KIND_ATTENTION)
+	notify(pb.NotifyKind_NOTIFY_KIND_ATTENTION) // coalesced
+	deadline := time.Now().Add(5 * time.Second)
+	for count() < 1 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if n := count(); n != 1 {
+		t.Fatalf("%d pushes, want 1", n)
+	}
+	if got[0] != "aes128gcm" {
+		t.Fatalf("payload encoding %q", got[0])
+	}
+	// A subscription the push service dropped is deleted.
+	mu.Lock()
+	gone = true
+	mu.Unlock()
+	ts.srv.push.mu.Lock()
+	clear(ts.srv.push.recent)
+	ts.srv.push.mu.Unlock()
+	notify(pb.NotifyKind_NOTIFY_KIND_ATTENTION)
+	var n int
+	for i := 0; i < 100; i++ {
+		ts.srv.store.db.QueryRow(`SELECT COUNT(*) FROM push_subs`).Scan(&n)
+		if n == 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if n != 0 {
+		t.Fatal("dropped subscription kept")
+	}
+
+	// Removing the machine deletes its sessions and ends its logins.
+	if _, err := c.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid})); err != nil {
+		t.Fatal(err)
+	}
+	ss, _ := c.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
+	if len(ss.Msg.Sessions) != 0 {
+		t.Fatalf("sessions left: %v", ss.Msg.Sessions)
+	}
+	if _, err := m.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("removed machine still logged in: %v", err)
+	}
 }

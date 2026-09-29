@@ -80,6 +80,13 @@ service ClientService {
   // result. It fails with "unavailable" at once when the daemon is offline;
   // the server never queues commands.
   rpc Forward(ForwardRequest) returns (ForwardResponse);
+  // Web Push: the server's VAPID public key, and this device's
+  // subscription with the kinds of notifications it wants.
+  rpc GetPushKey(GetPushKeyRequest) returns (GetPushKeyResponse);
+  rpc SetPushSubscription(SetPushSubscriptionRequest) returns (SetPushSubscriptionResponse);
+  // RemoveDevice unregisters a device and ends its logins; a removed
+  // machine's sessions are deleted.
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
 }
 
 message Machine {
@@ -153,6 +160,8 @@ service MachineService {
   // are skipped, so uploads can be retried; a gap is rejected.
   rpc UploadEvents(UploadEventsRequest) returns (UploadEventsResponse);
   rpc ListSessionHeads(ListSessionHeadsRequest) returns (ListSessionHeadsResponse);
+  // Notify asks the server to push a notification with generic text.
+  rpc Notify(NotifyRequest) returns (NotifyResponse);
 }
 
 message PutMachineRequest {
@@ -217,6 +226,7 @@ message ServerFrame {
     EventsAppended events_appended = 2;
     SessionUpdated session_updated = 3;
     MachineUpdated machine_updated = 4;
+    MachineRemoved machine_removed = 6;
     // To daemons.
     ForwardCall forward_call = 5;
   }
@@ -239,6 +249,11 @@ message SessionUpdated {
 
 message MachineUpdated {
   Machine machine = 1;
+}
+
+// MachineRemoved says a machine and its sessions were deleted.
+message MachineRemoved {
+  string machine_id = 1;
 }
 
 message ForwardCall {
@@ -264,3 +279,40 @@ message TermHello {
   // Set by the client: the machine that must join the stream.
   string machine_id = 3;
 }
+
+message GetPushKeyRequest {}
+
+message GetPushKeyResponse {
+  // VAPID public key, base64url.
+  string public_key = 1;
+}
+
+enum NotifyKind {
+  NOTIFY_KIND_UNSPECIFIED = 0;
+  // A permission request or a question waits for the user.
+  NOTIFY_KIND_ATTENTION = 1;
+  // A turn ended.
+  NOTIFY_KIND_TURN_ENDED = 2;
+}
+
+message SetPushSubscriptionRequest {
+  // The PushSubscription as JSON; empty removes this device's subscription.
+  string subscription_json = 1;
+  // Kinds of notifications to send.
+  repeated NotifyKind kinds = 2;
+}
+
+message SetPushSubscriptionResponse {}
+
+message RemoveDeviceRequest {
+  string device_id = 1;
+}
+
+message RemoveDeviceResponse {}
+
+message NotifyRequest {
+  string session_id = 1;
+  NotifyKind kind = 2;
+}
+
+message NotifyResponse {}

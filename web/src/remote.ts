@@ -31,6 +31,7 @@ import {
   ClientService,
   DeviceKind,
   DeviceRegistrationSchema,
+  NotifyKind,
   PeerFrameSchema,
   ServerFrameSchema,
   TermHelloSchema,
@@ -242,6 +243,11 @@ export class Remote {
         // Subscribed first, then catch up: nothing falls in between.
         await this.refresh();
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
+        break;
+      case "machineRemoved":
+        this.machines.delete(kind.value.machineId);
+        for (const [id, s] of this.sessions) if (s.machineId === kind.value.machineId) this.sessions.delete(id);
+        this.changed();
         break;
       case "machineUpdated":
         if (kind.value.machine) {
@@ -553,6 +559,22 @@ export class Remote {
         ws.close();
       },
     };
+  }
+
+  async pushKey(): Promise<string> {
+    return (await this.api.getPushKey({})).publicKey;
+  }
+
+  async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
+    await this.api.setPushSubscription({ subscriptionJson, kinds });
+  }
+
+  /** Unregisters a device; a machine's sessions go with it. */
+  async removeDevice(deviceId: string): Promise<void> {
+    await this.api.removeDevice({ deviceId });
+    for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.sessions.delete(id);
+    this.machines.delete(deviceId);
+    this.changed();
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();

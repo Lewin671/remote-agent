@@ -55,6 +55,15 @@ const (
 	ClientServiceGetEventsProcedure = "/remoteagent.v1.ClientService/GetEvents"
 	// ClientServiceForwardProcedure is the fully-qualified name of the ClientService's Forward RPC.
 	ClientServiceForwardProcedure = "/remoteagent.v1.ClientService/Forward"
+	// ClientServiceGetPushKeyProcedure is the fully-qualified name of the ClientService's GetPushKey
+	// RPC.
+	ClientServiceGetPushKeyProcedure = "/remoteagent.v1.ClientService/GetPushKey"
+	// ClientServiceSetPushSubscriptionProcedure is the fully-qualified name of the ClientService's
+	// SetPushSubscription RPC.
+	ClientServiceSetPushSubscriptionProcedure = "/remoteagent.v1.ClientService/SetPushSubscription"
+	// ClientServiceRemoveDeviceProcedure is the fully-qualified name of the ClientService's
+	// RemoveDevice RPC.
+	ClientServiceRemoveDeviceProcedure = "/remoteagent.v1.ClientService/RemoveDevice"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -67,6 +76,8 @@ const (
 	// MachineServiceListSessionHeadsProcedure is the fully-qualified name of the MachineService's
 	// ListSessionHeads RPC.
 	MachineServiceListSessionHeadsProcedure = "/remoteagent.v1.MachineService/ListSessionHeads"
+	// MachineServiceNotifyProcedure is the fully-qualified name of the MachineService's Notify RPC.
+	MachineServiceNotifyProcedure = "/remoteagent.v1.MachineService/Notify"
 )
 
 // AuthServiceClient is a client for the remoteagent.v1.AuthService service.
@@ -200,6 +211,13 @@ type ClientServiceClient interface {
 	// result. It fails with "unavailable" at once when the daemon is offline;
 	// the server never queues commands.
 	Forward(context.Context, *connect.Request[v1.ForwardRequest]) (*connect.Response[v1.ForwardResponse], error)
+	// Web Push: the server's VAPID public key, and this device's
+	// subscription with the kinds of notifications it wants.
+	GetPushKey(context.Context, *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error)
+	SetPushSubscription(context.Context, *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error)
+	// RemoveDevice unregisters a device and ends its logins; a removed
+	// machine's sessions are deleted.
+	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -237,15 +255,36 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("Forward")),
 			connect.WithClientOptions(opts...),
 		),
+		getPushKey: connect.NewClient[v1.GetPushKeyRequest, v1.GetPushKeyResponse](
+			httpClient,
+			baseURL+ClientServiceGetPushKeyProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("GetPushKey")),
+			connect.WithClientOptions(opts...),
+		),
+		setPushSubscription: connect.NewClient[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse](
+			httpClient,
+			baseURL+ClientServiceSetPushSubscriptionProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("SetPushSubscription")),
+			connect.WithClientOptions(opts...),
+		),
+		removeDevice: connect.NewClient[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse](
+			httpClient,
+			baseURL+ClientServiceRemoveDeviceProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // clientServiceClient implements ClientServiceClient.
 type clientServiceClient struct {
-	listMachines       *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
-	listRemoteSessions *connect.Client[v1.ListRemoteSessionsRequest, v1.ListRemoteSessionsResponse]
-	getEvents          *connect.Client[v1.GetEventsRequest, v1.GetEventsResponse]
-	forward            *connect.Client[v1.ForwardRequest, v1.ForwardResponse]
+	listMachines        *connect.Client[v1.ListMachinesRequest, v1.ListMachinesResponse]
+	listRemoteSessions  *connect.Client[v1.ListRemoteSessionsRequest, v1.ListRemoteSessionsResponse]
+	getEvents           *connect.Client[v1.GetEventsRequest, v1.GetEventsResponse]
+	forward             *connect.Client[v1.ForwardRequest, v1.ForwardResponse]
+	getPushKey          *connect.Client[v1.GetPushKeyRequest, v1.GetPushKeyResponse]
+	setPushSubscription *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
+	removeDevice        *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -268,6 +307,21 @@ func (c *clientServiceClient) Forward(ctx context.Context, req *connect.Request[
 	return c.forward.CallUnary(ctx, req)
 }
 
+// GetPushKey calls remoteagent.v1.ClientService.GetPushKey.
+func (c *clientServiceClient) GetPushKey(ctx context.Context, req *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error) {
+	return c.getPushKey.CallUnary(ctx, req)
+}
+
+// SetPushSubscription calls remoteagent.v1.ClientService.SetPushSubscription.
+func (c *clientServiceClient) SetPushSubscription(ctx context.Context, req *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error) {
+	return c.setPushSubscription.CallUnary(ctx, req)
+}
+
+// RemoveDevice calls remoteagent.v1.ClientService.RemoveDevice.
+func (c *clientServiceClient) RemoveDevice(ctx context.Context, req *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error) {
+	return c.removeDevice.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -277,6 +331,13 @@ type ClientServiceHandler interface {
 	// result. It fails with "unavailable" at once when the daemon is offline;
 	// the server never queues commands.
 	Forward(context.Context, *connect.Request[v1.ForwardRequest]) (*connect.Response[v1.ForwardResponse], error)
+	// Web Push: the server's VAPID public key, and this device's
+	// subscription with the kinds of notifications it wants.
+	GetPushKey(context.Context, *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error)
+	SetPushSubscription(context.Context, *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error)
+	// RemoveDevice unregisters a device and ends its logins; a removed
+	// machine's sessions are deleted.
+	RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -310,6 +371,24 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("Forward")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServiceGetPushKeyHandler := connect.NewUnaryHandler(
+		ClientServiceGetPushKeyProcedure,
+		svc.GetPushKey,
+		connect.WithSchema(clientServiceMethods.ByName("GetPushKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServiceSetPushSubscriptionHandler := connect.NewUnaryHandler(
+		ClientServiceSetPushSubscriptionProcedure,
+		svc.SetPushSubscription,
+		connect.WithSchema(clientServiceMethods.ByName("SetPushSubscription")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServiceRemoveDeviceHandler := connect.NewUnaryHandler(
+		ClientServiceRemoveDeviceProcedure,
+		svc.RemoveDevice,
+		connect.WithSchema(clientServiceMethods.ByName("RemoveDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -320,6 +399,12 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceGetEventsHandler.ServeHTTP(w, r)
 		case ClientServiceForwardProcedure:
 			clientServiceForwardHandler.ServeHTTP(w, r)
+		case ClientServiceGetPushKeyProcedure:
+			clientServiceGetPushKeyHandler.ServeHTTP(w, r)
+		case ClientServiceSetPushSubscriptionProcedure:
+			clientServiceSetPushSubscriptionHandler.ServeHTTP(w, r)
+		case ClientServiceRemoveDeviceProcedure:
+			clientServiceRemoveDeviceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -345,6 +430,18 @@ func (UnimplementedClientServiceHandler) Forward(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.Forward is not implemented"))
 }
 
+func (UnimplementedClientServiceHandler) GetPushKey(context.Context, *connect.Request[v1.GetPushKeyRequest]) (*connect.Response[v1.GetPushKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.GetPushKey is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) SetPushSubscription(context.Context, *connect.Request[v1.SetPushSubscriptionRequest]) (*connect.Response[v1.SetPushSubscriptionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.SetPushSubscription is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) RemoveDevice(context.Context, *connect.Request[v1.RemoveDeviceRequest]) (*connect.Response[v1.RemoveDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.RemoveDevice is not implemented"))
+}
+
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.
 type MachineServiceClient interface {
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
@@ -353,6 +450,8 @@ type MachineServiceClient interface {
 	// are skipped, so uploads can be retried; a gap is rejected.
 	UploadEvents(context.Context, *connect.Request[v1.UploadEventsRequest]) (*connect.Response[v1.UploadEventsResponse], error)
 	ListSessionHeads(context.Context, *connect.Request[v1.ListSessionHeadsRequest]) (*connect.Response[v1.ListSessionHeadsResponse], error)
+	// Notify asks the server to push a notification with generic text.
+	Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error)
 }
 
 // NewMachineServiceClient constructs a client for the remoteagent.v1.MachineService service. By
@@ -390,6 +489,12 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(machineServiceMethods.ByName("ListSessionHeads")),
 			connect.WithClientOptions(opts...),
 		),
+		notify: connect.NewClient[v1.NotifyRequest, v1.NotifyResponse](
+			httpClient,
+			baseURL+MachineServiceNotifyProcedure,
+			connect.WithSchema(machineServiceMethods.ByName("Notify")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -399,6 +504,7 @@ type machineServiceClient struct {
 	putSession       *connect.Client[v1.PutSessionRequest, v1.PutSessionResponse]
 	uploadEvents     *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
 	listSessionHeads *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
+	notify           *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
 }
 
 // PutMachine calls remoteagent.v1.MachineService.PutMachine.
@@ -421,6 +527,11 @@ func (c *machineServiceClient) ListSessionHeads(ctx context.Context, req *connec
 	return c.listSessionHeads.CallUnary(ctx, req)
 }
 
+// Notify calls remoteagent.v1.MachineService.Notify.
+func (c *machineServiceClient) Notify(ctx context.Context, req *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error) {
+	return c.notify.CallUnary(ctx, req)
+}
+
 // MachineServiceHandler is an implementation of the remoteagent.v1.MachineService service.
 type MachineServiceHandler interface {
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
@@ -429,6 +540,8 @@ type MachineServiceHandler interface {
 	// are skipped, so uploads can be retried; a gap is rejected.
 	UploadEvents(context.Context, *connect.Request[v1.UploadEventsRequest]) (*connect.Response[v1.UploadEventsResponse], error)
 	ListSessionHeads(context.Context, *connect.Request[v1.ListSessionHeadsRequest]) (*connect.Response[v1.ListSessionHeadsResponse], error)
+	// Notify asks the server to push a notification with generic text.
+	Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error)
 }
 
 // NewMachineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -462,6 +575,12 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 		connect.WithSchema(machineServiceMethods.ByName("ListSessionHeads")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineServiceNotifyHandler := connect.NewUnaryHandler(
+		MachineServiceNotifyProcedure,
+		svc.Notify,
+		connect.WithSchema(machineServiceMethods.ByName("Notify")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.MachineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MachineServicePutMachineProcedure:
@@ -472,6 +591,8 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 			machineServiceUploadEventsHandler.ServeHTTP(w, r)
 		case MachineServiceListSessionHeadsProcedure:
 			machineServiceListSessionHeadsHandler.ServeHTTP(w, r)
+		case MachineServiceNotifyProcedure:
+			machineServiceNotifyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -495,4 +616,8 @@ func (UnimplementedMachineServiceHandler) UploadEvents(context.Context, *connect
 
 func (UnimplementedMachineServiceHandler) ListSessionHeads(context.Context, *connect.Request[v1.ListSessionHeadsRequest]) (*connect.Response[v1.ListSessionHeadsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.ListSessionHeads is not implemented"))
+}
+
+func (UnimplementedMachineServiceHandler) Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.Notify is not implemented"))
 }

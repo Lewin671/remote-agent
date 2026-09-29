@@ -3,7 +3,7 @@ import { Remote } from "./remote";
 import { useRemote } from "./ui";
 import { Home, ProjectPage, Sidebar, WideHome, type Go } from "./views/Lists";
 import { SessionPage } from "./views/Session";
-import { Settings, Setup } from "./views/Settings";
+import { MachinePage, Settings, Setup } from "./views/Settings";
 
 export function App() {
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
@@ -65,7 +65,8 @@ function Main({ remote }: { remote: Remote }) {
   if (session) page = <SessionPage key={session.id} remote={remote} session={session} onBack={back} wide={wide} />;
   else if (kind === "s") page = <div className="center muted">正在读取会话…</div>;
   else if (kind === "p") page = <ProjectPage remote={remote} name={arg} go={go} onBack={back} />;
-  else if (kind === "settings") page = <Settings remote={remote} />;
+  else if (kind === "settings") page = <Settings remote={remote} go={go} />;
+  else if (kind === "m") page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
   else page = wide ? <WideHome remote={remote} go={go} /> : <Home remote={remote} go={go} />;
 
   if (wide) {
