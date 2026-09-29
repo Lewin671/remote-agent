@@ -242,8 +242,10 @@ a { color: var(--blue); }
 
 /* the dock: above the input, at most 45% of the chat, buttons always in view */
 /* The content scrolls inside the card; the buttons below it never leave
-   the view. */
-.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; max-height: 45%; overflow: hidden;
+   the view. Visible overflow keeps the card's automatic minimum height,
+   which beats the 45% cap: in a short chat column the content shrinks to
+   nothing before any button is cut. */
+.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; max-height: 45%; overflow: visible;
   display: flex; flex-direction: column; box-shadow: 0 0 0 1.5px var(--orange), 0 -4px 18px rgba(0,0,0,.08); }
 .dock > * { flex: none; }
 .dock > .dscroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
@@ -263,7 +265,11 @@ a { color: var(--blue); }
 .dock.ask .h b { color: var(--blue); }
 .dock.plan { box-shadow: 0 0 0 1.5px var(--purple), 0 -4px 18px rgba(0,0,0,.08); }
 .dock.plan .h b { color: var(--purple); }
-.dock.reasoning { box-shadow: 0 0 0 1.5px var(--red), 0 -4px 18px rgba(0,0,0,.08); }
+/* Typing a reason, the card holds only the field and its button, kept
+   above the keyboard: no 45% cap. It may shrink, but not below what those
+   need (visible overflow keeps its automatic minimum height); the chat
+   area gives way instead. */
+.dock.reasoning { box-shadow: 0 0 0 1.5px var(--red), 0 -4px 18px rgba(0,0,0,.08); max-height: none; overflow: visible; flex-shrink: 1; }
 .dock .q { font-size: 15px; font-weight: 600; margin: 6px 0; }
 .dock .q.light { font-weight: 500; }
 .dock .plan-body { background: var(--soft); border-radius: 10px; padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; max-height: 6.4em; overflow: hidden; }
