@@ -5,13 +5,14 @@
 import { useMemo, useRef, useState } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { derive, type Derived } from "../model";
+import { agentOf, derive, type Derived } from "../model";
 import { errorText, newSlot, uncertain, type CommandKind, type Remote, type RequestSlot } from "../remote";
 
 export function useDerived(remote: Remote, sid: string): Derived {
   const events = remote.events(sid);
+  const agent = agentOf(remote.sessions.get(sid));
   // The array grows in place; its length tells a change.
-  return useMemo(() => derive(events), [events, events.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  return useMemo(() => derive(events, agent), [events, events.length, agent]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** Runs one kind of command, remembering the slot of the last attempt so

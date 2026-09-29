@@ -412,7 +412,7 @@ function usagePercent(u?: TokenUsage): number | undefined {
 }
 
 /** Folds a session's events into what is pending and what happened. */
-export function derive(events: Event[]): Derived {
+export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
   const d: Derived = {
     approvals: new Map(),
     resolved: new Map(),
@@ -431,6 +431,12 @@ export function derive(events: Event[]): Derived {
   // Messages sent from clients are recorded as submitted before the CLI
   // records them; the rest were typed in the terminal.
   let submitted = 0;
+  // A user message with no submitted state before it, which may still
+  // come right after: Claude Code records the message first.
+  let unclaimed: bigint | undefined;
+  // A plan was proposed since entering plan mode: leaving it is the plan's
+  // answer, however given, not a mode switch made in the terminal.
+  let planned = false;
   for (const e of events) {
     const k = e.kind;
     switch (k.case) {
@@ -461,12 +467,23 @@ export function derive(events: Event[]): Derived {
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
-        if (k.value.status === InputStatus.SUBMITTED) submitted++;
+        if (k.value.status === InputStatus.SUBMITTED) {
+          // Codex marks a message submitted before recording it; Claude
+          // Code records the message first and the state follows, claiming
+          // the message just before it.
+          if (agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n) {
+            d.typedLocally.delete(unclaimed);
+            unclaimed = undefined;
+          } else submitted++;
+        }
         break;
       case "userMessage":
         if (submitted > 0) submitted--;
         // Codex sends this itself when a plan is approved.
-        else if (k.value.text !== "Implement the plan.") d.typedLocally.add(e.seq);
+        else if (k.value.text !== "Implement the plan.") {
+          d.typedLocally.add(e.seq);
+          unclaimed = e.seq;
+        }
         break;
       case "toolStarted":
         d.tools.push({ title: k.value.title, since: eventTime(e), callId: k.value.callId });
@@ -490,6 +507,7 @@ export function derive(events: Event[]): Derived {
         break;
       case "planProposed":
         d.plan = k.value;
+        planned = true;
         break;
       case "settingsChanged":
         // Changed through remote-agent; recorded as such already.
@@ -509,7 +527,8 @@ export function derive(events: Event[]): Derived {
         const planning = c.collaborationMode === "plan" || c.permissionMode === "plan";
         const mm = `${c.model} ${c.effort}`;
         const changes: string[] = [];
-        if (mode && m && m !== mode) changes.push(`模式切到了 ${m}`);
+        if (mode && m && m !== mode && !(mode === "计划" && planned)) changes.push(`模式切到了 ${m}`);
+        if (m && m !== mode) planned = false;
         // Plan mode runs at its own effort; only a model change counts there.
         // A context without a model is Claude Code's mode, read off the
         // screen; it says nothing about the model.

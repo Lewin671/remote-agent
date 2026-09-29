@@ -358,6 +358,41 @@ describe("events", () => {
     expect([...d.typedLocally]).toEqual([1n]);
   });
 
+  it("matches a message to its submitted state in either CLI's order", () => {
+    // Claude Code records the message, then its submitted state.
+    const claude = derive(
+      events(
+        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED } },
+        { case: "turnStarted", value: {} },
+        { case: "userMessage", value: { text: "sent from the phone" } },
+        { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } },
+        { case: "turnEnded", value: {} },
+        { case: "userMessage", value: { text: "typed at the computer" } },
+      ),
+      Agent.CLAUDE,
+    );
+    expect([...claude.typedLocally]).toEqual([6n]);
+    // Codex marks it submitted first; a message typed just before stays
+    // the computer's.
+    const codex = derive(
+      events(
+        { case: "userMessage", value: { text: "typed at the computer" } },
+        { case: "inputState", value: { requestId: "b", status: InputStatus.SUBMITTED } },
+        { case: "userMessage", value: { text: "sent from the phone" } },
+      ),
+      Agent.CODEX,
+    );
+    expect([...codex.typedLocally]).toEqual([1n]);
+  });
+
+  it("does not take leaving plan mode after a plan for a terminal switch", () => {
+    const ctx = (permissionMode: string) => ({ case: "turnContext", value: { permissionMode } });
+    const d = derive(events(ctx("default"), ctx("plan"), { case: "planProposed", value: { text: "1." } }, ctx("default"), ctx("plan"), ctx("default")));
+    // Entering plan (2) and leaving it with no plan (6) were switches;
+    // leaving after the plan (4) was the plan's answer.
+    expect([...d.terminalChanges.keys()]).toEqual([2n, 5n, 6n]);
+  });
+
   it("notes mode changes made in the terminal", () => {
     const ctx = (reviewer: string, collaboration = "default", model = "m", effort = "low") => ({
       case: "turnContext",
