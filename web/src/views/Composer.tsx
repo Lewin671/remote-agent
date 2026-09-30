@@ -1,20 +1,12 @@
-// The session's unified input (client-v2 输入区与消息队列): a multi-line
-// draft with the mode, model, context and send in one card, and above it a
-// status line with what runs, the queue and a fixed interrupt.
+// The session's input (client-v7 输入区与消息队列): one row that grows
+// with the draft, the ＋ menu (images, mode, model, context) on its left and
+// send on its right; above it a line with the queue and a fixed interrupt.
 
-import { useLayoutEffect, useState, useSyncExternalStore, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import type { Tray } from "../attach";
-import { Agent } from "../gen/remoteagent/v1/event_pb";
-import { agentOf, CONTEXT_WARN, contextPercent, modeOf, queuedIds, queueReason, toolPeek, type Derived } from "../model";
+import { agentOf, CONTEXT_WARN, contextPercent, modeOf, queuedIds, queueReason, type Derived } from "../model";
 import type { Remote, SessionView } from "../remote";
-import { Alert, Dot, useNow } from "../ui";
-
-// Fold into the same settings control used with the phone keyboard.
-const narrowQuery = matchMedia("(max-width: 359px)");
-function subscribeNarrow(onChange: () => void) {
-  narrowQuery.addEventListener("change", onChange);
-  return () => narrowQuery.removeEventListener("change", onChange);
-}
+import { Alert } from "../ui";
 
 /** The draft grows to about six lines, then scrolls inside. */
 const DRAFT_MAX = 132;
@@ -39,55 +31,35 @@ export function promptIdOf(remote: Remote, sid: string, d: Derived): string | un
   return d.inputs.keys().next().value;
 }
 
-/** The line above the input: what runs and for how long, the queue and
- * why it waits, and the interrupt, which stays put while typing. */
+/** The line above the input: the queue and why it waits, and the
+ * interrupt, which stays put while typing. What runs is in the chat and the
+ * title, not here (client-v7). */
 export function ComposeStatus({
   remote,
   session,
   d,
   onQueue,
-  onTool,
   onInterrupt,
 }: {
   remote: Remote;
   session: SessionView;
   d: Derived;
   onQueue: () => void;
-  onTool: () => void;
   onInterrupt: () => void;
 }) {
-  const now = useNow(1000);
   const online = remote.conn === "online";
-  const lostAt = online ? undefined : (remote.lostAt ?? now);
-  const peek = toolPeek(d, now, lostAt);
   // Every queued message, the first one of a session started here too: it
   // can be canceled here like anywhere else.
   const queued = queuedIds(d);
   const queuedImages = queued.reduce((n, id) => n + (d.accepted.get(id)?.imageIds.length ?? remote.outbox(session.id).find((o) => o.sendId === id)?.imageIds?.length ?? 0), 0);
   const running = d.running;
   const reason = queueReason(session, d);
-  if (!peek && !running && queued.length === 0) return null;
-  // Claude Code takes a message sent while it works into the running turn.
-  const claude = agentOf(session) === Agent.CLAUDE;
+  if (!running && queued.length === 0) return null;
   return (
     <div className="compose-status">
-      {peek ? (
-        <button className={"tool-peek" + (peek.off ? " off" : "")} onClick={onTool}>
-          <em>{peek.text}</em> ›
-        </button>
-      ) : (
-        running && (
-          <>
-            <Dot tone="run" />
-            <span>{claude ? "加入当前轮" : "运行中"}</span>
-          </>
-        )
-      )}
       {queued.length > 0 && (
         <button className="queue-link" onClick={onQueue}>
-          排队 {queued.length}
-          {peek ? "" : " 条"}
-          {queuedImages > 0 && ` · ${queuedImages} 张图`} ›
+          排队 {queued.length} 条{queuedImages > 0 && ` · ${queuedImages} 张图`} ›
         </button>
       )}
       {!running && queued.length > 0 && reason && <span className="qreason">{reason}</span>}
@@ -100,13 +72,52 @@ export function ComposeStatus({
   );
 }
 
+/** The ＋ on the input's left: a small menu of what the input can do
+ * besides text. A high context shows as an orange dot beside it. */
+export function ComposeMenu({ children, high, disabled, label }: { children: ReactNode; high?: boolean; disabled?: boolean; label: string }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const shown = open && !disabled;
+  return (
+    <div className="compose-menu" ref={box}>
+      <button
+        className={"cm-plus" + (high ? " context-high" : "")}
+        aria-label={label}
+        aria-expanded={shown}
+        aria-haspopup="menu"
+        disabled={disabled}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((o) => !o)}
+      >
+        ＋
+      </button>
+      {/* Kept mounted while closed: the image picker's input lives in it. */}
+      <div className="compose-pop" role="menu" hidden={!shown} onClick={(e) => (e.target as HTMLElement).closest("button") && setOpen(false)}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function Composer({
   ref,
   remote,
   session,
   d,
   wide,
-  slim,
   onFocus,
   onSend,
   draft,
@@ -124,17 +135,14 @@ export function Composer({
   session: SessionView;
   d: Derived;
   wide: boolean;
-  // The keyboard is up on a phone: only the mode and send stay, the model
-  // and context fold into 设置.
-  slim: boolean;
   onFocus: (typing: boolean) => void;
   onSend: (text: string) => void;
   draft: string;
   onDraft: (text: string) => void;
   onMode: () => void;
   onModel: () => void;
-  // Images waiting to go with the message, the button that adds them, and
-  // dropping or pasting them on the card.
+  // Images waiting to go with the message, the menu row that adds them,
+  // and dropping or pasting them on the card.
   tray?: Tray;
   trayView?: ReactNode;
   attach?: ReactNode;
@@ -143,8 +151,6 @@ export function Composer({
 }) {
   // The draft is the session's, not this input's: it survives opening an
   // approval, plan, queue or tool page and coming back.
-  const narrow = useSyncExternalStore(subscribeNarrow, () => narrowQuery.matches);
-  const folded = slim || (!wide && narrow);
   const [text, setTextState] = useState(draft);
   const setText = (v: string) => {
     setTextState(v);
@@ -173,12 +179,29 @@ export function Composer({
   const pct = contextPercent(session);
   const i = session.info;
   const model = i?.model ? [remote.modelName(session.machineId, agentOf(session), i.model), i.effort].filter(Boolean).join(" · ") : "";
-  const tool = d.tools.length > 0;
-  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : tool ? "继续输入，不会打断当前工具…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
+  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
   const high = pct !== undefined && pct > CONTEXT_WARN;
+  // Full access is the one setting always in view (client-v7).
+  const full = mode?.text === "完全放行";
   return (
-    <div className={"compose-card" + (slim ? " slim" : "") + (folded ? " folded" : "") + (dropping ? " drop" : "")} {...cardProps}>
+    <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}
+      <ComposeMenu label={high ? `附件与会话设置，上下文 ${pct}%` : "附件与会话设置"} high={high} disabled={!online}>
+        {attach}
+        {mode && (
+          <button className={full ? "red" : ""} onClick={onMode} aria-label={`审批模式：${mode.text}`}>
+            模式：{mode.text} ▾
+          </button>
+        )}
+        <button className={model ? "" : "nav"} onClick={onModel}>
+          {model ? `模型：${model} ▾` : "会话设置 ›"}
+        </button>
+        {pct !== undefined && (
+          <button className={high ? "warn-text" : ""} onClick={onModel} aria-label={`上下文 ${pct}%`}>
+            上下文：{pct}%
+          </button>
+        )}
+      </ComposeMenu>
       <textarea
         ref={input}
         className={"draft" + (t ? " typed" : "")}
@@ -198,34 +221,10 @@ export function Composer({
         }}
         aria-label="消息"
       />
-      <div className="controls">
-        {attach}
-        {mode && (
-          <button className={"ctl mode" + (mode.text === "完全放行" ? " danger" : "")} onMouseDown={(e) => e.preventDefault()} onClick={onMode} disabled={!online} aria-label={`审批模式：${mode.text}`}>
-            {mode.text} ▾
-          </button>
-        )}
-        {folded ? (
-          <button className="ctl model" onMouseDown={(e) => e.preventDefault()} onClick={onModel} disabled={!online}>
-            <em>设置…</em>
-            {high && <span className="hot" aria-label={`上下文 ${pct}%`} />}
-          </button>
-        ) : (
-          <>
-            <button className="ctl model" onClick={onModel} disabled={!online}>
-              <em>{model || "会话设置"} ▾</em>
-            </button>
-            {pct !== undefined && (
-              <button className={"ctl context" + (high ? " warn" : "")} onClick={onModel} disabled={!online} aria-label={`上下文 ${pct}%`}>
-                {pct}%
-              </button>
-            )}
-          </>
-        )}
-        <button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onClick={() => submit()} aria-label="发送">
-          ↑
-        </button>
-      </div>
+      <button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onClick={() => submit()} aria-label="发送">
+        ↑
+      </button>
+      {full && <div className="access-warning">完全放行</div>}
       {slash && (
         <Alert
           title="作为普通消息发送？"

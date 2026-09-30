@@ -62,7 +62,6 @@ export function Alert({
   text,
   ok,
   danger,
-  titleRed,
   onOk,
   onCancel,
 }: {
@@ -70,7 +69,6 @@ export function Alert({
   text: string;
   ok: string;
   danger?: boolean;
-  titleRed?: boolean;
   onOk: () => void;
   onCancel: () => void;
 }) {
@@ -79,7 +77,8 @@ export function Alert({
     <div className="overlay">
       <div className="dim" onClick={onCancel} />
       <div className="alert" role="alertdialog" aria-modal="true">
-        <h5 className={titleRed ? "red" : ""}>{title}</h5>
+        {/* Danger shows on the button, never the title (design-system §2). */}
+        <h5>{title}</h5>
         <p>{text}</p>
         <div className="btns">
           <button className="btn" onClick={onCancel}>
@@ -136,7 +135,11 @@ export function Banner({ kind = "", children, action, onAction }: { kind?: "" | 
   return (
     <div className={"banner " + kind}>
       <span>{children}</span>
-      {action && <button onClick={onAction}>{action}</button>}
+      {action && (
+        <button onClick={onAction} disabled={!onAction}>
+          {action}
+        </button>
+      )}
     </div>
   );
 }
@@ -195,4 +198,10 @@ export function usePageVisible() {
     (notify) => { document.addEventListener("visibilitychange", notify); return () => document.removeEventListener("visibilitychange", notify); },
     () => !document.hidden,
   );
+}
+
+/** The arrow of something that opens in place: › turned down, or up once
+ * open (design-system §5). */
+export function Exp({ up }: { up?: boolean }) {
+  return <i className={"exp" + (up ? " up" : "")} aria-hidden>›</i>;
 }

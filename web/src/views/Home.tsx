@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import {
+  agentName,
   agentOf,
   compareAttention,
   compareLive,
@@ -149,7 +150,7 @@ export function SessionRow({
         </div>
         {!compact && <div className="pv">{previewOf(s, st, pending)}</div>}
         <div className="mc">
-          <span className={"stw " + st.tone}>{st.text}</span>
+          <span className={"stw " + st.tone}>{st.text}</span> · {agentName(agentOf(s))}
           {showProject && ` · ${projectName(projectKey(s))}`} · {machineName(machine)}
         </div>
       </div>
@@ -163,7 +164,7 @@ function pendingOf(remote: Remote, sid: string) {
   return { approval: [...d.approvals.values()][0], question: [...d.questions.values()][0] };
 }
 
-function ProjectRow({ p, go, pinned }: { p: Project<SessionView>; go: Go; pinned?: boolean }) {
+function ProjectRow({ p, go }: { p: Project<SessionView>; go: Go }) {
   const live = p.sessions.filter((s) => !exited(s)).length;
   return (
     <button className="proj" onClick={() => go("p/" + encodeURIComponent(p.key))}>
@@ -172,7 +173,6 @@ function ProjectRow({ p, go, pinned }: { p: Project<SessionView>; go: Go; pinned
         <div>
           <div className="pn">
             {p.name}
-            {pinned && <span className="pin">常用</span>}
           </div>
           <div className="ps">
             {shortPath(p.key)} · {live ? `${live} 个进行中` : ago(p.updatedMs)}
@@ -233,7 +233,7 @@ function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
         <>
           <div className="label">常用项目 {manage}</div>
           {g.pinned.map((p) => (
-            <ProjectRow key={p.key} p={p} go={go} pinned />
+            <ProjectRow key={p.key} p={p} go={go} />
           ))}
         </>
       )}
@@ -326,7 +326,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
   if (sel && !todo.includes(sel) && !live.includes(sel)) live.unshift(sel);
   const list = projects(remote.sessions.values());
   const groups = useProjectGroups(remote);
-  const projectRow = (p: Project<SessionView>, pinned: boolean) => {
+  const projectRow = (p: Project<SessionView>) => {
     const n = p.sessions.filter((s) => !exited(s)).length;
     const ended = p.sessions.filter(exited).sort(compareEnded);
     const isOpen = open.has(p.key);
@@ -351,7 +351,6 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
           <button className="pname" onClick={() => go("p/" + encodeURIComponent(p.key))} title={shortPath(p.key)}>
             <Avatar name={p.name} size="sm" />
             <span className="nm">{p.name}</span>
-            {pinned && <span className="pin">常用</span>}
             <span className={n ? "live" : ""}>{n ? `${n} 进行中` : ago(p.updatedMs)}</span>
           </button>
         </div>
@@ -384,7 +383,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
             go("");
           }}
         >
-          ＋ 新会话
+          新会话
         </button>
       </div>
       <div className="scroll">
@@ -412,7 +411,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
                 </button>
               </div>
             )}
-            {groups.pinned.map((p) => projectRow(p, true))}
+            {groups.pinned.map((p) => projectRow(p))}
             <div className="label">
               {groups.pinned.length ? "其他项目" : "项目"}
               {groups.pinned.length === 0 && (
@@ -421,7 +420,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
                 </button>
               )}
             </div>
-            {groups.others.map((p) => projectRow(p, false))}
+            {groups.others.map((p) => projectRow(p))}
           </>
         )}
       </div>

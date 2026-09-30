@@ -45,7 +45,6 @@ import {
   toolsSummary,
   toolClock,
   backgroundNote,
-  toolPeek,
   when,
   type MachineLike,
   type SessionLike,
@@ -277,7 +276,6 @@ describe("tools while they run (v2)", () => {
     expect(d.tools).toEqual([]);
     expect(shape(list)).toEqual(["unsettled:sleep 600 &", "turnEnded"]);
     expect(d.unsettled.map((t) => t.title)).toEqual(["sleep 600 &"]);
-    expect(toolPeek(d, 0, undefined)).toEqual({ text: "后台工作 · 去终端确认", off: false });
     // The next turn starts afresh.
     const next = derive(events(...list.map((e) => e.kind), { case: "turnStarted", value: {} }), Agent.CLAUDE);
     expect(next.unsettled).toEqual([]);
@@ -290,19 +288,6 @@ describe("tools while they run (v2)", () => {
     expect(toolClock(t0, t0 + 132_000, t0 + 60_000)).toEqual({ ms: 60_000, frozen: true });
     // An unknown start is not guessed.
     expect(toolClock(0, t0, undefined)).toBeUndefined();
-  });
-
-  it("summarises what runs above the input", () => {
-    const at = (ms: number) => timestampFromMs(ms);
-    const list = [
-      create(EventSchema, { seq: 1n, time: at(1000), kind: { case: "turnStarted", value: {} } }),
-      create(EventSchema, { seq: 2n, time: at(1000), kind: started("t1", "go test ./...") as never }),
-    ];
-    const d = derive(list, Agent.CLAUDE);
-    expect(toolPeek(d, 1000 + 132_000, undefined)).toEqual({ text: "Bash · 2:12", off: false });
-    expect(toolPeek(d, 1000 + 132_000, 1000 + 60_000)).toEqual({ text: "等待同步 · 上次 1:00", off: true });
-    list.push(create(EventSchema, { seq: 3n, time: at(5000), kind: started("t2", "go vet") as never }));
-    expect(toolPeek(derive(list, Agent.CLAUDE), 1000 + 188_000, undefined)).toEqual({ text: "2 项处理中 · 3:08", off: false });
   });
 });
 
@@ -881,7 +866,6 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
     const d = derive(list, Agent.CODEX);
     expect(shape(list)[0]).toBe("background:c1");
     expect(d.background.map((t) => t.callId)).toEqual(["c1"]);
-    expect(toolPeek(d, 0, undefined)).toEqual({ text: "后台工作 · 去终端确认", off: false });
     expect(backgroundNote(ToolBackground.STILL_RUNNING)).toContain("这一轮结束时它仍在运行");
     expect(backgroundNote(ToolBackground.TIMED_OUT)).toContain("超时");
     expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");

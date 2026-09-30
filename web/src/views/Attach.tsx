@@ -49,8 +49,22 @@ export function imageFiles(list: FileList | DataTransferItemList | null | undefi
   return out;
 }
 
-/** The ＋: opens the system's image picker. Unavailable, it says why. */
-export function AttachButton({ tray, blocked, onBlocked, className = "ctl att" }: { tray: Tray; blocked: string; onBlocked: (why: string) => void; className?: string }) {
+/** 添加图片 in the input's ＋ menu: opens the system's image picker.
+ * Unavailable, it says why. */
+export function AttachButton({
+  tray,
+  blocked,
+  onBlocked,
+  className = "pop-item",
+  label = "添加图片",
+}: {
+  tray: Tray;
+  blocked: string;
+  onBlocked: (why: string) => void;
+  className?: string;
+  // A row of the input's ＋ menu.
+  label?: string;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const off = !!blocked || tray.full();
   return (
@@ -59,9 +73,8 @@ export function AttachButton({ tray, blocked, onBlocked, className = "ctl att" }
         className={className + (off ? " off" : "")}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => (blocked ? onBlocked(blocked) : tray.full() ? onBlocked(`一条消息最多 ${tray.max} 张`) : input.current?.click())}
-        aria-label="添加图片"
       >
-        ＋
+        {label}
       </button>
       <input
         ref={input}

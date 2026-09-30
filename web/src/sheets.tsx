@@ -23,7 +23,6 @@ export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; 
   return (
     <Alert
       title="切到完全放行？"
-      titleRed
       text={`之后所有操作都不会再问你，手机上也收不到审批。只对${forNew ? "这次新建的" : "这个"}会话生效。`}
       ok="切换"
       danger
@@ -162,9 +161,8 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
       <h4>{agent === Agent.CLAUDE ? "Claude Code · 会话设置" : "会话设置"}</h4>
       {pct !== undefined && (
         <div className="ctxbox">
-          <div className={"ring big" + (pct > CONTEXT_WARN ? " warn" : "")} style={{ ["--p" as string]: pct }} />
           <div>
-            <div className="num">{pct}%</div>
+            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{pct}%</div>
             <div className="muted small">
               {compacting ? "◌ 正在压缩…" : `上下文 ${tokens(s.info!.contextTokens)} / ${tokens(s.info!.contextWindow)}`}
             </div>

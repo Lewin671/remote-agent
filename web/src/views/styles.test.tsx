@@ -13,43 +13,36 @@ beforeAll(() => {
   const style = document.createElement("style");
   style.textContent = readFileSync("src/styles.css", "utf8");
   document.head.append(style);
-  document.body.innerHTML = '<div class="dock reasoning"><textarea class="field reason"></textarea><div class="btns"><button class="btn danger">发送理由并拒绝</button></div></div>';
 });
 
-it("lets the reason field, not the button, give way in a capped dock", () => {
+const open = (cls = "") =>
+  (document.body.innerHTML = `<div class="dockwrap" style="--content-max: 60px"><div class="dock pending open ${cls}"><button class="pending-sum">…</button><div class="pending-content"><div class="pending-scroll">…</div><div class="pending-actions"><textarea class="field reason"></textarea><div class="btns"><button class="btn no">发送理由并拒绝</button></div></div></div></div></div>`);
+
+it("scrolls an open dock's content, never its actions, within the room it has", () => {
+  open();
+  const content = getComputedStyle(document.querySelector(".pending-content")!);
+  // 240 at most, and never more than the room Dock measured.
+  expect(content.maxHeight).toBe("min(240px, 60px)");
+  const scroll = getComputedStyle(document.querySelector(".pending-scroll")!);
+  expect(scroll.overflowY).toBe("auto");
+  expect(scroll.flexShrink).toBe("1");
+  expect(getComputedStyle(document.querySelector(".pending-actions")!).flexShrink).toBe("0");
+});
+
+it("does not cap a dock whose reason is being written, only the content above it", () => {
+  open("reasoning");
+  expect(getComputedStyle(document.querySelector(".pending-content")!).maxHeight).toBe("none");
+  expect(getComputedStyle(document.querySelector(".pending-scroll")!).maxHeight).toBe("60px");
   const field = getComputedStyle(document.querySelector(".field.reason")!);
-  expect(field.flexShrink).toBe("1");
-  expect(field.overflowY).toBe("auto");
   expect(field.minHeight).toBe("44px");
-  expect(getComputedStyle(document.querySelector(".dock > .btns")!).flexShrink).toBe("0");
-});
-
-it("does not cap a dock that holds only the reason and its button", () => {
-  const dock = getComputedStyle(document.querySelector(".dock.reasoning")!);
-  expect(dock.maxHeight).toBe("none");
-  expect(dock.overflow).toBe("visible");
-});
-
-it("caps a dock's content by the room measured for it, and measures cards out of sight", () => {
-  document.body.innerHTML =
-    '<div class="ccol"><div class="dockwrap offstage" style="--content-max: 60px"><div class="dock"><div class="dscroll">…</div><div class="btns"><button class="btn">允许</button></div></div></div></div>';
-  const content = getComputedStyle(document.querySelector(".dock > .dscroll")!);
-  expect(content.overflowY).toBe("auto");
-  expect(content.maxHeight).toBe("60px");
-  // The card behind the one-line form is laid out but hidden and inert.
-  const off = getComputedStyle(document.querySelector(".dockwrap.offstage")!);
-  expect(off.visibility).toBe("hidden");
-  expect(off.pointerEvents).toBe("none");
-  expect(off.position).toBe("absolute");
+  expect(field.overflowY).toBe("auto");
 });
 
 it("scrolls a question page's content, not its buttons", () => {
-  document.body.innerHTML = '<div class="page"><div class="qpage"><div class="dock ask"><div class="dscroll">…</div><div class="btns"><button class="btn pri">提交</button></div></div></div></div>';
-  const page = getComputedStyle(document.querySelector(".qpage")!);
-  expect(page.overflowY === "auto" || page.overflowY === "scroll").toBe(false);
-  expect(page.display).toBe("flex");
-  const content = getComputedStyle(document.querySelector(".qpage .dscroll")!);
+  document.body.innerHTML = '<div class="page"><div class="question-full">…</div><div class="dock"><div class="btns"><button class="btn pri">提交</button></div></div></div>';
+  expect(getComputedStyle(document.querySelector(".page")!).display).toBe("flex");
+  const content = getComputedStyle(document.querySelector(".question-full")!);
   expect(content.overflowY).toBe("auto");
-  expect(content.flexShrink).toBe("1");
-  expect(getComputedStyle(document.querySelector(".qpage .dock > .btns")!).flexShrink).toBe("0");
+  expect(content.minHeight).toBe("0");
+  expect(getComputedStyle(document.querySelector(".page > .dock")!).flexShrink).toBe("0");
 });

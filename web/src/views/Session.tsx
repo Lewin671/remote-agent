@@ -33,7 +33,7 @@ import {
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { ActionSheet, Alert, Banner, ConnBar, Dot, NavBar, Skeleton, useRemote } from "../ui";
+import { ActionSheet, Alert, Banner, ConnBar, Dot, Exp, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
@@ -93,9 +93,9 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const inactive = ended || st.kind === "offline";
 
   const [rootRef, width] = useWidth<HTMLDivElement>();
-  // The dock may take 45% of the chat column.
   const [colRef, colHeight] = useHeight();
-  const room = colHeight > 0 ? colHeight * 0.45 : Infinity;
+  // The open dock may take what the input and about 120 px of chat leave.
+  const room = colHeight > 0 ? colHeight - 230 : Infinity;
   const canSplit = wide && width >= 840;
   const [tabPick, setTab] = useState<Tab>(() => (remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : "chat"));
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
@@ -292,7 +292,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <EndCard remote={remote} session={session} ended={ended} machineOnline={machine?.online ?? false} agent={agent} mname={mname} lastSeen={machine?.lastSeenMs ?? 0n} />
       ) : (
         <>
-          <ComposeStatus remote={remote} session={session} d={d} onQueue={() => setPage("queue")} onTool={() => setPage({ tool: d.tools[0]?.seq ?? d.unsettled[0]?.seq })} onInterrupt={interrupt} />
+          <ComposeStatus remote={remote} session={session} d={d} onQueue={() => setPage("queue")} onInterrupt={interrupt} />
           <Composer
             key={composerKey}
             ref={composer}
@@ -300,7 +300,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             session={session}
             d={d}
             wide={wide}
-            slim={typing && !wide}
             onFocus={(v) => setTyping(v)}
             onSend={(text) => {
               remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean));
@@ -308,7 +307,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             }}
             tray={tray}
             trayView={<TrayView tray={tray} />}
-            attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />}
+            attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />}
             cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
             dropping={drop.over}
             draft={remote.drafts.get(sid) ?? ""}
@@ -622,7 +621,9 @@ function Row({
     case "reasoning":
       return (
         <details className="think">
-          <summary>▸ 思考</summary>
+          <summary>
+            思考 <Exp />
+          </summary>
           <div className="thinktext">{k.value.text}</div>
         </details>
       );
@@ -770,7 +771,9 @@ function Row({
     case "planProposed":
       return (
         <details className="think">
-          <summary>▸ 计划</summary>
+          <summary>
+            计划 <Exp />
+          </summary>
           <div className="ai">
             <Markdown text={k.value.text} />
           </div>

@@ -8,7 +8,7 @@ import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb
 import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
 import { backgroundNote, clock, decisionText, duration, toolClock, toolName as toolKindName, toolsSummary, type Derived, type RunningTool } from "../model";
 import type { Remote } from "../remote";
-import { NavBar, useNow } from "../ui";
+import { Exp, NavBar, useNow } from "../ui";
 import { imagesNote } from "../imageview";
 import { ImageStrip } from "./Images";
 
@@ -54,9 +54,10 @@ export function awaitingApproval(t: RunningTool, approvals: Iterable<ApprovalReq
   return false;
 }
 
-/** A running tool, or one whose end was never heard: command, time since
- * its start, and the ways to see more. The time stops while this client
- * is cut off from the server. */
+/** A running tool, or one whose end was never heard, as one line in the
+ * chat (client-v7): what it is, its state and time since its start. 详情
+ * opens its command and the ways to see more in place. The time stops
+ * while this client is cut off from the server. */
 export function ActiveTool({
   tool,
   d,
@@ -78,6 +79,7 @@ export function ActiveTool({
 }) {
   const online = remote.conn === "online";
   const now = useNow(1000, online && !unsettled && tool.since > 0);
+  const [open, setOpen] = useState(!!full);
   const lostAt = online ? undefined : (remote.lostAt ?? now);
   const c = unsettled ? undefined : toolClock(tool.since, now, lostAt);
   const approval = !unsettled && awaitingApproval(tool, d.approvals.values());
@@ -93,23 +95,39 @@ export function ActiveTool({
     desc = "等你审批，批准前不会执行。";
   } else {
     state = "处理中";
-    desc = full ? "工具结果尚未返回。这里没有可用的中间输出，不能据此判断命令卡住。" : "尚未收到工具结果；实时画面可在终端查看。";
+    desc = full ? "尚未收到工具结果。实时输出请去终端查看。" : "尚未收到结果 · 可去终端查看";
   }
   const elapsed = unsettled ? "—" : !c ? "" : c.frozen ? `上次 ${clock(c.ms)}` : full ? clock(c.ms) : duration(c.ms);
   const off = unsettled || !online;
+  const what = full ? "完整命令" : `${aborted ? backgroundName(tool) : toolKindName(tool)} · ${state}`;
   return (
     <div className={"active-tool" + (off ? " off" : "") + (approval ? " wait" : "")}>
-      <div className="th">
-        <span className={off || approval ? "" : "spin"}>◌</span>
-        <b>{full ? "完整命令" : `${aborted ? backgroundName(tool) : toolKindName(tool)} · ${state}`}</b>
-        <span className="elapsed">{elapsed}</span>
-      </div>
-      <pre>{commandOf(tool)}</pre>
-      <div className="td">{desc}</div>
-      {!full && (
-        <div className="ta">
-          {onDetail && <button onClick={onDetail}>查看详情 ›</button>}
-          {online ? onTerminal && <button onClick={onTerminal}>去终端 ›</button> : <span className="muted">终端不可用</span>}
+      <button className="at-sum" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="at-what">
+          <span className={off || approval ? "" : "spin"}>◌</span> {what} <span className="elapsed">{elapsed}</span>
+        </span>
+        <span className="muted">
+          {open ? (
+            <>
+              收起 <Exp up />
+            </>
+          ) : (
+            <>
+              详情 <Exp />
+            </>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="tool-details">
+          <pre>{commandOf(tool)}</pre>
+          <div className="td">{desc}</div>
+          {!full && (
+            <div className="ta">
+              {onDetail && <button onClick={onDetail}>查看详情 ›</button>}
+              {online ? onTerminal && <button onClick={onTerminal}>去终端 ›</button> : <span className="muted">终端不可用</span>}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -172,7 +190,9 @@ export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short })
           {toolsSummary(calls)}
           {imagesNote(images.length)}
         </b>
-        <span className="muted">{open ? "▾" : "▸"}</span>
+        <span className="muted">
+          <Exp up={open} />
+        </span>
       </button>
       {!open && <ImageStrip refs={images} className="under-tool" />}
       {open && (
@@ -237,22 +257,22 @@ export function ToolPage({
             </div>
             <div className="crumb">{cwd}</div>
             <ActiveTool tool={shown} d={d} unsettled={!tool} aborted={!!loose && d.abortedTools.has(loose.seq)} remote={remote} full />
-            <div className="hint">聊天中的计时从工具开始事件算起，不是进度百分比。长时间没有输出也可能正常。</div>
+            <div className="hint">耗时不代表进度；没有输出也可能仍在运行。</div>
           </>
         ) : (
           <div className="hint">这次调用已经结束，结果在聊天里。</div>
         )}
       </div>
-      <div className="dock plain">
+      <div className="dock">
         <div className="btns">
-          <button className="btn pri" onClick={onTerminal} disabled={!online}>
+          <button className="btn" onClick={onTerminal} disabled={!online}>
             去终端看实时画面
           </button>
         </div>
         {d.running && (
           <div className="foot">
             <span>需要停止这一轮？</span>
-            <button className="link" onClick={onInterrupt} disabled={!online}>
+            <button className="link red" onClick={onInterrupt} disabled={!online}>
               中断本轮
             </button>
           </div>
@@ -267,20 +287,36 @@ export function ToolPage({
  * nothing reliable says when it ends, so it is never shown as done. */
 export function BackgroundTool({ call, short, remote, onTerminal }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
   const online = remote.conn === "online";
+  const [open, setOpen] = useState(false);
   const name = toolKindName(call);
   return (
     <div className="active-tool off bg">
-      <div className="th">
-        <span>◌</span>
-        <b>{name === "命令" ? "后台命令" : `${name}（后台）`} · 状态待确认</b>
-        {call.backgroundId && <span className="elapsed mono">{call.backgroundId}</span>}
-      </div>
-      <pre>{call.kind === ToolKind.COMMAND || call.kind === ToolKind.UNSPECIFIED ? commandOf({ input: call.input, title: toolTitle(call, short), itemType: call.itemType }) : toolTitle(call, short)}</pre>
-      <div className="td">{backgroundNote(call.background)}</div>
-      <div className="ta">
-        <span />
-        {online && onTerminal ? <button onClick={onTerminal}>去终端 ›</button> : <span className="muted">终端不可用</span>}
-      </div>
+      <button className="at-sum" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="at-what">
+          ◌ {name === "命令" ? "后台命令" : `${name}（后台）`} · 状态待确认 <span className="elapsed">{call.backgroundId ? <span className="mono">{call.backgroundId}</span> : "—"}</span>
+        </span>
+        <span className="muted">
+          {open ? (
+            <>
+              收起 <Exp up />
+            </>
+          ) : (
+            <>
+              详情 <Exp />
+            </>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="tool-details">
+          <pre>{call.kind === ToolKind.COMMAND || call.kind === ToolKind.UNSPECIFIED ? commandOf({ input: call.input, title: toolTitle(call, short), itemType: call.itemType }) : toolTitle(call, short)}</pre>
+          <div className="td">{backgroundNote(call.background)}</div>
+          <div className="ta">
+            <span />
+            {online && onTerminal ? <button onClick={onTerminal}>去终端 ›</button> : <span className="muted">终端不可用</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

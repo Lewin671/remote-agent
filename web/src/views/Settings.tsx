@@ -33,22 +33,40 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
         </button>
       </div>
       <div className="grp">
-        {machines.map((m) => (
-          <button key={m.id} className="row machine-summary" onClick={() => go("m/" + m.id)}>
-            <span className="ico" style={{ background: "#5b8def" }}>
-              ⌘
-            </span>
-            <span className="machine-info">
-              <span className="machine-name">{machineName(m)}</span>
-              <span className="machine-status">
-                <Dot tone={m.online ? "idle" : "off"} />
-                {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
-                {quotaLine(m)}
+        {machines.map((m) => {
+          const quota = quotaLine(m);
+          const status = (
+            <>
+              <Dot tone={m.online ? "idle" : "off"} />
+              {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
+            </>
+          );
+          // The quota, when there is one, gets a line of its own under the
+          // name; otherwise the status sits at the row's end.
+          return quota ? (
+            <button key={m.id} className="row machine-summary" onClick={() => go("m/" + m.id)}>
+              <span className="ico" style={{ background: "#5b8def" }}>
+                ⌘
               </span>
-            </span>
-            <span className="machine-chevron">›</span>
-          </button>
-        ))}
+              <span className="machine-info">
+                <span className="machine-name">
+                  {machineName(m)}
+                  <span className="machine-status">{status}</span>
+                </span>
+                <span className="machine-quota">{quota}</span>
+              </span>
+              <span className="machine-chevron">›</span>
+            </button>
+          ) : (
+            <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
+              <span className="ico" style={{ background: "#5b8def" }}>
+                ⌘
+              </span>
+              {machineName(m)}
+              <span className="v">{status} ›</span>
+            </button>
+          );
+        })}
         <button className="row add" onClick={() => go("add")}>
           ＋ 添加设备
         </button>
@@ -106,27 +124,58 @@ function quotaLine(m: MachineView): string {
   const v = views[0];
   if (!v) return "";
   const r = [...v.rows].reverse().find((x) => x.percent !== undefined)!;
-  return ` · ${agentName(v.agent)} · ${r.label}${r.used}${v.stale ? "（上次记录）" : ""}`;
+  return `${agentName(v.agent)} · ${r.label}${r.used}${v.stale ? "（上次记录）" : ""}`;
 }
 
-/** On a machine's page: each CLI's quota in a line, and the way to all. */
+/** On a machine's page: the first CLI's quota in full, the others in a
+ * line each, and the way to all of it. */
 function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
   // Reset times pass with nothing else changing.
   const now = useNow(30_000);
   const views = machineQuotaViews(m.meta, agents, now, m.online);
+  const first = views.find((v) => v.kind === "ok" && v.rows.some((r) => r.percent !== undefined));
+  const kind = (a: Agent) => (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX);
   return (
-    <div className="grp">
-      {agents.map((a) => (
-        <div className="row" key={a}>
-          {agentName(a)} 额度
-          <span className="v">{quotaSummary(views.filter((v) => v.agent === (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX)))}</span>
-        </div>
-      ))}
-      <button className="row" onClick={() => go("q/" + m.id)}>
-        查看全部额度<span className="v">›</span>
-      </button>
-    </div>
+    <>
+      {first && (
+        <>
+          <div className="glabel">{first.title.replace(agentName(first.agent), `${agentName(first.agent)} 额度`)}</div>
+          <div className="grp">
+            {first.rows.map((r) => {
+              // The reset time without when it was last heard.
+              const reset = r.reset.split(" · ")[0];
+              return (
+                <div className={"row col quota " + r.tone} key={r.key}>
+                  <div className="line">
+                    <span>{r.label}</span>
+                    <span className="v">{[r.used, reset.endsWith("重置") ? reset : ""].filter(Boolean).join(" · ")}</span>
+                  </div>
+                  {r.percent !== undefined && (
+                    <div className="bar">
+                      <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      <div className="grp">
+        {agents
+          .filter((a) => !first || kind(a) !== first.agent)
+          .map((a) => (
+            <button className="row" key={a} onClick={() => go("q/" + m.id)}>
+              <span className="nw">{agentName(a)} 额度</span>
+              <span className="v">{quotaSummary(views.filter((v) => v.agent === kind(a)))} ›</span>
+            </button>
+          ))}
+        <button className="row act" onClick={() => go("q/" + m.id)}>
+          查看全部额度<span className="v">›</span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -227,7 +276,6 @@ function LeaveAlert({ onCancel }: { onCancel: () => void }) {
   return (
     <Alert
       title="退出这个浏览器？"
-      titleRed
       text="这个浏览器里的账户密钥会被删除，要重新配对才能再用。电脑上的会话不受影响。"
       ok="退出"
       danger
@@ -249,7 +297,7 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
   const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
   const clients = [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT).sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : Number(a.createdMs - b.createdMs)));
   return (
-    <div className="page gray">
+    <div className="page">
       <NavBar onBack={onBack} title={<span className="tname">设备</span>} />
       <div className="body">
         <div className="glabel">电脑 · 运行 CLI</div>
@@ -327,7 +375,7 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
     }
   };
   return (
-    <div className="page gray">
+    <div className="page">
       <NavBar onBack={onBack} title={<span className="tname">{clientName(d, id)}</span>} sub={current ? "当前客户端" : "已配对的客户端"} />
       <div className="body">
         <div className="glabel">客户端</div>
@@ -385,7 +433,6 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
       {removing && (
         <Alert
           title={`移除 ${clientName(d, id)}？`}
-          titleRed
           text="它的登录会失效、推送订阅会删除；电脑上的会话和历史不受影响。它持有账户密钥，仍可以重新加入。"
           ok="移除"
           danger
@@ -709,7 +756,6 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
       {removing && (
         <Alert
           title={`移除 ${name}？`}
-          titleRed
           text="它在服务器上的会话记录会被删除，连接会断开；它要重新加入账户才能再连上。电脑上的会话和文件不受影响。"
           ok="移除"
           danger

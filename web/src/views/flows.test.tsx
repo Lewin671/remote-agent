@@ -55,17 +55,27 @@ async function click(b: HTMLElement | undefined) {
   await act(async () => b!.click());
 }
 
-it("preserves the context warning and settings action when a phone narrows", async () => {
+/** Opens a menu item behind an input's ＋ (client-v7). */
+async function fromMenu(item: string | RegExp, within: ParentNode = host) {
+  await click(within.querySelector<HTMLButtonElement>(".cm-plus")!);
+  await click(button(item));
+}
+
+/** A row's value in the new-session settings. */
+const setting = (name: string) =>
+  [...document.querySelectorAll(".sr")].find((r) => r.querySelector(".lbl")?.textContent === name)?.querySelector(".v")?.textContent ?? "";
+
+it("keeps the context warning and the settings behind the ＋ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
   const r = demo();
   const s = r.sessions.get("s-ctx")!;
   try {
     act(() => viewport.setViewport({ width: 320, height: 740 }));
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    expect(host.querySelector(".ctl.model")?.textContent).toContain("设置…");
-    expect(host.querySelector(".ctl.model .hot")?.getAttribute("aria-label")).toBe("上下文 86%");
+    // The ＋ carries the high context as a dot, and its menu the reading.
+    expect(host.querySelector(".cm-plus.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
     expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
-    await click(host.querySelector<HTMLButtonElement>(".ctl.model")!);
+    await fromMenu("上下文：86%");
     expect(host.textContent).toContain("会话设置");
   } finally {
     act(() => viewport.setViewport({ width: 1024, height: 768 }));
@@ -96,6 +106,7 @@ function AskDock({ r, collapsed }: { r: DemoRemote; collapsed: boolean }) {
       items={dockItems(s, d, r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={collapsed}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -111,7 +122,7 @@ it("keeps a question's progress across collapsing the dock", async () => {
   await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
   // The keyboard comes up, then goes away again.
   act(() => root!.render(<AskDock r={r} collapsed />));
-  expect(host.querySelector(".dock.mini")).toBeTruthy();
+  expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
   act(() => root!.render(<AskDock r={r} collapsed={false} />));
   expect(host.textContent).toContain("第 2 题，共 2 题");
   expect(host.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
@@ -144,6 +155,7 @@ it("keeps the dock's buttons out of its scrolling content", () => {
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={false}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -151,7 +163,7 @@ it("keeps the dock's buttons out of its scrolling content", () => {
     />,
   );
   const dock = host.querySelector(".dock")!;
-  const scroll = dock.querySelector(".dscroll")!;
+  const scroll = dock.querySelector(".pending-scroll")!;
   expect(scroll.textContent).toContain("rm -rf gen/remoteagent");
   for (const b of ["拒绝", "允许"]) {
     const el = button(b, dock)!;
@@ -162,7 +174,14 @@ it("keeps the dock's buttons out of its scrolling content", () => {
 it("follows the project's latest session as sessions change", () => {
   const r = demo();
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
-  const line = () => host.querySelector(".newbox .cli-pick")!.textContent ?? "";
+  // The CLI is in 新会话设置, behind the input's ＋.
+  const line = () => {
+    act(() => host.querySelector<HTMLButtonElement>(".new-compose .cm-plus")!.click());
+    act(() => button("新会话设置 ›")!.click());
+    const cli = [...document.querySelectorAll(".sr")].find((r) => r.textContent?.startsWith("CLI"))?.textContent ?? "";
+    act(() => button("完成")!.click());
+    return cli;
+  };
   expect(line()).not.toContain("Claude Code");
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
@@ -217,6 +236,7 @@ it("answers a multi-select question with every ticked option", async () => {
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
       collapsed={false}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -302,6 +322,7 @@ it("offers the full command of an approval that arrived while the dock was colla
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={collapsed}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -323,6 +344,7 @@ function ClaudeAsk({ r }: { r: DemoRemote }) {
       items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
       agent={Agent.CLAUDE}
       collapsed={false}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -378,7 +400,7 @@ it("retries a multi-select answer of unknown outcome unchanged", async () => {
   expect(slots[1]).toBe(slots[0]);
 });
 
-it("shows a dock with no room for it as one line that opens its page", async () => {
+it("shows a dock with no room to open as one line that opens its page", async () => {
   const r = demo();
   const s = r.sessions.get("s-appr")!;
   const opened: string[] = [];
@@ -389,6 +411,7 @@ it("shows a dock with no room for it as one line that opens its page", async () 
       items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
       agent={Agent.CODEX}
       collapsed={false}
+      defaultOpen
       room={room}
       onExpand={() => opened.push("expand")}
       onDetail={(id) => opened.push("detail:" + id)}
@@ -397,14 +420,12 @@ it("shows a dock with no room for it as one line that opens its page", async () 
     />
   );
   mount(dock(Infinity));
-  expect(host.querySelector(".dock.mini")).toBeNull();
+  expect(host.querySelector(".pending:not(.open)")).toBeNull();
   // No room: the card needs at least its margin.
   act(() => root!.render(dock(0)));
-  const mini = host.querySelector(".dock.mini")!;
+  const mini = host.querySelector(".pending:not(.open)")!;
   expect(mini.textContent).toContain("请求执行");
-  // The full card is still there for measuring, but hidden and inert.
-  expect(host.querySelector(".dockwrap")!.classList.contains("offstage")).toBe(true);
-  await click(button("展开", mini));
+  await click(mini.querySelector<HTMLButtonElement>(".pending-sum")!);
   expect(opened).toEqual(["detail:a1"]);
 });
 
@@ -418,7 +439,7 @@ it("keeps a question's progress between its page and the dock", async () => {
   expect(host.textContent).toContain("第 2 题，共 2 题");
   // The one-line form names the question now being asked.
   act(() => root!.render(<AskDock r={r} collapsed />));
-  expect(host.querySelector(".dock.mini")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
+  expect(host.querySelector(".pending:not(.open)")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
 
 it("shortens paths in tool titles and keeps the original in the details", async () => {
@@ -494,7 +515,8 @@ it("keeps the message being typed when a page opens and closes", async () => {
     input().dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(input().value).toBe("顺便看下 lint");
-  // Open the approval's page, then come back.
+  // Open the docked approval, then its page, then come back.
+  await click(host.querySelector<HTMLButtonElement>(".pending-sum")!);
   await click(button("展开全文"));
   expect(host.textContent).toContain("审批详情");
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
@@ -698,11 +720,13 @@ it("keeps a project's model and effort after Done and a page reload", async () =
   const r = demo();
   mount(page(r));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
-  await click(host.querySelector<HTMLButtonElement>(".compose-card .ctl.model")!);
-  await click(button("GPT-6-Sol"));
-  await click(button("low"));
-  await click(host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!);
-  expect(host.querySelector(".compose-card .ctl.model")?.textContent).toContain("GPT-6-Sol · low");
+  await fromMenu("新会话设置 ›");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("模型")));
+  await click(button("GPT-6-Sol", document));
+  await click(button("low", document));
+  await click(document.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!);
+  expect(setting("模型")).toContain("GPT-6-Sol · low");
+  await click(button("完成", document));
   // Rebuild both the page and Remote, as a reload would; old sessions
   // still have Astra, so inheritance cannot make this pass by accident.
   act(() => root!.unmount());
@@ -710,16 +734,24 @@ it("keeps a project's model and effort after Done and a page reload", async () =
   const reloaded = demo();
   mount(page(reloaded));
   await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
-  expect(host.querySelector(".compose-card .ctl.model")?.textContent).toContain("GPT-6-Sol · low");
+  await fromMenu("新会话设置 ›");
+  expect(setting("模型")).toContain("GPT-6-Sol · low");
+  await click(button("完成", document));
   const real = reloaded.machineCommand.bind(reloaded);
   let sent: unknown;
   reloaded.machineCommand = async (machine, cmd) => {
     if (cmd?.case === "createSession") sent = cmd.value;
     return real(machine, cmd);
   };
-  // An empty message is not sent; 只打开终端 starts without one.
-  expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
-  await click(button("只打开终端 ›"));
+  // An empty message is not sent; the first message starts the session.
+  const go = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
+  expect(go().disabled).toBe(true);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "看一下");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(go());
   await act(async () => { await vi.waitFor(() => expect(loadProjectConfig(reloaded.account, project)).toBeUndefined()); });
   expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project });
 });
@@ -752,7 +784,8 @@ it("names a new project's default model as Codex does, even when /model hides it
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
-  await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-model")!.textContent).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
+  await fromMenu("新会话设置 ›");
+  await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
@@ -764,6 +797,7 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
       items={[{ kind: "popup", id: "popup", title: "trust folder" }]}
       agent={agent}
       collapsed={false}
+      defaultOpen
       onExpand={() => undefined}
       onDetail={() => undefined}
       onPlan={() => undefined}
@@ -776,7 +810,7 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
   expect(host.textContent).not.toContain("No, exit");
 });
 
-it("titles a running file edit as it will be titled once done", () => {
+it("titles a running file edit as it will be titled once done", async () => {
   const r = demo();
   const s = r.sessions.get("s-idle")!;
   s.info = { ...s.info!, cwd: "/Users/me/Code/foo", status: 3 };
@@ -784,7 +818,10 @@ it("titles a running file edit as it will be titled once done", () => {
   push({ case: "turnStarted", value: {} });
   push({ case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  // Shown as soon as it starts, as a card of its own.
+  // Shown as soon as it starts, as a line of its own; 详情 shows the call.
+  const line = host.querySelector<HTMLButtonElement>(".active-tool .at-sum")!;
+  expect(line.textContent).toContain("处理中");
+  await click(line);
   const running = [...host.querySelectorAll(".active-tool pre")].map((c) => c.textContent);
   expect(running).toContain("编辑 hello.txt");
 });
@@ -907,7 +944,9 @@ describe("a new-session draft", () => {
     await type("加限流");
     // The project's Claude Code session becomes its latest meanwhile.
     bump(r, "s-claude");
-    expect(host.querySelector(".newbox .cli-pick")!.textContent).not.toContain("Claude Code");
+    await fromMenu("新会话设置 ›");
+    expect(setting("CLI")).not.toContain("Claude Code");
+    await click(button("完成", document));
     await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
     await click(button("↑"));
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -921,7 +960,7 @@ describe("a new-session draft", () => {
     r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
-    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-main")!.textContent).toContain("完全放行"), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".new-compose .access-warning")?.textContent).toBe("当前默认：完全放行 · 发送前确认"), { timeout: 3000 });
     await type("加限流");
     await click(button("↑"));
     expect(host.textContent).toContain("切到完全放行？");
@@ -1036,11 +1075,13 @@ describe("switching a new session's CLI (v2)", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await click(host.querySelector<HTMLButtonElement>(".cli-pick")!);
-    await click(button(/^Claude Code/));
-    expect(host.querySelector(".cli-pick")!.textContent).toContain("Claude Code");
+    await fromMenu("新会话设置 ›");
+    await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("CLI")));
+    await click(button(/^Claude Code/, document));
+    expect(setting("CLI")).toContain("Claude Code");
+    await click(button("完成", document));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
-    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-main")!.textContent).toContain("完全放行"), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".new-compose .access-warning")?.textContent).toBe("当前默认：完全放行 · 发送前确认"), { timeout: 3000 });
     await click(button("↑"));
     expect(host.textContent).toContain("切到完全放行？");
     expect(sent).toHaveLength(0);
@@ -1086,7 +1127,7 @@ describe("project management (v2)", () => {
     expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeNull();
     // Its sessions are all still there.
     expect(host.textContent).toContain("拆分订单服务");
-    await click(button("恢复到项目列表"));
+    await click(button("恢复"));
     await vi.waitFor(() => expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeTruthy(), { timeout: 3000 });
   });
 
@@ -1274,14 +1315,14 @@ describe("sending images (v2)", () => {
     await t.pick(...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `p${i}.png`));
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
     expect(host.textContent).toContain("一条消息最多 6 张，多选的 2 张没有加入");
-    expect(host.querySelector(".ctl.att")!.classList.contains("off")).toBe(true);
+    expect(host.querySelector(".pop-item")!.classList.contains("off")).toBe(true);
   });
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {
     const r = demo();
     const s = r.sessions.get("s-appr")!; // on VPS-dev, an older daemon
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    await click(host.querySelector<HTMLButtonElement>(".ctl.att")!);
+    await fromMenu("添加图片");
     expect(host.querySelector("input[type=file]")).toBeTruthy();
     expect(host.textContent).toContain("VPS-dev 上的 remote-agent 版本较旧，不能发图片");
   });
@@ -1418,7 +1459,9 @@ describe("an image-only new-session draft (review B8)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
     await pick();
     bump(r, "s-claude");
-    expect(host.querySelector(".newbox .cli-pick")!.textContent).not.toContain("Claude Code");
+    await fromMenu("新会话设置 ›");
+    expect(setting("CLI")).not.toContain("Claude Code");
+    await click(button("完成", document));
   });
 
   it("keeps its project on the wide home once an image is chosen", async () => {
@@ -1468,7 +1511,7 @@ it("asks to restore a project removed while its draft is on the wide home (revie
   expect(host.textContent).toContain("这个项目已从列表移除");
   expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
   expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
-  await click(button("恢复到项目列表"));
+  await click(button("恢复"));
   await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
 });
 
@@ -1568,7 +1611,7 @@ it("retries a confirmed start whose reply was lost as the same request, confirme
   let ns: ReturnType<typeof useNewSession> | undefined;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
   // A launch override chosen by the user, mode left to the default.
-  await click(host.querySelector<HTMLButtonElement>(".cfg-edit")!);
+  await fromMenu("新会话设置 ›");
   await click(button(/^模型/));
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
@@ -1614,4 +1657,53 @@ it("keeps the wide home default project across background uploads before a draft
     (r as unknown as { changed(): void }).changed();
   });
   expect(host.querySelector(".wide-project-tools .chip")!.textContent).toBe(before);
+});
+
+describe("the client-v7 conversation", () => {
+  it("docks a waiting item as one line that 处理 opens in place and 收起 closes", async () => {
+    const r = demo();
+    mount(<SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />);
+    const dock = () => host.querySelector(".dock.pending")!;
+    expect(dock().classList.contains("open")).toBe(false);
+    expect(dock().textContent).toContain("请求执行");
+    expect(button("允许", dock())).toBeUndefined();
+    await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
+    expect(dock().classList.contains("open")).toBe(true);
+    expect(button("允许", dock())).toBeTruthy();
+    await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
+    expect(dock().classList.contains("open")).toBe(false);
+  });
+
+  it("shows a running tool as one line whose details open in place", async () => {
+    const r = demo();
+    mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+    const tool = host.querySelector(".active-tool")!;
+    expect(tool.querySelector("pre")).toBeNull();
+    await click(tool.querySelector<HTMLButtonElement>(".at-sum")!);
+    expect(tool.querySelector("pre")?.textContent).toContain("go test");
+    // Nothing about the tool above the input: only the queue and interrupt.
+    expect(host.querySelector(".compose-status")!.textContent).not.toContain("go test");
+  });
+
+  it("keeps full access in view under the input, the rest behind the ＋", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-idle")!;
+    s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS };
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    expect(host.querySelector(".compose-card .access-warning")?.textContent).toBe("完全放行");
+    expect(host.querySelector<HTMLElement>(".compose-pop")!.hidden).toBe(true);
+    await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
+    expect(host.querySelector<HTMLElement>(".compose-pop")!.hidden).toBe(false);
+    expect(host.querySelector(".compose-pop")!.textContent).toContain("模式：完全放行");
+  });
+
+  it("starts sessions only with a first message, and folds the project head while typing", async () => {
+    const r = demo();
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    expect(host.textContent).not.toContain("只打开终端");
+    expect(host.querySelector(".phead")).toBeTruthy();
+    await act(async () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.focus());
+    expect(host.querySelector(".phead")).toBeNull();
+    expect(host.querySelector(".navbar .title")!.textContent).toContain("foo");
+  });
 });

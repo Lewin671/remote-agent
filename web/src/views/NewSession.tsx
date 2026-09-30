@@ -26,7 +26,6 @@ import {
   projects,
   shortPath,
   tailPath,
-  titleOf,
   type MachineLike,
   type NewConfig,
   type Project,
@@ -43,6 +42,7 @@ import { Avatar, Banner, Dot, Sheet } from "../ui";
 import { groupProjects, isHidden } from "../prefs";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
+import { ComposeMenu } from "./Composer";
 
 export type Go = (route: string) => void;
 
@@ -271,11 +271,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
 
 export type NewSession = ReturnType<typeof useNewSession>;
 
-/** The new-session box: at the bottom of a project page ("box"), at the
- * top of a wide project page ("prompt"), or the wide home ("start", with
- * the project chip leading). The CLI is picked right on it; the machine
- * and mode, and the model and effort, are written out; 更改 opens the
- * rest. */
+/** The new-session input (client-v7): at the bottom of a project page
+ * ("box"), at the top of a wide project page ("prompt"), or the wide home
+ * ("start", with the project chip leading). One row like a session's: its
+ * ＋ adds images or opens 新会话设置, where the CLI, machine, folder, model
+ * and mode are; only full access is always in view. The first message
+ * starts the session. */
 export function NewBox({
   ns,
   name,
@@ -283,6 +284,7 @@ export function NewBox({
   variant = "box",
   lead,
   onDraft,
+  onFocus,
 }: {
   ns: NewSession;
   name: string;
@@ -290,40 +292,37 @@ export function NewBox({
   variant?: "box" | "prompt" | "start";
   lead?: ReactNode;
   onDraft?: () => void;
+  // Whether the user is typing in it: a phone makes room for the keyboard.
+  onFocus?: (typing: boolean) => void;
 }) {
   const [text, setText] = useState("");
-  const [askFull, setAskFull] = useState<"" | "send" | "terminal">("");
+  const [askFull, setAskFull] = useState(false);
   // The daemon found this folder's default is full access: ask, and send
   // the start again confirmed.
-  const lastTerminal = useRef(false);
   const refusedAsk = ns.refused;
   const [config, setConfig] = useState<"" | "main" | Pick>("");
-  const [cli, setCli] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
-  useAutoGrow(input, text, variant === "box" ? 132 : 240);
+  useAutoGrow(input, text, 132);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   const cannot = ns.busy || !!ns.blocked || !!ns.issue;
-  const submit = async (confirmed = false, terminal = false, force = false) => {
-    const prompt = terminal ? "" : text;
-    lastTerminal.current = terminal;
+  const submit = async (confirmed = false, force = false) => {
+    const prompt = text;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request. Chosen images must all be on the
     // machine first.
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
-    if (!terminal && ns.tray.items.length && !ns.tray.ready()) return;
+    if (ns.tray.items.length && !ns.tray.ready()) return;
     // Retrying an unknown start sends it as it was.
     const retry = ns.frozen && !ns.changes(prompt);
     // Full access, chosen or the CLI's default (or a default nobody knows),
     // is confirmed for each start; a default is then sent as confirmed.
-    if (!retry && ns.needConfirm && !ns.fullConfirmed && !confirmed) return setAskFull(terminal ? "terminal" : "send");
+    if (!retry && ns.needConfirm && !ns.fullConfirmed && !confirmed) return setAskFull(true);
     const confirm = force || (!retry && ns.needConfirm && !ns.cfg.mode);
-    const ok = await ns.create(prompt.trim(), undefined, terminal, confirm);
-    if (ok && !terminal) setText("");
+    const ok = await ns.create(prompt.trim(), undefined, false, confirm);
+    if (ok) setText("");
   };
-  const agent = agentName(ns.cfg.agent);
-  const p = ns.parts;
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
     box: "描述任务…",
@@ -364,7 +363,7 @@ export function NewBox({
   const field = (
     <textarea
       ref={input}
-      className={variant === "box" ? "in" + (text ? " typed" : "") : "draft" + (text ? " typed" : "")}
+      className={"draft" + (text ? " typed" : "")}
       rows={1}
       value={text}
       placeholder={placeholder}
@@ -382,13 +381,10 @@ export function NewBox({
           void submit();
         }
       }}
+      onFocus={() => onFocus?.(true)}
+      onBlur={() => onFocus?.(false)}
       aria-label="新会话的第一句话"
     />
-  );
-  const cliPick = (
-    <button className="cli-pick" onClick={() => setCli(true)} aria-label={`CLI：${agent}`}>
-      {agent} ▾
-    </button>
   );
   const offline = !ns.machine?.online;
   const error =
@@ -418,91 +414,56 @@ export function NewBox({
 
     </>
   );
-  const onlyTerm = !text && !images && (
-    <button className="onlyterm" disabled={cannot} onClick={() => void submit(false, true)}>
-      只打开终端 ›
+  const go = (
+    <button className={"go44" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
+      ↑
     </button>
   );
-  const go =
-    variant === "box" ? (
-      <button className="go" disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
-        ↑
-      </button>
-    ) : (
-      <button className={"go44" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
-        ↑
-      </button>
-    );
+  // Full access is the one setting always in view, chosen or the default.
+  const dm = ns.cfg.mode ? undefined : defaultModeOf(ns.machine, ns.cfg.agent);
+  const warning =
+    ns.cfg.mode === ApprovalMode.FULL_ACCESS
+      ? "完全放行 · 发送前确认"
+      : dm && !dm.known
+        ? "当前默认：模式未知 · 发送前确认"
+        : dm?.mode === ApprovalMode.FULL_ACCESS
+          ? "当前默认：完全放行 · 发送前确认"
+          : "";
+  // One row, as in a session: ＋ for images and the new session's settings,
+  // the task, and send. The settings follow the project's latest session.
+  const card = (
+    <div className={"compose-card new-compose" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+      {trayView}
+      <ComposeMenu label="附件与新会话设置">
+        <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />
+        <button className="nav" onClick={() => setConfig("main")}>
+          新会话设置 ›
+        </button>
+      </ComposeMenu>
+      {field}
+      {go}
+      {warning && <div className="access-warning">{warning}</div>}
+    </div>
+  );
+  const busyNote = status && <div className="small muted startnote">{status}</div>;
   let body;
-  if (variant === "box")
+  if (variant === "start")
     body = (
-      <div className="newbox" role="group" aria-label={`${name} · 新会话`}>
+      <>
+        <div className="wide-project-tools">{lead}</div>
         {error}
         {notes}
-        <div className="nh">
-          <span>新会话</span>
-          {cliPick}
-        </div>
-        {trayView}
-        <div className="row2" {...drop.props}>
-          <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} className="att-in" />
-          {field}
-          {go}
-        </div>
-        <div className="cfg">
-          <div className="cfg-main">
-            <Dot tone={ns.machine?.online ? "idle" : "off"} />
-            <span className={ns.blocked ? "warn-text" : ""}>{status || p.machine}</span>
-            <span>· {p.mode}</span>
-          </div>
-          <div className="cfg-model">{p.model}</div>
-          <button className="cfg-edit" onClick={() => setConfig("main")}>
-            更改
-          </button>
-        </div>
-        {onlyTerm}
-      </div>
+        {card}
+        {busyNote}
+      </>
     );
   else
     body = (
       <>
-        <div className="wide-project-tools">
-          {lead}
-          {cliPick}
-          <span className="small muted cfgsum">
-            <Dot tone={ns.machine?.online ? "idle" : "off"} /> {status || p.machine} · {p.mode}
-          </span>
-          {variant === "prompt" && (
-            <button className="link small" onClick={() => setConfig("main")}>
-              更改
-            </button>
-          )}
-        </div>
         {error}
         {notes}
-        <div className={"compose-card newcard" + (drop.over ? " drop" : "")} {...drop.props}>
-          {trayView}
-          {field}
-          <div className="controls">
-            <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />
-            <button className={"ctl mode" + (p.mode === "完全放行" ? " danger" : "")} onClick={() => setConfig("mode")}>
-              {p.mode} ▾
-            </button>
-            <button className="ctl model" onClick={() => setConfig("model")}>
-              <em>{p.model} ▾</em>
-            </button>
-            {go}
-          </div>
-        </div>
-        {onlyTerm}
-        {variant === "start" && (
-          <div className="small muted startnote">
-            {ns.cfg.from ? `沿用 ${projectName(ns.cfg.cwd)} 最近一次的 ${agent} 设置` : `用 ${p.machine} 的默认设置`} ·{" "}
-            <button className="link small" onClick={() => setConfig("main")}>
-              更改机器与目录
-            </button>
-          </div>
-        )}
+        {card}
+        {busyNote}
       </>
     );
   return (
@@ -512,21 +473,19 @@ export function NewBox({
         <FullAccessAlert
           forNew
           onCancel={() => {
-            setAskFull("");
+            setAskFull(false);
             ns.clearRefused();
           }}
           onOk={() => {
-            const terminal = askFull ? askFull === "terminal" : lastTerminal.current;
             const force = refusedAsk;
-            setAskFull("");
+            setAskFull(false);
             ns.clearRefused();
             ns.confirmFull();
-            void submit(true, terminal, force);
+            void submit(true, force);
           }}
         />
       )}
       {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
-      {cli && <CliSheet ns={ns} onClose={() => setCli(false)} onMachine={() => (setCli(false), setConfig("machine"))} />}
     </>
   );
 }
@@ -605,6 +564,8 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
         }}
       />
     );
+  // The CLI: those the machine has, with where to find the others.
+  if (pick === "agent") return <CliSheet ns={ns} onClose={back2} onMachine={() => setPick("machine")} />;
   if (pick === "dir")
     return (
       <Sheet onClose={onClose}>
@@ -656,23 +617,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             {m.id === cfg.machineId && <span className="ck">✓</span>}
           </button>
         ))}
-      </div>
-    );
-  else if (pick === "agent")
-    body = (
-      <div className="list">
-        {machineAgents(machine).map((a) => {
-          const v = machine?.meta?.agents.find((x) => x.agent === a);
-          return (
-            <button key={a} className="mi" onClick={() => (ns.setCfg(switchAgent(cfg, a)), back2())}>
-              <div className="mt">
-                {agentName(a)}
-                {v?.version && <small>{v.version}</small>}
-              </div>
-              {a === cfg.agent && <span className="ck">✓</span>}
-            </button>
-          );
-        })}
       </div>
     );
   else if (pick === "model") {
@@ -746,8 +690,8 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": "这次的设置", machine: "机器", agent: "CLI", dir: "目录", model: "模型", mode: "审批" };
-  const modelLine = describe(cfg, machine, info).split(" · ").slice(-2, -1)[0];
+  const titles: Record<Pick, string> = { "": "新会话设置", machine: "机器", agent: "CLI", dir: "目录", model: "模型", mode: "审批" };
+  const modelLine = ns.parts.model;
   return (
     <Sheet onClose={onClose}>
       <div className="ns-head">
@@ -762,6 +706,12 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       {body ?? (
         <>
           <div className="setrows">
+            <button className="sr" onClick={() => setPick("agent")}>
+              <span className="lbl">CLI</span>
+              <span className="v">
+                <em>{agentName(cfg.agent)}</em>
+              </span>
+            </button>
             <button className="sr" onClick={() => setPick("machine")}>
               <span className="lbl">机器</span>
               <span className="v">
@@ -769,14 +719,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 <em>{machineName(machine)}</em>
               </span>
             </button>
-            {machineAgents(machine).length > 1 && (
-              <button className="sr" onClick={() => setPick("agent")}>
-                <span className="lbl">CLI</span>
-                <span className="v">
-                  <em>{agentName(cfg.agent)}</em>
-                </span>
-              </button>
-            )}
             <button className="sr" onClick={() => setPick("dir")} disabled={!machine?.online}>
               <span className="lbl">目录</span>
               <span className="v">
@@ -802,9 +744,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             </Banner>
           )}
           <div className="hint">
-            {cfg.from
-              ? `默认沿用 ${projectName(cfg.cwd)} 最近一个会话（${titleOf(cfg.from)}）。改了之后，这个项目下次也会沿用新的设置。机器只在这个项目用过的机器里选；目录可以选项目里的子目录`
-              : `新项目用 ${machineName(machine)} 的默认设置。`}
+            {cfg.from ? `沿用 ${projectName(cfg.cwd)} 最近会话的设置；更换 CLI 或机器会保留草稿。` : `新项目用 ${machineName(machine)} 的默认设置；更换 CLI 或机器会保留草稿。`}
           </div>
         </>
       )}

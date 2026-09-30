@@ -101,14 +101,13 @@ function useActions(remote: Remote) {
   return { open: setMenu, sheet, toast, undone: undo, blocked };
 }
 
-function ManageRow({ p, pinned, onMore, busy }: { p: { key: string; name: string }; pinned: boolean; onMore: () => void; busy: boolean }) {
+function ManageRow({ p, onMore, busy }: { p: { key: string; name: string }; onMore: () => void; busy: boolean }) {
   return (
     <div className={"manage-row" + (busy ? " busy" : "")}>
       <Avatar name={p.name} size="sm" />
       <div className="pt">
         <div className="pn">
           {p.name}
-          {pinned && <span className="pin">常用</span>}
         </div>
         <div className="ps">{shortPath(p.key)}</div>
       </div>
@@ -189,13 +188,13 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           </div>
         )}
         {g.pinned.map((p) => (
-          <ManageRow key={p.key} p={p} pinned busy={pending.has(p.key)} onMore={() => a.open(p)} />
+          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} />
         ))}
         <div className="label">
           其他项目 <span>{g.others.length}</span>
         </div>
         {g.others.map((p) => (
-          <ManageRow key={p.key} p={p} pinned={false} busy={pending.has(p.key)} onMore={() => a.open(p)} />
+          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} />
         ))}
         {a.undone && <div className="manage-hint">{a.undone.name} 的会话和历史仍然保留。有新的待处理项时，主页仍会显示。</div>}
         <div className="label">
@@ -263,12 +262,10 @@ export function RemovedNotice({ remote, pkey }: { remote: Remote; pkey: string }
   const busy = remote.prefs.pending.has(pkey);
   return (
     <div className="removed-note">
-      <div className="hint">这个项目已从列表移除。会话、历史和提醒都在；要在这里新建会话，先恢复它。</div>
-      <div className="btns">
-        <button className="btn pri" disabled={!!prefsBlocked(remote) || busy} onClick={() => void remote.changePrefs("unhide", pkey)}>
-          {busy ? "正在恢复…" : "恢复到项目列表"}
-        </button>
-      </div>
+      {/* A rare state: a line with its action, not the page's main button. */}
+      <Banner action={busy ? "正在恢复…" : "恢复"} onAction={prefsBlocked(remote) || busy ? undefined : () => void remote.changePrefs("unhide", pkey)}>
+        这个项目已从列表移除
+      </Banner>
       <PrefsBanner remote={remote} quiet />
     </div>
   );

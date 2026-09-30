@@ -1,15 +1,16 @@
 // What a session waits for, docked above the input: approvals, questions,
-// plans and terminal popups. Only the first item is docked; long content
-// opens a full page, and the buttons stay in view.
+// plans and terminal popups (client-v7 停靠区). Only the first item is
+// docked, as one line that opens in place; long content opens a full page,
+// and the buttons stay in view.
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { Markdown } from "../markdown";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
-import { Banner, NavBar, useNow } from "../ui";
+import { Banner, Exp, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
 
 export function approvalTitle(a: ApprovalRequested): string {
@@ -18,20 +19,6 @@ export function approvalTitle(a: ApprovalRequested): string {
 
 export function approvalText(a: ApprovalRequested): string {
   return a.command || a.toolInputJson || a.toolName;
-}
-
-/** A dock item as one line: its type and a summary. */
-function summary(item: DockItem, agent: Agent, questionIndex = 0): [string, string] {
-  switch (item.kind) {
-    case "approval":
-      return [approvalTitle(item.approval), approvalText(item.approval).replace(/\s+/g, " ")];
-    case "question":
-      return [askTitle(agent), item.question.questions[Math.min(questionIndex, item.question.questions.length - 1)]?.text ?? ""];
-    case "plan":
-      return ["计划待批准", (item.plan?.text ?? "").replace(/\s+/g, " ")];
-    case "popup":
-      return ["终端里有弹窗", item.title];
-  }
 }
 
 /** A <pre> cut to its max height, with 展开全文 when it overflows. */
@@ -74,6 +61,7 @@ export function ApprovalActions({
   footless,
   wideRow,
   onReasonOpen,
+  shared,
 }: {
   remote: Remote;
   sid: string;
@@ -82,9 +70,13 @@ export function ApprovalActions({
   footless?: boolean;
   wideRow?: boolean;
   onReasonOpen?: (open: boolean) => void;
+  // The dock's own answering state, so its one-line form can say
+  // 等待确认 while the answer is on its way.
+  shared?: ReturnType<typeof useApproval>;
 }) {
   const now = useNow(1000);
-  const ap = useApproval(remote, sid, a);
+  const own = useApproval(remote, sid, a);
+  const ap = shared ?? own;
   const [reasonOpen, setReasonOpen] = useState(false);
   const [reason, setReason] = useState("");
   const deadline = deadlineOf(a);
@@ -114,7 +106,7 @@ export function ApprovalActions({
           onBlur={() => !reason.trim() && !ap.busy && open(false)}
         />
         <div className="btns">
-          <button className="btn danger" disabled={locked || !reason.trim()} onMouseDown={(e) => e.preventDefault()} onClick={() => void ap.resolve(false, reason.trim())}>
+          <button className="btn no" disabled={locked || !reason.trim()} onMouseDown={(e) => e.preventDefault()} onClick={() => void ap.resolve(false, reason.trim())}>
             {ap.busy ? "拒绝中…" : "发送理由并拒绝"}
           </button>
         </div>
@@ -148,7 +140,6 @@ export function ApprovalActions({
       {buttons}
       {!footless && (
         <div className="foot">
-          <span>想告诉 {agentName(agent)} 为什么？</span>
           <button className="link" disabled={locked} onClick={() => open(true)}>
             附理由拒绝 ›
           </button>
@@ -159,46 +150,131 @@ export function ApprovalActions({
   );
 }
 
-function ApprovalDock({ remote, sid, a, agent, more, onDetail }: { remote: Remote; sid: string; a: ApprovalRequested; agent: Agent; more: number; onDetail: () => void }) {
-  const now = useNow(1000);
-  const [reasoning, setReasoning] = useState(false);
-  const deadline = deadlineOf(a);
-  const left = deadline ? minutesLeft(deadline, now) : "";
+/** How a docked item draws itself: its one line, whether it is open, and
+ * how many more items wait behind it. */
+type Frame = { open: boolean; onToggle: () => void; more: number };
+
+/** A waiting item: one line (type, summary, 处理) that opens in place into
+ * its content, which scrolls, over its actions, which stay in view. */
+function Pending({
+  frame,
+  label,
+  brief,
+  busy,
+  head,
+  body,
+  actions,
+  reasoning,
+}: {
+  frame: Frame;
+  label: string;
+  brief: string;
+  busy?: boolean;
+  head: ReactNode;
+  body: ReactNode;
+  actions: ReactNode;
+  reasoning?: boolean;
+}) {
+  const { open, more } = frame;
   return (
-    <div className={"dock" + (reasoning ? " reasoning" : "")}>
-      {!reasoning && (
-        <div className="dscroll">
-          <div className="h">
-            <b>{approvalTitle(a)}</b>
-            <span className="muted">
-              {more > 0 && `还有 ${more} 项 · `}
-              {left}
-              {left && more === 0 && left !== "已超时" && "，超时拒绝"}
-            </span>
+    <div className={"dock pending" + (open ? " open" : "") + (busy ? " submitting" : "") + (reasoning ? " reasoning" : "")}>
+      <button className="pending-sum" aria-expanded={open} onMouseDown={(e) => e.preventDefault()} onClick={frame.onToggle}>
+        <span className="pending-dot">●</span>
+        <span className="pending-label">{label}</span>
+        <span className="pending-brief">{[brief, more > 0 ? `还有 ${more} 项` : ""].filter(Boolean).join(" · ")}</span>
+        <span className="pending-action">
+          {busy ? (
+            "等待确认"
+          ) : open ? (
+            <>
+              收起 <Exp up />
+            </>
+          ) : (
+            <>
+              处理 <Exp />
+            </>
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="pending-content">
+          <div className="pending-scroll">
+            <div className="h">{head}</div>
+            {body}
           </div>
-          {a.description && <div className="desc">{a.description}</div>}
-          <Cut text={approvalText(a)} onMore={onDetail} />
+          <div className="pending-actions">{actions}</div>
         </div>
       )}
-      <ApprovalActions remote={remote} sid={sid} a={a} agent={agent} onReasonOpen={setReasoning} />
     </div>
   );
 }
 
-function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; more: number; onTerminal: () => void }) {
+function ApprovalDock({
+  remote,
+  sid,
+  a,
+  agent,
+  frame,
+  onDetail,
+  onReasonOpen,
+  reasoning,
+}: {
+  remote: Remote;
+  sid: string;
+  a: ApprovalRequested;
+  agent: Agent;
+  frame: Frame;
+  onDetail: () => void;
+  onReasonOpen: (open: boolean) => void;
+  reasoning: boolean;
+}) {
+  const now = useNow(1000);
+  const ap = useApproval(remote, sid, a);
+  const deadline = deadlineOf(a);
+  const left = deadline ? minutesLeft(deadline, now) : "";
+  const title = approvalTitle(a);
+  return (
+    <Pending
+      frame={frame}
+      label={title}
+      // A permission request's arguments are no summary: its title says it.
+      brief={a.command ? a.command.replace(/\s+/g, " ") : ""}
+      busy={!!ap.busy}
+      reasoning={reasoning}
+      head={
+        <>
+          <b>{title}</b>
+          <span className="muted">
+            {frame.more > 0 && `还有 ${frame.more} 项 · `}
+            {left}
+            {left && frame.more === 0 && left !== "已超时" && "，超时拒绝"}
+          </span>
+        </>
+      }
+      body={
+        <>
+          {a.description && <div className="desc">{a.description}</div>}
+          <Cut text={approvalText(a)} onMore={onDetail} />
+        </>
+      }
+      actions={<ApprovalActions remote={remote} sid={sid} a={a} agent={agent} shared={ap} onReasonOpen={onReasonOpen} />}
+    />
+  );
+}
+
+/** A question's parts, for the dock and the question page alike. Its
+ * answering state, ticks included, lives in the Remote, so both share it. */
+function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent, onTerminal: () => void) {
   // Which question to answer. The daemon only enters the option while the
   // terminal shows this very question, so a stale choice is refused rather
   // than answering another question.
-  // Its answering state, ticks included, is shared with the question page.
   const ans = useAnswer(remote, sid, q.questionId);
-  const current = ans.index;
-  const setCurrent = ans.setIndex;
   const ticked = ans.ticked;
   const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
   const n = q.questions.length;
-  const index = Math.min(current, n - 1);
+  const index = Math.min(ans.index, n - 1);
   const item = q.questions[index];
-  if (!item) return null;
+  if (!item) return undefined;
   const multi = item.multiSelect;
   const sent = ans.chosen.index === index ? ans.chosen.options : [];
   const pick = async (options: number[]) => {
@@ -206,7 +282,7 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
     if (ok && index < n - 1) {
       ans.done();
       setTicked([]);
-      setCurrent(index + 1);
+      ans.setIndex(index + 1);
     }
   };
   // A retry is the same pick: on success it moves on like the first try.
@@ -221,86 +297,119 @@ function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Rem
     if (ans.error) ans.clearError();
     setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
   };
-  return (
-    <div className="dock ask">
-      <div className="h">
-        <b>{askTitle(agent)}</b>
-        <span className="steps">
-          {n > 1 && q.questions.map((_, i) => <i key={i} className={i <= index ? "done" : ""} />)}
-          <span className="muted">
-            {more > 0 && `还有 ${more} 项 · `}
-            {n > 1 ? `第 ${index + 1} 题，共 ${n} 题` : item.header}
-            {multi && (n > 1 || item.header ? " · " : "") + (multi ? "可多选" : "")}
-          </span>
-        </span>
-      </div>
-      <div className="dscroll">
-        <div className="q">{item.text}</div>
-        <div className="answers">
-          {item.options.map((o, i) => {
-            const { text, recommended } = optionLabel(o.label);
-            const on = multi ? (frozen ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
-            const status = on && sent.includes(i + 1) && (ans.busy ? "提交中…" : ans.error ? "err" : "");
-            return (
-              <button
-                key={i}
-                className={"ans" + (on ? " on" : "") + (multi ? " multi" : "")}
-                role={multi ? "checkbox" : undefined}
-                aria-checked={multi ? on : undefined}
-                disabled={multi ? frozen : !!ans.busy}
-                onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
-              >
-                {multi ? <span className={"box" + (on ? " on" : "")}>{on ? "✓" : ""}</span> : on && <span className="ck">✓</span>}
-                <div>
-                  {text}
-                  {status === "err" && !multi ? (
-                    <small className="red">没能提交，终端里的问题可能已经变了</small>
-                  ) : status && status !== "err" && !multi ? (
-                    <small>{status}</small>
-                  ) : (
-                    o.description && <small>{o.description}</small>
-                  )}
-                </div>
-                {recommended && <span className="tag">推荐</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      {multi && !(ans.error && ans.unknown) && (
-        <div className="btns">
-          <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
-            {ans.busy ? "提交中…" : ticked.length ? `提交 ${ticked.length} 项` : "选好后提交"}
+  const where = n > 1 ? `第 ${index + 1} 题，共 ${n} 题` : item.header;
+  const progress = [where, multi ? "可多选" : ""].filter(Boolean).join(" · ");
+  const answers = (
+    <div className="answers">
+      {item.options.map((o, i) => {
+        const { text, recommended } = optionLabel(o.label);
+        const on = multi ? (frozen ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
+        const status = on && sent.includes(i + 1) && (ans.busy ? "提交中…" : ans.error ? "err" : "");
+        return (
+          <button
+            key={i}
+            className={"ans" + (on ? " on" : "") + (multi ? " multi" : "")}
+            role={multi ? "checkbox" : undefined}
+            aria-checked={multi ? on : undefined}
+            disabled={multi ? frozen : !!ans.busy}
+            onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
+          >
+            {multi ? <span className={"box" + (on ? " on" : "")}>{on ? "✓" : ""}</span> : on && <span className="ck">✓</span>}
+            <div>
+              {text}
+              {status === "err" && !multi ? (
+                <small className="red">没能提交，终端里的问题可能已经变了</small>
+              ) : status && status !== "err" && !multi ? (
+                <small>{status}</small>
+              ) : (
+                o.description && <small>{o.description}</small>
+              )}
+            </div>
+            {recommended && <span className="tag">推荐</span>}
           </button>
-        </div>
-      )}
-      {multi && ans.error && (
-        <div className="red small">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>
-      )}
-      <div className="foot">
-        {ans.error && (!multi || ans.unknown) ? (
-          <>
-            <span />
-            <button className="link" onClick={retry}>
-              重试
-            </button>
-          </>
-        ) : (
-          <>
-            <span>都不合适？</span>
-            <button className="link" onClick={onTerminal}>
-              其他回答：去终端 ›
-            </button>
-          </>
-        )}
-      </div>
+        );
+      })}
     </div>
+  );
+  const submit = multi && !(ans.error && ans.unknown) && (
+    <div className="btns">
+      <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
+        {ans.busy ? "提交中…" : ticked.length ? `提交 ${ticked.length} 项` : "选好后提交"}
+      </button>
+    </div>
+  );
+  const failed = multi && ans.error && <div className="red small">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>;
+  const foot = (page: boolean) => (
+    <div className="foot">
+      {ans.error && (!multi || ans.unknown) ? (
+        <>
+          <span />
+          <button className="link" onClick={retry}>
+            重试
+          </button>
+        </>
+      ) : (
+        <>
+          <span>{page && multi ? (ticked.length ? `已选 ${ticked.length} 项` : "") : "都不合适？"}</span>
+          <button className="link" onClick={onTerminal}>
+            其他回答：去终端 ›
+          </button>
+        </>
+      )}
+    </div>
+  );
+  return {
+    label: askTitle(agent),
+    text: item.text,
+    busy: !!ans.busy,
+    steps: (
+      <span className="steps">
+        {n > 1 && q.questions.map((_, i) => <i key={i} className={i <= index ? "done" : ""} />)}
+        <span className="muted">{progress}</span>
+      </span>
+    ),
+    progress,
+    answers,
+    actions: (page: boolean) => (
+      <>
+        {submit}
+        {failed}
+        {foot(page)}
+      </>
+    ),
+  };
+}
+
+function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; frame: Frame; onTerminal: () => void }) {
+  const p = useQuestion(remote, sid, q, agent, onTerminal);
+  if (!p) return null;
+  return (
+    <Pending
+      frame={frame}
+      label={p.label}
+      brief={p.text}
+      busy={p.busy}
+      head={
+        <>
+          <b>{p.label}</b>
+          {p.steps}
+        </>
+      }
+      body={
+        <>
+          <div className="q">{p.text}</div>
+          {p.answers}
+        </>
+      }
+      actions={p.actions(false)}
+    />
   );
 }
 
-export function PlanButtons({ remote, sid, full }: { remote: Remote; sid: string; full?: boolean }) {
+export function PlanButtons({ remote, sid, full, shared }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan> }) {
   // Claude Code has no "clear the context, then implement".
-  const plan = usePlan(remote, sid);
+  const own = usePlan(remote, sid);
+  const plan = shared ?? own;
   const b = plan.busy;
   return (
     <>
@@ -328,76 +437,93 @@ export function PlanButtons({ remote, sid, full }: { remote: Remote; sid: string
   );
 }
 
-function PlanDock({ remote, sid, plan, more, onFull }: { remote: Remote; sid: string; plan?: PlanProposed; more: number; onFull: () => void }) {
+function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: string; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
+  const state = usePlan(remote, sid);
   return (
-    <div className="dock plan">
-      <div className="h">
-        <b>计划待批准</b>
-        <span>
-          {more > 0 && <span className="muted">还有 {more} 项 · </span>}
-          {plan && (
-            <button className="link" onClick={onFull}>
-              展开全文 ›
-            </button>
-          )}
-        </span>
-      </div>
-      <div className="dscroll">
-        <div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>
-      </div>
-      <PlanButtons remote={remote} sid={sid} />
-      {/* Claude Code leaves plan mode for manual approval of edits. */}
-      {agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
-        <div className="foot">
-          <span>批准后使用询问模式</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PopupDock({ title, agent, more, onTerminal }: { title: string; agent: Agent; more: number; onTerminal: () => void }) {
-  return (
-    <div className="dock">
-      <div className="h">
-        <b>终端里有弹窗</b>
-        <span className="muted">
-          {more > 0 && `还有 ${more} 项 · `}
-          {agentName(agent)} 在等你
-        </span>
-      </div>
-      {title && (
-        <div className="dscroll">
-          <div className="q light">{title}</div>
-          {/* Claude Code's trust prompt starts on "No, exit": Enter alone
-              ends the session (claude-code-notes §1). Trusting stays the
-              user's choice, made in the terminal. */}
-          {agent === Agent.CLAUDE && /trust/i.test(title) && (
-            <div className="desc">
-              默认选中的是 <b>No, exit</b>。按 ↓ 选中 <b>Yes, I trust this folder</b> 再按 ⏎
+    <Pending
+      frame={frame}
+      label="计划待批准"
+      brief=""
+      busy={!!state.busy}
+      head={
+        <>
+          <b>计划待批准</b>
+          <span>
+            {frame.more > 0 && <span className="muted">还有 {frame.more} 项 · </span>}
+            {plan && (
+              <button className="link" onClick={onFull}>
+                展开全文 ›
+              </button>
+            )}
+          </span>
+        </>
+      }
+      body={<div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>}
+      actions={
+        <>
+          <PlanButtons remote={remote} sid={sid} shared={state} />
+          {/* Claude Code leaves plan mode for manual approval of edits. */}
+          {agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
+            <div className="foot">
+              <span>批准后使用询问模式</span>
             </div>
           )}
-        </div>
-      )}
-      <div className="btns">
-        <button className="btn pri" onClick={onTerminal}>
-          去终端处理
-        </button>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
 
-/** Room the dock needs: its controls, at least 44 px of its content (less
- * if there is less), and its bottom margin. */
-export function dockNeed(card: number, content: number, contentScroll: number): number {
-  return card - content + Math.min(44, contentScroll) + 6;
+function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: Agent; frame: Frame; onTerminal: () => void }) {
+  return (
+    <Pending
+      frame={frame}
+      label="终端里有弹窗"
+      brief={title}
+      head={
+        <>
+          <b>终端里有弹窗</b>
+          <span className="muted">
+            {frame.more > 0 && `还有 ${frame.more} 项 · `}
+            {agentName(agent)} 在等你
+          </span>
+        </>
+      }
+      body={
+        title && (
+          <>
+            <div className="q light">{title}</div>
+            {/* Claude Code's trust prompt starts on "No, exit": Enter alone
+                ends the session (claude-code-notes §1). Trusting stays the
+                user's choice, made in the terminal. */}
+            {agent === Agent.CLAUDE && /trust/i.test(title) && (
+              <div className="desc">
+                默认选中的是 <b>No, exit</b>。按 ↓ 选中 <b>Yes, I trust this folder</b> 再按 ⏎
+              </div>
+            )}
+          </>
+        )
+      }
+      actions={
+        <div className="btns">
+          <button className="btn pri" onClick={onTerminal}>
+            去终端处理
+          </button>
+        </div>
+      }
+    />
+  );
 }
 
-/** The first waiting item, docked. It gets at most room pixels (45% of
- * the chat column). A card that cannot fit its controls and a little of
- * its content in that shows as one line whose 展开 opens it as a page, so
- * the input stays in view; so does any card while the user types. */
+/** The least room, in pixels, an item needs to open in the dock: its line,
+ * some of its content and its actions. With less it opens as a page. */
+export const DOCK_MIN_ROOM = 200;
+
+/** The first waiting item, docked above the input as one line (client-v7
+ * 停靠区). 处理 opens it in place, up to room pixels (what the input
+ * and a little chat leave) and 240 at most; with no room for that it
+ * opens as a page. It
+ * stays one line while the user types, unless a reason is being written. */
 export function Dock({
   remote,
   sid,
@@ -410,12 +536,15 @@ export function Dock({
   onPlan,
   onQuestion,
   onTerminal,
+  defaultOpen = false,
 }: {
   remote: Remote;
   sid: string;
   items: DockItem[];
   agent: Agent;
   collapsed: boolean;
+  // Opened already, as when the user came here to answer it.
+  defaultOpen?: boolean;
   room?: number;
   onExpand: () => void;
   onDetail: (approvalId: string) => void;
@@ -423,95 +552,81 @@ export function Dock({
   onQuestion?: () => void;
   onTerminal: () => void;
 }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const [need, setNeed] = useState(0);
-  const [controls, setControls] = useState(0);
+  const [open, setOpen] = useState(defaultOpen);
   const [reasoning, setReasoning] = useState(false);
   const item = items[0];
-  useLayoutEffect(() => {
-    const card = wrap.current?.firstElementChild as HTMLElement | null;
-    if (!card) return;
-    const measure = () => {
-      const scroll = card.querySelector<HTMLElement>(":scope > .dscroll");
-      const content = scroll?.offsetHeight ?? 0;
-      setControls(card.offsetHeight - content);
-      setNeed(dockNeed(card.offsetHeight, content, scroll?.scrollHeight ?? 0));
-      setReasoning(card.classList.contains("reasoning"));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(card);
-    const scroll = card.querySelector(":scope > .dscroll");
-    if (scroll) ro.observe(scroll);
-    // The card's class changes when a reason is being typed.
-    const mo = new MutationObserver(measure);
-    mo.observe(card, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
-    return () => {
-      ro.disconnect();
-      mo.disconnect();
-    };
-  }, [item?.id]);
   if (!item) return null;
-  const more = items.length - 1;
-  let full;
-  switch (item.kind) {
-    case "approval":
-      full = <ApprovalDock key={item.id} remote={remote} sid={sid} a={item.approval} agent={agent} more={more} onDetail={() => onDetail(item.approval.approvalId)} />;
-      break;
-    case "question":
-      full = <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} more={more} onTerminal={onTerminal} />;
-      break;
-    case "plan":
-      full = <PlanDock key={item.id} remote={remote} sid={sid} plan={item.plan} more={more} onFull={onPlan} />;
-      break;
-    case "popup":
-      full = <PopupDock key={item.id} title={item.title} agent={agent} more={more} onTerminal={onTerminal} />;
-      break;
-  }
-  // Typing a reason keeps the card above the keyboard, whatever the room.
-  const compact = !reasoning && need > room;
-  const oneLine = compact || (collapsed && !reasoning);
+  // Typing a reason keeps it open whatever the room or the keyboard.
+  const shown = open && (reasoning || (!collapsed && room >= DOCK_MIN_ROOM));
   const page = () => {
     if (item.kind === "approval") onDetail(item.approval.approvalId);
     else if (item.kind === "plan") onPlan();
     else if (item.kind === "question") onQuestion?.();
     else onTerminal();
   };
-  const [kind, text] = summary(item, agent, item.kind === "question" ? (remote.answerState(item.question.questionId).index) : 0);
-  const cls = item.kind === "question" ? " ask" : item.kind === "plan" ? " plan" : "";
-  // The full card stays mounted, measurable but out of sight, while the
-  // one-line form shows: a question's progress or a half-typed reason
-  // survives, and the dock knows when the card fits again.
-  const style = { "--content-max": Number.isFinite(room) ? `${Math.max(44, room - controls - 6)}px` : "none" } as CSSProperties;
+  const frame: Frame = {
+    open: shown,
+    more: items.length - 1,
+    onToggle: () => {
+      if (shown) return setOpen(false);
+      if (room < DOCK_MIN_ROOM) return page();
+      onExpand();
+      setOpen(true);
+    },
+  };
+  // The content gets what is left of the room under the line.
+  const style = { "--content-max": Number.isFinite(room) ? `${Math.max(0, room - 44)}px` : "none" } as CSSProperties;
+  let card;
+  switch (item.kind) {
+    case "approval":
+      card = (
+        <ApprovalDock
+          key={item.id}
+          remote={remote}
+          sid={sid}
+          a={item.approval}
+          agent={agent}
+          frame={frame}
+          reasoning={reasoning}
+          onReasonOpen={setReasoning}
+          onDetail={() => onDetail(item.approval.approvalId)}
+        />
+      );
+      break;
+    case "question":
+      card = <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} frame={frame} onTerminal={onTerminal} />;
+      break;
+    case "plan":
+      card = <PlanDock key={item.id} remote={remote} sid={sid} plan={item.plan} frame={frame} onFull={onPlan} />;
+      break;
+    case "popup":
+      card = <PopupDock key={item.id} title={item.title} agent={agent} frame={frame} onTerminal={onTerminal} />;
+      break;
+  }
   return (
-    <>
-      {oneLine && (
-        <div className={"dock mini" + cls}>
-          <b>{kind}</b>
-          <code>{text}</code>
-          <button onMouseDown={(e) => e.preventDefault()} onClick={compact ? page : onExpand}>
-            展开
-          </button>
-        </div>
-      )}
-      <div className={"dockwrap" + (oneLine ? " offstage" : "")} ref={wrap} style={style} aria-hidden={oneLine || undefined}>
-        {full}
-      </div>
-    </>
+    <div className="dockwrap" style={style}>
+      {card}
+    </div>
   );
 }
 
-/** A question on its own page, for when the dock has no room for it. */
+/** A question on its own page, for when the dock has no room for it: the
+ * question and options scroll, the buttons stay at the bottom. */
 export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; title: string; onBack: () => void; onTerminal: () => void }) {
+  const p = useQuestion(remote, sid, q, agent, onTerminal);
   return (
     <div className="page">
-      <NavBar onBack={onBack} title="回答提问" sub={title} />
-      {/* The card fills the page: its question and options scroll, its
-          buttons stay at the bottom. */}
-      <div className="qpage">
-        <QuestionDock key={q.questionId} remote={remote} sid={sid} q={q} agent={agent} more={0} onTerminal={onTerminal} />
-      </div>
+      <NavBar onBack={onBack} title="回答提问" sub={`${title} · ${agentName(agent)}`} />
+      {p && (
+        <>
+          <div className="question-full">
+            <div className="muted small">{p.progress}</div>
+            <div className="q">{p.text}</div>
+            {p.answers}
+          </div>
+          <div className="dock ask">{p.actions(true)}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -525,8 +640,9 @@ export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote:
   return (
     <div className="page">
       <NavBar onBack={onBack} title="审批详情" sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
-      <div className="body pad detail">
-        <div className="h-kind">{approvalTitle(a)}</div>
+      <div className="body detail">
+        {/* A command speaks for itself; other requests name the tool. */}
+        {!a.command && <div className="h-kind">{approvalTitle(a)}</div>}
         {a.description && <div className="desc">{a.description}</div>}
         <pre className="cmd">{approvalText(a)}</pre>
       </div>
@@ -542,7 +658,7 @@ export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote;
   return (
     <div className="page">
       <NavBar onBack={onBack} title="计划" sub={title} />
-      <div className="body pad detail ai">
+      <div className="body detail ai">
         <Markdown text={plan.text} />
       </div>
       <div className="dock plan">

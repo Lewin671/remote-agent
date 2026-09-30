@@ -804,7 +804,7 @@ export function toolClock(since: number, now: number, lostAt: number | undefined
   return { ms: Math.max(0, (frozen ? Math.min(now, lostAt) : now) - since), frozen };
 }
 
-/** m:ss, as the input's summary writes a tool's time. */
+/** m:ss, as a frozen or full tool clock is written. */
 export function clock(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -814,19 +814,6 @@ export function clock(ms: number): string {
  * Codex, which gives none, 命令 or 工具. */
 export function toolName(t: Pick<RunningTool, "itemType" | "kind">): string {
   return t.itemType || (t.kind === ToolKind.COMMAND || t.kind === ToolKind.UNSPECIFIED ? "命令" : "工具");
-}
-
-/** The line above the input about what runs now: one tool and its time,
- * how many run, work left in the background, or, while disconnected, the
- * last reading. undefined when nothing runs. */
-export function toolPeek(d: Derived, now: number, lostAt: number | undefined): { text: string; off: boolean } | undefined {
-  if (d.tools.length === 0) return d.unsettled.length || d.background.length ? { text: "后台工作 · 去终端确认", off: false } : undefined;
-  const oldest = d.tools.reduce((a, t) => (t.since && (!a.since || t.since < a.since) ? t : a), d.tools[0]);
-  const c = toolClock(oldest.since, now, lostAt);
-  if (c?.frozen) return { text: `等待同步 · 上次 ${clock(c.ms)}`, off: true };
-  if (lostAt !== undefined) return { text: "等待同步", off: true };
-  const time = c ? ` · ${clock(c.ms)}` : "";
-  return { text: d.tools.length === 1 ? `${toolName(oldest)}${time}` : `${d.tools.length} 项处理中${time}`, off: false };
 }
 
 export function eventTime(e: Event): number {

@@ -22,6 +22,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
   const [shownEnded, setShownEnded] = useState(wide ? PAGE : 3);
   const [scrolled, setScrolled] = useState(false);
+  const [typing, setTyping] = useState(false);
   const endedRef = useRef<HTMLDivElement>(null);
   const [focus] = useState(() => remote.focusProject === pkey);
   useEffect(() => {
@@ -35,7 +36,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
         <div className="pname" title={name}>{name}</div>
         <div className="muted small">{[shortPath(pkey), ...machines].join(" · ")}</div>
         {!wide && ended.length > 0 && (
-          <div className="small">
+          <div className="small pmore">
             {live.length > 0 && <span className="muted">{live.length} 个进行中 · </span>}
             <button
               className="link"
@@ -99,12 +100,13 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
     );
   return (
     <div className="page">
-      <NavBar onBack={onBack} title={scrolled ? name : undefined} sub={scrolled ? shortPath(pkey) : undefined} />
+      {/* With the keyboard up the project's head folds into the bar. */}
+      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? shortPath(pkey) : undefined} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
-        <div className="pad">{head}</div>
+        {!typing && <div className="pad">{head}</div>}
         {lists}
       </div>
-      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} />}
+      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} onFocus={setTyping} />}
     </div>
   );
 }

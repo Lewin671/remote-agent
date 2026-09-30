@@ -9,7 +9,7 @@ import { ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { hhmm } from "../model";
 import { aspectOf, baseName, extOf, matchesFormat, mimeOf, sizeText, type SessionImage } from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
-import { useRemote } from "../ui";
+import { Exp, useRemote } from "../ui";
 
 /** Opens the viewer at a picture; provided by the session page. */
 export const OpenImage = createContext<(ref: ImageRef) => void>(() => undefined);
@@ -102,7 +102,7 @@ export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) 
             <span>生成的图片{sizeText(r) && ` · ${sizeText(r)}`}</span>
             {prompt && i === 0 && (
               <button className="link" onClick={() => setShown((v) => !v)} aria-expanded={shown}>
-                提示词 {shown ? "▾" : "▸"}
+                提示词 <Exp up={shown} />
               </button>
             )}
           </div>
