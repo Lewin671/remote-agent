@@ -171,7 +171,9 @@ export function Setup({ onDone }: { onDone: () => void }) {
   const stopped = useRef(false);
   // The user gave up waiting; and whether this device already began to
   // register, after which giving up cannot undo the join.
-  const canceled = useRef(false);
+  // One token per attempt: giving up cancels that attempt for good, and a
+  // new attempt never revives an old one or takes its late callbacks.
+  const attempt = useRef<{ canceled: boolean }>({ canceled: false });
   const [registering, setRegistering] = useState(false);
   const started = useRef(false);
   // Mounting again, as StrictMode does in development, must not leave the
@@ -184,19 +186,27 @@ export function Setup({ onDone }: { onDone: () => void }) {
   }, []);
 
   const pair = async (link = fromLink ?? { code, server }) => {
-    canceled.current = false;
+    const mine = { canceled: false };
+    attempt.current = mine;
+    const current = () => attempt.current === mine;
     setRegistering(false);
     setBusy(true);
     setError(undefined);
     setEmoji(undefined);
     try {
-      await joinByPairing(link, setEmoji, () => stopped.current || canceled.current, () => setRegistering(true));
+      await joinByPairing(
+        link,
+        (e) => current() && setEmoji(e),
+        () => stopped.current || mine.canceled || !current(),
+        () => current() && setRegistering(true),
+      );
+      if (!current()) return;
       location.hash = "";
       onDone();
     } catch (e) {
+      // Given up or replaced: the page already says what it is doing.
+      if (!current() || (e instanceof PairCanceled && mine.canceled)) return;
       setRegistering(false);
-      // Given up here: the page already says so.
-      if (e instanceof PairCanceled && canceled.current) return;
       setError(joinBanner(e));
       setEmoji(undefined);
       setBusy(false);
@@ -206,7 +216,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
    * is kept and the old code cleared; the old request may still hold the
    * code on the other device, which should refuse it. */
   const giveUp = () => {
-    canceled.current = true;
+    attempt.current.canceled = true;
     setEmoji(undefined);
     setBusy(false);
     setCode("");

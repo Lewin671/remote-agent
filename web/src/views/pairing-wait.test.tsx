@@ -68,3 +68,21 @@ it("cannot give up once this device began to register, and reports the outcome",
   await act(async () => calls[0].release(true));
   expect(done).toHaveBeenCalled();
 });
+
+it("keeps a given-up attempt canceled when the user pairs again", async () => {
+  const { input } = await start();
+  await act(async () => give().click());
+  // A new attempt with a new code.
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input("配对码"), "11112222");
+    input("配对码").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => [...host.querySelectorAll("button")].find((b) => b.textContent === "加入")!.click());
+  expect(calls.length).toBe(2);
+  // The old attempt must stay stopped: it must never register.
+  expect(calls[0].stopped()).toBe(true);
+  expect(calls[1].stopped()).toBe(false);
+  // Its late callbacks do not touch the new attempt's page.
+  act(() => calls[0].register());
+  expect(give().disabled).toBe(false);
+});
