@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import type { RateLimit } from "../gen/remoteagent/v1/event_pb";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
-import { agentName, ago, findModel, machineAgents, modelLabel, machineName, modeName, projects, shortPath } from "../model";
+import { agentName, agentOf, ago, exited, findModel, machineAgents, modelLabel, machineName, modeName, projects, shortPath } from "../model";
+import { quotaRow } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
-import { errorText, type Remote } from "../remote";
+import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { Alert, Banner, Dot, NavBar, Sheet, useRemote } from "../ui";
@@ -33,16 +33,19 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       </div>
       <div className="grp">
         {machines.map((m) => (
-          <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
+          <button key={m.id} className="row machine-summary" onClick={() => go("m/" + m.id)}>
             <span className="ico" style={{ background: "#5b8def" }}>
               ⌘
             </span>
-            {machineName(m)}
-            <span className="v">
-              <Dot tone={m.online ? "idle" : "off"} />
-              {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
-              {m.online && m.meta?.secondaryLimit ? ` · 已用 ${Math.round(m.meta.secondaryLimit.usedPercent)}%` : ""} ›
+            <span className="machine-info">
+              <span className="machine-name">{machineName(m)}</span>
+              <span className="machine-status">
+                <Dot tone={m.online ? "idle" : "off"} />
+                {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
+                {quotaLine(m)}
+              </span>
             </span>
+            <span className="machine-chevron">›</span>
           </button>
         ))}
         <button className="row add" onClick={() => go("add")}>
@@ -92,6 +95,128 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
         </button>
       </div>
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+/** The tightest Codex window of a machine, for its row: "Codex · 7 天已用 34%". */
+function quotaLine(m: MachineView): string {
+  const l = m.meta?.secondaryLimit ?? m.meta?.primaryLimit;
+  if (!l) return "";
+  const r = quotaRow(l, "", Date.now(), m.online);
+  return r.tone === "stale" ? " · Codex 额度（上次记录）" : ` · Codex · ${r.label}${r.used}`;
+}
+
+/** On a machine's page: each CLI's quota in a line, and the way to all. */
+function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
+  const agents = machineAgents(m);
+  const now = Date.now();
+  const codex = m.meta?.primaryLimit ?? m.meta?.secondaryLimit;
+  return (
+    <div className="grp">
+      {agents.includes(Agent.CODEX) && (
+        <div className="row">
+          Codex 额度
+          <span className="v">{codex ? (() => { const r = quotaRow(codex, "", now, m.online); return `${r.label}${r.used}`; })() : "暂未获取"}</span>
+        </div>
+      )}
+      {agents.includes(Agent.CLAUDE) && (
+        <div className="row">
+          Claude Code 额度<span className="v">暂不支持读取</span>
+        </div>
+      )}
+      <button className="row" onClick={() => go("q/" + m.id)}>
+        查看全部额度<span className="v">›</span>
+      </button>
+    </div>
+  );
+}
+
+/** 账户额度: each CLI's account quota on one machine, apart from context
+ * use and token counts. Codex reports it in its rollout; Claude Code's is
+ * not collected yet, and says so rather than showing anything made up. */
+export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: (r: string) => void; onBack: () => void }) {
+  useRemote(remote);
+  const m = remote.machines.get(id);
+  if (!m)
+    return (
+      <div className="page">
+        <NavBar onBack={onBack} />
+        <div className="center muted">没有这台设备</div>
+      </div>
+    );
+  const agents = machineAgents(m);
+  const now = Date.now();
+  const meta = m.meta;
+  const rows = [quotaRow(meta?.primaryLimit, "5 小时", now, m.online), quotaRow(meta?.secondaryLimit, "7 天", now, m.online)];
+  const got = !!(meta?.primaryLimit || meta?.secondaryLimit);
+  // A Claude Code session on this machine, to read /usage in its terminal.
+  const claude = [...remote.sessions.values()].find((s) => s.machineId === id && agentOf(s) === Agent.CLAUDE && !exited(s));
+  return (
+    <div className="page gray">
+      <NavBar onBack={onBack} title={<span className="tname">账户额度</span>} sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`} />
+      <div className="body">
+        {agents.includes(Agent.CODEX) && (
+          <>
+            <div className="glabel">Codex{meta?.planType ? ` · ${meta.planType}` : ""}</div>
+            <div className="grp">
+              {got ? (
+                rows.map((r) => (
+                  <div className={"row col quota " + r.tone} key={r.label}>
+                    <div className="line">
+                      <span>{r.label}</span>
+                      <span className="v">
+                        {r.used}
+                        {r.reset && ` · ${r.reset}`}
+                      </span>
+                    </div>
+                    {r.percent !== undefined && (
+                      <div className="bar">
+                        <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+                      </div>
+                    )}
+                    {r.note && <div className="hint">{r.note}</div>}
+                  </div>
+                ))
+              ) : (
+                <div className="row col">
+                  <b>暂未获取额度</b>
+                  <div className="hint">Codex 在这台机器上下一次回复后会带上额度。</div>
+                </div>
+              )}
+            </div>
+            {rows.some((r) => r.tone === "warn" || r.tone === "full") && (
+              <div className="gbanner">
+                <Banner kind="warn">{rows.some((r) => r.tone === "full") ? "有额度已经用尽" : "有额度即将用尽"}，不会自动切换 CLI 或模型</Banner>
+              </div>
+            )}
+          </>
+        )}
+        {agents.includes(Agent.CLAUDE) && (
+          <>
+            <div className="glabel">Claude Code</div>
+            <div className="grp">
+              <div className="row col">
+                <b>暂不支持读取额度</b>
+                <div className="hint">这台电脑的 remote-agent 还不采集 Claude Code 的账户额度。</div>
+              </div>
+              <button
+                className="row"
+                disabled={!m.online || !claude}
+                onClick={() => {
+                  if (!claude) return;
+                  remote.termFirst.add(claude.id);
+                  go("s/" + claude.id);
+                }}
+              >
+                去终端查看 /usage<span className="v">{claude ? "›" : "没有进行中的会话"}</span>
+              </button>
+            </div>
+            <div className="manage-hint">只打开终端，不自动输入命令。</div>
+          </>
+        )}
+        <div className="manage-hint">额度属于 CLI 登录账户，该账户的其他使用也可能计入；上下文占用在会话设置里看。</div>
+      </div>
     </div>
   );
 }
@@ -365,29 +490,6 @@ function usePush(remote: Remote) {
 
 const timeouts = [60, 300, 600, 1800, 3000];
 
-function limitRow(key: string, l?: RateLimit) {
-  if (!l) return null;
-  const reset = l.resetsAt ? new Date(Number(l.resetsAt) * 1000) : undefined;
-  const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  const mins = Number(l.windowMinutes);
-  const label = mins >= 7 * 24 * 60 ? "本周" : mins >= 60 ? `${Math.round(mins / 60)} 小时` : `${mins} 分钟`;
-  const hm = reset ? `${reset.getHours()}:${String(reset.getMinutes()).padStart(2, "0")}` : "";
-  const sameDay = reset && reset.toDateString() === new Date().toDateString();
-  return (
-    <div className="row col" key={key}>
-      <div className="line">
-        <span>{label}</span>
-        <span className="v">
-          已用 {Math.round(l.usedPercent)}%{reset && ` · ${sameDay ? "" : days[reset.getDay()] + " "}${hm} 重置`}
-        </span>
-      </div>
-      <div className="bar">
-        <i style={{ width: `${Math.min(100, l.usedPercent)}%` }} />
-      </div>
-    </div>
-  );
-}
-
 type Field = { agent: Agent; what: "model" | "effort" | "mode" } | { what: "timeout" };
 
 function defaultsFor(st: DaemonSettings, agent: Agent): { model: string; effort: string; mode: ApprovalMode } {
@@ -519,15 +621,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
     <div className="page gray">
       <NavBar onBack={onBack} title={name} />
       <div className="body">
-        {(meta?.primaryLimit || meta?.secondaryLimit) && (
-          <>
-            <div className="glabel">Codex 额度{meta?.planType ? ` · ${meta.planType}` : ""}</div>
-            <div className="grp">
-              {limitRow("p", meta?.primaryLimit)}
-              {limitRow("s", meta?.secondaryLimit)}
-            </div>
-          </>
-        )}
+        <QuotaSummary m={m} go={go} />
         {versions.length > 0 && (
           <div className="grp">
             {versions.map((v) => (
@@ -600,17 +694,18 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
           </>
         )}
         <div className="grp">
-          <button className="row danger" onClick={() => setRemoving(true)}>
-            移除这台设备
+          <button className="row danger" disabled={remote.conn !== "online"} onClick={() => setRemoving(true)}>
+            移除这台机器…
           </button>
         </div>
+        <div className="manage-hint">移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。</div>
       </div>
       {sheet}
       {removing && (
         <Alert
           title={`移除 ${name}？`}
           titleRed
-          text="它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"
+          text="它在服务器上的会话记录会被删除，连接会断开；它要重新加入账户才能再连上。电脑上的会话和文件不受影响。"
           ok="移除"
           danger
           onCancel={() => setRemoving(false)}

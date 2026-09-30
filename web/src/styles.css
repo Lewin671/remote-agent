@@ -787,3 +787,13 @@ input.field { margin: 0; }
 .pair-wait-actions .btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 .list .mi.dis, .list .mi:disabled { opacity: 1; color: var(--muted); }
 .list .mi.dis b, .list .mi:disabled b { color: var(--muted); }
+
+.row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
+.machine-summary .machine-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.machine-summary .machine-name { overflow-wrap: anywhere; }
+.machine-summary .machine-status { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.machine-summary .machine-chevron { flex-shrink: 0; color: var(--faint); }
+.row.quota.warn .v { color: var(--orange-ink); } .row.quota.warn .bar i { background: var(--orange); }
+.row.quota.full .v { color: var(--red); } .row.quota.full .bar i { background: var(--red-bg); }
+.row.quota.stale .bar i { background: var(--gray); }
+.row.col .hint { margin-top: 4px; }
