@@ -53,7 +53,7 @@
 
 模拟器 API 36（google_apis_playstore，arm64），Claude Code 2.1.285、Codex 0.159.0，2026-09-30。
 
-- **工具状态**：Claude Code 自己转到后台的命令只能从结果看出来（[claude-code-notes §10](claude-code-notes.md#10-中断和运行中的输入)），App 据此把它标为「后台命令 · 状态待确认」；Codex 有不配对的工具开始事件（[codex-notes §6](codex-notes.md#6-踩过的坑)），正常结束的一轮里只显示「未收到工具结果」
+- **工具状态**：v2 daemon 在 `ToolCall.background` 里说明调用转到了后台，App 据此标为「后台命令 · 状态待确认」并写明原因；旧 daemon 下 Claude Code 自己转到后台的命令只能从结果文字看出来（[claude-code-notes §10](claude-code-notes.md#10-中断和运行中的输入)）。一轮正常结束时仍没有结果的开始只显示「未收到工具结果」
 - **Photo Picker**：API 36 上是系统的嵌入式选择器，`PickMultipleVisualMedia(n)` 的上限要求 n ≥ 2，只剩一张的名额时改用单选；选中后 `takePersistableUriPermission` 成功，用于切换「原图」时重新读取
 - **图片方向**：`BitmapFactory` 不按 EXIF 转向，按自己读出的方向用 `Matrix` 转正后，带方向 6 的照片在两个 CLI 里都被认作正向；HEIC 等交给 `ImageDecoder`（未用真实 HEIC 验证）
 - **Keystore 包装的文件密钥**：待发图片用进程内 AES-GCM 加密，Keystore 只包装这把密钥；第一次生成密钥的同时写入图片时，旧目录清理不能晚于写入（踩过：刚建的目录被清掉，保存失败）
