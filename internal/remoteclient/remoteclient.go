@@ -420,3 +420,22 @@ func (t *Term) send(ctx context.Context, seq uint64, f *pb.TerminalFrame) error 
 
 // Close leaves the stream.
 func (t *Term) Close() { t.ws.Close(websocket.StatusNormalClosure, "") }
+
+// Image fetches and opens the display copy of an image in s. expired
+// reports that the server no longer has it.
+func (c *Client) Image(ctx context.Context, s Session, imageID string) (img *pb.ImagePayload, expired bool, err error) {
+	res, err := c.api.GetImage(ctx, connect.NewRequest(&pb.GetImageRequest{SessionId: s.ID, ImageId: imageID}))
+	if err != nil {
+		return nil, false, err
+	}
+	if res.Msg.Expired {
+		return nil, true, nil
+	}
+	img = &pb.ImagePayload{}
+	if _, err := e2e.OpenMessage(s.Key, res.Msg.Image, &pb.Header{
+		Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: s.MachineID, SessionId: s.ID, RequestId: imageID,
+	}, img); err != nil {
+		return nil, false, err
+	}
+	return img, false, nil
+}

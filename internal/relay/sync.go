@@ -105,7 +105,11 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			n, size := 0, 0
 			var batch []*pb.StoredEvent
 			for n < len(evs) && n < uploadEvents && size < uploadBytes {
-				env, err := c.sealEvent(key, id, evs[n])
+				// Images first: a client that sees the event can open them.
+				if err := c.uploadImages(ctx, key, id, evs[n:n+1]); err != nil {
+					return err
+				}
+				env, err := c.sealEvent(key, id, c.withImageStates(id, evs[n]))
 				if err != nil {
 					return err
 				}

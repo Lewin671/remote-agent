@@ -552,6 +552,11 @@ func loadEnvFile(path string) error {
 // backend adapts the daemon to what the relay needs.
 type backend struct{ *daemon.Daemon }
 
+func (b backend) Image(sessionID, imageID string) relay.ImageUpload {
+	u := b.Daemon.Image(sessionID, imageID)
+	return relay.ImageUpload{Payload: u.Payload, Done: u.Done, Failed: u.Failed}
+}
+
 func (b backend) OpenTerminal(id string) (relay.Terminal, error) {
 	t, err := b.Daemon.OpenTerminal(id)
 	if err != nil {

@@ -46,6 +46,8 @@ type session struct {
 	dir  string
 	term terminal
 	log  *eventlog.Log
+	// images are the session's images and their display copies.
+	images *imageStore
 
 	readMu sync.Mutex // serializes rollout reads
 	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
@@ -128,6 +130,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		done:      make(chan struct{}),
 		status:    pb.SessionStatus_SESSION_STATUS_STARTING,
 		queue:     q,
+		images:    openImageStore(dir),
 	}
 	// Rebuild derived state from the events already logged.
 	log.Each(func(e *pb.Event) {
@@ -326,6 +329,9 @@ func (s *session) readRollout() {
 		evs, err := s.parser.Parse(l.Data)
 		if err != nil {
 			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", err)
+		}
+		for _, f := range s.parser.Images() {
+			s.images.process(f, r.Path)
 		}
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", err)

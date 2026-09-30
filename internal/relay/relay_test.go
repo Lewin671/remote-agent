@@ -21,6 +21,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"google.golang.org/protobuf/proto"
 )
 
 // marker is plaintext that must never reach the server's database.
@@ -34,10 +35,14 @@ type fakeBackend struct {
 	sends    []*pb.SendRequest
 	term     *fakeTerminal
 	resolved []*pb.ResolveApprovalRequest
+	// images are display copies by image ID; imageResults the IDs whose
+	// upload finished, in order.
+	images       map[string]relay.ImageUpload
+	imageResults []string
 }
 
 func newFakeBackend(t *testing.T) *fakeBackend {
-	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}}
+	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, images: map[string]relay.ImageUpload{}}
 }
 
 func (b *fakeBackend) add(t *testing.T, id string) *eventlog.Log {
@@ -134,6 +139,27 @@ func (b *fakeBackend) MachineMeta() *pb.MachineMeta {
 }
 
 func (b *fakeBackend) Local() remoteagentv1connect.LocalServiceHandler { return &fakeLocal{b: b} }
+
+func (b *fakeBackend) Image(sessionID, imageID string) relay.ImageUpload {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	u, ok := b.images[imageID]
+	if !ok {
+		return relay.ImageUpload{Failed: true}
+	}
+	return u
+}
+
+func (b *fakeBackend) ImageUploaded(sessionID, imageID string, ok bool, expiresMs int64) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.imageResults = append(b.imageResults, imageID)
+	if ok {
+		b.images[imageID] = relay.ImageUpload{Done: true}
+	} else {
+		b.images[imageID] = relay.ImageUpload{Failed: true}
+	}
+}
 
 type fakeLocal struct {
 	remoteagentv1connect.UnimplementedLocalServiceHandler
@@ -648,5 +674,62 @@ func TestPairingRefusals(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	if _, err := relay.JoinByPairing(ctx, l2, func([]string) {}); err == nil || !strings.Contains(err.Error(), "canceled") {
 		t.Fatalf("refused pairing: %v", err)
+	}
+}
+
+func TestImagesGoUpBeforeTheirEvents(t *testing.T) {
+	e := setup(t)
+	l := e.backend.add(t, "sess1")
+	const good, failing = "11111111111111111111111111111111", "22222222222222222222222222222222"
+	payload, _ := proto.Marshal(&pb.ImagePayload{Format: pb.ImageFormat_IMAGE_FORMAT_PNG, Width: 1, Height: 1, Data: []byte("\x89PNG" + marker)})
+	e.backend.mu.Lock()
+	e.backend.images[good] = relay.ImageUpload{Payload: payload}
+	e.backend.mu.Unlock()
+	msg := &pb.UserMessage{Text: "look", Images: []*pb.ImageRef{
+		{ImageId: good, Sync: pb.ImageSync_IMAGE_SYNC_SYNCED, Preview: []byte("p1"), DisplayWidth: 1},
+		{ImageId: failing, Sync: pb.ImageSync_IMAGE_SYNC_SYNCED, Preview: []byte("p2"), DisplayWidth: 1},
+	}}
+	if err := l.Append("sess1", []*pb.Event{{Kind: &pb.Event_UserMessage{UserMessage: msg}}}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	e.startRelay()
+	ctx := context.Background()
+	var s remoteclient.Session
+	waitFor(t, "the event", func() bool {
+		ss, _ := e.client.Sessions(ctx)
+		if len(ss) == 1 && ss[0].LastSeq == 1 {
+			s = ss[0]
+			return true
+		}
+		return false
+	})
+	evs, err := e.client.Events(ctx, s, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := evs[0].GetUserMessage().GetImages()
+	if len(refs) != 2 || refs[0].Sync != pb.ImageSync_IMAGE_SYNC_SYNCED || refs[1].Sync != pb.ImageSync_IMAGE_SYNC_PREVIEW_ONLY || refs[1].DisplayWidth != 0 {
+		t.Fatalf("refs %v", refs)
+	}
+	img, expired, err := e.client.Image(ctx, s, good)
+	if err != nil || expired || string(img.Data) != "\x89PNG"+marker {
+		t.Fatalf("image %v %v %v", img, expired, err)
+	}
+	if _, _, err := e.client.Image(ctx, s, failing); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("failing image: %v", err)
+	}
+	e.backend.mu.Lock()
+	done := e.backend.images[good].Done
+	e.backend.mu.Unlock()
+	if !done {
+		t.Fatal("upload not recorded")
+	}
+	// The server only has ciphertext of the image too.
+	e.stopRelay()
+	e.srv.Close()
+	for _, name := range []string{e.dbPath, e.dbPath + "-wal"} {
+		if b, err := os.ReadFile(name); err == nil && bytes.Contains(b, []byte(marker)) {
+			t.Fatalf("%s contains plaintext", name)
+		}
 	}
 }

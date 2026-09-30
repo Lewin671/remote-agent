@@ -38,6 +38,20 @@ type Backend interface {
 	MachineMeta() *pb.MachineMeta
 	// OpenTerminal starts streaming a session's terminal.
 	OpenTerminal(sessionID string) (Terminal, error)
+	// Image says what to do about an image's display copy before an
+	// event that shows it is uploaded; ImageUploaded records the outcome.
+	Image(sessionID, imageID string) ImageUpload
+	ImageUploaded(sessionID, imageID string, ok bool, expiresMs int64)
+}
+
+// ImageUpload is the display copy of an image in a session.
+type ImageUpload struct {
+	// Payload is a serialized ImagePayload to seal and upload.
+	Payload []byte
+	// Done: it is on the server already.
+	Done bool
+	// Failed: there is none to upload; events show the preview only.
+	Failed bool
 }
 
 // Relay keeps the daemon connected to the server.
@@ -49,6 +63,9 @@ type Relay struct {
 
 	mu        sync.Mutex
 	connected bool
+	// imageTries counts failed uploads per image across connections, so
+	// that one image cannot hold its session's events back for long.
+	imageTries map[string]int
 }
 
 // New returns a relay for backend.

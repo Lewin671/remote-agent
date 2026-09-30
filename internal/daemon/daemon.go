@@ -385,6 +385,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	cx := d.agents[pb.Agent_AGENT_CODEX]
 	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
 	m.Agents = d.installed()
+	m.Capabilities = capabilities()
 	d.mu.Lock()
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType

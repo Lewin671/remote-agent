@@ -59,3 +59,19 @@ func (d *Daemon) exact(id string) (*session, error) {
 	}
 	return s, nil
 }
+
+// Image returns what the relay must do about an image's display copy.
+func (d *Daemon) Image(sessionID, imageID string) ImageToUpload {
+	s, err := d.exact(sessionID)
+	if err != nil {
+		return ImageToUpload{Failed: true}
+	}
+	return s.images.upload(imageID)
+}
+
+// ImageUploaded records whether the relay stored an image's display copy.
+func (d *Daemon) ImageUploaded(sessionID, imageID string, ok bool, expiresMs int64) {
+	if s, err := d.exact(sessionID); err == nil {
+		s.images.uploaded(imageID, ok, expiresMs)
+	}
+}

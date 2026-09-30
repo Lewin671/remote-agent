@@ -357,3 +357,16 @@ type Checkable interface {
 	// a startup popup; nil if there is nothing to press.
 	StartupKeys(popup string) []string
 }
+
+// EventImages lists the image refs of an event.
+func EventImages(e *pb.Event) []*pb.ImageRef {
+	switch k := e.Kind.(type) {
+	case *pb.Event_UserMessage:
+		return k.UserMessage.Images
+	case *pb.Event_ToolCall:
+		return k.ToolCall.Images
+	case *pb.Event_ImageGenerated:
+		return k.ImageGenerated.Images
+	}
+	return nil
+}

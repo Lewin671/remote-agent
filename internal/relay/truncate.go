@@ -1,7 +1,10 @@
 package relay
 
 import (
+	"slices"
+
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,6 +22,20 @@ func fitEvent(e *pb.Event) *pb.Event {
 		return e
 	}
 	e = proto.CloneOf(e)
+	// Previews go first, largest first: the text, the image refs and the
+	// tool's state matter more than a thumbnail, which clients replace
+	// with a placeholder of the right shape.
+	refs := slices.Clone(agent.EventImages(e))
+	slices.SortFunc(refs, func(a, b *pb.ImageRef) int { return len(b.Preview) - len(a.Preview) })
+	for _, ref := range refs {
+		if proto.Size(e) <= maxEventBytes {
+			return e
+		}
+		ref.Preview, ref.PreviewFormat, ref.PreviewWidth, ref.PreviewHeight = nil, pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED, 0, 0
+	}
+	if proto.Size(e) <= maxEventBytes {
+		return e
+	}
 	var fields []*string
 	switch k := e.Kind.(type) {
 	case *pb.Event_UserMessage:
