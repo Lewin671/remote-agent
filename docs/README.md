@@ -25,8 +25,9 @@
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v1.html](design/client-v1.html) | 界面稿 | PWA 客户端的当前设计 |
-| [design/client-v0.html](design/client-v0.html) | 界面稿 | 上一版，P2 按它实现，只读 |
+| [design/client-v2.html](design/client-v2.html) | 界面稿 | 当前设计：Claude Code、统一输入区、队列和项目管理 |
+| [design/client-v1.html](design/client-v1.html) | 界面稿 | 网页和 Android 已实现的基线，只读 |
+| [design/client-v0.html](design/client-v0.html) | 界面稿 | P2 的历史界面稿，只读 |
 
 根目录的 README 只写一段简介和链接；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 
