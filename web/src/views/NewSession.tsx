@@ -36,7 +36,7 @@ type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "conf
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
-import { groupProjects } from "../prefs";
+import { groupProjects, isHidden } from "../prefs";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 
@@ -196,7 +196,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       setBusy(false);
     }
   };
-  const blocked = !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
+  // A project removed from the list (here or on another client) keeps its
+  // draft, but a new session waits until it is restored.
+  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先恢复" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     current.abandon();

@@ -1430,3 +1430,23 @@ it("loads a picture opened offline once the connection is back (review B11)", as
   });
   await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
 });
+
+it("asks to restore a project removed while its draft is on the wide home (review B12)", async () => {
+  const r = demo();
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  mount(<WideHome remote={r} go={() => undefined} />);
+  await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await r.changePrefs("hide", "/Users/me/Code/foo");
+  });
+  expect(host.textContent).toContain("这个项目已从列表移除");
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
+  expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
+  await click(button("恢复到项目列表"));
+  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
+});

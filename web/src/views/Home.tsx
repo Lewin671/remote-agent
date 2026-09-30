@@ -27,7 +27,7 @@ import { Avatar, Banner, Dot, Skeleton, useNow, useRemote } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
-import { PrefsBanner, useProjectGroups } from "./Projects";
+import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
 
 export type { Go };
 
@@ -456,6 +456,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
         ) : (
           <>
             <h3>开始一个任务</h3>
+            <RemovedNotice remote={remote} pkey={pkey} />
             <NewBox
               ns={ns}
               name={name}
