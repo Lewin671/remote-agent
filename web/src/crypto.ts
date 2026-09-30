@@ -10,6 +10,7 @@ import { EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header }
 export const VERSION = 1;
 export const REGISTER_CONTEXT = "remote-agent/v1/register\0";
 export const LOGIN_CONTEXT = "remote-agent/v1/login\0";
+export const ENVELOPE_SIGNATURE_CONTEXT = "remote-agent/v1/envelope-signature\0";
 
 const enc = new TextEncoder();
 
@@ -93,6 +94,9 @@ export interface Keys {
   wrap: CryptoKey;
   meta: CryptoKey;
   command: CryptoKey;
+  // The account's project list preferences, and client device metadata.
+  prefs: CryptoKey;
+  deviceMeta: CryptoKey;
 }
 
 export async function deriveKeys(root: CryptoKey): Promise<Keys> {
@@ -100,6 +104,8 @@ export async function deriveKeys(root: CryptoKey): Promise<Keys> {
     wrap: await aesKey(await deriveBits(root, "wrap")),
     meta: await aesKey(await deriveBits(root, "machine-meta")),
     command: await aesKey(await deriveBits(root, "command")),
+    prefs: await aesKey(await deriveBits(root, "account-prefs")),
+    deviceMeta: await aesKey(await deriveBits(root, "device-meta")),
   };
 }
 
@@ -134,6 +140,25 @@ export async function signLogin(device: CryptoKey, challenge: Uint8Array): Promi
 export async function importSessionKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   if (raw.length !== 32) throw new Error("bad session key");
   return aesKey(raw);
+}
+
+/** What a device signs of an envelope: its bytes as transmitted, each
+ * part length-prefixed, after a context (Envelope.signature). */
+export function envelopeSigned(env: Envelope): Uint8Array<ArrayBuffer> {
+  const len = (b: Uint8Array) => {
+    const out = new Uint8Array(4);
+    new DataView(out.buffer).setUint32(0, b.length);
+    return out;
+  };
+  return concat(utf8(ENVELOPE_SIGNATURE_CONTEXT), len(env.header), env.header, len(env.nonce), env.nonce, len(env.ciphertext), env.ciphertext);
+}
+
+/** Signs a command envelope with this device's key, so that the daemon
+ * can tell which device sent it even though the server is not trusted.
+ * The header's sender must be this device's ID. */
+export async function signEnvelope(device: CryptoKey, env: Envelope): Promise<Envelope> {
+  const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", device, envelopeSigned(env)));
+  return create(EnvelopeSchema, { ...env, signature: sig });
 }
 
 export class OpenError extends Error {}

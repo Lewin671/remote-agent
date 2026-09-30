@@ -19,6 +19,7 @@ import {
   parseSecret,
   REGISTER_CONTEXT,
   sealMessage,
+  signEnvelope,
   signLogin,
   expect,
   type Keys,
@@ -622,18 +623,23 @@ export class Remote {
    * runs at most once. */
   private async forward(machineId: string, sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
     const { requestId, deadline } = slot;
-    const env = await sealMessage(
-      this.keys.command,
-      {
-        kind: PayloadKind.COMMAND,
-        machineId,
-        sessionId: sid,
-        requestId,
-        deadlineMs: BigInt(deadline),
-        sender: this.account.deviceId,
-      },
-      CommandSchema,
-      create(CommandSchema, { kind: cmd }),
+    // Signed by this device, so the daemon knows who sent it whatever the
+    // server says (the server also checks the sender is the caller).
+    const env = await signEnvelope(
+      this.account.devicePrivate,
+      await sealMessage(
+        this.keys.command,
+        {
+          kind: PayloadKind.COMMAND,
+          machineId,
+          sessionId: sid,
+          requestId,
+          deadlineMs: BigInt(deadline),
+          sender: this.account.deviceId,
+        },
+        CommandSchema,
+        create(CommandSchema, { kind: cmd }),
+      ),
     );
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.

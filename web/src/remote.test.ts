@@ -1,3 +1,6 @@
+import { fromBinary } from "@bufbuild/protobuf";
+import { envelopeSigned } from "./crypto";
+import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
 import { CommandError, COMMAND_TTL_MS, newSlot, Remote, uncertain, type RequestSlot } from "./remote";
@@ -26,9 +29,10 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
   // A Remote whose server answers "no result from the machine" and then
   // "machine offline".
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   class Probe extends Remote {
     constructor() {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: key, deviceId: "d" }, { wrap: key, meta: key, command: key });
+      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
     }
   }
   const r = new Probe();
@@ -63,4 +67,27 @@ it("keeps a message of unknown outcome on its request when the machine is then o
   await vi.waitFor(() => expect(seen).toHaveLength(3));
   expect(new Set(seen).size).toBe(1);
   expect(r.outbox("s-idle")[0].unknown).toBe(true);
+});
+
+it("signs every command it forwards with the device key, naming itself the sender", async () => {
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
+  class Probe extends Remote {
+    constructor() {
+      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "dev1" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+    }
+  }
+  const r = new Probe();
+  let sent: Envelope | undefined;
+  (r as unknown as { api: object }).api = {
+    forward: async (req: { command: Envelope }) => {
+      sent = req.command;
+      throw new ConnectError("machine is offline", Code.Unavailable);
+    },
+  };
+  await r.machineCommand("m", { case: "listModels", value: {} }).catch(() => undefined);
+  expect(sent).toBeTruthy();
+  expect(fromBinary(HeaderSchema, sent!.header).sender).toBe("dev1");
+  expect(sent!.signature.length).toBe(64);
+  expect(await crypto.subtle.verify("Ed25519", device.publicKey, sent!.signature as Uint8Array<ArrayBuffer>, envelopeSigned(sent!))).toBe(true);
 });
