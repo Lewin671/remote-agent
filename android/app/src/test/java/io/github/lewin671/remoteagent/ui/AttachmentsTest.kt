@@ -121,11 +121,25 @@ class AttachmentsTest {
 
 
     @Test
+    fun theOrderFileAlwaysListsTheWholeSelection() {
+        val files = MemoryFiles()
+        val d = ImageDraft("session:s", files, kotlinx.coroutines.Dispatchers.Unconfined)
+        val ready = img("a")
+        val preparing = PendingImage("b", "content://picker/b")
+        d.attach(listOf(ready), 6)
+        d.images += preparing
+        // A save that runs while b is still being prepared keeps b in the selection.
+        d.detach(emptyList())
+        val order = String(files.get("session:s", "order")!!).split("\n")
+        assertEquals(listOf("a", "b"), order.drop(1))
+    }
+
+    @Test
     fun aDraftSavedBeforeTheOrderFileIsRestored() {
         val files = MemoryFiles()
         saveImages(files, "session:s", listOf(img("x"), img("y")), original = false)
         files.remove("session:s", "order")
-        val d = ImageDraft("session:s", files)
+        val d = ImageDraft("session:s", files, kotlinx.coroutines.Dispatchers.Unconfined)
         d.restore { null }
         assertEquals(setOf("x", "y"), d.images.map { it.id }.toSet())
         // And it has an order file now.

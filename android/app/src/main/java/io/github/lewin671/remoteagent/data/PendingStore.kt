@@ -37,7 +37,8 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
         // Sealed first: the first use of the key may clear what it cannot open.
         val sealed = seal(data)
         val f = File(folder(draft), name)
-        val tmp = File(f.parentFile, "$name.tmp")
+        // A temporary name of its own: two saves never write the same file.
+        val tmp = File(f.parentFile, "$name.${java.util.UUID.randomUUID()}.tmp")
         tmp.writeBytes(sealed)
         tmp.renameTo(f)
     }

@@ -143,5 +143,8 @@ class RaApp : Application() {
         const val TAG = "remote-agent"
         lateinit var instance: RaApp
             private set
+
+        /** The app's scope, or null outside the app (JVM tests). */
+        fun scopeOrNull(): CoroutineScope? = if (::instance.isInitialized) instance.scope else null
     }
 }

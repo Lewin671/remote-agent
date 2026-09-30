@@ -147,7 +147,12 @@ private fun legacyOrder(files: SealedFiles, folder: String): List<String>? {
 }
 
 /** The images of one draft (a session's message box or a project's new-session card). */
-class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instance.pendingStore) {
+class ImageDraft(
+    val key: String,
+    private val files: SealedFiles = RaApp.instance.pendingStore,
+    /** Where saves run, one at a time for this draft; tests run them in place. */
+    private val saves: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+) {
     val images = mutableStateListOf<PendingImage>()
     var original by mutableStateOf(false)
         private set
@@ -168,10 +173,30 @@ class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instanc
         persistOrder()
     }
 
-    private fun persistOrder() = runCatching { saveOrder(files, key, images, original) }
+    /**
+     * Saves the draft as it is when the save runs: every prepared image and
+     * the order of the whole selection. Saves run one at a time, so an
+     * older snapshot never lands after a newer one.
+     */
+    private fun persistOrder() {
+        RaApp.scopeOrNull()?.launch(saves) { saveNow() } ?: saveNow()
+    }
+
+    /** Images whose current bytes are on disk; an image prepared again is written again. */
+    private val saved = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    private fun saveNow() {
+        runCatching {
+            val now = images.toList()
+            saveImages(files, key, now.filter { it.id !in saved }, original)
+            now.filter { it.processed != null }.forEach { saved += it.id }
+            saveOrder(files, key, now, original)
+        }.onFailure { android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}") }
+    }
 
     private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
         img.job?.cancel()
+        saved -= img.id
         img.state = PendingImage.State.Processing
         img.machineId = null
         img.imageId = null
@@ -182,10 +207,7 @@ class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instanc
                 img.processed = p
                 img.thumb = withContext(Dispatchers.Default) { thumbnail(p.bytes) }
                 // Kept for a reclaimed process; sending does not depend on it.
-                withContext(Dispatchers.IO) {
-                    runCatching { saveImages(files, key, images.filter { it.processed != null && it in images }, original) }
-                        .onFailure { android.util.Log.w("remote-agent", "pending image not kept: ${it.javaClass.simpleName}") }
-                }
+                persistOrder()
                 machine()?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
@@ -259,6 +281,7 @@ class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instanc
     }
 
     private fun forget(img: PendingImage) {
+        saved -= img.id
         runCatching {
             files.remove(key, img.id + ".img")
             files.remove(key, img.id + ".meta")
@@ -300,7 +323,7 @@ class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instanc
             img.state = PendingImage.State.Failed("需要重新传到电脑")
             images += img
         }
-        runCatching { saveImages(files, key, images, original) }
+        persistOrder()
         return true
     }
 
