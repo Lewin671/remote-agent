@@ -7,13 +7,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
-import { Agent, ApprovalDecision, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, PlanPage, QuestionPage } from "./Dock";
 import { Home } from "./Home";
+import { loadProjectConfig } from "../storage";
 import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { SessionPage } from "./Session";
@@ -34,6 +35,7 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  localStorage.clear();
 });
 
 function demo(): DemoRemote {
@@ -665,4 +667,59 @@ describe("an unknown session start", () => {
     expect(t.sent[2].id).not.toBe(t.sent[0].id);
     expect(t.sent[2].prompt).toBe("给登录接口加限流");
   });
+});
+
+
+it("keeps a project's model and effort after Done and a page reload", async () => {
+  const project = "/Users/me/Code/ai-bot/remote-agent";
+  const page = (r: DemoRemote) => <ProjectPage remote={r} pkey={project} go={() => undefined} onBack={() => undefined} wide />;
+  const r = demo();
+  mount(page(r));
+  await click(button("更改"));
+  await click(button(/^模型/));
+  await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
+  await click(button("GPT-6-Sol"));
+  await click(button("low"));
+  await click(host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!);
+  await click(button("完成"));
+  expect(host.querySelector(".cfg")?.textContent).toContain("GPT-6-Sol low");
+  // Rebuild both the page and Remote, as a reload would; old sessions
+  // still have Astra, so inheritance cannot make this pass by accident.
+  act(() => root!.unmount());
+  host.remove();
+  const reloaded = demo();
+  mount(page(reloaded));
+  await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
+  expect(host.querySelector(".cfg")?.textContent).toContain("GPT-6-Sol low");
+  const real = reloaded.machineCommand.bind(reloaded);
+  let sent: unknown;
+  reloaded.machineCommand = async (machine, cmd) => {
+    if (cmd?.case === "createSession") sent = cmd.value;
+    return real(machine, cmd);
+  };
+  await click(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!);
+  await act(async () => { await vi.waitFor(() => expect(loadProjectConfig(reloaded.account, project)).toBeUndefined()); });
+  expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project });
+});
+
+it("isolates saved launch choices by project and account and reconfirms full access", async () => {
+  const r = demo();
+  let ns: ReturnType<typeof useNewSession>;
+  function Box({ remote = r, project }: { remote?: DemoRemote; project: string }) {
+    ns = useNewSession(remote, project, () => undefined);
+    return null;
+  }
+  const foo = "/Users/me/Code/foo";
+  const shop = "/Users/me/Code/shop";
+  mount(<Box project={foo} />);
+  act(() => ns.setCfg({ ...ns.cfg, model: "gpt-6-luna", effort: "max", mode: ApprovalMode.FULL_ACCESS }));
+  expect(ns!.cfg.mode).toBe(ApprovalMode.FULL_ACCESS);
+  act(() => root!.render(<Box project={shop} />));
+  expect(ns!.cfg.model).not.toBe("gpt-6-luna");
+  act(() => root!.render(<Box key="reload" remote={demo()} project={foo} />));
+  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", effort: "max", mode: ApprovalMode.UNSPECIFIED });
+  const another = demo();
+  another.account.deviceId = "another-device";
+  act(() => root!.render(<Box key="another" remote={another} project={foo} />));
+  expect(ns!.cfg.model).not.toBe("gpt-6-luna");
 });

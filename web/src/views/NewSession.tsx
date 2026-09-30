@@ -23,6 +23,7 @@ import {
   type NewConfig,
 } from "../model";
 import { Attempt } from "../attempt";
+import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../storage";
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote } from "../remote";
 
@@ -95,14 +96,23 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // session's activity, not only when sessions come or go.
   const p = projects(remote.sessions.values()).find((x) => x.key === key);
   const inherited = inheritConfig(p, remote.machines, key);
-  const [override, setOverride] = useState<NewConfig>();
-  // Changes apply to this project only; switching projects starts over.
-  useEffect(() => setOverride(undefined), [key]);
-  const cfg = override ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key));
+  const [selection, setSelection] = useState<{ key: string; config: NewConfig }>();
+  const override = selection?.key === key ? selection.config : loadProjectConfig(remote.account, key);
+  const cfg = override ? { ...override, from: inherited?.from } : inherited ?? freshConfig(remote, key, remote.draftMachines.get(key));
   const machine = remote.machines.get(cfg.machineId);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [configError, setConfigError] = useState("");
+  const setCfg = (config: NewConfig) => {
+    setSelection({ key, config });
+    try {
+      saveProjectConfig(remote.account, key, config);
+      setConfigError("");
+    } catch {
+      setConfigError("设置未能保存在浏览器里，刷新后会恢复原设置");
+    }
+  };
   // One pending attempt per project: the wide home reuses this hook when
   // switching projects, and an unknown start in one project must never be
   // what another project's box sends.
@@ -111,7 +121,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   if (!attempt) attempts.current.set(key, (attempt = new Attempt()));
   const current = attempt;
   // A failure shown for one project is not the next one's.
-  useEffect(() => setError(""), [key]);
+  useEffect(() => { setError(""); setConfigError(""); }, [key]);
 
   // What a start would send. While one's outcome is unknown, only what the
   // user changed counts: the message as sent (trimmed), and the settings
@@ -144,6 +154,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
       remote.draftMachines.delete(key);
+      // The new session now supplies the project's next launch settings.
+      try { clearProjectConfig(remote.account, key); } catch { /* Keep the saved choice if storage is unavailable. */ }
+      setSelection(undefined);
       go("s/" + sid);
       return true;
     } catch (e) {
@@ -160,7 +173,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     current.abandon();
     setError("");
   };
-  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
+  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg, machine, info, line: describe(cfg, machine, info), create, busy, error, configError, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -256,6 +269,7 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
           {error}
         </>
       )}
+      {ns.configError && <Banner kind="warn">{ns.configError}</Banner>}
       {config && <ConfigSheet ns={ns} onClose={() => setConfig(false)} />}
     </>
   );
