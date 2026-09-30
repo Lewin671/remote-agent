@@ -669,6 +669,17 @@ class Remote(
         throw CommandException("aborted", "设备名称一直在被其他客户端修改，没能保存")
     }
 
+    /**
+     * Shows fixed lists and histories without a server, for layout tests and
+     * screenshots of the screens. Only for a Remote that was never started:
+     * nothing is fetched, and commands fail as they would offline.
+     */
+    fun showForTest(state: RemoteState, events: Map<String, List<Event>> = emptyMap()) {
+        check(!running) { "showForTest on a started Remote" }
+        _state.value = state
+        for ((sid, list) in events) eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(list, loaded = true)
+    }
+
     // --- events ---
 
     /** A session's events; loads them from the cache and the server on first use. */
