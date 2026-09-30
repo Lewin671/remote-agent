@@ -48,6 +48,8 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
         File(folder(folder), name).delete()
     }
 
+    override fun names(folder: String): List<String> = folder(folder).list()?.filter { !it.endsWith(".tmp") }.orEmpty()
+
     override fun clearFolder(folder: String) {
         folder(folder).deleteRecursively()
     }

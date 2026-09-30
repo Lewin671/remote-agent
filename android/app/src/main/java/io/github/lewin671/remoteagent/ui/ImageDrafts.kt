@@ -32,6 +32,9 @@ interface SealedFiles {
     fun get(folder: String, name: String): ByteArray?
     fun remove(folder: String, name: String)
     fun clearFolder(folder: String)
+
+    /** Names in a folder, for drafts saved before the order file existed. */
+    fun names(folder: String): List<String>
 }
 
 /**
@@ -110,7 +113,9 @@ internal fun saveOrder(files: SealedFiles, folder: String, images: List<PendingI
 
 /** Images kept under [folder], in the order they were picked, and whether they were originals. */
 internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -> ImageBitmap? = { null }): Pair<List<PendingImage>, Boolean> {
-    val order = files.get(folder, ORDER)?.toString(Charsets.UTF_8)?.split("\n") ?: return emptyList<PendingImage>() to false
+    val order = files.get(folder, ORDER)?.toString(Charsets.UTF_8)?.split("\n")
+        // Saved before the order file: the images are all there, their order is not.
+        ?: legacyOrder(files, folder) ?: return emptyList<PendingImage>() to false
     val original = order.firstOrNull() == "1"
     val out = mutableListOf<PendingImage>()
     for (id in order.drop(1).filter { it.isNotEmpty() }) {
@@ -125,6 +130,20 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
         out += img
     }
     return out to original
+}
+
+/**
+ * The order of a draft saved without an order file: its images by name,
+ * originals if any image says so; null when there are none. Written back
+ * as the order file, so the next restore has one.
+ */
+private fun legacyOrder(files: SealedFiles, folder: String): List<String>? {
+    val ids = files.names(folder).filter { it.endsWith(".meta") }.map { it.removeSuffix(".meta") }.sorted()
+    if (ids.isEmpty()) return null
+    val original = ids.any { id -> files.get(folder, "$id.meta")?.toString(Charsets.UTF_8)?.split("\n")?.getOrNull(3) == "1" }
+    val order = listOf(if (original) "1" else "0") + ids
+    files.put(folder, ORDER, order.joinToString("\n").toByteArray())
+    return order
 }
 
 /** The images of one draft (a session's message box or a project's new-session card). */

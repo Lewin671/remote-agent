@@ -30,6 +30,7 @@ class MemoryFiles : SealedFiles {
     override fun clearFolder(folder: String) {
         data.keys.removeAll { it.startsWith("$folder/") }
     }
+    override fun names(folder: String) = data.keys.filter { it.startsWith("$folder/") }.map { it.removePrefix("$folder/") }
 }
 
 class AttachmentsTest {
@@ -118,4 +119,16 @@ class AttachmentsTest {
         assertFalse(needsUpload(i, "new"))
     }
 
+
+    @Test
+    fun aDraftSavedBeforeTheOrderFileIsRestored() {
+        val files = MemoryFiles()
+        saveImages(files, "session:s", listOf(img("x"), img("y")), original = false)
+        files.remove("session:s", "order")
+        val d = ImageDraft("session:s", files)
+        d.restore { null }
+        assertEquals(setOf("x", "y"), d.images.map { it.id }.toSet())
+        // And it has an order file now.
+        assertTrue(files.get("session:s", "order") != null)
+    }
 }
