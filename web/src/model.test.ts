@@ -516,3 +516,34 @@ describe("events", () => {
     expect(d.compactions.get(2n)).toEqual({ before: 86, after: 14 });
   });
 });
+
+describe("approval records", () => {
+  it("stay rows of their own, never lent to a parallel tool call", () => {
+    // Claude Code runs tools in parallel: two approvals wait, then an
+    // unrelated call finishes first, then the approved ones.
+    const list = events(
+      { case: "turnStarted", value: {} },
+      { case: "toolStarted", value: { title: "Read a.go", callId: "r" } },
+      { case: "toolStarted", value: { title: "mkdir x", callId: "m" } },
+      { case: "toolStarted", value: { title: "rm y", callId: "d" } },
+      { case: "approvalRequested", value: { approvalId: "A", toolName: "Bash", command: "mkdir x", toolInputJson: '{"command":"mkdir x"}' } },
+      { case: "approvalRequested", value: { approvalId: "B", toolName: "Bash", command: "rm y", toolInputJson: '{"command":"rm y"}' } },
+      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.DENY } },
+      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
+      { case: "toolCall", value: { title: "Read a.go", callId: "r", kind: ToolKind.OTHER, status: "completed" } },
+      { case: "toolCall", value: { title: "mkdir x", callId: "m", kind: ToolKind.COMMAND, status: "completed", exitCode: 0 } },
+      { case: "toolCall", value: { title: "rm y", callId: "d", kind: ToolKind.COMMAND, status: "failed" } },
+    );
+    const d = derive(list, Agent.CLAUDE);
+    const rows = timeline(list, d).map((it) => {
+      if (it.kind !== "event") return it.kind;
+      const k = it.event.kind;
+      if (k.case === "approvalRequested") return `record ${k.value.command} ${decisionText(d.resolved.get(k.value.approvalId)!.decision)}`;
+      if (k.case === "toolCall") return `tool ${k.value.title}`;
+      return k.case;
+    });
+    // Each decision is on its own approval's row, keyed by approval ID;
+    // tool rows carry no decision.
+    expect(rows).toEqual(["record mkdir x 已允许", "record rm y 已拒绝", "tools", "tool rm y"]);
+  });
+});
