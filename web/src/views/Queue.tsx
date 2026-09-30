@@ -47,8 +47,11 @@ export function QueuePage({
   onBack: () => void;
 }) {
   const sid = session.id;
-  const ids = queuedIds(d, promptIdOf(remote, sid, d));
+  const ids = queuedIds(d);
   const texts = new Map(remote.outbox(sid).map((o) => [o.sendId, o.text]));
+  // The first message of a session started here is this page's too.
+  const prompt = promptIdOf(remote, sid, d);
+  if (prompt) texts.set(prompt, remote.prompts.get(sid) ?? "");
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)), mine: new Set(remote.outbox(sid).map((o) => o.requestId)) };
   const [toast, setToast] = useState("");
   const shown = useRef<string[]>(ids);

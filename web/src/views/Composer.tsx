@@ -53,7 +53,9 @@ export function ComposeStatus({
   const online = remote.conn === "online";
   const lostAt = online ? undefined : (remote.lostAt ?? now);
   const peek = toolPeek(d, now, lostAt);
-  const queued = queuedIds(d, promptIdOf(remote, session.id, d));
+  // Every queued message, the first one of a session started here too: it
+  // can be canceled here like anywhere else.
+  const queued = queuedIds(d);
   const queuedImages = queued.reduce((n, id) => n + (d.accepted.get(id)?.imageIds.length ?? remote.outbox(session.id).find((o) => o.sendId === id)?.imageIds?.length ?? 0), 0);
   const running = d.running;
   const reason = queueReason(session, d);

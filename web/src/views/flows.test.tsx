@@ -1324,4 +1324,12 @@ describe("the first message of a session started here (review B5, B9)", () => {
     expect(host.textContent).toContain("取消了一条排队的消息");
   });
 
+  it("is in the shared queue, where it can be canceled", async () => {
+    setup();
+    await click(button(/^排队 1/));
+    const entry = host.querySelector(".queue-entry")!;
+    expect(entry.textContent).toContain("给登录接口加限流");
+    expect(button("取消", entry)).toBeTruthy();
+  });
+
 });
