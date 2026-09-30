@@ -24,6 +24,7 @@
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器、选图和图片 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
+| [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
 | [design/client-v7.html](design/client-v7.html) | 界面稿 | 当前设计：精简等待事项、工具详情，统一会话与新建输入框；移除只启动终端入口 |
 | [design/client-v6.html](design/client-v6.html) | 界面稿 | 在 v5 全部页面上增加图片存储占用、限额与清理；只读 |
@@ -89,4 +90,5 @@
 - [ ] 改了结论的，引用它的地方已经核对
 - [ ] 解决的问题已从「待确认」删掉，结论已写进对应文档
 - [ ] 新建或删除文档时，第 2 节的表格已同步
+- [ ] 改了界面稿的，按 [design-system.md](design-system.md) 第 8 节的审查清单看过
 - [ ] rebase 后看一眼别人刚推的文档改动，确认和自己的结论不冲突

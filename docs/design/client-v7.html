@@ -6,13 +6,14 @@
 <title>remote-agent 客户端设计稿 v7</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
+  /* 圆角、字号、颜色的用途见 ../design-system.md */
+  :root { --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; }
   :root {
     --bg: #eeeeec; --fg: #16181c; --fg2: #3a3f46; --muted: #626970; --faint: #9aa0a7; --line: #e6e8eb; --card: #fff; --soft: #f5f5f7;
     --chip: #eff0f2; --seg: #eceef0; --track: #d9dce0; --frame: #1b1d21;
     --blue: #2563d9; --blue-bg: #2f6feb; --blue-soft: #edf3ff; --on-solid: #fff;
     --orange: #e07a12; --orange-ink: #8a4a06; --orange-soft: #fff3e3;
     --green: #22a05a; --green-ink: #177a43; --red: #c62f2f; --red-bg: #c62f2f; --red-soft: #fdecec; --gray: #b3b9c0;
-    --purple: #6d43c4; --purple-soft: #f1ebfd;
   }
   [data-theme="dark"] {
     --bg: #0b0c0e; --fg: #e8eaed; --fg2: #c9ced4; --muted: #a0a7af; --faint: #6b727a; --line: #2a2d32; --card: #17181b; --soft: #1f2125;
@@ -20,13 +21,14 @@
     --blue: #7aa7ff; --blue-bg: #2f6feb; --blue-soft: rgba(90,145,255,.16); --on-solid: #fff;
     --orange: #f0a04b; --orange-ink: #f3bd82; --orange-soft: rgba(240,160,75,.14);
     --green: #3fbf73; --green-ink: #5fd08b; --red: #ff7b7b; --red-bg: #c62f2f; --red-soft: rgba(255,107,107,.14); --gray: #555b62;
-    --purple: #b79cf5; --purple-soft: rgba(169,139,240,.16);
   }
   * { box-sizing: border-box; }
   /* 字号只用 12 / 13 / 15 / 17 / 22 / 30，11 只给底部标签的文字 */
   body { margin: 0; background: var(--bg); color: var(--fg);
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
   a { color: var(--blue); }
+  .phone a, .desk a, .st a { text-decoration: none; }
+  a.btn { color: var(--fg); }
   .wrap { max-width: 1240px; margin: 0 auto; padding: 48px 32px 120px; }
   .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
   h1 { font-size: 28px; margin: 0; letter-spacing: -.3px; }
@@ -89,14 +91,14 @@
   .label a { font-weight: 600; text-decoration: none; }
 
   /* 需要处理：最多完整显示 3 张，其余收进「还有 N 项」 */
-  .todo { margin: 0 12px 8px; background: var(--orange-soft); border-radius: 16px; padding: 11px 13px; }
+  .todo { margin: 0 12px 8px; background: var(--soft); border-radius: var(--r-md); padding: 11px 13px; }
   .todo .k { font-size: 12px; color: var(--orange-ink); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
-  .todo .k span:last-child { font-weight: 400; }
+  .todo .k span:last-child { font-weight: 400; color: var(--muted); }
   .todo .t { font-size: 15px; font-weight: 600; margin: 4px 0 0; display: flex; justify-content: space-between; gap: 8px; }
   .todo .t a { font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
   .todo .m { font-size: 12px; color: var(--muted); }
   .todo .desc { font-size: 13px; color: var(--fg2); margin-top: 6px; }
-  .todo pre { background: #16181c; color: #e6edf3; border-radius: 9px; padding: 7px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; max-height: 56px; overflow: hidden; }
+  .todo pre { background: var(--card); color: var(--fg2); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 7px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; max-height: 56px; overflow: hidden; }
   .todo .btns .btn { background: var(--card); }
   .todo .btns .btn.pri { background: var(--blue-bg); }
   .todo .foot { font-size: 12px; color: var(--muted); margin-top: 7px; display: flex; justify-content: space-between; }
@@ -148,7 +150,7 @@
   .ai li { margin: 2px 0; }
   .ai code { background: var(--chip); padding: 1px 4px; border-radius: 4px; }
   .ai .ref { font: 13px ui-monospace, Menlo, monospace; color: var(--fg2); overflow-wrap: anywhere; }
-  .ai pre { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 6px 0; overflow-x: auto; white-space: pre; }
+  .ai pre { background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 6px 0; overflow-x: auto; white-space: pre; }
   .ai table { border-collapse: collapse; font-size: 13px; margin: 6px 0; display: block; overflow-x: auto; }
   .ai th, .ai td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap; }
   .ai th { background: var(--soft); }
@@ -176,17 +178,13 @@
   .dock .h { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
   .dock .h b { color: var(--orange-ink); }
   .dock .desc { font-size: 13px; color: var(--fg2); margin-top: 4px; }
-  .dock pre { background: #16181c; color: #e6edf3; border-radius: 10px; padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; max-height: 78px; overflow: hidden; position: relative; }
-  .dock pre.cut::after { content: "展开全文"; position: absolute; right: 6px; bottom: 4px; font: 600 12px -apple-system, "PingFang SC", sans-serif; color: #79c0ff; background: #16181c; padding-left: 12px; }
-  [data-theme="dark"] .dock pre, [data-theme="dark"] .todo pre { background: #0d1117; border: 1px solid var(--line); }
-  .dock.ask { box-shadow: 0 0 0 1.5px var(--blue), 0 -4px 18px rgba(0,0,0,.08); }
-  .dock.ask .h b { color: var(--blue); }
-  .dock.plan { box-shadow: 0 0 0 1.5px var(--purple), 0 -4px 18px rgba(0,0,0,.08); }
-  .dock.plan .h b { color: var(--purple); }
+  .dock pre { background: var(--soft); color: var(--fg2); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 8px 0; white-space: pre-wrap; max-height: 78px; overflow: hidden; position: relative; }
+  .dock pre.cut::after { content: "展开全文"; position: absolute; right: 6px; bottom: 4px; font: 600 12px -apple-system, "PingFang SC", sans-serif; color: var(--blue); background: var(--soft); padding-left: 12px; }
   .dock .q { font-size: 15px; font-weight: 600; margin: 6px 0; }
-  .dock .plan-body { background: var(--soft); border-radius: 10px; padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; max-height: 88px; overflow: hidden; }
+  .dock .plan-body { background: var(--soft); border-radius: var(--r-xs); padding: 7px 10px; font-size: 13px; margin: 8px 0; line-height: 1.6; max-height: 88px; overflow: hidden; }
   .dock .foot { font-size: 12px; color: var(--muted); margin-top: 7px; display: flex; justify-content: space-between; gap: 8px; }
   .dock .foot b { color: var(--blue); font-weight: 600; }
+  .dock .foot b.danger { color: var(--red); }
   .dock.mini { padding: 9px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .dock.mini b { color: var(--orange-ink); white-space: nowrap; }
   .dock.mini code { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
@@ -194,14 +192,14 @@
   .steps { display: flex; gap: 4px; align-items: center; }
   .steps i { width: 16px; height: 4px; border-radius: 2px; background: var(--track); display: inline-block; }
   .steps i.done { background: var(--blue); }
-  .ans { border: 1px solid var(--line); border-radius: 11px; padding: 8px 11px; margin: 6px 0; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
+  .ans { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 11px; margin: 6px 0; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
   .ans > div { flex: 1; }
   .ans small { display: block; font-size: 12px; color: var(--muted); }
   .ans .tag { font-size: 12px; color: var(--blue); font-weight: 600; white-space: nowrap; }
   .ans.on { border-color: var(--blue); background: var(--blue-soft); }
   .ans .ck { color: var(--blue); font-weight: 700; }
   .btns { display: flex; gap: 8px; }
-  .btn { flex: 1; text-align: center; border-radius: 12px; padding: 10px; font-weight: 600; font-size: 15px; background: var(--chip); min-height: 44px; }
+  .btn { flex: 1; text-align: center; border-radius: var(--r-sm); padding: 10px; font-weight: 600; font-size: 15px; background: var(--chip); min-height: 44px; }
   .btn.pri { background: var(--blue-bg); color: var(--on-solid); }
   .btn.no { color: var(--red); }
   .btn.danger { background: var(--red-bg); color: var(--on-solid); }
@@ -218,7 +216,6 @@
   .chip.grow em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
   .chip.warn { background: var(--orange-soft); color: var(--orange-ink); }
   .chip.m-auto { background: var(--blue-soft); color: var(--blue); }
-  .chip.m-plan { background: var(--purple-soft); color: var(--purple); }
   .chip.m-danger { background: var(--red-soft); color: var(--red); }
   .chip.dis { opacity: .5; }
   .ring { width: 14px; height: 14px; border-radius: 50%; flex: none; position: relative;
@@ -226,8 +223,6 @@
   .ring::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--chip); }
   .chip.warn .ring { --c: var(--orange); }
   .chip.warn .ring::after { background: var(--orange-soft); }
-  .ring.big { width: 64px; height: 64px; }
-  .ring.big::after { inset: 7px; background: var(--soft); }
   .comp { display: flex; gap: 8px; align-items: center; padding: 6px 12px 20px; flex: none; }
   .comp .in { flex: 1; background: var(--chip); border-radius: 20px; padding: 10px 14px; color: var(--muted); font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .comp .in.typed { color: var(--fg); }
@@ -235,7 +230,7 @@
   .comp .go { background: var(--blue-bg); color: var(--on-solid); font-size: 18px; }
   .comp .stop { border: 2px solid var(--red); color: var(--red); font-size: 12px; }
   /* 会话结束或电脑离线：输入框换成状态卡 */
-  .endcard { flex: none; margin: 6px 12px 20px; background: var(--soft); border-radius: 16px; padding: 12px 14px; }
+  .endcard { flex: none; margin: 6px 12px 20px; background: var(--soft); border-radius: var(--r-md); padding: 12px 14px; }
   .endcard .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
   .endcard .d { font-size: 13px; color: var(--muted); margin: 3px 0 10px; }
   .endcard .d:last-child { margin-bottom: 0; }
@@ -277,7 +272,7 @@
 
   /* sheet */
   .dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); }
-  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 22px 22px 0 0; padding: 10px 16px 24px; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 10px 16px 24px; }
   .grab { width: 36px; height: 5px; background: var(--track); border-radius: 3px; margin: 0 auto 12px; }
   .sheet h4 { margin: 0 0 12px; font-size: 17px; }
   .fl { font-size: 12px; color: var(--muted); margin: 12px 0 6px; font-weight: 600; }
@@ -285,12 +280,12 @@
   .ns-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .ns-head b { font-size: 17px; flex: 1; }
   .ns-head span { color: var(--blue); font-size: 15px; }
-  .prompt { background: var(--soft); border-radius: 16px; padding: 12px 14px 10px; }
+  .prompt { background: var(--soft); border-radius: var(--r-md); padding: 12px 14px 10px; }
   .prompt .ph { color: var(--muted); font-size: 15px; height: 58px; }
   .prompt .pf { display: flex; justify-content: space-between; align-items: center; }
   .prompt .pf small { font-size: 12px; color: var(--muted); }
   .prompt .go { width: 40px; height: 40px; border-radius: 50%; background: var(--blue-bg); color: var(--on-solid); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .setrows { margin-top: 10px; border-radius: 14px; background: var(--soft); overflow: hidden; }
+  .setrows { margin-top: 10px; border-radius: var(--r-md); background: var(--soft); overflow: hidden; }
   .sr { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 44px; font-size: 15px; }
   .sr + .sr { border-top: 1px solid var(--line); }
   .sr .lbl { flex: none; color: var(--muted); width: 34px; font-size: 13px; }
@@ -327,7 +322,7 @@
   .list .mi.danger b { color: var(--red); }
   .crumb { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); margin-bottom: 6px; }
   .crumb b { color: var(--fg); }
-  .ctxbox { display: flex; gap: 14px; align-items: center; background: var(--soft); border-radius: 14px; padding: 12px; }
+  .ctxbox { display: flex; gap: 14px; align-items: center; background: var(--soft); border-radius: var(--r-md); padding: 12px; }
   .ctxbox .num { font-size: 22px; font-weight: 700; }
   .ctxbox > .ring { flex-shrink: 0; }
   .ctxbox > div:not(.ring):not(.act) { flex: 1; min-width: 0; }
@@ -339,12 +334,11 @@
   .slider .knob { position: absolute; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transform: translateX(-11px); }
   .slabels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin: 2px 0 0; }
   .slabels .on { color: var(--fg); font-weight: 600; }
-  .alert { position: absolute; left: 30px; right: 30px; top: 190px; background: var(--card); border-radius: 18px; padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .alert { position: absolute; left: 30px; right: 30px; top: 190px; background: var(--card); border-radius: var(--r-lg); padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
   .alert h5 { margin: 0 0 6px; font-size: 17px; }
-  .alert h5.red { color: var(--red); }
   .alert p { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
   .actsheet { position: absolute; left: 8px; right: 8px; bottom: 20px; }
-  .actsheet .grp2 { background: var(--card); border-radius: 14px; overflow: hidden; margin-top: 8px; }
+  .actsheet .grp2 { background: var(--card); border-radius: var(--r-md); overflow: hidden; margin-top: 8px; }
   .actsheet .ai2 { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--blue); border-top: 1px solid var(--line); }
   .actsheet .ai2:first-child { border: none; }
   .actsheet .ai2.red { color: var(--red); }
@@ -353,7 +347,7 @@
 
   /* 设置 */
   .gray { background: var(--soft); }
-  .grp { background: var(--card); border-radius: 14px; margin: 0 16px 12px; overflow: hidden; }
+  .grp { background: var(--card); border-radius: var(--r-md); margin: 0 16px 12px; overflow: hidden; }
   .row { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 44px; font-size: 15px; }
   .row + .row { border-top: 1px solid var(--line); }
   .row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
@@ -370,12 +364,13 @@
   .row .v { margin-left: auto; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .row .ico { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; flex: none; }
   .row.col { display: block; padding: 10px 14px; }
+  .row.act { color: var(--blue); }
   .sw { margin-left: auto; width: 42px; height: 25px; border-radius: 13px; background: var(--green); position: relative; flex: none; }
   .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
   .sw.off { background: var(--track); }
   .sw.off::after { right: auto; left: 2px; }
   .glabel { font-size: 13px; color: var(--muted); padding: 4px 30px 6px; }
-  .gwarn { margin: 0 16px 12px; background: var(--orange-soft); color: var(--orange-ink); border-radius: 12px; padding: 9px 12px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .gwarn { margin: 0 16px 12px; background: var(--soft); color: var(--orange-ink); border-radius: var(--r-sm); padding: 9px 12px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
   .gwarn b { margin-left: auto; color: var(--blue); white-space: nowrap; }
   .bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; margin-top: 6px; }
   .bar i { display: block; height: 100%; background: var(--blue-bg); border-radius: 3px; }
@@ -386,8 +381,8 @@
   .qr svg { width: 100%; height: 100%; }
   .code { text-align: center; font: 600 26px ui-monospace, Menlo, monospace; letter-spacing: 4px; }
   .emoji { display: flex; justify-content: center; gap: 12px; font-size: 30px; margin: 10px 0 12px; }
-  .req { background: var(--soft); border-radius: 18px; padding: 14px; margin: 14px 16px; }
-  .field { background: var(--soft); border-radius: 12px; padding: 11px 14px; font-size: 15px; color: var(--muted); margin: 0 16px 10px; }
+  .req { background: var(--soft); border-radius: var(--r-md); padding: 14px; margin: 14px 16px; }
+  .field { background: var(--soft); border-radius: var(--r-sm); padding: 11px 14px; font-size: 15px; color: var(--muted); margin: 0 16px 10px; }
   .field.code-in { font: 600 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; color: var(--fg); text-align: center; }
   .field small { display: block; font-size: 12px; margin-bottom: 2px; }
   .center-text { text-align: center; }
@@ -402,10 +397,10 @@
   .st .sess, .st .proj { padding-left: 0; padding-right: 0; }
   .st .connbar { border-radius: 8px; }
   .skel { height: 12px; border-radius: 6px; background: var(--chip); margin: 7px 0; }
-  .banner { background: var(--soft); border-radius: 12px; padding: 9px 12px; font-size: 13px; color: var(--fg2); display: flex; gap: 8px; align-items: center; }
+  .banner { background: var(--soft); border-radius: var(--r-sm); padding: 9px 12px; font-size: 13px; color: var(--fg2); display: flex; gap: 8px; align-items: center; }
   .banner b { margin-left: auto; color: var(--blue); white-space: nowrap; }
-  .banner.warn { background: var(--orange-soft); color: var(--orange-ink); }
-  .banner.err { background: var(--red-soft); color: var(--red); }
+  .banner.warn { color: var(--orange-ink); }
+  .banner.err { color: var(--red); }
 
   /* 状态栏图标 */
   .sbi { display: inline-flex; gap: 6px; align-items: center; }
@@ -427,7 +422,7 @@
   .side { background: var(--soft); border-right: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; }
   .side .sh { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 2px; flex: none; }
   .side .sh b { font-size: 17px; }
-  .side .sh .nb { font-size: 13px; color: var(--on-solid); background: var(--blue-bg); border-radius: 9px; padding: 6px 11px; font-weight: 600; }
+  .side .sh .nb { font-size: 13px; color: var(--blue); background: var(--blue-soft); border-radius: 9px; padding: 6px 11px; font-weight: 600; }
   .side .scroll { flex: 1; overflow: hidden; }
   .side .label { padding: 12px 14px 4px; font-size: 12px; }
   .side .sess { padding: 6px 14px; gap: 9px; }
@@ -484,7 +479,7 @@
   .navbar .title .tname { display:block; font-size:15px; color:var(--fg); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .navbar .title .agent-id { font-size:12px; flex:none; }
   .sess .mc { line-height:1.5; }
-  .cli-pick { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 10px; background:var(--soft); color:var(--fg2); border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; flex:none; }
+  .cli-pick { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 10px; background:var(--soft); color:var(--fg2); border-radius:var(--r-sm); font-size:13px; font-weight:600; text-decoration:none; flex:none; }
   .cfg-main { display:flex; gap:8px; align-items:center; min-width:0; font-size:13px; color:var(--fg2); }
   .cfg-model { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; }
   .cfg-edit { grid-column:2; grid-row:1 / 3; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--blue); font-weight:600; }
@@ -492,7 +487,7 @@
   .compose-card .draft { min-height:48px; max-height:132px; overflow-y:auto; font-size:15px; line-height:1.5; padding:2px 4px 8px; overflow-wrap:anywhere; white-space:pre-wrap; color:var(--muted); }
   .compose-card .draft.typed { color:var(--fg); }
   .controls { display:flex; align-items:center; gap:4px; min-width:0; }
-  .ctl { min-height:44px; min-width:44px; display:flex; justify-content:center; align-items:center; font-size:12px; border-radius:10px; padding:0 6px; color:var(--fg2); background:var(--card); flex:none; }
+  .ctl { min-height:44px; min-width:44px; display:flex; justify-content:center; align-items:center; font-size:12px; border-radius:var(--r-sm); padding:0 6px; color:var(--fg2); background:var(--card); flex:none; }
   .ctl.mode { color:var(--blue); }
   .ctl.model { flex:1; min-width:0; justify-content:flex-start; }
   .ctl.model em { font-style:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -516,7 +511,7 @@
   .queued span i { width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
   .chip { min-height:44px; }
   .effort-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-  .effort-grid span { min-height:44px; border-radius:10px; background:var(--soft); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .effort-grid span { min-height:44px; border-radius:var(--r-sm); background:var(--soft); display:flex; align-items:center; justify-content:center; font-size:13px; }
   .effort-grid .on { background:var(--blue-soft); color:var(--blue); box-shadow:inset 0 0 0 1px var(--blue); }
   .keys { display:block; padding:6px 8px 16px; }
   .keyrow { display:flex; gap:4px; }
@@ -529,14 +524,13 @@
   .question-full { flex:1; min-height:0; padding:0 14px; overflow-y:auto; }
   .question-full .q { font-size:17px; font-weight:600; margin:12px 0; }
   .question-full .ans { min-height:44px; }
-  .pin { font-size:12px; color:var(--blue); margin-left:5px; font-weight:500; }
   .manage-row { display:flex; align-items:center; gap:10px; padding:10px 16px; }
   .manage-row .pt { flex:1; min-width:0; }
   .manage-row .pn { font-weight:600; font-size:15px; }
   .manage-row .ps { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .manage-row .dots { width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:var(--blue); flex:none; }
   .manage-hint { font-size:13px; color:var(--muted); margin:8px 16px 12px; }
-  .toast { margin:8px 12px; padding:8px 10px; border-radius:12px; background:var(--soft); font-size:13px; display:flex; align-items:center; gap:8px; min-height:44px; }
+  .toast { margin:8px 12px; padding:8px 10px; border-radius:var(--r-sm); background:var(--soft); font-size:13px; display:flex; align-items:center; gap:8px; min-height:44px; }
   .toast b { margin-left:auto; color:var(--blue); min-height:44px; display:flex; align-items:center; }
   .wide-project-tools { display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap:wrap; }
   .wide-project-tools .chip { min-height:44px; }
@@ -557,7 +551,7 @@
   .active-tool { border:1px solid var(--line); background:var(--soft); border-radius:12px; padding:10px; margin:10px 0; font-size:13px; }
   .active-tool .th { display:flex; align-items:center; gap:6px; color:var(--blue); min-height:28px; }
   .active-tool .th .elapsed { margin-left:auto; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .active-tool pre { margin:6px 0; font:12px/1.5 ui-monospace,Menlo,monospace; background:var(--card); padding:8px; border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; max-height:88px; overflow-y:auto; }
+  .active-tool pre { margin:6px 0; font:12px/1.5 ui-monospace,Menlo,monospace; background:var(--card); padding:8px; border-radius:var(--r-xs); white-space:pre-wrap; overflow-wrap:anywhere; max-height:88px; overflow-y:auto; }
   .active-tool .td { color:var(--muted); font-size:12px; margin-top:6px; }
   .active-tool .ta { display:flex; justify-content:space-between; gap:8px; color:var(--blue); min-height:44px; align-items:center; }
   .tool-peek { min-width:0; color:var(--blue); min-height:44px; display:flex; align-items:center; gap:4px; flex:1; }
@@ -646,7 +640,7 @@
   @container(max-width:1119px) {
     .ds { grid-template-columns:1fr; }
     .ds .tcol, .seg .split-choice { display:none; }
-    .dh .r2 .seg div:first-child { background:var(--card); color:var(--fg); font-weight:600; }
+    .dh .r2 .seg div:first-child { box-shadow:inset 0 -2px var(--fg2); color:var(--fg); font-weight:600; }
   }
 
   /* v5 visual refinements shared by PWA and Android */
@@ -660,8 +654,8 @@
   .me > div { background:var(--soft); color:var(--fg); }
   .tool .ok, .record > span:first-child { color:var(--muted) !important; }
   .tool .sp { color:var(--muted); }
-  .toolout { background:var(--soft); color:var(--fg2); border-radius:4px; border-left:1px solid var(--line); }
-  .dock, .dock.ask, .dock.plan { background:var(--card); border-radius:0; box-shadow:none !important; border-top:1px solid var(--line); margin:0 14px; padding:0; }
+  .toolout { background:var(--soft); color:var(--fg2); border-radius:var(--r-xs); border-left:1px solid var(--line); }
+  .dock { background:var(--card); border-radius:0; box-shadow:none; border-top:1px solid var(--line); margin:0 14px; padding:0; }
   .dock summary { display:flex; align-items:center; gap:6px; min-height:44px; cursor:pointer; list-style:none; font-size:13px; }
   summary::-webkit-details-marker { display:none; }
   .pending-dot { color:var(--orange-ink); font-size:9px; }
@@ -669,10 +663,7 @@
   .pending-brief { color:var(--muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; min-width:0; }
   .pending-action { color:var(--blue); white-space:nowrap; margin-left:auto; }
   .pending-content { max-height:240px; overflow-y:auto; padding:4px 0 10px; }
-  .dock pre, .dock .plan-body { background:var(--soft); color:var(--fg2); border-radius:6px; }
-  [data-theme="dark"] .dock pre { background:var(--soft); }
-  .dock .h b, .dock.ask .h b, .dock.plan .h b { color:var(--fg2); }
-  .dock .btn { border-radius:8px; }
+  .dock .h b { color:var(--fg2); }
   .dock.mini { min-height:44px; }
   .active-tool { background:none; border:0; border-radius:0; padding:0; margin:6px 0; color:var(--muted); }
   .active-tool summary { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; font-size:13px; cursor:pointer; list-style:none; }
@@ -686,10 +677,10 @@
   .compose-menu { grid-column:1; grid-row:1; align-self:end; }
   .compose-menu summary { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--muted); list-style:none; cursor:pointer; }
   .context-high::after { content:""; width:5px; height:5px; border-radius:50%; background:var(--orange); position:absolute; left:32px; top:12px; }
-  .compose-pop { position:absolute; bottom:calc(100% + 8px); left:0; z-index:10; padding:6px 12px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.1); max-width:100%; font-size:13px; }
+  .compose-pop { position:absolute; bottom:calc(100% + 8px); left:0; z-index:10; padding:6px 12px; background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); box-shadow:0 4px 16px rgba(0,0,0,.1); max-width:100%; font-size:13px; }
   .compose-pop > a { min-height:44px; display:flex; align-items:center; text-decoration:none; }
   .compose-pop > div { min-height:44px; display:flex; align-items:center; overflow-wrap:anywhere; }
-  .compose-card .go44 { border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; grid-column:3; grid-row:1; width:44px; height:44px; align-self:end; background:var(--fg); color:var(--card); border:6px solid var(--card); }
+  .compose-card .go44 { border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; grid-column:3; grid-row:1; width:44px; height:44px; align-self:end; background:var(--blue-bg); color:var(--on-solid); border:6px solid var(--card); }
   .compose-card .access-warning { grid-column:1 / -1; grid-row:2; color:var(--red); font-size:12px; padding:2px 12px; }
   .compose-card .att-tray, .compose-card .att-meta { grid-column:1 / -1; }
   .compose-card:has(.att-tray) .draft, .compose-card:has(.att-tray) .compose-menu, .compose-card:has(.att-tray) .go44 { grid-row:3; }
@@ -698,17 +689,11 @@
 
   /* Full v7 review: quiet status surfaces, reachable actions, readable terminal chrome. */
   .dot.run, .dot.wait { box-shadow:none; }
-  .todo { background:var(--soft); border-radius:10px; }
-  .todo pre { background:var(--card); color:var(--fg2); border:1px solid var(--line); }
-  [data-theme="dark"] .todo pre { background:var(--card); }
-  .banner, .banner.warn, .banner.err, .gwarn { background:var(--soft); }
-  .banner.warn, .gwarn { color:var(--orange-ink); }
-  .banner.err { color:var(--red); }
-  .phone .seg { background:none; border-radius:0; padding:0; border-bottom:1px solid var(--line); }
-  .phone .seg div { border-radius:0; background:none; box-shadow:none; }
-  .phone .seg div.on { background:none; box-shadow:inset 0 -2px var(--fg2); }
-  .phone .seg.dark { border-color:#30363d; }
-  .phone .seg.dark div.on { background:none; box-shadow:inset 0 -2px #e6edf3; }
+  .seg { background:none; border-radius:0; padding:0; border-bottom:1px solid var(--line); }
+  .seg div { border-radius:0; background:none; box-shadow:none; }
+  .seg div.on { background:none; box-shadow:inset 0 -2px var(--fg2); }
+  .seg.dark { background:none; border-color:#30363d; }
+  .seg.dark div.on { background:none; box-shadow:inset 0 -2px #e6edf3; }
   .phone[style*="background:#0d1117"] { --fg:#e8eaed; --fg2:#c9ced4; --muted:#a0a7af; --card:#0d1117; --line:#2a2d32; }
   .pending-content { display:flex; flex-direction:column; max-height:240px; overflow:visible; padding:0; }
   .pending-scroll { min-height:0; overflow-y:auto; padding:4px 0 6px; }
@@ -721,7 +706,7 @@
   .sheet { max-height:calc(100% - 48px); overflow-y:auto; }
   .ns-head span { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
   .ttool b, .ttool > span:last-child { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
-  .tstate { top:12px; left:12px; right:12px; border-radius:8px; padding:12px; text-align:left; }
+  .tstate { top:12px; left:12px; right:12px; border-radius:var(--r-sm); padding:12px; text-align:left; }
   .tstate .det { min-height:44px; display:flex; align-items:center; }
   .compose-pop { width:max-content; min-width:160px; max-width:calc(100% - 4px); }
   .compose-pop > div { white-space:normal; }
@@ -745,8 +730,7 @@
   .sr .v::after { flex:none; }
   .list .mi .mt { overflow-wrap:anywhere; }
   .phone:has(.pending[open]) > .kbd { display:none; }
-  .dock pre.cut::after { background:var(--soft); color:var(--blue); }
-  .req .btn { font-size:13px; white-space:nowrap; }
+  .req .btn { white-space:nowrap; }
 
 
   .navbar .title > span { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -761,6 +745,8 @@
   .gen-card .meta { align-items:center; }
   .gen-card .meta b { min-height:44px; display:flex; align-items:center; }
   .newmsg { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .exp { display:inline-block; font-style:normal; transform:rotate(90deg); }
+  .exp.up { transform:rotate(-90deg); }
   .when-open { display:none; }
   details[open] > summary .when-closed { display:none; }
   details[open] > summary .when-open { display:inline; }
@@ -776,10 +762,10 @@
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
-<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
+<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v6 的改动</h4><ul><li>审批、问题、计划和终端弹窗默认收成一行，展开后处理。</li><li>运行中的工具改为可展开摘要，命令与结果按需查看。</li><li>会话与项目页输入框统一单行起步；项目页去掉新会话标题和配置行，配置从「＋」按需打开，完全放行常驻提示。</li><li>移除只启动终端的空会话入口，新会话由首条文字或图片消息开始。</li><li>对话内提示使用中性色和细分隔线，移除彩色外框、阴影及重复工具状态；终端尺寸变化在工具栏提示。</li><li>展开请求时正文滚动、操作固定；补齐离线禁用、默认审批确认、退出确认和 Android 图片存储入口。</li><li>长名称与大字号可换行或省略；修正亮色下的终端标题及小按钮点击区。</li></ul>
+  <h4>相对 v6 的改动</h4><ul><li>审批、问题、计划和终端弹窗默认收成一行，展开后处理。</li><li>运行中的工具改为可展开摘要，命令与结果按需查看。</li><li>会话与项目页输入框统一单行起步；项目页去掉新会话标题和配置行，配置从「＋」按需打开，完全放行常驻提示。</li><li>移除只启动终端的空会话入口，新会话由首条文字或图片消息开始。</li><li>对话内提示使用中性色和细分隔线，移除彩色外框、阴影及重复工具状态；终端尺寸变化在工具栏提示。</li><li>展开请求时正文滚动、操作固定；补齐离线禁用、默认审批确认、退出确认和 Android 图片存储入口。</li><li>长名称与大字号可换行或省略；修正亮色下的终端标题及小按钮点击区。</li><li>按 design-system.md 统一视觉：发送与主按钮同为蓝色，每屏只留一个实心按钮；拒绝、中断统一红字，红色实心只留在确认对话框；终端之外的代码块改用浅色表面；提示条、圆角和就地展开箭头统一；去掉分组里重复的「常用」标记、审批卡片里的引导问句和装饰性上下文圆环；已移除项目的恢复改为提示条；同一项目在各画面同色；宽屏视图切换与手机同为下划线标签。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -803,7 +789,7 @@
           <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
           <pre>go test ./... -count=1</pre>
           <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-          <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
+          <div class="foot"><b>附理由拒绝 ›</b></div>
         </div>
         <div class="todo">
           <div class="k"><span>● Codex 在问你</span><span>9:20</span></div>
@@ -828,7 +814,7 @@
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>billing · 11:25</b><span>11:25</span></div><div class="pv">还没发消息</div><div class="mc"><span class="stw idle">空闲</span> · Codex · billing · iMac</div></div></div>
 
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="proj"><div class="av c1">f</div><div class="pt"><div><div class="pn">foo<span class="pin">常用</span></div><div class="ps">~/Code/foo · 2 个进行中</div></div><span class="chev">›</span></div></div>
+        <div class="proj"><div class="av c1">f</div><div class="pt"><div><div class="pn">foo</div><div class="ps">~/Code/foo · 2 个进行中</div></div><span class="chev">›</span></div></div>
         <div class="label">其他项目</div><div class="proj"><div class="av c2">b</div><div class="pt"><div><div class="pn">billing</div><div class="ps">~/Code/billing · 1 个进行中</div></div><span class="chev">›</span></div></div>
         <div class="proj"><div class="av c3">b</div><div class="pt"><div><div class="pn">blog</div><div class="ps">~/Code/blog · 2 小时前</div></div><span class="chev">›</span></div></div>
         <div class="proj"><div class="av c3">b</div><div class="pt"><div><div class="pn">blog</div><div class="ps">~/work/blog · 昨天</div></div><span class="chev">›</span></div></div>
@@ -974,8 +960,8 @@
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
-        <div class="think">▸ 思考了 8 秒</div>
-        <div class="tool grp"><span class="ok">✓</span><b>运行了 3 条命令</b><span class="muted">▸</span></div>
+        <div class="think">思考了 8 秒 <i class="exp">›</i></div>
+        <div class="tool grp"><span class="ok">✓</span><b>运行了 3 条命令</b><span class="muted"><i class="exp">›</i></span></div>
         <div class="ai">
           <p>问题在 <span class="ref">auth/login.go:58</span>：</p>
           <ul>
@@ -1003,11 +989,11 @@
         <div class="record"><span style="color:var(--green)">✓</span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
         <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
         <pre>go test ./... -count=1</pre>
         </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-        <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
+        <div class="foot"><b>附理由拒绝 ›</b></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
@@ -1021,7 +1007,7 @@
       <div class="body chat">
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div></div></div></details>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div></div></div></details>
       <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：设置…</div></div></details><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
@@ -1034,15 +1020,15 @@
       <div class="navbar"><span class="back">‹</span><span class="title"><b>审批详情</b><span>重构 API 层 · 剩 7 分钟</span></span><span class="more"></span></div>
       <div class="body" style="padding:0 14px">
         <div class="desc small" style="color:var(--fg2);margin-bottom:6px">清理旧的生成文件后重新生成 protobuf 代码</div>
-        <pre style="background:#16181c;color:#e6edf3;border-radius:10px;padding:8px 10px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:0;white-space:pre-wrap;height:150px;overflow:auto">rm -rf gen/remoteagent &amp;&amp; \
+        <pre style="background:var(--soft);color:var(--fg2);border-radius:var(--r-xs);padding:8px 10px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:0;white-space:pre-wrap;height:150px;overflow:auto">rm -rf gen/remoteagent &amp;&amp; \
 buf generate --template buf.gen.yaml &amp;&amp; \
 go build ./... &amp;&amp; \
 go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
 git status --short gen/</pre>
       </div>
-      <div class="dock" style="box-shadow:0 0 0 1.5px var(--red),0 -4px 18px rgba(0,0,0,.08)">
+      <div class="dock">
         <div class="field" style="margin:0 0 8px;font-size:15px;color:var(--fg)">别删 gen，直接 buf generate 覆盖就行</div>
-        <div class="btns"><div class="btn danger">发送理由并拒绝</div></div>
+        <div class="btns"><div class="btn no">发送理由并拒绝</div></div>
       </div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
@@ -1059,7 +1045,7 @@ git status --short gen/</pre>
         <div class="tool"><span class="ok">✓</span><code>go list -m -u all</code></div>
         <div class="ai">有 12 个依赖可以升级，其中 <code>pgx</code> 是 v4 → v5 的大版本。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
         <div class="q">大版本也一起升吗？</div>
         <div class="ans"><div>只升小版本<small>改动小，go build 大概率直接通过</small></div><span class="tag">推荐</span></div>
         <div class="ans"><div>包括 pgx v5<small>要改连接池和事务相关的调用</small></div></div>
@@ -1082,7 +1068,7 @@ git status --short gen/</pre>
         <div class="tool"><span class="ok">✓</span><code>读取 14 个文件</code></div>
         <div class="ai">方案如下，批准后开始改。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>计划待批准</b><span style="color:var(--blue);font-weight:600">展开全文 ›</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>计划待批准</b><span style="color:var(--blue);font-weight:600">展开全文 ›</span></div>
         <div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
         </div><div class="pending-actions"><div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
       </div></div></details>
@@ -1099,7 +1085,7 @@ git status --short gen/</pre>
       <div class="body chat">
         <div class="sep">11:25 · ~/Code/billing</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
         <div class="q" style="font-weight:500">Trust this folder?</div>
         </div><div class="pending-actions"><div class="btns"><div class="btn pri">去终端处理</div></div>
       </div></div></details>
@@ -1655,7 +1641,7 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">审批 · 附理由拒绝 / 权限请求</div>
-    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
+    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
       <div class="desc">修改工作区外的文件</div>
       <pre class="cut">{"path": "/etc/hosts", "patch": "@@ -1,3 +1,4 @@\n 127.0.0.1 localhost\n+127.0.0.1 api.local"}</pre>
       <div class="field" style="margin:0 0 8px;font-size:13px">改 /etc/hosts 不行，用 .env 配置</div>
@@ -1685,7 +1671,7 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">停靠区 · 多项排队</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
+    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
       <pre>make migrate</pre>
       </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
     </div></div></details>
@@ -1800,7 +1786,7 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">提问 · 回答没送到</div>
-    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
+    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
       <div class="q">大版本也一起升吗？</div>
       <div class="ans on"><span class="ck">✓</span><div>只升小版本<small style="color:var(--red)">没能提交，终端里的问题可能已经变了</small></div></div>
       </div><div class="pending-actions"><div class="foot"><span></span><b>重试</b></div>
@@ -1819,7 +1805,7 @@ GPT-6-Astra · medium ▾
   <div class="st">
     <div class="st-h">会话设置 · 切换失败 / 压缩中</div>
     <div class="banner err">没能切到 GPT-6-Sol：Codex 的菜单和预期不一样<b>去终端</b></div>
-    <div class="ctxbox" style="margin-top:8px"><div class="ring big" style="--p:86;--c:var(--orange)"></div><div><div class="num">86%</div><div class="muted small">◌ 正在压缩…</div></div></div>
+    <div class="ctxbox" style="margin-top:8px"><div><div class="num">86%</div><div class="muted small">◌ 正在压缩…</div></div></div>
     <div class="st-c">上下文未知时菜单省略读数；模型未知时写「会话设置」，点开读取详情</div>
   </div>
 
@@ -1827,7 +1813,7 @@ GPT-6-Astra · medium ▾
     <div class="st-h">设备 · 保存失败 / 移除</div>
     <div class="banner err">没能保存默认模型：MacBook 不在线<b>重试</b></div>
     <div class="alert" id="machine-removal" style="position:static;box-shadow:none;border:1px solid var(--line);margin-top:10px">
-      <h5 class="red">移除 MacBook？</h5>
+      <h5>移除 MacBook？</h5>
       <p>它的会话记录会从服务器上删除，它要重新加入账户才能再连上。</p>
       <div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div>
     </div>
@@ -1864,7 +1850,7 @@ GPT-6-Astra · medium ▾
 <div>跑一遍库存集成测试</div>
 </div>
 <div class="ai">测试需要启动数据库，可能要等一会儿。</div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 2 分 12 秒</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 处理中 2 分 12 秒</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./internal/inventory/... -count=1</pre>
 <div class="td">尚未收到结果 · 可去终端查看</div>
 <div class="ta">
@@ -1919,7 +1905,7 @@ Sonnet · high ▾
 <div class="me">
 <div>并行检查测试和构建</div>
 </div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 3 分 08 秒</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 处理中 3 分 08 秒</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">尚未收到结果 · 可去终端查看</div>
 <div class="ta">
@@ -1984,20 +1970,20 @@ Sonnet · high ▾
 <div class="label">Bash · 处理中 <span>调用耗时 2 分 12 秒</span>
 </div>
 <div class="crumb">~/Code/shop</div>
-<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
+<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./internal/inventory/... -count=1</pre>
 <div class="td">尚未收到工具结果。实时输出请去终端查看。</div>
 
 </div></details>
 <div class="hint">耗时不代表进度；没有输出也可能仍在运行。</div>
 </div>
-<div class="dock" style="box-shadow:0 0 0 1px var(--line)">
+<div class="dock">
 <div class="btns">
-<div class="btn pri">去终端看实时画面</div>
+<div class="btn">去终端看实时画面</div>
 </div>
 <div class="foot">
 <span>需要停止这一轮？</span>
-<b>中断本轮</b>
+<b class="danger">中断本轮</b>
 </div>
 <div class="draft-note">中断不保证结束后台进程；后台命令在终端里处理。</div>
 </div>
@@ -2028,7 +2014,7 @@ Sonnet · high ▾
 </div>
 <div class="connbar">连接断了，工具状态可能已变化</div>
 <div class="body chat">
-<details class="active-tool"><summary><span>◌ Bash · 等待同步 上次 2:12</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 等待同步 上次 2:12</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">未连接到服务器，暂时无法确认是否还在运行。</div>
 <div class="ta">
@@ -2079,7 +2065,7 @@ Sonnet · high ▾
 </div>
 <div class="body chat">
 <div class="sysline">已中断本轮</div>
-<details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">工具已转到后台；本轮结束不表示后台进程结束。请到终端确认。</div>
 <div class="ta">
@@ -2119,7 +2105,7 @@ GPT-6-Astra · medium ▾
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="me"><span class="pics"><i class="pic port empty"></i></span><div>参考这张改一下空状态</div><small>MacBook 终端</small></div>
-        <div class="tool grp"><span class="ok">✓</span><b>运行了 4 条命令 · 2 张截图</b><span class="muted">▸</span></div>
+        <div class="tool grp"><span class="ok">✓</span><b>运行了 4 条命令 · 2 张截图</b><span class="muted"><i class="exp">›</i></span></div>
         <div class="pics under-tool"><i class="pic port empty"></i><i class="pic port ui"></i></div>
         <div class="ai">改好了，左边是改前，右边是改后。</div>
       </div>
@@ -2151,7 +2137,7 @@ GPT-6-Astra · medium ▾
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>生成一张空状态插画，风格和现在的图标一致</div></div>
-        <div class="gen-card"><i class="pic lg gen"></i><div class="meta"><span>生成的图片 · 1536 × 1024</span><b>提示词 ▸</b></div></div>
+        <div class="gen-card"><i class="pic lg gen"></i><div class="meta"><span>生成的图片 · 1536 × 1024</span><b>提示词 <i class="exp">›</i></b></div></div>
         <div class="ai">生成好了，放到了 <span class="ref">web/public/empty.png</span>。</div>
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div><div>上下文：9%</div></div></details><span class="go44">↑</span></div></div>
@@ -2493,7 +2479,7 @@ GPT-6-Astra · medium ▾
 </div>
 <div class="ai">接下来想优先覆盖哪些异常情况？</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief">哪些场景需要测试？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
+<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief">哪些场景需要测试？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
 <b>Claude Code 在问你</b>
 <span class="muted">可多选</span>
 </div>
@@ -2621,7 +2607,7 @@ GPT-6-Astra · medium ▾
 </div>
 <div class="ai">方案已经整理好，批准后开始改。</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
+<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
 <b>计划待批准</b>
 <span style="color:var(--blue)">展开全文 ›</span>
 </div>
@@ -2768,7 +2754,7 @@ Sonnet · high ▾
       <div class="body"></div>
       <div class="dim"></div>
       <div class="alert">
-        <h5 class="red">切到完全放行？</h5>
+        <h5>切到完全放行？</h5>
         <p>之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。</p>
         <div class="btns"><div class="btn">取消</div><div class="btn danger">切换</div></div>
       </div>
@@ -2811,7 +2797,6 @@ Sonnet · high ▾
         <div class="grab"></div>
         <h4>会话设置</h4>
         <div class="ctxbox">
-          <div class="ring big" style="--p:11"></div>
           <div><div class="num">11%</div><div class="muted small">上下文 87k / 760k</div></div>
           <div class="act">压缩</div>
         </div>
@@ -2854,7 +2839,7 @@ Sonnet · high ▾
         <div class="glabel">Codex 额度 · Pro Lite</div>
         <div class="grp">
           <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62% · 14:10 重置</span></div><div class="bar"><i style="width:62%"></i></div></div>
-          <div class="row col"><div style="display:flex"><span>本周</span><span class="v">已用 34% · 周四 10:00 重置</span></div><div class="bar"><i style="width:34%"></i></div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34% · 周四 10:00 重置</span></div><div class="bar"><i style="width:34%"></i></div></div>
         </div>
         <div class="grp"><div class="row">Claude Code 额度<span class="v">5 小时已用 28% ›</span></div><a class="row" href="#quota">查看全部额度<span class="v">›</span></a></div>
         <div class="grp"><div class="row">Codex 版本<span class="v"><span class="warn-text">未验证 ·</span> 示例版本</span></div><div class="row">Claude Code 版本<span class="v">示例版本</span></div></div>
@@ -2879,7 +2864,7 @@ Sonnet · high ▾
   </div>
 </div>
 
-<h2 id="phone-image-storage">Android · 手机图片存储</h2><div class="screens"><div><div class="phone gray"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="back">‹</span><span class="title"><b>设置</b></span></div><div class="body"><div class="glabel">图片存储 · 这台手机</div><div class="grp"><div class="row">待发和待确认图片<span class="v">24 / 256 MiB</span></div><div class="row col"><div class="hint">草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。</div></div><div class="row">查看缓存<span class="v">32 / 150 MiB</span></div><div class="row">清理查看缓存</div></div></div></div><div class="cap">手机草稿和查看缓存分开限制；清理缓存不丢草稿。</div></div></div>
+<h2 id="phone-image-storage">Android · 手机图片存储</h2><div class="screens"><div><div class="phone gray"><div class="sb"><span>9:41</span></div><div class="navbar"><span class="back">‹</span><span class="title"><b>设置</b></span></div><div class="body"><div class="glabel">图片存储 · 这台手机</div><div class="grp"><div class="row">待发和待确认图片<span class="v">24 / 256 MiB</span></div><div class="row col"><div class="hint">草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。</div></div><div class="row">查看缓存<span class="v">32 / 150 MiB</span></div><div class="row act">清理查看缓存</div></div></div></div><div class="cap">手机草稿和查看缓存分开限制；清理缓存不丢草稿。</div></div></div>
 <h2 id="quota">账户额度</h2>
 <div class="note" style="margin:0 0 20px">设置 › 设备 › 查看全部额度。分开显示这台机器上各 CLI 登录账户的额度；上下文仍在会话设置中。数值与时间都是示例；数据来源、状态规则见 <a href="../architecture.md#账户额度">architecture.md · 账户额度</a>，采集待验证项见 <a href="../plan.md#待确认">plan.md</a>。</div>
 <div class="screens">
@@ -2943,7 +2928,7 @@ Sonnet · high ▾
         <div class="pad"><div class="banner err">没能读取 Claude Code 额度</div></div>
         <div class="glabel">Claude Code · 上次记录</div>
         <div class="grp"><div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">上次已用 28%</span></div><div class="bar"><i style="width:28%;background:var(--gray)"></i></div><div class="hint">最近成功收到 9:20</div></div></div>
-        <div class="grp"><div class="row">重新读取<span class="v">›</span></div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        <div class="grp"><div class="row act">重新读取</div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
         <div class="pad small muted">重新读取电脑上已有的额度记录，不会发消息消耗额度。</div>
       </div>
     </div>
@@ -2998,16 +2983,16 @@ Sonnet · high ▾
 <div class="manage-row">
 <div class="av sm c1">r</div>
 <div class="pt">
-<div class="pn">remote-agent<span class="pin">常用</span>
+<div class="pn">remote-agent
 </div>
 <div class="ps">~/Code/ai-bot/remote-agent</div>
 </div>
 <span class="dots">⋯</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c3">b</div>
 <div class="pt">
-<div class="pn">blog<span class="pin">常用</span>
+<div class="pn">blog
 </div>
 <div class="ps">~/Code/blog</div>
 </div>
@@ -3016,7 +3001,7 @@ Sonnet · high ▾
 <div class="label">其他项目 <span>2</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c2">b</div>
 <div class="pt">
 <div class="pn">billing</div>
 <div class="ps">~/Code/billing</div>
@@ -3024,7 +3009,7 @@ Sonnet · high ▾
 <span class="dots">⋯</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c3">b</div>
 <div class="pt">
 <div class="pn">blog</div>
 <div class="ps">~/work/blog</div>
@@ -3111,16 +3096,16 @@ Sonnet · high ▾
 <div class="manage-row">
 <div class="av sm c1">r</div>
 <div class="pt">
-<div class="pn">remote-agent<span class="pin">常用</span>
+<div class="pn">remote-agent
 </div>
 <div class="ps">~/Code/ai-bot/remote-agent</div>
 </div>
 <span class="dots">⋯</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c3">b</div>
 <div class="pt">
-<div class="pn">blog<span class="pin">常用</span>
+<div class="pn">blog
 </div>
 <div class="ps">~/Code/blog</div>
 </div>
@@ -3128,7 +3113,7 @@ Sonnet · high ▾
 </div>
 <div class="label">其他项目</div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c3">b</div>
 <div class="pt">
 <div class="pn">blog</div>
 <div class="ps">~/work/blog</div>
@@ -3167,7 +3152,7 @@ Sonnet · high ▾
 <div class="body">
 <div class="manage-hint">恢复只让项目重新出现在列表里，不会启动或恢复会话。</div>
 <div class="manage-row">
-<div class="av sm c1">b</div>
+<div class="av sm c2">b</div>
 <div class="pt">
 <div class="pn">billing</div>
 <div class="ps">~/Code/billing</div>
@@ -3175,7 +3160,7 @@ Sonnet · high ▾
 <span class="dots">恢复</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">d</div>
+<div class="av sm c4">d</div>
 <div class="pt">
 <div class="pn">demo</div>
 <div class="ps">~/Code/demo</div>
@@ -3183,7 +3168,7 @@ Sonnet · high ▾
 <span class="dots">恢复</span>
 </div>
 <div class="manage-row">
-<div class="av sm c1">e</div>
+<div class="av sm c5">e</div>
 <div class="pt">
 <div class="pn">experiments</div>
 <div class="ps">~/work/experiments</div>
@@ -3217,10 +3202,7 @@ Sonnet · high ▾
 <span class="more">⋯</span>
 </div>
 <div class="body pad">
-<div class="hint">这个项目已从列表移除。</div>
-<div class="btns">
-<div class="btn pri">恢复到项目列表</div>
-</div>
+<div class="banner">这个项目已从列表移除<b>恢复</b></div>
 <div class="label">进行中</div>
 <div class="sess">
 <span class="dot run">
@@ -3672,7 +3654,7 @@ Sonnet · high ▾
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="pin">常用</span><span class="live">3 进行中</span></div>
+        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 进行中</span></div>
         <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c2">b</div>bar<span class="live">1 进行中</span></div>
         <div class="ph"><i class="arr">▾</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
         <div class="sub-sess"><span>发布秋季文章</span><span>2 小时前</span></div>
@@ -3713,7 +3695,7 @@ Sonnet · high ▾
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="pin">常用</span><span class="live">3 进行中</span></div>
+        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 进行中</span></div>
         <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
         <div class="ph"><i class="arr">▸</i><div class="av sm c4">n</div>notes<span>昨天</span></div>
       </div>
@@ -3732,11 +3714,11 @@ Sonnet · high ▾
             <div class="record"><span style="color:var(--green)">✓</span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
             <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
           </div>
-          <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+          <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
             <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
             <pre>go test ./... -count=1</pre>
             </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-            <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
+            <div class="foot"><b>附理由拒绝 ›</b></div>
           </div></div></details>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
         </div>
@@ -3794,7 +3776,7 @@ Sonnet · high ▾
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目管理</span></div>
 <div class="dg" style="height:520px">
-  <div class="side"><div class="sh"><b>会话</b><span class="nb">新会话</span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c2">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span>● 已连接</span></div></div>
+  <div class="side"><div class="sh"><b>会话</b><span class="nb">新会话</span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c3">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span><span class="dot idle"></span> 已连接</span></div></div>
   <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><p class="muted small">常用和已移除项目跨客户端同步；移除只隐藏入口，保留会话、历史和提醒。</p><div class="label" style="padding-left:0">常用项目</div><table class="manage-table"><tbody><tr><td><b>remote-agent</b><span class="path">~/Code/ai-bot/remote-agent</span></td><td>取消常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/Code/blog</span></td><td>取消常用 · ⋯</td></tr></tbody></table><div class="label" style="padding-left:0">其他项目</div><table class="manage-table"><tbody><tr><td><b>billing</b><span class="path">~/Code/billing</span></td><td>设为常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/work/blog</span></td><td>设为常用 · ⋯</td></tr></tbody></table><div class="wide-project-tools"><span class="chip" style="color:var(--blue)">已移除 3 个 · 查看与恢复 ›</span></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，在主区域管理常用、移除与恢复；移除后仍能从进行中和通知进入原会话。</div>
