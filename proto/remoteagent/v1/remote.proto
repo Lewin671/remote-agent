@@ -324,6 +324,25 @@ message ProjectPrefs {
   // client whose write reply was lost can tell whether its operation is
   // in.
   repeated string recent_ops = 4;
+  // What new sessions in each project start with (architecture §13), one
+  // entry per project path. A client that does not know this field must
+  // keep it when it writes the object.
+  repeated ProjectSettings settings = 5;
+}
+
+// ProjectSettings are a project's settings for new sessions. Empty fields
+// fall back to the machine's defaults.
+message ProjectSettings {
+  string path = 1;
+  Agent agent = 2;
+  // The machine's device ID.
+  string machine_id = 3;
+  string model = 4;
+  string effort = 5;
+  // Never PLAN: a plan is a passing state, not a default.
+  ApprovalMode mode = 6;
+  // Unix milliseconds of the last change.
+  int64 updated_ms = 7;
 }
 
 message ProjectPref {

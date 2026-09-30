@@ -24,6 +24,7 @@ public  final class ProjectPrefs extends
     pinned_ = emptyProtobufList();
     hidden_ = emptyProtobufList();
     recentOps_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    settings_ = emptyProtobufList();
   }
   public static final int SCHEMA_FIELD_NUMBER = 1;
   private int schema_;
@@ -492,6 +493,169 @@ public  final class ProjectPrefs extends
     checkByteStringIsUtf8(value);
     ensureRecentOpsIsMutable();
     recentOps_.add(value.toStringUtf8());
+  }
+
+  public static final int SETTINGS_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ProjectSettings> settings_;
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.ProjectSettings> getSettingsList() {
+    return settings_;
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.ProjectSettingsOrBuilder> 
+      getSettingsOrBuilderList() {
+    return settings_;
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public int getSettingsCount() {
+    return settings_.size();
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ProjectSettings getSettings(int index) {
+    return settings_.get(index);
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.ProjectSettingsOrBuilder getSettingsOrBuilder(
+      int index) {
+    return settings_.get(index);
+  }
+  private void ensureSettingsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ProjectSettings> tmp = settings_;
+    if (!tmp.isModifiable()) {
+      settings_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSettings(
+      int index, io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSettingsIsMutable();
+    settings_.set(index, value);
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSettings(io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSettingsIsMutable();
+    settings_.add(value);
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSettings(
+      int index, io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSettingsIsMutable();
+    settings_.add(index, value);
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  private void addAllSettings(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ProjectSettings> values) {
+    ensureSettingsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, settings_);
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  private void clearSettings() {
+    settings_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  private void removeSettings(int index) {
+    ensureSettingsIsMutable();
+    settings_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.ProjectPrefs parseFrom(
@@ -1083,6 +1247,180 @@ public  final class ProjectPrefs extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.ProjectSettings> getSettingsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSettingsList());
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public int getSettingsCount() {
+      return instance.getSettingsCount();
+    }/**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ProjectSettings getSettings(int index) {
+      return instance.getSettings(index);
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+      copyOnWrite();
+      instance.setSettings(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSettings.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSettings(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder addSettings(io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+      copyOnWrite();
+      instance.addSettings(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder addSettings(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSettings value) {
+      copyOnWrite();
+      instance.addSettings(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder addSettings(
+        io.github.lewin671.remoteagent.proto.ProjectSettings.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder addSettings(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSettings.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSettings(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder addAllSettings(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ProjectSettings> values) {
+      copyOnWrite();
+      instance.addAllSettings(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder clearSettings() {
+      copyOnWrite();
+      instance.clearSettings();
+      return this;
+    }
+    /**
+     * <pre>
+     * What new sessions in each project start with (architecture §13), one
+     * entry per project path. A client that does not know this field must
+     * keep it when it writes the object.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+     */
+    public Builder removeSettings(int index) {
+      copyOnWrite();
+      instance.removeSettings(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ProjectPrefs)
   }
   @java.lang.Override
@@ -1105,10 +1443,12 @@ public  final class ProjectPrefs extends
             "hidden_",
             io.github.lewin671.remoteagent.proto.ProjectPref.class,
             "recentOps_",
+            "settings_",
+            io.github.lewin671.remoteagent.proto.ProjectSettings.class,
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0003\u0000\u0001\u0004\u0002\u001b" +
-              "\u0003\u001b\u0004\u021a";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0004\u0000\u0001\u0004\u0002\u001b" +
+              "\u0003\u001b\u0004\u021a\u0005\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

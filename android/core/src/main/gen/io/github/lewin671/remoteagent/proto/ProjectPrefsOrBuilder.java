@@ -120,4 +120,36 @@ public interface ProjectPrefsOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRecentOpsBytes(int index);
+
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.ProjectSettings> 
+      getSettingsList();
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.ProjectSettings getSettings(int index);
+  /**
+   * <pre>
+   * What new sessions in each project start with (architecture §13), one
+   * entry per project path. A client that does not know this field must
+   * keep it when it writes the object.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSettings settings = 5 [json_name = "settings"];</code>
+   */
+  int getSettingsCount();
 }
