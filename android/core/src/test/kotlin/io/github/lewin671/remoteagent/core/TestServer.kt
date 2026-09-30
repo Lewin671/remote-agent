@@ -118,6 +118,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
     val commands = LinkedBlockingQueue<Pair<Header, Command>>()
     val termInput = LinkedBlockingQueue<TerminalFrame>()
 
+    /** Seal results with a wrong key, as a corrupted relay would deliver them. */
+    @Volatile var garbleResults = false
+
     /** What to answer; the default is an empty success of the right kind. */
     var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
 
@@ -173,7 +176,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
                 if (cmd.hasOpenTerminal()) serveTerminal(h, cmd)
                 val result = answer(h, cmd)
                 val env = Envelopes.seal(
-                    keys.command,
+                    if (garbleResults) randomBytes(32) else keys.command,
                     header(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT).setSessionId(h.sessionId).setRequestId(h.requestId).build(),
                     result,
                 )

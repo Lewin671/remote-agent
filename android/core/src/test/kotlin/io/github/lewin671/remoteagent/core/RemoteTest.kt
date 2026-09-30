@@ -18,6 +18,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -277,6 +278,27 @@ class RemoteTest {
         } catch (e: CommandException) {
             assertEquals(CommandException.UNKNOWN, e.code)
         }
+    }
+
+    @Test
+    fun aResultThatDoesNotOpenLeavesTheOutcomeUnknown() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true }
+        daemon.garbleResults = true
+        val a = Attempt()
+        val cmd = Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
+        val first = a.next { r.prepare(daemon.id, "s1", cmd) }
+        val shown = try {
+            r.forward(first)
+            null
+        } catch (e: Exception) {
+            a.settle(e)
+        }
+        // The daemon did get it; its answer could not be read. Retry the same.
+        assertTrue(shown is CommandException && shown.unknown)
+        assertTrue(a.frozen)
+        assertSame(first, a.next { r.prepare(daemon.id, "s1", cmd) })
     }
 
     @Test

@@ -646,11 +646,17 @@ class Remote(
                     ForwardRequest.newBuilder().setMachineId(p.machineId).setCommand(p.envelope).build(),
                     Api.headers(token),
                 ).value()
-                val (_, msg) = Envelopes.openMessage(
-                    keys.command, res.result,
-                    Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
-                    CommandResult::parseFrom,
-                )
+                val (_, msg) = try {
+                    Envelopes.openMessage(
+                        keys.command, res.result,
+                        Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
+                        CommandResult::parseFrom,
+                    )
+                } catch (e: OpenException) {
+                    // A result that does not open says nothing about whether
+                    // the command ran; retrying the same request asks again.
+                    throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
+                }
                 if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode }, fromDaemon = true)
                 return msg
             } catch (ce: ConnectException) {
