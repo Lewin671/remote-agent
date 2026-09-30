@@ -32,6 +32,14 @@ type Parser struct {
 	ctx       *pb.TurnContext // last context emitted
 	usage     *pb.TokenUsage  // running totals
 	lastMsgID string          // assistant message whose usage was counted
+	found     []agent.FoundImage
+}
+
+// Images returns the images found by the last Parse.
+func (p *Parser) Images() []agent.FoundImage {
+	f := p.found
+	p.found = nil
+	return f
 }
 
 type call struct {
@@ -40,6 +48,7 @@ type call struct {
 	input  string
 	kind   pb.ToolKind
 	digest string // agent.InputDigest
+	path   string // the file a Read call reads
 }
 
 // NewParser returns a Parser.
@@ -69,7 +78,11 @@ func (p *Parser) Replay(e *pb.Event) {
 			if kind == pb.ToolKind_TOOL_KIND_UNSPECIFIED {
 				kind = pb.ToolKind_TOOL_KIND_OTHER
 			}
-			p.calls[t.CallId] = call{name: t.ItemType, title: t.Title, input: t.Input, kind: kind, digest: t.InputDigest}
+			c := call{name: t.ItemType, title: t.Title, input: t.Input, kind: kind, digest: t.InputDigest}
+			if c.name == "Read" {
+				c.path = describe(c.name, json.RawMessage(t.Input)).path
+			}
+			p.calls[t.CallId] = c
 		}
 	case *pb.Event_ToolCall:
 		delete(p.calls, k.ToolCall.CallId)
@@ -127,6 +140,7 @@ type record struct {
 	Compact     *struct {
 		PostTokens int64 `json:"postTokens"`
 	} `json:"compactMetadata"`
+	PasteIDs []int32 `json:"imagePasteIds"`
 }
 
 type origin struct {
@@ -156,11 +170,17 @@ type block struct {
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
 	IsError   bool            `json:"is_error"`
+	Source    *struct {
+		Type      string `json:"type"`
+		MediaType string `json:"media_type"`
+		Data      string `json:"data"`
+	} `json:"source"`
 }
 
 // Parse converts one transcript line into zero or more events without seq
 // and session ID. Records it does not know yield no events.
 func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
+	p.found = nil
 	var r record
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return nil, fmt.Errorf("transcript line: %w", err)
@@ -237,13 +257,13 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 		return nil, nil
 	}
 	evs = append(evs, p.startTurn(r)...)
-	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: userMessage(text, blocks)}})
+	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: p.userMessage(text, blocks, r.PasteIDs)}})
 	return evs, nil
 }
 
 // userMessage builds a message from content that is either plain text or,
 // when images were pasted, text and image blocks.
-func userMessage(text string, blocks []block) *pb.UserMessage {
+func (p *Parser) userMessage(text string, blocks []block, pasteIDs []int32) *pb.UserMessage {
 	msg := &pb.UserMessage{Text: text}
 	var parts []string
 	for _, b := range blocks {
@@ -251,7 +271,13 @@ func userMessage(text string, blocks []block) *pb.UserMessage {
 		case "text":
 			parts = append(parts, b.Text)
 		case "image":
+			ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_USER}
+			// imagePasteIds are the N of each "[Image #N]", in order.
+			if n := len(msg.Images); n < len(pasteIDs) {
+				ref.CliIndex = pasteIDs[n]
+			}
 			msg.ImageCount++
+			msg.Images = append(msg.Images, p.image(ref, b))
 		}
 	}
 	if len(parts) > 0 {
@@ -425,6 +451,7 @@ func describe(name string, raw json.RawMessage) call {
 		}
 	case "Read":
 		c.title = "Read " + str("file_path")
+		c.path = str("file_path")
 	case "Glob", "Grep":
 		c.title = name + " " + str("pattern")
 	case "WebSearch":
@@ -470,7 +497,55 @@ func (p *Parser) toolResult(b block, structured json.RawMessage) []*pb.Event {
 		tc.Status = "failed"
 	}
 	tc.Output, tc.OutputTruncated = truncate(resultText(b.Content))
+	var inner []block
+	if json.Unmarshal(b.Content, &inner) == nil {
+		for _, ib := range inner {
+			if ib.Type != "image" {
+				continue
+			}
+			ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL, Path: c.path}
+			if d := readDimensions(structured); d != nil && len(tc.Images) == 0 {
+				// Read shrinks images over 2000px; the original size is
+				// what the file has.
+				if d.OriginalWidth != d.DisplayWidth || d.OriginalHeight != d.DisplayHeight {
+					ref.OriginalWidth, ref.OriginalHeight = d.OriginalWidth, d.OriginalHeight
+				}
+			}
+			tc.Images = append(tc.Images, p.image(ref, ib))
+		}
+	}
 	return []*pb.Event{{Kind: &pb.Event_ToolCall{ToolCall: tc}}}
+}
+
+// image records an image block for ref.
+func (p *Parser) image(ref *pb.ImageRef, b block) *pb.ImageRef {
+	if b.Source == nil || b.Source.Type != "base64" || b.Source.Data == "" {
+		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
+		return ref
+	}
+	p.found = append(p.found, agent.FoundImage{Ref: ref, Data: b.Source.Data})
+	return ref
+}
+
+type dimensions struct {
+	OriginalWidth  int32 `json:"originalWidth"`
+	OriginalHeight int32 `json:"originalHeight"`
+	DisplayWidth   int32 `json:"displayWidth"`
+	DisplayHeight  int32 `json:"displayHeight"`
+}
+
+// readDimensions reads the sizes Read reports for an image file.
+func readDimensions(structured json.RawMessage) *dimensions {
+	var r struct {
+		Type string `json:"type"`
+		File *struct {
+			Dimensions *dimensions `json:"dimensions"`
+		} `json:"file"`
+	}
+	if json.Unmarshal(structured, &r) != nil || r.Type != "image" || r.File == nil {
+		return nil
+	}
+	return r.File.Dimensions
 }
 
 // resultText is a tool result's content: a string, or blocks of which the
@@ -523,9 +598,10 @@ func (p *Parser) system(r *record) []*pb.Event {
 
 func (p *Parser) attachment(r *record) []*pb.Event {
 	var a struct {
-		Type   string          `json:"type"`
-		Prompt json.RawMessage `json:"prompt"`
-		Origin *origin         `json:"origin"`
+		Type     string          `json:"type"`
+		Prompt   json.RawMessage `json:"prompt"`
+		Origin   *origin         `json:"origin"`
+		PasteIDs []int32         `json:"imagePasteIds"`
 	}
 	if json.Unmarshal(r.Attachment, &a) != nil {
 		return nil
@@ -540,8 +616,8 @@ func (p *Parser) attachment(r *record) []*pb.Event {
 	if json.Unmarshal(a.Prompt, &text) != nil && json.Unmarshal(a.Prompt, &blocks) != nil {
 		return nil
 	}
-	msg := userMessage(text, blocks)
-	if msg.Text == "" && msg.ImageCount == 0 {
+	msg := p.userMessage(text, blocks, a.PasteIDs)
+	if msg.Text == "" && len(msg.Images) == 0 {
 		return nil
 	}
 	return []*pb.Event{{Kind: &pb.Event_UserMessage{UserMessage: msg}}}

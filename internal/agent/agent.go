@@ -124,6 +124,20 @@ type Parser interface {
 	// Reported tells whether an event a hook reports (Source.HookEvents)
 	// was already parsed from the transcript.
 	Reported(e *pb.Event) bool
+	// Images returns the images found by the last Parse, each tied to an
+	// ImageRef in the events it returned, and forgets them. The daemon
+	// fills in the refs (ID, preview, sizes) before logging the events.
+	Images() []FoundImage
+}
+
+// FoundImage is an image in a transcript line.
+type FoundImage struct {
+	// Ref is in one of the parsed events. The parser sets what the
+	// record says: source, index, path, original size.
+	Ref *pb.ImageRef
+	// Data is the image as recorded: base64, possibly as a data: URL, or
+	// a tail.BlobPrefix marker for a string left in the file.
+	Data string
 }
 
 // Controller operates the CLI's terminal. Methods that take a Term run

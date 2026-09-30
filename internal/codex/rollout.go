@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -21,10 +23,31 @@ const MaxOutput = 16 * 1024
 // to drop duplicates; a fresh Parser is safe to use after a restart.
 type Parser struct {
 	questions map[string]bool // call IDs of request_user_input calls
+	// userImages are the images of the user message just recorded as a
+	// response item; the UserMessage item that follows takes them.
+	userImages []agent.FoundImage
+	// view is an ImageView item waiting for the tool output that carries
+	// its image.
+	view *pb.ToolCall
+	// generated are image generation calls already reported.
+	generated map[string]bool
+	// found are the images of the last Parse.
+	found []agent.FoundImage
 }
 
 // NewParser returns a Parser.
-func NewParser() *Parser { return &Parser{questions: map[string]bool{}} }
+func NewParser() *Parser { return &Parser{questions: map[string]bool{}, generated: map[string]bool{}} }
+
+// Images returns the images found by the last Parse.
+func (p *Parser) Images() []agent.FoundImage {
+	f := p.found
+	p.found = nil
+	return f
+}
+
+// imageTagRE matches the text Codex puts before a pasted image:
+// <image name=[Image #1] path="/tmp/a.png">.
+var imageTagRE = regexp.MustCompile(`^<image name=\[Image #(\d+)\](?: path="(.*)")?>$`)
 
 // RememberQuestion restores, after a restart, that callID is a question
 // whose rendering as an agent message must be dropped.
@@ -37,6 +60,9 @@ func (p *Parser) Reported(*pb.Event) bool { return false }
 func (p *Parser) Replay(e *pb.Event) {
 	if q := e.GetQuestionAsked(); q != nil {
 		p.RememberQuestion(q.QuestionId)
+	}
+	if g := e.GetImageGenerated(); g != nil && g.CallId != "" {
+		p.generated[g.CallId] = true
 	}
 }
 
@@ -53,6 +79,7 @@ type typed struct {
 // Parse converts one rollout line into zero or more events without seq and
 // session ID. Unknown record types yield no events.
 func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
+	p.found = nil
 	var l line
 	if err := json.Unmarshal(raw, &l); err != nil {
 		return nil, fmt.Errorf("rollout line: %w", err)
@@ -93,6 +120,7 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		}
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}), nil
 	case "task_complete":
+		flushed := p.flushView()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			DurationMS int64  `json:"duration_ms"`
@@ -100,10 +128,11 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			return nil, err
 		}
-		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
+		return append(flushed, one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED, DurationMs: m.DurationMS,
-		}}}), nil
+		}}})...), nil
 	case "turn_aborted":
+		flushed := p.flushView()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			Reason     string `json:"reason"`
@@ -112,9 +141,9 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			return nil, err
 		}
-		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
+		return append(flushed, one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: m.Reason, DurationMs: m.DurationMS,
-		}}}), nil
+		}}})...), nil
 	case "token_count":
 		return tokenCount(raw)
 	case "item_completed":
@@ -231,8 +260,10 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 	case "UserMessage":
 		var it struct {
 			Content []struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
+				Type     string `json:"type"`
+				Text     string `json:"text"`
+				Path     string `json:"path"`
+				ImageURL string `json:"image_url"`
 			} `json:"content"`
 		}
 		if err := json.Unmarshal(m.Item, &it); err != nil {
@@ -240,12 +271,15 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 		}
 		msg := &pb.UserMessage{}
 		var parts []string
+		stash := p.userImages
+		p.userImages = nil
 		for _, c := range it.Content {
 			switch c.Type {
 			case "text":
 				parts = append(parts, c.Text)
 			case "image", "local_image", "input_image":
 				msg.ImageCount++
+				msg.Images = append(msg.Images, p.userImage(&stash, c.Path, c.ImageURL, int32(len(msg.Images)+1)))
 			}
 		}
 		msg.Text = strings.Join(parts, "\n")
@@ -361,8 +395,10 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 			Status    string          `json:"status"`
 			Result    *struct {
 				Content []struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
+					Type     string `json:"type"`
+					Text     string `json:"text"`
+					Data     string `json:"data"`
+					MimeType string `json:"mimeType"`
 				} `json:"content"`
 				IsError bool `json:"isError"`
 			} `json:"result"`
@@ -388,18 +424,33 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 			CallId: it.ID, Kind: pb.ToolKind_TOOL_KIND_MCP, Title: it.Server + "." + it.Tool,
 			Input: compactJSON(it.Arguments), Status: it.Status, DurationMs: it.Duration.ms(), ItemType: head.Type,
 		}
+		if it.Result != nil {
+			for _, c := range it.Result.Content {
+				if c.Type == "image" && c.Data != "" {
+					tc.Images = append(tc.Images, p.found1(&pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL}, c.Data))
+				}
+			}
+		}
 		tc.Output, tc.OutputTruncated = truncate(strings.Join(out, "\n"))
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}}), nil
 
 	case "Extension":
 		var it struct {
-			ID     string `json:"id"`
-			Kind   string `json:"kind"`
-			Query  string `json:"query"`
-			Status string `json:"status"`
+			ID            string `json:"id"`
+			Kind          string `json:"kind"`
+			Query         string `json:"query"`
+			Status        string `json:"status"`
+			RevisedPrompt string `json:"revisedPrompt"`
+			Result        string `json:"result"`
+			SavedPath     string `json:"savedPath"`
 		}
 		if err := json.Unmarshal(m.Item, &it); err != nil {
 			return nil, err
+		}
+		// The status may still say "generating" when the result is
+		// complete (codex-notes §1): the result decides.
+		if it.Kind == "image_gen.generation" && it.Result != "" {
+			return one(m.TurnID, p.generatedImage(it.ID, it.RevisedPrompt, it.Result, it.SavedPath)), nil
 		}
 		kind := pb.ToolKind_TOOL_KIND_OTHER
 		if it.Kind == "web.search" {
@@ -421,10 +472,17 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 		if err := json.Unmarshal(m.Item, &it); err != nil {
 			return nil, err
 		}
-		return one(m.TurnID, &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{
+		// The image comes with the tool output that follows; the call is
+		// reported then, with it.
+		flushed := p.flushView()
+		p.view = &pb.ToolCall{
 			CallId: it.ID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "view image " + strings.TrimPrefix(it.Path, "file://"),
-			Status: "completed", ItemType: head.Type,
-		}}}), nil
+			Status: "completed", ItemType: head.Type, Input: strings.TrimPrefix(it.Path, "file://"),
+		}
+		for _, e := range flushed {
+			e.TurnId = m.TurnID
+		}
+		return flushed, nil
 
 	case "ContextCompaction":
 		// Recorded however it was started: /compact typed in the
@@ -442,16 +500,36 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 	var m struct {
 		Type      string          `json:"type"`
+		ID        string          `json:"id"`
+		Role      string          `json:"role"`
 		Name      string          `json:"name"`
 		Arguments string          `json:"arguments"`
 		Input     string          `json:"input"`
 		CallID    string          `json:"call_id"`
 		Output    json.RawMessage `json:"output"`
+		Content   json.RawMessage `json:"content"`
+		// image_generation_call
+		RevisedPrompt string `json:"revised_prompt"`
+		Result        string `json:"result"`
 	}
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}
 	switch m.Type {
+	case "message":
+		if m.Role == "user" {
+			p.userImages = p.messageImages(m.Content)
+		}
+		return nil, nil
+	case "image_generation_call":
+		// Older versions record the generation only here; newer ones
+		// first as an Extension item with the same ID.
+		if m.Result == "" || p.generated[m.ID] {
+			return nil, nil
+		}
+		return one("", p.generatedImage(m.ID, m.RevisedPrompt, m.Result, "")), nil
+	case "custom_tool_call_output":
+		return p.toolOutputImages(m.CallID, m.Output), nil
 	case "custom_tool_call":
 		// Written when the call starts; the item_completed record comes
 		// when it ends.
@@ -469,7 +547,7 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 	case "function_call_output":
 		answers, ok := parseAnswers(m.Output)
 		if !ok {
-			return nil, nil
+			return p.toolOutputImages(m.CallID, m.Output), nil
 		}
 		return one("", &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{
 			QuestionId: m.CallID, Answers: answers,
@@ -608,4 +686,122 @@ func toolTitle(name, input string) string {
 		}
 	}
 	return name
+}
+
+// found1 records an image of the current line for ref.
+func (p *Parser) found1(ref *pb.ImageRef, data string) *pb.ImageRef {
+	p.found = append(p.found, agent.FoundImage{Ref: ref, Data: data})
+	return ref
+}
+
+// messageImages reads the images of a user message recorded as a response
+// item: each input_image follows the <image …> text naming it.
+func (p *Parser) messageImages(raw json.RawMessage) []agent.FoundImage {
+	var content []struct {
+		Type     string `json:"type"`
+		Text     string `json:"text"`
+		ImageURL string `json:"image_url"`
+	}
+	if json.Unmarshal(raw, &content) != nil {
+		return nil
+	}
+	var out []agent.FoundImage
+	var index int32
+	var path string
+	for _, c := range content {
+		switch c.Type {
+		case "input_text":
+			if m := imageTagRE.FindStringSubmatch(strings.TrimSpace(c.Text)); m != nil {
+				n, _ := strconv.Atoi(m[1])
+				index, path = int32(n), m[2]
+			}
+		case "input_image":
+			out = append(out, agent.FoundImage{
+				Ref:  &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_USER, CliIndex: index, Path: path},
+				Data: c.ImageURL,
+			})
+			index, path = 0, ""
+		}
+	}
+	return out
+}
+
+// userImage returns the ref for an image of a UserMessage item: the
+// matching image of the response item before it (by path, else the next
+// one), or the item's own data, or a ref with only what is known.
+func (p *Parser) userImage(stash *[]agent.FoundImage, path, url string, n int32) *pb.ImageRef {
+	pick := -1
+	for i, f := range *stash {
+		if path != "" && f.Ref.Path == path {
+			pick = i
+			break
+		}
+	}
+	if pick < 0 && path == "" && len(*stash) > 0 {
+		pick = 0
+	}
+	if pick >= 0 {
+		f := (*stash)[pick]
+		*stash = append((*stash)[:pick:pick], (*stash)[pick+1:]...)
+		if f.Ref.CliIndex == 0 {
+			f.Ref.CliIndex = n
+		}
+		p.found = append(p.found, f)
+		return f.Ref
+	}
+	ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_USER, CliIndex: n, Path: path}
+	if url != "" {
+		return p.found1(ref, url)
+	}
+	ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
+	return ref
+}
+
+// toolOutputImages turns the images of a tool's output into the call's
+// event: the ImageView waiting for them, or a call of its own (e.g. a
+// browser screenshot). Output without images only settles a waiting
+// ImageView.
+func (p *Parser) toolOutputImages(callID string, raw json.RawMessage) []*pb.Event {
+	var content []struct {
+		Type     string `json:"type"`
+		ImageURL string `json:"image_url"`
+	}
+	_ = json.Unmarshal(raw, &content)
+	tc := p.view
+	p.view = nil
+	for _, c := range content {
+		if c.Type != "input_image" || c.ImageURL == "" {
+			continue
+		}
+		if tc == nil {
+			tc = &pb.ToolCall{CallId: callID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "image", Status: "completed", ItemType: "ToolOutput"}
+		}
+		ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL}
+		if tc.ItemType == "ImageView" {
+			ref.Path = tc.Input
+		}
+		tc.Images = append(tc.Images, p.found1(ref, c.ImageURL))
+	}
+	if tc == nil {
+		return nil
+	}
+	return one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})
+}
+
+// flushView reports a waiting ImageView whose output never came.
+func (p *Parser) flushView() []*pb.Event {
+	if p.view == nil {
+		return nil
+	}
+	tc := p.view
+	p.view = nil
+	return one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})
+}
+
+func (p *Parser) generatedImage(id, prompt, result, path string) *pb.Event {
+	if id != "" {
+		p.generated[id] = true
+	}
+	ref := p.found1(&pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_GENERATED, Path: path}, result)
+	return &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: id, RevisedPrompt: prompt, Images: []*pb.ImageRef{ref}}}}
 }
