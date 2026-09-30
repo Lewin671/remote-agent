@@ -1515,3 +1515,20 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
   await vi.waitFor(() => expect(sent).toHaveLength(1));
   expect(sent[0]).toEqual({ prompt: "", imageIds: ["id-a"] });
 });
+
+it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async () => {
+  const r = demo();
+  const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
+  const m = r.machines.get("mac")!;
+  const now = Date.now();
+  m.meta!.quotas = [
+    create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.WAITING }),
+    create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "five_hour", usedPercent: 28, resetsAtMs: BigInt(now + 3_600_000), windowMinutes: 300n }] }),
+  ];
+  const { QuotaPage } = await import("./Settings");
+  mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  expect(host.textContent).not.toContain("暂不支持读取额度");
+  expect(host.textContent).toContain("已用 28%");
+  expect(host.textContent).toContain("暂未获取额度");
+  expect(host.textContent).toContain("7 天未获取");
+});

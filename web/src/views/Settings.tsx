@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 import { agentName, agentOf, ago, defaultModeOf, exited, findModel, machineAgents, modelLabel, machineName, modeLabel, modeName, projects, shortPath } from "../model";
-import { quotaRow } from "../quota";
+import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
@@ -102,10 +102,11 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
 
 /** The tightest Codex window of a machine, for its row: "Codex · 7 天已用 34%". */
 function quotaLine(m: MachineView): string {
-  const l = m.meta?.secondaryLimit ?? m.meta?.primaryLimit;
-  if (!l) return "";
-  const r = quotaRow(l, "", Date.now(), m.online);
-  return r.tone === "stale" ? " · Codex 额度（上次记录）" : ` · Codex · ${r.label}${r.used}`;
+  const views = machineQuotaViews(m.meta, machineAgents(m), Date.now(), m.online).filter((v) => v.rows.some((r) => r.percent !== undefined));
+  const v = views[0];
+  if (!v) return "";
+  const r = [...v.rows].reverse().find((x) => x.percent !== undefined)!;
+  return ` · ${agentName(v.agent)} · ${r.label}${r.used}${v.stale ? "（上次记录）" : ""}`;
 }
 
 /** On a machine's page: each CLI's quota in a line, and the way to all. */
@@ -113,30 +114,15 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
   // Reset times pass with nothing else changing.
   const now = useNow(30_000);
-  const codex = m.meta?.primaryLimit ?? m.meta?.secondaryLimit;
+  const views = machineQuotaViews(m.meta, agents, now, m.online);
   return (
     <div className="grp">
-      {agents.includes(Agent.CODEX) && (
-        <div className="row">
-          Codex 额度
-          <span className="v">
-            {codex
-              ? [m.meta?.primaryLimit, m.meta?.secondaryLimit]
-                  .filter((l) => !!l)
-                  .map((l) => {
-                    const r = quotaRow(l, "", now, true);
-                    return `${r.label} ${r.used}`;
-                  })
-                  .join(" · ") + (m.online ? "" : "（上次记录）")
-              : "暂未获取额度"}
-          </span>
+      {agents.map((a) => (
+        <div className="row" key={a}>
+          {agentName(a)} 额度
+          <span className="v">{quotaSummary(views.filter((v) => v.agent === (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX)))}</span>
         </div>
-      )}
-      {agents.includes(Agent.CLAUDE) && (
-        <div className="row">
-          Claude Code 额度<span className="v">暂不支持读取额度</span>
-        </div>
-      )}
+      ))}
       <button className="row" onClick={() => go("q/" + m.id)}>
         查看全部额度<span className="v">›</span>
       </button>
@@ -159,13 +145,21 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
         <div className="center muted">没有这台设备</div>
       </div>
     );
-  const agents = machineAgents(m);
-  const now = clock;
-  const meta = m.meta;
-  const rows = [quotaRow(meta?.primaryLimit, "5 小时", now, m.online), quotaRow(meta?.secondaryLimit, "7 天", now, m.online)];
-  const got = !!(meta?.primaryLimit || meta?.secondaryLimit);
+  const views = machineQuotaViews(m.meta, machineAgents(m), clock, m.online);
   // A Claude Code session on this machine, to read /usage in its terminal.
   const claude = [...remote.sessions.values()].find((s) => s.machineId === id && agentOf(s) === Agent.CLAUDE && !exited(s));
+  const toUsage = claude && (
+    <button
+      className="row"
+      disabled={!m.online}
+      onClick={() => {
+        remote.termFirst.add(claude.id);
+        go("s/" + claude.id);
+      }}
+    >
+      去终端查看 /usage<span className="v">›</span>
+    </button>
+  );
   return (
     <div className="page gray">
       <NavBar onBack={onBack} title={<span className="tname">账户额度</span>} sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`} />
@@ -175,68 +169,53 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
             <Banner kind="warn">机器离线，显示上次记录</Banner>
           </div>
         )}
-        {agents.includes(Agent.CODEX) && (
-          <>
-            <div className="glabel">
-              Codex{meta?.planType ? ` · ${meta.planType}` : ""}
-              {!m.online && got ? " · 上次记录" : ""}
-            </div>
+        {views.map((v, i) => (
+          <div key={i}>
+            {v.error && (
+              <div className="gbanner">
+                <Banner kind="err">{v.error}</Banner>
+              </div>
+            )}
+            <div className="glabel">{v.title}</div>
             <div className="grp">
-              {got ? (
-                rows.map((r) => (
-                  <div className={"row col quota " + r.tone} key={r.label}>
+              {v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length ? (
+                <div className="row col">
+                  <b>{v.head}</b>
+                  <div className="hint">{v.detail || (v.kind === "unsupported" ? `可在本机 ${agentName(v.agent)} 中查看 /usage` : "")}</div>
+                </div>
+              ) : (
+                v.rows.map((r) => (
+                  <div className={"row col quota " + r.tone} key={r.key}>
                     <div className="line">
                       <span>{r.label}</span>
-                      <span className="v">
-                        {r.used}
-                        {r.reset && ` · ${r.reset}`}
-                      </span>
+                      <span className="v">{r.used}</span>
                     </div>
-                    {r.percent !== undefined && (
+                    {r.percent !== undefined && r.tone !== "stale" && (
                       <div className="bar">
                         <i style={{ width: `${Math.min(100, r.percent)}%` }} />
                       </div>
                     )}
+                    {r.percent !== undefined && r.tone === "stale" && (
+                      <div className="bar">
+                        <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+                      </div>
+                    )}
+                    {r.reset && <div className="hint">{r.reset}</div>}
                     {r.note && <div className="hint">{r.note}</div>}
                   </div>
                 ))
-              ) : (
-                <div className="row col">
-                  <b>暂未获取额度</b>
-                  <div className="hint">Codex 在这台机器上下一次回复后会带上额度。</div>
-                </div>
               )}
+              {v.agent === Agent.CLAUDE && toUsage}
             </div>
-            {rows.some((r) => r.tone === "warn" || r.tone === "full") && (
+            {(v.banner || v.note) && (
               <div className="gbanner">
-                <Banner kind="warn">{rows.some((r) => r.tone === "full") ? "有额度已经用尽" : "有额度即将用尽"}，不会自动切换 CLI 或模型</Banner>
+                {v.banner && <Banner kind="warn">{v.banner}，不会自动切换 CLI 或模型</Banner>}
+                {v.note && <div className="hint">{v.note}</div>}
               </div>
             )}
-          </>
-        )}
-        {agents.includes(Agent.CLAUDE) && (
-          <>
-            <div className="glabel">Claude Code</div>
-            <div className="grp">
-              <div className="row col">
-                <b>暂不支持读取额度</b>
-                <div className="hint">电脑上的 remote-agent 还没有采集 Claude Code 的额度。可在本机 Claude Code 中查看 /usage。</div>
-              </div>
-              <button
-                className="row"
-                disabled={!m.online || !claude}
-                onClick={() => {
-                  if (!claude) return;
-                  remote.termFirst.add(claude.id);
-                  go("s/" + claude.id);
-                }}
-              >
-                去终端查看 /usage<span className="v">{claude ? "›" : "没有进行中的会话"}</span>
-              </button>
-            </div>
-            <div className="manage-hint">只打开终端，不自动输入命令。</div>
-          </>
-        )}
+          </div>
+        ))}
+        {views.some((v) => v.agent === Agent.CLAUDE) && !claude && <div className="manage-hint">要看 /usage，先在这台机器上打开一个 Claude Code 会话。</div>}
         <div className="manage-hint">额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>

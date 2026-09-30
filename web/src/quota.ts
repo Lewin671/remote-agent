@@ -3,7 +3,10 @@
 // trusted. A missing value is never shown as 0%, and a reset time that
 // passed does not mean the quota is back.
 
-import type { RateLimit } from "./gen/remoteagent/v1/event_pb";
+import { Agent, type RateLimit } from "./gen/remoteagent/v1/event_pb";
+import { create } from "@bufbuild/protobuf";
+import { AgentQuotaSchema, QuotaState, QuotaWindowSchema, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
+import { agentName } from "./model";
 
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
@@ -40,4 +43,150 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
   if (passed) return { label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${used}；重置时间已过，不能据此确认额度已经恢复` };
   if (!online) return { label, used, percent: pct, reset, tone: "stale", note: "上次记录：电脑离线，可能已变化" };
   return { label, used, percent: pct, reset, tone: pct >= 100 ? "full" : pct >= 80 ? "warn" : "", note: "" };
+}
+
+// --- MachineMeta.quotas (daemons since ed1a14d) ---
+
+export interface QuotaView {
+  agent: Agent;
+  title: string; // Codex · Pro Lite, Claude Code · 上次记录, … · 会话 fc84
+  kind: "ok" | "waiting" | "failed" | "unsupported";
+  head: string; // for waiting and unsupported: 暂未获取额度 / 暂不支持读取额度
+  detail: string; // the daemon's why, for unsupported
+  error: string; // for failed
+  rows: (QuotaRow & { key: string })[];
+  banner: string; // 5 小时额度即将用尽, 额度已用尽
+  note: string; // 只有 5 小时用量可用；7 天额度暂时未知。
+  stale: boolean;
+}
+
+const expected: Record<number, [string, string, number][]> = {
+  // name, label, minutes: the windows each CLI reports.
+  [Agent.CODEX]: [
+    ["primary", "5 小时", 300],
+    ["secondary", "7 天", 10080],
+  ],
+  [Agent.CLAUDE]: [
+    ["five_hour", "5 小时", 300],
+    ["seven_day", "7 天", 10080],
+  ],
+};
+
+function hm(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function when(ms: number, now: number): string {
+  const d = new Date(ms);
+  const today = new Date(now).toDateString();
+  if (d.toDateString() === today) return hm(ms);
+  if (d.toDateString() === new Date(now - 86_400_000).toDateString()) return `昨天 ${hm(ms)}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${hm(ms)}`;
+}
+
+function windowRow(w: QuotaWindow | undefined, label: string, now: number, stale: boolean, observed: string, heard: string): QuotaRow & { key: string } {
+  const key = label;
+  const seen = observed ? `${heard} ${observed}` : "";
+  if (!w || w.usedPercent === undefined)
+    return { key, label, used: "未获取", reset: seen, tone: "", note: "没有收到这项额度数据" };
+  const pct = Math.round(w.usedPercent);
+  const used = pct >= 100 ? "已用尽" : `已用 ${pct}%`;
+  const resetMs = Number(w.resetsAtMs);
+  if (resetMs > 0 && resetMs <= now)
+    return { key, label, used: "等待更新", percent: pct, reset: seen, tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
+  let reset = "";
+  if (resetMs > 0) {
+    const d = new Date(resetMs);
+    reset = `${d.toDateString() === new Date(now).toDateString() ? "" : days[d.getDay()] + " "}${hm(resetMs)} 重置`;
+  }
+  return {
+    key,
+    label,
+    used: stale ? `上次${used}` : used,
+    percent: pct,
+    reset: [reset, seen].filter(Boolean).join(" · "),
+    tone: stale ? "stale" : pct >= 100 ? "full" : pct >= 80 ? "warn" : "",
+    note: "",
+  };
+}
+
+/** Each CLI's account quota on a machine, as the device pages show it:
+ * one view per reported entry (several for one CLI when accounts or
+ * sessions cannot be told apart; never added together), and
+ * 暂不支持读取额度 for an installed CLI the daemon reports nothing for. */
+export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, online: boolean): QuotaView[] {
+  const out: QuotaView[] = [];
+  const norm = (a: Agent) => (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX);
+  for (const agent of agents.map(norm)) {
+    const name = agentName(agent);
+    const mine = quotas.filter((q) => norm(q.agent) === agent);
+    const base = { agent, head: "", detail: "", error: "", rows: [], banner: "", note: "", stale: false };
+    if (!mine.length) {
+      out.push({ ...base, title: name, kind: "unsupported", head: "暂不支持读取额度" });
+      continue;
+    }
+    for (const q of mine) {
+      const who = mine.length > 1 ? (q.account ? ` · 账户 ${q.account}` : q.sourceSessionId ? ` · 会话 ${q.sourceSessionId.slice(-4)}` : "") : "";
+      if (q.state === QuotaState.WAITING || (q.state === QuotaState.UNSPECIFIED && !q.windows.length)) {
+        out.push({ ...base, title: name + who, kind: "waiting", head: "暂未获取额度", detail: `等待 ${name} 返回额度数据` });
+        continue;
+      }
+      if (q.state === QuotaState.UNSUPPORTED) {
+        out.push({ ...base, title: name + who, kind: "unsupported", head: "暂不支持读取额度", detail: q.detail });
+        continue;
+      }
+      const failed = q.state === QuotaState.FAILED;
+      const stale = failed || !online;
+      const observed = q.observedMs > 0n ? when(Number(q.observedMs), now) : "";
+      const heard = failed ? "最近成功收到" : "最近收到";
+      const byName = new Map(q.windows.map((w) => [w.name, w]));
+      const known = expected[agent] ?? [];
+      const rows = known.map(([n, label]) => windowRow(byName.get(n), label, now, stale, observed, heard));
+      for (const w of q.windows) if (!known.some(([n]) => n === w.name)) rows.push(windowRow(w, w.windowMinutes > 0n ? windowLabel(Number(w.windowMinutes)) : w.name, now, stale, observed, heard));
+      if (failed && !q.windows.length) {
+        out.push({ ...base, title: name + who, kind: "failed", error: `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}`, head: "暂未获取额度" });
+        continue;
+      }
+      const got = rows.filter((r) => r.percent !== undefined && r.tone !== "stale");
+      const full = got.find((r) => r.tone === "full");
+      const warn = got.find((r) => r.tone === "warn");
+      const missing = rows.filter((r) => r.used === "未获取");
+      out.push({
+        ...base,
+        title: name + (q.plan ? ` · ${q.plan}` : "") + who + (stale ? " · 上次记录" : ""),
+        kind: failed ? "failed" : "ok",
+        error: failed ? `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}` : "",
+        rows,
+        stale,
+        banner: full ? `${full.label}额度已用尽` : warn ? `${warn.label}额度即将用尽` : "",
+        note: missing.length && missing.length < rows.length ? `只有 ${rows.filter((r) => r.used !== "未获取").map((r) => r.label).join("、")}用量可用；${missing.map((r) => r.label).join("、")}额度暂时未知。` : "",
+      });
+    }
+  }
+  return out;
+}
+
+/** One line for a CLI on the machine page: its windows, or its state. */
+export function quotaSummary(views: QuotaView[]): string {
+  return views
+    .map((v) => {
+      if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || "暂未获取额度";
+      const line = v.rows.filter((r) => r.used !== "未获取").map((r) => `${r.label} ${r.used}`).join(" · ") || "暂未获取额度";
+      return line + (v.stale ? "（上次记录）" : "");
+    })
+    .join("；");
+}
+
+/** A machine's quota views: from its quotas, or, from daemons before
+ * them, Codex's limits in the machine metadata (Claude Code then has none). */
+export function machineQuotaViews(meta: MachineMeta | undefined, agents: Agent[], now: number, online: boolean): QuotaView[] {
+  let quotas = meta?.quotas ?? [];
+  if (!quotas.length) {
+    const win = (name: string, l?: RateLimit) =>
+      l && create(QuotaWindowSchema, { name, usedPercent: l.usedPercent, resetsAtMs: l.resetsAt * 1000n, windowMinutes: l.windowMinutes });
+    const windows = [win("primary", meta?.primaryLimit), win("secondary", meta?.secondaryLimit)].filter((w): w is QuotaWindow => !!w);
+    quotas = [create(AgentQuotaSchema, { agent: Agent.CODEX, state: windows.length ? QuotaState.OK : QuotaState.WAITING, plan: meta?.planType ?? "", windows })];
+  }
+  return quotaViews(quotas, agents, now, online);
 }
