@@ -241,6 +241,27 @@ class RemoteTest {
     }
 
     @Test
+    fun anUnknownOutcomeStaysUnknownWhenTheMachineThenGoesOffline() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true }
+        // The daemon takes the command and drops off before answering: it may
+        // have run. The retry then finds the machine offline, which says
+        // nothing about the first try.
+        daemon.answer = { _, c ->
+            daemon.disconnect()
+            FakeDaemon.defaultResult(c)
+        }
+        val cmd = Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
+        try {
+            r.forward(r.prepare(daemon.id, "s1", cmd))
+            fail("expected an error")
+        } catch (e: CommandException) {
+            assertEquals(CommandException.UNKNOWN, e.code)
+        }
+    }
+
+    @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
         val r = client()
         r.start()

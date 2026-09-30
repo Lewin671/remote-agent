@@ -633,6 +633,12 @@ class Remote(
         // daemon may still have its result in its log.
         if (!retryOfUnknown && clock() >= p.deadlineMs) throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
         var attempt = 0
+        // Once a try may have reached the daemon, a later try that surely did
+        // not (machine gone, network down) says nothing about that one: the
+        // outcome stays unknown.
+        var mayHaveRun = retryOfUnknown
+        fun notSent(code: String, text: String) =
+            if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：$text") else CommandException(code, text)
         while (true) {
             try {
                 if (token.isEmpty()) token = login(api, account)
@@ -650,20 +656,22 @@ class Remote(
             } catch (ce: ConnectException) {
                 val cause = ce.exception
                 if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
-                    throw CommandException("network", "网络不通，指令没有发出")
+                    throw notSent("network", "网络不通，指令没有发出")
                 }
                 if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                     attempt++
                     token = login(api, account)
                     continue
                 }
-                val unknown = ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED)
+                // ABORTED: the daemon could not seal a result, as on the web.
+                val unknown = ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED)
+                if (unknown) mayHaveRun = true
                 if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
                     attempt++
                     delay(1000L * attempt)
                     continue
                 }
-                if (ce.code == Code.UNAVAILABLE && cause == null) throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
+                if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
                 if (unknown || ce.code == Code.UNAVAILABLE) {
                     throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：${errorText(ce)}")
                 }
