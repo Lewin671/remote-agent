@@ -34,7 +34,7 @@
 
 各端使用根目录 `version.properties` 中的同一个产品版本，Android 的 `androidVersionCode` 每次发布递增。正式 tag 为 `vMAJOR.MINOR.PATCH`，与文件严格一致；daemon/server 的 `--version`、网页和 App 设置页显示产品版本和源提交。协议版本独立，不随产品版本自动增长；产品版本不同也不应单独成为拒绝连接的理由。
 
-发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布 APK、Go 二进制、网页压缩包、源提交和 SHA256 校验和。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
+发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布正式签名 APK 和 `SHA256SUMS`。源提交写在发布说明中，各端仍统一版本；daemon/server 当前从源码安装部署、网页使用 Cloudflare Pages，所以不附 Go 二进制、网页压缩包或独立元数据文件，也不做 Go 多架构分发构建。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
 
 正式 APK 缺少固定签名或 Firebase 客户端配置就停止发布，不退回 debug 签名。GitHub Secrets 的 `ANDROID_SIGNING` 保存签名 keystore 与签名参数，`ANDROID_GOOGLE_SERVICES` 保存客户端配置；FCM 服务账户和账户加密密钥不进入构建流水线。签名密钥必须另有本地备份。手动 `Build development APK` 生成独立 `.dev` 应用，与正式版数据分开，使用固定签名以便后续覆盖升级，推送关闭，产物保留 3 天。
 

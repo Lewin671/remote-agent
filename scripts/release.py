@@ -86,7 +86,7 @@ def notes(tag):
     metadata = validate(tag)
     previous = [t for t in release_tags() if t != tag]
     print(f"Source: `{metadata['commit']}`\n\nAndroid versionCode: `{metadata['androidVersionCode']}`\n")
-    print("APK, daemon, server and web assets are built from this tag. Publishing does not deploy live services.\n")
+    print("Release contains the signed APK and SHA256SUMS only. Go and web checks also run against this tag. Product version and source revision remain shared across all components. Publishing does not deploy live services.\n")
     print("## Release and upgrade notes\n")
     print(git("tag", "--list", tag, "--format=%(contents)"))
     print("\n## Changes\n")
