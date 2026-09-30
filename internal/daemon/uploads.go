@@ -144,12 +144,18 @@ func validHexID(id string) bool {
 	return err == nil && strings.ToLower(id) == id
 }
 
-// deviceOf names who uploads, so that only they can continue and send it.
-func deviceOf(o *pb.Origin) string {
-	if o == nil || o.DeviceId == "" {
-		return "local"
+// imageOwner names who uploads, so that only they can continue and send
+// it: the device that signed the command, or this computer. A device the
+// server names for an unsigned command is no proof and may not handle
+// images at all; unsigned text messages still work.
+func imageOwner(o *pb.Origin) (string, error) {
+	switch {
+	case o == nil || o.Kind == pb.OriginKind_ORIGIN_KIND_LOCAL:
+		return "local", nil
+	case o.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT && o.DeviceId != "":
+		return o.DeviceId, nil
 	}
-	return o.DeviceId
+	return "", connect.NewError(connect.CodePermissionDenied, errors.New("images need commands signed by the device; update the client"))
 }
 
 func (u *uploads) owned(t *transfer, device string) error {

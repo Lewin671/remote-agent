@@ -308,8 +308,14 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		return nil, err
 	}
 	// The first message's images must be here before a session starts.
-	if err := d.uploads.check(req.ImageIds, deviceOf(origin)); err != nil {
-		return nil, err
+	owner := ""
+	if len(req.ImageIds) > 0 {
+		if owner, err = imageOwner(origin); err != nil {
+			return nil, err
+		}
+		if err := d.uploads.check(req.ImageIds, owner); err != nil {
+			return nil, err
+		}
 	}
 	if ag.Bin() == "" {
 		return nil, fmt.Errorf("%s is not installed on this machine", ag.Name())
@@ -375,7 +381,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 {
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered.
-		images, err := d.uploads.take(req.ImageIds, deviceOf(origin), id)
+		images, err := d.uploads.take(req.ImageIds, owner, id)
 		if err == nil {
 			_, err = s.enqueue(req.Prompt, "", images, origin)
 			if err != nil {

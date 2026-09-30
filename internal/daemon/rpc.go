@@ -67,9 +67,15 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		return nil, rpcErr(err)
 	}
 	origin := originOf(ctx)
-	images, err := h.d.uploads.take(req.Msg.ImageIds, deviceOf(origin), s.meta.ID)
-	if err != nil {
-		return nil, err
+	var images []queuedImage
+	if len(req.Msg.ImageIds) > 0 {
+		owner, err := imageOwner(origin)
+		if err != nil {
+			return nil, err
+		}
+		if images, err = h.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID); err != nil {
+			return nil, err
+		}
 	}
 	pos, err := s.enqueue(req.Msg.Text, req.Msg.RequestId, images, origin)
 	if err != nil {
@@ -270,7 +276,11 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 }
 
 func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.BeginImageUploadRequest]) (*connect.Response[pb.BeginImageUploadResponse], error) {
-	st, err := h.d.uploads.begin(req.Msg, deviceOf(originOf(ctx)))
+	owner, err := imageOwner(originOf(ctx))
+	if err != nil {
+		return nil, err
+	}
+	st, err := h.d.uploads.begin(req.Msg, owner)
 	if err != nil {
 		return nil, uploadErr(err)
 	}
@@ -278,7 +288,11 @@ func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.
 }
 
 func (h *handler) PutImageChunk(ctx context.Context, req *connect.Request[pb.PutImageChunkRequest]) (*connect.Response[pb.PutImageChunkResponse], error) {
-	st, err := h.d.uploads.put(req.Msg, deviceOf(originOf(ctx)))
+	owner, err := imageOwner(originOf(ctx))
+	if err != nil {
+		return nil, err
+	}
+	st, err := h.d.uploads.put(req.Msg, owner)
 	if err != nil {
 		return nil, uploadErr(err)
 	}
@@ -286,7 +300,11 @@ func (h *handler) PutImageChunk(ctx context.Context, req *connect.Request[pb.Put
 }
 
 func (h *handler) GetImageUploadStatus(ctx context.Context, req *connect.Request[pb.GetImageUploadStatusRequest]) (*connect.Response[pb.GetImageUploadStatusResponse], error) {
-	st, err := h.d.uploads.status(req.Msg.TransferId, deviceOf(originOf(ctx)))
+	owner, err := imageOwner(originOf(ctx))
+	if err != nil {
+		return nil, err
+	}
+	st, err := h.d.uploads.status(req.Msg.TransferId, owner)
 	if err != nil {
 		return nil, uploadErr(err)
 	}
@@ -294,7 +312,11 @@ func (h *handler) GetImageUploadStatus(ctx context.Context, req *connect.Request
 }
 
 func (h *handler) CompleteImageUpload(ctx context.Context, req *connect.Request[pb.CompleteImageUploadRequest]) (*connect.Response[pb.CompleteImageUploadResponse], error) {
-	st, err := h.d.uploads.complete(req.Msg.TransferId, deviceOf(originOf(ctx)))
+	owner, err := imageOwner(originOf(ctx))
+	if err != nil {
+		return nil, err
+	}
+	st, err := h.d.uploads.complete(req.Msg.TransferId, owner)
 	if err != nil {
 		return nil, uploadErr(err)
 	}
@@ -302,7 +324,11 @@ func (h *handler) CompleteImageUpload(ctx context.Context, req *connect.Request[
 }
 
 func (h *handler) AbortImageUpload(ctx context.Context, req *connect.Request[pb.AbortImageUploadRequest]) (*connect.Response[pb.AbortImageUploadResponse], error) {
-	if err := h.d.uploads.abort(req.Msg.TransferId, deviceOf(originOf(ctx))); err != nil {
+	owner, err := imageOwner(originOf(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if err := h.d.uploads.abort(req.Msg.TransferId, owner); err != nil {
 		return nil, uploadErr(err)
 	}
 	return connect.NewResponse(&pb.AbortImageUploadResponse{}), nil
