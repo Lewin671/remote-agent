@@ -158,9 +158,13 @@ message NotifyApproval {
   string approval_id = 1;
   string tool_name = 2;
   string description = 3;
-  // Shortened; truncated says whether all of it is here.
+  // The command line of a shell request, shortened; truncated says
+  // whether all of it (or of tool_input) is here.
   string command = 4;
   bool truncated = 5;
   // Unix milliseconds after which the request is denied.
   int64 deadline_ms = 6;
+  // For a request that is not a command (e.g. Write): its input as JSON,
+  // shortened. Daemons before this field put it in command.
+  string tool_input = 7;
 }

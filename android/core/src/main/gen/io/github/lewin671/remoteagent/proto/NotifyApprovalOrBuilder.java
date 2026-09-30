@@ -48,7 +48,8 @@ public interface NotifyApprovalOrBuilder extends
 
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -57,7 +58,8 @@ public interface NotifyApprovalOrBuilder extends
   java.lang.String getCommand();
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -81,4 +83,26 @@ public interface NotifyApprovalOrBuilder extends
    * @return The deadlineMs.
    */
   long getDeadlineMs();
+
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @return The toolInput.
+   */
+  java.lang.String getToolInput();
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @return The bytes for toolInput.
+   */
+  com.google.protobuf.ByteString
+      getToolInputBytes();
 }

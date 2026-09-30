@@ -93,6 +93,20 @@ object Notifier {
 
     fun id(session: String, approval: String?): Int = (approval ?: session).hashCode()
 
+    /**
+     * An approval's title and line, as the web names it: a command is
+     * 请求执行 with the command, any other tool 请求权限 · <tool> with its
+     * description or input. Daemons before NotifyApproval.tool_input put a
+     * tool's JSON input in command.
+     */
+    fun approvalText(a: io.github.lewin671.remoteagent.proto.NotifyApproval): Pair<String, String> {
+        val oldToolInput = a.toolInput.isEmpty() && a.command.trimStart().startsWith("{") && a.toolName != "Bash"
+        val command = if (oldToolInput) "" else a.command
+        if (command.isNotEmpty()) return "请求执行" to command
+        val input = a.toolInput.ifEmpty { if (oldToolInput) a.command else "" }
+        return "请求权限" + (if (a.toolName.isNotEmpty()) " · ${a.toolName}" else "") to a.description.ifEmpty { input }.ifEmpty { a.toolName }
+    }
+
     /** How a push is shown. */
     data class Display(val detailed: Boolean, val buttons: Boolean, val visibility: Int)
 
@@ -143,9 +157,10 @@ object Notifier {
         if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {
-            val what = approval.command.ifEmpty { approval.description.ifEmpty { approval.toolName } }
-            b.setContentTitle(if (approval.command.isNotEmpty()) "请求执行 · ${c.title}" else "请求权限 · ${c.title}")
+            val (title, what) = approvalText(approval)
+            b.setContentTitle(title)
                 .setContentText(what)
+                .setSubText(c.title.takeIf { it.isNotEmpty() })
                 .setStyle(NotificationCompat.BigTextStyle().bigText(listOf(approval.description, what).filter { it.isNotEmpty() }.distinct().joinToString("\n")))
             if (approval.deadlineMs > 0) b.setTimeoutAfter((approval.deadlineMs - System.currentTimeMillis()).coerceAtLeast(1000))
             if (how.buttons && (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis())) {

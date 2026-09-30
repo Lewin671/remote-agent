@@ -198,11 +198,12 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 		dedupe = a.ApprovalId
 		na := &pb.NotifyApproval{ApprovalId: a.ApprovalId, ToolName: a.ToolName}
 		na.Description, _ = clip(a.Description, notifyText)
-		cmd := a.Command
-		if cmd == "" {
-			cmd = a.ToolInputJson
+		// A command is shown as one; any other tool by its name and input.
+		if a.Command != "" {
+			na.Command, na.Truncated = clip(a.Command, notifyCommand)
+		} else {
+			na.ToolInput, na.Truncated = clip(a.ToolInputJson, notifyCommand)
 		}
-		na.Command, na.Truncated = clip(cmd, notifyCommand)
 		if a.Deadline != nil {
 			na.DeadlineMs = a.Deadline.AsTime().UnixMilli()
 		}

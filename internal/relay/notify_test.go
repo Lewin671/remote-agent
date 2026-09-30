@@ -44,3 +44,24 @@ func TestNotifyRequestSealsApprovals(t *testing.T) {
 		t.Fatalf("content is %d bytes", n)
 	}
 }
+
+func TestNotifyRequestKeepsCommandsAndOtherToolsApart(t *testing.T) {
+	root := e2e.NewKey()
+	keys, _ := e2e.Derive(root)
+	c := &conn{acct: &Account{Root: root, DeviceID: "machine-1"}, keys: keys}
+	e := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{
+		ApprovalId: "w1", ToolName: "Write", ToolInputJson: `{"file_path":"/tmp/a.txt","content":"hi"}`,
+	}}}
+	req, err := c.notifyRequest("s1", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nc pb.NotifyContent
+	if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, &nc); err != nil {
+		t.Fatal(err)
+	}
+	// Not a command: the app titles it 请求权限 · Write, as the web does.
+	if a := nc.Approval; a.Command != "" || a.ToolInput != `{"file_path":"/tmp/a.txt","content":"hi"}` || a.ToolName != "Write" {
+		t.Fatalf("approval %v", a)
+	}
+}

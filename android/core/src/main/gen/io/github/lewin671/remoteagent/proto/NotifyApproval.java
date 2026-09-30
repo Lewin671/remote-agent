@@ -19,6 +19,7 @@ public  final class NotifyApproval extends
     toolName_ = "";
     description_ = "";
     command_ = "";
+    toolInput_ = "";
   }
   public static final int APPROVAL_ID_FIELD_NUMBER = 1;
   private java.lang.String approvalId_;
@@ -168,7 +169,8 @@ public  final class NotifyApproval extends
   private java.lang.String command_;
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -180,7 +182,8 @@ public  final class NotifyApproval extends
   }
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -193,7 +196,8 @@ public  final class NotifyApproval extends
   }
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -208,7 +212,8 @@ public  final class NotifyApproval extends
   }
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -219,7 +224,8 @@ public  final class NotifyApproval extends
   }
   /**
    * <pre>
-   * Shortened; truncated says whether all of it is here.
+   * The command line of a shell request, shortened; truncated says
+   * whether all of it (or of tool_input) is here.
    * </pre>
    *
    * <code>string command = 4 [json_name = "command"];</code>
@@ -294,6 +300,79 @@ public  final class NotifyApproval extends
   private void clearDeadlineMs() {
 
     deadlineMs_ = 0L;
+  }
+
+  public static final int TOOL_INPUT_FIELD_NUMBER = 7;
+  private java.lang.String toolInput_;
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @return The toolInput.
+   */
+  @java.lang.Override
+  public java.lang.String getToolInput() {
+    return toolInput_;
+  }
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @return The bytes for toolInput.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getToolInputBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(toolInput_);
+  }
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @param value The toolInput to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setToolInput(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    toolInput_ = value;
+  }
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   */
+  private void clearToolInput() {
+
+    toolInput_ = getDefaultInstance().getToolInput();
+  }
+  /**
+   * <pre>
+   * For a request that is not a command (e.g. Write): its input as JSON,
+   * shortened. Daemons before this field put it in command.
+   * </pre>
+   *
+   * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+   * @param value The bytes for toolInput to set.
+   */
+  private void setToolInputBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    toolInput_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.NotifyApproval parseFrom(
@@ -542,7 +621,8 @@ public  final class NotifyApproval extends
 
     /**
      * <pre>
-     * Shortened; truncated says whether all of it is here.
+     * The command line of a shell request, shortened; truncated says
+     * whether all of it (or of tool_input) is here.
      * </pre>
      *
      * <code>string command = 4 [json_name = "command"];</code>
@@ -554,7 +634,8 @@ public  final class NotifyApproval extends
     }
     /**
      * <pre>
-     * Shortened; truncated says whether all of it is here.
+     * The command line of a shell request, shortened; truncated says
+     * whether all of it (or of tool_input) is here.
      * </pre>
      *
      * <code>string command = 4 [json_name = "command"];</code>
@@ -567,7 +648,8 @@ public  final class NotifyApproval extends
     }
     /**
      * <pre>
-     * Shortened; truncated says whether all of it is here.
+     * The command line of a shell request, shortened; truncated says
+     * whether all of it (or of tool_input) is here.
      * </pre>
      *
      * <code>string command = 4 [json_name = "command"];</code>
@@ -582,7 +664,8 @@ public  final class NotifyApproval extends
     }
     /**
      * <pre>
-     * Shortened; truncated says whether all of it is here.
+     * The command line of a shell request, shortened; truncated says
+     * whether all of it (or of tool_input) is here.
      * </pre>
      *
      * <code>string command = 4 [json_name = "command"];</code>
@@ -595,7 +678,8 @@ public  final class NotifyApproval extends
     }
     /**
      * <pre>
-     * Shortened; truncated says whether all of it is here.
+     * The command line of a shell request, shortened; truncated says
+     * whether all of it (or of tool_input) is here.
      * </pre>
      *
      * <code>string command = 4 [json_name = "command"];</code>
@@ -677,6 +761,80 @@ public  final class NotifyApproval extends
       return this;
     }
 
+    /**
+     * <pre>
+     * For a request that is not a command (e.g. Write): its input as JSON,
+     * shortened. Daemons before this field put it in command.
+     * </pre>
+     *
+     * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+     * @return The toolInput.
+     */
+    @java.lang.Override
+    public java.lang.String getToolInput() {
+      return instance.getToolInput();
+    }
+    /**
+     * <pre>
+     * For a request that is not a command (e.g. Write): its input as JSON,
+     * shortened. Daemons before this field put it in command.
+     * </pre>
+     *
+     * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+     * @return The bytes for toolInput.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getToolInputBytes() {
+      return instance.getToolInputBytes();
+    }
+    /**
+     * <pre>
+     * For a request that is not a command (e.g. Write): its input as JSON,
+     * shortened. Daemons before this field put it in command.
+     * </pre>
+     *
+     * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+     * @param value The toolInput to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToolInput(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setToolInput(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * For a request that is not a command (e.g. Write): its input as JSON,
+     * shortened. Daemons before this field put it in command.
+     * </pre>
+     *
+     * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearToolInput() {
+      copyOnWrite();
+      instance.clearToolInput();
+      return this;
+    }
+    /**
+     * <pre>
+     * For a request that is not a command (e.g. Write): its input as JSON,
+     * shortened. Daemons before this field put it in command.
+     * </pre>
+     *
+     * <code>string tool_input = 7 [json_name = "toolInput"];</code>
+     * @param value The bytes for toolInput to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToolInputBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setToolInputBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyApproval)
   }
   @java.lang.Override
@@ -699,10 +857,11 @@ public  final class NotifyApproval extends
             "command_",
             "truncated_",
             "deadlineMs_",
+            "toolInput_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0002";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

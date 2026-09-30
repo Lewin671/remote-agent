@@ -1365,11 +1365,15 @@ type NotifyApproval struct {
 	ApprovalId  string                 `protobuf:"bytes,1,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	ToolName    string                 `protobuf:"bytes,2,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
 	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	// Shortened; truncated says whether all of it is here.
+	// The command line of a shell request, shortened; truncated says
+	// whether all of it (or of tool_input) is here.
 	Command   string `protobuf:"bytes,4,opt,name=command,proto3" json:"command,omitempty"`
 	Truncated bool   `protobuf:"varint,5,opt,name=truncated,proto3" json:"truncated,omitempty"`
 	// Unix milliseconds after which the request is denied.
-	DeadlineMs    int64 `protobuf:"varint,6,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
+	DeadlineMs int64 `protobuf:"varint,6,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
+	// For a request that is not a command (e.g. Write): its input as JSON,
+	// shortened. Daemons before this field put it in command.
+	ToolInput     string `protobuf:"bytes,7,opt,name=tool_input,json=toolInput,proto3" json:"tool_input,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1444,6 +1448,13 @@ func (x *NotifyApproval) GetDeadlineMs() int64 {
 		return x.DeadlineMs
 	}
 	return 0
+}
+
+func (x *NotifyApproval) GetToolInput() string {
+	if x != nil {
+		return x.ToolInput
+	}
+	return ""
 }
 
 var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
@@ -1545,7 +1556,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x04kind\x18\x03 \x01(\x0e2\x1a.remoteagent.v1.NotifyKindR\x04kind\x12\x14\n" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12\x12\n" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12:\n" +
-	"\bapproval\x18\x06 \x01(\v2\x1e.remoteagent.v1.NotifyApprovalR\bapproval\"\xc9\x01\n" +
+	"\bapproval\x18\x06 \x01(\v2\x1e.remoteagent.v1.NotifyApprovalR\bapproval\"\xe8\x01\n" +
 	"\x0eNotifyApproval\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +
@@ -1554,7 +1565,9 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\acommand\x18\x04 \x01(\tR\acommand\x12\x1c\n" +
 	"\ttruncated\x18\x05 \x01(\bR\ttruncated\x12\x1f\n" +
 	"\vdeadline_ms\x18\x06 \x01(\x03R\n" +
-	"deadlineMsB\xbd\x01\n" +
+	"deadlineMs\x12\x1d\n" +
+	"\n" +
+	"tool_input\x18\a \x01(\tR\ttoolInputB\xbd\x01\n" +
 	"\x12com.remoteagent.v1B\vRemoteProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
 var (
