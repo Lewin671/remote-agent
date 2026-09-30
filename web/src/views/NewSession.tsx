@@ -622,7 +622,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </div>
       {body ?? (
         <>
-          <div className="hint"><b>{projectName(cfg.cwd)}</b><br /><span className="mono">{shortPath(cfg.cwd)}</span></div>
+          <div className="ps-id"><Avatar name={projectName(cfg.cwd)} size="sm" /><div className="ps-text"><b>{projectName(cfg.cwd)}</b><small>{shortPath(cfg.cwd)}</small></div></div>
           <div className="setrows">
             <button className="sr" onClick={() => setPick("agent")}>
               <span className="lbl">CLI</span>
@@ -655,9 +655,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">
-            {cfg.from ? `沿用最近会话的设置；更换 CLI 或机器会保留草稿。` : `新项目用 ${machineName(machine)} 的默认设置；更换 CLI 或机器会保留草稿。`}
-          </div>
+          <div className="hint">只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
           <div className="setrows">
             <button className="sr" onClick={() => void remote.changePrefs(ns.p && remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "unpin" : "pin", cfg.cwd)}>{remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "取消常用" : "设为常用"}</button>
             <button className="sr red" onClick={() => void remote.changePrefs("hide", cfg.cwd)}>从项目列表移除</button>

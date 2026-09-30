@@ -824,7 +824,7 @@ export function decisionText(d: ApprovalDecision): string {
 export function alwaysText(message: string): string {
   const command = message.match(/commands that start with [`'“]?(.+?)[`'”]?(?:\s*$)/i);
   if (command) return `「${command[1].replace(/[`'”]$/, "")}」开头的命令以后不再问`;
-  const dir = message.match(/always allow access to (.+?) from this project/i);
+  const dir = message.match(/always allow access to (.+?)(?: from this project)?\s*$/i);
   if (dir) return `本项目访问 ${dir[1]} 以后不再问`;
   if (/accept edits|automatically accept edits/i.test(message)) return "本会话自动接受编辑";
   return message;

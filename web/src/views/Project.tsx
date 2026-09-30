@@ -2,7 +2,7 @@
 // start a new session in it.
 
 import { useEffect, useRef, useState } from "react";
-import { compareLive, compareEnded, exited, projectName } from "../model";
+import { compareLive, compareEnded, exited, machineName, projectName, shortPath } from "../model";
 import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
 import { SessionRow } from "./Home";
@@ -20,6 +20,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   const name = p?.name ?? projectName(pkey);
   const live = p?.sessions.filter((s) => !exited(s)).sort(compareLive) ?? [];
   const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
+  const machines = (p?.machines.length ? p.machines : [ns.cfg.machineId]).filter(Boolean).map((id) => machineName(remote.machines.get(id)));
   const [shownEnded, setShownEnded] = useState(wide ? PAGE : 3);
   const [scrolled, setScrolled] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -34,21 +35,20 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
       <Avatar name={name} size="lg" />
       <div>
         <div className="pname" title={name}>{name}</div>
+        <div className="muted small ppath">{shortPath(pkey)}{machines.length > 0 && ` · ${machines.join(" · ")}`}</div>
+        <div className="small pmore">
+          <span className="muted">{live.length} 个进行中 · </span>
+          <button
+            className="link"
+            onClick={() => {
+              setShownEnded(ended.length);
+              setTimeout(() => endedRef.current?.scrollIntoView({ behavior: "smooth" }));
+            }}
+          >
+            已结束 {ended.length} ›
+          </button>
+        </div>
         <button className={"project-summary" + (ns.line.includes("完全放行") ? " full" : "")} onClick={() => setSettingsOpen(true)}>{ns.line}</button>
-        {!wide && ended.length > 0 && (
-          <div className="small pmore">
-            {live.length > 0 && <span className="muted">{live.length} 个进行中 · </span>}
-            <button
-              className="link"
-              onClick={() => {
-                setShownEnded(ended.length);
-                setTimeout(() => endedRef.current?.scrollIntoView({ behavior: "smooth" }));
-              }}
-            >
-              已结束 {ended.length} ›
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -28,7 +28,7 @@ export function ActiveTool({ tool, d, unsettled, remote }: { tool: RunningTool; 
   const now = useNow(1000, online && !unsettled && tool.since > 0);
   const c = toolClock(tool.since, now, online ? undefined : remote.lostAt ?? now);
   const status = !online ? `${c ? clock(c.ms) + " · " : ""}等待同步` : unsettled ? "后台运行" : awaitingApproval(tool, d.approvals.values()) ? "等待审批" : c ? clock(c.ms) : "";
-  return <div className="tool single"><span className={online && !unsettled ? "spin blue" : "muted"}>◌</span><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
+  return <div className="tool single"><span className={online && !unsettled ? "sp spin" : "sp faint"} aria-label={!online ? "等待同步" : unsettled ? "后台运行" : "运行中"} /><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
 }
 export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; short: Short; decision?: ApprovalDecision; by?: string; resultText?: string }) {
   const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
@@ -40,5 +40,5 @@ export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short })
   return <><button className="tool single tgrp" onClick={() => setOpen((x) => !x)} aria-expanded={open}><span className="ok">✓</span><span>{toolsSummary(calls)}</span><span className="muted">{open ? "⌃" : "⌄"}</span></button>{open && <div className="grpbody">{calls.map((t, i) => <div className="tool single" key={i}><code>{toolTitle(t, short)}</code></div>)}</div>}<ImageStrip refs={images} className="under-tool" /></>;
 }
 export function BackgroundTool({ call, short }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
-  return <div className="tool single"><span className="muted">◌</span><code>{toolTitle(call, short)}</code><span className="muted">{toolKindName(call)} · 后台运行</span></div>;
+  return <div className="tool single"><span className="sp faint" aria-label="后台运行" /><code>{toolTitle(call, short)}</code><span className="muted">{toolKindName(call)} · 后台运行</span></div>;
 }

@@ -94,6 +94,7 @@ it("sends the CLI always choice and translates known resolved wording", async ()
   expect(decisionText(ApprovalDecision.ALLOW_ALWAYS)).toContain("以后不再问");
   expect(alwaysText("Yes, and don't ask again for commands that start with `go test`")).toBe("「go test」开头的命令以后不再问");
   expect(alwaysText("Yes, and always allow access to /w from this project")).toBe("本项目访问 /w 以后不再问");
+  expect(alwaysText("Yes, and always allow access to /w")).toBe("本项目访问 /w 以后不再问");
   expect(alwaysText("Yes, and accept edits automatically")).toBe("本会话自动接受编辑");
   expect(alwaysText("other wording")).toBe("other wording");
 });
