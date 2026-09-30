@@ -110,7 +110,7 @@ function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => vo
 }
 
 function mb(n: number): string {
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 /** The chosen images above the text: each with its upload, 原图 for this
