@@ -190,26 +190,33 @@ func (s *session) observe(e *pb.Event) {
 // emit appends daemon-originated events.
 func (s *session) emit(evs ...*pb.Event) {
 	now := timestamppb.Now()
+	settings := false
 	for _, e := range evs {
 		if e.Time == nil {
 			e.Time = now
 		}
+		if e.GetSettingsChanged() != nil || e.GetTurnContext() != nil {
+			settings = true
+		}
+	}
+	if settings {
+		// Settings changed through remote-agent or seen on the screen: the
+		// parser must know them before it reads further, and the log must
+		// have them in the order the parser learned them, or a context
+		// parsed just before could be logged after them with the old
+		// model. readRollout parses and logs under the same lock.
+		s.readMu.Lock()
+		defer s.readMu.Unlock()
 	}
 	if err := s.log.Append(s.meta.ID, evs, "", 0); err != nil {
 		slog.Error("append events", "session", s.meta.ID, "err", err)
 		return
 	}
-	// Settings changed through remote-agent or seen on the screen: the
-	// parser must know them before the transcript shows them.
-	for _, e := range evs {
-		if e.GetSettingsChanged() != nil || e.GetTurnContext() != nil {
-			s.readMu.Lock()
-			s.parser.Replay(e)
-			s.readMu.Unlock()
-		}
-	}
 	s.mu.Lock()
 	for _, e := range evs {
+		if settings && (e.GetSettingsChanged() != nil || e.GetTurnContext() != nil) {
+			s.parser.Replay(e)
+		}
 		s.observe(e)
 	}
 	s.mu.Unlock()
@@ -834,9 +841,11 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	if path == "" {
 		return
 	}
+	s.readMu.Lock() // the parser and reader are replaced
 	s.mu.Lock()
 	if s.meta.RolloutPath == path {
 		s.mu.Unlock()
+		s.readMu.Unlock()
 		return
 	}
 	s.meta.RolloutPath = path
@@ -844,9 +853,14 @@ func (s *session) bindRollout(cliSessionID, path string) {
 		s.meta.CodexSessionID = cliSessionID
 	}
 	s.reader = tail.NewReader(path, 0)
-	s.parser = s.ag.NewParser()
+	p := s.ag.NewParser()
+	// It needs what is known so far, such as a model switched to before
+	// the transcript was found.
+	s.log.Each(p.Replay)
+	s.parser = p
 	m := s.meta
 	s.mu.Unlock()
+	s.readMu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", err)
 	}

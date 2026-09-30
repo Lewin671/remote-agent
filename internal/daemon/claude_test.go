@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -327,5 +328,41 @@ func TestClaudeContextsAfterModelThenModeSwitch(t *testing.T) {
 	}
 	if i := h.s.info(); !strings.Contains(i.Model, "sonnet") || i.PermissionMode != "auto" {
 		t.Fatalf("info %v %v", i.Model, i.PermissionMode)
+	}
+}
+
+// A switch recorded while the transcript is being read: once the log has
+// the new model, no later context may carry the old one (review V1 race).
+func TestClaudeModelSwitchRacesTranscript(t *testing.T) {
+	for round := 0; round < 15; round++ {
+		h := claudeHarness(t, Config{})
+		path := filepath.Join(h.dir, "rollout.jsonl")
+		h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
+			`{"type":"assistant","message":{"id":"m0","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`,
+			`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+		h.s.bindRollout("cc-1", path)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for i := 0; i < 40; i++ {
+				mode := []string{"default", "acceptEdits"}[i%2]
+				h.writeRollout(fmt.Sprintf(`{"type":"user","promptId":"p%d","origin":{"kind":"human"},"permissionMode":%q,"message":{"role":"user","content":"m"}}`, i+1, mode),
+					`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+				h.s.readRollout()
+			}
+		}()
+		time.Sleep(time.Duration(round%5) * time.Millisecond)
+		h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+		<-done
+		switched := false
+		for _, e := range h.events() {
+			if e.GetSettingsChanged().GetModel() == "sonnet" {
+				switched = true
+			}
+			if c := e.GetTurnContext(); c != nil && switched && c.Model != "sonnet" {
+				t.Fatalf("round %d: context after the switch carries %q", round, c.Model)
+			}
+		}
+		h.s.log.Close()
 	}
 }
