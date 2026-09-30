@@ -124,20 +124,35 @@ func Config(b []byte) (pb.ImageFormat, int, int, error) {
 // Decode decodes one image (the first frame of an animation) within lim,
 // turned upright by a JPEG's EXIF orientation.
 func Decode(b []byte, lim Limits) (image.Image, pb.ImageFormat, error) {
-	if int64(len(b)) > lim.MaxBytes {
-		return nil, 0, ErrTooLarge
-	}
-	f, w, h, err := Config(b)
+	f, err := check(b, lim)
 	if err != nil {
 		return nil, f, err
 	}
-	if w <= 0 || h <= 0 || int64(w)*int64(h) > lim.MaxPixels {
-		return nil, f, ErrTooLarge
-	}
 	sem <- struct{}{}
 	defer func() { <-sem }()
-	r := bytes.NewReader(b)
+	return decode(b, f)
+}
+
+// check reads an image's format and size and holds them to lim.
+func check(b []byte, lim Limits) (pb.ImageFormat, error) {
+	if int64(len(b)) > lim.MaxBytes {
+		return 0, ErrTooLarge
+	}
+	f, w, h, err := Config(b)
+	if err != nil {
+		return f, err
+	}
+	if w <= 0 || h <= 0 || int64(w)*int64(h) > lim.MaxPixels {
+		return f, ErrTooLarge
+	}
+	return f, nil
+}
+
+// decode decodes a checked image; the caller holds a permit.
+func decode(b []byte, f pb.ImageFormat) (image.Image, pb.ImageFormat, error) {
 	var img image.Image
+	var err error
+	r := bytes.NewReader(b)
 	switch f {
 	case pb.ImageFormat_IMAGE_FORMAT_PNG:
 		img, err = png.Decode(r)
@@ -266,4 +281,37 @@ func Display(img image.Image, fits func(Encoded) bool) (Encoded, error) {
 		side = side * 4 / 5
 	}
 	return Encoded{}, ErrNoFit
+}
+
+// Processed is an image turned into what clients get.
+type Processed struct {
+	Format        pb.ImageFormat
+	Width, Height int
+	// Preview is empty and PreviewErr set if it could not be made; the
+	// same for Display.
+	Preview    Encoded
+	PreviewErr error
+	Display    Encoded
+	DisplayErr error
+}
+
+// Process decodes an image within lim and makes its preview and display
+// copy (see Display for fits), holding one of the permits throughout, so
+// that no more than two images are held decoded at a time.
+func Process(b []byte, lim Limits, fits func(Encoded) bool) (*Processed, error) {
+	f, err := check(b, lim)
+	if err != nil {
+		return nil, err
+	}
+	sem <- struct{}{}
+	defer func() { <-sem }()
+	img, f, err := decode(b, f)
+	if err != nil {
+		return nil, err
+	}
+	bd := img.Bounds()
+	p := &Processed{Format: f, Width: bd.Dx(), Height: bd.Dy()}
+	p.Preview, p.PreviewErr = Preview(img)
+	p.Display, p.DisplayErr = Display(img, fits)
+	return p, nil
 }

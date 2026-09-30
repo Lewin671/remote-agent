@@ -191,23 +191,22 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 		return
 	}
 
-	img, _, err := imageproc.Decode(raw, imageproc.DefaultLimits)
+	pr, err := imageproc.Process(raw, imageproc.DefaultLimits, func(e imageproc.Encoded) bool {
+		return proto.Size(&pb.ImagePayload{Format: e.Format, Width: int32(e.Width), Height: int32(e.Height), Data: e.Data}) <= maxImageEnvelope
+	})
 	if err != nil {
 		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
 		slog.Warn("image in transcript not decodable", "bytes", len(raw), "err", err)
 		return
 	}
-	b := img.Bounds()
 	im := &storedImage{ID: newID(16), HMAC: sum, Ref: &storedRefInfo{
-		Format: ref.Format, Width: int32(b.Dx()), Height: int32(b.Dy()), Bytes: int64(len(raw)),
+		Format: ref.Format, Width: int32(pr.Width), Height: int32(pr.Height), Bytes: int64(len(raw)),
 	}}
-	if p, err := imageproc.Preview(img); err == nil && writeFileSync(st.previewPath(im.ID), p.Data) == nil {
+	if p := pr.Preview; pr.PreviewErr == nil && writeFileSync(st.previewPath(im.ID), p.Data) == nil {
 		im.Ref.PreviewFormat, im.Ref.PreviewWidth, im.Ref.PreviewHeight = p.Format, int32(p.Width), int32(p.Height)
 	}
 	im.State = imageFailed
-	d, err := imageproc.Display(img, func(e imageproc.Encoded) bool {
-		return proto.Size(&pb.ImagePayload{Format: e.Format, Width: int32(e.Width), Height: int32(e.Height), Data: e.Data}) <= maxImageEnvelope
-	})
+	d, err := pr.Display, pr.DisplayErr
 	if err == nil {
 		payload, _ := proto.Marshal(&pb.ImagePayload{Format: d.Format, Width: int32(d.Width), Height: int32(d.Height), Data: d.Data})
 		if err = writeFileSync(st.displayPath(im.ID), payload); err == nil {

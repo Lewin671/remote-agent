@@ -10,7 +10,9 @@ import (
 	"image/jpeg"
 	"image/png"
 	"math/rand/v2"
+	"sync"
 	"testing"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
@@ -213,5 +215,37 @@ func TestStripGIF(t *testing.T) {
 	got, err := gif.DecodeAll(bytes.NewReader(clean))
 	if err != nil || len(got.Image) != 2 {
 		t.Fatalf("frames: %v", err)
+	}
+}
+
+// G11: at most two images are held decoded at a time, through encoding.
+func TestProcessIsBounded(t *testing.T) {
+	b := encPNG(t, noise(200, 200, false))
+	var mu sync.Mutex
+	active, most := 0, 0
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+	for range 3 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			Process(b, DefaultLimits, func(Encoded) bool {
+				mu.Lock()
+				active++
+				most = max(most, active)
+				mu.Unlock()
+				<-release
+				mu.Lock()
+				active--
+				mu.Unlock()
+				return true
+			})
+		}()
+	}
+	time.Sleep(300 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if most > 2 {
+		t.Fatalf("%d images encoded at once", most)
 	}
 }
