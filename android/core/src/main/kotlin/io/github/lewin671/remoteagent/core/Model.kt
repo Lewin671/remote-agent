@@ -267,6 +267,13 @@ class Derived(
     val answered: HashMap<String, List<String>> = HashMap(),
     /** Latest state per request ID of messages sent with Send. */
     val inputs: LinkedHashMap<String, InputStatus> = LinkedHashMap(),
+    /**
+     * Messages that never went out because the session ended: request ID to
+     * the seq of the event that says so. The daemon records them as CANCELED
+     * with reason "exited"; ones queued before that existed, left queued
+     * when the session ended, count too.
+     */
+    val unsent: LinkedHashMap<String, Long> = LinkedHashMap(),
     var running: Boolean = false,
     var usage: TokenUsage? = null,
     var plan: PlanProposed? = null,
@@ -313,6 +320,7 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
             }
             Event.KindCase.INPUT_STATE -> {
                 d.inputs[e.inputState.requestId] = e.inputState.status
+                if (e.inputState.status == InputStatus.INPUT_STATUS_CANCELED && e.inputState.reason == "exited") d.unsent[e.inputState.requestId] = e.seq
                 if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
                     // Codex marks a message submitted before recording it;
                     // Claude Code records the message first and the state
@@ -375,6 +383,14 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 if (!planning && c.model.isNotEmpty()) model = mm
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
+                // Still queued when the session ended: never written, even if
+                // the daemon (from before InputState.reason) said nothing more.
+                for ((id, st) in d.inputs) {
+                    if (st == InputStatus.INPUT_STATUS_QUEUED) {
+                        d.inputs[id] = InputStatus.INPUT_STATUS_CANCELED
+                        d.unsent[id] = e.seq
+                    }
+                }
                 d.running = false
                 d.approvals.clear()
                 d.questions.clear()

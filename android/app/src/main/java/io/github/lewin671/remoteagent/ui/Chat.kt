@@ -56,6 +56,9 @@ sealed interface ChatItem {
     data class Tools(override val key: String, val calls: List<ToolCall>) : ChatItem
     data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0) : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
+
+    /** A message the session ended before writing; [text] is known when sent from here. */
+    data class Unsent(override val key: String, val requestId: String, val text: String?) : ChatItem
     data class TurnEnd(override val key: String, val text: String) : ChatItem
 }
 
@@ -142,7 +145,14 @@ fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
  * line. A decided approval is a line where it was asked, unless
  * approvalDecisions ties it to its call, which then carries the decision.
  */
-fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = ""): List<ChatItem> {
+fun buildChat(
+    events: List<Event>,
+    d: Derived,
+    machine: String,
+    cwd: String = "",
+    home: String = "",
+    textOf: (String) -> String? = { null },
+): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
     var runKey = ""
@@ -161,8 +171,14 @@ fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""
         run.clear()
     }
     fun flush() = flushRun()
+    // Messages that never went out, by the seq that says so.
+    val unsentAt = d.unsent.entries.groupBy({ it.value }, { it.key })
     for (e in events) {
         val k = "e${e.seq}"
+        unsentAt[e.seq]?.let { ids ->
+            flush()
+            for (id in ids) out += ChatItem.Unsent("u$id", id, textOf(id))
+        }
         when (e.kindCase) {
             Event.KindCase.TOOL_CALL -> {
                 val t = e.toolCall
@@ -270,7 +286,7 @@ fun duration(ms: Long): String {
 }
 
 @Composable
-fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "") {
+fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((String) -> Unit)? = null) {
     val p = pal
     when (item) {
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
@@ -312,6 +328,17 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                     )
                 }
                 if (item.text.lines().size > 6) Text(if (open) "收起" else "展开全文 ›", color = p.blue, modifier = Modifier.clickable { open = !open }.padding(top = 6.dp))
+            }
+        }
+        is ChatItem.Unsent -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
+            Box(Modifier.widthIn(max = 320.dp).background(p.soft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(item.text ?: "一条排队的消息", style = MaterialTheme.typography.bodyLarge, color = p.muted)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("会话结束，没有发出", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+                if (item.text != null && onPutBack != null) {
+                    androidx.compose.material3.TextButton(onClick = { onPutBack(item.text) }) { Text("放回输入框") }
+                }
             }
         }
         is ChatItem.TurnEnd -> Text(item.text, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = p.faint)

@@ -95,6 +95,10 @@ object Outbox {
     }
 
     private val prompts = HashMap<String, String>()
+    private val drafts = HashMap<String, androidx.compose.runtime.MutableState<String>>()
+
+    /** What is being typed in a session's message box, so a message can be put back into it. */
+    fun draft(sid: String) = drafts.getOrPut(sid) { mutableStateOf("") }
 
     /** The first message of a session started here, sent by the daemon once the CLI is ready. */
     fun rememberPrompt(sid: String, text: String) {

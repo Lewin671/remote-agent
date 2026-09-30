@@ -190,4 +190,26 @@ class ChatTest {
         val done = ToolCall.newBuilder().setTitle("/private/tmp/w/hello.txt").setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setItemType("Write").build()
         assertEquals(toolTitle(done, "/tmp/w"), toolTitle(running, "/tmp/w"))
     }
+
+    private fun input(id: String, st: io.github.lewin671.remoteagent.proto.InputStatus, reason: String = "") =
+        Event.newBuilder().setInputState(io.github.lewin671.remoteagent.proto.InputState.newBuilder().setRequestId(id).setStatus(st).setReason(reason))
+
+    private fun exit() = Event.newBuilder().setSessionState(io.github.lewin671.remoteagent.proto.SessionState.newBuilder().setStatus(io.github.lewin671.remoteagent.proto.SessionStatus.SESSION_STATUS_EXITED))
+
+    @Test
+    fun showsMessagesTheSessionEndedBeforeSending() {
+        val q = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED
+        val c = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
+        // Today's daemon says why; the user's own cancel is not one of these.
+        val events = listOf(ev(1, input("mine", q)), ev(2, input("other", q)), ev(3, input("gone", q)), ev(4, input("gone", c)), ev(5, input("mine", c, "exited")), ev(6, input("other", c, "exited")), ev(7, exit()))
+        val d = derive(events)
+        assertEquals(listOf("mine", "other"), d.unsent.keys.toList())
+        val items = buildChat(events, d, "M") { if (it == "mine") "补一个测试" else null }
+        assertEquals(listOf(ChatItem.Unsent("umine", "mine", "补一个测试"), ChatItem.Unsent("uother", "other", null)), items.filterIsInstance<ChatItem.Unsent>())
+        // An older daemon left it queued: the exit settles it, and nothing stays in the queue.
+        val old = listOf(ev(1, input("a", q)), ev(2, exit()))
+        val od = derive(old)
+        assertEquals(mapOf("a" to 2L), od.unsent.toMap())
+        assertEquals(c, od.inputs["a"])
+    }
 }

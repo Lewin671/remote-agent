@@ -214,10 +214,10 @@ private fun ChatPane(
     val machine = machineLabel(state, s.machineId)
     val cwd = s.info?.cwd.orEmpty()
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
-    val items = remember(events, d, cwd, home) { buildChat(events, d, machine, cwd, home) }
+    val outbox = Outbox.of(s.id)
+    val items = remember(events, d, cwd, home, outbox.size) { buildChat(events, d, machine, cwd, home) { Outbox.text(s.id, it) } }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val outbox = Outbox.of(s.id)
     val t = now(1000)
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
     // Follow new messages while the user is at the bottom; stop once they
@@ -240,7 +240,7 @@ private fun ChatPane(
         Box(Modifier.weight(1f)) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                 if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
-                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd, home) }
+                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd, home) { text -> Outbox.draft(s.id).value = text } }
                 if (error != null) item {
                     Card(Modifier.padding(12.dp)) {
                         Column(Modifier.padding(14.dp)) {
@@ -426,7 +426,7 @@ private fun QueueView(s: SessionView, d: io.github.lewin671.remoteagent.core.Der
 private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    var text by rememberSaveable(s.id) { mutableStateOf("") }
+    var text by Outbox.draft(s.id)
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val online = state.conn == ConnState.ONLINE
     val interrupt = rememberAction()
