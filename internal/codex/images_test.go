@@ -71,3 +71,41 @@ func TestImages(t *testing.T) {
 		t.Fatalf("failed generation: %v", evs)
 	}
 }
+
+// G15: one exec that views two images: each image goes with its own view,
+// and no image gets another's path.
+func TestImagesTwoViewsInOneCall(t *testing.T) {
+	p := NewParser()
+	for _, l := range []string{
+		`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"ImageView","id":"v1","path":"/a.png"}}}`,
+		`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"ImageView","id":"v2","path":"/b.png"}}}`,
+	} {
+		if evs, _ := p.Parse([]byte(l)); len(evs) != 0 {
+			t.Fatalf("reported early: %v", evs)
+		}
+	}
+	evs, _ := p.Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c","output":[{"type":"input_image","image_url":"data:image/png;base64,AA"},{"type":"input_image","image_url":"data:image/png;base64,BB"}]}}`))
+	imgs := p.Images()
+	if len(evs) != 2 || len(imgs) != 2 {
+		t.Fatalf("%d events, %d images", len(evs), len(imgs))
+	}
+	for i, want := range []string{"/a.png", "/b.png"} {
+		tc := evs[i].GetToolCall()
+		if len(tc.Images) != 1 || tc.Images[0].Path != want {
+			t.Fatalf("call %d: %v", i, tc)
+		}
+	}
+	if imgs[0].Data != "data:image/png;base64,AA" || imgs[0].Ref != evs[0].GetToolCall().Images[0] {
+		t.Fatal("images paired wrongly")
+	}
+	// When the counts differ, which is which is unknown: no paths.
+	p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"ImageView","id":"v3","path":"/c.png"}}}`))
+	evs, _ = p.Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c2","output":[{"type":"input_image","image_url":"data:image/png;base64,AA"},{"type":"input_image","image_url":"data:image/png;base64,BB"}]}}`))
+	for _, e := range evs {
+		for _, r := range e.GetToolCall().GetImages() {
+			if r.Path != "" {
+				t.Fatalf("path %q given without knowing", r.Path)
+			}
+		}
+	}
+}

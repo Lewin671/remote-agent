@@ -28,7 +28,7 @@ type Parser struct {
 	userImages []agent.FoundImage
 	// view is an ImageView item waiting for the tool output that carries
 	// its image.
-	view *pb.ToolCall
+	views []*pb.ToolCall
 	// generated are image generation calls already reported.
 	generated map[string]bool
 	// found are the images of the last Parse.
@@ -473,16 +473,12 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 			return nil, err
 		}
 		// The image comes with the tool output that follows; the call is
-		// reported then, with it.
-		flushed := p.flushView()
-		p.view = &pb.ToolCall{
+		// reported then, with it. One exec may view several images.
+		p.views = append(p.views, &pb.ToolCall{
 			CallId: it.ID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "view image " + strings.TrimPrefix(it.Path, "file://"),
 			Status: "completed", ItemType: head.Type, Input: strings.TrimPrefix(it.Path, "file://"),
-		}
-		for _, e := range flushed {
-			e.TurnId = m.TurnID
-		}
-		return flushed, nil
+		})
+		return nil, nil
 
 	case "ContextCompaction":
 		// Recorded however it was started: /compact typed in the
@@ -757,45 +753,55 @@ func (p *Parser) userImage(stash *[]agent.FoundImage, path, url string, n int32)
 	return ref
 }
 
-// toolOutputImages turns the images of a tool's output into the call's
-// event: the ImageView waiting for them, or a call of its own (e.g. a
-// browser screenshot). Output without images only settles a waiting
-// ImageView.
+// toolOutputImages turns the images of a tool's output into the calls'
+// events: the ImageViews waiting for them, one image each in order when
+// their numbers match, or else a call of its own whose images get no path
+// (e.g. a browser screenshot). Output without images only settles the
+// waiting ImageViews.
 func (p *Parser) toolOutputImages(callID string, raw json.RawMessage) []*pb.Event {
 	var content []struct {
 		Type     string `json:"type"`
 		ImageURL string `json:"image_url"`
 	}
 	_ = json.Unmarshal(raw, &content)
-	tc := p.view
-	p.view = nil
+	var urls []string
 	for _, c := range content {
-		if c.Type != "input_image" || c.ImageURL == "" {
-			continue
+		if c.Type == "input_image" && c.ImageURL != "" {
+			urls = append(urls, c.ImageURL)
 		}
-		if tc == nil {
-			tc = &pb.ToolCall{CallId: callID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "image", Status: "completed", ItemType: "ToolOutput"}
-		}
-		ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL}
-		if tc.ItemType == "ImageView" {
-			ref.Path = tc.Input
-		}
-		tc.Images = append(tc.Images, p.found1(ref, c.ImageURL))
 	}
-	if tc == nil {
-		return nil
+	views := p.views
+	p.views = nil
+	var out []*pb.Event
+	if len(urls) > 0 && len(urls) == len(views) {
+		for i, tc := range views {
+			ref := &pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL, Path: tc.Input}
+			tc.Images = append(tc.Images, p.found1(ref, urls[i]))
+			out = append(out, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
+		}
+		return out
 	}
-	return one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})
+	for _, tc := range views {
+		out = append(out, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
+	}
+	if len(urls) > 0 {
+		tc := &pb.ToolCall{CallId: callID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: "image", Status: "completed", ItemType: "ToolOutput"}
+		for _, u := range urls {
+			tc.Images = append(tc.Images, p.found1(&pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_TOOL}, u))
+		}
+		out = append(out, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
+	}
+	return out
 }
 
-// flushView reports a waiting ImageView whose output never came.
+// flushView reports waiting ImageViews whose output never came.
 func (p *Parser) flushView() []*pb.Event {
-	if p.view == nil {
-		return nil
+	var out []*pb.Event
+	for _, tc := range p.views {
+		out = append(out, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
 	}
-	tc := p.view
-	p.view = nil
-	return one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})
+	p.views = nil
+	return out
 }
 
 func (p *Parser) generatedImage(id, prompt, result, path string) *pb.Event {
