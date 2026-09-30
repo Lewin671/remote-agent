@@ -217,7 +217,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v6](design/client-v6.html) 是当前界面目标：保留 v5 全部页面，补充图片存储的占用、限额与清理入口；网页与 Android 已实现。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v7](design/client-v7.html) 是当前界面目标：等待事项默认收为一行、工具详情按需展开、移动端输入框单行起步。v7 尚未实现，Chrome 视觉验收待完成；网页与 Android 已实现 v6 的图片存储占用、限额与清理入口。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
 **会话排序进度**（2026-09-30）：网页首页、宽屏侧栏、项目页与 Android 首页、项目页按 client-v4 统一排序；daemon 在加密会话摘要中提供日志重建的等待和退出时间。升级兼容规则见 [architecture.md 的会话列表排序](architecture.md#会话列表排序)。
 
