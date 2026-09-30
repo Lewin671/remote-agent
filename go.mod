@@ -9,6 +9,7 @@ require (
 	github.com/coder/websocket v1.8.15
 	github.com/creack/pty v1.1.24
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260929172509-b39ff6d641ec
+	golang.org/x/image v0.46.0
 	golang.org/x/term v0.34.0
 	google.golang.org/protobuf v1.36.10
 	modernc.org/sqlite v1.60.1
