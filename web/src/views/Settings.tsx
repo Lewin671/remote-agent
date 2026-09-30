@@ -117,12 +117,22 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
       {agents.includes(Agent.CODEX) && (
         <div className="row">
           Codex 额度
-          <span className="v">{codex ? (() => { const r = quotaRow(codex, "", now, m.online); return `${r.label}${r.used}`; })() : "暂未获取"}</span>
+          <span className="v">
+            {codex
+              ? [m.meta?.primaryLimit, m.meta?.secondaryLimit]
+                  .filter((l) => !!l)
+                  .map((l) => {
+                    const r = quotaRow(l, "", now, true);
+                    return `${r.label} ${r.used}`;
+                  })
+                  .join(" · ") + (m.online ? "" : "（上次记录）")
+              : "暂未获取额度"}
+          </span>
         </div>
       )}
       {agents.includes(Agent.CLAUDE) && (
         <div className="row">
-          Claude Code 额度<span className="v">暂不支持读取</span>
+          Claude Code 额度<span className="v">暂不支持读取额度</span>
         </div>
       )}
       <button className="row" onClick={() => go("q/" + m.id)}>
@@ -156,9 +166,17 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
     <div className="page gray">
       <NavBar onBack={onBack} title={<span className="tname">账户额度</span>} sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`} />
       <div className="body">
+        {!m.online && (
+          <div className="gbanner">
+            <Banner kind="warn">机器离线，显示上次记录</Banner>
+          </div>
+        )}
         {agents.includes(Agent.CODEX) && (
           <>
-            <div className="glabel">Codex{meta?.planType ? ` · ${meta.planType}` : ""}</div>
+            <div className="glabel">
+              Codex{meta?.planType ? ` · ${meta.planType}` : ""}
+              {!m.online && got ? " · 上次记录" : ""}
+            </div>
             <div className="grp">
               {got ? (
                 rows.map((r) => (
@@ -198,7 +216,7 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
             <div className="grp">
               <div className="row col">
                 <b>暂不支持读取额度</b>
-                <div className="hint">这台电脑的 remote-agent 还不采集 Claude Code 的账户额度。</div>
+                <div className="hint">电脑上的 remote-agent 还没有采集 Claude Code 的额度。可在本机 Claude Code 中查看 /usage。</div>
               </div>
               <button
                 className="row"
@@ -215,7 +233,7 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
             <div className="manage-hint">只打开终端，不自动输入命令。</div>
           </>
         )}
-        <div className="manage-hint">额度属于 CLI 登录账户，该账户的其他使用也可能计入；上下文占用在会话设置里看。</div>
+        <div className="manage-hint">额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>
   );
