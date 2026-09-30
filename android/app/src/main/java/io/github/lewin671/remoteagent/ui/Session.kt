@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -305,7 +306,12 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
     val p = pal
     val remote = LocalRemote.current
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
-        Box(Modifier.background(p.blueSoft.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+        if (o.images.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            for (img in o.images.take(4)) img.thumb?.let {
+                androidx.compose.foundation.Image(it, null, Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+            }
+        }
+        if (o.text.isNotEmpty()) Box(Modifier.background(p.blueSoft.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
             Text(o.text, style = MaterialTheme.typography.bodyLarge, color = p.fg2)
         }
         val agent = remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
@@ -314,8 +320,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
             input == InputStatus.INPUT_STATUS_FAILED -> {
                 Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框已恢复原样", style = MaterialTheme.typography.bodySmall, color = p.red)
                 Row {
-                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.send(RaApp.instance.scope, remote, sid, o.text) }) { Text("重试") }
-                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.draft(sid).value = o.text }) { Text("放回输入框") }
+                    TextButton(onClick = { Outbox.remove(sid, o); putBack(remote, sid, o) }) { Text("放回输入框") }
                 }
             }
             // Not submitted, and part of it may still be in the input box.
@@ -323,7 +328,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
                 Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框里可能还留着一部分，请去终端处理，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.red)
                 Row {
                     TextButton(onClick = onTerminal) { Text("去终端 ›") }
-                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.draft(sid).value = o.text }) { Text("放回输入框") }
+                    TextButton(onClick = { Outbox.remove(sid, o); putBack(remote, sid, o) }) { Text("放回输入框") }
                 }
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
@@ -499,10 +504,17 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var focused by remember { mutableStateOf(false) }
     val compact = ime && focused
+    val images = ImageDrafts.forSession(s.id)
+    val machine = state.machines[s.machineId]
+    val maxImg = maxImages(machine)
+    val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
+    // Images picked before the machine went away go there again once it is back.
+    LaunchedEffect(blocked, images.images.size) { if (blocked == null) images.sendAllTo(remote, s.machineId) }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
             .background(p.soft, RoundedCornerShape(20.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
     ) {
+        ImageStrip(images, remote, s.machineId, maxImg)
         androidx.compose.foundation.text.BasicTextField(
             text, { text = it },
             Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 10.dp, vertical = 8.dp)
@@ -525,7 +537,7 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
             },
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            ImageAddButton(s, state)
+            ImageAddButton(images, remote, s.machineId, blocked, maxImg)
             val label = io.github.lewin671.remoteagent.core.modeLabel(s)
             val mode = label?.mode
             Chip(
@@ -555,11 +567,17 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
             FilledIconButton(
                 onClick = {
                     val msg = text.trim()
-                    if (msg.isEmpty()) return@FilledIconButton
+                    if (msg.isEmpty() && images.images.isEmpty()) return@FilledIconButton
+                    // Every image must be on the computer first: never a message with some of them.
+                    if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
                     text = ""
-                    Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+                    val picked = images.images.toList()
+                    Outbox.send(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked)
+                    images.images.clear()
+                    RaApp.instance.pendingStore.clearDraft(images.key)
                 },
-                enabled = online && text.isNotBlank(), modifier = Modifier.size(44.dp),
+                enabled = online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
+                modifier = Modifier.size(44.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
             ) { Icon(Icons.Default.ArrowUpward, "发送", tint = p.card) }
         }
@@ -571,12 +589,6 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     }
 }
 
-/** 「＋」for images: sending images needs a daemon that takes them (see ImageAddButton's notes). */
-@Composable
-private fun ImageAddButton(s: SessionView, state: RemoteState) {
-    val p = pal
-    IconButton(onClick = {}, enabled = false, modifier = Modifier.size(40.dp)) { Text("＋", color = p.faint, style = MaterialTheme.typography.titleMedium) }
-}
 
 /**
  * Whether the chat follows new messages. Only the user turns it off, by
@@ -596,4 +608,21 @@ class Follow {
 /** Sessions whose terminal another page asked to show. */
 object OpenTerminal {
     val requested = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
+}
+
+/**
+ * A message that was not submitted goes back into the box, text and
+ * images, for the user to send again as a new message. Its images go to
+ * the computer again: the daemon may have used up the old uploads.
+ */
+private fun putBack(remote: io.github.lewin671.remoteagent.core.Remote, sid: String, o: Outgoing) {
+    Outbox.draft(sid).value = o.text
+    val d = ImageDrafts.forSession(sid)
+    for (img in o.images) {
+        img.imageId = null
+        img.machineId = null
+        img.state = PendingImage.State.Failed("需要重新传到电脑")
+        d.images += img
+    }
+    remote.state.value.sessions[sid]?.let { d.sendAllTo(remote, it.machineId) }
 }

@@ -229,7 +229,34 @@ private fun HiddenBanner(state: RemoteState, key: String) {
     }
 }
 
-/** Type and send to start a session; the configuration line says what it will use. */
+/**
+ * Another CLI for a draft (client-v2): the text and images stay; the model
+ * and effort belong to the old CLI and go, so the new one starts with its
+ * own defaults; the mode is kept when the new CLI has it. The machine's
+ * default mode for the new CLI still decides when none is chosen, and full
+ * access is still confirmed at send.
+ */
+fun switchAgent(c: NewConfig, agent: Agent): NewConfig =
+    if (c.agent == agent) c else c.copy(agent = agent, model = "", effort = "", mode = c.mode?.takeIf { it in newSessionModes })
+
+/**
+ * Another machine for a draft: the model and effort were that machine's
+ * list, so they go. The CLI stays when the machine has it; otherwise the
+ * caller must have the user pick one ([machineAgents]), never silently.
+ */
+fun switchMachine(c: NewConfig, machineId: String, agents: List<Agent>): NewConfig =
+    c.copy(machineId = machineId, model = "", effort = "", agent = if (c.agent in agents) c.agent else agents.first())
+
+/** The two lines of the configuration: machine and mode, then model and effort, neither cut. */
+fun configLines(state: RemoteState, c: NewConfig, settings: DaemonSettings?): Pair<String, String> =
+    "${machineLabel(state, c.machineId)} · ${modeLabel(c.mode, settings, c.agent)}" to
+        (listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" })
+
+/**
+ * The new-session card: pick the CLI, write, send. The configuration follows
+ * the project until a draft is begun, then stays (architecture §8): a
+ * machine that goes offline is replaced only by the user's choice.
+ */
 @Composable
 fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean) {
     val p = pal
@@ -242,16 +269,20 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val draft = entry.config
     val config = draft.value
     var text by entry.text
+    val images = ImageDrafts.forProject(key)
     var change by remember { mutableStateOf(false) }
+    var pickCli by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
-    LaunchedEffect(initial, text.isNotBlank()) { draft.follow(initial, text.isNotBlank()) }
+    val drafting = text.isNotBlank() || images.images.isNotEmpty()
+    LaunchedEffect(initial, drafting) { draft.follow(initial, drafting) }
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
     // The machine's defaults, to show and confirm the mode a start will use.
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
     var settingsError by remember { mutableStateOf("") }
     val machine = config?.machineId
-    val machineOnline = machine != null && state.conn == ConnState.ONLINE && state.machines[machine]?.online == true
+    val online = state.conn == ConnState.ONLINE
+    val machineOnline = machine != null && online && state.machines[machine]?.online == true
     LaunchedEffect(machine, machineOnline) {
         settings = null
         settingsError = ""
@@ -264,8 +295,11 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             settingsError = errorText(e)
         }
     }
-    var confirmFull by remember { mutableStateOf<NewConfig?>(null) }
-    fun launch(cfg: NewConfig, mode: ApprovalMode) {
+    // Images go to the machine the session will start on; a new machine gets them again.
+    val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
+    LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
+    var confirmFull by remember { mutableStateOf<Pair<NewConfig, Boolean>?>(null) }
+    fun launch(cfg: NewConfig, mode: ApprovalMode, terminalOnly: Boolean) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
         // of starting a second session.
@@ -274,10 +308,11 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             try {
                 val retry = start.attempt.frozen
                 val prepared = start.attempt.next {
-                    start.prompt = text.trim()
+                    start.prompt = if (terminalOnly) "" else text.trim()
+                    val ids = if (terminalOnly) emptyList() else images.ids(cfg.machineId)
                     remote.prepare(cfg.machineId, "", remote.cmd {
-                        createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).build()
+                        createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
@@ -287,46 +322,75 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         }) { r ->
             r?.createSession?.session?.id?.let {
                 Outbox.rememberPrompt(it, start.prompt)
-                nav.session(it)
+                if (terminalOnly) nav.sessionTerminal(it) else nav.session(it)
             }
-            text = ""
+            if (!terminalOnly) {
+                text = ""
+                images.clear()
+            }
         }
     }
-    Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp)) {
-        Text("＋ 新会话", style = MaterialTheme.typography.titleSmall, color = p.fg2)
-        val c = config
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
-            OutlinedTextField(
-                text, { text = it }, Modifier.weight(1f).heightIn(min = 48.dp, max = 160.dp).focusRequester(fr),
-                placeholder = { Text("在 $name 里要 ${agentName(c?.agent ?: Agent.AGENT_CODEX)} 做什么？") },
-                shape = RoundedCornerShape(22.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            FilledIconButton(
-                onClick = {
-                    val cfg = config ?: return@FilledIconButton
-                    val start = Starts.of(key)
-                    // Other content is a new start; the unknown one is given up.
-                    if (start.attempt.frozen && text.trim() != start.prompt) start.attempt.abandon()
-                    // An unknown start is resent as prepared, with the mode it had.
-                    if (start.attempt.frozen) return@FilledIconButton launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
-                    when (val m = launchMode(cfg.mode, settings, cfg.agent)) {
-                        is LaunchMode.Send -> launch(cfg, m.mode)
-                        LaunchMode.ConfirmFull -> confirmFull = cfg
-                        LaunchMode.Unknown -> {}
-                    }
-                },
-                enabled = c != null && !act.running && machineOnline &&
-                    (Starts.of(key).attempt.frozen || launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown),
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
-            ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
+    fun start(terminalOnly: Boolean) {
+        val cfg = config ?: return
+        val st = Starts.of(key)
+        // Other content is a new start; the unknown one is given up.
+        if (st.attempt.frozen && (if (terminalOnly) "" else text.trim()) != st.prompt) st.attempt.abandon()
+        // An unknown start is resent as prepared, with the mode it had.
+        if (st.attempt.frozen) return launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, terminalOnly)
+        when (val m = launchMode(cfg.mode, settings, cfg.agent)) {
+            is LaunchMode.Send -> launch(cfg, m.mode, terminalOnly)
+            LaunchMode.ConfirmFull -> confirmFull = cfg to terminalOnly
+            LaunchMode.Unknown -> {}
         }
-        if (c != null) Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(configLine(state, c, settings), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f), maxLines = 2)
+    }
+    val c = config
+    val agents = machineAgents(c?.let { state.machines[it.machineId] })
+    Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("＋ 新会话", style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f))
+            if (c != null) {
+                // The CLI is chosen here, not in a second-level sheet; one installed CLI is just named.
+                if (agents.size > 1) Chip(agentName(c.agent) + " ▾") { pickCli = true }
+                else Chip(agentName(c.agent))
+            }
+        }
+        if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
+        Column(Modifier.padding(top = 6.dp).background(p.soft, RoundedCornerShape(20.dp)).padding(horizontal = 6.dp, vertical = 4.dp)) {
+            ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] }))
+            Row(verticalAlignment = Alignment.Bottom) {
+                ImageAddButton(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
+                androidx.compose.foundation.text.BasicTextField(
+                    text, { text = it },
+                    Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 6.dp, vertical = 10.dp).focusRequester(fr),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = p.fg),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
+                    maxLines = 6,
+                    decorationBox = { inner ->
+                        androidx.compose.foundation.layout.Box {
+                            if (text.isEmpty()) Text("在 $name 里开始一个任务…", style = MaterialTheme.typography.bodyLarge, color = p.faint)
+                            inner()
+                        }
+                    },
+                )
+                FilledIconButton(
+                    onClick = { start(terminalOnly = false) },
+                    enabled = c != null && !act.running && machineOnline && drafting &&
+                        (images.images.isEmpty() || images.ready(machine)) &&
+                        (Starts.of(key).attempt.frozen || launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown),
+                    modifier = Modifier.size(44.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
+                ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
+            }
+        }
+        if (c != null) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+            val (l1, l2) = configLines(state, c, settings)
+            Column(Modifier.weight(1f)) {
+                Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == Mode.FULL) p.red else p.muted)
+                Text(l2, style = MaterialTheme.typography.bodySmall, color = p.muted)
+            }
             TextButton(onClick = { change = true }) { Text("更改") }
         }
-        if (c != null && state.machines[c.machineId]?.online != true) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
+        if (c != null && state.machines[c.machineId]?.online != true && !drafting) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
         if (c != null && c.mode == null && settingsError.isNotEmpty()) {
             Text("没能读取 ${machineLabel(state, c.machineId)} 的默认审批模式：$settingsError。可以在「更改」里选一个模式再开始", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
         }
@@ -343,17 +407,76 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             var gaveUp by remember { mutableStateOf(0) }
             TextButton(onClick = { frozen.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次启动") }
         }
+        if (c != null && !drafting) TextButton(
+            onClick = { start(terminalOnly = true) },
+            enabled = machineOnline && !act.running && launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown,
+        ) { Text("只打开终端 ›") }
     }
-    val c = config
-    confirmFull?.let { cfg ->
+    confirmFull?.let { (cfg, terminalOnly) ->
         Confirm(
             "以完全放行启动？",
             "${machineLabel(state, cfg.machineId)} 上 ${agentName(cfg.agent)} 的默认审批模式是完全放行：这个会话里执行命令、改文件都不会再问你。",
             "完全放行启动", danger = true,
             onDismiss = { confirmFull = null },
-        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_FULL_ACCESS) }
+        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_FULL_ACCESS, terminalOnly) }
     }
     if (change && c != null) ConfigSheet(state, c, onDone = { draft.choose(it); change = false }, onClose = { change = false })
+    if (pickCli && c != null) CliSheet(state, c, onPick = { draft.choose(switchAgent(c, it)); pickCli = false }, onClose = { pickCli = false })
+}
+
+/** 新会话使用的 CLI: only what the machine has installed; the draft stays. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CliSheet(state: RemoteState, c: NewConfig, onPick: (Agent) -> Unit, onClose: () -> Unit) {
+    val p = pal
+    val m = state.machines[c.machineId]
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+            Text("新会话使用的 CLI", style = MaterialTheme.typography.titleMedium)
+            for (a in machineAgents(m)) Row44(onClick = { onPick(a) }) {
+                Column(Modifier.weight(1f)) {
+                    Text(agentName(a), style = MaterialTheme.typography.titleSmall)
+                    Text("${machineLabel(state, c.machineId)} 上已安装", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                }
+                if (a == c.agent) Text("✓", color = p.blue)
+            }
+            Text("切换后采用该 CLI 的默认模型和有效模式，草稿保留。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+            val missing = Agent.entries.filter { it != Agent.AGENT_UNSPECIFIED && it != Agent.UNRECOGNIZED && it !in machineAgents(m) }
+            for (a in missing) Text("${machineLabel(state, c.machineId)} 没有 ${agentName(a)}，要用它请在「更改」里换机器", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        }
+    }
+}
+
+/**
+ * The machine went offline while a draft was written: nothing moves by
+ * itself. The user picks another machine the project used, told what that
+ * machine offers, and checks the card again before sending.
+ */
+@Composable
+private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoose: (NewConfig) -> Unit) {
+    val p = pal
+    val others = state.sessions.values.filter { projectKey(it) == c.cwd }.map { it.machineId }.distinct()
+        .ifEmpty { state.machines.keys.toList() }.filter { it != c.machineId && state.machines[it]?.online == true }
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).background(p.orangeSoft, RoundedCornerShape(12.dp)).padding(12.dp)) {
+        Text("${machineLabel(state, c.machineId)} 已离线，任务尚未开始", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
+        Text("草稿和配置保留，不自动换机器或 CLI。", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+        for (id in others) {
+            val agents = machineAgents(state.machines[id])
+            val cliNote = when {
+                c.agent in agents -> "有 ${agentName(c.agent)}；模型和强度会按这台机器重新选择"
+                else -> "只有 ${agents.joinToString("、") { agentName(it) }}；会改用 ${agentName(agents.first())}，模型和模式按这台机器重新选择"
+            }
+            Row44(onClick = { onChoose(switchMachine(c, id, agents)) }) {
+                Column(Modifier.weight(1f)) {
+                    Text("改用 ${machineLabel(state, id)}", style = MaterialTheme.typography.titleSmall)
+                    Text(cliNote, style = MaterialTheme.typography.bodySmall, color = p.muted)
+                }
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.faint)
+            }
+        }
+        if (others.isEmpty()) Text("$name 用过的其他电脑也都不在线。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text("换机器后回到新建卡片，检查配置，再点发送。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+    }
 }
 
 /** 这次的设置: machine (those the project used), folder, CLI, model, effort and mode. */
@@ -385,8 +508,9 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (id in used) {
                     val online = state.machines[id]?.online == true
-                    FilterChip(c.machineId == id, { if (online) c = c.copy(machineId = id, model = "", effort = "", agent = c.agent.takeIf { it in machineAgents(state.machines[id]) } ?: Agent.AGENT_CODEX) },
-                        { Text(machineLabel(state, id) + if (online) "" else "（不在线）") }, enabled = online)
+                    val has = c.agent in machineAgents(state.machines[id])
+                    FilterChip(c.machineId == id, { if (online) c = switchMachine(c, id, machineAgents(state.machines[id])) },
+                        { Text(machineLabel(state, id) + if (!online) "（不在线）" else if (!has) "（没有 ${agentName(c.agent)}）" else "") }, enabled = online)
                 }
             }
             Text("目录", style = MaterialTheme.typography.titleSmall)
@@ -395,7 +519,7 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
             if (agents.size > 1) {
                 Text("CLI", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (a in agents) FilterChip(c.agent == a, { c = c.copy(agent = a, model = "", effort = "") }, { Text(agentName(a)) })
+                    for (a in agents) FilterChip(c.agent == a, { c = switchAgent(c, a) }, { Text(agentName(a)) })
                 }
             }
             Text("模型", style = MaterialTheme.typography.titleSmall)
@@ -409,7 +533,10 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
                             Text("默认" + if (ms.defaultModel.isNotEmpty()) "（${ms.defaultModel}）" else "", Modifier.weight(1f))
                             if (c.model.isEmpty()) Text("✓", color = p.blue)
                         }
-                        for (m in ms.modelsList) Row44(onClick = { c = c.copy(model = m.slug, effort = m.defaultEffort) }) {
+                        for (m in ms.modelsList) Row44(onClick = {
+                            val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
+                            c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
+                        }) {
                             Text(m.displayName.ifEmpty { m.slug }, Modifier.weight(1f))
                             if (c.model == m.slug) Text("✓", color = p.blue)
                         }
@@ -425,7 +552,11 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
             Text("审批", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(c.mode == null, { c = c.copy(mode = null) }, { Text("默认") })
-                for (m in newSessionModes) FilterChip(c.mode == m, { c = c.copy(mode = m) }, { Text(m.text) })
+                for (m in newSessionModes) {
+                    // Claude Code's haiku has no auto mode.
+                    val off = m == Mode.AUTO && c.agent == Agent.AGENT_CLAUDE && c.model.contains("haiku", ignoreCase = true)
+                    FilterChip(c.mode == m, { c = c.copy(mode = m) }, { Text(m.text + if (off) "（Haiku 不支持）" else "") }, enabled = !off)
+                }
             }
             Text("默认沿用这个项目最近一个会话。改了之后，这个项目下次也会沿用新的设置。", style = MaterialTheme.typography.bodySmall, color = p.muted)
         }

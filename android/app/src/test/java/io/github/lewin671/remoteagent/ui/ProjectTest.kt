@@ -75,3 +75,37 @@ class ProjectTest {
         assertEquals(mine, again.config.value)
     }
 }
+
+class SwitchTest {
+    private val c = NewConfig("mac", "/p", io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, "gpt-6-astra", "medium", io.github.lewin671.remoteagent.core.Mode.AUTO)
+
+    @org.junit.Test
+    fun anotherCliDropsTheModelAndKeepsASharedMode() {
+        val s = switchAgent(c, io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+        org.junit.Assert.assertEquals("", s.model)
+        org.junit.Assert.assertEquals("", s.effort)
+        org.junit.Assert.assertEquals(io.github.lewin671.remoteagent.core.Mode.AUTO, s.mode)
+        org.junit.Assert.assertEquals("mac", s.machineId)
+        // Full access is never carried over: the machine's default decides and is confirmed.
+        val full = switchAgent(c.copy(mode = io.github.lewin671.remoteagent.core.Mode.FULL), io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+        org.junit.Assert.assertEquals(null, full.mode)
+    }
+
+    @org.junit.Test
+    fun anotherMachineKeepsTheCliOnlyWhenItHasIt() {
+        val claude = c.copy(agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+        val s = switchMachine(claude, "vps", listOf(io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX))
+        org.junit.Assert.assertEquals(io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, s.agent)
+        org.junit.Assert.assertEquals("", s.model)
+        val kept = switchMachine(claude, "imac", listOf(io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE))
+        org.junit.Assert.assertEquals(io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE, kept.agent)
+    }
+
+    @org.junit.Test
+    fun theConfigurationIsTwoLines() {
+        val state = io.github.lewin671.remoteagent.core.RemoteState()
+        val (a, b) = configLines(state, c, null)
+        org.junit.Assert.assertTrue(a.endsWith("自动"))
+        org.junit.Assert.assertEquals("gpt-6-astra · medium", b)
+    }
+}

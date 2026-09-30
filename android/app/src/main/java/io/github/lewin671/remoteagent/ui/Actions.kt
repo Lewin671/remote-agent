@@ -57,7 +57,14 @@ fun Remote.cmd(b: Command.Builder.() -> Unit): Command = Command.newBuilder().ap
  * never holds plaintext); the daemon dedupes by [requestId], so a retry
  * never submits it twice.
  */
-class Outgoing(val requestId: String, val text: String) {
+class Outgoing(
+    val requestId: String,
+    val text: String,
+    /** Image IDs on the machine, sent with the message; the same on every retry. */
+    val imageIds: List<String> = emptyList(),
+    /** The picked images, for their thumbnails while sending and to put them back. */
+    val images: List<PendingImage> = emptyList(),
+) {
     enum class State { SENDING, SENT, FAILED, UNKNOWN }
 
     var state by mutableStateOf(State.SENDING)
@@ -114,6 +121,7 @@ object AccountMemory {
         Answers.clear()
         Cancels.clear()
         PrefsChanges.clear()
+        ImageDrafts.clear()
     }
 }
 
@@ -123,8 +131,8 @@ object Outbox {
 
     fun of(sid: String) = bySession.getOrPut(sid) { mutableStateListOf() }
 
-    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String) {
-        val o = Outgoing(newRequestId(), text)
+    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, imageIds: List<String> = emptyList(), images: List<PendingImage> = emptyList()) {
+        val o = Outgoing(newRequestId(), text, imageIds, images)
         of(sid) += o
         deliver(scope, remote, sid, o)
     }
@@ -134,7 +142,7 @@ object Outbox {
         o.error = ""
         scope.launch {
             try {
-                remote.command(sid, remote.cmd { send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).build() })
+                remote.command(sid, remote.cmd { send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds).build() })
                 o.state = Outgoing.State.SENT
             } catch (e: Exception) {
                 o.error = errorText(e)

@@ -39,6 +39,7 @@ class RaApp : Application() {
     val prefs: Prefs by lazy { Prefs(this) }
     val db: CacheDb by lazy { CacheDb.open(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
+    val pendingStore by lazy { io.github.lewin671.remoteagent.data.PendingStore(this) }
     val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
 
     private val _remote = MutableStateFlow<Remote?>(null)
@@ -133,6 +134,7 @@ class RaApp : Application() {
             vault.clear()
             db.clearAllTables()
             imageEnvelopes.clear()
+            pendingStore.clearAll()
             prefs.clear()
         }
     }
