@@ -103,7 +103,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 菜单标题是 `Update Model Permissions`，当前档位标 `(current)`。**按数字键直接选中**，不用方向键加回车。选 `Full Access` 会再弹一个 `Enable full access?`，`1. Yes, continue anyway` 才生效，`2. Cancel` 返回
 - **一轮运行中也能用** `/permissions`：输入框在运行中照样可以输入斜杠命令并回车打开菜单。选中后屏幕立刻出现 `Permission selection requested`，但这一轮的 `turn_context` 不变，下一轮才按新档位记录；下一轮开头还会有一条 `event_msg.thread_settings_applied`
 - 原生审批框的选项：`1. Yes, proceed (y)`、`2. Yes, and don't ask again for commands that start with <前缀> (p)`、`3. No, and tell Codex what to do differently (esc)`。hook 只能返回 allow 或 deny 加 message，做不到第 2 项
-- **hook 不表态时的原生审批框**（0.159.0，2026-09-30 实测，`approvals_reviewer="user"`）：`PermissionRequest` hook 不输出、正常退出后，Codex 立即弹出原生审批框；按 `2` 选中「以后不再询问」，界面显示 `You approved codex to always run commands that start with <前缀>`，命令随即执行。实测 `touch ~/.ra-v8-always-1` 的前缀是整条命令。0.159.2（2026-09-30 实测）：提权命令在后台等审批，这一轮可以先结束（模型轮询后回复「仍在等待审批」，工具记为 `running`、后台），hook 仍在等待；所以不能在一轮结束时就把 Codex 的审批当成已在终端处理
+- **hook 不表态时的原生审批框**（0.159.0，2026-09-30 实测，`approvals_reviewer="user"`）：`PermissionRequest` hook 不输出、正常退出后，Codex 立即弹出原生审批框；按 `2` 选中「以后不再询问」，界面显示 `You approved codex to always run commands that start with <前缀>`，命令随即执行。实测 `touch ~/.ra-v8-always-1` 的前缀是整条命令。0.159.2（2026-09-30 实测）：提权命令在后台等审批，这一轮可以先结束（模型轮询后回复「仍在等待审批」，工具记为 `running`、后台），hook 仍在等待；所以不能在一轮结束时就把 Codex 的审批当成已在终端处理。同一天用 0.159.2 还三次看到命令执行完后界面一直停在 `Working`（超过 3 分钟，没有新输出），按 Esc 中断后恢复；原因未查（推测和接口或周额度有关）
 - 在 `workspace-write` 下联网命令先在沙箱里失败，模型要再申请提权才会弹审批，不一定每次都会申请
 - `Approve for me` 和 hook 的配合见第 3 节：hook 不表态时才交给 `auto_review`
 
