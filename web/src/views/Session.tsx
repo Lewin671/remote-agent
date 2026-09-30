@@ -323,6 +323,8 @@ function ChatBody({
   const outbox = remote.outbox(sid);
   const prompt = remote.prompts.get(sid);
   const cwd = session.info?.cwd ?? "";
+  // Models by the names the chips use: Sonnet, not sonnet or its full ID.
+  const nameModel = (id: string) => remote.modelName(session.machineId, agent, id);
   const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
   const short: Short = { text: (title) => shortenPaths(title, cwd, home), path: (path) => shortenPath(path, cwd, home) };
 
@@ -368,7 +370,7 @@ function ChatBody({
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -512,6 +514,7 @@ function Row({
   agent,
   textOf,
   onRestore,
+  nameModel,
 }: {
   it: Item;
   d: Derived;
@@ -520,6 +523,7 @@ function Row({
   agent: Agent;
   textOf: Map<string, string>;
   onRestore: (text: string) => void;
+  nameModel: (id: string) => string;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
@@ -615,7 +619,7 @@ function Row({
       if (c.model)
         return (
           <div className="sysline">
-            切换到 <b>{c.model}</b>
+            切换到 <b>{nameModel(c.model)}</b>
             {c.effort && ` · ${c.effort}`}
           </div>
         );
@@ -634,7 +638,7 @@ function Row({
             return (
               <span key={i}>
                 {i > 0 && "，"}
-                {what}切到了 <b>{to}</b>
+                {what}切到了 <b>{k.value.model ? to.split(k.value.model).join(nameModel(k.value.model)) : to}</b>
               </span>
             );
           })}

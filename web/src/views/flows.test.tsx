@@ -818,3 +818,19 @@ it("lists every Claude Code model after switching away from haiku", async () => 
   await vi.waitFor(() => expect(switched).toHaveLength(1));
   expect(switched[0]).toMatchObject({ model: "haiku", effort: "" });
 });
+
+it("names models in switch records as the chips do", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-claude-idle")!;
+  const push = (kind: object) => r.events("s-claude-idle").push(create(EventSchema, { seq: BigInt(r.events("s-claude-idle").length + 1), kind: kind as never }));
+  push({ case: "turnContext", value: { permissionMode: "default", model: "claude-haiku-4-5-20251001" } });
+  push({ case: "settingsChanged", value: { model: "sonnet", effort: "medium" } });
+  push({ case: "turnContext", value: { permissionMode: "default", model: "claude-sonnet-5-5", effort: "medium" } });
+  push({ case: "turnContext", value: { permissionMode: "default", model: "claude-opus-5-5", effort: "medium" } });
+  // The model list has come, as it has once the session page asks for it.
+  await r.listModels("mac", Agent.CLAUDE);
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
+  expect(lines).toContain("切换到 Sonnet · medium");
+  expect(lines.some((l) => l?.includes("模型切到了 Opus · medium"))).toBe(true);
+});
