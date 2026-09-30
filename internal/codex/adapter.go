@@ -227,6 +227,15 @@ func FlagArgs(args []string, drop, valueFlags map[string]bool) []string {
 // -m, and its approval flags win over -c, so the options overridden are
 // dropped from the original ones first.
 func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
+	argv, err := a.argv(l)
+	if err != nil || l.Exe == "" || l.RemoteSession == "" {
+		return argv, err
+	}
+	config := "mcp_servers.remote_agent={command=" + tomlString(l.Exe) + ",args=[\"mcp\",\"--session\"," + tomlString(l.RemoteSession) + "],env_vars=[\"REMOTE_AGENT_HOME\"],enabled=true}"
+	return append(argv, "-c", config), nil
+}
+
+func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
 	if !l.Resume {
 		return Args(l.Args), nil
 	}

@@ -13,6 +13,8 @@ const usage = `remote-agent: operate native AI coding CLIs running in tmux
 
 Usage:
   remote-agent --version                  show product version and source revision
+  remote-agent schedule <operation>       manage persistent timed Agent messages (schedule help)
+  remote-agent mcp [--session ID]          serve scheduling tools over stdio
   remote-agent daemon [flags]              run the daemon in the foreground
   remote-agent codex [codex args]          start a Codex session here and attach to it
   remote-agent claude [claude args]        start a Claude Code session here and attach to it
@@ -55,6 +57,10 @@ func main() {
 	cmd, args := os.Args[1], os.Args[2:]
 	var err error
 	switch cmd {
+	case "schedule":
+		err = runSchedule(args)
+	case "mcp":
+		err = runMCP(args)
 	case "daemon":
 		err = runDaemon(args)
 	case "codex":

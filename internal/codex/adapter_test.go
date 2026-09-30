@@ -64,3 +64,21 @@ func TestResumeArgv(t *testing.T) {
 		t.Fatalf("argv %q", argv)
 	}
 }
+
+func TestManagedMCPOnStartAndResume(t *testing.T) {
+	a := New("codex", t.TempDir(), "")
+	for _, resume := range []bool{false, true} {
+		l := &agent.Launch{Exe: "/path with spaces/remote-agent", RemoteSession: "remote-id", Args: []string{"-m", "gpt-6-luna"}, Resume: resume, SessionID: "cli-id"}
+		argv, err := a.Argv(l)
+		if err != nil {
+			t.Fatal(err)
+		}
+		joined := strings.Join(argv, "\n")
+		if !strings.Contains(joined, `mcp_servers.remote_agent={command="/path with spaces/remote-agent",args=["mcp","--session","remote-id"],env_vars=["REMOTE_AGENT_HOME"],enabled=true}`) {
+			t.Fatalf("missing MCP: %v", argv)
+		}
+		if strings.Contains(joined, "instructions") || strings.Contains(joined, "system_prompt") {
+			t.Fatal("injected instructions")
+		}
+	}
+}

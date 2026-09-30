@@ -422,6 +422,14 @@ func (a *Adapter) ManagedStatusLine(cwd string) bool {
 // with the original options minus positional arguments such as a first
 // prompt, then the model, effort and permission mode it last ran with.
 func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
+	argv, err := a.argv(l)
+	if err != nil {
+		return nil, err
+	}
+	return agent.MCPConfig(l, argv)
+}
+
+func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
 	user, _ := a.userStatusLine(l.Cwd)
 	own := []byte("{}")
 	if user != nil && user.Type == "command" && user.Command != "" {

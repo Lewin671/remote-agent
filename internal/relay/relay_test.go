@@ -31,11 +31,12 @@ const marker = "SECRET-MARKER-7f3a"
 type fakeBackend struct {
 	dir string
 
-	mu       sync.Mutex
-	sessions map[string]*eventlog.Log
-	sends    []*pb.SendRequest
-	term     *fakeTerminal
-	resolved []*pb.ResolveApprovalRequest
+	mu        sync.Mutex
+	sessions  map[string]*eventlog.Log
+	sends     []*pb.SendRequest
+	schedules []*pb.ScheduleRequest
+	term      *fakeTerminal
+	resolved  []*pb.ResolveApprovalRequest
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
 	origins      []*pb.Origin

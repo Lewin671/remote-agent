@@ -26,6 +26,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -99,6 +100,9 @@ type Daemon struct {
 	limitsAt time.Time      // when Codex reported them
 	quotas   claudeQuotas   // Claude Code's account limits
 
+	scheduleMu sync.Mutex
+	tasks      map[string]*schedule.Task
+
 	settingsMu sync.Mutex
 	cached     *pb.DaemonSettings
 
@@ -170,6 +174,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
 		}
 	}
+	if err := d.loadSchedules(); err != nil {
+		return err
+	}
+	go d.scheduleLoop(ctx)
 	go d.imageGCLoop(ctx.Done())
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
@@ -366,7 +374,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}
-	launch := &agent.Launch{Dir: dir, Args: args, Cwd: cwd}
+	launch := &agent.Launch{Dir: dir, Args: args, Cwd: cwd, Exe: d.cfg.Exe, RemoteSession: id}
 	cliArgs, err := ag.Argv(launch)
 	if err != nil {
 		return nil, err
@@ -382,6 +390,9 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 
 	env := sessionEnv(req.Env, d.cfg.Env)
 	d.ownEnv(env, id)
+	if m.Agent == pb.Agent_AGENT_CLAUDE {
+		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
+	}
 	envFile, err := startEnv(dir, env)
 	if err != nil {
 		log.Close()
@@ -539,9 +550,7 @@ func (d *Daemon) list(includeExited bool) []*pb.Session {
 func (d *Daemon) ownEnv(env map[string]string, id string) {
 	env["RA_SESSION"] = id
 	env["RA_EXE"] = d.cfg.Exe
-	if h := os.Getenv("REMOTE_AGENT_HOME"); h != "" {
-		env["REMOTE_AGENT_HOME"] = h
-	}
+	env["REMOTE_AGENT_HOME"] = paths.Dir()
 }
 
 // skipEnv lists variables that belong to the caller's terminal rather than
@@ -633,7 +642,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
 	cliArgs, err := s.ag.Argv(&agent.Launch{
-		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess,
+		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: id,
 	})
 	if err != nil {
 		return nil, err
@@ -645,6 +654,9 @@ func (d *Daemon) resume(id string) (*session, error) {
 		env = sessionEnv(nil, d.cfg.Env)
 	}
 	d.ownEnv(env, id)
+	if m.Agent == pb.Agent_AGENT_CLAUDE {
+		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
+	}
 	envFile, err := startEnv(s.dir, env)
 	if err != nil {
 		return nil, err

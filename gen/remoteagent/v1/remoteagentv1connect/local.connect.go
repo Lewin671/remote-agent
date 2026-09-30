@@ -33,6 +33,8 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// LocalServiceScheduleProcedure is the fully-qualified name of the LocalService's Schedule RPC.
+	LocalServiceScheduleProcedure = "/remoteagent.v1.LocalService/Schedule"
 	// LocalServiceCreateSessionProcedure is the fully-qualified name of the LocalService's
 	// CreateSession RPC.
 	LocalServiceCreateSessionProcedure = "/remoteagent.v1.LocalService/CreateSession"
@@ -107,6 +109,8 @@ const (
 
 // LocalServiceClient is a client for the remoteagent.v1.LocalService service.
 type LocalServiceClient interface {
+	// Schedule manages daemon-owned tasks. It is also used by the local MCP.
+	Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
@@ -164,6 +168,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	localServiceMethods := v1.File_remoteagent_v1_local_proto.Services().ByName("LocalService").Methods()
 	return &localServiceClient{
+		schedule: connect.NewClient[v1.ScheduleRequest, v1.ScheduleResponse](
+			httpClient,
+			baseURL+LocalServiceScheduleProcedure,
+			connect.WithSchema(localServiceMethods.ByName("Schedule")),
+			connect.WithClientOptions(opts...),
+		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
 			httpClient,
 			baseURL+LocalServiceCreateSessionProcedure,
@@ -325,6 +335,7 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // localServiceClient implements LocalServiceClient.
 type localServiceClient struct {
+	schedule             *connect.Client[v1.ScheduleRequest, v1.ScheduleResponse]
 	createSession        *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	listSessions         *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
 	getSession           *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
@@ -351,6 +362,11 @@ type localServiceClient struct {
 	answerQuestion       *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	watchEvents          *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
 	hook                 *connect.Client[v1.HookRequest, v1.HookResponse]
+}
+
+// Schedule calls remoteagent.v1.LocalService.Schedule.
+func (c *localServiceClient) Schedule(ctx context.Context, req *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error) {
+	return c.schedule.CallUnary(ctx, req)
 }
 
 // CreateSession calls remoteagent.v1.LocalService.CreateSession.
@@ -485,6 +501,8 @@ func (c *localServiceClient) Hook(ctx context.Context, req *connect.Request[v1.H
 
 // LocalServiceHandler is an implementation of the remoteagent.v1.LocalService service.
 type LocalServiceHandler interface {
+	// Schedule manages daemon-owned tasks. It is also used by the local MCP.
+	Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
 	ListSessions(context.Context, *connect.Request[v1.ListSessionsRequest]) (*connect.Response[v1.ListSessionsResponse], error)
 	GetSession(context.Context, *connect.Request[v1.GetSessionRequest]) (*connect.Response[v1.GetSessionResponse], error)
@@ -538,6 +556,12 @@ type LocalServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	localServiceMethods := v1.File_remoteagent_v1_local_proto.Services().ByName("LocalService").Methods()
+	localServiceScheduleHandler := connect.NewUnaryHandler(
+		LocalServiceScheduleProcedure,
+		svc.Schedule,
+		connect.WithSchema(localServiceMethods.ByName("Schedule")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceCreateSessionHandler := connect.NewUnaryHandler(
 		LocalServiceCreateSessionProcedure,
 		svc.CreateSession,
@@ -696,6 +720,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 	)
 	return "/remoteagent.v1.LocalService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case LocalServiceScheduleProcedure:
+			localServiceScheduleHandler.ServeHTTP(w, r)
 		case LocalServiceCreateSessionProcedure:
 			localServiceCreateSessionHandler.ServeHTTP(w, r)
 		case LocalServiceListSessionsProcedure:
@@ -756,6 +782,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 
 // UnimplementedLocalServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedLocalServiceHandler struct{}
+
+func (UnimplementedLocalServiceHandler) Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.Schedule is not implemented"))
+}
 
 func (UnimplementedLocalServiceHandler) CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.CreateSession is not implemented"))

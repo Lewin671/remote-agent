@@ -213,3 +213,10 @@
 - 信任目录会写进 `~/.claude.json`（和 Codex 的信任写进 `config.toml` 一样，是全局状态）
 - 测试用 `--model haiku` 省额度；但 haiku 没有 auto 模式和 effort，这两项要用 sonnet 测
 - 不要在菜单里按数字键或回车，以免改掉全局默认模型
+
+
+## 定时任务 MCP 接入实测
+
+2026-09-30，Claude Code 2.1.285、haiku，使用独立的状态目录、tmux socket 和临时工作目录实测：通过启动时的 `--mcp-config` 注册 stdio MCP，没有注入会话指令。用户消息要求安排“本轮结束后 2 秒”，模型调用 `schedule_create`，daemon 在本轮结束后发出消息，同一对话收到回复。
+
+另以本地 schedule 命令创建一次性恢复任务，退出 CLI 并重启 daemon，到时间自动恢复，CLI 对话 ID 不变、消息收到回复；定时新开对话也收到回复。托管会话环境中的 `CLAUDE_CODE_DISABLE_CRON` 为 `1`；官方说明该变量禁用会话调度、cron 工具和 `/loop`（[scheduled-tasks](https://code.claude.com/docs/en/scheduled-tasks#disable-scheduled-tasks)）。本次没有进一步让模型调用 cron 来验证拒绝，也没有修改全局环境。恢复后模型再次调用 `schedule_list` 成功；其他用户 MCP 的实际连接尚未逐一实测，配置合并由单元测试覆盖。

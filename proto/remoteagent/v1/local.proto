@@ -9,6 +9,8 @@ import "remoteagent/v1/event.proto";
 // the Codex hooks use it; in P1 the same session operations are reached
 // from clients through the server.
 service LocalService {
+  // Schedule manages daemon-owned tasks. It is also used by the local MCP.
+  rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
   rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
@@ -483,4 +485,25 @@ message ImageSessionStorage {
   string session_id = 1;
   int64 bytes = 2;
   int64 protected_bytes = 3;
+}
+
+// Schedule carries the versioned JSON task model in internal/schedule.
+// Keeping the same model for MCP, CLI and encrypted client commands avoids
+// treating an Agent's private scheduler as the source of truth.
+message ScheduleRequest {
+  // create, list, get, update, pause, resume, cancel, run.
+  string operation = 1;
+  string task_id = 2;
+  // Context for resolving "current" and after_turn; empty for machine callers.
+  string session_id = 3;
+  // UTF-8 JSON TaskSpec for create/update (complete replacement).
+  bytes spec_json = 4;
+  // Optional optimistic concurrency check; zero omits it.
+  uint64 expected_revision = 5;
+  // Optional stable creation key. Reusing it with a different spec fails.
+  string request_id = 6;
+}
+message ScheduleResponse {
+  // UTF-8 JSON Task, or {"tasks":[Task,...]} for list. Includes execution history.
+  bytes result_json = 1;
 }

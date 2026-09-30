@@ -199,3 +199,10 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 在终端里用 `tmux paste-buffer -p` 粘贴图片路径同样变成 `[Image #N]`；用 `tmux send-keys -H` 发 bracketed paste 的字节时，Codex 跑在 PTY 代理下面收不到这段粘贴（直接在 tmux 里跑 Codex 时可以），所以实测要么用 `paste-buffer -p`，要么经 PTY 代理的控制接口写入
 - 生成图（0.142.5 的历史记录）：同一张图记两次，先是 `item_completed` 的 `Extension`（`kind: image_gen.generation`，`result` 为 PNG 的 base64，另有 `revisedPrompt`、`savedPath`），再是 `response_item` 的 `image_generation_call`，两者 `id` 相同，`status` 都是 `generating`
 
+
+
+## 定时任务 MCP 接入实测
+
+2026-09-30，Codex CLI 0.159.2、GPT-6-Luna low，使用独立的状态目录、tmux socket 和临时工作目录实测：单次 `-c mcp_servers.remote_agent=...` 注册 stdio MCP；没有注入会话指令。用户消息要求安排“本轮结束后 2 秒”，模型调用 `schedule_create`，daemon 在本轮结束后发出后续消息，同一对话记录了回复。
+
+另以本地 schedule 命令创建一次性恢复任务，退出 CLI 并重启 daemon，到时间自动恢复，CLI 对话 ID 不变、消息收到回复；恢复后模型再次调用 `schedule_list` 成功。以固定周期和一次运行上限新开对话，也收到回复且只执行一次。以上直接验证工具调用、调度、恢复和新建，不代表完整 doctor 验收。MCP 的单次配置方式与配置项见 [官方文档](https://learn.chatgpt.com/docs/extend/mcp)。

@@ -219,6 +219,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 				out.Kind = &pb.CommandResult_AbortImageUpload{AbortImageUpload: m}
 			})
 		})
+	case *pb.Command_Schedule:
+		err = machine(func() error {
+			return call(ctx, l.Schedule, k.Schedule, func(m *pb.ScheduleResponse) {
+				out.Kind = &pb.CommandResult_Schedule{Schedule: m}
+			})
+		})
 	case *pb.Command_UpdateSettings:
 		err = machine(func() error {
 			return call(ctx, l.UpdateSettings, k.UpdateSettings, func(m *pb.UpdateSettingsResponse) {

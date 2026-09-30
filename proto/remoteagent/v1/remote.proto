@@ -113,6 +113,8 @@ message MachineCapabilities {
   bool send_modes = 9;
   // ResolveApprovalRequest.always.
   bool approval_always = 10;
+  // Schedule machine command: daemon-owned timed Agent messages.
+  bool scheduled_tasks = 11;
 }
 
 message AgentInfo {
@@ -172,6 +174,7 @@ message Command {
     GetImageUploadStatusRequest get_image_upload_status = 27;
     CompleteImageUploadRequest complete_image_upload = 28;
     AbortImageUploadRequest abort_image_upload = 29;
+    ScheduleRequest schedule = 30;
   }
 }
 
@@ -207,6 +210,7 @@ message CommandResult {
     GetImageUploadStatusResponse get_image_upload_status = 37;
     CompleteImageUploadResponse complete_image_upload = 38;
     AbortImageUploadResponse abort_image_upload = 39;
+    ScheduleResponse schedule = 40;
   }
 }
 

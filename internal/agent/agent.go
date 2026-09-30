@@ -79,6 +79,9 @@ type Launcher interface {
 
 // Launch describes a session being started or resumed.
 type Launch struct {
+	// Exe and RemoteSession enable the daemon-owned MCP only in managed launches.
+	Exe           string
+	RemoteSession string
 	// Dir is the session's private state directory.
 	Dir string
 	// Cwd is the folder the session runs in.
