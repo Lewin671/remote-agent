@@ -89,12 +89,18 @@ export function ApprovalActions({
   const [reason, setReason] = useState("");
   const deadline = deadlineOf(a);
   const expired = deadline > 0 && now >= deadline;
-  const locked = !!ap.busy || expired;
+  // An answer whose outcome is unknown holds: only a retry of it may go.
+  const locked = !!ap.busy || expired || (!!ap.error && ap.unknown);
   const open = (v: boolean) => {
     setReasonOpen(v);
     onReasonOpen?.(v);
   };
-  const error = ap.error && <Banner kind="err" action="重试" onAction={ap.retry}>没能提交：{ap.error}</Banner>;
+  const error = ap.error && (
+    <Banner kind="err" action="重试" onAction={ap.retry}>
+      {ap.unknown ? "未收到电脑确认：" : "没能提交："}
+      {ap.error}
+    </Banner>
+  );
   if (reasonOpen)
     return (
       <>

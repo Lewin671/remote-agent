@@ -907,3 +907,84 @@ describe("a new-session draft", () => {
     expect(sent[0].mode).toBe(ApprovalMode.FULL_ACCESS);
   });
 });
+
+describe("approvals whose answer was not confirmed (v2)", () => {
+  function setup(error: CommandError) {
+    const r = demo();
+    const calls: { allow: boolean; requestId: string }[] = [];
+    const real = r.command.bind(r);
+    r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "resolveApproval") {
+        calls.push({ allow: !!cmd.value.allow, requestId: slot?.requestId ?? "" });
+        if (calls.length === 1) throw error;
+      }
+      return real(sid, cmd, slot);
+    };
+    mount(<Home remote={r} go={() => undefined} />);
+    return calls;
+  }
+  const card = () => host.querySelector(".todo")!;
+
+  it("locks both choices and retries only the one made, as the same request", async () => {
+    const calls = setup(new CommandError("unknown", "连接超时"));
+    await click(button("允许", card()));
+    await vi.waitFor(() => expect(card().textContent).toContain("未收到电脑确认：连接超时"), { timeout: 3000 });
+    expect(button("拒绝", card())?.disabled).toBe(true);
+    expect(button("允许", card())?.disabled).toBe(true);
+    expect(button("附理由拒绝 ›", card())?.disabled).toBe(true);
+    await click(button("重试", card()));
+    await vi.waitFor(() => expect(calls.length).toBe(2));
+    expect(calls[1]).toEqual(calls[0]);
+    expect(calls[1].allow).toBe(true);
+  });
+
+  it("lets a definite failure be answered again either way", async () => {
+    setup(new CommandError("unavailable", "电脑不在线，指令没有发出"));
+    await click(button("允许", card()));
+    await vi.waitFor(() => expect(card().textContent).toContain("没能提交"), { timeout: 3000 });
+    expect(button("拒绝", card())?.disabled).toBe(false);
+    expect(button("允许", card())?.disabled).toBe(false);
+  });
+});
+
+describe("the queue in full (v2)", () => {
+  it("says what became of a cancel", async () => {
+    const { cancelOutcome } = await import("./Queue");
+    expect(cancelOutcome(InputStatus.CANCELED, true)).toBe("已取消");
+    expect(cancelOutcome(InputStatus.CANCELED, false)).toBe("上一条已在另一客户端取消");
+    expect(cancelOutcome(InputStatus.SUBMITTED, true)).toBe("上一条已送入终端，不能取消");
+    expect(cancelOutcome(InputStatus.UNCONFIRMED, true)).toBe("上一条已送入终端，不能取消");
+    expect(cancelOutcome(InputStatus.SUBMITTED, false)).toBe("");
+  });
+
+  it("lists every queued message with its sender, and cancels one", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-run")!;
+    const push = (kind: object) => r.events("s-run").push(create(EventSchema, { seq: BigInt(r.events("s-run").length + 1), kind: kind as never }));
+    // One more from another client, whose text this page does not know.
+    push({ case: "inputState", value: { requestId: "other", status: InputStatus.QUEUED } });
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await click(button(/^排队 2/));
+    const entries = () => [...host.querySelectorAll(".queue-entry")];
+    expect(entries().length).toBe(2);
+    expect(entries()[0].textContent).toContain("顺便补一个测试");
+    expect(entries()[0].textContent).toContain("本客户端");
+    expect(entries()[1].textContent).toContain("另一客户端");
+    await click(button("取消", entries()[0]));
+    expect(entries()[0].textContent).toContain("正在取消…");
+    await vi.waitFor(() => expect(entries().length).toBe(1), { timeout: 3000 });
+    expect(host.querySelector(".toast")?.textContent).toBe("已取消");
+  });
+
+  it("keeps a message whose cancel failed, and says so", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-run")!;
+    r.command = async () => {
+      throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+    };
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await click(button(/^排队 1/));
+    await click(button("取消", host.querySelector(".queue-entry")!));
+    await vi.waitFor(() => expect(host.querySelector(".queue-entry")!.textContent).toContain("取消未成功，消息仍在队列中"));
+  });
+});

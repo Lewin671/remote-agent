@@ -69,7 +69,9 @@ export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
     const [kind, ...rest] = key.split(":");
     void resolve(kind === "allow", rest.join(":"));
   };
-  return { resolve, retry, busy: c.busy, error: c.error };
+  // unknown: the answer may have reached the computer; only it may be
+  // retried, as the same request, never the opposite one.
+  return { resolve, retry, busy: c.busy, error: c.error, unknown: c.unknown };
 }
 
 /** Answer question index of a question call: one 1-based option, or
