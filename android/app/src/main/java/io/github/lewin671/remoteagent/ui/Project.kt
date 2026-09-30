@@ -68,6 +68,12 @@ import io.github.lewin671.remoteagent.proto.ListDirectoriesRequest
 import io.github.lewin671.remoteagent.proto.ListDirectoriesResponse
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
 
+/**
+ * The modes a new session can be started in besides the default. Neither CLI
+ * starts in plan, and full access is only ever the confirmed machine default.
+ */
+val newSessionModes = listOf(Mode.ASK, Mode.AUTO)
+
 /** How a new session starts; empty model, effort and mode mean the machine's defaults. */
 data class NewConfig(
     val machineId: String,
@@ -295,7 +301,7 @@ fun ConfigSheet(state: RemoteState, initial: NewConfig, onDone: (NewConfig) -> U
             Text("审批", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(c.mode == null, { c = c.copy(mode = null) }, { Text("默认") })
-                for (m in listOf(Mode.ASK, Mode.AUTO, Mode.PLAN)) FilterChip(c.mode == m, { c = c.copy(mode = m) }, { Text(m.text) })
+                for (m in newSessionModes) FilterChip(c.mode == m, { c = c.copy(mode = m) }, { Text(m.text) })
             }
             Text("默认沿用这个项目最近一个会话。改了之后，这个项目下次也会沿用新的设置。", style = MaterialTheme.typography.bodySmall, color = p.muted)
         }
