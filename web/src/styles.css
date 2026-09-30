@@ -135,7 +135,8 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .todo .t > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo .t .link { font-size: 13px; white-space: nowrap; min-height: 44px; margin: -11px 0; }
 .todo .m { font-size: 12px; color: var(--muted); }
-.todo .desc { font-size: 13px; color: var(--fg2); margin-top: 6px; }
+/* Two lines at most; the whole request is one tap away in the session. */
+.todo .desc { font-size: 13px; color: var(--fg2); margin-top: 6px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .todo pre { background: var(--card); border: 1px solid var(--line); color: var(--fg2); border-radius: var(--r-xs); padding: 7px 10px; font: 12px/1.5 var(--mono); margin: 8px 0; white-space: pre-wrap; max-height: 56px; overflow-y: auto; }
 .todo .btns .btn { background: var(--card); }
 .todo .btns .btn.pri { background: var(--blue-bg); }
