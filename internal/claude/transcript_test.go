@@ -428,3 +428,16 @@ func TestTaskNotificationTurn(t *testing.T) {
 		t.Fatalf("end %v", evs)
 	}
 }
+
+// A message with a pasted image, sent while a turn ran, is recorded with a
+// prompt of blocks rather than a string (2.1.284).
+func TestQueuedMessageWithImage(t *testing.T) {
+	evs, err := NewParser().Parse([]byte(`{"type":"attachment","attachment":{"type":"queued_command","prompt":[{"type":"text","text":"[Image #5]what color?"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"iVBO"}}],"imagePasteIds":[5],"commandMode":"prompt","origin":{"kind":"human"}}}`))
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("events: %v %v", evs, err)
+	}
+	m := evs[0].GetUserMessage()
+	if m.GetText() != "[Image #5]what color?" || m.GetImageCount() != 1 {
+		t.Errorf("message: %v", m)
+	}
+}

@@ -236,6 +236,14 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 	if r.Origin == nil || r.Origin.Kind != "human" {
 		return nil, nil
 	}
+	evs = append(evs, p.startTurn(r)...)
+	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: userMessage(text, blocks)}})
+	return evs, nil
+}
+
+// userMessage builds a message from content that is either plain text or,
+// when images were pasted, text and image blocks.
+func userMessage(text string, blocks []block) *pb.UserMessage {
 	msg := &pb.UserMessage{Text: text}
 	var parts []string
 	for _, b := range blocks {
@@ -249,9 +257,7 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 	if len(parts) > 0 {
 		msg.Text = strings.Join(parts, "\n")
 	}
-	evs = append(evs, p.startTurn(r)...)
-	evs = append(evs, &pb.Event{TurnId: r.PromptID, Kind: &pb.Event_UserMessage{UserMessage: msg}})
-	return evs, nil
+	return msg
 }
 
 // startTurn opens the turn of a user record.
@@ -517,18 +523,28 @@ func (p *Parser) system(r *record) []*pb.Event {
 
 func (p *Parser) attachment(r *record) []*pb.Event {
 	var a struct {
-		Type   string  `json:"type"`
-		Prompt string  `json:"prompt"`
-		Origin *origin `json:"origin"`
+		Type   string          `json:"type"`
+		Prompt json.RawMessage `json:"prompt"`
+		Origin *origin         `json:"origin"`
 	}
 	if json.Unmarshal(r.Attachment, &a) != nil {
 		return nil
 	}
-	// A message sent while the turn ran, taken into it.
-	if a.Type == "queued_command" && a.Origin != nil && a.Origin.Kind == "human" && a.Prompt != "" {
-		return []*pb.Event{{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: a.Prompt}}}}
+	// A message sent while the turn ran, taken into it. With pasted images
+	// the prompt is a list of blocks instead of a string.
+	if a.Type != "queued_command" || a.Origin == nil || a.Origin.Kind != "human" {
+		return nil
 	}
-	return nil
+	var text string
+	var blocks []block
+	if json.Unmarshal(a.Prompt, &text) != nil && json.Unmarshal(a.Prompt, &blocks) != nil {
+		return nil
+	}
+	msg := userMessage(text, blocks)
+	if msg.Text == "" && msg.ImageCount == 0 {
+		return nil
+	}
+	return []*pb.Event{{Kind: &pb.Event_UserMessage{UserMessage: msg}}}
 }
 
 // ParseQuestions converts AskUserQuestion's input into a QuestionAsked.
