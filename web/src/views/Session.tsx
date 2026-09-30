@@ -415,7 +415,7 @@ function ChatBody({
   const [unseen, setUnseen] = useState(0);
   const seen = useRef(0);
   const hist = remote.history(sid);
-  const items = timeline(events, d);
+  const items = useMemo(() => timeline(events, d), [events, events.length, d]);
   const outbox = remote.outbox(sid);
   const prompt = remote.prompts.get(sid);
   const cwd = session.info?.cwd ?? "";

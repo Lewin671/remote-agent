@@ -9,12 +9,21 @@ export function useRemote(remote: Remote) {
 }
 
 /** Re-renders every ms, for countdowns and relative times. */
-export function useNow(ms: number) {
+export function useNow(ms: number, enabled = true) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), ms);
-    return () => clearInterval(t);
-  }, [ms]);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const followVisibility = () => {
+      clearInterval(timer);
+      timer = undefined;
+      if (document.hidden || !enabled) return;
+      setNow(Date.now());
+      timer = setInterval(() => setNow(Date.now()), ms);
+    };
+    document.addEventListener("visibilitychange", followVisibility);
+    followVisibility();
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", followVisibility); };
+  }, [ms, enabled]);
   return now;
 }
 
@@ -177,5 +186,13 @@ export function NavBar({ onBack, title, sub, right, className = "" }: { onBack?:
       </span>
       {right ?? <span className="more" />}
     </header>
+  );
+}
+
+/** Background pages stop live connections; visibility restoration takes a fresh snapshot. */
+export function usePageVisible() {
+  return useSyncExternalStore(
+    (notify) => { document.addEventListener("visibilitychange", notify); return () => document.removeEventListener("visibilitychange", notify); },
+    () => !document.hidden,
   );
 }

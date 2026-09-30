@@ -2,7 +2,7 @@
 // always text: nothing is inserted as HTML, and only http(s) links become
 // links. Other targets, mostly local file paths, show as monospace refs.
 
-import type { ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 
 /** Whether a link target may be opened: web pages only, so javascript:,
  * data: and file paths never become clickable. */
@@ -323,6 +323,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
 }
 
 /** Markdown rendered as elements, never as HTML. */
-export function Markdown({ text }: { text: string }) {
-  return <Blocks blocks={mdBlocks(text)} />;
-}
+export const Markdown = memo(function Markdown({ text }: { text: string }) {
+  const blocks = useMemo(() => mdBlocks(text), [text]);
+  return <Blocks blocks={blocks} />;
+});

@@ -298,6 +298,9 @@ export class Remote {
   private ws?: WebSocket;
   private retry = 1000;
   private closed = false;
+  private generation = 0;
+  private retryTimer?: ReturnType<typeof setTimeout>;
+  private terminals = new Set<WebSocket>();
   private listeners = new Set<() => void>();
   private version = 0;
 
@@ -340,13 +343,23 @@ export class Remote {
   // --- connection ---
 
   start() {
+    if (!this.closed && this.ws) return;
     this.closed = false;
     void this.connect();
   }
 
   stop() {
     this.closed = true;
+    this.generation++;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
     this.ws?.close();
+    this.ws = undefined;
+    for (const terminal of this.terminals) terminal.close();
+    this.terminals.clear();
+    if (this.conn === "online") this.lostAt = Date.now();
+    this.conn = "offline";
+    this.changed();
   }
 
   private async login() {
@@ -359,14 +372,16 @@ export class Remote {
 
   private async connect() {
     if (this.closed) return;
+    const generation = ++this.generation;
     this.conn = "connecting";
     this.changed();
     try {
       await this.login();
     } catch (e) {
-      this.fail(e);
+      if (generation === this.generation && !this.closed) this.fail(e);
       return;
     }
+    if (generation !== this.generation || this.closed) return;
     const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
@@ -376,6 +391,7 @@ export class Remote {
       ws.send(toBinary(PeerFrameSchema, hello));
     };
     ws.onmessage = (m) => {
+      if (this.closed || generation !== this.generation) return;
       let f;
       try {
         f = fromBinary(ServerFrameSchema, new Uint8Array(m.data as ArrayBuffer));
@@ -383,7 +399,7 @@ export class Remote {
         ws.close();
         return;
       }
-      void this.onFrame(f.kind);
+      void this.onFrame(f.kind, generation);
     };
     ws.onclose = () => {
       if (this.ws !== ws) return;
@@ -402,10 +418,12 @@ export class Remote {
     if (this.closed) return;
     const delay = this.retry;
     this.retry = Math.min(this.retry * 2, 30_000);
-    setTimeout(() => void this.connect(), delay + Math.random() * delay * 0.25);
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => void this.connect(), delay + Math.random() * delay * 0.25);
   }
 
-  private async onFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"]) {
+  private async onFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"], generation = this.generation) {
+    if (this.closed || generation !== this.generation) return;
     switch (kind.case) {
       case "ready":
         this.retry = 1000;
@@ -418,6 +436,7 @@ export class Remote {
         this.changed();
         // Subscribed first, then catch up: nothing falls in between.
         await this.refresh();
+        if (this.closed || generation !== this.generation) return;
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
         void this.loadDevices();
         void this.loadPrefs();
@@ -621,18 +640,21 @@ export class Remote {
   private async fetchEvents(sid: string) {
     const b = this.buffers.get(sid);
     const s = this.sessions.get(sid);
-    if (!b || !s) return;
+    if (!b || !s || this.closed) return;
     if (b.fetching) {
       b.refetch = true;
       return;
     }
     b.fetching = true;
+    const generation = this.generation;
     try {
       do {
         b.refetch = false;
         for (;;) {
+          if (this.closed || generation !== this.generation) return;
           const before = b.events.length;
           const res = await this.api.getEvents({ sessionId: sid, afterSeq: BigInt(before), limit: 500 });
+          if (this.closed || generation !== this.generation) return;
           await this.ingest(s, res.events, false);
           // An event that does not open stops progress; asking for the
           // same page again would not help.
@@ -642,10 +664,12 @@ export class Remote {
       b.loaded = true;
       b.error = "";
     } catch (e) {
+      if (this.closed || generation !== this.generation) return;
       b.error = errorText(e);
       this.report(e);
     } finally {
       b.fetching = false;
+      if (b.refetch && !this.closed && generation !== this.generation) void this.fetchEvents(sid);
       this.changed();
     }
   }
@@ -865,10 +889,12 @@ export class Remote {
     const streamId = newRequestID();
     const ws = new WebSocket(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term");
     ws.binaryType = "arraybuffer";
+    this.terminals.add(ws);
     let closed = false;
     const finish = (reason: string) => {
       if (closed) return;
       closed = true;
+      this.terminals.delete(ws);
       onClose(reason);
     };
     await new Promise<void>((resolve, reject) => {
@@ -876,14 +902,23 @@ export class Remote {
         ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
         resolve();
       };
-      ws.onerror = () => reject(new Error("连不上终端"));
+      ws.onerror = () => { this.terminals.delete(ws); ws.close(); reject(new Error("连不上终端")); };
+      ws.onclose = () => { this.terminals.delete(ws); closed = true; reject(new Error("终端连接已关闭")); };
     });
     let last = 0n;
     let queue = Promise.resolve();
+    let pendingBytes = 0;
+    let pendingFrames = 0;
     ws.onmessage = (m) => {
+      if (closed) return;
+      const size = (m.data as ArrayBuffer).byteLength;
+      pendingBytes += size;
+      pendingFrames++;
+      if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) { finish("终端输出积压，请重新连接以获取最新画面"); ws.close(); return; }
       // Open in arrival order.
       queue = queue.then(async () => {
         try {
+          if (closed) return;
           const env = fromBinary(EnvelopeSchema, new Uint8Array(m.data as ArrayBuffer));
           const { header, msg } = await openMessage(
             s.key,
@@ -891,19 +926,21 @@ export class Remote {
             { kind: PayloadKind.TERMINAL_OUTPUT, machineId: s.machineId, sessionId: sid, requestId: streamId },
             TerminalFrameSchema,
           );
+          if (closed) return;
           if (header.seq <= last) throw new Error("终端帧顺序不对");
           last = header.seq;
           onFrame(msg);
         } catch (e) {
           finish(errorText(e));
           ws.close();
-        }
+        } finally { pendingBytes -= size; pendingFrames--; }
       });
     };
     ws.onclose = () => finish("终端连接断开");
     try {
       await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
     } catch (e) {
+      this.terminals.delete(ws);
       ws.close();
       throw e;
     }
@@ -925,6 +962,7 @@ export class Remote {
       },
       close: () => {
         closed = true;
+        this.terminals.delete(ws);
         ws.close();
       },
     };

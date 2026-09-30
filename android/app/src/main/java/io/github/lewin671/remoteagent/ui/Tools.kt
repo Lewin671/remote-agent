@@ -187,7 +187,7 @@ fun ToolPage(sid: String, seq: Long) {
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
     val agent = s?.agent() ?: Agent.AGENT_CODEX
-    val d = remember(events.events) { derive(events.events, agent) }
+    val d = rememberDerived(events.events, agent)
     val p = pal
     val t = now(1000)
     val started = events.events.getOrNull((seq - 1).toInt())?.takeIf { it.seq == seq && it.kindCase == Event.KindCase.TOOL_STARTED }

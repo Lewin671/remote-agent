@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,10 +89,14 @@ val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }
 @Composable
 fun now(periodMs: Long = 30_000): Long {
     var t by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(periodMs) {
-        while (true) {
-            delay(periodMs)
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(periodMs, owner) {
+        owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
             t = System.currentTimeMillis()
+            while (true) {
+                delay(periodMs)
+                t = System.currentTimeMillis()
+            }
         }
     }
     return t
@@ -244,4 +249,11 @@ fun SessionTabs(selected: Int, terminalEnabled: Boolean, needsTerminal: Boolean,
             }
         }
     }
+}
+
+/** Incremental event state, with an immutable result per history snapshot. */
+@Composable
+fun rememberDerived(events: List<io.github.lewin671.remoteagent.proto.Event>, agent: io.github.lewin671.remoteagent.proto.Agent): io.github.lewin671.remoteagent.core.Derived {
+    val projection = remember { io.github.lewin671.remoteagent.core.EventProjection() }
+    return remember(events, agent) { projection.update(events, agent) }
 }

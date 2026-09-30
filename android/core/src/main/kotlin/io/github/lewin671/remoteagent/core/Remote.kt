@@ -693,21 +693,24 @@ class Remote(
     /** Fetches everything after the last contiguous event. */
     private suspend fun fetchEvents(sid: String) {
         val b = buffers[sid] ?: return
-        if (sessions[sid] == null) return
+        if (sessions[sid] == null || !running) return
         if (b.fetching) {
             b.refetch = true
             return
         }
         b.fetching = true
+        val gen = generation
         try {
             do {
                 b.refetch = false
                 while (true) {
+                    if (!running || gen != generation) return
                     val before = b.events.size
                     val res = api.client.getEvents(
                         GetEventsRequest.newBuilder().setSessionId(sid).setAfterSeq(before.toLong()).setLimit(500).build(),
                         Api.headers(token),
                     ).value()
+                    if (!running || gen != generation) return
                     ingest(sid, res.eventsList, fillGaps = false, save = true)
                     // An event that does not open stops progress; asking for the
                     // same page again would not help.
@@ -717,11 +720,13 @@ class Remote(
             b.loaded = true
             b.fetchError = null
         } catch (e: Exception) {
+            if (!running || gen != generation) return
             report(e)
             // Shown on the session with a retry; the next Ready fetches again too.
             b.fetchError = "没能读取历史：" + errorText(e)
         } finally {
             b.fetching = false
+            if (b.refetch && running && gen != generation) scope.launch { fetchEvents(sid) }
             publishEvents(sid, b)
         }
     }
@@ -1022,6 +1027,7 @@ class Remote(
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    if (closed.get()) return
                     try {
                         val env = Envelope.parseFrom(bytes.toByteArray())
                         val (h, frame) = Envelopes.openMessage(

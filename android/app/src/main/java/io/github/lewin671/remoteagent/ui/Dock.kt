@@ -397,7 +397,7 @@ fun QuestionPage(sid: String, qid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
-    val d = remember(events.events) { io.github.lewin671.remoteagent.core.derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
+    val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val q = d.questions[qid]
     PageScaffold("回答提问") {
         if (s == null || q == null) {

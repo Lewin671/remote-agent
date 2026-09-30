@@ -99,7 +99,7 @@ fun QueuePage(sid: String) {
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
     val agent = s?.agent() ?: Agent.AGENT_CODEX
-    val d = remember(events.events) { derive(events.events, agent) }
+    val d = rememberDerived(events.events, agent)
     val p = pal
     val ids = queued(d)
     // Say where a message went when it left the queue while shown here.

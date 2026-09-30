@@ -22,7 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
+import java.io.ByteArrayOutputStream
 
 /**
  * A session's terminal: a Termux emulator fed by the remote byte stream
@@ -65,7 +65,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     private var conn: TermConn? = null
     private var job: Job? = null
     private var generation = 0
-    private val backlog = AtomicLong(0)
+    private var frames = TerminalFrames(MAX_BACKLOG)
 
     val session = TerminalSession(2000, SessionClient(), object : TerminalSession.Sink {
         override fun onInput(data: ByteArray) = send(data)
@@ -73,11 +73,27 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     })
 
     fun connect() {
+        if (remote.state.value.conn != io.github.lewin671.remoteagent.core.ConnState.ONLINE) { close(); return }
         job?.cancel()
         conn?.close()
         conn = null
         val gen = ++generation
-        backlog.set(0)
+        frames.close()
+        val queue = TerminalFrames(MAX_BACKLOG)
+        frames = queue
+        fun flush() {
+            if (gen != generation) return
+            val (batch, more) = queue.drain()
+            applyBatch(batch)
+            if (more) main.postDelayed({ flush() }, FRAME_INTERVAL_MS)
+        }
+        fun enqueue(frame: TerminalFrame) {
+            when (queue.offer(frame)) {
+                TerminalFrames.Offer.SCHEDULE -> main.postDelayed({ flush() }, FRAME_INTERVAL_MS)
+                TerminalFrames.Offer.OVERFLOW -> main.post { if (gen == generation) connect() }
+                else -> {}
+            }
+        }
         _state.value = State.Connecting
         fit.reset()
         _fitted.value = false
@@ -85,20 +101,11 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
             try {
                 val c = remote.openTerminal(sessionId, object : TermListener {
                     override fun onFrame(frame: TerminalFrame) {
-                        val n = frameSize(frame)
-                        if (backlog.addAndGet(n) > MAX_BACKLOG) {
-                            // Behind: start over from a snapshot instead of skipping output.
-                            main.post { if (gen == generation) connect() }
-                            return
-                        }
-                        main.post {
-                            backlog.addAndGet(-n)
-                            if (gen == generation) apply(frame)
-                        }
+                        enqueue(frame)
                     }
 
                     override fun onClose(reason: String) {
-                        main.post { if (gen == generation && _state.value !is State.Closed) _state.value = State.Closed(reason) }
+                        enqueue(TerminalFrame.newBuilder().setClosed(reason).build())
                     }
                 })
                 if (gen == generation) conn = c else c.close()
@@ -108,10 +115,20 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         }
     }
 
-    private fun frameSize(f: TerminalFrame): Long = when (f.kindCase) {
-        TerminalFrame.KindCase.OUTPUT -> f.output.size().toLong()
-        TerminalFrame.KindCase.SNAPSHOT -> f.snapshot.data.size().toLong()
-        else -> 0
+    /** Concatenate adjacent output only; snapshots and closes retain their position. */
+    private fun applyBatch(batch: List<TerminalFrame>) {
+        val output = ByteArrayOutputStream()
+        fun flushOutput() {
+            if (output.size() == 0) return
+            val bytes = output.toByteArray()
+            session.append(bytes, bytes.size)
+            output.reset()
+        }
+        for (frame in batch) {
+            if (frame.kindCase == TerminalFrame.KindCase.OUTPUT) frame.output.writeTo(output)
+            else { flushOutput(); apply(frame) }
+        }
+        flushOutput()
     }
 
     private fun apply(f: TerminalFrame) {
@@ -167,6 +184,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
 
     fun close() {
         generation++
+        frames.close()
+        _state.value = State.Closed("终端已暂停，连接恢复后会重新获取画面")
         job?.cancel()
         conn?.close()
         conn = null
@@ -234,6 +253,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     companion object {
         /** Bytes received but not yet shown before the stream is restarted. */
         const val MAX_BACKLOG = 2L * 1024 * 1024
+        private const val FRAME_INTERVAL_MS = 33L
 
         // The emulator's messages can quote terminal output (a bad OSC 52
         // payload, an unknown control string): only their size is logged.

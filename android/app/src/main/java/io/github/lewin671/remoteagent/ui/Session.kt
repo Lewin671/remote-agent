@@ -119,7 +119,7 @@ fun SessionScreen(sid: String) {
         return
     }
     val events by remote.events(sid).collectAsState()
-    val d = remember(events.events) { derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
+    val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val status = statusIn(state, s)
     var tab by rememberSaveable { mutableStateOf(0) }
     BackHandler(enabled = tab == 1) { tab = 0 }
@@ -217,14 +217,14 @@ private fun ChatPane(
     val initialPrompt = Outbox.prompt(s.id)
     val initialId = if (initialPrompt != null) d.inputs.keys.firstOrNull { id -> outbox.none { it.requestId == id } } else null
     val startPrompt = pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet())
-    val items = remember(events, d, cwd, home, outbox.size, devices) {
-        buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) ?: initialPrompt?.takeIf { _ -> it == initialId } }) { o ->
+    val projection = remember(s.id, machine, cwd, home, outbox.size, devices, initialPrompt, initialId) { ChatProjection() }
+    val items = remember(events, d, projection) {
+        projection.update(events, d, machine, cwd, home, { Outbox.text(s.id, it) ?: initialPrompt?.takeIf { _ -> it == initialId } }) { o ->
             io.github.lewin671.remoteagent.core.originLabel(o, state, remote.account.deviceId, machine)
         }
     }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val t = now(1000)
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
     // Follow new messages while the user is at the bottom; stop once they
     // drag away from it, until they come back. Our own jumps to the end
@@ -370,7 +370,6 @@ private fun Bottom(
     val p = pal
     val remote = LocalRemote.current
     val m = state.machines[s.machineId]
-    val t = now()
     if (status == Status.EXITED) {
         val act = rememberAction()
         StatusCard("会话已结束", buildString {
@@ -389,6 +388,7 @@ private fun Bottom(
         return
     }
     if (status == Status.OFFLINE) {
+        val t = now()
         StatusCard(
             "${machineLabel(state, s.machineId)} 不在线",
             (if ((m?.lastSeenMs ?: 0) > 0) whenText(m!!.lastSeenMs, t) + "断开。" else "") + "电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
@@ -442,13 +442,13 @@ private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin67
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val t = now(1000)
     val online = state.conn == ConnState.ONLINE
     val frozen = if (online) 0 else state.offlineSinceMs
     val running = status == Status.RUNNING || d.running
     val q = io.github.lewin671.remoteagent.core.queued(d)
+    if (!running && q.isEmpty() && d.tools.isEmpty() && d.background.isEmpty()) return
+    val t = if (online && d.tools.any { it.since > 0 }) now(1000) else System.currentTimeMillis()
     val tools = toolSummary(d, s.agent(), t, frozen)
-    if (!running && q.isEmpty() && tools == null) return
     val interrupt = rememberAction()
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),

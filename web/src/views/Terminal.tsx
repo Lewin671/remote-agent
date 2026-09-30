@@ -1,3 +1,4 @@
+import { usePageVisible, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState } from "react";
@@ -32,6 +33,9 @@ const keys2: [string, string, string][] = [
 /** The session's terminal, streamed live. Typing goes to the session like
  * the local keyboard. The tmux window keeps its size unless fitted. */
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
+  useRemote(remote);
+  const online = remote.conn === "online";
+  const visible = usePageVisible();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm>(null);
@@ -84,6 +88,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!visible || !online) return;
     let alive = true;
     setState("connecting");
     setReason("");
@@ -95,6 +100,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       .openTerminal(
         session.id,
         (f) => {
+          if (!alive) return;
           const t = term.current;
           if (!t) return;
           switch (f.kind.case) {
@@ -149,7 +155,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       conn.current?.close();
       conn.current = null;
     };
-  }, [remote, session.id, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, session.id, attempt, visible, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
 

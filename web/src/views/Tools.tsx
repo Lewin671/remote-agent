@@ -76,8 +76,8 @@ export function ActiveTool({
   onTerminal?: () => void;
   full?: boolean;
 }) {
-  const now = useNow(1000);
   const online = remote.conn === "online";
+  const now = useNow(1000, online && !unsettled && tool.since > 0);
   const lostAt = online ? undefined : (remote.lostAt ?? now);
   const c = unsettled ? undefined : toolClock(tool.since, now, lostAt);
   const approval = !unsettled && awaitingApproval(tool, d.approvals.values());
@@ -210,11 +210,11 @@ export function ToolPage({
   onTerminal: () => void;
   onInterrupt: () => void;
 }) {
-  const now = useNow(1000);
   const tool = d.tools.find((t) => t.seq === seq) ?? d.tools[0];
   const loose = !tool ? (d.unsettled.find((t) => t.seq === seq) ?? d.unsettled[0]) : undefined;
   const shown = tool ?? loose;
   const online = remote.conn === "online";
+  const now = useNow(1000, online && !!tool && tool.since > 0);
   const c = tool ? toolClock(tool.since, now, online ? undefined : (remote.lostAt ?? now)) : undefined;
   return (
     <div className="page">

@@ -1,3 +1,4 @@
+import { usePageVisible } from "./ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Remote } from "./remote";
 import { NavBar, useRemote } from "./ui";
@@ -21,6 +22,7 @@ async function loadRemote(): Promise<Remote | undefined> {
 }
 
 export function App() {
+  const visible = usePageVisible();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const load = () =>
     loadRemote().then(
@@ -31,10 +33,10 @@ export function App() {
     void load();
   }, []);
   useEffect(() => {
-    if (!remote) return;
+    if (!remote || !visible) return;
     remote.start();
     return () => remote.stop();
-  }, [remote]);
+  }, [remote, visible]);
   if (remote === undefined) return <div className="center muted">加载中…</div>;
   if (remote === null) return <Setup onDone={() => void load()} />;
   return <Main remote={remote} />;

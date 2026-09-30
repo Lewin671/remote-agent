@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.term
 
 import android.view.inputmethod.InputMethodManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,10 +83,19 @@ internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
 @Composable
 fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
-    val term = remember(sessionId) { RemoteTerminal(remote, sessionId, scope) }
-    DisposableEffect(term) {
-        term.connect()
-        onDispose { term.close() }
+    val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val online = remote.state.collectAsStateWithLifecycle().value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE
+    DisposableEffect(term, owner, online) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (online && remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect()
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> term.close()
+                else -> {}
+            }
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer); term.close() }
     }
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()
@@ -226,12 +236,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                             is RemoteTerminal.State.Closed -> {
                                 Text("终端连接断开了", style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    if (sessionRunning) "会话还在运行，聊天照常更新。" else "会话不在运行。",
+                                    if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "会话还在运行，聊天照常更新。" else "会话不在运行。",
                                     style = MaterialTheme.typography.bodyMedium, color = p.muted, textAlign = TextAlign.Center,
                                 )
                                 var details by remember { mutableIntStateOf(0) }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { term.connect() }) { Text("重新连接") }
+                                    TextButton(onClick = { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, enabled = online) { Text("重新连接") }
                                     TextButton(onClick = { details++ }) { Text("查看详情") }
                                 }
                                 if (details % 2 == 1) Text(s.reason, style = MaterialTheme.typography.bodySmall, color = p.muted, fontFamily = FontFamily.Monospace)

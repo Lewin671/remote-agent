@@ -407,169 +407,209 @@ class Derived(
 )
 
 /** Pending approvals and questions, input states and the running turn. */
-fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
-    val d = Derived()
-    var mode: Mode? = null
-    var model = ""
+fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived = EventReducer(agent).apply { append(events) }.snapshot()
+
+internal class EventReducer(agent: Agent) {
+    private val d = Derived()
+    private var mode: Mode? = null
+    private var model = ""
     // Messages sent from clients are recorded as submitted before the CLI
     // records them; the rest were typed in the terminal.
-    var submitted = 0
+    private var submitted = 0
     // A user message with no submitted state before it, which may still come
     // right after: Claude Code records the message first.
-    var unclaimed: Long? = null
+    private var unclaimed: Long? = null
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
-    var planned = false
-    val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
+    private var planned = false
+    private val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
     // Starts a turn ended without a result, by call ID, for a result that comes later.
-    val unfinishedById = HashMap<String, RunningTool>()
-    for (e in events) {
-        when (e.kindCase) {
-            Event.KindCase.APPROVAL_REQUESTED -> d.approvals[e.approvalRequested.approvalId] = e.approvalRequested
-            Event.KindCase.APPROVAL_RESOLVED -> {
-                d.approvals.remove(e.approvalResolved.approvalId)
-                d.resolved[e.approvalResolved.approvalId] = e.approvalResolved.decision to e.approvalResolved.message
-                e.originOrNull()?.let { d.resolvedBy[e.approvalResolved.approvalId] = it }
-            }
-            Event.KindCase.QUESTION_ASKED -> if (!e.questionAsked.async) d.questions[e.questionAsked.questionId] = e.questionAsked
-            Event.KindCase.QUESTION_ANSWERED -> {
-                d.questions.remove(e.questionAnswered.questionId)
-                d.answered[e.questionAnswered.questionId] = e.questionAnswered.answersList.flatMap { it.answersList }
-            }
-            Event.KindCase.TURN_STARTED -> {
-                d.running = true
-                d.background.clear()
-            }
-            Event.KindCase.TURN_ENDED -> {
-                d.running = false
-                d.questions.clear()
-                // Still running when an interrupted turn ended: whether it
-                // ever ends is not known (an interrupt does not stop
-                // background commands). A turn that completed without a
-                // tool's result only says no result came.
-                val aborted = e.turnEnded.outcome == io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED
-                for (t in d.tools) {
-                    if (aborted) d.background += BackgroundTool(t, returned = false) else d.noResult += t.seq
-                    d.unfinished += t.seq
-                    if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
+    private val unfinishedById = HashMap<String, RunningTool>()
+    fun append(events: List<Event>) {
+        for (e in events) {
+            when (e.kindCase) {
+                Event.KindCase.APPROVAL_REQUESTED -> d.approvals[e.approvalRequested.approvalId] = e.approvalRequested
+                Event.KindCase.APPROVAL_RESOLVED -> {
+                    d.approvals.remove(e.approvalResolved.approvalId)
+                    d.resolved[e.approvalResolved.approvalId] = e.approvalResolved.decision to e.approvalResolved.message
+                    e.originOrNull()?.let { d.resolvedBy[e.approvalResolved.approvalId] = it }
                 }
-                d.tools.clear()
-            }
-            Event.KindCase.INPUT_STATE -> {
-                val st = e.inputState
-                d.inputs[st.requestId] = st.status
-                val prev = d.accepted[st.requestId]
-                if (prev == null && st.status == InputStatus.INPUT_STATUS_QUEUED && (st.text.isNotEmpty() || st.imageIdsCount > 0)) {
-                    d.accepted[st.requestId] = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage)
-                } else if (prev != null && st.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED) {
-                    d.accepted[st.requestId] = prev.copy(stage = st.stage)
+                Event.KindCase.QUESTION_ASKED -> if (!e.questionAsked.async) d.questions[e.questionAsked.questionId] = e.questionAsked
+                Event.KindCase.QUESTION_ANSWERED -> {
+                    d.questions.remove(e.questionAnswered.questionId)
+                    d.answered[e.questionAnswered.questionId] = e.questionAnswered.answersList.flatMap { it.answersList }
                 }
-                if (st.status == InputStatus.INPUT_STATUS_FAILED || st.status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL) d.failures[st.requestId] = st.reason
-                if (e.inputState.status == InputStatus.INPUT_STATUS_CANCELED && e.inputState.reason == "exited") d.unsent[e.inputState.requestId] = e.seq
-                if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
-                    // Codex marks a message submitted before recording it;
-                    // Claude Code records the message first and the state
-                    // follows, claiming the message just before it.
-                    val u = unclaimed
-                    if (claude && u != null && e.seq - u <= 3) {
-                        d.typedLocally.remove(u)
-                        unclaimed = null
-                    } else {
-                        submitted++
+                Event.KindCase.TURN_STARTED -> {
+                    d.running = true
+                    d.background.clear()
+                }
+                Event.KindCase.TURN_ENDED -> {
+                    d.running = false
+                    d.questions.clear()
+                    // Still running when an interrupted turn ended: whether it
+                    // ever ends is not known (an interrupt does not stop
+                    // background commands). A turn that completed without a
+                    // tool's result only says no result came.
+                    val aborted = e.turnEnded.outcome == io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED
+                    for (t in d.tools) {
+                        if (aborted) d.background += BackgroundTool(t, returned = false) else d.noResult += t.seq
+                        d.unfinished += t.seq
+                        if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
+                    }
+                    d.tools.clear()
+                }
+                Event.KindCase.INPUT_STATE -> {
+                    val st = e.inputState
+                    d.inputs[st.requestId] = st.status
+                    val prev = d.accepted[st.requestId]
+                    if (prev == null && st.status == InputStatus.INPUT_STATUS_QUEUED && (st.text.isNotEmpty() || st.imageIdsCount > 0)) {
+                        d.accepted[st.requestId] = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage)
+                    } else if (prev != null && st.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED) {
+                        d.accepted[st.requestId] = prev.copy(stage = st.stage)
+                    }
+                    if (st.status == InputStatus.INPUT_STATUS_FAILED || st.status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL) d.failures[st.requestId] = st.reason
+                    if (e.inputState.status == InputStatus.INPUT_STATUS_CANCELED && e.inputState.reason == "exited") d.unsent[e.inputState.requestId] = e.seq
+                    if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
+                        // Codex marks a message submitted before recording it;
+                        // Claude Code records the message first and the state
+                        // follows, claiming the message just before it.
+                        val u = unclaimed
+                        if (claude && u != null && e.seq - u <= 3) {
+                            d.typedLocally.remove(u)
+                            unclaimed = null
+                        } else {
+                            submitted++
+                        }
                     }
                 }
-            }
-            Event.KindCase.USER_MESSAGE -> if (e.hasOrigin() && e.origin.kind != io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNSPECIFIED) {
-                // A v2 daemon says who sent it: no guessing.
-                if (e.origin.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL) d.typedLocally += e.seq
-                else if (submitted > 0) submitted--
-            } else {
-                if (submitted > 0) submitted--
-                // Codex sends this itself when a plan is approved.
-                else if (e.userMessage.text != "Implement the plan.") {
-                    d.typedLocally += e.seq
-                    unclaimed = e.seq
+                Event.KindCase.USER_MESSAGE -> if (e.hasOrigin() && e.origin.kind != io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNSPECIFIED) {
+                    // A v2 daemon says who sent it: no guessing.
+                    if (e.origin.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL) d.typedLocally += e.seq
+                    else if (submitted > 0) submitted--
+                } else {
+                    if (submitted > 0) submitted--
+                    // Codex sends this itself when a plan is approved.
+                    else if (e.userMessage.text != "Implement the plan.") {
+                        d.typedLocally += e.seq
+                        unclaimed = e.seq
+                    }
                 }
-            }
-            Event.KindCase.TOOL_STARTED -> e.toolStarted.let {
-                d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType, e.seq, it.input, it.inputDigest)
-            }
-            Event.KindCase.TOOL_CALL -> {
-                // Starts and calls pair by call ID (Claude Code; Codex from
-                // v2 daemons, whose later entries of one call carry
-                // "<id>#2" and have no start); an older daemon gave Codex
-                // starts no ID and they pair in order.
-                val id = e.toolCall.callId
-                val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
-                val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
-                if (j >= 0) {
-                    val t = d.tools.removeAt(j)
-                    d.completedAt[t.seq] = e.seq
-                    if (t.toBackground || wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
-                } else if (id.isNotEmpty()) {
-                    // A call reported after its turn ended (a Codex exec still
-                    // running): it belongs to that start, not to a new row.
-                    val t = unfinishedById[id]
-                    if (t != null && t.seq !in d.completedAt) {
+                Event.KindCase.TOOL_STARTED -> e.toolStarted.let {
+                    d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType, e.seq, it.input, it.inputDigest)
+                }
+                Event.KindCase.TOOL_CALL -> {
+                    // Starts and calls pair by call ID (Claude Code; Codex from
+                    // v2 daemons, whose later entries of one call carry
+                    // "<id>#2" and have no start); an older daemon gave Codex
+                    // starts no ID and they pair in order.
+                    val id = e.toolCall.callId
+                    val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
+                    val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
+                    if (j >= 0) {
+                        val t = d.tools.removeAt(j)
                         d.completedAt[t.seq] = e.seq
-                        d.unfinished -= t.seq
-                        d.noResult -= t.seq
-                        d.background.removeAll { it.tool.seq == t.seq }
-                        if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                        if (t.toBackground || wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                    } else if (id.isNotEmpty()) {
+                        // A call reported after its turn ended (a Codex exec still
+                        // running): it belongs to that start, not to a new row.
+                        val t = unfinishedById[id]
+                        if (t != null && t.seq !in d.completedAt) {
+                            d.completedAt[t.seq] = e.seq
+                            d.unfinished -= t.seq
+                            d.noResult -= t.seq
+                            d.background.removeAll { it.tool.seq == t.seq }
+                            if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                        }
                     }
                 }
-            }
-            Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage
-            Event.KindCase.PLAN_PROPOSED -> {
-                d.plan = e.planProposed
-                planned = true
-            }
-            Event.KindCase.SETTINGS_CHANGED -> {
-                val c = e.settingsChanged
-                // The client names models by slug or alias, contexts by the
-                // CLI's own ID: start over from the next context rather than
-                // compare the two.
-                if (c.model.isNotEmpty()) model = ""
-                modeOf(c.mode)?.let { mode = it }
-            }
-            Event.KindCase.TURN_CONTEXT -> {
-                val c = e.turnContext
-                val m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode)
-                val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
-                val mm = "${c.model} ${c.effort}"
-                val changes = mutableListOf<String>()
-                if (mode != null && m != null && m != mode && !(mode == Mode.PLAN && planned)) changes += "模式切到了 ${m.text}"
-                if (m != null && m != mode) planned = false
-                // Plan mode runs at its own effort; only a model change counts
-                // there. A context without a model is Claude Code's mode, read
-                // off the screen; it says nothing about the model.
-                if (model.isNotEmpty() && c.model.isNotEmpty() && mm != model && !planning) {
-                    changes += "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage
+                Event.KindCase.PLAN_PROPOSED -> {
+                    d.plan = e.planProposed
+                    planned = true
                 }
-                if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.joinToString("，")
-                if (m != null) mode = m
-                if (!planning && c.model.isNotEmpty()) model = mm
-            }
-            Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
-                // Still queued when the session ended: never written, even if
-                // the daemon (from before InputState.reason) said nothing more.
-                for ((id, st) in d.inputs) {
-                    if (st == InputStatus.INPUT_STATUS_QUEUED) {
-                        d.inputs[id] = InputStatus.INPUT_STATUS_CANCELED
-                        d.unsent[id] = e.seq
+                Event.KindCase.SETTINGS_CHANGED -> {
+                    val c = e.settingsChanged
+                    // The client names models by slug or alias, contexts by the
+                    // CLI's own ID: start over from the next context rather than
+                    // compare the two.
+                    if (c.model.isNotEmpty()) model = ""
+                    modeOf(c.mode)?.let { mode = it }
+                }
+                Event.KindCase.TURN_CONTEXT -> {
+                    val c = e.turnContext
+                    val m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode)
+                    val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
+                    val mm = "${c.model} ${c.effort}"
+                    val changes = mutableListOf<String>()
+                    if (mode != null && m != null && m != mode && !(mode == Mode.PLAN && planned)) changes += "模式切到了 ${m.text}"
+                    if (m != null && m != mode) planned = false
+                    // Plan mode runs at its own effort; only a model change counts
+                    // there. A context without a model is Claude Code's mode, read
+                    // off the screen; it says nothing about the model.
+                    if (model.isNotEmpty() && c.model.isNotEmpty() && mm != model && !planning) {
+                        changes += "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
                     }
+                    if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.joinToString("，")
+                    if (m != null) mode = m
+                    if (!planning && c.model.isNotEmpty()) model = mm
                 }
-                d.running = false
-                d.approvals.clear()
-                d.questions.clear()
-                for (t in d.tools) d.unfinished += t.seq
-                d.tools.clear()
-                d.background.clear()
+                Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
+                    // Still queued when the session ended: never written, even if
+                    // the daemon (from before InputState.reason) said nothing more.
+                    for ((id, st) in d.inputs) {
+                        if (st == InputStatus.INPUT_STATUS_QUEUED) {
+                            d.inputs[id] = InputStatus.INPUT_STATUS_CANCELED
+                            d.unsent[id] = e.seq
+                        }
+                    }
+                    d.running = false
+                    d.approvals.clear()
+                    d.questions.clear()
+                    for (t in d.tools) d.unfinished += t.seq
+                    d.tools.clear()
+                    d.background.clear()
+                }
+                else -> {}
             }
-            else -> {}
         }
     }
-    return d
+    fun snapshot(): Derived = Derived(
+        approvals = LinkedHashMap(d.approvals),
+        resolved = HashMap(d.resolved),
+        resolvedBy = HashMap(d.resolvedBy),
+        questions = LinkedHashMap(d.questions),
+        answered = HashMap(d.answered),
+        inputs = LinkedHashMap(d.inputs),
+        accepted = HashMap(d.accepted),
+        failures = HashMap(d.failures),
+        unsent = LinkedHashMap(d.unsent),
+        tools = ArrayList(d.tools),
+        background = ArrayList(d.background),
+        completedAt = HashMap(d.completedAt),
+        unfinished = HashSet(d.unfinished),
+        noResult = HashSet(d.noResult),
+        typedLocally = HashSet(d.typedLocally),
+        terminalChanges = HashMap(d.terminalChanges),
+        running = d.running, usage = d.usage, plan = d.plan,
+    )
+}
+
+/** Reuses reducer state only for an unchanged prefix; published results never mutate. */
+class EventProjection {
+    private var previous: List<Event> = emptyList()
+    private var agent: Agent? = null
+    private var reducer = EventReducer(Agent.AGENT_CODEX)
+    private var result = Derived()
+    fun update(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
+        if (this.agent == agent && events === previous) return result
+        val append = this.agent == agent && events.size >= previous.size && previous.indices.all { events[it] === previous[it] }
+        if (!append) reducer = EventReducer(agent)
+        reducer.append(if (append) events.subList(previous.size, events.size) else events)
+        result = reducer.snapshot()
+        previous = events
+        this.agent = agent
+        return result
+    }
 }
 
 /** A running tool waits for an approval rather than runs: the daemon's digests of the two inputs match. */
