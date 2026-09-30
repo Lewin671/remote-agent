@@ -2,7 +2,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import qrcode from "qrcode-generator";
 import { useEffect, useRef, useState } from "react";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { initiate, joinByPairing, parsePairLink, type Initiation } from "../pairing";
+import { initiate, joinByPairing, PairCanceled, parsePairLink, type Initiation } from "../pairing";
 import { errorText, join, type Remote } from "../remote";
 import { Banner, NavBar, useRemote } from "../ui";
 
@@ -169,6 +169,10 @@ export function Setup({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof joinBanner>>();
   const stopped = useRef(false);
+  // The user gave up waiting; and whether this device already began to
+  // register, after which giving up cannot undo the join.
+  const canceled = useRef(false);
+  const [registering, setRegistering] = useState(false);
   const started = useRef(false);
   // Mounting again, as StrictMode does in development, must not leave the
   // join in progress marked as stopped.
@@ -180,18 +184,34 @@ export function Setup({ onDone }: { onDone: () => void }) {
   }, []);
 
   const pair = async (link = fromLink ?? { code, server }) => {
+    canceled.current = false;
+    setRegistering(false);
     setBusy(true);
     setError(undefined);
     setEmoji(undefined);
     try {
-      await joinByPairing(link, setEmoji, () => stopped.current);
+      await joinByPairing(link, setEmoji, () => stopped.current || canceled.current, () => setRegistering(true));
       location.hash = "";
       onDone();
     } catch (e) {
+      setRegistering(false);
+      // Given up here: the page already says so.
+      if (e instanceof PairCanceled && canceled.current) return;
       setError(joinBanner(e));
       setEmoji(undefined);
       setBusy(false);
     }
+  };
+  /** Stops waiting on this device and goes back to the code. The server
+   * is kept and the old code cleared; the old request may still hold the
+   * code on the other device, which should refuse it. */
+  const giveUp = () => {
+    canceled.current = true;
+    setEmoji(undefined);
+    setBusy(false);
+    setCode("");
+    setError({ kind: "warn", text: "已停止这次等待。请在另一台设备上拒绝旧请求，再生成新的配对码。", action: "" });
+    if (location.hash.startsWith("#/pair?")) location.hash = "";
   };
   useEffect(() => {
     // Once per page: a second join would take the pairing's only slot.
@@ -240,8 +260,14 @@ export function Setup({ onDone }: { onDone: () => void }) {
         <div className="emoji big">{emoji.join(" ")}</div>
         <p className="muted center-text small">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
         <p className="muted center-text small" style={{ marginTop: 24 }}>
-          ◌ 等待允许…
+          {registering ? "◌ 另一台设备已允许，正在登记这个浏览器…" : "◌ 等待允许…"}
         </p>
+        <div className="pair-wait-actions">
+          <button className="btn" disabled={registering} onClick={giveUp}>
+            图案不一致，返回填码
+          </button>
+          <p className="muted center-text small">返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。</p>
+        </div>
       </div>
     );
 

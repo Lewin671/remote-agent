@@ -49,10 +49,17 @@ export function parsePairLink(query: string): PairLink | undefined {
 
 type Poll = (want: PairingState) => Promise<GetPairingResponse>;
 
+/** The user stopped waiting on this device (not a refusal by the other). */
+export class PairCanceled extends Error {
+  constructor() {
+    super("已取消");
+  }
+}
+
 function poller(get: () => Promise<GetPairingResponse>, stopped: () => boolean): Poll {
   return async (want) => {
     for (;;) {
-      if (stopped()) throw new Error("已取消");
+      if (stopped()) throw new PairCanceled();
       let res: GetPairingResponse;
       try {
         res = await get();
@@ -135,7 +142,7 @@ export async function initiate(remote: Remote): Promise<Initiation> {
 
 /** Joins an account with a code or link from an existing device. onEmoji
  * gets the emoji to compare with the other device's. */
-export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) => void, stopped: () => boolean): Promise<StoredAccount> {
+export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) => void, stopped: () => boolean, onRegistering: () => void = () => undefined): Promise<StoredAccount> {
   const pc = client(link.server);
   const key = newPairKey();
   const joined = await pc.joinPairing({ code: link.code.replace(/\s/g, ""), joinerPublic: key.pub, joinerKind: DeviceKind.CLIENT });
@@ -156,6 +163,11 @@ export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) =
     PairingPayloadSchema,
   );
   if (msg.server !== link.server) throw new Error("账户属于另一个服务器");
+  // Canceled while the other device allowed it: the key is dropped unused.
+  // Past this point this device registers, and a cancel can no longer
+  // undo it; the page then waits for the outcome instead.
+  if (stopped()) throw new PairCanceled();
+  onRegistering();
   const acct = await joinWithRoot(msg.root as Uint8Array<ArrayBuffer>, msg.server);
   // Tells the other device it went through. If this is lost, that device
   // reports the outcome as unknown; the join itself stands.

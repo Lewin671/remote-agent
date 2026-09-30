@@ -782,3 +782,8 @@ input.field { margin: 0; }
 .drop::after { content: "松开以添加图片"; position: absolute; inset: 0; border: 2px dashed var(--blue); border-radius: 18px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .pic.local { width: 72px; height: 96px; }
 .me .pics .pic.local img { object-fit: cover; }
+
+.pair-wait-actions { padding: 24px 16px 16px; }
+.pair-wait-actions .btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.list .mi.dis, .list .mi:disabled { opacity: 1; color: var(--muted); }
+.list .mi.dis b, .list .mi:disabled b { color: var(--muted); }
