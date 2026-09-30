@@ -641,7 +641,7 @@ class Remote(
             if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later") else CommandException(code, text)
         while (true) {
             try {
-                if (token.isEmpty()) token = login(api, account)
+                if (token.isEmpty()) token = relogin(mayHaveRun)
                 val res = api.client.forward(
                     ForwardRequest.newBuilder().setMachineId(p.machineId).setCommand(p.envelope).build(),
                     Api.headers(token),
@@ -651,7 +651,7 @@ class Remote(
                     Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
                     CommandResult::parseFrom,
                 )
-                if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode })
+                if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode }, fromDaemon = true)
                 return msg
             } catch (ce: ConnectException) {
                 val cause = ce.exception
@@ -660,7 +660,7 @@ class Remote(
                 }
                 if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                     attempt++
-                    token = login(api, account)
+                    token = relogin(mayHaveRun)
                     continue
                 }
                 // ABORTED: the daemon could not seal a result, as on the web.
@@ -678,6 +678,17 @@ class Remote(
                 throw CommandException(ce.code.codeName, errorText(ce))
             }
         }
+    }
+
+    /**
+     * Logs in again during a forward. When an earlier try may already have
+     * run the command, a failure here is no answer about it: it stays unknown.
+     */
+    private suspend fun relogin(mayHaveRun: Boolean): String = try {
+        login(api, account)
+    } catch (e: Exception) {
+        if (!mayHaveRun) throw e
+        throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）")
     }
 
     /** The models a machine's CLI offers, fetched once per run. */

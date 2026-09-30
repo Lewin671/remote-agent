@@ -262,6 +262,24 @@ class RemoteTest {
     }
 
     @Test
+    fun aFailedLoginWhileRetryingAnUnknownCommandKeepsItUnknown() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online") { it.conn == ConnState.ONLINE }
+        val cmd = Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
+        val p = r.prepare(daemon.id, "s1", cmd)
+        // The login is refused from here on: the retry is told to log in
+        // again, and that fails. The command it retries may have run.
+        r.removeDevice(r.account.deviceId)
+        try {
+            r.forward(p, retryOfUnknown = true)
+            fail("expected an error")
+        } catch (e: CommandException) {
+            assertEquals(CommandException.UNKNOWN, e.code)
+        }
+    }
+
+    @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
         val r = client()
         r.start()

@@ -112,7 +112,10 @@ suspend fun login(api: Api, account: Account): String {
 }
 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
-class CommandException(val code: String, message: String) : Exception(message) {
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false) : Exception(message) {
+    // fromDaemon: the daemon's own answer for this request, the final word
+    // on it (except that it expired before reaching the daemon).
+
     /** The command may or may not have run; retrying with the same request ID is safe. */
     val unknown: Boolean get() = code == UNKNOWN
 
