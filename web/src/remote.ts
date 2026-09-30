@@ -114,6 +114,20 @@ export function uncertain(e: unknown): boolean {
   return e instanceof ConnectError;
 }
 
+/** The state of answering one question call. */
+export interface AnswerState {
+  index: number; // the question being answered
+  ticked: number[]; // options ticked on a multi-select question, unsent
+  // The last answer tried and its request slot; kept after an unknown
+  // outcome so a retry is the same request.
+  last?: { key: string; slot: RequestSlot };
+  busy: string; // key of the answer in flight, kept after the last one succeeds
+  error: string;
+  unknown: boolean; // the last failure left the outcome unknown
+}
+
+const noAnswer: AnswerState = { index: 0, ticked: [], busy: "", error: "", unknown: false };
+
 /** Where the API is reached: the account's server, or with
  * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
 export function apiBase(server: string): string {
@@ -183,11 +197,16 @@ export class Remote {
   // Sessions started here whose record has not arrived yet, and the
   // project whose new-session box should take focus when shown.
   created = new Set<string>();
-  // The question being answered in each multi-question call, by call ID.
-  questionIndex = new Map<string, number>();
+  // How each question call is being answered, by call ID: kept here so the
+  // docked card and the question page share it.
+  private answers = new Map<string, AnswerState>();
 
-  setQuestionIndex(id: string, n: number) {
-    this.questionIndex.set(id, n);
+  answerState(id: string): AnswerState {
+    return this.answers.get(id) ?? noAnswer;
+  }
+
+  patchAnswer(id: string, patch: Partial<AnswerState>) {
+    this.answers.set(id, { ...this.answerState(id), ...patch });
     this.changed();
   }
   focusProject = "";

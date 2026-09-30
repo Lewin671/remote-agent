@@ -9,7 +9,7 @@ import { Markdown } from "../markdown";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
-import { Banner, NavBar, useNow, useRemote } from "../ui";
+import { Banner, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
 
 export function approvalTitle(a: ApprovalRequested): string {
@@ -179,21 +179,16 @@ function ApprovalDock({ remote, sid, a, agent, more, onDetail }: { remote: Remot
   );
 }
 
-/** Which question of a call is being answered. Kept on the Remote so the
- * docked card and the question page follow the terminal together. */
-function useQuestionIndex(remote: Remote, id: string): [number, (n: number) => void] {
-  useRemote(remote);
-  return [remote.questionIndex.get(id) ?? 0, (n) => remote.setQuestionIndex(id, n)];
-}
-
 function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; more: number; onTerminal: () => void }) {
   // Which question to answer. The daemon only enters the option while the
   // terminal shows this very question, so a stale choice is refused rather
   // than answering another question.
-  const [current, setCurrent] = useQuestionIndex(remote, q.questionId);
+  // Its answering state, ticks included, is shared with the question page.
   const ans = useAnswer(remote, sid, q.questionId);
-  // Options ticked on a multi-select question, before submitting.
-  const [ticked, setTicked] = useState<number[]>([]);
+  const current = ans.index;
+  const setCurrent = ans.setIndex;
+  const ticked = ans.ticked;
+  const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
   const n = q.questions.length;
   const index = Math.min(current, n - 1);
   const item = q.questions[index];
@@ -463,7 +458,7 @@ export function Dock({
     else if (item.kind === "question") onQuestion?.();
     else onTerminal();
   };
-  const [kind, text] = summary(item, agent, item.kind === "question" ? (remote.questionIndex.get(item.question.questionId) ?? 0) : 0);
+  const [kind, text] = summary(item, agent, item.kind === "question" ? (remote.answerState(item.question.questionId).index) : 0);
   const cls = item.kind === "question" ? " ask" : item.kind === "plan" ? " plan" : "";
   // The full card stays mounted, measurable but out of sight, while the
   // one-line form shows: a question's progress or a half-typed reason
@@ -493,7 +488,7 @@ export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal 
     <div className="page">
       <NavBar onBack={onBack} title="回答提问" sub={title} />
       <div className="body pad qpage">
-        <QuestionDock remote={remote} sid={sid} q={q} agent={agent} more={0} onTerminal={onTerminal} />
+        <QuestionDock key={q.questionId} remote={remote} sid={sid} q={q} agent={agent} more={0} onTerminal={onTerminal} />
       </div>
     </div>
   );

@@ -413,3 +413,48 @@ it("shortens paths in tool titles and keeps the original in the details", async 
   await click(row.closest("button")!);
   expect(host.textContent).toContain("cat /Users/me/Code/foo/go.mod /Users/me/.zshrc");
 });
+
+function ClaudeQuestionPage({ r, id = "cq" }: { r: DemoRemote; id?: string }) {
+  const q = derive(r.events("s-claude")).questions.get(id)!;
+  return <QuestionPage remote={r} sid="s-claude" q={q} agent={Agent.CLAUDE} title="t" onBack={() => undefined} onTerminal={() => undefined} />;
+}
+
+it("keeps ticks and a pending answer between the dock and the question page", async () => {
+  const r = demo();
+  const { sent, slots } = failingAnswers(r, new CommandError("unknown", "连接超时"));
+  mount(<ClaudeAsk r={r} />);
+  await click(button(/按 IP/));
+  // To the page and back: the tick is still there.
+  act(() => root!.render(<ClaudeQuestionPage r={r} />));
+  expect(button(/按 IP/)?.getAttribute("aria-checked")).toBe("true");
+  await click(button(/按设备/));
+  act(() => root!.render(<ClaudeAsk r={r} />));
+  expect(button("提交 2 项")).toBeTruthy();
+  await click(button("提交 2 项"));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  // The unknown outcome follows to the page, and its retry is the same request.
+  act(() => root!.render(<ClaudeQuestionPage r={r} />));
+  expect(host.textContent).toContain("不确定提交了没有");
+  expect(button(/按账户/)?.disabled).toBe(true);
+  await click(button("重试"));
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).toEqual([1, 3]);
+  expect(slots[1]).toBe(slots[0]);
+});
+
+it("gives the next question call on the page fresh options", async () => {
+  const r = demo();
+  // A second call waits after the first.
+  r.events("s-claude").push(
+    create(EventSchema, {
+      seq: BigInt(r.events("s-claude").length + 1),
+      kind: { case: "questionAsked", value: { questionId: "cq2", questions: [{ text: "还要限流吗？", options: [{ label: "要" }, { label: "不要" }] }] } },
+    }),
+  );
+  mount(<ClaudeQuestionPage r={r} />);
+  await click(button(/按 IP/));
+  await click(button("提交 1 项"));
+  await vi.waitFor(() => expect(button(/按 IP/)?.disabled).toBe(true));
+  act(() => root!.render(<ClaudeQuestionPage r={r} id="cq2" />));
+  expect(button(/^要/)?.disabled).toBe(false);
+});

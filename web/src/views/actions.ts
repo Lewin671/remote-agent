@@ -6,7 +6,8 @@ import { useMemo, useRef, useState } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
-import { errorText, newSlot, uncertain, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import { errorText, newSlot, uncertain, type AnswerState, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
   const events = remote.events(sid);
@@ -65,18 +66,53 @@ export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
 
 /** Answer question index of a question call: one 1-based option, or
  * several for a multi-select question. */
+/** Answering a question call. Its state lives on the Remote by call ID,
+ * so the docked card and the question page are one: moving between them
+ * keeps the ticks, the question reached, and a pending answer's request
+ * slot, which a retry must reuse. */
 export function useAnswer(remote: Remote, sid: string, questionId: string) {
-  const c = useCommand(remote, sid);
-  const answer = (index: number, options: number[], multi = false) =>
-    c.run(`${index}:${options.join(",")}`, {
-      case: "answerQuestion",
-      value: multi ? { sessionId: sid, questionId, questionIndex: index, options } : { sessionId: sid, questionId, option: options[0], questionIndex: index },
-    });
+  useRemote(remote);
+  const st = remote.answerState(questionId);
+  const set = (p: Partial<AnswerState>) => remote.patchAnswer(questionId, p);
+  const answer = async (index: number, options: number[], multi = false): Promise<boolean> => {
+    const key = `${index}:${options.join(",")}`;
+    const cur = remote.answerState(questionId);
+    const slot = cur.last?.key === key ? cur.last.slot : newSlot();
+    set({ last: { key, slot }, busy: key, error: "", unknown: false });
+    try {
+      await remote.command(
+        sid,
+        {
+          case: "answerQuestion",
+          value: multi ? { sessionId: sid, questionId, questionIndex: index, options } : { sessionId: sid, questionId, option: options[0], questionIndex: index },
+        },
+        slot,
+      );
+      return true;
+    } catch (e) {
+      // Only an uncertain outcome keeps the slot for the retry.
+      set({ last: { key, slot: uncertain(e) ? slot : newSlot() }, busy: "", unknown: uncertain(e), error: errorText(e) });
+      return false;
+    }
+  };
   // The question index and options of the pick in flight or last tried.
-  const key = c.busy || c.retry() || "";
+  const key = st.busy || st.last?.key || "";
   const [i, o] = key ? key.split(":") : ["-1", ""];
   const chosen = { index: Number(i), options: o ? o.split(",").map(Number) : [] };
-  return { answer, busy: c.busy, error: c.error, unknown: c.unknown, clearError: c.clearError, chosen, done: () => c.setBusy("") };
+  const setTicked = (f: (t: number[]) => number[]) => set({ ticked: f(remote.answerState(questionId).ticked) });
+  return {
+    answer,
+    busy: st.busy,
+    error: st.error,
+    unknown: st.unknown,
+    clearError: () => set({ error: "" }),
+    chosen,
+    done: () => set({ busy: "" }),
+    index: st.index,
+    setIndex: (n: number) => set({ index: n }),
+    ticked: st.ticked,
+    setTicked,
+  };
 }
 
 export function usePlan(remote: Remote, sid: string) {
