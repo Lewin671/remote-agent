@@ -1,8 +1,8 @@
 // Small building blocks shared by the views.
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { agentOf, avatarClass, CONTEXT_WARN, contextPercent, modeOf, type Tone } from "./model";
-import type { Remote, SessionView } from "./remote";
+import { avatarClass, type Tone } from "./model";
+import type { Remote } from "./remote";
 
 export function useRemote(remote: Remote) {
   useSyncExternalStore(remote.subscribe, remote.snapshot);
@@ -25,35 +25,6 @@ export function Dot({ tone }: { tone: Tone }) {
 export function Avatar({ name, size = "" }: { name: string; size?: "" | "sm" | "xs" | "lg" }) {
   const letter = [...name].find((c) => /\p{L}|\p{N}/u.test(c)) ?? "?";
   return <div className={`av ${size} ${avatarClass(name)}`}>{letter.toLowerCase()}</div>;
-}
-
-/** The approval mode, model and effort, and context use, as read from the
- * CLI. With handlers the chips open the sheets that change them. */
-export function Chips({ remote, s, onMode, onModel, disabled }: { remote: Remote; s: SessionView; onMode?: () => void; onModel?: () => void; disabled?: boolean }) {
-  const mode = modeOf(s);
-  const pct = contextPercent(s);
-  const i = s.info;
-  const model = i?.model ? [remote.modelName(s.machineId, agentOf(s), i.model), i.effort].filter(Boolean).join(" · ") : "";
-  const dis = disabled ? " dis" : "";
-  return (
-    <>
-      {mode && (
-        <button className={`chip ${mode.cls}${dis}`} onClick={onMode} disabled={!onMode || disabled}>
-          {mode.text}
-        </button>
-      )}
-      <button className={"chip grow" + dis} onClick={onModel} disabled={!onModel || disabled}>
-        <em>{model || "模型读取中"}</em>
-        {onModel && " ▾"}
-      </button>
-      {pct !== undefined && (
-        <button className={"chip" + (pct > CONTEXT_WARN ? " warn" : "") + dis} onClick={onModel} disabled={!onModel || disabled} aria-label={`上下文 ${pct}%`}>
-          <span className="ring" style={{ ["--p" as string]: pct }} />
-          {pct}%
-        </button>
-      )}
-    </>
-  );
 }
 
 export function Sheet({ onClose, children, className = "" }: { onClose: () => void; children: ReactNode; className?: string }) {

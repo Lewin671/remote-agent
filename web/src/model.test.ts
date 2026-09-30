@@ -33,6 +33,8 @@ import {
   timeline,
   titleOf,
   toolsSummary,
+  toolClock,
+  toolPeek,
   when,
   type MachineLike,
   type SessionLike,
@@ -145,9 +147,9 @@ describe("message phases", () => {
     const none = derive([]);
     const running = derive(events({ case: "turnStarted", value: {} }));
     const asking = derive(events({ case: "turnStarted", value: {} }, { case: "questionAsked", value: { questionId: "q" } }));
-    expect(queueReason(sess({ status: SessionStatus.RUNNING }), running)).toBe("本轮结束后发");
-    expect(queueReason(sess(), asking)).toBe("答完再发");
-    expect(queueReason(sess({ status: SessionStatus.BLOCKED }), none)).toBe("弹窗处理完再发");
+    expect(queueReason(sess({ status: SessionStatus.RUNNING }), running)).toBe("本轮结束后发送");
+    expect(queueReason(sess(), asking)).toBe("就绪后发送");
+    expect(queueReason(sess({ status: SessionStatus.BLOCKED }), none)).toBe("就绪后发送");
     expect(queueReason(sess({ inputWait: "draft" }), none)).toBe("终端里有没发出的草稿，发完或清掉后再发");
     expect(queueReason(sess({ inputWait: "unrecognized" }), running)).toBe("认不出输入框，已暂停");
   });
@@ -216,6 +218,80 @@ describe("tools", () => {
     expect(items.map((i) => i.kind + (i.kind === "tools" ? i.calls.length : ""))).toEqual(["event", "tools3", "event", "event", "event", "turn"]);
     const tools = items[1];
     expect(tools.kind === "tools" && toolsSummary(tools.calls)).toBe("运行了 3 条命令");
+  });
+});
+
+describe("tools while they run (v2)", () => {
+  const started = (callId: string, title: string, itemType = "Bash") => ({ case: "toolStarted", value: { title, callId, itemType, kind: ToolKind.COMMAND } });
+  const done = (callId: string, title: string, ok = true) => ({ case: "toolCall", value: { title, callId, kind: ToolKind.COMMAND, status: ok ? "completed" : "failed", exitCode: ok ? 0 : 1 } });
+  const shape = (list: Event[]) =>
+    timeline(list, derive(list, Agent.CLAUDE)).map((i) =>
+      i.kind === "event" ? (i.event.kind.case === "toolCall" ? "call:" + i.event.kind.value.title : i.event.kind.case) : i.kind === "tools" ? "tools" + i.calls.length : i.kind + ":" + ("tool" in i ? i.tool.title : ""),
+    );
+
+  it("shows a tool as soon as it starts, where it started", () => {
+    const list = events({ case: "userMessage", value: { text: "run" } }, { case: "turnStarted", value: {} }, started("t1", "go test ./..."), { case: "agentMessage", value: { text: "waiting" } });
+    expect(shape(list)).toEqual(["userMessage", "running:go test ./...", "agentMessage"]);
+  });
+
+  it("puts a parallel call's result where it started and keeps each state apart", () => {
+    const list = events(
+      { case: "turnStarted", value: {} },
+      started("t1", "go test ./..."),
+      started("t2", "go build ./..."),
+      started("t3", "pnpm lint"),
+      done("t2", "go build ./..."),
+      done("t3", "pnpm lint", false),
+    );
+    expect(shape(list)).toEqual(["running:go test ./...", "call:go build ./...", "call:pnpm lint"]);
+  });
+
+  it("never folds a running tool into a run of finished ones", () => {
+    const list = events(
+      { case: "turnStarted", value: {} },
+      started("a", "ls"),
+      done("a", "ls"),
+      started("b", "cat x"),
+      done("b", "cat x"),
+      started("c", "go test"),
+      started("d", "go vet"),
+      done("d", "go vet"),
+    );
+    expect(shape(list)).toEqual(["tools2", "running:go test", "call:go vet"]);
+  });
+
+  it("keeps a tool that got no result when the turn ended as unsettled, not as done", () => {
+    const list = events({ case: "turnStarted", value: {} }, started("t1", "sleep 600 &"), { case: "turnEnded", value: { outcome: TurnOutcome.ABORTED } });
+    const d = derive(list, Agent.CLAUDE);
+    expect(d.tools).toEqual([]);
+    expect(shape(list)).toEqual(["unsettled:sleep 600 &", "turnEnded"]);
+    expect(d.unsettled.map((t) => t.title)).toEqual(["sleep 600 &"]);
+    expect(toolPeek(d, 0, undefined)).toEqual({ text: "后台工作 · 去终端确认", off: false });
+    // The next turn starts afresh.
+    const next = derive(events(...list.map((e) => e.kind), { case: "turnStarted", value: {} }), Agent.CLAUDE);
+    expect(next.unsettled).toEqual([]);
+  });
+
+  it("counts from the daemon's start time and freezes while disconnected", () => {
+    const t0 = 1_000_000;
+    expect(toolClock(t0, t0 + 132_000, undefined)).toEqual({ ms: 132_000, frozen: false });
+    // Lost the server at +60s: the clock stops there rather than running on.
+    expect(toolClock(t0, t0 + 132_000, t0 + 60_000)).toEqual({ ms: 60_000, frozen: true });
+    // An unknown start is not guessed.
+    expect(toolClock(0, t0, undefined)).toBeUndefined();
+  });
+
+  it("summarises what runs above the input", () => {
+    const at = (ms: number) => timestampFromMs(ms);
+    const list = [
+      create(EventSchema, { seq: 1n, time: at(1000), kind: { case: "turnStarted", value: {} } }),
+      create(EventSchema, { seq: 2n, time: at(1000), kind: started("t1", "go test ./...") as never }),
+    ];
+    const d = derive(list, Agent.CLAUDE);
+    expect(toolPeek(d, 1000 + 132_000, undefined)).toEqual({ text: "Bash · 2:12", off: false });
+    expect(toolPeek(d, 1000 + 132_000, 1000 + 60_000)).toEqual({ text: "等待同步 · 上次 1:00", off: true });
+    list.push(create(EventSchema, { seq: 3n, time: at(5000), kind: started("t2", "go vet") as never }));
+    expect(toolPeek(derive(list, Agent.CLAUDE), 1000 + 188_000, undefined)).toEqual({ text: "2 项处理中 · 3:08", off: false });
   });
 });
 

@@ -763,7 +763,8 @@ it("titles a running file edit as it will be titled once done", () => {
   push({ case: "turnStarted", value: {} });
   push({ case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  const running = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
+  // Shown as soon as it starts, as a card of its own.
+  const running = [...host.querySelectorAll(".active-tool pre")].map((c) => c.textContent);
   expect(running).toContain("编辑 hello.txt");
 });
 

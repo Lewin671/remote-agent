@@ -185,6 +185,9 @@ export class Remote {
   everOnline = false;
   failures = 0;
   connError = "";
+  // When the link to the server last went down, while it is down: what is
+  // shown as running may have changed since, so clocks stop there.
+  lostAt?: number;
   // Set once machines and sessions have been listed; listError says why
   // the last listing failed.
   listed = false;
@@ -201,6 +204,12 @@ export class Remote {
   // What the user has typed and not sent, by session. Once sent, the
   // message is in the outbox.
   drafts = new Map<string, string>();
+  // Cancels asked for from this page, by the queued message's request ID,
+  // until the message leaves the queue.
+  cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
+  // Where each session's chat was scrolled to, so that leaving for the
+  // terminal, the queue or a detail page and coming back keeps the place.
+  scroll = new Map<string, { top: number; stick: boolean }>();
   // How each question call is being answered, by call ID: kept here so the
   // docked card and the question page share it.
   private answers = new Map<string, AnswerState>();
@@ -254,6 +263,11 @@ export class Remote {
   };
 
   snapshot = () => this.version;
+
+  /** Tells the views that state kept here changed. */
+  touch() {
+    this.changed();
+  }
 
   protected changed() {
     this.version++;
@@ -316,6 +330,7 @@ export class Remote {
   }
 
   private fail(e: unknown) {
+    if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
     this.failures++;
     this.connError = errorText(e);
@@ -332,6 +347,7 @@ export class Remote {
       case "ready":
         this.retry = 1000;
         this.conn = "online";
+        this.lostAt = undefined;
         this.everOnline = true;
         this.failures = 0;
         this.connError = "";

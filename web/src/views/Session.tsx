@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import type { Event, ToolCall } from "../gen/remoteagent/v1/event_pb";
-import { ApprovalDecision, InputStatus, SessionStatus, ToolKind, type Agent } from "../gen/remoteagent/v1/event_pb";
+import type { Event } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalDecision, InputStatus, SessionStatus, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
 import {
   agentName,
@@ -17,24 +17,25 @@ import {
   phaseOf,
   projectKey,
   projectName,
-  queueReason,
   shortPath,
   shortenPath,
   shortenPaths,
   stateOf,
   timeline,
   titleOf,
-  toolsSummary,
   type Derived,
   type Item,
   type Outgoing,
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { ActionSheet, Alert, Banner, Chips, ConnBar, Dot, NavBar, Skeleton, useNow, useRemote } from "../ui";
+import { ActionSheet, Alert, Banner, ConnBar, Dot, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
+import { ComposeStatus, Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
+import { QueuePage } from "./Queue";
 import { TerminalView } from "./Terminal";
+import { ActiveTool, ToolGroup, ToolPage, ToolRow, toolTitle, type Short } from "./Tools";
 
 type Tab = "chat" | "term" | "split";
 
@@ -81,7 +82,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const title = titleOf(session);
   const project = projectName(projectKey(session));
   const mname = machineName(machine);
-  const online = remote.conn === "online";
   const ended = st.kind === "ended";
   const inactive = ended || st.kind === "offline";
 
@@ -96,7 +96,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
+  const [page, setPage] = useState<"" | "plan" | "question" | "queue" | { approval: string } | { tool: bigint | undefined }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -113,7 +113,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   useEffect(() => {
     if (machine?.online && !inactive) remote.listModels(session.machineId, agent).catch(() => undefined);
   }, [remote, session.machineId, agent, machine?.online, inactive]);
-  const outbox = remote.outbox(sid);
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     try {
@@ -124,6 +123,15 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       return false;
     }
   };
+  const interrupt = () => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } }));
+  const toTerminal = () => setTab(canSplit ? "split" : "term");
+  const agentLabel = agentName(agent);
+  const nameTitle = (
+    <>
+      <span className="tname">{title}</span>
+      <span className="agent-id">{agentLabel}</span>
+    </>
+  );
 
   // Detail pages replace the whole session view.
   if (page === "plan" && d.plan && session.info?.planOpen)
@@ -140,14 +148,32 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         onBack={() => setPage("")}
         onTerminal={() => {
           setPage("");
-          setTab(canSplit ? "split" : "term");
+          toTerminal();
         }}
       />
     );
-  if (typeof page === "object") {
+  if (typeof page === "object" && "approval" in page) {
     const a = d.approvals.get(page.approval);
     if (a) return <ApprovalPage remote={remote} sid={sid} a={a} agent={agent} title={title} onBack={() => setPage("")} />;
   }
+  if (page === "queue") return <QueuePage remote={remote} session={session} d={d} title={`${title} · ${agentLabel}`} onBack={() => setPage("")} />;
+  if (typeof page === "object" && "tool" in page)
+    return (
+      <ToolPage
+        remote={remote}
+        d={d}
+        seq={page.tool}
+        agent={agentLabel}
+        sub={`${title} · ${mname}`}
+        cwd={shortPath(session.info?.cwd ?? "")}
+        onBack={() => setPage("")}
+        onTerminal={() => {
+          setPage("");
+          toTerminal();
+        }}
+        onInterrupt={interrupt}
+      />
+    );
 
   const tabs: [Tab, string][] = [
     ["chat", "聊天"],
@@ -164,7 +190,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       ))}
     </div>
   );
-  const chips = <Chips remote={remote} s={session} onMode={ended ? undefined : () => setSheet("mode")} onModel={ended ? undefined : () => setSheet("model")} disabled={!online || inactive} />;
   const sub = (
     <>
       <Dot tone={st.tone} />
@@ -190,17 +215,27 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         </button>
       </div>
       <div className="r2">
-        {chips}
+        <span className="agent-id">{agentLabel}</span>
         {seg}
       </div>
     </header>
   ) : (
-    <NavBar onBack={onBack} title={title} sub={sub} right={more} className={tab === "term" ? "dark" : ""} />
+    <NavBar onBack={onBack} title={nameTitle} sub={sub} right={more} className={tab === "term" ? "dark" : ""} />
   );
 
   const chat = (
     <div className="ccol" ref={colRef}>
-      <ChatBody remote={remote} session={session} events={events} d={d} agent={agent} machine={mname} onRestore={restore} />
+      <ChatBody
+        remote={remote}
+        session={session}
+        events={events}
+        d={d}
+        agent={agent}
+        machine={mname}
+        onRestore={restore}
+        onTool={(seq) => setPage({ tool: seq })}
+        onTerminal={inactive ? undefined : toTerminal}
+      />
       {toast && (
         <div className="toast" onClick={() => setToast("")}>
           {toast}
@@ -221,27 +256,30 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           onDetail={(id) => setPage({ approval: id })}
           onPlan={() => setPage("plan")}
           onQuestion={() => setPage("question")}
-          onTerminal={() => setTab(canSplit ? "split" : "term")}
+          onTerminal={toTerminal}
         />
       )}
-      {!inactive && <Queue remote={remote} session={session} d={d} outbox={outbox} />}
-      {!inactive && !wide && !["approval", "question", "popup"].includes(items[0]?.kind ?? "") && <div className="chips">{chips}</div>}
       {inactive ? (
         <EndCard remote={remote} session={session} ended={ended} machineOnline={machine?.online ?? false} agent={agent} mname={mname} lastSeen={machine?.lastSeenMs ?? 0n} />
       ) : (
-        <Composer
-          key={composerKey}
-          ref={composer}
-          wide={wide}
-          online={online}
-          running={st.kind === "running"}
-          asking={d.questions.size > 0}
-          onFocus={(v) => setTyping(v)}
-          onSend={(text) => remote.send(sid, text)}
-          draft={remote.drafts.get(sid) ?? ""}
-          onDraft={(text) => remote.drafts.set(sid, text)}
-          onInterrupt={() => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } }))}
-        />
+        <>
+          <ComposeStatus remote={remote} session={session} d={d} onQueue={() => setPage("queue")} onTool={() => setPage({ tool: d.tools[0]?.seq ?? d.unsettled[0]?.seq })} onInterrupt={interrupt} />
+          <Composer
+            key={composerKey}
+            ref={composer}
+            remote={remote}
+            session={session}
+            d={d}
+            wide={wide}
+            slim={typing && !wide}
+            onFocus={(v) => setTyping(v)}
+            onSend={(text) => remote.send(sid, text)}
+            draft={remote.drafts.get(sid) ?? ""}
+            onDraft={(text) => remote.drafts.set(sid, text)}
+            onMode={() => setSheet("mode")}
+            onModel={() => setSheet("model")}
+          />
+        </>
       )}
     </div>
   );
@@ -269,7 +307,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             </>
           }
           actions={[
-            ...(!inactive && d.running ? [{ label: "中断本轮", onClick: () => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } })) }] : []),
+            ...(!inactive && d.running ? [{ label: "中断本轮", onClick: interrupt }] : []),
             ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
           ]}
           onClose={() => setMenu(false)}
@@ -278,7 +316,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       {confirmEnd && (
         <Alert
           title="结束这个会话？"
-          text={`${mname} 上的 ${agentName(agent)} 会被关掉，聊天记录保留，之后可以恢复。`}
+          text={`${mname} 上的 ${agentLabel} 会被关掉，聊天记录保留，之后可以恢复。`}
           ok="结束"
           danger
           onCancel={() => setConfirmEnd(false)}
@@ -304,6 +342,8 @@ function ChatBody({
   agent,
   machine,
   onRestore,
+  onTool,
+  onTerminal,
 }: {
   remote: Remote;
   session: SessionView;
@@ -312,10 +352,14 @@ function ChatBody({
   agent: Agent;
   machine: string;
   onRestore: (text: string) => void;
+  onTool: (seq: bigint) => void;
+  onTerminal?: () => void;
 }) {
   const sid = session.id;
   const scroller = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
+  // Back from another view, the chat is where it was left.
+  const saved = remote.scroll.get(sid);
+  const stick = useRef(saved?.stick ?? true);
   const [unseen, setUnseen] = useState(0);
   const seen = useRef(0);
   const hist = remote.history(sid);
@@ -333,7 +377,11 @@ function ChatBody({
   const promptId = prompt ? [...d.inputs.keys()].find((id) => !textOf.has(id)) : undefined;
   if (promptId && prompt) textOf.set(promptId, prompt);
 
-  const count = items.length + outbox.length + d.tools.length;
+  const count = items.length + outbox.length;
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && saved && !saved.stick) el.scrollTop = saved.top;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -358,6 +406,7 @@ function ChatBody({
         onScroll={(e) => {
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+          remote.scroll.set(sid, { top: el.scrollTop, stick: stick.current });
           if (stick.current) {
             seen.current = count;
             setUnseen(0);
@@ -370,7 +419,7 @@ function ChatBody({
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTool={onTool} onTerminal={onTerminal} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -389,7 +438,6 @@ function ChatBody({
             正在 {machine} 上启动 {agentName(agent)}…
           </div>
         )}
-        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={toolTitle(t, short)} since={t.since} />)}
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
         ))}
@@ -432,80 +480,6 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
   );
 }
 
-/** Shortens the absolute paths in a tool title (see shortenPaths), or a
- * whole path such as a file edit's title, spaces and all. */
-type Short = { text: (title: string) => string; path: (path: string) => string };
-const asIs: Short = { text: (x) => x, path: (x) => x };
-
-/** A tool row's title, the same while it runs and once done: a file
- * edit reads "编辑 <path>". */
-function toolTitle(t: Pick<ToolCall, "kind" | "title" | "itemType">, short: Short): string {
-  // A file edit's title is one path, which may hold spaces.
-  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short.path(t.title) : short.text(t.title || t.itemType);
-}
-
-function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?: ApprovalDecision }) {
-  const [open, setOpen] = useState(false);
-  const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
-  const secs = Number(t.durationMs) / 1000;
-  const out = t.output.replace(/\n+$/, "");
-  const lines = out ? out.split("\n") : [];
-  // The details keep the original: the tool's input, or else the title as
-  // the CLI wrote it when paths were shortened for the row.
-  const raw = t.input && t.input !== t.title ? t.input : toolTitle(t, asIs) !== toolTitle(t, short) ? t.title || t.itemType : "";
-  return (
-    <>
-      <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span>
-        <code>{toolTitle(t, short)}</code>
-        {!ok && t.exitCode !== undefined ? (
-          // A failed call keeps its exit code, with the approval beside it.
-          <span className="exit">
-            退出码 {t.exitCode}
-            {decision !== undefined && <span className="muted"> · {decisionText(decision)}</span>}
-          </span>
-        ) : decision !== undefined ? (
-          <span className="muted">{decisionText(decision)}</span>
-        ) : secs >= 1 ? (
-          <span className="muted">{Math.round(secs)}s</span>
-        ) : null}
-      </button>
-      {open && raw && <div className="toolout">{raw}</div>}
-      {(open || !ok) && lines.length > 0 && (
-        <div className="toolout">
-          {open ? out : lines[0]}
-          {open && t.outputTruncated && <span className="more">{"\n"}…（已截断）</span>}
-          {!open && lines.length > 1 && (
-            <span className="more" onClick={() => setOpen(true)}>
-              {"\n"}… 还有 {lines.length - 1} 行，展开
-            </span>
-          )}
-        </div>
-      )}
-    </>
-  );
-}
-
-function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button className="tool tgrp" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="ok">✓</span>
-        <b>{toolsSummary(calls)}</b>
-        <span className="muted">{open ? "▾" : "▸"}</span>
-      </button>
-      {open && (
-        <div className="grpbody">
-          {calls.map((t, i) => (
-            <ToolRow key={i} t={t} short={short} />
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
 function Row({
   it,
   d,
@@ -515,6 +489,9 @@ function Row({
   textOf,
   onRestore,
   nameModel,
+  remote,
+  onTool,
+  onTerminal,
 }: {
   it: Item;
   d: Derived;
@@ -524,8 +501,13 @@ function Row({
   textOf: Map<string, string>;
   onRestore: (text: string) => void;
   nameModel: (id: string) => string;
+  remote: Remote;
+  onTool: (seq: bigint) => void;
+  onTerminal?: () => void;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
+  if (it.kind === "running" || it.kind === "unsettled")
+    return <ActiveTool tool={{ ...it.tool, title: toolTitle(it.tool, short) }} d={d} unsettled={it.kind === "unsettled"} aborted={it.kind === "unsettled" && it.aborted} remote={remote} onDetail={() => onTool(it.tool.seq)} onTerminal={onTerminal} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
   const e = it.event;
   const k = e.kind;
@@ -659,146 +641,6 @@ function Row({
     }
   }
   return null;
-}
-
-function RunningTool({ title, since }: { title: string; since: number }) {
-  const now = useNow(1000);
-  const secs = since ? Math.max(0, Math.floor((now - since) / 1000)) : 0;
-  return (
-    <div className="tool">
-      <span className="sp">◌</span>
-      <code>{title}</code>
-      {secs > 0 && <span className="muted">{secs}s</span>}
-    </div>
-  );
-}
-
-/** Messages waiting in the daemon's queue, each cancellable, and why
- * they wait. */
-function Queue({ remote, session, d, outbox }: { remote: Remote; session: SessionView; d: Derived; outbox: Outgoing[] }) {
-  const [canceling, setCanceling] = useState<Set<string>>(new Set());
-  const sid = session.id;
-  const text = new Map(outbox.map((o) => [o.sendId, o.text]));
-  const prompt = remote.prompts.get(sid);
-  // Queued, and not left behind by a session that ended.
-  const ids = [...d.inputs.entries()].filter(([id, s]) => s === InputStatus.QUEUED && !d.unsent.has(id)).map(([id]) => id);
-  // The first message of a session started here shows in the chat.
-  const shown = prompt ? ids.filter((id) => text.has(id)) : ids;
-  if (shown.length === 0) return null;
-  const reason = queueReason(session, d);
-  const cancel = async (id: string) => {
-    setCanceling((s) => new Set(s).add(id));
-    try {
-      await remote.command(sid, { case: "cancelInput", value: { sessionId: sid, requestId: id } });
-    } catch {
-      setCanceling((s) => {
-        const n = new Set(s);
-        n.delete(id);
-        return n;
-      });
-    }
-  };
-  return (
-    <div className="queued">
-      {!reason.startsWith("认不出") && shown.length === 1 && <span className="lbl">排队</span>}
-      {shown.map((id) => (
-        <span key={id} className={"q" + (canceling.has(id) ? " canceling" : "")}>
-          <em>{text.get(id) ?? "一条消息"}</em>
-          <button aria-label="取消这条消息" disabled={canceling.has(id)} onClick={() => void cancel(id)}>
-            ✕
-          </button>
-        </span>
-      ))}
-      {reason && <span className="lbl">{shown.length > 1 ? `${reason.replace(/发$/, "按顺序发")}` : reason}</span>}
-    </div>
-  );
-}
-
-function Composer({
-  ref,
-  wide,
-  online,
-  running,
-  asking,
-  onFocus,
-  onSend,
-  onInterrupt,
-  draft,
-  onDraft,
-}: {
-  ref: RefObject<HTMLTextAreaElement | null>;
-  draft: string;
-  onDraft: (text: string) => void;
-  wide: boolean;
-  online: boolean;
-  running: boolean;
-  asking: boolean;
-  onFocus: (typing: boolean) => void;
-  onSend: (text: string) => void;
-  onInterrupt: () => void;
-}) {
-  // The draft is the session's, not this input's: it survives opening an
-  // approval, plan or question page and coming back.
-  const [text, setTextState] = useState(draft);
-  const setText = (v: string) => {
-    setTextState(v);
-    onDraft(v);
-  };
-  const [slash, setSlash] = useState(false);
-  const t = text.trim();
-  // While the server is away, nothing is queued behind the user's back:
-  // the text stays here until they send it themselves.
-  const canSend = !!t && online;
-  const submit = (force = false) => {
-    if (!canSend) return;
-    // Slash commands typed as text go to the model; menus they would open
-    // are not visible here.
-    if (t.startsWith("/") && !force) return setSlash(true);
-    setText("");
-    onSend(t);
-  };
-  return (
-    <div className="comp">
-      <textarea
-        ref={ref}
-        className={"in" + (t ? " typed" : "")}
-        value={text}
-        rows={1}
-        placeholder={asking ? "排队发送，回答后继续" : wide ? "消息 · ⌘↵ 发送" : "消息"}
-        onChange={(e) => setText(e.target.value)}
-        onFocus={() => onFocus(true)}
-        onBlur={() => onFocus(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        aria-label="消息"
-      />
-      {running && !t ? (
-        <button className="stop" onClick={onInterrupt} disabled={!online} aria-label="中断本轮" title="中断本轮">
-          ■
-        </button>
-      ) : (
-        <button className="go" disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onClick={() => submit()} aria-label="发送">
-          ↑
-        </button>
-      )}
-      {slash && (
-        <Alert
-          title="作为普通消息发送？"
-          text="以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"
-          ok="发送"
-          onCancel={() => setSlash(false)}
-          onOk={() => {
-            setSlash(false);
-            submit(true);
-          }}
-        />
-      )}
-    </div>
-  );
 }
 
 /** The input's place when the session cannot take messages: ended, or the

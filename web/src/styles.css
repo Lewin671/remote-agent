@@ -318,13 +318,7 @@ a { color: var(--blue); }
 .field small { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .field input { border: 0; background: none; outline: none; width: 100%; padding: 0; font-size: 15px; }
 
-/* below the chat: queue, chips, input */
-.queued { font-size: 12px; color: var(--muted); padding: 4px 12px 0; flex: none; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.queued .q { background: var(--chip); border-radius: 14px; padding: 0 0 0 10px; color: var(--fg); display: inline-flex; align-items: center; max-width: 220px; min-height: 28px; }
-.queued .q em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.queued .q button { color: var(--muted); width: 32px; height: 28px; flex: none; text-align: center; }
-.queued .q.canceling { opacity: .45; }
-.chips { display: flex; gap: 5px; padding: 6px 12px 0; flex: none; align-items: center; }
+/* chips: the wide home's project pick and the like */
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; background: var(--chip); color: var(--fg2); border-radius: 14px; padding: 4px 9px; white-space: nowrap; min-width: 0; min-height: 28px; flex: none; }
 .chip.grow { flex: 0 1 auto; overflow: hidden; }
 .chip.grow em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
@@ -341,16 +335,13 @@ a { color: var(--blue); }
 .ring.big { width: 64px; height: 64px; }
 .ring.big::after { inset: 7px; background: var(--soft); }
 .ring.big.warn { --c: var(--orange); }
-.comp { display: flex; gap: 8px; align-items: flex-end; padding: 6px 12px max(12px, env(safe-area-inset-bottom)); flex: none; }
-.comp .in, .newbox .in { flex: 1; background: var(--chip); border: 0; border-radius: 20px; padding: 10px 14px; font-size: 15px; line-height: 1.35; min-width: 0;
+.newbox .in { flex: 1; background: var(--chip); border: 0; border-radius: 20px; padding: 10px 14px; font-size: 15px; line-height: 1.35; min-width: 0;
   resize: none; outline: none; min-height: 40px; max-height: 160px; field-sizing: content; }
-.comp .in::placeholder, .newbox .in::placeholder, .prompt .in::placeholder { color: var(--muted); }
-.go, .comp .stop { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; }
+.newbox .in::placeholder, .prompt .in::placeholder { color: var(--muted); }
+.go { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; margin: 2px; }
 .go { background: var(--blue-bg); color: var(--on-solid); font-size: 18px; }
 .go:disabled { opacity: .35; }
-.comp .stop { border: 2px solid var(--red); color: var(--red); font-size: 12px; }
 /* a 40 button with the rest of its 44 hit area around it */
-.go, .comp .stop { margin: 2px; }
 /* ended or offline: a status card in the input's place */
 .endcard { flex: none; margin: 6px 12px max(12px, env(safe-area-inset-bottom)); background: var(--soft); border-radius: 16px; padding: 12px 14px; }
 .endcard .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
@@ -569,8 +560,7 @@ a { color: var(--blue); }
 .dh .r2 { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-width: 0; }
 .dh .r2 .seg { margin-left: auto; width: 200px; flex: none; }
 .desk .ccol .chat { padding: 8px 18px; }
-.desk .comp { padding-bottom: 12px; }
-.desk .endcard { margin-bottom: 12px; }
+.desk .desk .endcard { margin-bottom: 12px; }
 .start { max-width: 560px; margin: 56px auto 24px; width: 100%; padding: 0 24px; }
 .start h3 { font-size: 22px; margin: 0 0 14px; letter-spacing: -.3px; }
 .start .opts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
@@ -584,8 +574,76 @@ a { color: var(--blue); }
 .wpage .sess { padding-left: 0; padding-right: 0; }
 .wpage > .banner { margin-top: 8px; }
 .connbar + .segrow { padding-top: 6px; }
-.comp .stop:disabled { opacity: .35; }
 .ans .box { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--faint); flex: none; display: inline-flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: var(--on-solid); margin-top: 1px; }
 .ans .box.on { background: var(--blue-bg); box-shadow: none; }
 .dock.ask > .btns { margin-top: 4px; }
+
+/* ---------- v2 (docs/design/client-v2.html) ---------- */
+/* A title with the CLI beside it: only the title gives way. */
+.navbar .title b { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.navbar .title b .tname { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: var(--fg); font-weight: 600; }
+.navbar.dark .title b .tname { color: #e6edf3; }
+.agent-id { display: inline-block; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; flex: none; }
+.navbar .title b .agent-id { font-size: 12px; }
+
+/* The unified input: draft, mode, model, context and send on one card. */
+.compose-card { flex: none; margin: 4px 10px max(12px, env(safe-area-inset-bottom)); padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--soft); min-width: 0; }
+.compose-card .draft { display: block; width: 100%; border: 0; background: none; outline: none; resize: none; min-height: 48px; max-height: 132px; overflow-y: auto;
+  font-size: 15px; line-height: 1.5; padding: 2px 4px 8px; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--fg); field-sizing: content; }
+.compose-card .draft::placeholder { color: var(--muted); }
+.controls { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ctl { min-height: 44px; min-width: 44px; display: flex; justify-content: center; align-items: center; font-size: 12px; border-radius: 10px; padding: 0 6px; color: var(--fg2); background: var(--card); flex: none; white-space: nowrap; }
+.ctl.mode { color: var(--blue); }
+.ctl.mode.danger { background: var(--red-soft); color: var(--red); }
+.ctl.model { flex: 1; min-width: 0; justify-content: flex-start; }
+.ctl.model em { font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctl.context { gap: 3px; padding: 0 4px; }
+.ctl.warn { background: var(--orange-soft); color: var(--orange-ink); }
+.ctl:disabled, .ctl.off { opacity: .4; }
+.ctl .hot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); margin-left: 5px; flex: none; }
+.go44 { width: 44px; height: 44px; border-radius: 50%; background: var(--blue-bg); color: var(--on-solid); display: flex; align-items: center; justify-content: center; flex: none; font-size: 18px; }
+.go44.off, .go44:disabled { opacity: .4; }
+.compose-card.slim { margin-bottom: 6px; }
+.compose-card.slim .draft { min-height: 44px; }
+.compose-card.slim .ctl.model { color: var(--blue); background: none; }
+.desk .compose-card { margin-bottom: 12px; }
+
+/* Above the input: what runs, the queue, and the interrupt in a fixed place. */
+.compose-status { flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 44px; font-size: 12px; color: var(--muted); min-width: 0; }
+.compose-status .queue-link { color: var(--blue); min-height: 44px; display: flex; align-items: center; padding: 0 4px; white-space: nowrap; flex: none; }
+.compose-status .qreason { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.interrupt { margin-left: auto; min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--red); font-size: 13px; flex: none; }
+.interrupt:disabled { opacity: .4; }
+.tool-peek { min-width: 0; color: var(--blue); min-height: 44px; display: flex; align-items: center; gap: 4px; flex: 0 1 auto; }
+.tool-peek em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-peek.off { color: var(--muted); }
+
+/* A tool that runs, or whose end was not heard. */
+.active-tool { border: 1px solid var(--line); background: var(--soft); border-radius: 12px; padding: 10px; margin: 10px 0; font-size: 13px; }
+.active-tool .th { display: flex; align-items: center; gap: 6px; color: var(--blue); min-height: 28px; }
+.active-tool .th b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.active-tool .th .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+.active-tool .th .elapsed { margin-left: auto; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.active-tool pre { margin: 6px 0; font: 12px/1.5 ui-monospace, Menlo, monospace; background: var(--card); padding: 8px; border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 88px; overflow-y: auto; }
+.active-tool .td { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.active-tool .ta { display: flex; justify-content: space-between; gap: 8px; min-height: 44px; align-items: center; }
+.active-tool .ta button { color: var(--blue); min-height: 44px; }
+.active-tool.off .th { color: var(--muted); }
+.active-tool.wait .th { color: var(--orange-ink); }
+.label.flush { padding-left: 0; padding-right: 0; }
+.dock.plain { box-shadow: 0 0 0 1px var(--line); }
+.draft-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+
+/* The queue in full. */
+.queue-entry { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.queue-entry .qh { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.queue-entry .qsrc { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.queue-entry .cancel { margin-left: auto; color: var(--blue); min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.queue-entry .cancel:disabled { opacity: .5; }
+.queue-entry p { font-size: 15px; margin: 0 0 8px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.queue-entry p.muted { font-size: 13px; }
+.queue-entry small { font-size: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.queue-entry.canceling { opacity: .5; }
+.toast.plain { margin: 8px 12px max(12px, env(safe-area-inset-bottom)); padding: 8px 10px; border-radius: 12px; background: var(--soft); color: var(--fg); font-size: 13px; display: flex; align-items: center; gap: 8px; min-height: 44px; text-align: left; }
+.toast.plain b, .toast.plain .link { margin-left: auto; color: var(--blue); min-height: 44px; display: flex; align-items: center; }

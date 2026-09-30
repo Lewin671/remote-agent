@@ -455,6 +455,9 @@ export interface RunningTool {
   // As the finished call will be; known at the start for Claude Code.
   kind: ToolKind;
   itemType: string;
+  input: string;
+  inputDigest: string;
+  seq: bigint; // the ToolStarted event's
 }
 
 export interface Derived {
@@ -471,6 +474,14 @@ export interface Derived {
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
   tools: RunningTool[]; // started and not completed, oldest first
+  // Tools the last turn ended without a result for: moved to the
+  // background, or simply unheard of. Their state is not known; cleared
+  // when the next turn starts.
+  unsettled: RunningTool[];
+  // How each ToolStarted ended: its ToolCall's seq, or "unsettled".
+  toolEnds: Map<bigint, bigint | "unsettled">;
+  // Whether the turn an unsettled tool belonged to was interrupted.
+  abortedTools: Set<bigint>;
   // User messages typed in the terminal rather than sent from a client.
   typedLocally: Set<bigint>;
   // Mode or model changes made in the terminal, by the seq of the context
@@ -496,6 +507,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     unsent: new Set(),
     running: false,
     tools: [],
+    unsettled: [],
+    toolEnds: new Map(),
+    abortedTools: new Set(),
     typedLocally: new Set(),
     terminalChanges: new Map(),
     compactions: new Map(),
@@ -538,11 +552,12 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "turnStarted":
         d.running = true;
+        d.unsettled = [];
         break;
       case "turnEnded":
         d.running = false;
         d.questions.clear();
-        d.tools = [];
+        settle(d, k.value.outcome === TurnOutcome.ABORTED);
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
@@ -572,7 +587,16 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         }
         break;
       case "toolStarted":
-        d.tools.push({ title: k.value.title, since: eventTime(e), callId: k.value.callId, kind: k.value.kind, itemType: k.value.itemType });
+        d.tools.push({
+          title: k.value.title,
+          since: eventTime(e),
+          callId: k.value.callId,
+          kind: k.value.kind,
+          itemType: k.value.itemType,
+          input: k.value.input,
+          inputDigest: k.value.inputDigest,
+          seq: e.seq,
+        });
         break;
       case "toolCall": {
         // Claude Code runs tools in parallel and names the call; Codex does
@@ -580,7 +604,10 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         const id = k.value.callId;
         let i = id ? d.tools.findIndex((t) => t.callId === id) : -1;
         if (i < 0) i = d.tools.findIndex((t) => !t.callId);
-        if (i >= 0) d.tools.splice(i, 1);
+        if (i >= 0) {
+          d.toolEnds.set(d.tools[i].seq, e.seq);
+          d.tools.splice(i, 1);
+        }
         break;
       }
       case "tokenUsage":
@@ -634,12 +661,58 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           d.running = false;
           d.approvals.clear();
           d.questions.clear();
-          d.tools = [];
+          settle(d, false);
         }
         break;
     }
   }
   return d;
+}
+
+/** Ends the turn for the tools still running: no result came for them,
+ * so their state is unknown from here (architecture §13, 工具执行反馈). */
+function settle(d: Derived, aborted: boolean) {
+  for (const t of d.tools) {
+    d.toolEnds.set(t.seq, "unsettled");
+    if (aborted) d.abortedTools.add(t.seq);
+  }
+  d.unsettled = d.tools;
+  d.tools = [];
+}
+
+/** How long a tool has run, from the daemon's start time. While this
+ * client is cut off from the server (since lostAt) the reading stops
+ * there: it cannot tell whether the tool still runs. An unknown start is
+ * not guessed. */
+export function toolClock(since: number, now: number, lostAt: number | undefined): { ms: number; frozen: boolean } | undefined {
+  if (!since) return undefined;
+  const frozen = lostAt !== undefined;
+  return { ms: Math.max(0, (frozen ? Math.min(now, lostAt) : now) - since), frozen };
+}
+
+/** m:ss, as the input's summary writes a tool's time. */
+export function clock(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** A running tool's short name: the CLI's tool name (Bash), or for
+ * Codex, which gives none, 命令 or 工具. */
+export function toolName(t: Pick<RunningTool, "itemType" | "kind">): string {
+  return t.itemType || (t.kind === ToolKind.COMMAND || t.kind === ToolKind.UNSPECIFIED ? "命令" : "工具");
+}
+
+/** The line above the input about what runs now: one tool and its time,
+ * how many run, work left in the background, or, while disconnected, the
+ * last reading. undefined when nothing runs. */
+export function toolPeek(d: Derived, now: number, lostAt: number | undefined): { text: string; off: boolean } | undefined {
+  if (d.tools.length === 0) return d.unsettled.length ? { text: "后台工作 · 去终端确认", off: false } : undefined;
+  const oldest = d.tools.reduce((a, t) => (t.since && (!a.since || t.since < a.since) ? t : a), d.tools[0]);
+  const c = toolClock(oldest.since, now, lostAt);
+  if (c?.frozen) return { text: `等待同步 · 上次 ${clock(c.ms)}`, off: true };
+  if (lostAt !== undefined) return { text: "等待同步", off: true };
+  const time = c ? ` · ${clock(c.ms)}` : "";
+  return { text: d.tools.length === 1 ? `${toolName(oldest)}${time}` : `${d.tools.length} 项处理中${time}`, off: false };
 }
 
 export function eventTime(e: Event): number {
@@ -736,12 +809,19 @@ export function queueReason(s: SessionLike, d: Derived): string {
   const i = s.info;
   if (i?.inputWait === "unrecognized") return "认不出输入框，已暂停";
   if (i?.inputWait === "draft") return "终端里有没发出的草稿，发完或清掉后再发";
-  if (i?.status === SessionStatus.BLOCKED || i?.inputWait === "popup") return "弹窗处理完再发";
-  if (d.questions.size > 0 || d.approvals.size > 0) return "答完再发";
-  if (i?.planOpen) return "计划处理完再发";
-  if (i?.status === SessionStatus.STARTING) return "启动后发";
-  if (d.running) return "本轮结束后发";
+  if (i?.status === SessionStatus.BLOCKED || i?.inputWait === "popup") return "就绪后发送";
+  if (d.questions.size > 0 || d.approvals.size > 0) return "就绪后发送";
+  if (i?.planOpen) return "就绪后发送";
+  if (i?.status === SessionStatus.STARTING) return "启动后发送";
+  if (d.running) return "本轮结束后发送";
   return "";
+}
+
+/** Messages waiting in the daemon's queue, in the order it accepted
+ * them: queued, and not left behind by a session that ended. skip is the
+ * first message of a session started here, which the chat shows. */
+export function queuedIds(d: Derived, skip?: string): string[] {
+  return [...d.inputs.entries()].filter(([id, st]) => st === InputStatus.QUEUED && !d.unsent.has(id) && id !== skip).map(([id]) => id);
 }
 
 // --- the chat timeline ---
@@ -750,7 +830,11 @@ export type Item =
   // decision: an approval's result shown on the tool call it was for.
   | { kind: "event"; key: string; event: Event; decision?: ApprovalDecision }
   | { kind: "tools"; key: string; calls: ToolCall[] }
-  | { kind: "turn"; key: string; ms: number };
+  | { kind: "turn"; key: string; ms: number }
+  // A tool that started and has no result yet, and one the turn ended
+  // without a result for.
+  | { kind: "running"; key: string; tool: RunningTool }
+  | { kind: "unsettled"; key: string; tool: RunningTool; aborted: boolean };
 
 /** Whether an event draws anything in the chat. */
 function visible(e: Event, d: Derived): boolean {
@@ -761,6 +845,7 @@ function visible(e: Event, d: Derived): boolean {
     case "reasoning":
     case "toolCall":
     case "planProposed":
+    case "toolStarted":
       return true;
     case "turnEnded":
       return k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n;
@@ -799,29 +884,61 @@ export function timeline(events: Event[], d: Derived): Item[] {
     run = undefined;
   };
   const unsentShown = new Set<string>();
+  const bySeq = new Map<bigint, Event>();
+  // A call named by its start (Claude Code's parallel calls) is drawn
+  // where it started, so its row turns from running into its result in
+  // place; the call itself is then skipped where it completed.
+  const placed = new Set<bigint>();
   for (const e of events) {
-    if (!visible(e, d)) continue;
-    if (e.kind.case === "inputState" && d.unsent.has(e.kind.value.requestId)) {
-      if (unsentShown.has(e.kind.value.requestId)) continue;
-      unsentShown.add(e.kind.value.requestId);
+    if (e.kind.case === "toolCall") bySeq.set(e.seq, e);
+    if (e.kind.case === "toolStarted" && e.kind.value.callId) {
+      const end = d.toolEnds.get(e.seq);
+      if (typeof end === "bigint") placed.add(end);
     }
+  }
+  const running = new Map(d.tools.map((t) => [t.seq, t]));
+  const loose = new Map(d.unsettled.map((t) => [t.seq, t]));
+  const place = (e: Event) => {
     const k = e.kind;
-    if (k.case === "approvalRequested" && merged.approvals.has(k.value.approvalId)) continue;
     const decision = merged.calls.get(e.seq);
     if (decision !== undefined) {
       // Shown on its own, so the decision is not folded away.
       flush();
       out.push({ kind: "event", key: String(e.seq), event: e, decision });
-      continue;
+      return;
     }
     if (k.case === "toolCall" && toolOk(k.value)) {
       if (!run) run = { first: e, calls: [] };
       run.calls.push(k.value);
-      continue;
+      return;
     }
     flush();
     if (k.case === "turnEnded" && k.value.outcome !== TurnOutcome.ABORTED) out.push({ kind: "turn", key: String(e.seq), ms: Number(k.value.durationMs) });
     else out.push({ kind: "event", key: String(e.seq), event: e });
+  };
+  for (const e of events) {
+    if (!visible(e, d)) continue;
+    const k = e.kind;
+    if (k.case === "toolStarted") {
+      const end = d.toolEnds.get(e.seq);
+      if (typeof end === "bigint") {
+        if (k.value.callId && bySeq.has(end)) place(bySeq.get(end)!);
+        continue;
+      }
+      const t = running.get(e.seq) ?? loose.get(e.seq);
+      if (!t && end !== "unsettled") continue;
+      flush();
+      const tool = t ?? { title: k.value.title, since: eventTime(e), callId: k.value.callId, kind: k.value.kind, itemType: k.value.itemType, input: k.value.input, inputDigest: k.value.inputDigest, seq: e.seq };
+      out.push(end === "unsettled" ? { kind: "unsettled", key: "u" + e.seq, tool, aborted: d.abortedTools.has(e.seq) } : { kind: "running", key: "r" + e.seq, tool });
+      continue;
+    }
+    if (k.case === "toolCall" && placed.has(e.seq)) continue;
+    if (k.case === "inputState" && d.unsent.has(k.value.requestId)) {
+      if (unsentShown.has(k.value.requestId)) continue;
+      unsentShown.add(k.value.requestId);
+    }
+    if (k.case === "approvalRequested" && merged.approvals.has(k.value.approvalId)) continue;
+    place(e);
   }
   flush();
   return out;
