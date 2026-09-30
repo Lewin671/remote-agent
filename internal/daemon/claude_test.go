@@ -396,3 +396,36 @@ func TestClaudeApprovalLargeInputWithdrawn(t *testing.T) {
 		}
 	}
 }
+
+// A mode read off the screen while a model switch is recorded: the
+// screen's context must not carry the model from before the switch
+// (review V1, checkScreen).
+func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
+	modes := []string{"⏸ manual mode on", "⏵⏵ accept edits on (shift+tab to cycle)"}
+	for round := 0; round < 40; round++ {
+		h := claudeHarness(t, Config{})
+		h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "claude-haiku-4-5-20251001", PermissionMode: "default"}}})
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for i := 0; i < 30; i++ {
+				h.term.setScreen(strings.Replace(ccIdle, "⏸ manual mode on", modes[i%2], 1))
+				h.s.checkScreen()
+				h.s.checkScreen()
+			}
+		}()
+		time.Sleep(time.Duration(round%7) * 200 * time.Microsecond)
+		h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+		<-done
+		switched := false
+		for _, e := range h.events() {
+			if e.GetSettingsChanged().GetModel() == "sonnet" {
+				switched = true
+			}
+			if c := e.GetTurnContext(); c != nil && switched && c.Model != "sonnet" {
+				t.Fatalf("round %d: screen context after the switch carries %q", round, c.Model)
+			}
+		}
+		h.s.log.Close()
+	}
+}

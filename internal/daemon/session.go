@@ -209,6 +209,18 @@ func (s *session) emit(evs ...*pb.Event) {
 		s.readMu.Lock()
 		defer s.readMu.Unlock()
 	}
+	s.emitLocked(settings, evs...)
+}
+
+// emitLocked logs and applies events; with settings among them, the
+// caller holds readMu.
+func (s *session) emitLocked(settings bool, evs ...*pb.Event) {
+	now := timestamppb.Now()
+	for _, e := range evs {
+		if e.Time == nil {
+			e.Time = now
+		}
+	}
 	if err := s.log.Append(s.meta.ID, evs, "", 0); err != nil {
 		slog.Error("append events", "session", s.meta.ID, "err", err)
 		return
@@ -221,6 +233,27 @@ func (s *session) emit(evs ...*pb.Event) {
 		s.observe(e)
 	}
 	s.mu.Unlock()
+}
+
+// noteScreenMode records a permission mode seen on the screen as the
+// session's context. The context is copied, changed and logged under the
+// lock settings events are logged under, so that it cannot carry a model
+// from before a switch recorded meanwhile.
+func (s *session) noteScreenMode(mode string) {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	s.mu.Lock()
+	if s.context != nil && s.context.PermissionMode == mode {
+		s.mu.Unlock()
+		return
+	}
+	c := &pb.TurnContext{}
+	if s.context != nil {
+		c = proto.CloneOf(s.context)
+	}
+	c.PermissionMode = mode
+	s.mu.Unlock()
+	s.emitLocked(true, &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: c}})
 }
 
 // start runs the session's background loops until it exits or ctx ends.
@@ -345,15 +378,11 @@ func (s *session) checkScreen() bool {
 		}
 		s.seenModes[scr.Mode] = true
 	}
-	var modeSeen *pb.TurnContext
+	modeSeen := ""
 	if scr.Mode != "" && (s.context == nil || s.context.PermissionMode != scr.Mode) {
 		// Switched in the terminal; the transcript records it only with
 		// the next message.
-		modeSeen = &pb.TurnContext{}
-		if s.context != nil {
-			modeSeen = proto.CloneOf(s.context)
-		}
-		modeSeen.PermissionMode = scr.Mode
+		modeSeen = scr.Mode
 	}
 	status, detail := s.status, s.detail
 	next, nextDetail := status, detail
@@ -372,8 +401,8 @@ func (s *session) checkScreen() bool {
 	for _, a := range retract {
 		a.decision <- decision{terminal: true}
 	}
-	if modeSeen != nil {
-		s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: modeSeen}})
+	if modeSeen != "" {
+		s.noteScreenMode(modeSeen)
 	}
 	// RUNNING is derived from turn events; the state event only records
 	// startup, popups and exit.
