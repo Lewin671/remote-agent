@@ -137,7 +137,16 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     }
   };
   const blocked = !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
-  return { remote, frozen: current.frozen, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
+  // Giving up an unknown start: the user checked, or changed what to send.
+  const abandon = () => {
+    current.abandon();
+    setError("");
+  };
+  const setCfg = (c: NewConfig | undefined) => {
+    if (current.frozen) abandon();
+    setOverride(c);
+  };
+  return { remote, frozen: current.frozen, expired: current.expired, abandon, p, cfg, setCfg, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -153,7 +162,8 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   const submit = async () => {
-    if (ns.busy || ns.blocked) return;
+    // An unknown start that expired is not sent again, nor replaced.
+    if (ns.busy || ns.blocked || ns.expired) return;
     await ns.create(text.trim());
   };
   const agent = agentName(ns.cfg.agent);
@@ -170,7 +180,11 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
       rows={variant === "box" ? 1 : 2}
       value={text}
       placeholder={placeholder}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        // A different first message is a different start.
+        if (ns.frozen) ns.abandon();
+        setText(e.target.value);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
@@ -181,7 +195,7 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
     />
   );
   const go = (
-    <button className="go" disabled={ns.busy || !!ns.blocked} onClick={() => void submit()} aria-label="开始新会话">
+    <button className="go" disabled={ns.busy || !!ns.blocked || ns.expired} onClick={() => void submit()} aria-label="开始新会话">
       ↑
     </button>
   );
@@ -195,11 +209,17 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
       </button>
     </div>
   );
-  const error = ns.error && (
-    <Banner kind={ns.frozen ? "warn" : "err"} action="重试" onAction={() => void submit()}>
-      {ns.frozen ? `不确定是否已经启动：${ns.error}。重试会发送同一个请求，不会重复启动` : `启动失败：${ns.error}`}
-    </Banner>
-  );
+  const error =
+    ns.error &&
+    (ns.expired ? (
+      <Banner kind="warn" action="放弃这次启动" onAction={ns.abandon}>
+        不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求
+      </Banner>
+    ) : (
+      <Banner kind={ns.frozen ? "warn" : "err"} action="重试" onAction={() => void submit()}>
+        {ns.frozen ? `不确定是否已经启动：${ns.error}。重试会发送同一个请求，不会重复启动` : `启动失败：${ns.error}`}
+      </Banner>
+    ));
   return (
     <>
       {variant === "box" ? (

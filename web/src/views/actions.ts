@@ -6,7 +6,8 @@ import { useMemo, useRef, useState } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
-import { errorText, newSlot, uncertain, type AnswerState, type CommandKind, type Remote, type RequestSlot } from "../remote";
+import { stillUnknown } from "../attempt";
+import { errorText, newSlot, type AnswerState, type CommandKind, type Remote, type RequestSlot } from "../remote";
 import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
@@ -25,19 +26,26 @@ function useCommand(remote: Remote, sid: string) {
   // The last failure left the outcome unknown: only a retry of the same
   // command may follow.
   const [unknown, setUnknown] = useState(false);
+  const wasUnknown = useRef(false);
   const run = async (key: string, cmd: CommandKind): Promise<boolean> => {
-    const slot = last.current?.key === key ? last.current.slot : newSlot();
+    const retrying = last.current?.key === key;
+    const slot = retrying ? last.current!.slot : newSlot();
+    const before = retrying && wasUnknown.current;
     last.current = { key, slot };
     setBusy(key);
     setError("");
     setUnknown(false);
     try {
       await remote.command(sid, cmd, slot);
+      wasUnknown.current = false;
       return true;
     } catch (e) {
-      // Only an uncertain outcome keeps the slot for the retry.
-      if (!uncertain(e)) last.current = { key, slot: newSlot() };
-      setUnknown(uncertain(e));
+      // Only an unknown outcome keeps the slot for the retry; a retry of
+      // one that comes back expired stays unknown (see attempt.ts).
+      const still = stillUnknown(e, before);
+      wasUnknown.current = still;
+      if (!still) last.current = { key, slot: newSlot() };
+      setUnknown(still);
       setError(errorText(e));
       setBusy("");
       return false;
@@ -77,7 +85,9 @@ export function useAnswer(remote: Remote, sid: string, questionId: string) {
   const answer = async (index: number, options: number[], multi = false): Promise<boolean> => {
     const key = `${index}:${options.join(",")}`;
     const cur = remote.answerState(questionId);
-    const slot = cur.last?.key === key ? cur.last.slot : newSlot();
+    const retrying = cur.last?.key === key;
+    const slot = retrying ? cur.last!.slot : newSlot();
+    const before = retrying && cur.unknown;
     set({ last: { key, slot }, busy: key, error: "", unknown: false });
     try {
       await remote.command(
@@ -90,8 +100,10 @@ export function useAnswer(remote: Remote, sid: string, questionId: string) {
       );
       return true;
     } catch (e) {
-      // Only an uncertain outcome keeps the slot for the retry.
-      set({ last: { key, slot: uncertain(e) ? slot : newSlot() }, busy: "", unknown: uncertain(e), error: errorText(e) });
+      // Only an unknown outcome keeps the slot for the retry; a retry of
+      // one that comes back expired stays unknown (see attempt.ts).
+      const still = stillUnknown(e, before);
+      set({ last: { key, slot: still ? slot : newSlot() }, busy: "", unknown: still, error: errorText(e) });
       return false;
     }
   };

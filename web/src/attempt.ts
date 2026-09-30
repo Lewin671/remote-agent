@@ -4,25 +4,59 @@
 // (docs/architecture.md §10). Anything the page learns meanwhile, such as
 // the new session's own metadata, must not change what is retried.
 
-import { newSlot, uncertain, type RequestSlot } from "./remote";
+import { CommandError, newSlot, uncertain, type RequestSlot } from "./remote";
+
+/** The daemon refused a command as past its deadline. */
+export function expiredError(e: unknown): boolean {
+  return e instanceof CommandError && e.code === "deadline_exceeded";
+}
+
+/** Whether an attempt's outcome stays unknown after error. A retry of an
+ * unknown one that comes back expired says nothing new: the daemon forgets
+ * a request a minute after its deadline, so the first send may have run. */
+export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
+  return uncertain(error) || (wasUnknown && expiredError(error));
+}
 
 export class Attempt<P> {
-  private pending?: { payload: P; slot: RequestSlot };
+  private pending?: { payload: P; slot: RequestSlot; tries: number; expired: boolean };
 
   /** What to send: an earlier attempt whose outcome is unknown wins over
-   * payload. */
+   * payload, and is sent sealed as it was, even past its deadline: the
+   * daemon may still remember its result. */
   next(payload: P): { payload: P; slot: RequestSlot } {
-    return (this.pending ??= { payload, slot: newSlot() });
+    this.pending ??= { payload, slot: newSlot(), tries: 0, expired: false };
+    this.pending.tries++;
+    return this.pending;
   }
 
-  /** Records how the attempt ended: success or a definite failure frees
-   * the next attempt; an unknown outcome freezes it. */
+  /** Records how the attempt ended. Success or a definite failure frees
+   * the next attempt; an unknown outcome freezes it. A retry that comes
+   * back expired leaves it unknown for good: it is not sent again and no
+   * new request replaces it until the user gives it up. */
   settle(error?: unknown) {
-    if (error === undefined || !uncertain(error)) this.pending = undefined;
+    const p = this.pending;
+    if (!p) return;
+    if (error !== undefined && stillUnknown(error, p.tries > 1)) {
+      if (expiredError(error)) p.expired = true;
+      return;
+    }
+    this.pending = undefined;
+  }
+
+  /** Gives up an attempt of unknown outcome, e.g. once the user has
+   * checked it did not happen, or changed what to send. */
+  abandon() {
+    this.pending = undefined;
   }
 
   /** Whether the next attempt repeats an unknown one. */
   get frozen(): boolean {
     return this.pending !== undefined;
+  }
+
+  /** Whether the unknown attempt has expired: it cannot be sent again. */
+  get expired(): boolean {
+    return this.pending?.expired ?? false;
   }
 }

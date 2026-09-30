@@ -9,7 +9,7 @@ import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
 import { Agent, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
-import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, PlanPage, QuestionPage } from "./Dock";
@@ -475,4 +475,63 @@ it("keeps the message being typed when a page opens and closes", async () => {
   expect(host.textContent).toContain("审批详情");
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
   expect(input().value).toBe("顺便看下 lint");
+});
+
+it("never renews a session start of unknown outcome, even once it expired", async () => {
+  const r = demo();
+  const sent: string[] = [];
+  const answers = [new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "the command expired before it reached the machine")];
+  r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push(slot!.requestId);
+      const e = answers.shift();
+      if (e) throw e;
+    }
+    throw new CommandError("unavailable", "no");
+  };
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    set.call(input(), "加限流");
+    input().dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(button("↑"));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  // Retried as the same request; then the daemon no longer knew it.
+  expect(sent[1]).toBe(sent[0]);
+  await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
+  expect(button("↑")?.disabled).toBe(true);
+  expect(sent).toHaveLength(2);
+  // Only giving it up allows a new start, under a new request ID.
+  await click(button("放弃这次启动"));
+  await click(button("↑"));
+  await vi.waitFor(() => expect(sent).toHaveLength(3));
+  expect(sent[2]).not.toBe(sent[0]);
+});
+
+it("keeps an answer of unknown outcome unknown when its retry comes back expired", async () => {
+  const r = demo();
+  const slots: string[] = [];
+  const answers = [new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "expired")];
+  r.command = async (_s: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "answerQuestion") {
+      slots.push(slot!.requestId);
+      const e = answers.shift();
+      if (e) throw e;
+    }
+    return create(CommandResultSchema, {});
+  };
+  mount(<ClaudeAsk r={r} />);
+  await click(button(/按 IP/));
+  await click(button("提交 1 项"));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(slots).toHaveLength(2));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(slots).toHaveLength(3));
+  expect(new Set(slots).size).toBe(1);
 });
