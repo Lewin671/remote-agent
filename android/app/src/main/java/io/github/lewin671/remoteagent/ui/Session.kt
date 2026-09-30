@@ -121,6 +121,14 @@ fun SessionScreen(sid: String) {
     val status = statusIn(state, s)
     var tab by rememberSaveable { mutableStateOf(0) }
     BackHandler(enabled = tab == 1) { tab = 0 }
+    // Another page (a tool's details) asked for the terminal.
+    val wantTerminal = OpenTerminal.requested[sid] == true
+    LaunchedEffect(wantTerminal) {
+        if (wantTerminal) {
+            tab = 1
+            OpenTerminal.requested.remove(sid)
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(p.card)) {
         SessionTopBar(state, s, status, d.running, onTerminal = { tab = 1 })
@@ -239,6 +247,14 @@ private fun ChatPane(
 
     Column(modifier) {
         Box(Modifier.weight(1f)) {
+            val chatCtx = ChatContext(
+                s.id, s.agent(), d,
+                frozenAt = if (state.conn == ConnState.ONLINE) 0 else state.offlineSinceMs,
+                terminalOpen = status != Status.EXITED && status != Status.OFFLINE,
+                onTerminal = onTerminal,
+                onTool = { seq -> nav.tool(s.id, seq) },
+            )
+            androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                 if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
                 items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd, home) { text -> Outbox.draft(s.id).value = text } }
@@ -251,14 +267,6 @@ private fun ChatPane(
                         }
                     }
                 }
-                items(d.tools, key = { "tool" + it.since + it.title }) { tool ->
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text(toolTitle(tool, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        if (tool.since > 0) Text(duration((t - tool.since).coerceAtLeast(0)), style = MaterialTheme.typography.bodySmall, color = p.faint)
-                    }
-                }
                 // Messages from this device, until the chat shows them.
                 val pending = outbox.filter { o ->
                     val st = d.inputs[o.requestId]
@@ -266,6 +274,7 @@ private fun ChatPane(
                 }
                 items(pending, key = { "out" + it.requestId }) { o -> OutgoingView(s.id, o, d.inputs[o.requestId]) }
                 item { Spacer(Modifier.height(8.dp)) }
+            }
             }
             val fresh = items.size - seen
             if (!atBottom && fresh > 0) {
@@ -370,7 +379,7 @@ private fun Bottom(
             is DockItem.Popup -> PopupDock(s, first.title, dockItems.size - 1, onTerminal)
         }
     }
-    QueueView(s, d, status)
+    StatusStrip(state, s, d, status, onTerminal)
     Composer(state, s, d, status, onFocus = { typing = it })
 }
 
@@ -386,43 +395,75 @@ private fun StatusCard(title: String, text: String, actions: @Composable () -> U
     }
 }
 
-/** Messages accepted but waiting, with why and a way to cancel them. */
+/**
+ * The line above the message box (client-v2): what runs now (the tool and
+ * its timer, or the turn), the queue's count and why it waits, and the
+ * interrupt, which stays in the same place whether or not there is a draft.
+ */
 @Composable
-private fun QueueView(s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status) {
+private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onTerminal: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    val queued = d.inputs.filterValues { it == InputStatus.INPUT_STATUS_QUEUED }.keys.toList()
-    if (queued.isEmpty()) return
-    val why = when (s.info?.inputWait) {
-        "draft" -> "终端里有没发出的草稿，发完或清掉后再发"
-        "popup" -> "弹窗处理完再发"
-        "unrecognized" -> "认不出输入框，已暂停"
-        else -> when (status) {
-            Status.QUESTION -> "答完再发"
-            Status.APPROVAL -> "审批完再发"
-            Status.RUNNING -> "本轮结束后按顺序发"
-            Status.STARTING -> "等 ${agentName(s.agent())} 就绪后发出"
-            else -> "即将发出"
-        }
-    }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).background(p.soft, RoundedCornerShape(12.dp)).padding(10.dp)) {
-        Text("排队 · $why", style = MaterialTheme.typography.bodySmall, color = p.muted)
-        for (id in queued) {
-            val act = rememberAction()
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    val nav = LocalNav.current
+    val t = now(1000)
+    val online = state.conn == ConnState.ONLINE
+    val frozen = if (online) 0 else state.offlineSinceMs
+    val running = status == Status.RUNNING || d.running
+    val q = io.github.lewin671.remoteagent.core.queued(d)
+    val tools = toolSummary(d, s.agent(), t, frozen)
+    if (!running && q.isEmpty() && tools == null) return
+    val interrupt = rememberAction()
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        when {
+            tools != null -> Chip("$tools ›") {
+                val oldest = d.tools.minByOrNull { if (it.since > 0) it.since else Long.MAX_VALUE }
+                if (oldest != null) nav.tool(s.id, oldest.seq) else onTerminal()
+            }
+            running -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Dot(p.blue, 6)
+                Spacer(Modifier.width(5.dp))
+                // Claude Code takes a message into the running turn.
                 Text(
-                    Outbox.text(s.id, id) ?: Outbox.prompt(s.id)?.takeIf { queued.size == 1 } ?: "（从其他设备发出的消息）",
-                    style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f), color = if (act.running) p.faint else p.fg,
+                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) "加入当前轮" else "运行中",
+                    style = MaterialTheme.typography.bodySmall, color = p.muted,
                 )
-                IconButton(onClick = {
-                    act.run({ remote.command(s.id, remote.cmd { cancelInput = CancelInputRequest.newBuilder().setSessionId(s.id).setRequestId(id).build() }) })
-                }, enabled = !act.running) { Text("✕", color = p.muted) }
+            }
+        }
+        if (q.isNotEmpty()) {
+            Chip("排队 ${q.size} 条 ›") { nav.queue(s.id) }
+            Text(
+                io.github.lewin671.remoteagent.core.queueWhy(s, status).short,
+                style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        if (running && online) {
+            TextButton(
+                onClick = { interrupt.run({ remote.command(s.id, remote.cmd { this.interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) },
+                enabled = !interrupt.running,
+                modifier = Modifier.heightIn(min = 44.dp),
+            ) {
+                Icon(Icons.Default.Stop, null, tint = p.red, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(if (interrupt.running) "中断中…" else "中断", color = p.red)
             }
         }
     }
+    if (interrupt.error.isNotEmpty()) Text("没能中断：${interrupt.error}", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.red)
 }
 
+/**
+ * The unified message box (client-v2): the text grows to about six lines,
+ * then scrolls; Enter is a new line and ↑ sends. Mode, model and context sit
+ * in the same box; with the keyboard up the model and context fold into
+ * 设置…, while full access stays in sight. Without the server connection the
+ * draft stays and sending and settings wait.
+ */
 @Composable
 private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
     val p = pal
@@ -430,65 +471,87 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     var text by Outbox.draft(s.id)
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val online = state.conn == ConnState.ONLINE
-    val interrupt = rememberAction()
     val running = status == Status.RUNNING || d.running
-    Column(Modifier.fillMaxWidth().background(p.card).padding(horizontal = 12.dp, vertical = 6.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+    val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    var focused by remember { mutableStateOf(false) }
+    val compact = ime && focused
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+            .background(p.soft, RoundedCornerShape(20.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
+    ) {
+        androidx.compose.foundation.text.BasicTextField(
+            text, { text = it },
+            Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 10.dp, vertical = 8.dp)
+                .onFocusChanged { focused = it.isFocused; onFocus(it.isFocused) },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = p.fg),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
+            maxLines = 6,
+            decorationBox = { inner ->
+                Box {
+                    if (text.isEmpty()) Text(
+                        when {
+                            d.tools.isNotEmpty() -> "继续输入，不会打断当前工具…"
+                            d.questions.isNotEmpty() -> "答完后继续…"
+                            else -> "消息"
+                        },
+                        style = MaterialTheme.typography.bodyLarge, color = p.faint,
+                    )
+                    inner()
+                }
+            },
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ImageAddButton(s, state)
             val label = io.github.lewin671.remoteagent.core.modeLabel(s)
             val mode = label?.mode
             Chip(
-                label?.text ?: "模式",
+                (label?.text ?: "模式") + " ▾",
                 color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
                 bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
-            ) { sheet = 1 }
-            // Claude Code records full model IDs; show the alias the list offers.
-            var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
-            LaunchedEffect(s.machineId, s.agent()) {
-                if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
-            }
-            val raw = s.info?.model.orEmpty()
-            val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
-            val effort = s.info?.effort.orEmpty()
-            Chip(if (model.isEmpty()) "模型读取中" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { sheet = 2 }
-            contextPercent(s)?.let { pc ->
-                Chip("$pc%", color = if (pc > 80) p.orangeInk else p.fg2, bg = if (pc > 80) p.orangeSoft else p.chip) { sheet = 2 }
-            }
-        }
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
-            OutlinedTextField(
-                text, { text = it },
-                Modifier.weight(1f).heightIn(min = 48.dp, max = 160.dp).onFocusChanged { onFocus(it.isFocused) },
-                placeholder = { Text("消息") },
-                shape = RoundedCornerShape(22.dp),
-                colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = p.line),
-            )
-            Spacer(Modifier.width(8.dp))
-            if (text.isBlank() && running) {
-                FilledIconButton(
-                    onClick = { interrupt.run({ remote.command(s.id, remote.cmd { this.interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) },
-                    enabled = online && !interrupt.running, modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.fg),
-                ) { Icon(Icons.Default.Stop, "中断本轮", tint = p.card) }
+            ) { if (online) sheet = 1 }
+            val pc = contextPercent(s)
+            if (compact) {
+                Chip("设置…" + if ((pc ?: 0) > 80) " ●" else "", color = if ((pc ?: 0) > 80) p.orangeInk else p.fg2) { if (online) sheet = 2 }
             } else {
-                FilledIconButton(
-                    onClick = {
-                        val msg = text.trim()
-                        if (msg.isEmpty()) return@FilledIconButton
-                        text = ""
-                        Outbox.send(RaApp.instance.scope, remote, s.id, msg)
-                    },
-                    enabled = online && text.isNotBlank(), modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
-                ) { Icon(Icons.Default.ArrowUpward, "发送", tint = p.card) }
+                // Claude Code records full model IDs; show the alias the list offers.
+                var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+                LaunchedEffect(s.machineId, s.agent()) {
+                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+                }
+                val raw = s.info?.model.orEmpty()
+                val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
+                val effort = s.info?.effort.orEmpty()
+                Box(Modifier.weight(1f, fill = false)) {
+                    Chip(if (model.isEmpty()) "模型读取中" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { if (online) sheet = 2 }
+                }
+                // Unknown context is left out, never shown as 0%.
+                pc?.let { Chip("$it%", color = if (it > 80) p.orangeInk else p.fg2, bg = if (it > 80) p.orangeSoft else p.chip) { if (online) sheet = 2 } }
             }
+            Spacer(Modifier.weight(1f))
+            FilledIconButton(
+                onClick = {
+                    val msg = text.trim()
+                    if (msg.isEmpty()) return@FilledIconButton
+                    text = ""
+                    Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+                },
+                enabled = online && text.isNotBlank(), modifier = Modifier.size(44.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
+            ) { Icon(Icons.Default.ArrowUpward, "发送", tint = p.card) }
         }
-        if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在上面的按钮里。", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
-        if (interrupt.error.isNotEmpty()) Text(interrupt.error, style = MaterialTheme.typography.bodySmall, color = p.red)
     }
+    if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在上面的按钮里。", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
     }
+}
+
+/** 「＋」for images: sending images needs a daemon that takes them (see ImageAddButton's notes). */
+@Composable
+private fun ImageAddButton(s: SessionView, state: RemoteState) {
+    val p = pal
+    IconButton(onClick = {}, enabled = false, modifier = Modifier.size(40.dp)) { Text("＋", color = p.faint, style = MaterialTheme.typography.titleMedium) }
 }
 
 /**
@@ -504,4 +567,9 @@ class Follow {
     fun observe(userDragging: Boolean, atBottom: Boolean) {
         if (atBottom) on = true else if (userDragging) on = false
     }
+}
+
+/** Sessions whose terminal another page asked to show. */
+object OpenTerminal {
+    val requested = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
 }

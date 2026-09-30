@@ -85,6 +85,8 @@ data class RemoteState(
     val error: String = "",
     /** The lists have been fetched once since start, or read from the cache. */
     val loaded: Boolean = false,
+    /** When the connection was last lost; 0 while online. Timers stop here: what happened since is not known. */
+    val offlineSinceMs: Long = 0,
 )
 
 /** A session's events, contiguous from seq 1. */
@@ -164,6 +166,7 @@ class Remote(
     private var conn = ConnState.CONNECTING
     private var error = ""
     private var loaded = false
+    private var offlineSince = 0L
 
     // Pushes seen per machine, session and machine removal, so that a list
     // fetched before a push cannot undo it.
@@ -237,7 +240,8 @@ class Remote(
     }
 
     private fun publish() {
-        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded)
+        if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
+        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince)
     }
 
     private suspend fun readCache() {

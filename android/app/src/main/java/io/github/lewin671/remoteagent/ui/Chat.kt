@@ -49,8 +49,18 @@ sealed interface ChatItem {
     data class Agent(override val key: String, val text: String) : ChatItem
     data class Thought(override val key: String, val text: String) : ChatItem
 
-    /** One tool call; [decision] says how its approval went, if it needed one. */
-    data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true) : ChatItem
+    /**
+     * One tool call; [decision] says how its approval went, if it needed one.
+     * [background]: the call returned but its command went on in the
+     * background, so how it ends is not known.
+     */
+    data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true, val background: Boolean = false) : ChatItem
+
+    /**
+     * A tool that started and has no result yet, where it started. With
+     * [unfinished] its turn ended first: it may still run in the background.
+     */
+    data class Running(override val key: String, val tool: io.github.lewin671.remoteagent.core.RunningTool, val unfinished: Boolean) : ChatItem
 
     /** Two or more completed tool calls in a row, folded into one line. */
     data class Tools(override val key: String, val calls: List<ToolCall>) : ChatItem
@@ -173,6 +183,40 @@ fun buildChat(
     fun flush() = flushRun()
     // Messages that never went out, by the seq that says so.
     val unsentAt = d.unsent.entries.groupBy({ it.value }, { it.key })
+    // A started tool keeps its place: its call, once it comes, is shown
+    // where it started (the same row, updated), not where it completed.
+    val callAt = HashMap<Long, Event>()
+    val placed = HashSet<Long>()
+    for ((startSeq, callSeq) in d.completedAt) {
+        events.getOrNull((callSeq - 1).toInt())?.takeIf { it.seq == callSeq }?.let {
+            callAt[startSeq] = it
+            placed += callSeq
+        }
+    }
+    val running = d.tools.associateBy { it.seq }
+    val startedTools = HashMap<Long, io.github.lewin671.remoteagent.core.RunningTool>()
+    for (e in events) if (e.kindCase == Event.KindCase.TOOL_STARTED) {
+        val t = e.toolStarted
+        startedTools[e.seq] = io.github.lewin671.remoteagent.core.RunningTool(t.title, t.callId, eventTime(e), t.kind, t.itemType, e.seq, t.input, t.inputDigest)
+    }
+    fun addCall(k: String, callEvent: Event, background: Boolean) {
+        val t = callEvent.toolCall
+        val decided = decisions.onCall[callEvent.seq]
+        if (decided != null) {
+            // Kept out of a fold so that its decision stays in sight.
+            flushRun()
+            out += ChatItem.Tool(k, t, decided.first, decided.second)
+        } else if (background) {
+            flushRun()
+            out += ChatItem.Tool(k, t, background = true)
+        } else if (toolOk(t)) {
+            if (run.isEmpty()) runKey = k
+            run += t
+        } else {
+            flushRun()
+            out += ChatItem.Tool(k, t)
+        }
+    }
     for (e in events) {
         val k = "e${e.seq}"
         unsentAt[e.seq]?.let { ids ->
@@ -180,21 +224,20 @@ fun buildChat(
             for (id in ids) out += ChatItem.Unsent("u$id", id, textOf(id))
         }
         when (e.kindCase) {
-            Event.KindCase.TOOL_CALL -> {
-                val t = e.toolCall
-                val decided = decisions.onCall[e.seq]
-                if (decided != null) {
-                    // Kept out of a fold so that its decision stays in sight.
-                    flushRun()
-                    out += ChatItem.Tool(k, t, decided.first, decided.second)
-                } else if (toolOk(t)) {
-                    if (run.isEmpty()) runKey = k
-                    run += t
+            Event.KindCase.TOOL_STARTED -> {
+                val c = callAt[e.seq]
+                if (c != null) {
+                    val started = startedTools[e.seq]
+                    addCall(k, c, started?.toBackground == true || io.github.lewin671.remoteagent.core.backgroundInput(c.toolCall.input))
                 } else {
-                    flushRun()
-                    out += ChatItem.Tool(k, t)
+                    val r = running[e.seq]
+                    if (r != null || e.seq in d.unfinished) {
+                        flush()
+                        out += ChatItem.Running(k, r ?: startedTools.getValue(e.seq), unfinished = r == null)
+                    }
                 }
             }
+            Event.KindCase.TOOL_CALL -> if (e.seq !in placed) addCall(k, e, io.github.lewin671.remoteagent.core.backgroundInput(e.toolCall.input))
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e))
@@ -302,8 +345,10 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
+            if (item.background) BackgroundRow(item.call, cwd, home)
+            else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
         }
+        is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
             Expandable("✓ " + toolsSummary(item.calls) + "  ▸", "✓ " + toolsSummary(item.calls) + "  ▾") {
                 Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd, home) } }
@@ -401,5 +446,20 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
             val lines = out.lines()
             CodeBlock(lines.first() + if (lines.size > 1) "\n… 还有 ${lines.size - 1} 行，展开" else "", maxLines = 2, modifier = Modifier.clickable { open = true })
         }
+    }
+}
+
+/** A call that returned while its command went on in the background: not a success, its end is not known. */
+@Composable
+private fun BackgroundRow(t: ToolCall, cwd: String, home: String) {
+    val p = pal
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(p.soft, RoundedCornerShape(12.dp)).padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("◌", color = p.muted, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Text("后台命令 · 状态待确认", style = MaterialTheme.typography.titleSmall, color = p.fg2)
+        }
+        Text(toolTitle(t, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("调用已返回，命令转到了后台；它什么时候结束这里不知道。请到终端确认。", style = MaterialTheme.typography.bodySmall, color = p.muted)
     }
 }

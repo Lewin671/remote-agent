@@ -262,10 +262,28 @@ fun contextPercent(s: SessionView): Int? {
 class RunningTool(
     val title: String,
     val callId: String,
+    /** Event time of the start, from the daemon; 0 when unknown. */
     val since: Long,
     val kind: io.github.lewin671.remoteagent.proto.ToolKind = io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_UNSPECIFIED,
     val itemType: String = "",
-)
+    /** Seq of the ToolStarted event; its row in the chat keeps this place. */
+    val seq: Long = 0,
+    val input: String = "",
+    val inputDigest: String = "",
+) {
+    /** Claude Code's Bash told to run in the background: its call returns while the command goes on. */
+    val toBackground: Boolean get() = backgroundInput(input)
+}
+
+/** Whether a tool input asks for a background run (Claude Code's Bash run_in_background). */
+fun backgroundInput(input: String): Boolean = Regex("\"run_in_background\"\\s*:\\s*true").containsMatchIn(input)
+
+/**
+ * A tool whose end is not known (architecture §13, 工具执行反馈): its call
+ * went to the background, or the turn ended before its result came. It is
+ * not shown as a success; the terminal is where to check.
+ */
+class BackgroundTool(val tool: RunningTool, /** The call returned (it went to the background) rather than never coming back. */ val returned: Boolean)
 
 class Derived(
     /** Pending approvals, in the order they were asked. */
@@ -285,8 +303,14 @@ class Derived(
     var running: Boolean = false,
     var usage: TokenUsage? = null,
     var plan: PlanProposed? = null,
-    /** Tools started and not yet completed, oldest first. */
+    /** Tools started and not yet completed in this turn, oldest first. */
     val tools: MutableList<RunningTool> = mutableListOf(),
+    /** Tools of the last turn whose end is not known, until another turn starts. */
+    val background: MutableList<BackgroundTool> = mutableListOf(),
+    /** Start seq to the seq of the call that completed it. */
+    val completedAt: HashMap<Long, Long> = HashMap(),
+    /** Seqs of starts the turn ended without a result for. */
+    val unfinished: MutableSet<Long> = HashSet(),
     /** User messages typed in the terminal rather than sent from a client. */
     val typedLocally: MutableSet<Long> = HashSet(),
     /** Mode or model changes made in the terminal, by the seq of the turn context that shows them. */
@@ -320,10 +344,19 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 d.questions.remove(e.questionAnswered.questionId)
                 d.answered[e.questionAnswered.questionId] = e.questionAnswered.answersList.flatMap { it.answersList }
             }
-            Event.KindCase.TURN_STARTED -> d.running = true
+            Event.KindCase.TURN_STARTED -> {
+                d.running = true
+                d.background.clear()
+            }
             Event.KindCase.TURN_ENDED -> {
                 d.running = false
                 d.questions.clear()
+                // Still running when the turn ended: whether it ever ends is
+                // not known (an interrupt does not stop background commands).
+                for (t in d.tools) {
+                    d.background += BackgroundTool(t, returned = false)
+                    d.unfinished += t.seq
+                }
                 d.tools.clear()
             }
             Event.KindCase.INPUT_STATE -> {
@@ -350,14 +383,20 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                     unclaimed = e.seq
                 }
             }
-            Event.KindCase.TOOL_STARTED -> e.toolStarted.let { d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType) }
+            Event.KindCase.TOOL_STARTED -> e.toolStarted.let {
+                d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType, e.seq, it.input, it.inputDigest)
+            }
             Event.KindCase.TOOL_CALL -> {
                 // Claude Code runs tools in parallel and pairs them by ID;
                 // Codex gives no ID and they pair in order.
                 val id = e.toolCall.callId
                 val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
                 val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
-                if (j >= 0) d.tools.removeAt(j)
+                if (j >= 0) {
+                    val t = d.tools.removeAt(j)
+                    d.completedAt[t.seq] = e.seq
+                    if (t.toBackground || backgroundInput(e.toolCall.input)) d.background += BackgroundTool(t, returned = true)
+                }
             }
             Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage
             Event.KindCase.PLAN_PROPOSED -> {
@@ -402,12 +441,45 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 d.running = false
                 d.approvals.clear()
                 d.questions.clear()
+                for (t in d.tools) d.unfinished += t.seq
                 d.tools.clear()
+                d.background.clear()
             }
             else -> {}
         }
     }
     return d
+}
+
+/** A running tool waits for an approval rather than runs: the daemon's digests of the two inputs match. */
+fun awaitingApproval(t: RunningTool, d: Derived): Boolean =
+    t.inputDigest.isNotEmpty() && d.approvals.values.any { it.inputDigest == t.inputDigest }
+
+/**
+ * How long a tool has run, in ms, or null when its start time is unknown.
+ * While disconnected ([frozenAt] > 0) the reading stops where the
+ * connection dropped, so it does not suggest the tool is still running.
+ */
+fun toolElapsed(t: RunningTool, now: Long, frozenAt: Long = 0): Long? {
+    if (t.since <= 0) return null
+    val end = if (frozenAt > 0) minOf(frozenAt, now) else now
+    return (end - t.since).coerceAtLeast(0)
+}
+
+/** 2:12, 1:02:03: a running timer. */
+fun clock(ms: Long): String {
+    val s = ms / 1000
+    return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s % 3600 / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+}
+
+/** A tool's short name: Claude Code's own tool name (Bash, Read), else what kind of tool it is. */
+fun toolLabel(kind: io.github.lewin671.remoteagent.proto.ToolKind, itemType: String, agent: Agent): String = when {
+    effectiveAgent(agent) == Agent.AGENT_CLAUDE && itemType.isNotEmpty() -> itemType
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND -> "命令"
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_FILE_CHANGE -> "编辑"
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_MCP -> "MCP"
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_WEB_SEARCH -> "搜索"
+    else -> "工具"
 }
 
 fun eventTime(e: Event): Long = if (e.hasTime()) e.time.seconds * 1000 + e.time.nanos / 1_000_000 else 0
@@ -483,3 +555,42 @@ fun shortPath(p: String): String = p.replace(Regex("^/Users/[^/]+"), "~").replac
 
 /** Minutes left until a deadline, for "剩 N 分钟". */
 fun minutesLeft(deadlineMs: Long, now: Long = System.currentTimeMillis()): Long = maxOf(0, (deadlineMs - now + 59_999) / 60_000)
+
+// --- the message queue ---
+
+/** Messages the daemon accepted and has not written yet, in the order it accepted them. */
+fun queued(d: Derived): List<String> = d.inputs.filterValues { it == InputStatus.INPUT_STATUS_QUEUED }.keys.toList()
+
+/**
+ * Why the first queued message waits: a short form for the line above the
+ * message box and a longer one for the queue page. The daemon's own reason
+ * (Session.input_wait) comes first; else the session's state says it.
+ */
+data class QueueWhy(val short: String, val long: String)
+
+fun queueWhy(s: SessionView, status: Status): QueueWhy = when (s.info?.inputWait) {
+    "draft" -> QueueWhy("终端里有草稿", "终端里有没发出的草稿，发完或清掉后再发")
+    "popup" -> QueueWhy("就绪后发送", "等终端里的弹窗处理完")
+    "unrecognized" -> QueueWhy("已暂停", "认不出输入框，已暂停")
+    else -> when (status) {
+        Status.QUESTION -> QueueWhy("回答后继续", "等提问回答完")
+        Status.APPROVAL -> QueueWhy("审批后继续", "等审批处理完")
+        Status.PLAN -> QueueWhy("处理计划后继续", "等计划处理完")
+        Status.POPUP -> QueueWhy("就绪后发送", "等终端里的弹窗处理完")
+        Status.RUNNING -> QueueWhy("本轮结束后发送", "等待本轮结束")
+        Status.STARTING -> QueueWhy("就绪后发送", "等 ${agentName(s.agent())} 就绪")
+        else -> QueueWhy("即将发送", "等待输入框就绪")
+    }
+}
+
+/**
+ * Where a message the user tried to cancel ended up, once it left the queue:
+ * the cancel worked, someone else canceled it, or it was written first.
+ */
+enum class CancelOutcome { CANCELED, CANCELED_ELSEWHERE, WRITTEN, UNKNOWN }
+
+fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome = when (status) {
+    InputStatus.INPUT_STATUS_CANCELED -> if (canceledHere) CancelOutcome.CANCELED else CancelOutcome.CANCELED_ELSEWHERE
+    InputStatus.INPUT_STATUS_SUBMITTED, InputStatus.INPUT_STATUS_UNCONFIRMED -> CancelOutcome.WRITTEN
+    else -> CancelOutcome.UNKNOWN
+}

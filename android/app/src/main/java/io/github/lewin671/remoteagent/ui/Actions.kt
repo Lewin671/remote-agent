@@ -112,6 +112,7 @@ object AccountMemory {
         Outbox.clear()
         Starts.clear()
         Answers.clear()
+        Cancels.clear()
     }
 }
 

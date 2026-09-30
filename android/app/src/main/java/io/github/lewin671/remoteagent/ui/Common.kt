@@ -64,6 +64,11 @@ class Nav(
     val plan: (String) -> Unit,
     val newProject: () -> Unit,
     val pickProject: () -> Unit,
+    /** A tool's details, by the seq of its start. */
+    val tool: (sid: String, seq: Long) -> Unit = { _, _ -> },
+    /** The session with its terminal showing. */
+    val sessionTerminal: (String) -> Unit = {},
+    val queue: (String) -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }
@@ -139,7 +144,7 @@ fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> 
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.labelSmall, color = color ?: p.fg2, maxLines = 1)
+        Text(text, style = MaterialTheme.typography.labelSmall, color = color ?: p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
