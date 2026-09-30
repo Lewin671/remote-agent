@@ -301,6 +301,19 @@ fun DeviceScreen(id: String) {
                                 Text("模型 · 推理强度", Modifier.weight(1f))
                                 Text("${d.model.ifEmpty { "默认" }} · ${d.effort.ifEmpty { "默认" }} ›", color = p.muted, style = MaterialTheme.typography.bodyMedium)
                             }
+                            // What a session started without a mode really gets, as the machine reads it.
+                            val eff = defaultModeOf(m, agent)
+                            val src = m.meta?.agentsList?.firstOrNull { io.github.lewin671.remoteagent.core.effectiveAgent(it.agent) == agent }?.defaultModeSource
+                            Text(
+                                "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：") +
+                                    when (src) {
+                                        io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_DAEMON_SETTINGS -> "（来自这里的设置）"
+                                        io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG -> "（来自 ${agentName(agent)} 自己的配置）"
+                                        else -> ""
+                                    },
+                                Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall,
+                                color = if (eff.mode == Mode.FULL || !eff.known) p.red else p.muted,
+                            )
                             Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 val cur = modeOf(d.mode)
                                 FilterChip(cur == null, { update(withMode(s, agent, null)) }, { Text("默认") }, enabled = !save.running)

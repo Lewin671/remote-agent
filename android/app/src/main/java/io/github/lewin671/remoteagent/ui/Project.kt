@@ -49,6 +49,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.MachineView
+import io.github.lewin671.remoteagent.core.effectiveAgent
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agent
@@ -104,19 +106,33 @@ fun projectConfig(state: RemoteState, key: String): NewConfig? {
     return NewConfig(other, key, last.agent().takeIf { it in machineAgents(state.machines[other]) } ?: Agent.AGENT_CODEX)
 }
 
-fun configLine(state: RemoteState, c: NewConfig, settings: DaemonSettings?): String = listOf(
-    machineLabel(state, c.machineId),
-    agentName(c.agent),
-    listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "默认模型" },
-    modeLabel(c.mode, settings, c.agent),
-).joinToString(" · ")
+/**
+ * The mode a CLI gives a session started without one, as the daemon reads
+ * it (AgentInfo.default_mode): null when not known (an older daemon, or a
+ * configuration it could not read).
+ */
+data class DefaultMode(
+    /** One of the four, or null for a mode outside them (Claude Code's accept edits). */
+    val mode: Mode?,
+    val known: Boolean,
+    /** The folder's project settings may give another default (Claude Code). */
+    val varies: Boolean,
+)
 
-/** The mode a start uses: chosen, or the machine's default for that CLI once it is known. */
-fun modeLabel(chosen: Mode?, settings: DaemonSettings?, agent: Agent): String = when {
-    chosen != null -> chosen.text
-    settings == null -> "默认模式"
-    else -> defaultMode(settings, agent)?.let { "默认：${it.text}" } ?: "默认模式（${agentName(agent)} 自己的配置）"
+fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
+    val info = m?.meta?.agentsList?.firstOrNull { effectiveAgent(it.agent) == effectiveAgent(agent) }
+    val known = info != null && info.defaultModeSource != io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_UNSPECIFIED &&
+        info.defaultModeSource != io.github.lewin671.remoteagent.proto.DefaultModeSource.UNRECOGNIZED
+    return DefaultMode(if (known) modeOf(info!!.defaultMode) else null, known, info?.defaultModeVaries == true)
 }
+
+/** The mode a start uses: chosen, or the CLI's effective default on that machine. */
+fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent): String = when {
+    chosen != null -> chosen.text
+    !d.known -> "默认模式（不确定，可能是完全放行）"
+    d.mode != null -> "默认：${d.mode.text}"
+    else -> "默认：${agentName(agent)} 自己的模式"
+} + if (chosen == null && d.varies) "（项目设置可能不同）" else ""
 
 /**
  * A new session's configuration (architecture §8): it follows the project,
@@ -142,28 +158,30 @@ class DraftConfig(initial: NewConfig?) {
 
 /** What pressing send does about the approval mode. */
 sealed interface LaunchMode {
-    /** Start in this mode, named explicitly so the session runs in what was shown. */
+    /** Start in this mode; UNSPECIFIED leaves it to the CLI's default, which the daemon checks again in the folder. */
     data class Send(val mode: ApprovalMode) : LaunchMode
 
-    /** The mode is full access: start only after the user confirms it (architecture §7). */
+    /** The default is full access, or not known: start only after the user confirms it (architecture §7). */
     data object ConfirmFull : LaunchMode
-
-    /** The machine's default is not known yet, so neither is the mode. */
-    data object Unknown : LaunchMode
 }
 
 /**
- * Resolves the mode of a start. No choice means the daemon's default for the
- * CLI (architecture §13); without one the CLI's own configuration decides.
+ * Resolves the mode of a start. A chosen mode is sent as it is. Without one
+ * the CLI's effective default on the machine decides (AgentInfo): full
+ * access, or a default nobody knows, is confirmed first; otherwise the
+ * choice is left to the daemon, which refuses a folder whose own settings
+ * make it full access unless that was confirmed.
  */
-fun launchMode(chosen: Mode?, settings: DaemonSettings?, agent: Agent): LaunchMode {
-    val mode = chosen ?: (settings ?: return LaunchMode.Unknown).let { defaultMode(it, agent) }
-    return when (mode) {
-        null -> LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
-        Mode.FULL -> LaunchMode.ConfirmFull
-        else -> LaunchMode.Send(mode.proto)
-    }
+fun launchMode(chosen: Mode?, d: DefaultMode): LaunchMode = when {
+    chosen != null -> LaunchMode.Send(chosen.proto)
+    !d.known || d.mode == Mode.FULL -> LaunchMode.ConfirmFull
+    else -> LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
 }
+
+/** The daemon refused a start because the folder's default is full access and nobody confirmed it. */
+fun refusedForFullAccess(e: Throwable): Boolean =
+    e is io.github.lewin671.remoteagent.core.CommandException && e.fromDaemon && e.code == "failed_precondition" &&
+        (e.message ?: "").contains("full access", ignoreCase = true)
 
 @Composable
 fun ProjectScreen(key: String, focus: Boolean) {
@@ -248,8 +266,8 @@ fun switchMachine(c: NewConfig, machineId: String, agents: List<Agent>): NewConf
     c.copy(machineId = machineId, model = "", effort = "", agent = if (c.agent in agents) c.agent else agents.first())
 
 /** The two lines of the configuration: machine and mode, then model and effort, neither cut. */
-fun configLines(state: RemoteState, c: NewConfig, settings: DaemonSettings?): Pair<String, String> =
-    "${machineLabel(state, c.machineId)} · ${modeLabel(c.mode, settings, c.agent)}" to
+fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, String> =
+    "${machineLabel(state, c.machineId)} · ${modeLabel(c.mode, d, c.agent)}" to
         (listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" })
 
 /**
@@ -277,29 +295,16 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val drafting = text.isNotBlank() || images.images.isNotEmpty()
     LaunchedEffect(initial, drafting) { draft.follow(initial, drafting) }
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
-    // The machine's defaults, to show and confirm the mode a start will use.
-    var settings by remember { mutableStateOf<DaemonSettings?>(null) }
-    var settingsError by remember { mutableStateOf("") }
     val machine = config?.machineId
     val online = state.conn == ConnState.ONLINE
     val machineOnline = machine != null && online && state.machines[machine]?.online == true
-    LaunchedEffect(machine, machineOnline) {
-        settings = null
-        settingsError = ""
-        if (machine == null || !machineOnline) return@LaunchedEffect
-        try {
-            settings = remote.machineCommand(machine, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings
-        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            settingsError = errorText(e)
-        }
-    }
+    // The mode a start without a choice gets, as the machine reports it.
+    val defaults = config?.let { defaultModeOf(state.machines[it.machineId], it.agent) } ?: DefaultMode(null, false, false)
     // Images go to the machine the session will start on; a new machine gets them again.
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
     LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
     var confirmFull by remember { mutableStateOf<Pair<NewConfig, Boolean>?>(null) }
-    fun launch(cfg: NewConfig, mode: ApprovalMode, terminalOnly: Boolean) {
+    fun launch(cfg: NewConfig, mode: ApprovalMode, terminalOnly: Boolean, confirmedFull: Boolean = false) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
         // of starting a second session.
@@ -314,12 +319,18 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                     val ids = start.taken.mapNotNull { it.imageId }
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).build()
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).setConfirmFullAccess(confirmedFull).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
             } catch (e: Exception) {
-                throw start.attempt.settle(e) ?: e
+                val err = start.attempt.settle(e) ?: e
+                // The folder's own settings make it full access: nothing ran; ask, then send a new request.
+                if (refusedForFullAccess(err)) {
+                    confirmFull = cfg to terminalOnly
+                    return@run null
+                }
+                throw err
             }
         }) { r ->
             r?.createSession?.session?.id?.let {
@@ -342,10 +353,9 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         if (st.attempt.frozen && (if (terminalOnly) "" else text.trim()) != st.prompt) st.attempt.abandon()
         // An unknown start is resent as prepared, with the mode it had.
         if (st.attempt.frozen) return launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, terminalOnly)
-        when (val m = launchMode(cfg.mode, settings, cfg.agent)) {
+        when (val m = launchMode(cfg.mode, defaultModeOf(state.machines[cfg.machineId], cfg.agent))) {
             is LaunchMode.Send -> launch(cfg, m.mode, terminalOnly)
             LaunchMode.ConfirmFull -> confirmFull = cfg to terminalOnly
-            LaunchMode.Unknown -> {}
         }
     }
     val c = config
@@ -381,7 +391,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                     onClick = { start(terminalOnly = false) },
                     enabled = c != null && !act.running && machineOnline && drafting &&
                         (images.images.isEmpty() || images.ready(machine)) &&
-                        (Starts.of(key).attempt.frozen || launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown),
+                        true,
                     modifier = Modifier.size(44.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
                 ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
@@ -393,17 +403,15 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         }
         if (c != null) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             val shown = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, c.model) { it.slug } }
-            val (l1, l2) = configLines(state, shown?.let { c.copy(model = it.displayName.ifEmpty { it.slug }) } ?: c, settings)
+            val (l1, l2) = configLines(state, shown?.let { c.copy(model = it.displayName.ifEmpty { it.slug }) } ?: c, defaults)
             Column(Modifier.weight(1f)) {
-                Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == Mode.FULL) p.red else p.muted)
+                Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known)) p.red else p.muted)
                 Text(l2, style = MaterialTheme.typography.bodySmall, color = p.muted)
             }
             TextButton(onClick = { change = true }) { Text("更改") }
         }
         if (c != null && state.machines[c.machineId]?.online != true && !drafting) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
-        if (c != null && c.mode == null && settingsError.isNotEmpty()) {
-            Text("没能读取 ${machineLabel(state, c.machineId)} 的默认审批模式：$settingsError。可以在「更改」里选一个模式再开始", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
-        }
+
         if (act.running) Text("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…", color = p.muted, style = MaterialTheme.typography.bodySmall)
         val frozen = Starts.of(key)
         // An unknown start has its own notice below.
@@ -419,16 +427,19 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         }
         if (c != null && !drafting) TextButton(
             onClick = { start(terminalOnly = true) },
-            enabled = machineOnline && !act.running && launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown,
+            enabled = machineOnline && !act.running,
         ) { Text("只打开终端 ›") }
     }
     confirmFull?.let { (cfg, terminalOnly) ->
+        val d = defaultModeOf(state.machines[cfg.machineId], cfg.agent)
         Confirm(
             "以完全放行启动？",
-            "${machineLabel(state, cfg.machineId)} 上 ${agentName(cfg.agent)} 的默认审批模式是完全放行：这个会话里执行命令、改文件都不会再问你。",
+            "${machineLabel(state, cfg.machineId)} 上 ${agentName(cfg.agent)} " +
+                (if (d.known && d.mode == Mode.FULL) "的默认审批模式是完全放行" else "在这个目录里的默认审批模式可能是完全放行") +
+                "：这个会话里执行命令、改文件都不会再问你。不想这样可以在「更改」里选询问或自动。",
             "完全放行启动", danger = true,
             onDismiss = { confirmFull = null },
-        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_FULL_ACCESS, terminalOnly) }
+        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, terminalOnly, confirmedFull = true) }
     }
     if (change && c != null) ConfigSheet(state, c, onDone = { draft.choose(it); change = false }, onClose = { change = false })
     if (pickCli && c != null) CliSheet(state, c, onPick = { draft.choose(switchAgent(c, it)); pickCli = false }, onClose = { pickCli = false })
