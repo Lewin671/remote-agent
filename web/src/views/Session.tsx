@@ -363,7 +363,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
             正在 {machine} 上启动 {agentName(agent)}…
           </div>
         )}
-        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={short.text(t.title)} since={t.since} />)}
+        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={toolTitle(t, short)} since={t.since} />)}
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
         ))}
@@ -411,7 +411,9 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
 type Short = { text: (title: string) => string; path: (path: string) => string };
 const asIs: Short = { text: (x) => x, path: (x) => x };
 
-function toolTitle(t: ToolCall, short: Short): string {
+/** A tool row's title, the same while it runs and once done: a file
+ * edit reads "编辑 <path>". */
+function toolTitle(t: Pick<ToolCall, "kind" | "title" | "itemType">, short: Short): string {
   // A file edit's title is one path, which may hold spaces.
   return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short.path(t.title) : short.text(t.title || t.itemType);
 }

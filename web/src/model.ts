@@ -452,6 +452,9 @@ export interface RunningTool {
   title: string;
   since: number;
   callId: string;
+  // As the finished call will be; known at the start for Claude Code.
+  kind: ToolKind;
+  itemType: string;
 }
 
 export interface Derived {
@@ -562,7 +565,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         }
         break;
       case "toolStarted":
-        d.tools.push({ title: k.value.title, since: eventTime(e), callId: k.value.callId });
+        d.tools.push({ title: k.value.title, since: eventTime(e), callId: k.value.callId, kind: k.value.kind, itemType: k.value.itemType });
         break;
       case "toolCall": {
         // Claude Code runs tools in parallel and names the call; Codex does

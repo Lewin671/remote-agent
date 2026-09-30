@@ -754,3 +754,15 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
   act(() => root!.render(popup(Agent.CODEX)));
   expect(host.textContent).not.toContain("No, exit");
 });
+
+it("titles a running file edit as it will be titled once done", () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  s.info = { ...s.info!, cwd: "/Users/me/Code/foo", status: 3 };
+  const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
+  push({ case: "turnStarted", value: {} });
+  push({ case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const running = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
+  expect(running).toContain("编辑 hello.txt");
+});
