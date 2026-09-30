@@ -113,7 +113,7 @@
 
 - **Shift+Tab 按固定顺序循环**：manual → accept edits → plan → bypass → auto → manual。不可用的模式跳过：
   - bypass 只有在以 bypass 启动（本机是 `defaultMode` 设成了 bypass）、带 `--permission-mode bypassPermissions` 或带 `--allow-dangerously-skip-permissions` 时才在循环里。以 `--permission-mode auto` 或 `default` 启动的会话，循环里没有 bypass；恢复时带 `--permission-mode default` 也一样
-  - auto 要模型支持：haiku 下状态栏右侧显示 `auto mode unavailable for this model`，循环里没有 auto；sonnet 下有
+  - auto 要模型支持：haiku 下状态栏右侧显示 `auto mode unavailable for this model`，循环里没有 auto；sonnet 下有。这句提示在 Shift+Tab 跳过 auto 之后也会出现，并停留几秒以上：实测 haiku 下切换模式后马上用 `/model` 换到 sonnet，daemon 7 秒后读到的状态栏里仍有这句，一分钟后再看已经没有了，所以它不能说明当前模型有没有 auto
 - **运行中也能 Shift+Tab**：实测一轮运行时连按两次，模式行从 bypass 变到 manual、再到 accept edits
 - **没有反向的按键**，模式只能沿上面的顺序往前走。`/plan`（`Enable plan mode or view the current session plan`）空闲时直接进入 Plan 模式，对话里记 `Enabled plan mode`，不经过别的模式；运行中输入 `/plan` 只会排队，这一轮结束后才生效。没有找到直接离开 Plan 模式或切到其他模式的命令（`/permissions` 管的是允许和拒绝规则）
 - 切换不写 `~/.claude/settings.json`（实测前后校验值相同）
