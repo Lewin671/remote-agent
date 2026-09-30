@@ -408,27 +408,37 @@ private fun samePlace(p: String) = p.replaceFirst(Regex("^/private(?=/(?:tmp|var
  * what follows it is /, nothing or a :line suffix; anything else, or
  * anything unsure, stays as written.
  */
-fun shortenPaths(text: String, cwd: String, home: String = ""): String {
+fun shortenPaths(text: String, cwd: String, home: String = ""): String =
+    pathToken.replace(text) { m ->
+        val before = m.groupValues[1]
+        val quoted = m.groups[3]?.value
+        val path = quoted ?: m.groups[4]?.value.orEmpty()
+        val short = shortenPath(path, cwd, home)
+        when {
+            short == path -> m.value
+            quoted != null -> before + m.groupValues[2] + short + m.groupValues[2]
+            else -> before + short
+        }
+    }
+
+/**
+ * One whole path, spaces and all (a file edit's title), shortened by the
+ * rule of [shortenPaths]; unchanged when unsure. Same as shortenPath in
+ * web/src/model.ts.
+ */
+fun shortenPath(path: String, cwd: String, home: String = ""): String {
     val base = samePlace(cwd).trimEnd('/')
     val h = samePlace(home).trimEnd('/')
-    // What follows a folder in its token: a subpath, nothing, or :line[:col].
+    // What follows a folder in the path: a subpath, nothing, or :line[:col].
     fun under(p: String, dir: String): String? {
         if (dir.isEmpty() || !p.startsWith(dir)) return null
         val rest = p.substring(dir.length)
         return if (rest.isEmpty() || rest[0] == '/' || lineSuffix.matches(rest)) rest else null
     }
-    fun shorten(path: String): String? {
-        val p = samePlace(path)
-        under(p, base)?.let { r -> return if (r.isEmpty() || r == "/") "." else if (r[0] == '/') r.substring(1) else ".$r" }
-        val hm = h.ifEmpty { homeDir.find(p)?.value.orEmpty() }
-        return under(p, hm)?.let { "~$it" }
-    }
-    return pathToken.replace(text) { m ->
-        val before = m.groupValues[1]
-        val quoted = m.groups[3]?.value
-        val short = shorten(quoted ?: m.groups[4]?.value.orEmpty()) ?: return@replace m.value
-        if (quoted != null) before + m.groupValues[2] + short + m.groupValues[2] else before + short
-    }
+    val p = samePlace(path)
+    under(p, base)?.let { r -> return if (r.isEmpty() || r == "/") "." else if (r[0] == '/') r.substring(1) else ".$r" }
+    val hm = h.ifEmpty { homeDir.find(p)?.value.orEmpty() }
+    return under(p, hm)?.let { "~$it" } ?: path
 }
 
 fun shortPath(p: String): String = p.replace(Regex("^/Users/[^/]+"), "~").replace(Regex("^/home/[^/]+"), "~")

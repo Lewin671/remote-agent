@@ -43,4 +43,17 @@ class ShortPathsTest {
         assertEquals(26, cases.size)
         for ((title, cwd, home, shown) in cases) assertEquals(title, shown, shortenPaths(title, cwd, home))
     }
+
+    // The cases of "whole paths (file edit titles)" in web/src/model.test.ts.
+    private val wholePaths = listOf(
+        listOf("/Users/me/Code/foo bar/a.go", "/Users/me/Code/foo", "/Users/me", "~/Code/foo bar/a.go"),
+        listOf("/Users/me/Code/foo/sub dir/b.go", "/Users/me/Code/foo", "/Users/me", "sub dir/b.go"),
+        listOf("/private/tmp/p/x y.txt", "/tmp/p", "/Users/me", "x y.txt"),
+        listOf("/etc/x y", "/Users/me/Code/foo", "/Users/me", "/etc/x y"),
+    )
+
+    @Test
+    fun takesAFileEditTitleAsOnePath() {
+        for ((path, cwd, home, shown) in wholePaths) assertEquals(path, shown, shortenPath(path, cwd, home))
+    }
 }

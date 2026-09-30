@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Derived
-import io.github.lewin671.remoteagent.core.inputDigest
+import io.github.lewin671.remoteagent.core.shortenPath
 import io.github.lewin671.remoteagent.core.shortenPaths
 import io.github.lewin671.remoteagent.core.dateTime
 import io.github.lewin671.remoteagent.core.decisionText
@@ -63,8 +63,9 @@ fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCod
 
 /** How a tool call is named in the chat: paths shortened, as on the web; the details keep them whole. */
 fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String {
-    val title = shortenPaths(t.title.ifEmpty { t.itemType }, cwd, home)
-    return if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 $title" else title
+    // A file edit's title is one path, spaces and all.
+    if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) return "编辑 " + shortenPath(t.title, cwd, home)
+    return shortenPaths(t.title.ifEmpty { t.itemType }, cwd, home)
 }
 
 /** "运行了 3 条命令" and the like, for a folded run. */
@@ -85,12 +86,13 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
 
 /**
  * Which decided approvals are shown on their tool call instead of a line
- * of their own, exactly as approvalsOnCalls in web/src/model.ts: the call's
- * input_digest equals the digest of the request's input (inputDigest, as
- * the daemon computes it) for the same tool, exactly one decided request
- * and exactly one call share it, and the call comes after the request.
- * Codex and older events have no digest and keep their own line; so do
- * parallel or repeated calls that cannot be told apart.
+ * of their own, exactly as approvalsOnCalls in web/src/model.ts. Only the
+ * daemon's digests count (ApprovalRequested.input_digest against
+ * ToolCall.input_digest, the same computation on the daemon), never one
+ * worked out here: the tool and digest must match exactly one decided
+ * request and exactly one call, and the call must come after the request.
+ * Codex and older daemons give no digest, so their approvals keep their
+ * own line; so do parallel or repeated calls that cannot be told apart.
  */
 fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
     val reqs = LinkedHashMap<String, MutableList<Pair<String, Long>>>()
@@ -98,10 +100,8 @@ fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
     for (e in events) when (e.kindCase) {
         Event.KindCase.APPROVAL_REQUESTED -> {
             val a = e.approvalRequested
-            if (a.approvalId !in d.resolved) continue
-            val digest = inputDigest(a.toolName, a.toolInputJson)
-            if (digest.isEmpty()) continue
-            reqs.getOrPut(a.toolName + "\u0000" + digest) { mutableListOf() } += a.approvalId to e.seq
+            if (a.approvalId !in d.resolved || a.inputDigest.isEmpty()) continue
+            reqs.getOrPut(a.toolName + "\u0000" + a.inputDigest) { mutableListOf() } += a.approvalId to e.seq
         }
         Event.KindCase.TOOL_CALL -> {
             val t = e.toolCall
@@ -331,13 +331,17 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
                 style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = p.fg2,
                 maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
-            if (decision.isNotEmpty()) {
+            // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
+            val meta = listOfNotNull(
+                if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
+                decision.takeIf { it.isNotEmpty() },
+            )
+            if (meta.isNotEmpty()) {
                 Spacer(Modifier.width(8.dp))
-                Text(decision, style = MaterialTheme.typography.bodySmall, color = if (decisionOk) p.muted else p.red, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            if (!ok && t.hasExitCode()) {
-                Spacer(Modifier.width(8.dp))
-                Text("退出码 ${t.exitCode}", style = MaterialTheme.typography.bodySmall, color = p.red)
+                Text(
+                    meta.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
+                    color = if (!ok || !decisionOk) p.red else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             } else if (t.durationMs >= 1000) {
                 Spacer(Modifier.width(8.dp))
                 Text("${t.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = p.faint)
