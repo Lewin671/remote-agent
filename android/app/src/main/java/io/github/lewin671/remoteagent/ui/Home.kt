@@ -64,7 +64,7 @@ fun HomeScreen() {
     val attention = all.filter { statusIn(state, it).tone == io.github.lewin671.remoteagent.core.Tone.WAIT }
     val running = all.filter { !exited(it) && it !in attention && statusIn(state, it) != Status.OFFLINE } +
         all.filter { statusIn(state, it) == Status.OFFLINE }
-    val projects = projects(state)
+    val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
     var showAll by remember { mutableStateOf(false) }
 
     LazyColumn(Modifier.fillMaxSize()) {
@@ -100,12 +100,19 @@ fun HomeScreen() {
                 }
             }
         }
-        if (projects.isNotEmpty()) {
-            item { SectionHeader("项目") }
+        if (groups.pinned.isNotEmpty() || groups.others.isNotEmpty() || groups.hidden.isNotEmpty()) {
             item {
-                Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column { projects.forEach { ProjectRow(state, it, t) } }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionHeader(if (groups.pinned.isNotEmpty()) "常用项目" else "项目", modifier = Modifier.weight(1f))
+                    TextButton(onClick = { nav.manageProjects() }, Modifier.padding(end = 8.dp)) { Text("管理 ›") }
                 }
+            }
+            if (groups.pinned.isNotEmpty()) item {
+                Card(Modifier.padding(horizontal = 12.dp)) { Column { groups.pinned.forEach { ProjectRow(state, it, t, pinned = true) } } }
+            }
+            if (groups.pinned.isNotEmpty() && groups.others.isNotEmpty()) item { SectionHeader("其他项目") }
+            if (groups.others.isNotEmpty()) item {
+                Card(Modifier.padding(horizontal = 12.dp)) { Column { groups.others.forEach { ProjectRow(state, it, t) } } }
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -162,14 +169,20 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, divider: Boolean, sh
 }
 
 @Composable
-private fun ProjectRow(state: RemoteState, pr: Project, t: Long) {
+private fun ProjectRow(state: RemoteState, pr: Project, t: Long, pinned: Boolean = false) {
     val p = pal
     val nav = LocalNav.current
     val active = pr.sessions.count { !exited(it) }
     Row44(onClick = { nav.project(pr.key) }) {
         Avatar(pr.key)
         Column(Modifier.weight(1f)) {
-            Text(pr.name, style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(pr.name, style = MaterialTheme.typography.titleSmall)
+                if (pinned) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("常用", style = MaterialTheme.typography.labelSmall, color = p.blue)
+                }
+            }
             Text(
                 shortPath(pr.key) + " · " + if (active > 0) "$active 个进行中" else whenText(pr.updatedMs, t),
                 style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,

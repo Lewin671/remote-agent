@@ -63,6 +63,8 @@ import io.github.lewin671.remoteagent.ui.SessionScreen
 import io.github.lewin671.remoteagent.ui.SettingsScreen
 import io.github.lewin671.remoteagent.ui.ToolPage
 import io.github.lewin671.remoteagent.ui.QueuePage
+import io.github.lewin671.remoteagent.ui.ManageProjectsScreen
+import io.github.lewin671.remoteagent.ui.HiddenProjectsScreen
 import io.github.lewin671.remoteagent.ui.OpenTerminal
 import io.github.lewin671.remoteagent.ui.pal
 import io.github.lewin671.remoteagent.ui.statusIn
@@ -150,6 +152,8 @@ class MainActivity : ComponentActivity() {
                     composable("plan/{sid}") { PlanPage(it.arguments?.getString("sid").orEmpty()) }
                     composable("newproject") { NewProjectScreen() }
                     composable("pick") { PickProjectScreen() }
+                    composable("projects") { ManageProjectsScreen() }
+                    composable("projects/hidden") { HiddenProjectsScreen() }
                     composable("queue/{sid}") { QueuePage(it.arguments?.getString("sid").orEmpty()) }
                     composable("tool/{sid}/{seq}") { ToolPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0) }
                 }
@@ -187,6 +191,8 @@ class MainActivity : ComponentActivity() {
         pickProject = { nav.navigate("pick") },
         tool = { sid, seq -> nav.navigate("tool/$sid/$seq") },
         queue = { nav.navigate("queue/$it") },
+        manageProjects = { nav.navigate("projects") },
+        hiddenProjects = { nav.navigate("projects/hidden") },
         sessionTerminal = { sid ->
             OpenTerminal.requested[sid] = true
             nav.navigate("session/$sid") { launchSingleTop = true }

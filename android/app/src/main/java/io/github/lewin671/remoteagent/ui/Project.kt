@@ -203,7 +203,29 @@ fun ProjectScreen(key: String, focus: Boolean) {
             }
             item { Spacer(Modifier.height(12.dp)) }
         }
-        NewSessionCard(state, projectConfig(state, key), projectName(key), focus)
+        // A hidden project stays reachable from its sessions and
+        // notifications; starting a new session there restores it first.
+        if (io.github.lewin671.remoteagent.core.isHidden(state, key)) HiddenBanner(state, key)
+        else NewSessionCard(state, projectConfig(state, key), projectName(key), focus)
+    }
+}
+
+@Composable
+private fun HiddenBanner(state: RemoteState, key: String) {
+    val p = pal
+    val remote = LocalRemote.current
+    val change = PrefsChanges.states[key]
+    Column(Modifier.fillMaxWidth().background(p.card).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("这个项目已从列表移除。", style = MaterialTheme.typography.titleSmall)
+        Text("会话和提醒照常；要在这里新建会话，先把它恢复到项目列表。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        val blocked = prefsBlocked(state)
+        if (blocked != null) Text(blocked, style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+        if (change is PrefsChanges.State.Failed) Text("没能保存：${change.error}", style = MaterialTheme.typography.bodySmall, color = p.red)
+        Button(
+            onClick = { PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.Unhide(key)) },
+            enabled = blocked == null && change != PrefsChanges.State.Saving,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+        ) { Text(if (change == PrefsChanges.State.Saving) "正在恢复…" else "恢复到项目列表") }
     }
 }
 
@@ -418,8 +440,11 @@ fun PickProjectScreen() {
     val state by remote.state.collectAsState()
     val p = pal
     PageScaffold("新会话 · 选项目") {
+        val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
         LazyColumn {
-            items(projects(state), key = { it.key }) { pr ->
+            if (groups.pinned.isNotEmpty()) item { SectionHeader("常用项目") }
+            items(groups.pinned + groups.others, key = { it.key }) { pr ->
+                if (groups.pinned.isNotEmpty() && pr == groups.others.firstOrNull()) SectionHeader("其他项目")
                 Row44(onClick = { nav.projectNew(pr.key) }) {
                     Avatar(pr.key)
                     Column(Modifier.weight(1f)) {

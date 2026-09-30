@@ -113,6 +113,7 @@ object AccountMemory {
         Starts.clear()
         Answers.clear()
         Cancels.clear()
+        PrefsChanges.clear()
     }
 }
 

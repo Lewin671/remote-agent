@@ -69,6 +69,8 @@ class Nav(
     /** The session with its terminal showing. */
     val sessionTerminal: (String) -> Unit = {},
     val queue: (String) -> Unit = {},
+    val manageProjects: () -> Unit = {},
+    val hiddenProjects: () -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }
