@@ -161,6 +161,11 @@ class MainActivity : ComponentActivity() {
                     composable("newproject") { NewProjectScreen() }
                     composable("pick") { PickProjectScreen() }
                     composable("projects") { ManageProjectsScreen() }
+                    composable("image/{sid}/{seq}/{i}") {
+                        io.github.lewin671.remoteagent.ui.ImageViewer(
+                            it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0, it.arguments?.getString("i")?.toIntOrNull() ?: 0,
+                        )
+                    }
                     composable("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
                     composable("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
                     composable("projects/hidden") { HiddenProjectsScreen() }
@@ -203,6 +208,7 @@ class MainActivity : ComponentActivity() {
         queue = { nav.navigate("queue/$it") },
         manageProjects = { nav.navigate("projects") },
         devices = { nav.navigate("devices") },
+        image = { sid, seq, i -> nav.navigate("image/$sid/$seq/$i") },
         client = { nav.navigate("client/$it") },
         hiddenProjects = { nav.navigate("projects/hidden") },
         sessionTerminal = { sid ->

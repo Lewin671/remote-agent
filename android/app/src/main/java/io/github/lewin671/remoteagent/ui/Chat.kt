@@ -47,7 +47,18 @@ sealed interface ChatItem {
     val key: String
 
     /** [from]: who sent it, when the daemon says (v2): a client's name, 本客户端, or the computer's terminal. */
-    data class User(override val key: String, val text: String, val local: Boolean, val time: Long, val from: String? = null) : ChatItem
+    data class User(
+        override val key: String,
+        val text: String,
+        val local: Boolean,
+        val time: Long,
+        val from: String? = null,
+        val images: List<io.github.lewin671.remoteagent.proto.ImageRef> = emptyList(),
+        val seq: Long = 0,
+    ) : ChatItem
+
+    /** Images the agent made, as a card of their own. */
+    data class Generated(override val key: String, val seq: Long, val prompt: String, val images: List<io.github.lewin671.remoteagent.proto.ImageRef>) : ChatItem
     data class Agent(override val key: String, val text: String) : ChatItem
     data class Thought(override val key: String, val text: String) : ChatItem
 
@@ -56,7 +67,7 @@ sealed interface ChatItem {
      * [background]: the call returned but its command went on in the
      * background, so how it ends is not known.
      */
-    data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true, val background: Boolean = false) : ChatItem
+    data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true, val background: Boolean = false, val seq: Long = 0) : ChatItem
 
     /**
      * A tool that started and has no result yet, where it started. With
@@ -65,7 +76,7 @@ sealed interface ChatItem {
     data class Running(override val key: String, val tool: io.github.lewin671.remoteagent.core.RunningTool, val unfinished: Boolean) : ChatItem
 
     /** Two or more completed tool calls in a row, folded into one line. */
-    data class Tools(override val key: String, val calls: List<ToolCall>) : ChatItem
+    data class Tools(override val key: String, val calls: List<ToolCall>, val callSeqs: List<Long> = emptyList()) : ChatItem
     data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0) : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
 
@@ -104,7 +115,7 @@ fun toolsSummary(calls: List<ToolCall>): String = when {
     calls.all { it.kind == ToolKind.TOOL_KIND_COMMAND } -> "运行了 ${calls.size} 条命令"
     calls.all { it.kind == ToolKind.TOOL_KIND_FILE_CHANGE } -> "编辑了 ${calls.size} 个文件"
     else -> "完成了 ${calls.size} 个工具调用"
-}
+} + calls.sumOf { it.imagesCount }.let { if (it > 0) " · $it 张截图" else "" }
 
 /** Canceled, or answered in the CLI's own prompt: the call that follows shows what happened. */
 private fun recorded(d: ApprovalDecision) =
@@ -169,6 +180,7 @@ fun buildChat(
 ): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
+    val runSeqs = mutableListOf<Long>()
     var runKey = ""
     val decisions = approvalDecisions(events, d)
     var turnTokens = 0L
@@ -179,10 +191,11 @@ fun buildChat(
     fun flushRun() {
         when (run.size) {
             0 -> {}
-            1 -> out += ChatItem.Tool(runKey, run[0])
-            else -> out += ChatItem.Tools(runKey, run.toList())
+            1 -> out += ChatItem.Tool(runKey, run[0], seq = runSeqs[0])
+            else -> out += ChatItem.Tools(runKey, run.toList(), runSeqs.toList())
         }
         run.clear()
+        runSeqs.clear()
     }
     fun flush() = flushRun()
     // Messages that never went out, by the seq that says so.
@@ -209,16 +222,17 @@ fun buildChat(
         if (decided != null) {
             // Kept out of a fold so that its decision stays in sight.
             flushRun()
-            out += ChatItem.Tool(k, t, decided.first, decided.second)
+            out += ChatItem.Tool(k, t, decided.first, decided.second, seq = callEvent.seq)
         } else if (background) {
             flushRun()
-            out += ChatItem.Tool(k, t, background = true)
+            out += ChatItem.Tool(k, t, background = true, seq = callEvent.seq)
         } else if (toolOk(t)) {
             if (run.isEmpty()) runKey = k
             run += t
+            runSeqs += callEvent.seq
         } else {
             flushRun()
-            out += ChatItem.Tool(k, t)
+            out += ChatItem.Tool(k, t, seq = callEvent.seq)
         }
     }
     for (e in events) {
@@ -244,7 +258,8 @@ fun buildChat(
             Event.KindCase.TOOL_CALL -> if (e.seq !in placed) addCall(k, e, io.github.lewin671.remoteagent.core.wentToBackground(e.toolCall))
             Event.KindCase.USER_MESSAGE -> {
                 flush()
-                out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e), who(e.originOrNull()))
+                val imgs = e.userMessage.imagesList
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(e.userMessage.text, imgs), e.seq in d.typedLocally, eventTime(e), who(e.originOrNull()), imgs, e.seq)
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
                 flush()
@@ -271,6 +286,10 @@ fun buildChat(
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
                 val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
                 out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + (by?.let { " · $it" } ?: ""), "✓", 1)
+            }
+            Event.KindCase.IMAGE_GENERATED -> if (e.imageGenerated.imagesCount > 0) {
+                flush()
+                out += ChatItem.Generated(k, e.seq, e.imageGenerated.revisedPrompt, e.imageGenerated.imagesList)
             }
             Event.KindCase.PLAN_PROPOSED -> {
                 flush()
@@ -342,7 +361,9 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
             val from = item.from ?: if (item.local) "在终端里输入" else null
             if (from != null) Text(from, style = MaterialTheme.typography.bodySmall, color = p.faint)
-            Box(Modifier.widthIn(max = 320.dp).background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+            val chat = LocalChat.current
+            if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(vertical = 4.dp))
+            if (item.text.isNotBlank() || item.images.isEmpty()) Box(Modifier.widthIn(max = 320.dp).background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
                 androidx.compose.foundation.text.selection.SelectionContainer {
                     Text(item.text, style = MaterialTheme.typography.bodyLarge, color = p.fg)
                 }
@@ -355,12 +376,35 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
             if (item.background) BackgroundRow(item.call, cwd, home)
             else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
+            // A tool's images sit right under it, e.g. the file Claude Code read.
+            val chat = LocalChat.current
+            if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
         }
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            Expandable("✓ " + toolsSummary(item.calls) + "  ▸", "✓ " + toolsSummary(item.calls) + "  ▾") {
-                Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd, home) } }
+            var open by rememberSaveable(item.key) { mutableStateOf(false) }
+            Text(
+                "✓ " + toolsSummary(item.calls) + if (open) "  ▾" else "  ▸",
+                Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp),
+                style = MaterialTheme.typography.bodyMedium, color = p.muted,
+            )
+            if (open) Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd, home) } }
+            else {
+                // Screenshots stay in sight with the group closed.
+                val chat = LocalChat.current
+                val imgs = item.calls.flatMap { c -> c.imagesList }
+                if (imgs.isNotEmpty()) ImageRow(imgs, { i ->
+                    var n = i
+                    for ((ci, c) in item.calls.withIndex()) {
+                        if (n < c.imagesCount) { chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, n); break }
+                        n -= c.imagesCount
+                    }
+                }, Modifier.padding(bottom = 4.dp))
             }
+        }
+        is ChatItem.Generated -> {
+            val chat = LocalChat.current
+            GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
         }
         is ChatItem.Note -> Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.icon.isNotEmpty()) {

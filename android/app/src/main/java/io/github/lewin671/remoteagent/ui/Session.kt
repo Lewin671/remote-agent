@@ -258,6 +258,7 @@ private fun ChatPane(
                 terminalOpen = status != Status.EXITED && status != Status.OFFLINE,
                 onTerminal = onTerminal,
                 onTool = { seq -> nav.tool(s.id, seq) },
+                onImage = { seq, i -> nav.image(s.id, seq, i) },
             )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {

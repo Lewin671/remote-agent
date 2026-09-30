@@ -357,3 +357,42 @@ suspend fun uploadImage(
     if (st.imageId.isEmpty()) throw CommandException("internal", "电脑没有给出图片 ID")
     return st.imageId
 }
+
+// --- images in a session ---
+
+/** One image as it appears in a session: the ref, the event it is in, and what shows it. */
+data class SessionImage(val ref: io.github.lewin671.remoteagent.proto.ImageRef, val seq: Long, val kind: io.github.lewin671.remoteagent.proto.Event.KindCase, val toolTitle: String = "")
+
+/** Every image of a session in the order they appeared, for the viewer to page through. */
+fun sessionImages(events: List<io.github.lewin671.remoteagent.proto.Event>): List<SessionImage> = buildList {
+    for (e in events) when (e.kindCase) {
+        io.github.lewin671.remoteagent.proto.Event.KindCase.USER_MESSAGE -> e.userMessage.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase)) }
+        io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL -> e.toolCall.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase, e.toolCall.title)) }
+        io.github.lewin671.remoteagent.proto.Event.KindCase.IMAGE_GENERATED -> e.imageGenerated.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase)) }
+        else -> {}
+    }
+}
+
+private val placeholder = Regex("\\[Image #(\\d+)]")
+
+/**
+ * A user message's text as shown next to its images. When the message is
+ * its images followed by text, the leading "[Image #N]" placeholders are
+ * dropped: the numbered previews stand for them. When the text refers to
+ * images further in, every placeholder reads "图 N" so the references keep
+ * their meaning. Placeholders the message has no image for, e.g. typed as
+ * text, stay as written.
+ */
+fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.ImageRef>): String {
+    val known = refs.map { it.cliIndex }.filter { it > 0 }.toSet()
+    if (known.isEmpty()) return text
+    var t = text
+    while (true) {
+        val m = Regex("^\\s*\\[Image #(\\d+)]").find(t) ?: break
+        if (m.groupValues[1].toInt() !in known) break
+        t = t.substring(m.range.last + 1)
+    }
+    val laterRefs = placeholder.findAll(t).any { it.groupValues[1].toInt() in known }
+    val base = if (laterRefs) text else t.trimStart()
+    return placeholder.replace(base) { m -> if (m.groupValues[1].toInt() in known) "图 ${m.groupValues[1]}" else m.value }
+}

@@ -55,6 +55,8 @@ class ChatContext(
     val terminalOpen: Boolean,
     val onTerminal: () -> Unit,
     val onTool: (Long) -> Unit,
+    /** Opens the viewer at an event's image. */
+    val onImage: (seq: Long, index: Int) -> Unit = { _, _ -> },
 )
 
 val LocalChat = compositionLocalOf<ChatContext?> { null }

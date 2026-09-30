@@ -75,7 +75,9 @@ abstract class CacheDb : RoomDatabase() {
     }
 }
 
-class RoomCache(private val dao: CacheDao) : CipherCache {
+class RoomCache(private val dao: CacheDao, private val images: ImageEnvelopes? = null) : CipherCache {
+    override suspend fun image(key: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { images?.get(key) }
+    override suspend fun putImage(key: String, envelope: ByteArray) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { images?.put(key, envelope) ?: Unit }
     override suspend fun machines() = dao.machines().map { Machine.parseFrom(it.data) }
     override suspend fun sessions() = dao.sessions().map { RemoteSession.parseFrom(it.data) }
     override suspend fun events(sessionId: String) = dao.events(sessionId).map { StoredEvent.parseFrom(it.data) }

@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- WorkManager runs expedited work as a foreground service before API 31. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Saving an image to the gallery needs it before Android 10 only. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
@@ -40,5 +42,15 @@
         <receiver
             android:name=".push.ApprovalReceiver"
             android:exported="false" />
+        <!-- Images the user shares go through here, from the cache only. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

@@ -39,6 +39,7 @@ class RaApp : Application() {
     val prefs: Prefs by lazy { Prefs(this) }
     val db: CacheDb by lazy { CacheDb.open(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
+    val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
 
     private val _remote = MutableStateFlow<Remote?>(null)
     val remote: StateFlow<Remote?> = _remote.asStateFlow()
@@ -56,6 +57,8 @@ class RaApp : Application() {
         instance = this
         // Kept light: a push may start the process just to show a notification.
         Push.createChannels(this)
+        // Images shared last time have reached the other app by now.
+        scope.launch(Dispatchers.IO) { java.io.File(cacheDir, io.github.lewin671.remoteagent.ui.SHARED_DIR).deleteRecursively() }
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 foreground = true
@@ -104,7 +107,7 @@ class RaApp : Application() {
     private fun use(acct: Account) {
         // Drafts and the like are kept per account, and only in memory.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
-        val r = Remote(acct, http, RoomCache(db.dao()), log = { Log.i(TAG, it) })
+        val r = Remote(acct, http, RoomCache(db.dao(), imageEnvelopes), log = { Log.i(TAG, it) })
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {
@@ -129,6 +132,7 @@ class RaApp : Application() {
         withContext(Dispatchers.IO) {
             vault.clear()
             db.clearAllTables()
+            imageEnvelopes.clear()
             prefs.clear()
         }
     }

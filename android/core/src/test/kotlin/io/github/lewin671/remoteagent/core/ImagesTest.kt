@@ -251,3 +251,27 @@ class UploadTest {
         assertTrue(e is CommandException)
     }
 }
+
+class SessionImagesTest {
+    private fun ref(n: Int, id: String = "i$n") = io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setImageId(id).setCliIndex(n).build()
+
+    @Test
+    fun placeholdersBecomeNumbersAndLeadingOnesGo() {
+        val refs = listOf(ref(1), ref(2))
+        assertEquals("这两个页面底部的按钮都点不到", imageText("[Image #1] [Image #2]这两个页面底部的按钮都点不到", refs))
+        assertEquals("图 1 电脑上，图 2 手机上", imageText("图 1 电脑上，[Image #2] 手机上".replace("图 1", "[Image #1]"), refs))
+        // A placeholder without its image is left as typed.
+        assertEquals("see [Image #9]", imageText("see [Image #9]", refs))
+        assertEquals("[Image #1] text", imageText("[Image #1] text", emptyList()))
+    }
+
+    @Test
+    fun theViewerPagesThroughEveryImageInOrder() {
+        val events = listOf(
+            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(1).setUserMessage(io.github.lewin671.remoteagent.proto.UserMessage.newBuilder().addImages(ref(1)).addImages(ref(2))).build(),
+            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(2).setToolCall(io.github.lewin671.remoteagent.proto.ToolCall.newBuilder().setTitle("Read a.png").addImages(ref(0, "t"))).build(),
+            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(3).setImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated.newBuilder().addImages(ref(0, "g"))).build(),
+        )
+        assertEquals(listOf("i1", "i2", "t", "g"), sessionImages(events).map { it.ref.imageId })
+    }
+}
