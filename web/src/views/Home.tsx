@@ -36,6 +36,8 @@ import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
 
 export type { Go };
 
+function ComposeIcon() { return <svg className="compose-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 13v6H5V5h6" strokeLinecap="round" strokeLinejoin="round"/><path d="m11 13 8-8 2 2-8 8-3 1 1-3Z" strokeLinejoin="round"/></svg>; }
+
 /** Sessions waiting for the user, oldest wait first. */
 export function todoList(remote: Remote): SessionView[] {
   return [...remote.sessions.values()]
@@ -241,9 +243,10 @@ function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
         {g.pinned.length ? "其他项目" : "项目"}
         {g.pinned.length === 0 && manage}
       </div>
-      {g.others.map((p) => (
+      {g.others.slice(0, 5).map((p) => (
         <ProjectRow key={p.key} p={p} go={go} />
       ))}
+      {g.others.length > 5 && <button className="todo-more" onClick={() => go("projects")}>全部项目 ›</button>}
       {g.others.length === 0 && <p className="empty">{g.hidden.length ? "其余项目都已从列表移除" : "没有其他项目"}</p>}
     </>
   );
@@ -270,7 +273,8 @@ function HomeConn({ remote }: { remote: Remote }) {
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
   useNow(30_000);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(() => remote.demoFlag("pick"));
+  const [allLive, setAllLive] = useState(false);
   const live = liveList(remote);
   const list = projects(remote.sessions.values());
   return (
@@ -279,7 +283,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         <h3>会话</h3>
         <HomeConn remote={remote} />
         <button className="hit" onClick={() => setPicking(true)} aria-label="新会话">
-          <span className="newbtn">＋</span>
+          <ComposeIcon />
         </button>
       </div>
       <ListError remote={remote} />
@@ -299,9 +303,10 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
               <div className="label">
                 进行中 <span>{live.length}</span>
               </div>
-              {live.map((s, i) => (
+              {(allLive ? live : live.slice(0, 5)).map((s, i) => (
                 <SessionRow key={s.id} remote={remote} s={s} go={go} last={i === live.length - 1} />
               ))}
+              {!allLive && live.length > 5 && <button className="todo-more" onClick={() => setAllLive(true)}>还有 {live.length - 5} 个进行中 ›</button>}
             </>
           )}
           <ProjectSections remote={remote} go={go} />
@@ -383,7 +388,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
             go("");
           }}
         >
-          新会话
+          <ComposeIcon />
         </button>
       </div>
       <div className="scroll">
@@ -442,7 +447,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
   // The first project by liveness and creation time; a removed one is not offered.
   const list = [...g.pinned, ...g.others].sort(compareProjects);
   const [key, setKey] = useState<string>();
-  const [picking, setPicking] = useState<"" | "pick" | "new">("");
+  const [picking, setPicking] = useState<"" | "pick" | "new">(() => remote.demoFlag("pick") ? "pick" : "");
   const pkey = key ?? list[0]?.key ?? "";
   const ns = useNewSession(remote, pkey, go);
   const focus = remote.focusProject === "*";
@@ -457,7 +462,6 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
           <Empty remote={remote} go={go} onStart={() => setPicking("new")} />
         ) : (
           <>
-            <h3>开始一个任务</h3>
             <RemovedNotice remote={remote} pkey={pkey} />
             <NewBox
               ns={ns}
@@ -477,7 +481,6 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
             />
           </>
         )}
-        <TodoSection remote={remote} go={go} wide />
       </div>
       {picking && (
         <NewFlow

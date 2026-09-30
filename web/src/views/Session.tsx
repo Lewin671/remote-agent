@@ -8,6 +8,7 @@ import { Markdown } from "../markdown";
 import {
   agentName,
   agentOf,
+  alwaysText,
   ago,
   decisionText,
   dockItems,
@@ -18,6 +19,7 @@ import {
   inputFailure,
   machineName,
   modeName,
+  modeOf,
   phaseOf,
   projectKey,
   projectName,
@@ -38,11 +40,11 @@ import { useDerived } from "./actions";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { ComposeStatus, Composer, promptIdOf } from "./Composer";
+import { Composer, promptIdOf } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
-import { QueuePage } from "./Queue";
+import { PendingBubbles } from "./Queue";
 import { TerminalView } from "./Terminal";
-import { ActiveTool, BackgroundTool, ToolGroup, ToolPage, ToolRow, toolTitle, type Short } from "./Tools";
+import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, toolTitle, type Short } from "./Tools";
 
 type Tab = "chat" | "term" | "split";
 
@@ -103,7 +105,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [page, setPage] = useState<"" | "plan" | "question" | "queue" | { approval: string } | { tool: bigint | undefined }>("");
+  const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
   const setToastRef = useRef(setToast);
@@ -155,12 +157,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const interrupt = () => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } }));
   const toTerminal = () => setTab(canSplit ? "split" : "term");
   const agentLabel = agentName(agent);
-  const nameTitle = (
-    <>
-      <span className="tname">{title}</span>
-      <span className="agent-id">{agentLabel}</span>
-    </>
-  );
+  const nameTitle = <span className="tname">{title}</span>;
 
   // Detail pages replace the whole session view.
   if (page === "plan" && d.plan && session.info?.planOpen)
@@ -185,24 +182,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
     const a = d.approvals.get(page.approval);
     if (a) return <ApprovalPage remote={remote} sid={sid} a={a} agent={agent} title={title} onBack={() => setPage("")} />;
   }
-  if (page === "queue") return <QueuePage remote={remote} session={session} d={d} title={`${title} · ${agentLabel}`} onBack={() => setPage("")} />;
-  if (typeof page === "object" && "tool" in page)
-    return (
-      <ToolPage
-        remote={remote}
-        d={d}
-        seq={page.tool}
-        agent={agentLabel}
-        sub={`${title} · ${mname}`}
-        cwd={shortPath(session.info?.cwd ?? "")}
-        onBack={() => setPage("")}
-        onTerminal={() => {
-          setPage("");
-          toTerminal();
-        }}
-        onInterrupt={interrupt}
-      />
-    );
 
   const tabs: [Tab, string][] = [
     ["chat", "聊天"],
@@ -222,7 +201,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const sub = (
     <>
       <Dot tone={st.tone} />
-      {st.text} · {project} · {mname}
+      {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
     </>
   );
   const more = (
@@ -237,14 +216,13 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <Dot tone={st.tone} />
         <b>{title}</b>
         <span className="muted">
-          {st.text} · {project} · {mname}
+          {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
         </span>
         <button className="mr" onClick={() => setMenu(true)} aria-label="更多">
           ⋯
         </button>
       </div>
       <div className="r2">
-        <span className="agent-id">{agentLabel}</span>
         {seg}
       </div>
     </header>
@@ -262,7 +240,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         agent={agent}
         machine={mname}
         onRestore={restore}
-        onTool={(seq) => setPage({ tool: seq })}
         onTerminal={inactive ? undefined : toTerminal}
       />
       {toast && (
@@ -292,7 +269,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <EndCard remote={remote} session={session} ended={ended} machineOnline={machine?.online ?? false} agent={agent} mname={mname} lastSeen={machine?.lastSeenMs ?? 0n} />
       ) : (
         <>
-          <ComposeStatus remote={remote} session={session} d={d} onQueue={() => setPage("queue")} onInterrupt={interrupt} />
           <Composer
             key={composerKey}
             ref={composer}
@@ -301,10 +277,11 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             d={d}
             wide={wide}
             onFocus={(v) => setTyping(v)}
-            onSend={(text) => {
-              remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean));
+            onSend={(text, mode) => {
+              remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean), mode);
               tray.clear();
             }}
+            onInterrupt={interrupt}
             tray={tray}
             trayView={<TrayView tray={tray} />}
             attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />}
@@ -338,13 +315,13 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <ActionSheet
           info={
             <>
-              <span className="mono">{shortPath(session.info?.cwd ?? "")}</span> · {mname}
+              {agentLabel} · {project} · {mname}<br /><span className="mono">{shortPath(session.info?.cwd ?? "")}</span>
               <br />
               会话 <span className="mono">{sid}</span>
             </>
           }
           actions={[
-            ...(!inactive && d.running ? [{ label: "中断本轮", onClick: interrupt }] : []),
+            ...(!inactive && d.running ? [{ label: "中断本轮", red: true, onClick: interrupt }] : []),
             ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
           ]}
           onClose={() => setMenu(false)}
@@ -393,7 +370,6 @@ function ChatBody({
   agent,
   machine,
   onRestore,
-  onTool,
   onTerminal,
 }: {
   remote: Remote;
@@ -403,7 +379,6 @@ function ChatBody({
   agent: Agent;
   machine: string;
   onRestore: (text: string, from?: string) => void;
-  onTool: (seq: bigint) => void;
   onTerminal?: () => void;
 }) {
   const sid = session.id;
@@ -476,13 +451,14 @@ function ChatBody({
           }
         }}
       >
+        {hist.loaded && <div className="sep">会话从这里开始</div>}
         <div className="sep">
           {started ? hhmm(started) + " · " : ""}
           {shortPath(cwd)}
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTool={onTool} onTerminal={onTerminal} who={who} sid={sid} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTerminal={onTerminal} who={who} sid={sid} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -490,10 +466,10 @@ function ChatBody({
             后面的记录没读到
           </Banner>
         )}
-        {showPrompt && (
+        {showPrompt && promptState !== InputStatus.QUEUED && promptState !== InputStatus.HELD_BY_CLI && (
           <div className="me">
             <div>{prompt}</div>
-            <small>{promptState === InputStatus.QUEUED ? `已送达电脑，等 ${agentName(agent)} 就绪后发出` : "已送达电脑"}</small>
+            <small>已送达电脑</small>
           </div>
         )}
         {session.info?.status === SessionStatus.STARTING && (
@@ -504,6 +480,7 @@ function ChatBody({
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} />
         ))}
+        <PendingBubbles remote={remote} session={session} d={d} />
       </div>
       {unseen > 0 && (
         <button
@@ -555,7 +532,6 @@ function Row({
   onRestore,
   nameModel,
   remote,
-  onTool,
   onTerminal,
   who,
   sid,
@@ -569,7 +545,6 @@ function Row({
   onRestore: (text: string, from?: string) => void;
   nameModel: (id: string) => string;
   remote: Remote;
-  onTool: (seq: bigint) => void;
   onTerminal?: () => void;
   who: Who;
   sid: string;
@@ -577,7 +552,7 @@ function Row({
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "background") return <BackgroundTool call={it.call} short={short} remote={remote} onTerminal={onTerminal} />;
   if (it.kind === "running" || it.kind === "unsettled")
-    return <ActiveTool tool={{ ...it.tool, title: toolTitle(it.tool, short) }} d={d} unsettled={it.kind === "unsettled"} aborted={it.kind === "unsettled" && it.aborted} remote={remote} onDetail={() => onTool(it.tool.seq)} onTerminal={onTerminal} />;
+    return <ActiveTool tool={{ ...it.tool, title: toolTitle(it.tool, short) }} d={d} unsettled={it.kind === "unsettled"} aborted={it.kind === "unsettled" && it.aborted} remote={remote} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
   const e = it.event;
   const k = e.kind;
@@ -628,7 +603,7 @@ function Row({
         </details>
       );
     case "toolCall":
-      return <ToolRow t={k.value} short={short} decision={it.decision} by={it.approvalId && otherThanMe(d.by.get(it.approvalId), who) ? elsewhereLabel(d.by.get(it.approvalId), who.ctx) : undefined} />;
+      return <ToolRow t={k.value} short={short} decision={it.decision} resultText={it.decision === ApprovalDecision.ALLOW_ALWAYS && it.approvalId ? alwaysText(d.resolved.get(it.approvalId)?.message ?? "") : undefined} by={it.approvalId && otherThanMe(d.by.get(it.approvalId), who) ? elsewhereLabel(d.by.get(it.approvalId), who.ctx) : undefined} />;
     case "turnEnded":
       return <div className="sysline">已中断{otherThanMe(e.origin, who) ? ` · ${originLabel(e.origin, who.ctx) || "另一客户端"}` : ""}</div>;
     case "planAnswered": {
@@ -644,7 +619,7 @@ function Row({
     case "approvalRequested": {
       const r = d.resolved.get(k.value.approvalId);
       if (!r) return null;
-      const ok = r.decision === ApprovalDecision.ALLOW;
+      const ok = r.decision === ApprovalDecision.ALLOW || r.decision === ApprovalDecision.ALLOW_ALWAYS;
       // Canceled, or answered in the CLI's own prompt: what happened shows
       // in the tool call that follows.
       const canceled = r.decision === ApprovalDecision.CANCELED || r.decision === ApprovalDecision.TERMINAL;
@@ -653,7 +628,7 @@ function Row({
           <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? "–" : ok ? "✓" : "✕"}</span>
           <code>{k.value.command || k.value.toolName}</code>
           <span className="muted">
-            {decisionText(r.decision)}
+            {r.decision === ApprovalDecision.ALLOW_ALWAYS ? alwaysText(r.message) : decisionText(r.decision)}
             {otherThanMe(d.by.get(k.value.approvalId), who) && r.decision !== ApprovalDecision.TERMINAL && ` · ${elsewhereLabel(d.by.get(k.value.approvalId), who.ctx)}`}
           </span>
         </div>
@@ -895,4 +870,3 @@ function EndCard({
     </div>
   );
 }
-

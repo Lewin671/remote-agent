@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, ago, defaultModeOf, exited, findModel, machineAgents, modelLabel, machineName, modeLabel, modeName, projects, shortPath } from "../model";
+import { agentName, ago, defaultModeOf, findModel, machineAgents, modelLabel, machineName, modeLabel, modeName, projects, shortPath } from "../model";
 import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
@@ -182,7 +182,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
 /** 账户额度: each CLI's account quota on one machine, apart from context
  * use and token counts. Codex reports it in its rollout; Claude Code's is
  * not collected yet, and says so rather than showing anything made up. */
-export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: (r: string) => void; onBack: () => void }) {
+export function QuotaPage({ remote, id, onBack }: { remote: Remote; id: string; go: (r: string) => void; onBack: () => void }) {
   useRemote(remote);
   // Reset times pass with nothing else changing.
   const clock = useNow(30_000);
@@ -195,20 +195,6 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
       </div>
     );
   const views = machineQuotaViews(m.meta, machineAgents(m), clock, m.online);
-  // A Claude Code session on this machine, to read /usage in its terminal.
-  const claude = [...remote.sessions.values()].find((s) => s.machineId === id && agentOf(s) === Agent.CLAUDE && !exited(s));
-  const toUsage = claude && (
-    <button
-      className="row"
-      disabled={!m.online}
-      onClick={() => {
-        remote.termFirst.add(claude.id);
-        go("s/" + claude.id);
-      }}
-    >
-      去终端查看 /usage<span className="v">›</span>
-    </button>
-  );
   return (
     <div className="page gray">
       <NavBar onBack={onBack} title={<span className="tname">账户额度</span>} sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`} />
@@ -254,7 +240,6 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
                   </div>
                 ))
               )}
-              {v.agent === Agent.CLAUDE && toUsage}
             </div>
             {(v.banner || v.note) && (
               <div className="gbanner">
@@ -264,7 +249,6 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
             )}
           </div>
         ))}
-        {views.some((v) => v.agent === Agent.CLAUDE) && !claude && <div className="manage-hint">要看 /usage，先在这台机器上打开一个 Claude Code 会话。</div>}
         <div className="manage-hint">额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>
@@ -706,7 +690,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             const follow = "跟随配置";
             return (
               <div key={a}>
-                <div className="glabel">{agentName(a)} · 新会话默认设置</div>
+                <div className="glabel">{agentName(a)} · 新项目默认设置</div>
                 <div className="grp">
                   <button className="row" onClick={() => setPick({ agent: a, what: "model" })}>
                     模型<span className="v">{def.model ? modelName(a, def.model) : follow} ›</span>

@@ -1,10 +1,10 @@
-// The session's input (client-v7 输入区与消息队列): one row that grows
-// with the draft, the ＋ menu (images, mode, model, context) on its left and
-// send on its right; above it a line with the queue and a fixed interrupt.
+// The session composer: one growing input with images and settings on the
+// left; its right button sends, or interrupts an empty running turn.
 
 import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import type { Tray } from "../attach";
-import { agentOf, CONTEXT_WARN, contextPercent, modeOf, queuedIds, queueReason, type Derived } from "../model";
+import { agentOf, CONTEXT_WARN, contextPercent, modeOf, type Derived } from "../model";
+import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert } from "../ui";
 
@@ -29,47 +29,6 @@ export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: st
 export function promptIdOf(remote: Remote, sid: string, d: Derived): string | undefined {
   if (!remote.prompts.has(sid)) return undefined;
   return d.inputs.keys().next().value;
-}
-
-/** The line above the input: the queue and why it waits, and the
- * interrupt, which stays put while typing. What runs is in the chat and the
- * title, not here (client-v7). */
-export function ComposeStatus({
-  remote,
-  session,
-  d,
-  onQueue,
-  onInterrupt,
-}: {
-  remote: Remote;
-  session: SessionView;
-  d: Derived;
-  onQueue: () => void;
-  onInterrupt: () => void;
-}) {
-  const online = remote.conn === "online";
-  // Every queued message, the first one of a session started here too: it
-  // can be canceled here like anywhere else.
-  const queued = queuedIds(d);
-  const queuedImages = queued.reduce((n, id) => n + (d.accepted.get(id)?.imageIds.length ?? remote.outbox(session.id).find((o) => o.sendId === id)?.imageIds?.length ?? 0), 0);
-  const running = d.running;
-  const reason = queueReason(session, d);
-  if (!running && queued.length === 0) return null;
-  return (
-    <div className="compose-status">
-      {queued.length > 0 && (
-        <button className="queue-link" onClick={onQueue}>
-          排队 {queued.length} 条{queuedImages > 0 && ` · ${queuedImages} 张图`} ›
-        </button>
-      )}
-      {!running && queued.length > 0 && reason && <span className="qreason">{reason}</span>}
-      {running && (
-        <button className="interrupt" onClick={onInterrupt} disabled={!online} aria-label="中断本轮">
-          ■ 中断
-        </button>
-      )}
-    </div>
-  );
 }
 
 /** The ＋ on the input's left: a small menu of what the input can do
@@ -120,6 +79,7 @@ export function Composer({
   wide,
   onFocus,
   onSend,
+  onInterrupt,
   draft,
   onDraft,
   onMode,
@@ -136,7 +96,8 @@ export function Composer({
   d: Derived;
   wide: boolean;
   onFocus: (typing: boolean) => void;
-  onSend: (text: string) => void;
+  onSend: (text: string, mode: SendMode) => void;
+  onInterrupt: () => void;
   draft: string;
   onDraft: (text: string) => void;
   onMode: () => void;
@@ -156,7 +117,10 @@ export function Composer({
     setTextState(v);
     onDraft(v);
   };
-  const [slash, setSlash] = useState(false);
+  const [slash, setSlash] = useState<SendMode>();
+  const [sendMenu, setSendMenu] = useState(() => remote.demoFlag("sendmenu"));
+  const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const held = useRef(false);
   const input = ref;
   useAutoGrow(input, text);
   const online = remote.conn === "online";
@@ -167,13 +131,14 @@ export function Composer({
   // then be empty.
   const images = tray?.items.length ?? 0;
   const canSend = online && (images ? tray!.ready() : !!t);
-  const submit = (force = false) => {
+  const submit = (force = false, sendMode = SendMode.STEER) => {
     if (!canSend) return;
     // Slash commands typed as text go to the model; menus they would open
     // are not visible here.
-    if (t.startsWith("/") && !force && !images) return setSlash(true);
+    if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
     setText("");
-    onSend(t);
+    onSend(t, sendMode);
+    setSendMenu(false);
   };
   const mode = modeOf(session);
   const pct = contextPercent(session);
@@ -183,6 +148,7 @@ export function Composer({
   const high = pct !== undefined && pct > CONTEXT_WARN;
   // Full access is the one setting always in view (client-v7).
   const full = mode?.text === "完全放行";
+  const canQueue = d.running && !!remote.machines.get(session.machineId)?.meta?.capabilities?.sendModes;
   return (
     <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}
@@ -217,23 +183,24 @@ export function Composer({
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit();
+          } else if (e.key === "Enter" && e.altKey && canQueue && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            submit(false, SendMode.QUEUE);
           }
         }}
         aria-label="消息"
       />
-      <button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onClick={() => submit()} aria-label="发送">
-        ↑
-      </button>
-      {full && <div className="access-warning">完全放行</div>}
-      {slash && (
+      {d.running && !t && !images ? <button className="go44 stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮">■</button> : <div className="send-wrap"><button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }} onPointerUp={() => clearTimeout(hold.current)} onPointerLeave={() => clearTimeout(hold.current)} onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }} onClick={() => { if (held.current) { held.current = false; return; } submit(); }} aria-label="发送">↑</button>{sendMenu && <div className="send-menu"><button onClick={() => submit()}>现在插入这一轮</button><button onClick={() => submit(false, SendMode.QUEUE)}>这一轮结束后再发</button></div>}</div>}
+      {slash !== undefined && (
         <Alert
           title="作为普通消息发送？"
           text="以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"
           ok="发送"
-          onCancel={() => setSlash(false)}
+          onCancel={() => setSlash(undefined)}
           onOk={() => {
-            setSlash(false);
-            submit(true);
+            const choice = slash;
+            setSlash(undefined);
+            submit(true, choice);
           }}
         />
       )}

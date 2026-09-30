@@ -57,9 +57,6 @@ export function ApprovalActions({
   remote,
   sid,
   a,
-  agent,
-  footless,
-  wideRow,
   onReasonOpen,
   shared,
 }: {
@@ -77,7 +74,7 @@ export function ApprovalActions({
   const now = useNow(1000);
   const own = useApproval(remote, sid, a);
   const ap = shared ?? own;
-  const [reasonOpen, setReasonOpen] = useState(false);
+  const [reasonOpen, setReasonOpen] = useState(() => remote.demoFlag("deny"));
   const [reason, setReason] = useState("");
   const deadline = deadlineOf(a);
   const expired = deadline > 0 && now >= deadline;
@@ -87,12 +84,9 @@ export function ApprovalActions({
     setReasonOpen(v);
     onReasonOpen?.(v);
   };
-  const error = ap.error && (
-    <Banner kind="err" action="重试" onAction={ap.retry}>
-      {ap.unknown ? "未收到电脑确认：" : "没能提交："}
-      {ap.error}
-    </Banner>
-  );
+  const error = ap.error && <div className="approval-status red">没送到电脑 <button className="link" onClick={ap.retry}>重试</button></div>;
+  if (ap.busy && !ap.error) return <div className="approval-status muted">正在提交…</div>;
+  if (ap.error) return error;
   if (reasonOpen)
     return (
       <>
@@ -100,51 +94,32 @@ export function ApprovalActions({
           className="field reason"
           autoFocus
           rows={1}
-          placeholder={`拒绝的理由，会告诉 ${agentName(agent)}`}
+          placeholder="说明（可选）"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          onBlur={() => !reason.trim() && !ap.busy && open(false)}
         />
         <div className="btns">
-          <button className="btn no" disabled={locked || !reason.trim()} onMouseDown={(e) => e.preventDefault()} onClick={() => void ap.resolve(false, reason.trim())}>
-            {ap.busy ? "拒绝中…" : "发送理由并拒绝"}
-          </button>
+          <button className="btn" onClick={() => open(false)}>取消</button>
+          <button className="btn no" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>不允许</button>
         </div>
         {error}
       </>
     );
   const buttons = (
     <div className="btns">
-      <button className="btn no" disabled={locked} onClick={() => void ap.resolve(false)}>
-        {ap.busy.startsWith("deny") ? "拒绝中…" : "拒绝"}
+      <button className="btn no" disabled={locked} onClick={() => open(true)}>
+        不允许
       </button>
       <button className="btn pri" disabled={locked} onClick={() => void ap.resolve(true)}>
         {ap.busy.startsWith("allow") ? "允许中…" : "允许"}
       </button>
     </div>
   );
-  if (wideRow)
-    return (
-      <>
-        <div className="actrow">
-          <button className="link" disabled={locked} onClick={() => open(true)}>
-            附理由拒绝 ›
-          </button>
-          {buttons}
-        </div>
-        {error}
-      </>
-    );
+  const always = remote.machines.get(remote.sessions.get(sid)?.machineId ?? "")?.meta?.capabilities?.approvalAlways;
   return (
     <>
       {buttons}
-      {!footless && (
-        <div className="foot">
-          <button className="link" disabled={locked} onClick={() => open(true)}>
-            附理由拒绝 ›
-          </button>
-        </div>
-      )}
+      {always && <div className="foot"><button className="link" disabled={locked} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button></div>}
       {error}
     </>
   );

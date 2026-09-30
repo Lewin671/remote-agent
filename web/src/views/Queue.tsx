@@ -2,12 +2,11 @@
 // computer accepted and has not written yet, in its order, whoever sent
 // it, each cancellable; and what became of a cancel.
 
-import { useEffect, useRef, useState } from "react";
-import { InputStage, InputStatus } from "../gen/remoteagent/v1/event_pb";
+import { useState } from "react";
+import { InputStage, InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { originLabel } from "../devices";
-import { machineName, queuedIds, queueReason, type Derived } from "../model";
+import { machineName, queuedIds, type Derived } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
-import { NavBar } from "../ui";
 import { LocalThumbs } from "./Images";
 import { promptIdOf } from "./Composer";
 
@@ -33,109 +32,43 @@ export function stageText(stage: InputStage | undefined): string {
   return "";
 }
 
-export function QueuePage({
-  remote,
-  session,
-  d,
-  title,
-  onBack,
-}: {
-  remote: Remote;
-  session: SessionView;
-  d: Derived;
-  title: string;
-  onBack: () => void;
-}) {
-  const sid = session.id;
+/** Pending input is shown at the end of the chat, on every client. */
+export function PendingBubbles({ remote, session, d }: { remote: Remote; session: SessionView; d: Derived }) {
   const ids = queuedIds(d);
-  const texts = new Map(remote.outbox(sid).map((o) => [o.sendId, o.text]));
-  // The first message of a session started here is this page's too.
-  const prompt = promptIdOf(remote, sid, d);
-  if (prompt) texts.set(prompt, remote.prompts.get(sid) ?? "");
+  const [all, setAll] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
+  const sid = session.id;
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)), mine: new Set(remote.outbox(sid).map((o) => o.requestId)) };
-  const [toast, setToast] = useState("");
-  const shown = useRef<string[]>(ids);
-  // A message that left the queue while this page shows it: say what
-  // happened to it, and whether the cancel asked for here was in time.
-  useEffect(() => {
-    const gone = shown.current.filter((id) => !ids.includes(id));
-    for (const id of gone) {
-      const c = remote.cancels.get(id);
-      const text = cancelOutcome(d.inputs.get(id), !!c);
-      if (text) setToast(text);
-      remote.cancels.delete(id);
-    }
-    shown.current = ids;
-  }, [ids.join(","), remote, d]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cancel = async (id: string) => {
-    remote.cancels.set(id, { state: "canceling", error: "" });
-    remote.touch();
+  const act = async (id: string, resume = false) => {
+    if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
     try {
-      await remote.command(sid, { case: "cancelInput", value: { sessionId: sid, requestId: id } });
+      await remote.command(sid, resume ? { case: "resumeInput", value: { sessionId: sid, requestId: id } } : { case: "cancelInput", value: { sessionId: sid, requestId: id } });
     } catch (e) {
-      // Still queued: the cancel did not take. Already written: the page
-      // says so when the message leaves the queue.
-      if (d.inputs.get(id) === InputStatus.QUEUED) remote.cancels.set(id, { state: "failed", error: errorText(e) });
+      if (!resume) remote.cancels.set(id, { state: "failed", error: errorText(e) });
       remote.touch();
     }
   };
-  const reason = queueReason(session, d);
-  const online = remote.conn === "online";
-  return (
-    <div className="page">
-      <NavBar
-        onBack={onBack}
-        title={<span className="tname">消息队列</span>}
-        sub={title}
-      />
-      <div className="body pad">
-        <div className="hint">这是电脑上的同一条队列，所有客户端看到同样的已接受消息，按顺序发送。取消只对尚未送入终端的消息生效。</div>
-        {ids.length === 0 && <div className="hint">队列里没有消息了。</div>}
-        {ids.map((id, i) => {
-          const c = remote.cancels.get(id);
-          const mine = texts.has(id);
-          const acc = d.accepted.get(id);
-          const text = texts.get(id) ?? acc?.text;
-          const from = mine ? "本客户端" : originLabel(acc?.origin, ctx) || "另一客户端";
-          const images = acc?.imageIds.length ?? 0;
-          const stage = stageText(d.stages.get(id));
-          const state =
-            c?.state === "canceling"
-              ? "正在取消…"
-              : stage || (i === 0 ? (reason ? reason.replace(/^本轮结束后发送$/, "等待本轮结束").replace(/^就绪后发送$/, "等待输入框就绪") : "等待发送") : "等待发送");
-          return (
-            <div key={id} className={"queue-entry" + (c?.state === "canceling" ? " canceling" : "")}>
-              <div className="qh">
-                <b>
-                  {i + 1} · {state}
-                </b>
-                <span className="qsrc">
-                  {from}
-                  {images > 0 && ` · ${images} 张图`}
-                </span>
-                <button className="cancel" disabled={c?.state === "canceling" || !online || !!stage} onClick={() => void cancel(id)}>
-                  {c?.state === "canceling" ? "◌" : "取消"}
-                </button>
-              </div>
-              <LocalThumbs blobs={remote.outbox(sid).find((o) => o.sendId === id)?.thumbs} />
-              <p className={text !== undefined ? "" : "muted"}>{text ?? "另一客户端发送的消息，内容会在它发出后出现在聊天里"}</p>
-              {c?.state === "failed" && (
-                <small className="red">
-                  取消未成功，消息仍在队列中：{c.error}
-                  <button className="link" onClick={() => void cancel(id)} disabled={!online}>
-                    重试
-                  </button>
-                </small>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {toast && (
-        <button className="toast plain" onClick={() => setToast("")}>
-          {toast}
-        </button>
-      )}
-    </div>
-  );
+  return <>
+    {shown.map((id, i) => {
+      const a = d.accepted.get(id);
+      const o = remote.outbox(sid).find((x) => x.sendId === id);
+      const c = remote.cancels.get(id);
+      const paused = d.paused.has(id);
+      const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
+      const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
+      const mode = a?.mode ?? o?.mode;
+      const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : "另一客户端的消息");
+      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : paused ? "已暂停 · 中断前排着的" : mode === SendMode.QUEUE ? "排队 · 这一轮结束后发" : held ? "插入这一轮 · 等当前工具结束后并入" : "插入这一轮 · 等输入框就绪";
+      return <div className="pending-bubble me" key={id}>
+        <LocalThumbs blobs={o?.thumbs} />
+        <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
+        <div className="pending-meta"><span>{status}{!paused && !held && !c?.state && ` · 第 ${i + 1} 条`}{from && ` · ${from}`}</span>
+          {paused && <button onClick={() => void act(id, true)}>发送</button>}
+          {c?.state === "failed" ? <button onClick={() => void act(id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void act(id)}>取消</button>}
+        </div>
+      </div>;
+    })}
+    {!all && ids.length > 3 && <button className="todo-more" onClick={() => setAll(true)}>还有 {ids.length - 2} 条排队 展开</button>}
+  </>;
 }

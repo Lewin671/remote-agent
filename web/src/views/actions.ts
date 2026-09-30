@@ -61,13 +61,13 @@ function useCommand(remote: Remote, sid: string) {
  * the resolution shows up in the events and the card goes away. */
 export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
   const c = useCommand(remote, sid);
-  const resolve = (allow: boolean, message = "") =>
-    c.run(`${allow ? "allow" : "deny"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message } });
+  const resolve = (allow: boolean, message = "", always = false) =>
+    c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
   const retry = () => {
     const key = c.retry();
     if (!key) return;
-    const [kind, ...rest] = key.split(":");
-    void resolve(kind === "allow", rest.join(":"));
+    const [kind, always, ...rest] = key.split(":");
+    void resolve(kind === "allow", rest.join(":"), always === "always");
   };
   // unknown: the answer may have reached the computer; only it may be
   // retried, as the same request, never the opposite one.
