@@ -8,8 +8,6 @@ import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage,
 import { Agent, ApprovalDecision, ApprovalMode, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
 import type { Session } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
-import { sha256 } from "@noble/hashes/sha2.js";
-import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 // The parts of Remote's views the rules need; kept structural so tests can
 // build them without a Remote.
@@ -716,81 +714,6 @@ export function queueReason(s: SessionLike, d: Derived): string {
   return "";
 }
 
-// --- tying approvals to their tool calls ---
-
-/** Code point order, which is UTF-8 byte order: how Go sorts map keys. */
-function byCodePoint(a: string, b: string): number {
-  const x = [...a];
-  const y = [...b];
-  for (let i = 0; i < Math.min(x.length, y.length); i++) {
-    const d = x[i].codePointAt(0)! - y[i].codePointAt(0)!;
-    if (d) return d;
-  }
-  return x.length - y.length;
-}
-
-/** A string as Go's encoding/json writes it: HTML characters, U+2028 and
- * U+2029 escaped, control characters escaped (\b and \f short, as since
- * Go 1.22), invalid text as U+FFFD, everything else as is. */
-function goString(s: string): string {
-  let out = '"';
-  for (const ch of s) {
-    const c = ch.codePointAt(0)!;
-    if (ch === '"') out += '\\"';
-    else if (ch === "\\") out += "\\\\";
-    else if (c < 0x20) {
-      const short: Record<number, string> = { 8: "\\b", 9: "\\t", 10: "\\n", 12: "\\f", 13: "\\r" };
-      out += short[c] ?? "\\u00" + c.toString(16).padStart(2, "0");
-    } else if (ch === "<" || ch === ">" || ch === "&" || c === 0x2028 || c === 0x2029) out += "\\u" + c.toString(16).padStart(4, "0");
-    else if (c >= 0xd800 && c <= 0xdfff) out += "\ufffd";
-    else out += ch;
-  }
-  return out + '"';
-}
-
-/** A decoded JSON value as Go's json.Marshal writes it: compact, object
- * keys sorted, numbers as float64. JavaScript's number text matches Go's
- * for float64 (exponent below 1e-6 and from 1e21), except negative zero. */
-function goJSON(v: unknown): string {
-  if (v === null) return "null";
-  if (typeof v === "boolean") return String(v);
-  if (typeof v === "number") return Object.is(v, -0) ? "-0" : String(v);
-  if (typeof v === "string") return goString(v);
-  if (Array.isArray(v)) return "[" + v.map(goJSON).join(",") + "]";
-  const o = v as Record<string, unknown>;
-  return "{" + Object.keys(o).sort(byCodePoint).map((k) => goString(k) + ":" + goJSON(o[k])).join(",") + "}";
-}
-
-/** The digest the daemon gives a Claude Code tool call's complete input
- * (agent.InputDigest): hex SHA-256 of a Bash call's command, else of the
- * input as compact JSON with sorted keys; "" if the input is not JSON.
- * Computed from an approval's tool_input_json, it names the tool call the
- * approval is for. internal/agent/testdata/digest-vectors.json keeps it
- * in step with Go. */
-export function inputDigest(tool: string, raw: string): string {
-  let v: unknown;
-  try {
-    v = JSON.parse(raw);
-  } catch {
-    return "";
-  }
-  let text: string;
-  if (tool === "Bash") {
-    // Decoded into a struct: null is empty, anything but an object fails;
-    // Go matches the field name exactly, else ignoring case.
-    if (v === null) text = "";
-    else if (typeof v !== "object" || Array.isArray(v)) return "";
-    else {
-      const o = v as Record<string, unknown>;
-      const key = "command" in o ? "command" : Object.keys(o).find((k) => k.toLowerCase() === "command");
-      const c = key === undefined ? "" : o[key];
-      if (c !== null && typeof c !== "string") return "";
-      text = c ?? "";
-    }
-  } else text = goJSON(v);
-  return bytesToHex(sha256(utf8ToBytes(text)));
-}
-
 // --- the chat timeline ---
 
 export type Item =
@@ -868,7 +791,8 @@ export function timeline(events: Event[], d: Derived): Item[] {
 }
 
 /** Resolved approvals to show on their tool calls: only where the call is
- * surely the one approved, its tool and input digest matching exactly one
+ * surely the one approved, its tool and input digest (the daemon's, on
+ * both events, compared as strings) matching exactly one
  * resolved approval requested before it, and that approval matching no
  * other call. Parallel calls, repeated identical calls and events without
  * a digest (Codex, older daemons) keep the approval as a row of its own. */
@@ -878,7 +802,9 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
   for (const e of events) {
     const k = e.kind;
     if (k.case === "approvalRequested" && d.resolved.has(k.value.approvalId)) {
-      const digest = inputDigest(k.value.toolName, k.value.toolInputJson);
+      // The daemon gives the request the digest it gives the call; without
+      // one (Codex, older daemons) there is nothing to match.
+      const digest = k.value.inputDigest;
       if (!digest) continue;
       const key = k.value.toolName + "\0" + digest;
       approvals.set(key, [...(approvals.get(key) ?? []), { id: k.value.approvalId, seq: e.seq }]);

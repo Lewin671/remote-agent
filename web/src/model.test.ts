@@ -13,7 +13,6 @@ import {
   derive,
   dockItems,
   findModel,
-  inputDigest,
   inheritConfig,
   machineAgents,
   minutesLeft,
@@ -543,11 +542,13 @@ describe("events", () => {
 });
 
 describe("approval records", () => {
-  const bash = (command: string) => JSON.stringify({ command, description: "" });
-  const approval = (approvalId: string, command: string) => ({ case: "approvalRequested", value: { approvalId, toolName: "Bash", command, toolInputJson: bash(command) } });
-  const call = (title: string, callId: string, digest: string, status = "completed") => ({
+  const approval = (approvalId: string, command: string, inputDigest: string) => ({
+    case: "approvalRequested",
+    value: { approvalId, toolName: "Bash", command, toolInputJson: JSON.stringify({ command }), inputDigest },
+  });
+  const call = (title: string, callId: string, inputDigest: string, status = "completed") => ({
     case: "toolCall",
-    value: { title, callId, itemType: "Bash", inputDigest: digest, kind: ToolKind.COMMAND, status },
+    value: { title, callId, itemType: "Bash", inputDigest, kind: ToolKind.COMMAND, status },
   });
   const rows = (list: Event[]) => {
     const d = derive(list, Agent.CLAUDE);
@@ -565,19 +566,19 @@ describe("approval records", () => {
     // finishes first, then the approved ones, out of order.
     const list = events(
       { case: "turnStarted", value: {} },
-      approval("A", "mkdir x"),
-      approval("B", "rm y"),
-      approval("C", "npm test"),
-      approval("D", "npm test"),
+      approval("A", "mkdir x", "dA"),
+      approval("B", "rm y", "dB"),
+      approval("C", "npm test", "dC"),
+      approval("D", "npm test", "dC"),
       { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.DENY } },
       { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
       { case: "approvalResolved", value: { approvalId: "C", decision: ApprovalDecision.ALLOW } },
       { case: "approvalResolved", value: { approvalId: "D", decision: ApprovalDecision.ALLOW } },
-      { case: "toolCall", value: { title: "Read a.go", callId: "r", itemType: "Read", inputDigest: inputDigest("Read", '{"file_path":"a.go"}'), kind: ToolKind.OTHER, status: "completed" } },
+      { case: "toolCall", value: { title: "Read a.go", callId: "r", itemType: "Read", inputDigest: "dR", kind: ToolKind.OTHER, status: "completed" } },
       call("rm y", "d", "", "failed"), // no digest: an older daemon
-      call("mkdir x", "m", inputDigest("Bash", bash("mkdir x"))),
-      call("npm test", "t1", inputDigest("Bash", bash("npm test"))),
-      call("npm test", "t2", inputDigest("Bash", bash("npm test"))),
+      call("mkdir x", "m", "dA"),
+      call("npm test", "t1", "dC"),
+      call("npm test", "t2", "dC"),
     );
     expect(rows(list)).toEqual([
       // B has no call it can surely be tied to, and C and D two each.
@@ -590,6 +591,23 @@ describe("approval records", () => {
       "tool mkdir x 已允许",
       "tools",
     ]);
+  });
+
+  it("match by the daemon's digests only, never one worked out here", () => {
+    const list = events(
+      // Input that decodes differently here than in Go: only the daemon's
+      // digest says which call it is.
+      { case: "approvalRequested", value: { approvalId: "A", toolName: "Bash", command: "a", toolInputJson: '{"command":"a","COMMAND":"b"}', inputDigest: "db" } },
+      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
+      // A request from an older daemon, without a digest, next to a call
+      // whose digest its input would give.
+      { case: "approvalRequested", value: { approvalId: "B", toolName: "Bash", command: "ls", toolInputJson: '{"command":"ls"}' } },
+      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.ALLOW } },
+      call("b", "1", "db"),
+      // sha256("ls"): what digesting B's input here would have given.
+      call("ls", "2", "c7b68ac37f364473e922936708e7f43c293dd07b295171566c07ff5fe024fab9"),
+    );
+    expect(rows(list)).toEqual(["record ls 已允许", "tool b 已允许", "tool ls"]);
   });
 
   it("stay rows of their own for Codex, whose calls have no digest", () => {

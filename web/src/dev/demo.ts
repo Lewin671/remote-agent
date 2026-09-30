@@ -22,7 +22,6 @@ import {
 } from "../gen/remoteagent/v1/event_pb";
 import { DaemonSettingsSchema, ListModelsResponseSchema, SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResult, type TerminalFrame } from "../gen/remoteagent/v1/remote_pb";
-import { inputDigest } from "../model";
 import { CommandError, Remote, type CommandKind, type History, type RequestSlot, type SessionView, type TermConn } from "../remote";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
@@ -186,11 +185,11 @@ function fixtures(): Record<string, Fixture> {
       },
       events: [
         { case: "userMessage", value: { text: "整理错误码" } },
-        { case: "approvalRequested", value: { approvalId: "cw", toolName: "Write", toolInputJson: writeInput } },
+        { case: "approvalRequested", value: { approvalId: "cw", toolName: "Write", toolInputJson: writeInput, inputDigest: "demo-write" } },
         { case: "approvalResolved", value: { approvalId: "cw", decision: ApprovalDecision.ALLOW } },
         {
           case: "toolCall",
-          value: { title: "/Users/me/Code/bar/errors.go", itemType: "Write", kind: ToolKind.FILE_CHANGE, status: "completed", inputDigest: inputDigest("Write", writeInput) },
+          value: { title: "/Users/me/Code/bar/errors.go", itemType: "Write", kind: ToolKind.FILE_CHANGE, status: "completed", inputDigest: "demo-write" },
         },
         { case: "agentMessage", value: { text: "错误码已按模块分组。" } },
       ],
