@@ -11,7 +11,11 @@ plugins {
 // it the app builds and runs with push notifications turned off.
 val configDir = File(System.getProperty("user.home"), ".config/remote-agent")
 val googleServices = File(configDir, "google-services.json")
-val pushEnabled = googleServices.exists()
+// -PappIdSuffix=.v2dev builds a copy that installs next to the real app,
+// e.g. to test against a local server without touching its account. The
+// Firebase config names the real package only, so the copy has no push.
+val appIdSuffix = (findProperty("appIdSuffix") as String?).orEmpty()
+val pushEnabled = googleServices.exists() && appIdSuffix.isEmpty()
 if (pushEnabled) {
     googleServices.copyTo(file("google-services.json"), overwrite = true)
     apply(plugin = "com.google.gms.google-services")
@@ -35,6 +39,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("boolean", "PUSH_ENABLED", pushEnabled.toString())
+        resValue("string", "app_name", if (appIdSuffix.isEmpty()) "remote-agent" else "remote-agent $appIdSuffix")
+        if (appIdSuffix.isNotEmpty()) applicationIdSuffix = appIdSuffix
     }
 
     signingConfigs {
