@@ -7,6 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
@@ -883,12 +884,14 @@ describe("a new-session draft", () => {
 
   it("keeps the project it was begun in on the wide home", async () => {
     const r = demo();
+    r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
     const sent = capture(r);
     mount(<WideHome remote={r} go={() => undefined} />);
     await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
     const before = host.querySelector(".wide-project-tools .chip")!.textContent;
     await type("加限流");
-    // Another project becomes the latest meanwhile.
+    // Another project gets a newer session meanwhile.
+    act(() => { r.sessions.get("s-plan")!.info!.createdAt = timestampFromMs(Date.now() + 172_800_000); });
     bump(r, "s-plan");
     expect(host.querySelector(".wide-project-tools .chip")!.textContent).toBe(before);
     await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
@@ -1450,6 +1453,7 @@ it("loads a picture opened offline once the connection is back (review B11)", as
 
 it("asks to restore a project removed while its draft is on the wide home (review B12)", async () => {
   const r = demo();
+  r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
   mount(<WideHome remote={r} go={() => undefined} />);
   await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
@@ -1599,4 +1603,15 @@ it("does not put another client's images into this input (review W3)", async () 
   expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
   expect(host.querySelector(".att-tray")).toBeNull();
   expect(host.textContent).toContain("图片是另一客户端上传的");
+});
+
+it("keeps the wide home default project across background uploads before a draft starts", async () => {
+  const r = demo();
+  mount(<WideHome remote={r} go={() => undefined} />);
+  const before = host.querySelector(".wide-project-tools .chip")!.textContent;
+  act(() => {
+    r.sessions.get("s-plan")!.updatedMs = BigInt(Date.now() + 60_000);
+    (r as unknown as { changed(): void }).changed();
+  });
+  expect(host.querySelector(".wide-project-tools .chip")!.textContent).toBe(before);
 });

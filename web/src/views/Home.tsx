@@ -6,6 +6,7 @@ import {
   agentOf,
   compareAttention,
   compareLive,
+  compareProjects,
   compareEnded,
   endedMs,
   ago,
@@ -214,7 +215,7 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
 }
 
 /** The project list: pinned projects first with 管理 beside their title,
- * then the others by activity. Removed projects are not listed; their
+ * then the others by latest session creation. Removed projects are not listed; their
  * sessions still are, above, wherever they need the user. */
 function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
   const g = useProjectGroups(remote);
@@ -440,7 +441,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
   const g = useProjectGroups(remote);
   // The latest project on the list; a removed one is not offered.
-  const list = [...g.pinned, ...g.others].sort((a, b) => b.updatedMs - a.updatedMs);
+  const list = [...g.pinned, ...g.others].sort(compareProjects);
   const [key, setKey] = useState<string>();
   const [picking, setPicking] = useState<"" | "pick" | "new">("");
   const pkey = key ?? list[0]?.key ?? "";

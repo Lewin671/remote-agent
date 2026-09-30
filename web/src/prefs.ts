@@ -6,6 +6,7 @@
 // stored when another client wrote first; the stored copy is never
 // overwritten with this client's older picture of it.
 
+import { compareProjects } from "./model";
 import { create } from "@bufbuild/protobuf";
 import { ProjectPrefSchema, ProjectPrefsSchema, type ProjectPref, type ProjectPrefs } from "./gen/remoteagent/v1/remote_pb";
 
@@ -102,15 +103,15 @@ export async function commitOp(store: PrefsStore, op: PrefOp, from?: PrefsSnapsh
 }
 
 /** Projects as the lists group them: pinned first, in the order pinned;
- * the rest by latest activity; removed ones apart. Sessions of removed
+ * the rest by latest session creation; removed ones apart. Sessions of removed
  * projects are untouched: lists of waiting and running sessions do not
  * look at this. */
-export function groupProjects<P extends { key: string; updatedMs: number }>(list: P[], prefs: ProjectPrefs): { pinned: P[]; others: P[]; hidden: P[] } {
+export function groupProjects<P extends { key: string; latestCreatedMs: number }>(list: P[], prefs: ProjectPrefs): { pinned: P[]; others: P[]; hidden: P[] } {
   const hidden = new Set(prefs.hidden.map((p) => p.path));
   const byKey = new Map(list.map((p) => [p.key, p]));
   const pinned = prefs.pinned.map((p) => byKey.get(p.path)).filter((p): p is P => !!p && !hidden.has(p.key));
   const pinnedKeys = new Set(pinned.map((p) => p.key));
-  const others = list.filter((p) => !pinnedKeys.has(p.key) && !hidden.has(p.key)).sort((a, b) => b.updatedMs - a.updatedMs);
+  const others = list.filter((p) => !pinnedKeys.has(p.key) && !hidden.has(p.key)).sort(compareProjects);
   return { pinned, others, hidden: list.filter((p) => hidden.has(p.key)) };
 }
 

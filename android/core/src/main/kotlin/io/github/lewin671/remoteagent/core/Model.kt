@@ -43,6 +43,7 @@ data class Project(
     /** Recent activity first, used for new-session defaults. UI lists sort separately. */
     val sessions: List<SessionView>,
     val updatedMs: Long,
+    val latestCreatedMs: Long,
     val paths: List<String>,
     val machines: List<String>,
 )
@@ -63,16 +64,17 @@ fun projects(state: RemoteState): List<Project> {
             name = projectName(key),
             sessions = sorted,
             updatedMs = sorted.maxOfOrNull { it.updatedMs } ?: 0,
+            latestCreatedMs = sorted.maxOfOrNull { createdMs(it) } ?: 0,
             paths = sorted.mapNotNull { it.info?.cwd?.takeIf { c -> c.isNotEmpty() } }.distinct(),
             machines = sorted.map { machineName(state.machines[it.machineId], it.machineId) }.distinct(),
         )
-    }.sortedWith(compareByDescending<Project> { it.updatedMs }.thenBy { it.key })
+    }.sortedWith(compareByDescending<Project> { it.latestCreatedMs }.thenBy { it.key })
 }
 
 /**
  * The project list as the account arranges it (architecture §8): pinned
  * projects first in the order they were pinned, the others by latest
- * activity; hidden ones apart. Hiding only takes a project off these lists:
+ * session creation; hidden ones apart. Hiding only takes a project off these lists:
  * its sessions, pending items and notifications are not filtered here.
  */
 data class ProjectGroups(val pinned: List<Project>, val others: List<Project>, val hidden: List<Project>)

@@ -99,10 +99,10 @@ class PrefsTest {
 
 class ProjectGroupsTest {
     private fun session(id: String, cwd: String, updated: Long, pending: Int = 0) =
-        SessionView(id, "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setCwd(cwd).setPendingApprovals(pending).build(), updatedMs = updated)
+        SessionView(id, "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setCwd(cwd).setCreatedAt(com.google.protobuf.Timestamp.newBuilder().setNanos((updated * 1_000_000).toInt())).setPendingApprovals(pending).build(), updatedMs = updated)
 
     @Test
-    fun pinnedFirstInPinOrderOthersByActivityHiddenApart() {
+    fun pinnedFirstInPinOrderOthersByCreationHiddenApart() {
         val prefs = ProjectPrefs.newBuilder()
             .addPinned(io.github.lewin671.remoteagent.proto.ProjectPref.newBuilder().setPath("/c"))
             .addPinned(io.github.lewin671.remoteagent.proto.ProjectPref.newBuilder().setPath("/a"))

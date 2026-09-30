@@ -86,14 +86,14 @@ describe("project preferences", () => {
     expect(paths(out.prefs).hidden).toEqual(["/a"]);
   });
 
-  it("groups pinned first in pin order, the rest by activity, removed apart", () => {
+  it("groups pinned first in pin order, the rest by session creation, removed apart", () => {
     const p = applyOp(applyOp(applyOp(emptyPrefs(), op("pin", "/b")), op("pin", "/a")), op("hide", "/c"));
     const list = [
-      { key: "/a", updatedMs: 1 },
-      { key: "/b", updatedMs: 2 },
-      { key: "/c", updatedMs: 9 },
-      { key: "/d", updatedMs: 3 },
-      { key: "/e", updatedMs: 5 },
+      { key: "/a", latestCreatedMs: 1, updatedMs: 999 },
+      { key: "/b", latestCreatedMs: 2 },
+      { key: "/c", latestCreatedMs: 9 },
+      { key: "/d", latestCreatedMs: 3, updatedMs: 999 },
+      { key: "/e", latestCreatedMs: 5, updatedMs: 0 },
     ];
     const g = groupProjects(list, p);
     expect(g.pinned.map((x) => x.key)).toEqual(["/b", "/a"]);

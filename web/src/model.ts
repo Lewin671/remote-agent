@@ -63,6 +63,7 @@ export interface Project<S extends SessionLike = SessionLike> {
   name: string;
   sessions: S[]; // most recent first
   updatedMs: number;
+  latestCreatedMs: number; // stable list position, independent of output
   machines: string[]; // machine IDs, most recent first
 }
 
@@ -77,6 +78,8 @@ export function projectName(key: string): string {
   return key.split("/").filter(Boolean).pop() || "未知项目";
 }
 
+export const compareProjects = (a: Pick<Project, "key" | "latestCreatedMs">, b: Pick<Project, "key" | "latestCreatedMs">) => b.latestCreatedMs - a.latestCreatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+
 export function projects<S extends SessionLike>(sessions: Iterable<S>): Project<S>[] {
   const byKey = new Map<string, Project<S>>();
   const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b));
@@ -84,14 +87,15 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>): Project<
     const key = projectKey(s);
     let p = byKey.get(key);
     if (!p) {
-      p = { key, name: projectName(key), sessions: [], updatedMs: 0, machines: [] };
+      p = { key, name: projectName(key), sessions: [], updatedMs: 0, latestCreatedMs: 0, machines: [] };
       byKey.set(key, p);
     }
     p.sessions.push(s);
+    p.latestCreatedMs = Math.max(p.latestCreatedMs, createdMs(s));
     p.updatedMs = Math.max(p.updatedMs, Number(s.updatedMs));
     if (!p.machines.includes(s.machineId)) p.machines.push(s.machineId);
   }
-  return [...byKey.values()].sort((a, b) => b.updatedMs - a.updatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  return [...byKey.values()].sort(compareProjects);
 }
 
 export function machineName(m?: MachineLike): string {

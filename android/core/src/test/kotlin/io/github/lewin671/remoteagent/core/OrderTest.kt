@@ -30,4 +30,22 @@ class OrderTest {
         assertEquals(listOf("a", "b"), listOf(oldB, oldA).sortedWith(endedOrder).map { it.id })
         assertEquals(listOf("a", "b"), listOf(oldB, oldA).sortedWith(liveOrder).map { it.id })
     }
+
+    @Test fun projectPositionsIgnoreOutputExitAndReloadButFollowNewSessions() {
+        val a = s("a", 1000, 99999) { cwd = "/a" }
+        val b = s("b", 2000, 1) { cwd = "/b" }
+        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id })).map { it.key }
+        assertEquals(listOf("/b", "/a"), keys(a, b))
+        val changed = a.copy(updatedMs = 999999, info = a.info!!.toBuilder().setEndedAt(at(5000)).setPendingApprovals(1).build())
+        assertEquals(listOf("/b", "/a"), keys(b, changed))
+        assertEquals(999999L, projects(RemoteState(sessions = mapOf("a" to changed))).single().updatedMs)
+        assertEquals(listOf("/a", "/b"), keys(b, changed, s("new", 3000, 0) { cwd = "/a" }))
+    }
+    @Test fun projectTiesAndLegacyMetadataUsePathsInsteadOfUploadTimes() {
+        val a = s("z", 1000, 99999) { cwd = "/a" }
+        val b = s("a", 1000, 1) { cwd = "/b" }
+        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id })).map { it.key }
+        assertEquals(listOf("/a", "/b"), keys(b, a))
+        assertEquals(listOf("/a", "/b"), keys(b.copy(info = b.info!!.toBuilder().clearCreatedAt().build()), a.copy(info = a.info!!.toBuilder().clearCreatedAt().build())))
+    }
 }
