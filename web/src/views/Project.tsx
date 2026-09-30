@@ -2,11 +2,11 @@
 // start a new session in it.
 
 import { useEffect, useRef, useState } from "react";
-import { compareLive, compareEnded, exited, machineName, projectName, shortPath } from "../model";
+import { compareLive, compareEnded, exited, projectName } from "../model";
 import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
 import { SessionRow } from "./Home";
-import { NewBox, useNewSession, type Go } from "./NewSession";
+import { ConfigSheet, NewBox, useNewSession, type Go } from "./NewSession";
 import { RemovedNotice } from "./Projects";
 import { isHidden } from "../prefs";
 
@@ -23,18 +23,18 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   const [shownEnded, setShownEnded] = useState(wide ? PAGE : 3);
   const [scrolled, setScrolled] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(() => remote.demoFlag("project-settings"));
   const endedRef = useRef<HTMLDivElement>(null);
   const [focus] = useState(() => remote.focusProject === pkey);
   useEffect(() => {
     if (remote.focusProject === pkey) remote.focusProject = "";
   }, [remote, pkey]);
-  const machines = p ? p.machines.map((id) => machineName(remote.machines.get(id))) : [machineName(remote.machines.get(ns.cfg.machineId))];
   const head = (
     <div className="phead">
       <Avatar name={name} size="lg" />
       <div>
         <div className="pname" title={name}>{name}</div>
-        <div className="muted small">{[shortPath(pkey), ...machines].join(" · ")}</div>
+        <button className={"project-summary" + (ns.line.includes("完全放行") ? " full" : "")} onClick={() => setSettingsOpen(true)}>{ns.line}</button>
         {!wide && ended.length > 0 && (
           <div className="small pmore">
             {live.length > 0 && <span className="muted">{live.length} 个进行中 · </span>}
@@ -93,6 +93,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
       <div className="body">
         <div className="wpage">
           {head}
+          {settingsOpen && <ConfigSheet ns={ns} onClose={() => setSettingsOpen(false)} />}
           {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} variant="prompt" />}
           {lists}
         </div>
@@ -101,12 +102,13 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   return (
     <div className="page">
       {/* With the keyboard up the project's head folds into the bar. */}
-      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? shortPath(pkey) : undefined} />
+      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <button className="project-summary" onClick={() => setSettingsOpen(true)}>{ns.line}</button> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
         {!typing && <div className="pad">{head}</div>}
         {lists}
       </div>
       {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} onFocus={setTyping} />}
+      {settingsOpen && <ConfigSheet ns={ns} onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

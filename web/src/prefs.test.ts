@@ -3,7 +3,7 @@ import { applied, applyOp, commitOp, emptyPrefs, groupProjects, isHidden, isPinn
 import { projects, stateOf, needsAttention, type SessionLike } from "./model";
 import { create } from "@bufbuild/protobuf";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
-import { SessionStatus } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SessionStatus } from "./gen/remoteagent/v1/event_pb";
 import type { ProjectPrefs } from "./gen/remoteagent/v1/remote_pb";
 
 let n = 0;
@@ -75,6 +75,28 @@ describe("project preferences", () => {
     expect(paths(out.prefs)).toEqual({ pinned: ["/other", "/mine"], hidden: ["/x"] });
     expect(out.revision).toBe(3n);
     expect(applied(out.prefs, mine)).toBe(true);
+  });
+
+  it("redoes project settings on conflict and preserves every stored field", async () => {
+    const s = new FakeStore();
+    s.other(op("pin", "/keep"));
+    s.other({ ...op("settings", "/other"), settings: { agent: Agent.CLAUDE, machineId: "m2", model: "sonnet", mode: ApprovalMode.ASK } });
+    const seen = await s.get();
+    s.beforePut = () => s.other(op("hide", "/hidden"));
+    const mine = { ...op("settings", "/mine"), settings: { agent: Agent.CODEX, machineId: "m1", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.FULL_ACCESS } };
+    const out = await commitOp(s, mine, seen);
+    expect(s.puts).toBe(2);
+    expect(paths(out.prefs)).toEqual({ pinned: ["/keep"], hidden: ["/hidden"] });
+    expect(out.prefs.settings).toMatchObject([
+      { path: "/other", agent: Agent.CLAUDE, machineId: "m2", model: "sonnet" },
+      { path: "/mine", agent: Agent.CODEX, machineId: "m1", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.FULL_ACCESS },
+    ]);
+  });
+
+  it("keeps a stored project's other settings when one field changes", () => {
+    const before = applyOp(emptyPrefs(), { ...op("settings", "/p"), settings: { agent: Agent.CLAUDE, machineId: "m2", model: "sonnet", effort: "high", mode: ApprovalMode.ASK } });
+    const after = applyOp(before, { ...op("settings", "/p"), settings: { model: "opus" } });
+    expect(after.settings).toMatchObject([{ path: "/p", agent: Agent.CLAUDE, machineId: "m2", model: "opus", effort: "high", mode: ApprovalMode.ASK }]);
   });
 
   it("does not write twice when a reply was lost but the write went in", async () => {

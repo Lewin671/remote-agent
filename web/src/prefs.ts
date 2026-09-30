@@ -7,10 +7,10 @@
 // overwritten with this client's older picture of it.
 
 import { compareProjects } from "./model";
-import { create } from "@bufbuild/protobuf";
-import { ProjectPrefSchema, ProjectPrefsSchema, type ProjectPref, type ProjectPrefs } from "./gen/remoteagent/v1/remote_pb";
+import { clone, create } from "@bufbuild/protobuf";
+import { ProjectPrefSchema, ProjectPrefsSchema, ProjectSettingsSchema, type ProjectPref, type ProjectPrefs, type ProjectSettings } from "./gen/remoteagent/v1/remote_pb";
 
-export type PrefKind = "pin" | "unpin" | "hide" | "unhide";
+export type PrefKind = "pin" | "unpin" | "hide" | "unhide" | "settings";
 
 export interface PrefOp {
   // Random, so a client whose reply was lost can tell whether its write
@@ -19,6 +19,7 @@ export interface PrefOp {
   kind: PrefKind;
   path: string;
   at: number; // ms
+  settings?: Omit<Partial<ProjectSettings>, "$typeName" | "path" | "updatedMs">;
 }
 
 export interface PrefsSnapshot {
@@ -42,6 +43,7 @@ export function applyOp(prefs: ProjectPrefs, op: PrefOp): ProjectPrefs {
   const without = (list: ProjectPref[]) => list.filter((p) => p.path !== op.path);
   let pinned = [...prefs.pinned];
   let hidden = [...prefs.hidden];
+  let settings = [...prefs.settings];
   switch (op.kind) {
     case "pin":
       hidden = without(hidden);
@@ -57,9 +59,22 @@ export function applyOp(prefs: ProjectPrefs, op: PrefOp): ProjectPrefs {
     case "unhide":
       hidden = without(hidden);
       break;
+    case "settings": {
+      const previous = settings.find((s) => s.path === op.path);
+      const changed = previous ? clone(ProjectSettingsSchema, previous) : create(ProjectSettingsSchema, { path: op.path });
+      Object.assign(changed, op.settings, { path: op.path, updatedMs: BigInt(op.at) });
+      settings = settings.filter((s) => s.path !== op.path);
+      settings.push(changed);
+      break;
+    }
   }
   const recentOps = [...prefs.recentOps.filter((id) => id !== op.id), op.id].slice(-RECENT_OPS);
-  return create(ProjectPrefsSchema, { schema: 1, pinned, hidden, recentOps });
+  const next = clone(ProjectPrefsSchema, prefs);
+  next.pinned = pinned;
+  next.hidden = hidden;
+  next.settings = settings;
+  next.recentOps = recentOps;
+  return next;
 }
 
 /** Whether op is already in prefs: a write whose reply was lost. */

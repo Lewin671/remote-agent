@@ -1,7 +1,5 @@
 // Starting sessions. There is one way: type in a project's new-session
-// box and send. The configuration follows the project (its latest
-// session's machine, CLI, model, effort and mode) and is written in one
-// line under the box; 更改 opens the sheet to change it.
+// box and send. Project settings persist in the sealed account prefs.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
@@ -20,24 +18,20 @@ import {
   modeName,
   defaultModeOf,
   modeLabel,
-  needsFullConfirm,
   refusedForFullAccess,
   projectName,
   projects,
   shortPath,
-  tailPath,
   type MachineLike,
   type NewConfig,
   type Project,
 } from "../model";
 import { Attempt } from "../attempt";
-import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../storage";
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote, type SessionView } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
-import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
 import { groupProjects, isHidden } from "../prefs";
 import { useAutoGrow } from "./Composer";
@@ -112,7 +106,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const p = projects(remote.sessions.values()).find((x) => x.key === key);
   const inherited = inheritConfig(p, remote.machines, key);
   const [selection, setSelection] = useState<{ key: string; config: NewConfig }>();
-  const override = selection?.key === key ? selection.config : loadProjectConfig(remote.account, key);
+  const [oneTimeKey, setOneTimeKey] = useState("");
+  const oneTime = oneTimeKey === key;
+  const saved = remote.projectPrefs().settings.find((s) => s.path === key);
+  const override = selection?.key === key ? selection.config : saved ? { machineId: saved.machineId, cwd: key, agent: saved.agent, model: saved.model, effort: saved.effort, mode: saved.mode } : undefined;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
@@ -120,24 +117,17 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const [latched, setLatched] = useState<{ key: string; config: NewConfig }>();
   const held = latched?.key === key ? latched.config : undefined;
   const cfg = override ? { ...override, from: inherited?.from } : (held ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key)));
-  // Full access confirmed for this project, machine and CLI during this
-  // visit, as when it was chosen in 这次的设置. Another CLI or machine
-  // asks again: its default may be full access too.
-  const [fullConfirmed, setFullConfirmed] = useState("");
-  const confirmKey = `${key}|${cfg.machineId}|${cfg.agent}`;
   const machine = remote.machines.get(cfg.machineId);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [configError, setConfigError] = useState("");
-  const setCfg = (config: NewConfig) => {
+  const setCfg = (config: NewConfig, once = false) => {
     setSelection({ key, config });
-    try {
-      saveProjectConfig(remote.account, key, config);
-      setConfigError("");
-    } catch {
-      setConfigError("设置未能保存在浏览器里，刷新后会恢复原设置");
-    }
+    if (once) setOneTimeKey(key);
+    if (once || oneTime) return;
+    const op = { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: { machineId: config.machineId, agent: config.agent, model: config.model, effort: config.effort, mode: config.mode } };
+    void remote.changePrefs("settings", key, op).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
   };
   // One pending attempt per project: the wide home reuses this hook when
   // switching projects, and an unknown start in one project must never be
@@ -203,9 +193,14 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       if (!terminal) tray.clear();
       if (terminal) remote.termFirst.add(sid);
       remote.draftMachines.delete(key);
-      // The new session now supplies the project's next launch settings.
-      try { clearProjectConfig(remote.account, key); } catch { /* Keep the saved choice if storage is unavailable. */ }
+      // The first session establishes the project's settings. Later starts
+      // leave a saved choice alone, including a one-time offline fallback.
+      if (!saved) {
+        const c = oneTime ? inherited ?? cfg : cfg;
+        void remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings", path: key, at: Date.now(), settings: { machineId: c.machineId, agent: c.agent, model: c.model, effort: c.effort, mode: c.mode } });
+      }
       setSelection(undefined);
+      setOneTimeKey("");
       setLatched(undefined);
       go("s/" + sid);
       return true;
@@ -249,18 +244,15 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     cfg,
     setCfg,
     latch,
-    needConfirm: needsFullConfirm(cfg.mode, dm),
     refused,
     clearRefused: () => setRefused(false),
-    fullConfirmed: fullConfirmed === confirmKey,
-    confirmFull: () => setFullConfirmed(confirmKey),
     issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, cfg.mode || dm.mode),
     parts: describeParts(cfg, machine, info),
     tray,
     attachWhy: attachBlocked(remote, machine),
     machine,
     info,
-    line: describe(cfg, machine, info),
+    line: [agentName(cfg.agent), cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）", machineName(machine), describeParts(cfg, machine, info).model].join(" · "),
     create,
     busy,
     error,
@@ -271,12 +263,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
 
 export type NewSession = ReturnType<typeof useNewSession>;
 
-/** The new-session input (client-v7): at the bottom of a project page
- * ("box"), at the top of a wide project page ("prompt"), or the wide home
- * ("start", with the project chip leading). One row like a session's: its
- * ＋ adds images or opens 新会话设置, where the CLI, machine, folder, model
- * and mode are; only full access is always in view. The first message
- * starts the session. */
+/** The first message starts a session. The project summary opens its
+ * settings; the composer's ＋ only adds images. */
 export function NewBox({
   ns,
   name,
@@ -296,10 +284,6 @@ export function NewBox({
   onFocus?: (typing: boolean) => void;
 }) {
   const [text, setText] = useState("");
-  const [askFull, setAskFull] = useState(false);
-  // The daemon found this folder's default is full access: ask, and send
-  // the start again confirmed.
-  const refusedAsk = ns.refused;
   const [config, setConfig] = useState<"" | "main" | Pick>("");
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, 132);
@@ -307,7 +291,7 @@ export function NewBox({
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   const cannot = ns.busy || !!ns.blocked || !!ns.issue;
-  const submit = async (confirmed = false, force = false) => {
+  const submit = async (force = false) => {
     const prompt = text;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request. Chosen images must all be on the
@@ -315,11 +299,9 @@ export function NewBox({
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
     if (ns.tray.items.length && !ns.tray.ready()) return;
     // Retrying an unknown start sends it as it was.
-    const retry = ns.frozen && !ns.changes(prompt);
-    // Full access, chosen or the CLI's default (or a default nobody knows),
-    // is confirmed for each start; a default is then sent as confirmed.
-    if (!retry && ns.needConfirm && !ns.fullConfirmed && !confirmed) return setAskFull(true);
-    const confirm = force || (!retry && ns.needConfirm && !ns.cfg.mode);
+    // Older daemons still require the compatibility flag for full access.
+    const dm = defaultModeOf(ns.machine, ns.cfg.agent);
+    const confirm = force || ns.cfg.mode === ApprovalMode.FULL_ACCESS || (!ns.cfg.mode && dm.mode === ApprovalMode.FULL_ACCESS);
     const ok = await ns.create(prompt.trim(), undefined, false, confirm);
     if (ok) setText("");
   };
@@ -410,7 +392,7 @@ export function NewBox({
           {ns.issue}
         </Banner>
       )}
-      {ns.configError && <Banner kind="warn">{ns.configError}</Banner>}
+      {ns.configError && <Banner kind="warn" action="重试保存" onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
 
     </>
   );
@@ -419,30 +401,15 @@ export function NewBox({
       ↑
     </button>
   );
-  // Full access is the one setting always in view, chosen or the default.
-  const dm = ns.cfg.mode ? undefined : defaultModeOf(ns.machine, ns.cfg.agent);
-  const warning =
-    ns.cfg.mode === ApprovalMode.FULL_ACCESS
-      ? "完全放行 · 发送前确认"
-      : dm && !dm.known
-        ? "当前默认：模式未知 · 发送前确认"
-        : dm?.mode === ApprovalMode.FULL_ACCESS
-          ? "当前默认：完全放行 · 发送前确认"
-          : "";
-  // One row, as in a session: ＋ for images and the new session's settings,
-  // the task, and send. The settings follow the project's latest session.
+  // One row, as in a session: ＋ adds images, the task starts a session.
   const card = (
     <div className={"compose-card new-compose" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
       {trayView}
-      <ComposeMenu label="附件与新会话设置">
+      <ComposeMenu label="添加图片">
         <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />
-        <button className="nav" onClick={() => setConfig("main")}>
-          新会话设置 ›
-        </button>
       </ComposeMenu>
       {field}
       {go}
-      {warning && <div className="access-warning">{warning}</div>}
     </div>
   );
   const busyNote = status && <div className="small muted startnote">{status}</div>;
@@ -450,10 +417,11 @@ export function NewBox({
   if (variant === "start")
     body = (
       <>
-        <div className="wide-project-tools">{lead}</div>
+        <h3 className="wide-start-title">在 {lead} 里开始一个任务</h3>
         {error}
         {notes}
         {card}
+        <button className={"project-summary" + (ns.line.includes("完全放行") ? " full" : "")} onClick={() => setConfig("main")}>{ns.line}</button>
         {busyNote}
       </>
     );
@@ -469,22 +437,7 @@ export function NewBox({
   return (
     <>
       {body}
-      {(askFull || refusedAsk) && (
-        <FullAccessAlert
-          forNew
-          onCancel={() => {
-            setAskFull(false);
-            ns.clearRefused();
-          }}
-          onOk={() => {
-            const force = refusedAsk;
-            setAskFull(false);
-            ns.clearRefused();
-            ns.confirmFull();
-            void submit(true, force);
-          }}
-        />
-      )}
+      {ns.refused && <Banner kind="warn" action="重试" onAction={() => { ns.clearRefused(); void submit(true); }}>电脑需要确认完全放行</Banner>}
       {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
     </>
   );
@@ -533,60 +486,25 @@ export function CliSheet({ ns, onClose, onMachine }: { ns: NewSession; onClose: 
   );
 }
 
-type Pick = "" | "machine" | "agent" | "dir" | "model" | "mode";
+type Pick = "" | "machine" | "agent" | "model" | "mode";
 
 /** 这次的设置: machine, CLI, folder, model and mode for this session. */
 export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClose: () => void; start?: Pick }) {
   const [pick, setPick] = useState<Pick>(start);
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
-  const [confirmFull, setConfirmFull] = useState(false);
   const { remote, cfg, p, machine, info } = ns;
   const set = (patch: Partial<NewConfig>) => ns.setCfg({ ...cfg, ...patch });
   const def = defaultsOf(info.settings, cfg.agent);
   // Machines this project has used; a new project can use any.
-  const choices: MachineView[] = (p ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
+  const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   const back = (
     <button className="back2" onClick={back2} aria-label="返回">
       ‹
     </button>
   );
-  if (confirmFull)
-    return (
-      <FullAccessAlert
-        forNew
-        onCancel={() => setConfirmFull(false)}
-        onOk={() => {
-          setConfirmFull(false);
-          set({ mode: ApprovalMode.FULL_ACCESS });
-          ns.confirmFull();
-          back2();
-        }}
-      />
-    );
   // The CLI: those the machine has, with where to find the others.
   if (pick === "agent") return <CliSheet ns={ns} onClose={back2} onMachine={() => setPick("machine")} />;
-  if (pick === "dir")
-    return (
-      <Sheet onClose={onClose}>
-        <DirBrowser
-          remote={remote}
-          machineId={cfg.machineId}
-          start={cfg.cwd}
-          head={
-            <div className="ns-head">
-              {back}
-              <b>选目录</b>
-            </div>
-          }
-          label={(name) => `在 ${name} 里开始`}
-          onPick={(path) => {
-            set({ cwd: path });
-            back2();
-          }}
-        />
-      </Sheet>
-    );
   let body;
   if (pick === "machine")
     body = (
@@ -597,7 +515,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             className={"mi" + (m.online ? "" : " dis")}
             disabled={!m.online}
             onClick={() => {
-              ns.setCfg(switchMachine(cfg, m));
+              ns.setCfg(switchMachine(cfg, m), !machine?.online);
               back2();
             }}
           >
@@ -668,14 +586,13 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
           noAuto
             ? { mode: ApprovalMode.AUTO, name: "自动", desc: "Haiku 没有自动模式", off: true }
             : { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(cfg.agent)} 自己判断，拿不准的在对话里问你` },
-          { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批，每次新建都要确认", danger: true },
+          { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
         ].map((m: { mode: ApprovalMode; name: string; desc: string; danger?: boolean; off?: boolean }) => (
           <button
             key={m.mode}
             className={"mi" + (m.danger ? " danger" : "")}
             disabled={m.off}
             onClick={() => {
-              if (m.mode === ApprovalMode.FULL_ACCESS && cfg.mode !== m.mode) return setConfirmFull(true);
               set({ mode: m.mode });
               back2();
             }}
@@ -690,7 +607,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": "新会话设置", machine: "机器", agent: "CLI", dir: "目录", model: "模型", mode: "审批" };
+  const titles: Record<Pick, string> = { "": "项目设置", machine: "机器", agent: "CLI", model: "模型", mode: "审批" };
   const modelLine = ns.parts.model;
   return (
     <Sheet onClose={onClose}>
@@ -705,6 +622,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </div>
       {body ?? (
         <>
+          <div className="hint"><b>{projectName(cfg.cwd)}</b><br /><span className="mono">{shortPath(cfg.cwd)}</span></div>
           <div className="setrows">
             <button className="sr" onClick={() => setPick("agent")}>
               <span className="lbl">CLI</span>
@@ -717,12 +635,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               <span className="v">
                 <Dot tone={machine?.online ? "idle" : "off"} />
                 <em>{machineName(machine)}</em>
-              </span>
-            </button>
-            <button className="sr" onClick={() => setPick("dir")} disabled={!machine?.online}>
-              <span className="lbl">目录</span>
-              <span className="v">
-                <em>{tailPath(cfg.cwd, 26)}</em>
               </span>
             </button>
             <button className="sr" onClick={() => setPick("model")}>
@@ -744,7 +656,11 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             </Banner>
           )}
           <div className="hint">
-            {cfg.from ? `沿用 ${projectName(cfg.cwd)} 最近会话的设置；更换 CLI 或机器会保留草稿。` : `新项目用 ${machineName(machine)} 的默认设置；更换 CLI 或机器会保留草稿。`}
+            {cfg.from ? `沿用最近会话的设置；更换 CLI 或机器会保留草稿。` : `新项目用 ${machineName(machine)} 的默认设置；更换 CLI 或机器会保留草稿。`}
+          </div>
+          <div className="setrows">
+            <button className="sr" onClick={() => void remote.changePrefs(ns.p && remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "unpin" : "pin", cfg.cwd)}>{remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "取消常用" : "设为常用"}</button>
+            <button className="sr red" onClick={() => void remote.changePrefs("hide", cfg.cwd)}>从项目列表移除</button>
           </div>
         </>
       )}
@@ -834,8 +750,10 @@ export function DirBrowser({
 
 /** From the home page's ＋: pick a project first, or a new one. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会话 · 选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
+  const [query, setQuery] = useState("");
   // Grouped as the lists are; removed projects are left out.
   const g = groupProjects(projects(remote.sessions.values()), remote.projectPrefs());
+  const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
   const row = (p: Project<SessionView>) => (
     <button key={p.key} className="pi" onClick={() => onPick(p.key)}>
       <Avatar name={p.name} size="sm" />
@@ -862,11 +780,12 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
           取消
         </button>
       </div>
+      {g.pinned.length + g.others.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
       <div className="plist">
-        {g.pinned.length > 0 && <div className="fl">常用项目</div>}
-        {g.pinned.map(row)}
+        {g.pinned.some(match) && <div className="fl">常用项目</div>}
+        {g.pinned.filter(match).map(row)}
         {g.pinned.length > 0 && g.others.length > 0 && <div className="fl">其他项目</div>}
-        {g.others.map(row)}
+        {g.others.filter(match).map(row)}
         <button className="pi add" onClick={onNew}>
           ＋ 新项目…<small>选机器和目录</small>
         </button>
@@ -935,4 +854,3 @@ export function NewFlow({ remote, go, onClose, onPicked }: { remote: Remote; go:
     );
   return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} title={onPicked ? "选项目" : undefined} />;
 }
-

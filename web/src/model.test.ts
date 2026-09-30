@@ -18,7 +18,6 @@ import {
   defaultModeOf,
   inheritConfig,
   modeLabel,
-  needsFullConfirm,
   refusedForFullAccess,
   inputFailure,
   newConfigIssue,
@@ -330,19 +329,19 @@ describe("new sessions follow the project", () => {
     expect(c?.from?.id).toBe("b");
   });
 
-  it("does not copy full access or plan", () => {
+  it("keeps full access but treats plan as a passing state", () => {
     const full = sess({ ...ctx, approvalsReviewer: "user", approvalPolicy: "never", sandbox: "danger-full-access" });
-    expect(inheritConfig(projects([full])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
+    expect(inheritConfig(projects([full])[0], machines(true, true))?.mode).toBe(ApprovalMode.FULL_ACCESS);
     const plan = sess({ ...ctx, collaborationMode: "plan" });
     expect(inheritConfig(projects([plan])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
   });
 
-  it("moves to another machine of the project with its defaults", () => {
+  it("keeps the last machine until the user picks another", () => {
     const list = [sess({ model: "x", ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ model: "y", ...ctx }, { id: "b", updatedMs: 5n })];
-    expect(inheritConfig(projects(list)[0], machines(false, true))).toMatchObject({ machineId: "m2", model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
+    expect(inheritConfig(projects(list)[0], machines(false, true))).toMatchObject({ machineId: "m1", model: "y" });
   });
 
-  it("picks a CLI the fallback machine has", () => {
+  it("keeps the last CLI with an offline machine", () => {
     const meta = (...agents: Agent[]) => create(MachineMetaSchema, { agents: agents.map((agent) => create(AgentInfoSchema, { agent })) });
     const ms = new Map<string, MachineLike>([
       ["m1", { id: "m1", online: false, lastSeenMs: 0n }],
@@ -351,7 +350,7 @@ describe("new sessions follow the project", () => {
     // The latest session ran Codex on m1, which is offline; m2 only has
     // Claude Code.
     const list = [sess({ ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ ...ctx }, { id: "b", updatedMs: 5n })];
-    expect(inheritConfig(projects(list)[0], ms)).toMatchObject({ machineId: "m2", agent: Agent.CLAUDE });
+    expect(inheritConfig(projects(list)[0], ms)).toMatchObject({ machineId: "m1", agent: Agent.CODEX });
   });
 
   it("has nothing to copy for a new project", () => {
@@ -823,15 +822,6 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(old, Agent.CODEX), Agent.CODEX)).toBe("默认模式（不确定，可能是完全放行）");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
     expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
-  });
-
-  it("asks before a start in full access, or in a default nobody knows", () => {
-    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE))).toBe(true);
-    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(old, Agent.CODEX))).toBe(true);
-    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX))).toBe(false);
-    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE))).toBe(false);
-    expect(needsFullConfirm(ApprovalMode.FULL_ACCESS, defaultModeOf(codexAuto, Agent.CODEX))).toBe(true);
-    expect(needsFullConfirm(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE))).toBe(false);
   });
 
   it("recognizes the daemon refusing an unconfirmed start in full access", () => {

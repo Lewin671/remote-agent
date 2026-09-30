@@ -25,7 +25,7 @@ import {
   type Keys,
 } from "./crypto";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { Agent, ImageFormat, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ImageFormat, SendMode, type Event } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import { SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -226,6 +226,8 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
 }
 
 export class Remote {
+  /** Development fixture hooks; the real client never enables these. */
+  demoFlag(_name: string): boolean { return false; }
   machines = new Map<string, MachineView>();
   sessions = new Map<string, SessionView>();
   conn: ConnState = "connecting";
@@ -785,8 +787,8 @@ export class Remote {
    * reaching the computer is a new one used; the send ID still keeps the
    * daemon from queueing the text twice. Returns the slot that got an
    * answer. */
-  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false, imageIds: string[] = []): Promise<RequestSlot> {
-    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId, imageIds } };
+  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false, imageIds: string[] = [], mode = SendMode.STEER): Promise<RequestSlot> {
+    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId, imageIds, mode } };
     try {
       await this.command(sid, cmd, slot);
       return slot;
@@ -818,8 +820,8 @@ export class Remote {
 
   /** Sends text, and images uploaded to the machine, to a session; its
    * progress shows in outbox(sid). */
-  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []): string {
-    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, status: "sending" };
+  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = [], mode = SendMode.STEER): string {
+    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, mode, status: "sending" };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
@@ -871,7 +873,7 @@ export class Remote {
   private async deliver(sid: string, o: Outgoing) {
     this.patchOut(sid, o.sendId, { status: "sending", error: undefined });
     try {
-      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown, o.imageIds);
+      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown, o.imageIds, o.mode);
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);
@@ -1097,7 +1099,18 @@ export class Remote {
    * Only while connected: offline the list is shown as cached and changes
    * wait. Resolves false if it was not saved; the list then stays as it
    * was, and retryPrefs tries the same operation again. */
-  async changePrefs(kind: PrefKind, path: string, op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() }): Promise<boolean> {
+  private settingsWrites = new Map<string, Promise<boolean>>();
+
+  changePrefs(kind: PrefKind, path: string, op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() }): Promise<boolean> {
+    if (kind !== "settings") return this.changePrefsNow(kind, path, op);
+    const prior = this.settingsWrites.get(path);
+    const next = (prior ? prior.catch(() => false).then(() => this.changePrefsNow(kind, path, op)) : this.changePrefsNow(kind, path, op));
+    this.settingsWrites.set(path, next);
+    void next.finally(() => { if (this.settingsWrites.get(path) === next) this.settingsWrites.delete(path); });
+    return next;
+  }
+
+  private async changePrefsNow(kind: PrefKind, path: string, op: PrefOp): Promise<boolean> {
     if (this.conn !== "online" || this.prefs.status !== "ready") return false;
     this.prefs.pending.set(path, kind);
     this.prefs = { ...this.prefs, failed: undefined };

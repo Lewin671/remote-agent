@@ -5,7 +5,7 @@
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
-import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SessionStatus, ToolBackground, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SendMode, SessionStatus, ToolBackground, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
 import type { Session } from "./gen/remoteagent/v1/local_pb";
 import { DefaultModeSource, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
@@ -435,43 +435,29 @@ export interface NewConfig {
   from?: SessionLike; // the session copied, if any
 }
 
-/** What a new session in project uses: the machine, CLI, model, effort
- * and mode of its latest session. Full access (needs confirming each
- * time) and plan (a passing state) fall back to the machine default. If
- * that machine is offline, another online machine the project used is
- * taken with its own defaults. */
+/** A project's latest session supplies its initial settings. Plan is a
+ * passing state; an offline machine stays selected until the user picks
+ * another for this start. */
 export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map<string, MachineLike>, cwd = p?.key ?? ""): NewConfig | undefined {
   const latest = p?.sessions[0];
   if (!p || !latest) return undefined;
   const agent = agentOf(latest);
-  const online = (id: string) => machines.get(id)?.online ?? false;
-  if (online(latest.machineId)) {
-    const mode = modeOf(latest)?.mode ?? ApprovalMode.UNSPECIFIED;
-    const keep = mode === ApprovalMode.ASK || mode === ApprovalMode.AUTO;
-    return {
-      machineId: latest.machineId,
-      cwd,
-      agent,
-      model: latest.info?.model ?? "",
-      effort: latest.info?.effort ?? "",
-      mode: keep ? mode : ApprovalMode.UNSPECIFIED,
-      from: latest,
-    };
-  }
-  const other = p.machines.find(online);
-  const machineId = other ?? latest.machineId;
-  const m = machines.get(machineId);
-  // That machine may not have the same CLI; take one it has.
-  const agents = machineAgents(m);
-  return { machineId, cwd, agent: agents.includes(agent) ? agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, from: latest };
+  void machines;
+  const mode = modeOf(latest)?.mode ?? ApprovalMode.UNSPECIFIED;
+  const keep = mode === ApprovalMode.ASK || mode === ApprovalMode.AUTO || mode === ApprovalMode.FULL_ACCESS;
+  return {
+    machineId: latest.machineId,
+    cwd,
+    agent,
+    model: latest.info?.model ?? "",
+    effort: latest.info?.effort ?? "",
+    mode: keep ? mode : ApprovalMode.UNSPECIFIED,
+    from: latest,
+  };
 }
 
-/** The new session's configuration with another CLI: same machine and
- * folder, and that CLI's defaults for the machine (client-v2: 切换后采用该
- * CLI 的默认模型和有效模式). Nothing chosen for the other CLI carries over;
- * above all not full access, which is confirmed per start and CLI. If the
- * default is full access the start asks first; a mode the model cannot run
- * in is refused at the start (newConfigIssue). */
+/** The same project on another CLI uses that CLI's defaults for model
+ * and mode; the draft stays in place. */
 export function switchAgent(cfg: NewConfig, agent: Agent): NewConfig {
   if (agent === cfg.agent) return cfg;
   return { ...cfg, agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
@@ -515,16 +501,9 @@ export function modeLabel(chosen: ApprovalMode, d: DefaultMode, agent: Agent): s
   return base + (d.varies ? "（项目设置可能不同）" : "");
 }
 
-/** Whether a start must be confirmed first: full access chosen, or left to
- * a default that is full access or that nobody knows (architecture §7). */
-export function needsFullConfirm(chosen: ApprovalMode, d: DefaultMode): boolean {
-  if (chosen) return chosen === ApprovalMode.FULL_ACCESS;
-  return !d.known || d.mode === ApprovalMode.FULL_ACCESS;
-}
-
 /** The daemon refused a start because the folder's default is full access
- * and it was not confirmed; nothing ran, so asking and sending a new
- * request is safe. */
+ * and it was not confirmed; nothing ran, so an explicit retry can carry
+ * the old daemon's compatibility flag without showing a confirmation. */
 export function refusedForFullAccess(e: unknown): boolean {
   const x = e as { code?: string; message?: string } | undefined;
   return x?.code === "failed_precondition" && /full access/i.test(x.message ?? "");
@@ -555,7 +534,8 @@ export interface Derived {
   // What the computer accepted for each message, as its first QUEUED state
   // says (v2 daemons): the text and images, and who sent it; so every
   // client shows the same queue. Missing from older daemons.
-  accepted: Map<string, { text: string; imageIds: string[]; origin?: Event["origin"] }>;
+  accepted: Map<string, { text: string; imageIds: string[]; origin?: Event["origin"]; mode: SendMode }>;
+  paused: Set<string>;
   stages: Map<string, InputStage>; // how far a queued message got
   inputReasons: Map<string, string>; // why a message failed
   // Messages the session ended before writing: canceled for that reason
@@ -601,6 +581,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     by: new Map(),
     inputs: new Map(),
     accepted: new Map(),
+    paused: new Set(),
     stages: new Map(),
     inputReasons: new Map(),
     unsent: new Set(),
@@ -665,7 +646,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
         if (k.value.status === InputStatus.QUEUED && !d.accepted.has(k.value.requestId) && (k.value.text || k.value.imageIds.length))
-          d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin });
+          d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin, mode: k.value.mode });
+        if (k.value.paused) d.paused.add(k.value.requestId);
+        else d.paused.delete(k.value.requestId);
         if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);
         if (k.value.status === InputStatus.FAILED || k.value.status === InputStatus.NEEDS_TERMINAL) d.inputReasons.set(k.value.requestId, k.value.reason);
         if (k.value.status === InputStatus.CANCELED && k.value.reason === "exited") d.unsent.add(k.value.requestId);
@@ -824,6 +807,8 @@ export function decisionText(d: ApprovalDecision): string {
   switch (d) {
     case ApprovalDecision.ALLOW:
       return "已允许";
+    case ApprovalDecision.ALLOW_ALWAYS:
+      return "已允许，以后不再问";
     case ApprovalDecision.DENY:
       return "已拒绝";
     case ApprovalDecision.TIMEOUT:
@@ -834,6 +819,15 @@ export function decisionText(d: ApprovalDecision): string {
       return "已在终端处理";
   }
   return "";
+}
+
+export function alwaysText(message: string): string {
+  const command = message.match(/commands that start with [`'“]?(.+?)[`'”]?(?:\s*$)/i);
+  if (command) return `「${command[1].replace(/[`'”]$/, "")}」开头的命令以后不再问`;
+  const dir = message.match(/always allow access to (.+?) from this project/i);
+  if (dir) return `本项目访问 ${dir[1]} 以后不再问`;
+  if (/accept edits|automatically accept edits/i.test(message)) return "本会话自动接受编辑";
+  return message;
 }
 
 /** Splits the "(Recommended)" marker off an option label. */
@@ -874,6 +868,7 @@ export interface Outgoing {
   requestId: string;
   deadline: number;
   text: string;
+  mode?: SendMode;
   // Images uploaded to the machine for this message (their image IDs).
   imageIds?: string[];
   // This device's copies of them, shown until the CLI records the message.
@@ -905,6 +900,7 @@ export function phaseOf(o: Pick<Outgoing, "status">, input?: InputStatus): Phase
     case InputStatus.CANCELED:
       return "canceled";
     case InputStatus.QUEUED:
+    case InputStatus.HELD_BY_CLI:
       return "queued";
     case InputStatus.FAILED:
       return "notSent";
@@ -932,7 +928,7 @@ export function queueReason(s: SessionLike, d: Derived): string {
  * them: queued, and not left behind by a session that ended. skip is the
  * first message of a session started here, which the chat shows. */
 export function queuedIds(d: Derived, skip?: string): string[] {
-  return [...d.inputs.entries()].filter(([id, st]) => st === InputStatus.QUEUED && !d.unsent.has(id) && id !== skip).map(([id]) => id);
+  return [...d.inputs.entries()].filter(([id, st]) => (st === InputStatus.QUEUED || st === InputStatus.HELD_BY_CLI) && !d.unsent.has(id) && id !== skip).map(([id]) => id);
 }
 
 /** Why a message was not written, from the daemon's reason code. */
