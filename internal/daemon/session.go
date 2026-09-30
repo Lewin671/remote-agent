@@ -450,6 +450,9 @@ func (s *session) markExited(detail string) {
 		}
 		delete(s.approvals, id)
 	}
+	// Messages still queued are not sent after a resume; each is
+	// settled here, never dropped without a word.
+	left := s.queue.Queue
 	s.queue.Queue = nil
 	if err := s.queue.save(s.dir); err != nil {
 		slog.Error("save input queue", "session", m.ID, "err", err)
@@ -457,6 +460,22 @@ func (s *session) markExited(detail string) {
 	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", err)
+	}
+	if len(left) > 0 {
+		s.readRollout()
+	}
+	for _, in := range left {
+		switch {
+		case in.Inflight == nil:
+			s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+				RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED, Reason: "exited",
+			}}})
+		case s.loggedUserMessage(in.InflightSeq, in.Text):
+			s.emitInput(in.RequestID, pb.InputStatus_INPUT_STATUS_SUBMITTED)
+		default:
+			// Written, maybe submitted: as when confirming times out.
+			s.emitInput(in.RequestID, pb.InputStatus_INPUT_STATUS_UNCONFIRMED)
+		}
 	}
 	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
@@ -692,8 +711,10 @@ func (s *session) settle(ctx context.Context, in input) bool {
 	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
 		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
 	}
-	s.popInput()
-	s.emitInput(in.RequestID, status)
+	// The session may have exited meanwhile and reported it already.
+	if s.popInput(in.RequestID) {
+		s.emitInput(in.RequestID, status)
+	}
 	return true
 }
 
@@ -710,15 +731,19 @@ func (s *session) loggedUserMessage(seq uint64, text string) bool {
 	return false
 }
 
-func (s *session) popInput() {
+// popInput removes the head message if it is requestID and reports
+// whether it did.
+func (s *session) popInput(requestID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.queue.Queue) > 0 {
-		s.queue.Queue = s.queue.Queue[1:]
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		return false
 	}
+	s.queue.Queue = s.queue.Queue[1:]
 	if err := s.queue.save(s.dir); err != nil {
 		slog.Error("save input queue", "session", s.meta.ID, "err", err)
 	}
+	return true
 }
 
 // markInflight records, before the head message is written, where

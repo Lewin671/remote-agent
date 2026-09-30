@@ -126,6 +126,9 @@ func formatEvent(e *pb.Event) string {
 	case *pb.Event_InputState:
 		body = fmt.Sprintf("input %s: %s", k.InputState.RequestId,
 			strings.ToLower(strings.TrimPrefix(k.InputState.Status.String(), "INPUT_STATUS_")))
+		if r := k.InputState.Reason; r == "exited" {
+			body += " (the session ended before it was sent)"
+		}
 		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
 			body += " (delivered but not recorded by the CLI; not sent again)"
 		}

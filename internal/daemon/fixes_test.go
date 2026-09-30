@@ -408,3 +408,37 @@ func TestCancelInput(t *testing.T) {
 		t.Fatalf("cancel while writing: %v", err)
 	}
 }
+
+// A session that ends with messages still queued says what became of each
+// instead of dropping them: never written, canceled because it exited;
+// written but unconfirmed, unconfirmed.
+func TestExitSettlesQueuedInput(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: time.Minute})
+	h.term.setScreen(draftScreen) // nothing gets written
+	if _, err := h.s.send("never written", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	off := int64(0)
+	h.s.mu.Lock()
+	h.s.queue.Queue = append([]input{{Text: "written", RequestID: "r0", Inflight: &off, InflightSeq: h.s.log.LastSeq()}}, h.s.queue.Queue...)
+	h.s.mu.Unlock()
+	h.term.mu.Lock()
+	h.term.alive = false
+	h.term.mu.Unlock()
+	h.s.checkScreen()
+	got := map[string]*pb.InputState{}
+	for _, e := range h.events() {
+		if st := e.GetInputState(); st != nil {
+			got[st.RequestId] = st
+		}
+	}
+	if st := got["r1"]; st.GetStatus() != pb.InputStatus_INPUT_STATUS_CANCELED || st.GetReason() != "exited" {
+		t.Errorf("queued: %v", st)
+	}
+	if st := got["r0"]; st.GetStatus() != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		t.Errorf("written: %v", st)
+	}
+	if n := h.s.info().QueuedInputs; n != 0 {
+		t.Errorf("still queued: %d", n)
+	}
+}
