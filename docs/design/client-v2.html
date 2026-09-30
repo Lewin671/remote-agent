@@ -329,14 +329,17 @@
   .list .mi b { font-size: 15px; font-weight: 600; }
   .list .mi .md { font-size: 12px; color: var(--muted); line-height: 1.45; font-weight: 400; }
   .list .mi small { color: var(--muted); font-size: 12px; margin-left: 4px; }
-  .list .mi.dis { opacity: .45; }
+  .list .mi.dis { color: var(--muted); }
+  .list .mi.dis b { color: var(--muted); }
   .ck { margin-left: auto; color: var(--blue); font-weight: 700; }
   .list .mi.danger b { color: var(--red); }
   .crumb { font: 13px ui-monospace, Menlo, monospace; color: var(--muted); margin-bottom: 6px; }
   .crumb b { color: var(--fg); }
   .ctxbox { display: flex; gap: 14px; align-items: center; background: var(--soft); border-radius: 14px; padding: 12px; }
   .ctxbox .num { font-size: 22px; font-weight: 700; }
-  .ctxbox .act { margin-left: auto; color: var(--blue); font-weight: 600; font-size: 15px; padding: 10px 4px; }
+  .ctxbox > .ring { flex-shrink: 0; }
+  .ctxbox > div:not(.ring):not(.act) { flex: 1; min-width: 0; }
+  .ctxbox .act { margin-left: auto; flex: 0 0 auto; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; white-space: nowrap; color: var(--blue); font-weight: 600; font-size: 15px; padding: 10px 6px; }
   .slider { position: relative; height: 28px; margin: 4px 6px 0; }
   .slider .track { position: absolute; left: 0; right: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--track); }
   .slider .fill { position: absolute; left: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--blue-bg); }
@@ -361,6 +364,17 @@
   .grp { background: var(--card); border-radius: 14px; margin: 0 16px 12px; overflow: hidden; }
   .row { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 44px; font-size: 15px; }
   .row + .row { border-top: 1px solid var(--line); }
+  .row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
+  .machine-summary .ico { flex-shrink: 0; }
+  .machine-summary .machine-info { flex: 1; min-width: 0; }
+  .machine-summary .machine-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .machine-summary .machine-status, .machine-summary .machine-quota { font-size: 13px; color: var(--muted); }
+  .machine-summary .machine-status { display: inline-flex; align-items: center; gap: 5px; }
+  .machine-summary .machine-quota { margin-top: 2px; overflow-wrap: anywhere; }
+  .machine-summary .machine-chevron { flex-shrink: 0; color: var(--muted); }
+  .pair-wait-actions { padding: 24px 16px 16px; }
+  .pair-wait-actions .btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+
   .row .v { margin-left: auto; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .row .ico { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; flex: none; }
   .row.col { display: block; padding: 10px 14px; }
@@ -666,6 +680,7 @@
 <div class="note">
   <h4>相对 v1 的改动</h4>
   <ul>
+    <li>修正机器额度摘要和压缩按钮布局；不可用选项保留可读原因；补齐机器移除入口、配对等待页的取消与返回填码。</li>
     <li>设备页加入 Claude Code 额度入口；额度详情按 CLI 展示用量、重置与更新时间，补齐未获取、部分缺失、过期、读取失败和 API 计费状态。</li>
     <li>加入 Claude Code：新建卡片直接选择 CLI，列表和会话页显示 CLI；模型、推理强度、模式和计划操作按 CLI 能力显示。</li>
     <li>统一消息输入区：多行正文、模式、模型、上下文和发送放在同一块；运行中有独立中断入口，键盘弹出时只收起次要设置。</li>
@@ -1642,7 +1657,7 @@ git status --short gen/</pre>
     <div class="list">
       <div class="mi"><span class="dot idle"></span><div class="mt">MacBook</div><span class="ck">✓</span></div>
       <div class="mi"><span class="dot idle"></span><div class="mt">VPS-dev</div></div>
-      <div class="mi dis"><span class="dot off"></span><div class="mt">iMac<div class="md">2 小时前在线，现在不能新建</div></div></div>
+      <div class="mi dis" aria-disabled="true"><span class="dot off"></span><div class="mt">iMac<div class="md">2 小时前在线，现在不能新建</div></div></div>
     </div>
   </div>
 
@@ -1695,8 +1710,8 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">会话设置 · 运行中 / 出错</div>
     <div class="list">
-      <div class="mi dis"><div class="mt">GPT-6-Astra</div><span class="ck">✓</span></div>
-      <div class="mi dis"><div class="mt">GPT-6-Sol</div></div>
+      <div class="mi dis" aria-disabled="true"><div class="mt">GPT-6-Astra</div><span class="ck">✓</span></div>
+      <div class="mi dis" aria-disabled="true"><div class="mt">GPT-6-Sol</div></div>
     </div>
     <div class="hint">这一轮在运行，结束后才能切换模型和推理强度</div>
     <div class="banner err" style="margin-top:8px">没能读取模型列表<b>重试</b></div>
@@ -1732,8 +1747,8 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">设备 · 保存失败 / 移除</div>
     <div class="banner err">没能保存默认模型：MacBook 不在线<b>重试</b></div>
-    <div class="alert" style="position:static;box-shadow:none;border:1px solid var(--line);margin-top:10px">
-      <h5 class="red">移除 iMac？</h5>
+    <div class="alert" id="machine-removal" style="position:static;box-shadow:none;border:1px solid var(--line);margin-top:10px">
+      <h5 class="red">移除 MacBook？</h5>
       <p>它的会话记录会从服务器上删除，它要重新加入账户才能再连上。</p>
       <div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div>
     </div>
@@ -2630,7 +2645,7 @@ git status --short gen/</pre>
 <div class="md">需要权限时由你确认</div>
 </div>
 </div>
-<div class="mi dis">
+<div class="mi dis" aria-disabled="true">
 <div class="mt">
 <b>自动</b>
 <div class="md">当前 Haiku 模型不支持</div>
@@ -2642,7 +2657,7 @@ git status --short gen/</pre>
 <div class="md">先出方案，再批准执行</div>
 </div>
 </div>
-<div class="mi dis">
+<div class="mi dis" aria-disabled="true">
 <div class="mt">
 <b>完全放行</b>
 <div class="md">本会话启动时未启用；需要时新建会话选择</div>
@@ -2803,7 +2818,7 @@ git status --short gen/</pre>
   </div>
 
   <div>
-    <div class="phone gray">
+    <div class="phone gray" id="machine-detail">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back">‹</span><span class="title"><b>MacBook</b></span><span class="more"></span></div>
       <div class="body">
@@ -2826,9 +2841,11 @@ git status --short gen/</pre>
           <div class="row">foo<span class="v">~/Code/foo</span></div>
           <div class="row">blog<span class="v">~/Code/blog</span></div>
         </div>
+        <div class="grp"><a class="row" href="#machine-removal" style="color:var(--red);text-decoration:none">移除这台机器…</a></div>
+        <div class="pad small muted">移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。</div>
       </div>
     </div>
-    <div class="cap">设置 › 设备：Codex 额度和 Claude Code 额度入口、已安装 CLI 版本、两套新会话默认值；点「查看全部额度」进入额度详情，未安装的 CLI 不显示设置</div>
+    <div class="cap">设置 › 设备：Codex 额度和 Claude Code 额度入口、已安装 CLI 版本、两套新会话默认值；点「查看全部额度」进入额度详情，未安装的 CLI 不显示设置；详情底部「移除这台机器…」打开二次确认</div>
   </div>
 </div>
 
@@ -3502,7 +3519,7 @@ git status --short gen/</pre>
         <div class="glabel">电脑 <a href="#devices" style="float:right">全部设备 ›</a></div>
         <div class="grp">
 
-          <div class="row"><span class="ico" style="background:#5b8def">⌘</span>MacBook<span class="v"><span class="dot idle"></span>在线 · Codex 7 天已用 34% ›</span></div>
+          <div class="row machine-summary"><span class="ico" style="background:#5b8def">⌘</span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron">›</span></div>
           <div class="row"><span class="ico" style="background:#5b8def">⌘</span>iMac<span class="v"><span class="dot off"></span>2 小时前 ›</span></div>
           <div class="row" style="color:var(--blue)">＋ 添加设备</div>
         </div>
@@ -3563,13 +3580,28 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large" style="padding-top:24px"><h3>核对图案</h3></div>
+        <div class="navbar"><span class="title"><b>核对图案</b></span><a href="#pair-entry" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none">取消</a></div>
         <div class="emoji" style="margin-top:40px;font-size:40px">🦊 🌵 🚲 🎈</div>
         <p class="muted center-text small" style="margin:0 24px">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
         <p class="muted center-text small" style="margin-top:24px">◌ 等待允许…</p>
+        <div class="pair-wait-actions"><a class="btn" href="#pair-entry" style="text-decoration:none">图案不一致，返回填码</a><div class="hint">返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。</div></div>
       </div>
     </div>
-    <div class="cap">新设备等待对方允许；被拒绝、过期、网络失败见下方状态</div>
+    <div class="cap">新设备等待对方允许；「取消」或「图案不一致，返回填码」回到填码页，保留服务器地址、清空旧码；被拒绝、过期、网络失败见下方状态</div>
+  </div>
+  <div>
+    <div class="phone" id="pair-entry">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body">
+        <div class="large" style="padding-top:24px"><h3>加入账户</h3></div>
+        <div class="pad"><div class="banner">已停止等待这次配对</div><div class="hint">请让另一台设备拒绝旧请求，并生成新的配对码。</div></div>
+        <div class="field"><small>配对码</small><span class="muted">输入新的 8 位配对码</span></div>
+        <div class="field"><small>服务器</small><span style="color:var(--fg)">https://ra.remote-agent.top</span></div>
+        <div class="big"><div class="btn" aria-disabled="true" style="color:var(--muted)">加入</div></div>
+        <p class="center-text small" style="color:var(--blue);margin-top:14px">改用账户密钥</p>
+      </div>
+    </div>
+    <div class="cap">返回后的填码页：旧码已清空，服务器保留；未输入新码时「加入」不可用</div>
   </div>
 </div>
 
