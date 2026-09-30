@@ -569,6 +569,66 @@
   .manage-table td { padding:10px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
   .manage-table td:last-child { text-align:right; white-space:nowrap; color:var(--blue); }
   .manage-table .path { display:block; color:var(--muted); font-size:12px; }
+  /* 会话里的图片：画面里的图是示例截图，颜色不跟随主题 */
+  .pics { display:flex; gap:4px; flex-wrap:wrap; margin:4px 0; }
+  .me .pics { justify-content:flex-end; max-width:86%; margin:0 0 4px; }
+  .pics.under-tool { margin:0 0 6px 21px; }
+  .pic { position:relative; display:block; flex:none; font-style:normal; height:96px; border-radius:10px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.1); background:#e9edf2; }
+  .pic.port { width:46px; }
+  .pic.land { width:150px; }
+  .pic.lg { width:100%; height:auto; aspect-ratio:3/2; border-radius:14px; }
+  .pic.ui { background:
+    linear-gradient(#2f6feb,#2f6feb) 50% 88%/70% 7% no-repeat,
+    linear-gradient(#d5dae1,#d5dae1) 30% 34%/56% 5% no-repeat,
+    linear-gradient(#d5dae1,#d5dae1) 26% 46%/44% 5% no-repeat,
+    linear-gradient(#e7eaee,#e7eaee) 50% 64%/80% 16% no-repeat,
+    linear-gradient(180deg,#1f2733 0 12%,#fff 12%); }
+  .pic.empty { background:
+    radial-gradient(circle at 50% 40%,#c9d6f2 0 13%,transparent 14%),
+    linear-gradient(#d5dae1,#d5dae1) 50% 57%/56% 4% no-repeat,
+    linear-gradient(#e3e6ea,#e3e6ea) 50% 64%/38% 3% no-repeat,
+    linear-gradient(180deg,#1f2733 0 12%,#fafbfc 12%); }
+  .pic.web { background:
+    linear-gradient(#2f6feb,#2f6feb) 82% 74%/16% 9% no-repeat,
+    linear-gradient(#d5dae1,#d5dae1) 72% 30%/46% 7% no-repeat,
+    linear-gradient(#d5dae1,#d5dae1) 64% 46%/34% 7% no-repeat,
+    linear-gradient(#eef1f4,#eef1f4) 0 100%/24% 90% no-repeat,
+    linear-gradient(180deg,#e3e7ec 0 10%,#fff 10%); }
+  .pic.gen { background:
+    radial-gradient(circle at 76% 28%,#ffd27a 0 9%,transparent 10%),
+    radial-gradient(ellipse 60% 40% at 28% 100%,#4c9a74 0 99%,transparent 100%),
+    radial-gradient(ellipse 70% 46% at 84% 104%,#2f7a5a 0 99%,transparent 100%),
+    radial-gradient(circle at 44% 58%,#fff 0 7%,transparent 8%),
+    linear-gradient(180deg,#8ec5ff,#e4f2ff 72%); }
+  .pic .n { position:absolute; left:4px; top:4px; min-width:18px; height:18px; border-radius:9px; background:rgba(0,0,0,.6); color:#fff; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+  .pic .more { position:absolute; inset:0; background:rgba(0,0,0,.5); color:#fff; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .pic .badge { position:absolute; left:4px; right:4px; bottom:4px; background:rgba(0,0,0,.66); color:#fff; font-size:11px; border-radius:6px; padding:1px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pic .ring { position:absolute; left:50%; top:50%; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%; background:rgba(0,0,0,.45); border:3px solid rgba(255,255,255,.35); border-top-color:#fff; }
+  .pic.miss { background:var(--soft); box-shadow:inset 0 0 0 1px var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--muted); font-size:12px; text-align:center; padding:6px; }
+  .pic.miss code { font:11px ui-monospace,Menlo,monospace; color:var(--fg2); overflow-wrap:anywhere; }
+  .ichip { display:inline-block; font-size:12px; line-height:18px; background:rgba(255,255,255,.24); border-radius:6px; padding:0 5px; margin:0 2px; }
+  .gen-card { margin:6px 0 8px; }
+  .gen-card .meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); margin-top:4px; }
+  .gen-card .meta b { color:var(--blue); font-weight:600; }
+  .phone.viewer { background:#000; color:#f2f3f5; }
+  .viewer .vbar { display:flex; align-items:center; justify-content:space-between; padding:0 4px; height:44px; flex:none; font-size:15px; }
+  .viewer .vbar > span { min-width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
+  .viewer .vimg { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+  .viewer .vimg .pic { height:100%; width:auto; aspect-ratio:9/19.5; border-radius:0; box-shadow:none; }
+  .viewer .vinfo { padding:10px 16px 2px; font-size:12px; color:#b9bfc6; flex:none; }
+  .viewer .vinfo b { display:block; color:#f2f3f5; font-size:13px; font-weight:600; }
+  .viewer .vinfo code { font:12px ui-monospace,Menlo,monospace; color:#d5dade; overflow-wrap:anywhere; }
+  .viewer .vact { display:flex; justify-content:space-around; padding:4px 16px 18px; font-size:13px; color:#9ec1ff; flex:none; }
+  .viewer .vact span { min-height:44px; display:flex; align-items:center; }
+  .lightbox { position:absolute; inset:34px 0 0; background:rgba(0,0,0,.86); display:grid; grid-template-columns:64px 1fr 64px; grid-template-rows:48px 1fr auto; color:#f2f3f5; }
+  .lightbox .lb-top { grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; padding:0 18px; font-size:13px; color:#c3c8ce; }
+  .lightbox .lb-top b { color:#f2f3f5; font-size:20px; font-weight:400; }
+  .lightbox .arr { display:flex; align-items:center; justify-content:center; font-size:30px; color:#c3c8ce; }
+  .lightbox .lb-img { display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 0; }
+  .lightbox .lb-img .pic { height:100%; width:auto; aspect-ratio:16/10; border-radius:4px; box-shadow:none; }
+  .lightbox .lb-foot { grid-column:1 / -1; display:flex; gap:18px; align-items:center; padding:10px 18px 14px; font-size:12px; color:#b9bfc6; }
+  .lightbox .lb-foot code { font:12px ui-monospace,Menlo,monospace; color:#d5dade; }
+  .lightbox .lb-foot .acts { margin-left:auto; display:flex; gap:18px; color:#9ec1ff; font-size:13px; }
   @container(max-width:1119px) {
     .ds { grid-template-columns:1fr; }
     .ds .tcol, .seg .split-choice { display:none; }
@@ -599,10 +659,11 @@
     <li>补齐 Claude Code 多选、长问题完整页、计划、不可用模式、设备默认值；终端按键栏加入左右方向键。</li>
     <li>工具调用开始就展示命令与调用耗时；输入区上方保留执行摘要，补画并行、未收到结果、断线和后台工作的状态。</li>
     <li>审批仍是允许 / 拒绝 / 附理由拒绝；命令可展开，连接超时写未收到确认，重试保持原决定。</li>
+    <li>显示会话里的图片：电脑上粘贴的图、Agent 查看的图挂在消息和工具行下面，Codex 生成的图单独成卡片；点开看大图，可保存和分享。只看不传，输入区不加附件按钮。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#cli">Claude Code</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1961,6 +2022,111 @@ git status --short gen/</pre>
 <div class="cap">后台任务：调用已返回、进程是否结束分开显示；没有可靠完成事件时保留待确认，不显示绿色成功</div>
 </div>
 </div>
+<!-- ============================= -->
+<h2 id="images">会话里的图片</h2>
+<div class="note" style="margin:0 0 20px">显示会话里已经出现过的图片：在电脑上粘贴的、Agent 查看的（Claude Code 读取图片文件，Codex 查看图片、浏览器截图）、Codex 生成的。只看不传，输入区没有附件按钮。预览和消息一起到达，按原始比例占位，不会加载完再把内容顶开；点开才下载大图。终端视图不变，Claude Code 在终端里仍显示 <code>[Image #1]</code>。</div>
+<div class="screens">
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">调整空状态</span><span class="agent-id">Codex</span></b><span><span class="dot idle"></span>空闲 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="me"><span class="pics"><i class="pic port empty"></i></span><div>参考这张改一下空状态</div><small>MacBook 终端</small></div>
+        <div class="tool grp"><span class="ok">✓</span><b>运行了 4 条命令 · 2 张截图</b><span class="muted">▸</span></div>
+        <div class="pics under-tool"><i class="pic port empty"></i><i class="pic port ui"></i></div>
+        <div class="ai">改好了，左边是改前，右边是改后。</div>
+      </div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">18%</span><span class="go44">↑</span></div></div>
+    </div>
+    <div class="cap">电脑上粘贴的图放在消息气泡上方；工具组收起时，里面的截图仍露在组下面，标题写张数。输入区和其他会话一样，没有附件按钮</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span><span class="agent-id">Claude Code</span></b><span><span class="dot idle"></span>空闲 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="me"><span class="pics"><i class="pic land web"><span class="n">1</span></i><i class="pic port ui"><span class="n">2</span></i></span><div><span class="ichip">图 1</span>电脑上，<span class="ichip">图 2</span>手机上，为什么手机上这么挤？</div><small>MacBook 终端</small></div>
+        <div class="tool"><span class="ok">✓</span><code>读取 shots/home-mobile-v1.png</code></div>
+        <div class="pics under-tool"><i class="pic port ui"></i></div>
+        <div class="ai">窄屏下还是两列、间距 8px。我改成单列、间距 16px。</div>
+      </div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">24%</span><span class="go44">↑</span></div></div>
+    </div>
+    <div class="cap">Claude Code 正文里的 <code>[Image #1]</code> 写成「图 1」，和预览角上的编号对应。读取图片文件的工具行下面直接显示那张图</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">空状态插画</span><span class="agent-id">Codex</span></b><span><span class="dot idle"></span>空闲 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="me"><div>生成一张空状态插画，风格和现在的图标一致</div></div>
+        <div class="gen-card"><i class="pic lg gen"></i><div class="meta"><span>生成的图片 · 1536 × 1024</span><b>提示词 ▸</b></div></div>
+        <div class="ai">生成好了，放到了 <span class="ref">web/public/empty.png</span>。</div>
+      </div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">9%</span><span class="go44">↑</span></div></div>
+    </div>
+    <div class="cap">Codex 生成的图单独成卡片，宽度占满聊天区；点「提示词」展开 Codex 改写后的提示词</div>
+  </div>
+
+  <div>
+    <div class="phone viewer">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="vbar"><span>✕</span><span class="small">2 / 3</span><span></span></div>
+      <div class="vimg"><i class="pic ui"></i></div>
+      <div class="vinfo"><b>Codex 查看的截图</b><code>web/shots/empty-after.png</code><br>1170 × 2532 · 调整空状态 · 9:38</div>
+      <div class="vact"><span>保存</span><span>分享</span><span>回到消息</span></div>
+    </div>
+    <div class="cap">点预览打开大图：左右滑动切到本会话的其他图，双指缩放，下滑关闭。先放大预览，大图下载完再换成清晰的。下面写来源、电脑上的路径和原始尺寸</div>
+  </div>
+
+</div>
+
+<div class="stgrid" style="margin-top:28px">
+  <div class="st">
+    <div class="st-h">大图 · 下载中 / 失败</div>
+    <div class="pics"><i class="pic land web"><span class="ring"></span></i><i class="pic land web"><span class="badge">没能下载 · 点按重试</span></i></div>
+    <div class="st-c">查看大图时先显示放大的预览，转圈表示还在下载；失败时写原因，点按重试，预览照常可看</div>
+  </div>
+  <div class="st">
+    <div class="st-h">没有同步</div>
+    <div class="pics"><i class="pic land miss">图片没有同步<code>shots/full-page.png</code></i><i class="pic land web"><span class="badge">只有预览</span></i></div>
+    <div class="st-c">电脑上没能处理的图只留文件名；有预览的照常显示预览，点开注明「只有预览，原图在电脑上」</div>
+  </div>
+  <div class="st">
+    <div class="st-h">大图已过期 / 离线</div>
+    <div class="pics"><i class="pic land web"><span class="badge">大图已过期</span></i><i class="pic land web"><span class="badge">连上后加载</span></i></div>
+    <div class="st-c">大图过了保存期只剩预览，查看时注明。看过的大图存在本机，离线也能打开；没看过的写「连上后加载」</div>
+  </div>
+  <div class="st">
+    <div class="st-h">一条里有很多张</div>
+    <div class="pics"><i class="pic port ui"></i><i class="pic port empty"></i><i class="pic port ui"></i><i class="pic port empty"><span class="more">+4</span></i></div>
+    <div class="st-c">一行最多排 4 张，其余折成「+N」；点开从点的那张开始，可以滑到全部 7 张</div>
+  </div>
+</div>
+
+<div class="desk" style="position:relative;margin-top:32px">
+  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 查看大图</span></div>
+  <div style="height:520px;padding:18px 28px" class="chat">
+    <div class="me"><span class="pics"><i class="pic land web" style="height:140px;width:220px"></i></span><div>这个页面在宽屏下右边空了一大块</div><small>MacBook 终端</small></div>
+    <div class="tool"><span class="ok">✓</span><code>查看 shots/wide-1440.png</code></div>
+    <div class="pics under-tool"><i class="pic land web" style="height:140px;width:220px"></i></div>
+  </div>
+  <div class="lightbox">
+    <div class="lb-top"><span>1 / 2 · 用户粘贴 · MacBook 终端</span><b>✕</b></div>
+    <div class="arr">‹</div>
+    <div class="lb-img"><i class="pic web"></i></div>
+    <div class="arr">›</div>
+    <div class="lb-foot"><span>2880 × 1800 · 调整宽屏布局 · 10:12</span><span class="acts"><span>保存</span><span>复制</span><span>回到消息</span></span></div>
+  </div>
+</div>
+<div class="cap" style="width:auto;text-align:left">宽屏：聊天里的预览放大到 140px 高；点开在会话区上方打开大图，←/→ 切换、Esc 关闭，可以保存和复制</div>
+
 <h2 id="cli">Claude Code 与 CLI 能力</h2>
 <div class="screens">
 <div>

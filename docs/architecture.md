@@ -439,3 +439,16 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、←/→ 调推理强度，按 `s` 只改当前会话；弹出 `Switch model?` 时按它的「Yes, switch to」那一项，只在菜单已经消失、确认框和这一项都在时才按，免得把数字按进菜单改掉默认模型。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID
 - **压缩**：空闲时 `/compact`，以屏幕出现 `Compacting conversation` 或 transcript 出现 `compact_boundary` 为开始
 - **额度**：Claude Code 不把账户额度写进 transcript，机器元数据里的额度仍只有 Codex 的
+
+## 17. 会话里的图片
+
+客户端显示会话里出现过的图片：用户在电脑上粘贴的、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v2.html](design/client-v2.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
+
+- **只取 CLI 已经记下的图**：两个 CLI 都把图片的 base64 内嵌在 rollout 或 transcript 里，daemon 解析时一起拿到，不需要再读磁盘。Agent 在回复里提到的本机文件（比如 `![](out/chart.png)`）daemon 不去读：路径由模型决定，照着读就等于让模型能把本机任意文件送到手机上。想在手机上看这类文件，让 Agent 自己看一眼（`Read`、`view_image`），它就会作为「查看的图」出现
+- **事件只带引用**：`UserMessage`、`ToolCall` 和新的「生成了图片」事件里带图片列表，每张有图片 ID、格式、原始尺寸、原始路径（知道的话）和一张内嵌的预览图。现有的 `UserMessage.image_count` 由这个列表取代
+- **两种尺寸**：预览图长边 320px，编码成 WebP 或 JPEG，大约 20 KB，直接内嵌在事件里，聊天列表不用额外请求就能画出来；查看大图用的显示版长边不超过 2048px，单独加密上传，加密后的整个信封（连同 header、nonce、GCM 标签和 Protobuf 编码）不超过 1 MiB 的上限，点开时才下载。原图不上传，还在电脑上的会话记录里。Codex 的原图常见 2 到 3 MB，放不进 1 MiB 的信封，也没必要在手机上看原始分辨率
+- **加密和绑定**：显示版用会话密钥加密，header 的用途写「图片」，并带上机器、会话和图片 ID，和事件一样由接收方核对位置。图片 ID 是随机数，不用内容哈希，避免 server 看出两张图是否相同；同一会话里重复出现的图（Codex 每看一次存一份）由 daemon 用会话密钥算 HMAC 去重，只传一次
+- **上传顺序**：显示版和事件走同一条按序上传的队列，先传图、后传引用它的事件，客户端看到事件时图已经在 server 上。图压不进信封上限，或者解码失败时，事件照常上传，这张图标为「没有同步」，只留预览（预览也做不出来就只写文件名）
+- **渲染安全**：daemon 统一重新编码成 PNG、JPEG 或 WebP，不转发 SVG 之类可能带脚本的格式；客户端解密后再按文件头核对格式，网页用 `blob:` URL 显示，CSP 只多放行 `img-src blob: data:`
+- **server 能看到的**：图片的数量、密文大小和上传时间，和事件的元数据同一个级别。保存多久、每个账户占多少空间，未定，见 plan.md
+- **保存和分享**：客户端查看大图时可以保存到本机或调系统分享。图片从这一步起离开 App，由用户自己决定

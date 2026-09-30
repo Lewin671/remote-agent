@@ -19,13 +19,13 @@
 | 文件 | 类型 | 内容 |
 |---|---|---|
 | [scope.md](scope.md) | 边界 | 要解决的问题、组件职责、信任边界、MVP 做与不做 |
-| [architecture.md](architecture.md) | 设计 | 部署、报文分层、通信方式、技术决策、接入 Codex、审批、项目标识 |
+| [architecture.md](architecture.md) | 设计 | 部署、报文分层、通信方式、技术决策、接入 Codex、审批、项目标识、会话里的图片 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单、hook、审批模式、弹窗、中断、模型提问 |
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v2.html](design/client-v2.html) | 界面稿 | 当前设计：Claude Code、统一输入区、队列和项目管理 |
+| [design/client-v2.html](design/client-v2.html) | 界面稿 | 当前设计：Claude Code、统一输入区、队列、项目管理和会话里的图片 |
 | [design/client-v1.html](design/client-v1.html) | 界面稿 | 网页和 Android 已实现的基线，只读 |
 | [design/client-v0.html](design/client-v0.html) | 界面稿 | P2 的历史界面稿，只读 |
 

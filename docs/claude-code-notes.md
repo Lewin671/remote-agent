@@ -56,6 +56,7 @@
 - **但 AskUserQuestion 不一定**：一次两问的提问，选择框已经显示了 70 多秒，transcript 里还只有用户消息，这次回复的 `thinking` 和 `tool_use` 直到回答之后才和 `tool_result` 一起写入。同一会话里之前的单问提问、以及注册了 `PreToolUse` hook 的会话里，问题显示时 `tool_use` 已经在 transcript 里。什么情况下会延迟，没有查清；`PreToolUse` hook 每次都在选择框出现前收到这次调用
 - 被中断的文字回复照样写一行 `assistant` text，`stop_reason` 为 null，内容是中断前生成的部分
 - 上下文占用：`usage.input_tokens + cache_creation_input_tokens + cache_read_input_tokens`。transcript 里没有窗口大小。按状态栏的百分比反推：haiku 4.5 是 200k，sonnet 5.5 是 1M；其他模型推测也是 1M，未验证
+- **图片**以 base64 内嵌在 transcript 里（2.1.280 到 2.1.284 的历史记录统计，2026-09-29）。用户粘贴的图：`type: "user"` 的 `content` 变成数组，正文里是 `[Image #1]` 占位，另有 `{type: "image", source: {type: "base64", media_type, data}}` 块，同一行带 `imagePasteIds`；单张最大约 480 KB。模型用 `Read` 读图片文件时，`tool_result.content` 是同样的 image 块，`toolUseResult` 为 `{type: "image", file: {base64, type, originalSize, dimensions}}`，`dimensions` 里有原始尺寸和实际尺寸，长边超过 2000px 的会被缩小到 2000px；单张最大约 380 KB。本机记录里返回图片的工具只有 `Read`；Claude Code 自己不生成图片
 - 账户额度不在 transcript 里（状态栏脚本的输入里有 `rate_limits.five_hour` 等，那是 statusLine 命令的输入，不落盘）
 - Plan 模式下即使用 `--model haiku` 启动，模型也变成了 `claude-sonnet-5-5`（`perTurnEffort: medium`），退出 Plan 模式后回到 haiku
 - `~/.claude/history.jsonl` 也记用户输入（包括斜杠命令），但多行粘贴只记 `[Pasted text #1 +11 lines]`，正文在 `pastedContents` 里；transcript 里是完整正文

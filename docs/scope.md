@@ -39,7 +39,7 @@
 
 | 数据 | server 能看到明文吗 |
 |---|---|
-| 消息、工具调用、终端输出、审批内容 | 否 |
+| 消息、工具调用、终端输出、审批内容、会话里的图片 | 否（图片的数量、大小和时间能看到） |
 | 项目名、路径、git 远程地址、会话标题、机器名 | 否（放在加密的元数据里） |
 | 设备 ID、机器 ID、会话 ID、事件序号、时间戳、密文长度 | 是（路由必需） |
 | 设备公钥 | 是 |
@@ -77,13 +77,14 @@
 ### MVP 之后要做
 
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
-- **客户端界面 v2**：支持 Codex / Claude Code 的统一输入区和能力差异；项目管理支持常用置顶、从列表移除及恢复，保留会话和历史，不移动或删除本地目录；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密。见 [design/client-v2.html](design/client-v2.html)
+- **客户端界面 v2**：支持 Codex / Claude Code 的统一输入区和能力差异；项目管理支持常用置顶、从列表移除及恢复，保留会话和历史，不移动或删除本地目录；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密；显示会话里出现的图片（在电脑上粘贴的、Agent 查看或生成的），只看不传。见 [design/client-v2.html](design/client-v2.html)
 - **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店。选型见 [architecture.md](architecture.md) 第 15 节，进度见 [plan.md](plan.md)
 
 ### 不做（MVP 之后再评估）
 
 - Codex 和 Claude Code 以外的 CLI
-- 附件和图片上传
+- 从客户端上传附件和图片
+- 显示 CLI 记录以外的文件：Agent 在回复里提到的本机文件，daemon 不去读
 - 接管不是由 `remote-agent` 启动的 CLI 进程
 - 原生 App（iOS、桌面端）
 - 语音、feed、artifacts、数据统计

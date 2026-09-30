@@ -21,6 +21,16 @@ Codex adapter 依赖的行为都是实测出来的，会随 Codex 版本变化�
 
 rollout 路径：`~/.codex/sessions/YYYY/MM/DD/rollout-<时间>-<session id>.jsonl`。
 
+**图片**：会话里出现的图片都以 base64 data URL 内嵌在 rollout 里，不是文件引用。按本机 0.105 到 0.159 的 rollout 统计（2026-09-29，只读历史记录，没有专门复现）：
+
+| 来源 | 记录 | 说明 |
+|---|---|---|
+| 用户粘贴或附带的图 | `response_item.message`（`role: user`）的 `content` 里有 `input_image`，`image_url` 为 `data:image/png;base64,…` 或 `data:image/jpeg;base64,…` | 单张最大约 2.9 MB |
+| 模型查看的图 | `function_call_output` 的 `output` 是数组，里面有 `input_image`（部分带 `detail`）；按 `call_id` 对应到 `function_call` | 来自 `view_image`（参数里有 `path`）、`js`（浏览器截图）、`wait`、MCP 截图工具等。单张最大约 2.2 MB，看起来是原图，没有缩小 |
+| 模型生成的图 | `response_item.image_generation_call`：`id`、`status`、`revised_prompt`、`result`（PNG 的 base64，不带 data URL 前缀） | 只在 0.142 系列见到。实测 `status` 写的是 `generating` 但 `result` 已经完整；单张约 1.2 到 2.5 MB。同一张图另存在 `~/.codex/generated_images/<session id>/` 下 |
+
+同一个文件被 `view_image` 看几次，rollout 里就存几份。
+
 ## 2. 切换模型和 reasoning effort
 
 `/model` 不支持带参数，只能操作菜单。只在会话空闲时执行。
