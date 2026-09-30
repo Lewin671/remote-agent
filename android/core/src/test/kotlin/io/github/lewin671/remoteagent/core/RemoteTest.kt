@@ -302,6 +302,21 @@ class RemoteTest {
     }
 
     @Test
+    fun aHistoryThatFailsToLoadSaysSoOnTheSession() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("session") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
+        server.stop()
+        val ev = withTimeout(10_000) { r.events("s1").first { it.error != null } }
+        assertTrue(ev.error!!.startsWith("没能读取历史"))
+        // Back again, a retry loads it and clears the error.
+        server.start()
+        r.retryEvents("s1")
+        val ok = withTimeout(20_000) { r.events("s1").first { it.events.size == 3 && it.error == null } }
+        assertEquals(3, ok.events.size)
+    }
+
+    @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
         val r = client()
         r.start()

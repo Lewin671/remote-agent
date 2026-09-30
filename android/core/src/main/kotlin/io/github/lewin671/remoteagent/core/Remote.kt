@@ -189,6 +189,8 @@ class Remote(
         var refetch = false
         var loaded = false
         var error: String? = null
+        // The last fetch failed; cleared by the next one that works.
+        var fetchError: String? = null
     }
 
     // --- lifecycle ---
@@ -531,8 +533,11 @@ class Remote(
                 }
             } while (b.refetch)
             b.loaded = true
+            b.fetchError = null
         } catch (e: Exception) {
             report(e)
+            // Shown on the session with a retry; the next Ready fetches again too.
+            b.fetchError = "没能读取历史：" + errorText(e)
         } finally {
             b.fetching = false
             publishEvents(sid, b)
@@ -582,7 +587,7 @@ class Remote(
     }
 
     private fun publishEvents(sid: String, b: Buffer) {
-        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(ArrayList(b.events), b.loaded, b.error)
+        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(ArrayList(b.events), b.loaded, b.error ?: b.fetchError)
     }
 
     /** Asks for missing events again, e.g. after one failed to open. */
