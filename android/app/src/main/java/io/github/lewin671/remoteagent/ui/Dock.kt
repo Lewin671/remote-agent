@@ -172,6 +172,49 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
     }
 }
 
+/**
+ * Answers to questions, per question and index, for this run. One whose
+ * outcome is unknown is sent again unchanged, under its request ID, so the
+ * daemon answers from its log (architecture §10): a new request would be
+ * refused once the CLI had moved on to the next question.
+ */
+object Answers {
+    class Answer {
+        val attempt = io.github.lewin671.remoteagent.core.Attempt()
+
+        /** The options of the answer being sent, 0-based. */
+        var options: List<Int> = emptyList()
+    }
+
+    private val byQuestion = HashMap<String, Answer>()
+
+    fun of(questionId: String, index: Int): Answer = byQuestion.getOrPut("$questionId#$index") { Answer() }
+
+    /**
+     * Sends [options], or the earlier answer while its outcome is unknown,
+     * and returns the options that were answered.
+     */
+    suspend fun send(
+        a: Answer,
+        options: List<Int>,
+        prepare: (List<Int>) -> io.github.lewin671.remoteagent.core.PreparedCommand,
+        forward: suspend (io.github.lewin671.remoteagent.core.PreparedCommand, Boolean) -> Unit,
+    ): List<Int> {
+        try {
+            val retry = a.attempt.frozen
+            val prepared = a.attempt.next {
+                a.options = options
+                prepare(options)
+            }
+            forward(prepared, retry)
+            a.attempt.settle()
+            return a.options
+        } catch (e: Exception) {
+            throw a.attempt.settle(e) ?: e
+        }
+    }
+}
+
 /** Answers the current question by option; several questions go one by one. */
 @Composable
 fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
@@ -183,15 +226,22 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
     val multi = remember(q.questionId) { mutableStateMapOf<Int, Set<Int>>() }
     val qs = q.questionsList
     val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return
+    val answer = Answers.of(q.questionId, index)
     fun submit(options: List<Int>) {
         val qi = index
+        val multiSelect = cur.multiSelect
         act.run({
-            remote.command(s.id, remote.cmd {
-                answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(q.questionId).also { b ->
-                    if (cur.multiSelect) b.addAllOptions(options.map { it + 1 }) else b.setOption(options.first() + 1)
-                    if (qs.size > 1) b.setQuestionIndex(qi)
-                }.build()
-            })
+            val sent = Answers.send(answer, options, { opts ->
+                remote.prepare(s.machineId, s.id, remote.cmd {
+                    answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(q.questionId).also { b ->
+                        if (multiSelect) b.addAllOptions(opts.map { it + 1 }) else b.setOption(opts.first() + 1)
+                        if (qs.size > 1) b.setQuestionIndex(qi)
+                    }.build()
+                })
+            }) { p, retry -> remote.forward(p, retryOfUnknown = retry) }
+            // Show what was answered, which after an unknown outcome is the earlier answer.
+            if (multiSelect) multi[qi] = sent.toSet() else picked[qi] = sent.first()
+            null
         }) { if (qi + 1 < qs.size) index = qi + 1 }
     }
     DockFrame(more) {
@@ -236,7 +286,18 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
             Text("都不合适？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
             TextButton(onClick = onTerminal) { Text("其他回答：去终端 ›") }
         }
-        if (act.error.isNotEmpty()) Text("没能提交，终端里的问题可能已经变了：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        if (!act.running && answer.attempt.frozen) {
+            val shown = answer.options.joinToString("、") { i -> cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}" }
+            Text(
+                if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
+                else "上次的回答「$shown」结果不确定。再点任一选项会重发同一个回答，电脑收到过就不会再提交一次",
+                color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
+            )
+            var gaveUp by remember { mutableStateOf(0) }
+            if (answer.attempt.expired) TextButton(onClick = { answer.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次回答") }
+        } else if (act.error.isNotEmpty()) {
+            Text("没能提交，终端里的问题可能已经变了：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
