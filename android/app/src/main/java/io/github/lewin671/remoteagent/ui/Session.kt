@@ -55,7 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -221,11 +221,12 @@ private fun ChatPane(
     val t = now(1000)
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
     // Follow new messages while the user is at the bottom; stop once they
-    // scroll up, until they come back.
-    var follow by remember { mutableStateOf(true) }
-    LaunchedEffect(list) {
-        snapshotFlow { list.isScrollInProgress }.collect { scrolling -> if (!scrolling) follow = !list.canScrollForward }
-    }
+    // drag away from it, until they come back. Our own jumps to the end
+    // never turn it off, even while the layout has not caught up.
+    val followState = remember { Follow() }
+    val dragged by list.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(dragged, atBottom) { followState.observe(dragged, atBottom) }
+    val follow = followState.on
     var seen by remember { mutableStateOf(items.size) }
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     // The dock appearing or going also moves the bottom.
@@ -487,5 +488,20 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
+    }
+}
+
+/**
+ * Whether the chat follows new messages. Only the user turns it off, by
+ * dragging away from the bottom; reaching the bottom turns it back on. A
+ * scroll the app makes to the end ends before the list has laid out the new
+ * position, so judging by it would stop following on a long history.
+ */
+class Follow {
+    var on by mutableStateOf(true)
+        private set
+
+    fun observe(userDragging: Boolean, atBottom: Boolean) {
+        if (atBottom) on = true else if (userDragging) on = false
     }
 }
