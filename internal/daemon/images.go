@@ -170,7 +170,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	raw, err := decodeImageData(f.Data, transcript)
 	if err != nil {
 		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
-		slog.Warn("image in transcript not readable", "err", err)
+		slog.Warn("image in transcript not readable", "err", errClass(err))
 		return
 	}
 	ref.Bytes = int64(len(raw))
@@ -180,7 +180,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	defer st.mu.Unlock()
 	if err := st.ensure(); err != nil {
 		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
-		slog.Error("image store", "err", err)
+		slog.Error("image store", "err", errClass(err))
 		return
 	}
 	mac := hmac.New(sha256.New, st.key)
@@ -196,7 +196,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	})
 	if err != nil {
 		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
-		slog.Warn("image in transcript not decodable", "bytes", len(raw), "err", err)
+		slog.Warn("image in transcript not decodable", "bytes", len(raw), "err", errClass(err))
 		return
 	}
 	im := &storedImage{ID: newID(16), HMAC: sum, Ref: &storedRefInfo{
@@ -215,12 +215,12 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 		}
 	}
 	if err != nil {
-		slog.Warn("no display copy for image", "image", im.ID, "err", err)
+		slog.Warn("no display copy for image", "image", im.ID, "err", errClass(err))
 	}
 	st.byID[im.ID] = im
 	st.byMAC[sum] = im
 	if err := st.saveLocked(); err != nil {
-		slog.Error("save image index", "err", err)
+		slog.Error("save image index", "err", errClass(err))
 	}
 	st.fill(ref, im)
 }
@@ -297,7 +297,7 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 		im.State = imageFailed
 	}
 	if err := st.saveLocked(); err != nil {
-		slog.Error("save image index", "err", err)
+		slog.Error("save image index", "err", errClass(err))
 		return
 	}
 	_ = os.Remove(st.displayPath(id))

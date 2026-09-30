@@ -224,12 +224,12 @@ func (d *Daemon) restore() error {
 		dir := filepath.Join(paths.SessionsDir(), e.Name())
 		m, err := loadMeta(dir)
 		if err != nil {
-			slog.Warn("skip session", "dir", dir, "err", err)
+			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
 			continue
 		}
 		log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
 		if err != nil {
-			slog.Warn("skip session", "dir", dir, "err", err)
+			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
 			continue
 		}
 		s := newSession(d, dir, *m, d.terminal(m), log)
@@ -241,7 +241,7 @@ func (d *Daemon) restore() error {
 			// misread tmux; stopping or ending kills the tmux session.
 			s.meta.Exited = false
 			if err := s.meta.save(dir); err != nil {
-				slog.Error("save session", "session", m.ID, "err", err)
+				slog.Error("save session", "session", m.ID, "err", errClass(err))
 			}
 			s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
@@ -622,7 +622,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 	m = s.meta
 	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
-		slog.Error("save session", "session", id, "err", err)
+		slog.Error("save session", "session", id, "err", errClass(err))
 	}
 	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed",

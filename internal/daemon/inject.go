@@ -195,7 +195,7 @@ func (s *session) injectLoop(ctx context.Context) {
 				outcome, err = s.inject(next)
 			}
 			if err != nil {
-				slog.Warn("inject", "session", s.meta.ID, "err", err)
+				slog.Warn("inject", "session", s.meta.ID, "err", errClass(err))
 			}
 			switch outcome {
 			case notWritten:
@@ -672,7 +672,7 @@ func (s *session) popInput(requestID string) bool {
 	}
 	s.queue.Queue = s.queue.Queue[1:]
 	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
 	}
 	return true
 }
@@ -728,6 +728,6 @@ func (s *session) unmarkInflight(requestID string, stage pb.InputStage) {
 	}
 	s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq, s.queue.Queue[0].Stage = nil, 0, stage
 	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
 	}
 }

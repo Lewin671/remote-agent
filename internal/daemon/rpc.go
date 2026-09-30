@@ -341,6 +341,6 @@ func uploadErr(err error) error {
 	if errors.As(err, &ce) {
 		return err
 	}
-	slog.Error("image upload", "err", err)
+	slog.Error("image upload", "err", errClass(err))
 	return connect.NewError(connect.CodeInternal, errors.New("the machine could not store the image"))
 }

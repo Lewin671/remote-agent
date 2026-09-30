@@ -84,7 +84,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		tries := c.r.imageTries[imageID]
 		c.r.mu.Unlock()
 		if tries >= maxImageTries {
-			slog.Warn("relay: giving up on image", "session", sessionID, "image", imageID, "err", err)
+			slog.Warn("relay: giving up on image", "session", sessionID, "image", imageID, "code", connect.CodeOf(err).String())
 			b.ImageUploaded(sessionID, imageID, false, 0)
 			return nil
 		}

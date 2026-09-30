@@ -243,7 +243,7 @@ func (t *TermStream) end(reason string) {
 		}()
 		if fitted {
 			if err := t.Resize(0, 0, false); err != nil {
-				slog.Warn("restore window size", "tmux", t.name, "err", err)
+				slog.Warn("restore window size", "tmux", t.name, "err", errClass(err))
 			}
 		}
 		close(t.done)

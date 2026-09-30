@@ -123,7 +123,7 @@ type decision struct {
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
 	q, err := loadQueue(dir)
 	if err != nil {
-		slog.Warn("load input queue; starting empty", "session", m.ID, "err", err)
+		slog.Warn("load input queue; starting empty", "session", m.ID, "err", errClass(err))
 		q = &queueState{}
 	}
 	ag := d.adapter(m.Agent)
@@ -242,7 +242,7 @@ func (s *session) emitLocked(settings bool, evs ...*pb.Event) {
 		}
 	}
 	if err := s.log.Append(s.meta.ID, evs, "", 0); err != nil {
-		slog.Error("append events", "session", s.meta.ID, "err", err)
+		slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
 		return
 	}
 	s.mu.Lock()
@@ -334,23 +334,23 @@ func (s *session) readRollout() {
 	}
 	lines, truncated, err := r.Next()
 	if err != nil {
-		slog.Warn("read rollout", "session", s.meta.ID, "err", err)
+		slog.Warn("read rollout", "session", s.meta.ID, "err", errClass(err))
 		return
 	}
 	if truncated {
-		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID, "path", r.Path)
+		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID)
 	}
 	for _, l := range lines {
 		evs, err := s.parser.Parse(l.Data)
 		if err != nil {
-			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", err)
+			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", errClass(err))
 		}
 		for _, f := range s.parser.Images() {
 			s.images.process(f, r.Path)
 		}
 		s.annotate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
-			slog.Error("append events", "session", s.meta.ID, "err", err)
+			slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
 			// Read this line and the rest of the batch again next time.
 			path, off := s.log.Checkpoint()
 			if path != r.Path {
@@ -477,11 +477,11 @@ func (s *session) markExited(detail string) {
 	left := s.queue.Queue
 	s.queue.Queue = nil
 	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", m.ID, "err", err)
+		slog.Error("save input queue", "session", m.ID, "err", errClass(err))
 	}
 	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
-		slog.Error("save session", "session", m.ID, "err", err)
+		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
 	if len(left) > 0 {
 		s.readRollout()
@@ -828,7 +828,7 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	s.mu.Unlock()
 	s.readMu.Unlock()
 	if err := m.save(s.dir); err != nil {
-		slog.Error("save session", "session", m.ID, "err", err)
+		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
 	s.readRollout()
 }

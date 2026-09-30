@@ -1,8 +1,11 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -224,5 +227,20 @@ func TestInterruptOriginIsKnownBeforeTheKey(t *testing.T) {
 	}
 	if ended.Origin.GetDeviceId() != "dev" {
 		t.Fatalf("origin %v", ended.Origin)
+	}
+}
+
+// G13: an upload failing on the file system is logged without the path.
+func TestUploadErrorsLogNoPaths(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+	err := uploadErr(&os.PathError{Op: "open", Path: "/home/me/.remote-agent/uploads/secret.png", Err: os.ErrPermission})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "secret.png") || strings.Contains(err.Error(), "secret.png") {
+		t.Fatalf("path logged: %s", buf.String())
 	}
 }
