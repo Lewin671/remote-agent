@@ -945,7 +945,7 @@
         <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +18 −7</code></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
       </div>
-      <div class="compose-status"><span class="dot run"></span>运行中<span class="queue-link">排队 1 条 ›</span><span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div><div>上下文：11%</div></div></details><span class="go44">↑</span></div></div>
+      <div class="compose-status"><span class="queue-link">排队 1 条 ›</span><span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div><div>上下文：11%</div></div></details><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">运行中：导航栏第二行写状态、项目和机器；连续完成的工具调用折成一行；输入区上方有独立中断入口，打字时也保留</div>
   </div>
@@ -1135,7 +1135,7 @@ GPT-6-Astra · medium ▾
 </div>
 </div>
 </div>
-<div class="cap">空闲：正文可多行增长，模式、模型和上下文在同一输入区；只有模型名可省略，点开看全名</div>
+<div class="cap">空闲：正文可多行增长，模式、模型和上下文从「＋」菜单查看，长模型名在菜单里换行</div>
 </div>
 <div>
 <div class="phone">
@@ -1555,7 +1555,7 @@ GPT-6-Astra · medium ▾
   <h4>停靠区</h4>
   <ul>
     <li>同时有多项时，按上表顺序只停靠最前面的一项，右上角写「还有 1 项」，处理完自动换下一项</li>
-    <li>最高占会话内容区的 45%：多选卡片的选项在内部滚动，提交按钮固定；命令最多显示 4 行、计划最多 4 行，超出的点「展开全文」在整页里看，按钮在整页底部也有一份</li>
+    <li>展开后内容最多 240px，内部滚动查看正文和操作；长命令、计划和问题可以进入全文页，全文页的提交按钮固定在底部</li>
     <li>停靠区默认一行：类型 + 摘要 + 「处理」；点开后显示正文和操作，键盘弹出时仍保留入口</li>
     <li>在停靠区里输入拒绝理由时不收起：卡片只留理由输入框和「发送理由并拒绝」，贴在键盘上方，聊天区让出高度</li>
   </ul>
@@ -1643,7 +1643,7 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">停靠区 · 多项排队</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
+    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
       <pre>make migrate</pre>
       <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
     </div></details>
@@ -1773,7 +1773,7 @@ GPT-6-Astra · medium ▾
     <div class="st-h">会话设置 · 切换失败 / 压缩中</div>
     <div class="banner err">没能切到 GPT-6-Sol：Codex 的菜单和预期不一样<b>去终端</b></div>
     <div class="ctxbox" style="margin-top:8px"><div class="ring big" style="--p:86;--c:var(--orange)"></div><div><div class="num">86%</div><div class="muted small">◌ 正在压缩…</div></div></div>
-    <div class="st-c">上下文未知时 chip 不显示；模型未知时写「会话设置」，点开读取详情</div>
+    <div class="st-c">上下文未知时菜单省略读数；模型未知时写「会话设置」，点开读取详情</div>
   </div>
 
   <div class="st">
@@ -1937,7 +1937,7 @@ Sonnet · high ▾
 <div class="label">Bash · 处理中 <span>调用耗时 2 分 12 秒</span>
 </div>
 <div class="crumb">~/Code/shop</div>
-<details class="active-tool"><summary><span>◌ 完整命令 2:12</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
 <pre>go test ./internal/inventory/... -count=1</pre>
 <div class="td">工具结果尚未返回。这里没有可用的中间输出，不能据此判断命令卡住。</div>
 
@@ -2193,7 +2193,7 @@ GPT-6-Astra · medium ▾
         <div class="tool"><span class="ok">✓</span><code>读取 web/src/Layout.tsx</code></div>
         <div class="ai">两个页面的按钮都被底部导航盖住了，我给内容区加上导航栏的高度。</div>
       </div>
-      <div class="compose-status"><span class="dot run"></span>运行中<span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 · medium ▾</div><div>上下文：32%</div></div></details><span class="go44">↑</span></div></div>
+      <div class="compose-status"><span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 · medium ▾</div><div>上下文：32%</div></div></details><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">发出后和电脑上粘贴的图一样显示。角上的编号和终端里的 <code>[Image #N]</code> 一致；正文开头的占位不再重复写出，夹在正文中间的写成「图 N」</div>
   </div>
@@ -2735,7 +2735,7 @@ Sonnet · high ▾
         <div class="hint">只改当前会话</div>
       </div>
     </div>
-    <div class="cap">点底部的模式 chip 打开</div>
+    <div class="cap">从输入区「＋」菜单进入审批模式</div>
   </div>
 
   <div>
@@ -2749,7 +2749,7 @@ Sonnet · high ▾
         <div class="btns"><div class="btn">取消</div><div class="btn danger">切换</div></div>
       </div>
     </div>
-    <div class="cap">切到完全放行前二次确认，chip 变红</div>
+    <div class="cap">切到完全放行前二次确认，输入区常驻红色文字提示</div>
   </div>
 
   <div>
@@ -2803,7 +2803,7 @@ Sonnet · high ▾
         <div class="hint">只在空闲时能切换；运行中置灰，见状态集</div>
       </div>
     </div>
-    <div class="cap">点底部的模型或上下文 chip 打开</div>
+    <div class="cap">从输入区「＋」菜单进入会话设置</div>
   </div>
 
   <div>
@@ -2819,7 +2819,7 @@ Sonnet · high ▾
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary class="context-high" aria-label="附件与会话设置，上下文占用较高">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Sol · high ▾</div><div>上下文：86%</div></div></details><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap">超过 80%：上下文 chip 变橙，点开会话设置压缩；压缩后在聊天里留一行「上下文已压缩 · 86% → 14%」，chip 恢复正常</div>
+    <div class="cap">超过 80%：「＋」旁显示橙点，从菜单进入会话设置压缩；压缩后在聊天里留一行「上下文已压缩 · 86% → 14%」，橙点消失</div>
   </div>
 
   <div>

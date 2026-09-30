@@ -2,7 +2,7 @@
 
 按风险从高到低推进：先把最依赖实测、最容易出意外的本地这一侧跑通，再接 server、加密和客户端。每个阶段完成后打 tag。
 
-MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前并行推进三件事**：Android 原生 App、接入 Claude Code、客户端 v2 改版及真机验收（网页和 Android 已实现 v2，当前界面目标为 v5）；P3 以及「不做」里的功能先不碰。
+MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前并行推进三件事**：Android 原生 App、接入 Claude Code、客户端 v2 改版及真机验收（网页和 Android 已实现 v2，当前界面目标见下方客户端改版进度）；P3 以及「不做」里的功能先不碰。
 
 | 阶段 | 内容 | 做完后能证明什么 |
 |---|---|---|
@@ -217,7 +217,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v7](design/client-v7.html) 是当前界面目标：等待事项默认收为一行、工具详情按需展开、移动端输入框单行起步。v7 尚未实现，Chrome 视觉验收待完成；网页与 Android 已实现 v6 的图片存储占用、限额与清理入口。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v7](design/client-v7.html) 是当前界面目标：等待事项默认收为一行、工具详情按需展开、移动端输入框单行起步。v7 尚未实现；2026-09-30 已在本机 Chrome 检查亮暗主题、390px 窄屏、宽屏，以及审批、工具详情和输入菜单展开状态；网页与 Android 已实现 v6 的图片存储占用、限额与清理入口。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
 **会话排序进度**（2026-09-30）：网页首页、宽屏侧栏、项目页与 Android 首页、项目页按 client-v4 统一排序；daemon 在加密会话摘要中提供日志重建的等待和退出时间。升级兼容规则见 [architecture.md 的会话列表排序](architecture.md#会话列表排序)。
 
