@@ -170,3 +170,39 @@ func TestNoWritesAfterTheHoldLapses(t *testing.T) {
 		t.Fatalf("status %v", s.Status)
 	}
 }
+
+// G7: a written message is matched to one record of it only; a later
+// message with the same text typed locally is the local user's.
+func TestOriginMatchesOnce(t *testing.T) {
+	h := newHarness(t, Config{})
+	remote := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev"}
+	in := input{Text: "yes", RequestID: "r1", Origin: storeOrigin(remote)}
+	off := int64(0)
+	in.Inflight = &off
+	h.s.queue.Queue = []input{in}
+	msg := func() *pb.Event {
+		return &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "yes"}}}
+	}
+	first := msg()
+	h.s.annotate([]*pb.Event{first})
+	if first.Origin.GetDeviceId() != "dev" {
+		t.Fatalf("first: %v", first.Origin)
+	}
+	h.s.popInput("r1")
+	second := msg()
+	h.s.annotate([]*pb.Event{second})
+	if second.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {
+		t.Fatalf("second: %v", second.Origin)
+	}
+	// Two remembered messages with the same text from different devices:
+	// which one this is cannot be told.
+	h.s.recent = []input{
+		{Text: "ok", RequestID: "a", Origin: storeOrigin(&pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1"}), Inflight: &off},
+		{Text: "ok", RequestID: "b", Origin: storeOrigin(&pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d2"}), Inflight: &off},
+	}
+	third := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "ok"}}}
+	h.s.annotate([]*pb.Event{third})
+	if third.Origin.GetDeviceId() != "" || third.GetUserMessage().RequestId != "" {
+		t.Fatalf("ambiguous: %v %q", third.Origin, third.GetUserMessage().RequestId)
+	}
+}

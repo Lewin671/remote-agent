@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"google.golang.org/protobuf/proto"
 )
 
 // Writing queued messages into the CLI (architecture §6, §17).
@@ -602,31 +603,55 @@ func (s *session) loggedUserMessage(in input) bool {
 
 // annotateUserMessage ties a parsed user message to the message that was
 // written for it, recording its origin, request ID and the upload ID of
-// each image. A message nothing was written for came from the local
-// terminal. Callers hold s.mu.
+// each image. Each written message is matched once. When several could be
+// the one and they came from different places, none is named. A message
+// nothing was written for came from the local terminal. Callers hold s.mu.
 func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) {
-	var cands []input
+	type cand struct {
+		in   input
+		head bool
+		i    int
+	}
+	var cands []cand
 	inflight := false
 	if len(s.queue.Queue) > 0 && s.queue.Queue[0].Inflight != nil {
-		cands = append(cands, s.queue.Queue[0])
 		inflight = true
-	}
-	for i := len(s.recent) - 1; i >= 0; i-- {
-		cands = append(cands, s.recent[i])
-	}
-	for _, in := range cands {
-		if !in.matchesMessage(m) {
-			continue
+		if in := s.queue.Queue[0]; !in.matched && in.matchesMessage(m) {
+			cands = append(cands, cand{in: in, head: true})
 		}
-		m.RequestId = in.RequestID
-		for i, ref := range in.pairImages(m) {
-			ref.UploadId = in.Images[i].ID
+	}
+	for i, in := range s.recent {
+		if in.matchesMessage(m) {
+			cands = append(cands, cand{in: in, i: i})
 		}
-		withOrigin(e, in.Origin.pb())
+	}
+	if len(cands) == 0 {
+		if !inflight {
+			withOrigin(e, originLocal)
+		}
 		return
 	}
-	if !inflight {
-		withOrigin(e, originLocal)
+	for _, c := range cands[1:] {
+		if !proto.Equal(c.in.Origin.pb(), cands[0].in.Origin.pb()) {
+			return // cannot tell whose it is
+		}
+	}
+	// The oldest of the candidates is taken: remembered ones before the
+	// head, in the order they were written.
+	pick := cands[0]
+	if pick.head && len(cands) > 1 {
+		pick = cands[1]
+	}
+	in := pick.in
+	m.RequestId = in.RequestID
+	for i, ref := range in.pairImages(m) {
+		ref.UploadId = in.Images[i].ID
+	}
+	withOrigin(e, in.Origin.pb())
+	if pick.head {
+		s.queue.Queue[0].matched = true
+	} else {
+		s.recent = append(s.recent[:pick.i:pick.i], s.recent[pick.i+1:]...)
 	}
 }
 
@@ -639,7 +664,7 @@ func (s *session) popInput(requestID string) bool {
 	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
 		return false
 	}
-	if in := s.queue.Queue[0]; in.Inflight != nil {
+	if in := s.queue.Queue[0]; in.Inflight != nil && !in.matched {
 		s.recent = append(s.recent, in)
 		if len(s.recent) > recentInputs {
 			s.recent = s.recent[1:]

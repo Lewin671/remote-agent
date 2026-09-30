@@ -24,6 +24,8 @@ type input struct {
 	Stage pb.InputStage `json:"stage,omitempty"`
 	// Indexes are the N of the "[Image #N]" each pasted image became.
 	Indexes []int32 `json:"indexes,omitempty"`
+	// matched: a user message in the CLI's record was tied to it.
+	matched bool
 	// Inflight is set just before the message is written to the terminal:
 	// it holds the history.jsonl offset at that moment. After a crash, the
 	// history from there tells whether the message was submitted.
