@@ -430,10 +430,14 @@ function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?:
       <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span>
         <code>{toolTitle(t, short)}</code>
-        {decision !== undefined ? (
+        {!ok && t.exitCode !== undefined ? (
+          // A failed call keeps its exit code, with the approval beside it.
+          <span className="exit">
+            退出码 {t.exitCode}
+            {decision !== undefined && <span className="muted"> · {decisionText(decision)}</span>}
+          </span>
+        ) : decision !== undefined ? (
           <span className="muted">{decisionText(decision)}</span>
-        ) : !ok && t.exitCode !== undefined ? (
-          <span className="exit">退出码 {t.exitCode}</span>
         ) : secs >= 1 ? (
           <span className="muted">{Math.round(secs)}s</span>
         ) : null}

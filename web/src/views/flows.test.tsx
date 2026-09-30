@@ -7,8 +7,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
-import { Agent, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
-import { derive, dockItems } from "../model";
+import { Agent, ApprovalDecision, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { derive, dockItems, inputDigest } from "../model";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
@@ -548,4 +548,18 @@ it("shortens a file edit's whole path, spaces and all", () => {
   const titles = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
   expect(titles).toContain("编辑 ~/Code/foo bar/a.go");
   expect(titles).toContain("编辑 sub dir/b.go");
+});
+
+it("shows a failed call's exit code beside its approval", () => {
+  const r = demo();
+  const s = r.sessions.get("s-claude-idle")!;
+  const input = JSON.stringify({ command: "make test", description: "" });
+  const push = (kind: object) => r.events("s-claude-idle").push(create(EventSchema, { seq: BigInt(r.events("s-claude-idle").length + 1), kind: kind as never }));
+  push({ case: "approvalRequested", value: { approvalId: "f", toolName: "Bash", command: "make test", toolInputJson: input } });
+  push({ case: "approvalResolved", value: { approvalId: "f", decision: ApprovalDecision.ALLOW } });
+  push({ case: "toolCall", value: { title: "make test", itemType: "Bash", kind: ToolKind.COMMAND, status: "failed", exitCode: 7, inputDigest: inputDigest("Bash", input) } });
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const row = [...host.querySelectorAll(".tool")].find((t) => t.textContent?.includes("make test"))!;
+  expect(row.textContent).toContain("退出码 7");
+  expect(row.textContent).toContain("已允许");
 });
