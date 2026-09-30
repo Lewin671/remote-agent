@@ -209,8 +209,9 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         }
         if (c != null && state.machines[c.machineId]?.online != true) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
         if (act.running) Text("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…", color = p.muted, style = MaterialTheme.typography.bodySmall)
-        if (act.error.isNotEmpty()) Text("启动失败：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
         val frozen = Starts.of(key)
+        // An unknown start has its own notice below.
+        if (act.error.isNotEmpty() && !frozen.attempt.frozen) Text("启动失败：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
         if (!act.running && frozen.attempt.frozen) {
             Text(
                 if (frozen.attempt.expired) "不确定「${frozen.prompt.take(40)}」有没有启动，它已过期，不会再重发。请先看看进行中的会话"

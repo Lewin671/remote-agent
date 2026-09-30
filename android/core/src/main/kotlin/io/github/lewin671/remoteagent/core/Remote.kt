@@ -637,8 +637,8 @@ class Remote(
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
         var mayHaveRun = retryOfUnknown
-        fun notSent(code: String, text: String) =
-            if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：$text") else CommandException(code, text)
+        fun notSent(code: String, text: String, later: String) =
+            if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later") else CommandException(code, text)
         while (true) {
             try {
                 if (token.isEmpty()) token = login(api, account)
@@ -656,7 +656,7 @@ class Remote(
             } catch (ce: ConnectException) {
                 val cause = ce.exception
                 if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
-                    throw notSent("network", "网络不通，指令没有发出")
+                    throw notSent("network", "网络不通，指令没有发出", "网络断了")
                 }
                 if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                     attempt++
@@ -671,7 +671,7 @@ class Remote(
                     delay(1000L * attempt)
                     continue
                 }
-                if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
+                if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
                 if (unknown || ce.code == Code.UNAVAILABLE) {
                     throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：${errorText(ce)}")
                 }
