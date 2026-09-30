@@ -20,4 +20,15 @@ public interface UpdateSettingsResponseOrBuilder extends
    * @return The settings.
    */
   io.github.lewin671.remoteagent.proto.DaemonSettings getSettings();
+
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   * @return Whether the imageStorage field is set.
+   */
+  boolean hasImageStorage();
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   * @return The imageStorage.
+   */
+  io.github.lewin671.remoteagent.proto.ImageStorageUsage getImageStorage();
 }

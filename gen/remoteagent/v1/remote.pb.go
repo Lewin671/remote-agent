@@ -525,6 +525,7 @@ type MachineCapabilities struct {
 	// Commands are checked against Envelope.signature and events carry
 	// their Origin.
 	CommandSignatures bool `protobuf:"varint,7,opt,name=command_signatures,json=commandSignatures,proto3" json:"command_signatures,omitempty"`
+	ImageStorage      bool `protobuf:"varint,8,opt,name=image_storage,json=imageStorage,proto3" json:"image_storage,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -604,6 +605,13 @@ func (x *MachineCapabilities) GetUploadFormats() []ImageFormat {
 func (x *MachineCapabilities) GetCommandSignatures() bool {
 	if x != nil {
 		return x.CommandSignatures
+	}
+	return false
+}
+
+func (x *MachineCapabilities) GetImageStorage() bool {
+	if x != nil {
+		return x.ImageStorage
 	}
 	return false
 }
@@ -2429,7 +2437,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\fresets_at_ms\x18\x03 \x01(\x03R\n" +
 	"resetsAtMs\x12%\n" +
 	"\x0ewindow_minutes\x18\x04 \x01(\x03R\rwindowMinutesB\x0f\n" +
-	"\r_used_percent\"\xd9\x02\n" +
+	"\r_used_percent\"\xfe\x02\n" +
 	"\x13MachineCapabilities\x12%\n" +
 	"\x0esession_images\x18\x01 \x01(\bR\rsessionImages\x12!\n" +
 	"\fimage_upload\x18\x02 \x01(\bR\vimageUpload\x123\n" +
@@ -2437,7 +2445,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x10max_upload_bytes\x18\x04 \x01(\x03R\x0emaxUploadBytes\x12&\n" +
 	"\x0fmax_chunk_bytes\x18\x05 \x01(\x05R\rmaxChunkBytes\x12B\n" +
 	"\x0eupload_formats\x18\x06 \x03(\x0e2\x1b.remoteagent.v1.ImageFormatR\ruploadFormats\x12-\n" +
-	"\x12command_signatures\x18\a \x01(\bR\x11commandSignatures\"\xb2\x02\n" +
+	"\x12command_signatures\x18\a \x01(\bR\x11commandSignatures\x12#\n" +
+	"\rimage_storage\x18\b \x01(\bR\fimageStorage\"\xb2\x02\n" +
 	"\tAgentInfo\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1a\n" +

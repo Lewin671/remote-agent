@@ -4,41 +4,40 @@ import android.content.Context
 import io.github.lewin671.remoteagent.core.hex
 import io.github.lewin671.remoteagent.core.sha256
 import java.io.File
+import io.github.lewin671.remoteagent.core.ImageDiskPolicy
 
 /**
  * Display copies as fetched: sealed envelopes only, in the cache directory,
  * so a viewed image opens offline and nothing decrypted touches the disk.
  * The oldest go once they take more than [limit] bytes.
  */
-class ImageEnvelopes(context: Context, private val limit: Long = 150L * 1024 * 1024) {
+class ImageEnvelopes(context: Context) {
+    private val limit = ImageDiskPolicy.DEFAULT_LIMIT
+    val used: Long get() = synchronized(this) { ImageDiskPolicy.bytes(dir) }
+
     private val dir = File(context.cacheDir, "image-envelopes").apply { mkdirs() }
+    init { trim() }
 
     private fun file(key: String) = File(dir, sha256(key.toByteArray()).hex())
 
-    fun get(key: String): ByteArray? = file(key).takeIf { it.exists() }?.let { f ->
+    @Synchronized fun get(key: String): ByteArray? = file(key).takeIf { it.exists() }?.let { f ->
         f.setLastModified(System.currentTimeMillis())
         f.readBytes()
     }
 
-    fun put(key: String, envelope: ByteArray) {
+    @Synchronized fun put(key: String, envelope: ByteArray) {
         val f = file(key)
         val tmp = File(dir, f.name + ".tmp")
-        tmp.writeBytes(envelope)
-        tmp.renameTo(f)
+        try {
+            tmp.writeBytes(envelope)
+            check(tmp.renameTo(f)) { "没能保存图片缓存" }
+        } finally { tmp.delete() }
         trim()
     }
 
-    private fun trim() {
-        val files = dir.listFiles()?.sortedBy { it.lastModified() } ?: return
-        var total = files.sumOf { it.length() }
-        for (f in files) {
-            if (total <= limit) break
-            total -= f.length()
-            f.delete()
-        }
-    }
+    private fun trim() { ImageDiskPolicy.trimCache(dir, limit) }
 
-    fun clear() {
+    @Synchronized fun clear() {
         dir.listFiles()?.forEach { it.delete() }
     }
 }

@@ -497,6 +497,12 @@ func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int3
 		return errHeadChanged
 	}
 	prev := s.queue.Queue[0]
+	if stage == pb.InputStage_INPUT_STAGE_PASTING_IMAGES {
+		if err := s.d.uploads.expose(s.queue.Queue[0].Images); err != nil {
+			s.mu.Unlock()
+			return err
+		}
+	}
 	s.queue.Queue[0].Stage, s.queue.Queue[0].Indexes = stage, slices.Clone(indexes)
 	if err := s.queue.save(s.dir); err != nil {
 		s.queue.Queue[0] = prev
@@ -517,6 +523,7 @@ func (s *session) finishInput(in input, status pb.InputStatus, reason string) {
 	if !s.popInput(in.RequestID) {
 		return // the session exited and reported it already
 	}
+	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
 	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: status, Reason: reason}}})
 }
 
@@ -682,9 +689,12 @@ func (s *session) popInput(requestID string) bool {
 			s.recent = s.recent[1:]
 		}
 	}
+	previous := s.queue.Queue
 	s.queue.Queue = s.queue.Queue[1:]
 	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue = previous
 		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+		return false
 	}
 	return true
 }

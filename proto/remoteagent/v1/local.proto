@@ -325,6 +325,8 @@ message DaemonSettings {
   ApprovalMode default_mode = 4;
   // Defaults for new Claude Code sessions; the fields above are Codex's.
   AgentDefaults claude = 5;
+  // Zero retains the daemon's default. Limits cover files, not CLI history.
+  int64 image_upload_quota_bytes = 6;
 }
 
 message AgentDefaults {
@@ -337,14 +339,18 @@ message GetSettingsRequest {}
 
 message GetSettingsResponse {
   DaemonSettings settings = 1;
+  ImageStorageUsage image_storage = 2;
 }
 
 message UpdateSettingsRequest {
   DaemonSettings settings = 1;
+  // Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+  bool clean_images = 2;
 }
 
 message UpdateSettingsResponse {
   DaemonSettings settings = 1;
+  ImageStorageUsage image_storage = 2;
 }
 
 message ResumeSessionRequest {
@@ -439,3 +445,18 @@ message AbortImageUploadRequest {
 }
 
 message AbortImageUploadResponse {}
+
+// Collected locally and sealed with the settings reply; the server sees no usage.
+message ImageStorageUsage {
+  int64 upload_bytes = 1;
+  int64 reserved_bytes = 2;
+  int64 protected_bytes = 3;
+  int64 reclaimable_bytes = 4;
+  int64 cache_bytes = 5;
+  repeated ImageSessionStorage sessions = 6;
+}
+message ImageSessionStorage {
+  string session_id = 1;
+  int64 bytes = 2;
+  int64 protected_bytes = 3;
+}

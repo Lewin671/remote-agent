@@ -191,7 +191,10 @@ class ImageDraft(
             saveImages(files, key, now.filter { it.id !in saved }, original)
             now.filter { it.processed != null }.forEach { saved += it.id }
             saveOrder(files, key, now, original)
-        }.onFailure { android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}") }
+        }.onFailure {
+            notice = "这张图未保存到手机：${errorText(it)}。当前仍可发送，关闭应用后可能丢失"
+            android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}")
+        }
     }
 
     private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {

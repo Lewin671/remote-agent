@@ -684,6 +684,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             </button>
           </div>
         )}
+        {st && meta?.capabilities?.imageStorage && <ImageStorageSettings remote={remote} id={id} settings={st} onSave={setSt} online={m.online} />}
         {projs.length > 0 && (
           <>
             <div className="glabel">项目</div>
@@ -751,4 +752,40 @@ function ThemePicker() {
       ))}
     </div>
   );
+}
+
+function storageSize(n: bigint | number): string {
+  const value = Number(n);
+  return value >= 1073741824 ? `${(value / 1073741824).toFixed(1)} GiB` : `${(value / 1048576).toFixed(1)} MiB`;
+}
+
+function ImageStorageSettings({ remote, id, settings, onSave, online }: { remote: Remote; id: string; settings: DaemonSettings; onSave: (s: DaemonSettings | undefined) => void; online: boolean }) {
+  const usage = remote.imageStorage.get(id);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [clean, setClean] = useState(false);
+  const run = async (next: DaemonSettings, clear = false) => {
+    setBusy(true); setError("");
+    try { onSave(await remote.saveSettings(id, next, clear)); }
+    catch (e) { setError(errorText(e)); }
+    finally { setBusy(false); }
+  };
+  return <>
+    <div className="glabel">图片存储 · 这台电脑</div>
+    <div className="grp">
+      <div className="row">上传文件<span className="v">{usage ? storageSize(usage.uploadBytes) : "读取中…"}</span></div>
+      <div className="row col"><div className="hint">{usage ? `需保留 ${storageSize(usage.protectedBytes)} · 可回收 ${storageSize(usage.reclaimableBytes)} · 待传 ${storageSize(usage.reservedBytes)}` : "读取占用…"}</div></div>
+      <div className="row">上传空间上限<select aria-label="上传空间上限" className="v" value={String(settings.imageUploadQuotaBytes)} disabled={busy || !online} onChange={(e) => void run({ ...settings, imageUploadQuotaBytes: BigInt(e.target.value) })}>
+        {[settings.imageUploadQuotaBytes, 256n << 20n, 1n << 30n, 5n << 30n, 10n << 30n].filter((x,i,a) => a.indexOf(x) === i).map((n) => <option key={String(n)} value={String(n)}>{storageSize(n)}</option>)}
+      </select></div>
+      <div className="row">图片缓存<span className="v">{usage ? storageSize(usage.cacheBytes) : "—"}</span></div>
+      <div className="row help">缓存最多 150 MiB，按最近使用顺序回收</div>
+      <button className="row" disabled={busy || !online} onClick={() => void remote.settings(id, true).then(onSave, (e) => setError(errorText(e)))}>刷新占用<span className="v">↻</span></button>
+      <button className="row" disabled={busy || !online} onClick={() => setClean(true)}>清理可回收图片和缓存…</button>
+      {usage?.sessions.map((s) => <div className="row col" key={s.sessionId}><span>{remote.sessions.get(s.sessionId)?.info?.title || s.sessionId}</span><span className="hint">原图 {storageSize(s.bytes)} · 需保留 {storageSize(s.protectedBytes)}</span></div>)}
+    </div>
+    <div className="manage-hint">正在发送和当前执行的图片不会被清理。历史图片保留，但已回收的原始路径可能无法再读取。</div>
+    {error && <div className="gbanner"><Banner kind="err">{error}</Banner></div>}
+    {clean && <Alert title="清理可回收图片？" text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话历史保留；尚未同步的大图会只显示预览。" ok="清理" onCancel={() => setClean(false)} onOk={async () => { setClean(false); await run(settings, true); }} />}
+  </>;
 }

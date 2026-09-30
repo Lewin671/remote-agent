@@ -81,4 +81,14 @@ public interface DaemonSettingsOrBuilder extends
    * @return The claude.
    */
   io.github.lewin671.remoteagent.proto.AgentDefaults getClaude();
+
+  /**
+   * <pre>
+   * Zero retains the daemon's default. Limits cover files, not CLI history.
+   * </pre>
+   *
+   * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+   * @return The imageUploadQuotaBytes.
+   */
+  long getImageUploadQuotaBytes();
 }

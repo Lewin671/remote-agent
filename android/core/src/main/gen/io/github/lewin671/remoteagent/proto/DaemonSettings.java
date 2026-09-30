@@ -287,6 +287,44 @@ public  final class DaemonSettings extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int IMAGE_UPLOAD_QUOTA_BYTES_FIELD_NUMBER = 6;
+  private long imageUploadQuotaBytes_;
+  /**
+   * <pre>
+   * Zero retains the daemon's default. Limits cover files, not CLI history.
+   * </pre>
+   *
+   * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+   * @return The imageUploadQuotaBytes.
+   */
+  @java.lang.Override
+  public long getImageUploadQuotaBytes() {
+    return imageUploadQuotaBytes_;
+  }
+  /**
+   * <pre>
+   * Zero retains the daemon's default. Limits cover files, not CLI history.
+   * </pre>
+   *
+   * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+   * @param value The imageUploadQuotaBytes to set.
+   */
+  private void setImageUploadQuotaBytes(long value) {
+    
+    imageUploadQuotaBytes_ = value;
+  }
+  /**
+   * <pre>
+   * Zero retains the daemon's default. Limits cover files, not CLI history.
+   * </pre>
+   *
+   * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+   */
+  private void clearImageUploadQuotaBytes() {
+
+    imageUploadQuotaBytes_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.DaemonSettings parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -663,6 +701,46 @@ public  final class DaemonSettings extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Zero retains the daemon's default. Limits cover files, not CLI history.
+     * </pre>
+     *
+     * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+     * @return The imageUploadQuotaBytes.
+     */
+    @java.lang.Override
+    public long getImageUploadQuotaBytes() {
+      return instance.getImageUploadQuotaBytes();
+    }
+    /**
+     * <pre>
+     * Zero retains the daemon's default. Limits cover files, not CLI history.
+     * </pre>
+     *
+     * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+     * @param value The imageUploadQuotaBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageUploadQuotaBytes(long value) {
+      copyOnWrite();
+      instance.setImageUploadQuotaBytes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Zero retains the daemon's default. Limits cover files, not CLI history.
+     * </pre>
+     *
+     * <code>int64 image_upload_quota_bytes = 6 [json_name = "imageUploadQuotaBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearImageUploadQuotaBytes() {
+      copyOnWrite();
+      instance.clearImageUploadQuotaBytes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.DaemonSettings)
   }
   @java.lang.Override
@@ -685,10 +763,11 @@ public  final class DaemonSettings extends
             "defaultEffort_",
             "defaultMode_",
             "claude_",
+            "imageUploadQuotaBytes_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0004\u0002\u0208" +
-              "\u0003\u0208\u0004\f\u0005\u1009\u0000";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0004\u0002\u0208" +
+              "\u0003\u0208\u0004\f\u0005\u1009\u0000\u0006\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -417,6 +417,32 @@ public  final class MachineCapabilities extends
     commandSignatures_ = false;
   }
 
+  public static final int IMAGE_STORAGE_FIELD_NUMBER = 8;
+  private boolean imageStorage_;
+  /**
+   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+   * @return The imageStorage.
+   */
+  @java.lang.Override
+  public boolean getImageStorage() {
+    return imageStorage_;
+  }
+  /**
+   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+   * @param value The imageStorage to set.
+   */
+  private void setImageStorage(boolean value) {
+    
+    imageStorage_ = value;
+  }
+  /**
+   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+   */
+  private void clearImageStorage() {
+
+    imageStorage_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -912,6 +938,34 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+     * @return The imageStorage.
+     */
+    @java.lang.Override
+    public boolean getImageStorage() {
+      return instance.getImageStorage();
+    }
+    /**
+     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+     * @param value The imageStorage to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageStorage(boolean value) {
+      copyOnWrite();
+      instance.setImageStorage(value);
+      return this;
+    }
+    /**
+     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearImageStorage() {
+      copyOnWrite();
+      instance.clearImageStorage();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -935,10 +989,11 @@ public  final class MachineCapabilities extends
             "maxChunkBytes_",
             "uploadFormats_",
             "commandSignatures_",
+            "imageStorage_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0001\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0004\u0004\u0002\u0005\u0004\u0006,\u0007\u0007";
+              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0004" +
+              "\u0004\u0002\u0005\u0004\u0006,\u0007\u0007\b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

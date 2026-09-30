@@ -59,7 +59,10 @@ class RaApp : Application() {
         // Kept light: a push may start the process just to show a notification.
         Push.createChannels(this)
         // Images shared last time have reached the other app by now.
-        scope.launch(Dispatchers.IO) { java.io.File(cacheDir, io.github.lewin671.remoteagent.ui.SHARED_DIR).deleteRecursively() }
+        scope.launch(Dispatchers.IO) {
+            java.io.File(cacheDir, io.github.lewin671.remoteagent.ui.SHARED_DIR).deleteRecursively()
+            pendingStore.expire()
+        }
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 foreground = true

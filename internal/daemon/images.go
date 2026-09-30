@@ -88,6 +88,9 @@ func openImageStore(sessionDir string) *imageStore {
 		var list []*storedImage
 		if json.Unmarshal(b, &list) == nil {
 			for _, im := range list {
+				if im == nil || im.Ref == nil || !validHexID(im.ID) {
+					continue
+				}
 				st.byID[im.ID] = im
 				st.byMAC[im.HMAC] = im
 			}
@@ -186,7 +189,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	mac := hmac.New(sha256.New, st.key)
 	mac.Write(raw)
 	sum := hex.EncodeToString(mac.Sum(nil))
-	if im := st.byMAC[sum]; im != nil && st.reusable(im) {
+	if im := st.byMAC[sum]; im != nil && st.reusable(im) && st.hasPreview(im) {
 		st.fill(ref, im)
 		return
 	}
@@ -239,6 +242,7 @@ func (st *imageStore) fill(ref *pb.ImageRef, im *storedImage) {
 	ref.Format, ref.Width, ref.Height, ref.Bytes = r.Format, r.Width, r.Height, r.Bytes
 	if r.PreviewFormat != pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED {
 		if b, err := os.ReadFile(st.previewPath(im.ID)); err == nil {
+			_ = os.Chtimes(st.previewPath(im.ID), time.Now(), time.Now())
 			ref.Preview, ref.PreviewFormat, ref.PreviewWidth, ref.PreviewHeight = b, r.PreviewFormat, r.PreviewWidth, r.PreviewHeight
 		}
 	}
@@ -279,6 +283,7 @@ func (st *imageStore) upload(id string) ImageToUpload {
 	if err != nil {
 		return ImageToUpload{Failed: true}
 	}
+	_ = os.Chtimes(st.displayPath(id), time.Now(), time.Now())
 	return ImageToUpload{Payload: b}
 }
 
@@ -305,7 +310,7 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 
 // capabilities says what this daemon offers beyond the base protocol.
 func (d *Daemon) capabilities() *pb.MachineCapabilities {
-	c := &pb.MachineCapabilities{SessionImages: true, CommandSignatures: true}
+	c := &pb.MachineCapabilities{SessionImages: true, CommandSignatures: true, ImageStorage: true}
 	if d.uploads.usable() {
 		c.ImageUpload = true
 		c.MaxImagesPerMessage = maxMessageImages
@@ -314,4 +319,12 @@ func (d *Daemon) capabilities() *pb.MachineCapabilities {
 		c.UploadFormats = uploadFormats
 	}
 	return c
+}
+
+func (st *imageStore) hasPreview(im *storedImage) bool {
+	if im.Ref.PreviewFormat == pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED {
+		return true
+	}
+	_, err := os.Stat(st.previewPath(im.ID))
+	return err == nil
 }

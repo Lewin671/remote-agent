@@ -68,11 +68,14 @@ import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentDefaults
+import io.github.lewin671.remoteagent.proto.ImageStorageUsage
 import io.github.lewin671.remoteagent.proto.DaemonSettings
 import io.github.lewin671.remoteagent.proto.GetSettingsRequest
 import io.github.lewin671.remoteagent.proto.RateLimit
 import io.github.lewin671.remoteagent.proto.UpdateSettingsRequest
 import io.github.lewin671.remoteagent.push.Push
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -167,6 +170,7 @@ fun SettingsScreen() {
                 ) { v -> scope.launch { app.prefs.update { it.copy(showContent = v) } } }
             }
         }
+        PhoneImageStorage()
         SectionHeader("外观")
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             val opts = listOf(ThemeMode.SYSTEM to "自动", ThemeMode.LIGHT to "亮色", ThemeMode.DARK to "暗色")
@@ -223,21 +227,24 @@ fun DeviceScreen(id: String) {
     var confirm by remember { mutableStateOf(false) }
     val remove = rememberAction()
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
+    var imageStorage by remember { mutableStateOf<ImageStorageUsage?>(null) }
     var loadError by remember { mutableStateOf("") }
     val save = rememberAction()
     LaunchedEffect(id, m?.online) {
         if (m?.online != true) return@LaunchedEffect
         try {
-            settings = remote.machineCommand(id, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings
+            val reply = remote.machineCommand(id, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings
+            settings = reply.settings
+            if (reply.hasImageStorage()) imageStorage = reply.imageStorage
             loadError = ""
         } catch (e: Exception) {
             loadError = errorText(e)
         }
     }
     var pickModel by remember { mutableStateOf<Agent?>(null) }
-    fun update(s: DaemonSettings) = save.run({
-        remote.machineCommand(id, remote.cmd { updateSettings = UpdateSettingsRequest.newBuilder().setSettings(s).build() })
-    }) { r -> r?.updateSettings?.settings?.let { settings = it } }
+    fun update(s: DaemonSettings, cleanImages: Boolean = false) = save.run({
+        remote.machineCommand(id, remote.cmd { updateSettings = UpdateSettingsRequest.newBuilder().setSettings(s).setCleanImages(cleanImages).build() })
+    }) { r -> r?.updateSettings?.let { settings = it.settings; if (it.hasImageStorage()) imageStorage = it.imageStorage } }
     PageScaffold(machineLabel(state, id)) {
         if (m == null) {
             Text("这台设备已经移除了", Modifier.padding(16.dp), color = p.muted)
@@ -316,6 +323,11 @@ fun DeviceScreen(id: String) {
                     }
                 }
             }
+            settings?.let { s -> if (meta?.capabilities?.imageStorage == true) {
+                MachineImageStorage(s, imageStorage, m.online && !save.running, onChange = { next, clean -> update(next, clean) }, onRefresh = {
+                    save.run({ remote.machineCommand(id, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }) }) { r -> r?.getSettings?.let { settings = it.settings; if (it.hasImageStorage()) imageStorage = it.imageStorage } }
+                })
+            } }
             val projects = state.sessions.values.filter { it.machineId == id }.mapNotNull { it.info?.cwd }.distinct()
             if (projects.isNotEmpty()) {
                 SectionHeader("项目")
@@ -570,6 +582,55 @@ fun PairScreen() {
                     Button(onClick = { attempt++ }) { Text("换一个") }
                 }
             }
+        }
+    }
+}
+
+private fun imageBytes(n: Long) = "%.1f MiB".format(n / 1048576.0)
+
+@Composable
+private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsage?, enabled: Boolean, onChange: (DaemonSettings, Boolean) -> Unit, onRefresh: () -> Unit) {
+    val p = pal
+    var clean by remember { mutableStateOf(false) }
+    SectionHeader("图片存储 · 这台电脑")
+    Card(Modifier.padding(horizontal = 12.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Text("上传文件 ${usage?.let { imageBytes(it.uploadBytes) } ?: "读取中…"} · 传输预留 ${usage?.let { imageBytes(it.reservedBytes) } ?: "—"}")
+            Text("需保留 ${usage?.let { imageBytes(it.protectedBytes) } ?: "—"} · 可回收 ${usage?.let { imageBytes(it.reclaimableBytes) } ?: "—"}", style = MaterialTheme.typography.bodySmall, color = p.muted)
+            Text("上传上限：${imageBytes(settings.imageUploadQuotaBytes)}", Modifier.padding(top = 8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for ((n,label) in listOf((256L shl 20) to "256 MiB", (1L shl 30) to "1 GiB", (5L shl 30) to "5 GiB")) TextButton(enabled = enabled, onClick = { onChange(settings.toBuilder().setImageUploadQuotaBytes(n).build(), false) }) { Text(label) }
+            }
+            Text("预览和待同步缓存 ${usage?.let { imageBytes(it.cacheBytes) } ?: "—"} · 上限 150 MiB")
+            for (s in usage?.sessionsList.orEmpty()) Text("会话 ${s.sessionId.take(8)} · 原图 ${imageBytes(s.bytes)} · 需保留 ${imageBytes(s.protectedBytes)}", style = MaterialTheme.typography.bodySmall, color = p.muted)
+            Row { TextButton(enabled = enabled, onClick = onRefresh) { Text("刷新占用") }; TextButton(enabled = enabled, onClick = { clean = true }) { Text("清理可回收图片…") } }
+            Text("正在发送和当前执行的图片不会被清理。历史图片保留，但已回收的原始路径可能无法再读取。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        }
+    }
+    if (clean) Confirm("清理可回收图片？", "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。", "清理", onDismiss = { clean = false }) { clean = false; onChange(settings, true) }
+}
+
+@Composable
+private fun PhoneImageStorage() {
+    val app = RaApp.instance
+    val p = pal
+    val action = rememberAction()
+    var stamp by remember { mutableStateOf(0) }
+    var used by remember { mutableStateOf(0L) }
+    var cache by remember { mutableStateOf(0L) }
+    var expired by remember { mutableStateOf(0) }
+    LaunchedEffect(stamp) {
+        withContext(Dispatchers.IO) { app.pendingStore.expire(); used = app.pendingStore.used; cache = app.imageEnvelopes.used; expired = app.pendingStore.expired }
+    }
+    SectionHeader("图片存储 · 这台手机")
+    Card(Modifier.padding(horizontal = 12.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Text("待发和待确认图片 ${imageBytes(used)} / 256 MiB")
+            Text("草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。累计已清理 $expired 张过期草稿。", color = p.muted, style = MaterialTheme.typography.bodySmall)
+            Text("查看缓存 ${imageBytes(cache)} / 150 MiB", Modifier.padding(top = 8.dp))
+            TextButton(enabled = !action.running, onClick = { action.run({ withContext(Dispatchers.IO) { app.imageEnvelopes.clear() }; null }) { stamp++ } }) { Text("清理查看缓存") }
+            TextButton(onClick = { stamp++ }) { Text("刷新占用") }
+            if (action.error.isNotEmpty()) Text(action.error, color = p.red)
         }
     }
 }

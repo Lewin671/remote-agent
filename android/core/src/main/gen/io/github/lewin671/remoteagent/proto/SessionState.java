@@ -150,7 +150,7 @@ public  final class SessionState extends
    * @param value The planOpen to set.
    */
   private void setPlanOpen(boolean value) {
-
+    
     planOpen_ = value;
   }
   /**

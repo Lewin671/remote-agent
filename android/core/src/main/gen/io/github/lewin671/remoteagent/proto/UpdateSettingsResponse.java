@@ -65,6 +65,54 @@ public  final class UpdateSettingsResponse extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int IMAGE_STORAGE_FIELD_NUMBER = 2;
+  private io.github.lewin671.remoteagent.proto.ImageStorageUsage imageStorage_;
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasImageStorage() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ImageStorageUsage getImageStorage() {
+    return imageStorage_ == null ? io.github.lewin671.remoteagent.proto.ImageStorageUsage.getDefaultInstance() : imageStorage_;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageStorage(io.github.lewin671.remoteagent.proto.ImageStorageUsage value) {
+    value.getClass();  // minimal bytecode null check
+    imageStorage_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeImageStorage(io.github.lewin671.remoteagent.proto.ImageStorageUsage value) {
+    value.getClass();  // minimal bytecode null check
+    if (imageStorage_ != null &&
+        imageStorage_ != io.github.lewin671.remoteagent.proto.ImageStorageUsage.getDefaultInstance()) {
+      imageStorage_ =
+        io.github.lewin671.remoteagent.proto.ImageStorageUsage.newBuilder(imageStorage_).mergeFrom(value).buildPartial();
+    } else {
+      imageStorage_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+   */
+  private void clearImageStorage() {
+    imageStorage_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.proto.UpdateSettingsResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -209,6 +257,53 @@ public  final class UpdateSettingsResponse extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasImageStorage() {
+      return instance.hasImageStorage();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ImageStorageUsage getImageStorage() {
+      return instance.getImageStorage();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    public Builder setImageStorage(io.github.lewin671.remoteagent.proto.ImageStorageUsage value) {
+      copyOnWrite();
+      instance.setImageStorage(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    public Builder setImageStorage(
+        io.github.lewin671.remoteagent.proto.ImageStorageUsage.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImageStorage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    public Builder mergeImageStorage(io.github.lewin671.remoteagent.proto.ImageStorageUsage value) {
+      copyOnWrite();
+      instance.mergeImageStorage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageStorageUsage image_storage = 2 [json_name = "imageStorage"];</code>
+     */
+    public Builder clearImageStorage() {  copyOnWrite();
+      instance.clearImageStorage();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.UpdateSettingsResponse)
   }
   @java.lang.Override
@@ -227,9 +322,11 @@ public  final class UpdateSettingsResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "settings_",
+            "imageStorage_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0001\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u1009\u0000";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

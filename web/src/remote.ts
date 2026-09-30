@@ -27,7 +27,7 @@ import {
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { Agent, ImageFormat, type Event } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
-import { SessionSchema, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
+import { SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
   ClientService,
@@ -1226,6 +1226,8 @@ export class Remote {
     return p;
   }
 
+  imageStorage = new Map<string, ImageStorageUsage>();
+
   private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
 
   /** A machine's daemon settings, fetched once per page load. */
@@ -1234,6 +1236,8 @@ export class Remote {
     if (!p) {
       p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error("意外的回复");
+        if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+        this.changed();
         return r.kind.value.settings;
       });
       p.catch(() => this.settingsCache.delete(machineId));
@@ -1242,9 +1246,11 @@ export class Remote {
     return p;
   }
 
-  async saveSettings(machineId: string, next: DaemonSettings): Promise<DaemonSettings | undefined> {
-    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next } });
+  async saveSettings(machineId: string, next: DaemonSettings, cleanImages = false): Promise<DaemonSettings | undefined> {
+    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next, cleanImages } });
     if (r.kind.case !== "updateSettings") throw new Error("意外的回复");
+    if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+    this.changed();
     this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
     return r.kind.value.settings;
   }

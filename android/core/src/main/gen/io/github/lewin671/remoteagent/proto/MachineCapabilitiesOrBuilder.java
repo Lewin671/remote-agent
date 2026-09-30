@@ -115,4 +115,10 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The commandSignatures.
    */
   boolean getCommandSignatures();
+
+  /**
+   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
+   * @return The imageStorage.
+   */
+  boolean getImageStorage();
 }

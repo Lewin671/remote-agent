@@ -64,7 +64,12 @@ type transfer struct {
 	Height      int32  `json:"height,omitempty"`
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
-	Session string `json:"session,omitempty"`
+	Session  string          `json:"session,omitempty"`
+	Tracked  bool            `json:"tracked,omitempty"`
+	Exposed  bool            `json:"exposed,omitempty"`
+	Embedded bool            `json:"embedded,omitempty"`
+	Refs     map[string]bool `json:"refs,omitempty"`
+	AccessMs int64           `json:"access_ms,omitempty"`
 }
 
 func (t *transfer) state() pb.ImageUploadState {
@@ -96,8 +101,10 @@ func (t *transfer) status() *pb.ImageUploadStatus {
 type uploads struct {
 	dir string
 
-	mu    sync.Mutex
-	quota int64
+	mu     sync.Mutex
+	quota  int64
+	limits func() int64
+	pins   func() map[string]bool
 }
 
 func newUploads() *uploads {
@@ -197,6 +204,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 	case len(req.Sha256) != sha256.Size:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sha256 must be 32 bytes"))
 	}
+	pins := u.protectedSessions()
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if t, err := u.load(req.TransferId); err == nil {
@@ -211,7 +219,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		return nil, err
 	}
 	u.gcLocked(time.Now())
-	if err := u.room(req.TotalBytes + 1024); err != nil {
+	if err := u.makeRoom(req.TotalBytes+1024, pins); err != nil {
 		return nil, err
 	}
 	for _, d := range []string{filepath.Join(u.dir, "partial"), filepath.Join(u.dir, "pending")} {
@@ -219,7 +227,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			return nil, err
 		}
 	}
-	t := &transfer{ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
+	t := &transfer{ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli(), Tracked: true}
 	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
@@ -302,6 +310,7 @@ func (u *uploads) status(id, device string) (*pb.ImageUploadStatus, error) {
 }
 
 func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
+	pins := u.protectedSessions()
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	t, err := u.load(id)
@@ -349,7 +358,7 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	}
 	// The original .part goes away after commit; allow only this one
 	// bounded extra copy while the cleaned file and its record are saved.
-	if err := u.room(int64(len(clean)-len(data)) + 1024); err != nil {
+	if err := u.makeRoom(int64(len(clean)-len(data))+1024, pins); err != nil {
 		return nil, err
 	}
 	format := imageproc.Sniff(clean)
@@ -428,7 +437,7 @@ type queuedImage struct {
 // folder and returns them in order. They must be complete uploads of the
 // same device; an image this session already used (a message resent after
 // it failed) may be named again. Nothing moves unless all can.
-func (u *uploads) take(ids []string, device, sessionID string) ([]queuedImage, error) {
+func (u *uploads) take(ids []string, device, sessionID string, request ...string) ([]queuedImage, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -503,6 +512,20 @@ func (u *uploads) take(ids []string, device, sessionID string) ([]queuedImage, e
 			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("image %s is gone; upload it again", t.ImageID))
 		}
 		out = append(out, queuedImage{ID: t.ImageID, Path: dst})
+	}
+	for _, t := range ts {
+		if len(request) > 0 && request[0] != "" {
+			if t.Refs == nil {
+				t.Refs = map[string]bool{}
+			}
+			t.Refs[request[0]] = true
+		} else {
+			t.Tracked = false
+		} // legacy caller: do not assume no references
+		t.AccessMs = time.Now().UnixMilli()
+		if err := u.save(t); err != nil {
+			return nil, err
+		}
 	}
 	syncDir(u.sessionDir(sessionID))
 	syncDir(filepath.Join(u.dir, "pending"))
@@ -583,6 +606,7 @@ func (u *uploads) release(sessionID string) {
 			}
 		}
 		t.Session = ""
+		t.Refs = nil
 		if err := u.save(t); err != nil {
 			slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
 		}
@@ -592,7 +616,7 @@ func (u *uploads) release(sessionID string) {
 
 // untake returns images of a message that was not accepted after all to
 // the pending folder.
-func (u *uploads) untake(imgs []queuedImage, sessionID string) {
+func (u *uploads) untake(imgs []queuedImage, sessionID string, request ...string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for _, im := range imgs {
@@ -600,8 +624,16 @@ func (u *uploads) untake(imgs []queuedImage, sessionID string) {
 		if t == nil || t.Session != sessionID {
 			continue
 		}
+		if len(request) > 0 {
+			delete(t.Refs, request[0])
+		}
+		if t.Tracked && (t.Exposed || len(t.Refs) > 0) {
+			_ = u.save(t)
+			continue
+		}
 		if os.Rename(im.Path, u.pending(filepath.Base(im.Path))) == nil {
 			t.Session = ""
+			t.Refs = nil
 			_ = u.save(t)
 		}
 	}
@@ -669,6 +701,11 @@ func (u *uploads) gcLocked(now time.Time) {
 				u.remove(strings.TrimSuffix(name, ".json"))
 			}
 			continue
+		}
+		if t.Tracked && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
+			if err := u.removeOriginal(t); err == nil {
+				continue
+			}
 		}
 		if t.Session != "" {
 			if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
@@ -762,7 +799,11 @@ func (u *uploads) room(add int64) error {
 	if err != nil {
 		return err
 	}
-	if used+add > u.quota {
+	quota := u.quota
+	if u.limits != nil {
+		quota = u.limits()
+	}
+	if used+add > quota {
 		return connect.NewError(connect.CodeResourceExhausted, errors.New("this machine's image upload storage is full; end unused sessions or wait for unused images to expire"))
 	}
 	return nil

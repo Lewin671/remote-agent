@@ -107,6 +107,7 @@ message MachineCapabilities {
   // Commands are checked against Envelope.signature and events carry
   // their Origin.
   bool command_signatures = 7;
+  bool image_storage = 8;
 }
 
 message AgentInfo {

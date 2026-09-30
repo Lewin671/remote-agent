@@ -2237,9 +2237,11 @@ type DaemonSettings struct {
 	DefaultEffort string       `protobuf:"bytes,3,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
 	DefaultMode   ApprovalMode `protobuf:"varint,4,opt,name=default_mode,json=defaultMode,proto3,enum=remoteagent.v1.ApprovalMode" json:"default_mode,omitempty"`
 	// Defaults for new Claude Code sessions; the fields above are Codex's.
-	Claude        *AgentDefaults `protobuf:"bytes,5,opt,name=claude,proto3" json:"claude,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Claude *AgentDefaults `protobuf:"bytes,5,opt,name=claude,proto3" json:"claude,omitempty"`
+	// Zero retains the daemon's default. Limits cover files, not CLI history.
+	ImageUploadQuotaBytes int64 `protobuf:"varint,6,opt,name=image_upload_quota_bytes,json=imageUploadQuotaBytes,proto3" json:"image_upload_quota_bytes,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DaemonSettings) Reset() {
@@ -2305,6 +2307,13 @@ func (x *DaemonSettings) GetClaude() *AgentDefaults {
 		return x.Claude
 	}
 	return nil
+}
+
+func (x *DaemonSettings) GetImageUploadQuotaBytes() int64 {
+	if x != nil {
+		return x.ImageUploadQuotaBytes
+	}
+	return 0
 }
 
 type AgentDefaults struct {
@@ -2406,6 +2415,7 @@ func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
 type GetSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	ImageStorage  *ImageStorageUsage     `protobuf:"bytes,2,opt,name=image_storage,json=imageStorage,proto3" json:"image_storage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2447,9 +2457,18 @@ func (x *GetSettingsResponse) GetSettings() *DaemonSettings {
 	return nil
 }
 
+func (x *GetSettingsResponse) GetImageStorage() *ImageStorageUsage {
+	if x != nil {
+		return x.ImageStorage
+	}
+	return nil
+}
+
 type UpdateSettingsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Settings *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+	CleanImages   bool `protobuf:"varint,2,opt,name=clean_images,json=cleanImages,proto3" json:"clean_images,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2491,9 +2510,17 @@ func (x *UpdateSettingsRequest) GetSettings() *DaemonSettings {
 	return nil
 }
 
+func (x *UpdateSettingsRequest) GetCleanImages() bool {
+	if x != nil {
+		return x.CleanImages
+	}
+	return false
+}
+
 type UpdateSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Settings      *DaemonSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	ImageStorage  *ImageStorageUsage     `protobuf:"bytes,2,opt,name=image_storage,json=imageStorage,proto3" json:"image_storage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2531,6 +2558,13 @@ func (*UpdateSettingsResponse) Descriptor() ([]byte, []int) {
 func (x *UpdateSettingsResponse) GetSettings() *DaemonSettings {
 	if x != nil {
 		return x.Settings
+	}
+	return nil
+}
+
+func (x *UpdateSettingsResponse) GetImageStorage() *ImageStorageUsage {
+	if x != nil {
+		return x.ImageStorage
 	}
 	return nil
 }
@@ -3223,6 +3257,151 @@ func (*AbortImageUploadResponse) Descriptor() ([]byte, []int) {
 	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{54}
 }
 
+// Collected locally and sealed with the settings reply; the server sees no usage.
+type ImageStorageUsage struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	UploadBytes      int64                  `protobuf:"varint,1,opt,name=upload_bytes,json=uploadBytes,proto3" json:"upload_bytes,omitempty"`
+	ReservedBytes    int64                  `protobuf:"varint,2,opt,name=reserved_bytes,json=reservedBytes,proto3" json:"reserved_bytes,omitempty"`
+	ProtectedBytes   int64                  `protobuf:"varint,3,opt,name=protected_bytes,json=protectedBytes,proto3" json:"protected_bytes,omitempty"`
+	ReclaimableBytes int64                  `protobuf:"varint,4,opt,name=reclaimable_bytes,json=reclaimableBytes,proto3" json:"reclaimable_bytes,omitempty"`
+	CacheBytes       int64                  `protobuf:"varint,5,opt,name=cache_bytes,json=cacheBytes,proto3" json:"cache_bytes,omitempty"`
+	Sessions         []*ImageSessionStorage `protobuf:"bytes,6,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ImageStorageUsage) Reset() {
+	*x = ImageStorageUsage{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImageStorageUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageStorageUsage) ProtoMessage() {}
+
+func (x *ImageStorageUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageStorageUsage.ProtoReflect.Descriptor instead.
+func (*ImageStorageUsage) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *ImageStorageUsage) GetUploadBytes() int64 {
+	if x != nil {
+		return x.UploadBytes
+	}
+	return 0
+}
+
+func (x *ImageStorageUsage) GetReservedBytes() int64 {
+	if x != nil {
+		return x.ReservedBytes
+	}
+	return 0
+}
+
+func (x *ImageStorageUsage) GetProtectedBytes() int64 {
+	if x != nil {
+		return x.ProtectedBytes
+	}
+	return 0
+}
+
+func (x *ImageStorageUsage) GetReclaimableBytes() int64 {
+	if x != nil {
+		return x.ReclaimableBytes
+	}
+	return 0
+}
+
+func (x *ImageStorageUsage) GetCacheBytes() int64 {
+	if x != nil {
+		return x.CacheBytes
+	}
+	return 0
+}
+
+func (x *ImageStorageUsage) GetSessions() []*ImageSessionStorage {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
+type ImageSessionStorage struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	SessionId      string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Bytes          int64                  `protobuf:"varint,2,opt,name=bytes,proto3" json:"bytes,omitempty"`
+	ProtectedBytes int64                  `protobuf:"varint,3,opt,name=protected_bytes,json=protectedBytes,proto3" json:"protected_bytes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ImageSessionStorage) Reset() {
+	*x = ImageSessionStorage{}
+	mi := &file_remoteagent_v1_local_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImageSessionStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageSessionStorage) ProtoMessage() {}
+
+func (x *ImageSessionStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_local_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageSessionStorage.ProtoReflect.Descriptor instead.
+func (*ImageSessionStorage) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_local_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *ImageSessionStorage) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ImageSessionStorage) GetBytes() int64 {
+	if x != nil {
+		return x.Bytes
+	}
+	return 0
+}
+
+func (x *ImageSessionStorage) GetProtectedBytes() int64 {
+	if x != nil {
+		return x.ProtectedBytes
+	}
+	return 0
+}
+
 var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
@@ -3380,24 +3559,28 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x12\n" +
 	"\x04home\x18\x03 \x01(\tR\x04home\x12\x12\n" +
-	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\x8e\x02\n" +
+	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\xc7\x02\n" +
 	"\x0eDaemonSettings\x128\n" +
 	"\x18approval_timeout_seconds\x18\x01 \x01(\x05R\x16approvalTimeoutSeconds\x12#\n" +
 	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\x12%\n" +
 	"\x0edefault_effort\x18\x03 \x01(\tR\rdefaultEffort\x12?\n" +
 	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\x125\n" +
-	"\x06claude\x18\x05 \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\x06claude\"o\n" +
+	"\x06claude\x18\x05 \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\x06claude\x127\n" +
+	"\x18image_upload_quota_bytes\x18\x06 \x01(\x03R\x15imageUploadQuotaBytes\"o\n" +
 	"\rAgentDefaults\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +
 	"\x04mode\x18\x03 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\"\x14\n" +
-	"\x12GetSettingsRequest\"Q\n" +
+	"\x12GetSettingsRequest\"\x99\x01\n" +
 	"\x13GetSettingsResponse\x12:\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\"S\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\x12F\n" +
+	"\rimage_storage\x18\x02 \x01(\v2!.remoteagent.v1.ImageStorageUsageR\fimageStorage\"v\n" +
 	"\x15UpdateSettingsRequest\x12:\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\"T\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\x12!\n" +
+	"\fclean_images\x18\x02 \x01(\bR\vcleanImages\"\x9c\x01\n" +
 	"\x16UpdateSettingsResponse\x12:\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\"5\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1e.remoteagent.v1.DaemonSettingsR\bsettings\x12F\n" +
+	"\rimage_storage\x18\x02 \x01(\v2!.remoteagent.v1.ImageStorageUsageR\fimageStorage\"5\n" +
 	"\x14ResumeSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"J\n" +
@@ -3445,7 +3628,20 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x17AbortImageUploadRequest\x12\x1f\n" +
 	"\vtransfer_id\x18\x01 \x01(\tR\n" +
 	"transferId\"\x1a\n" +
-	"\x18AbortImageUploadResponse*\x88\x01\n" +
+	"\x18AbortImageUploadResponse\"\x95\x02\n" +
+	"\x11ImageStorageUsage\x12!\n" +
+	"\fupload_bytes\x18\x01 \x01(\x03R\vuploadBytes\x12%\n" +
+	"\x0ereserved_bytes\x18\x02 \x01(\x03R\rreservedBytes\x12'\n" +
+	"\x0fprotected_bytes\x18\x03 \x01(\x03R\x0eprotectedBytes\x12+\n" +
+	"\x11reclaimable_bytes\x18\x04 \x01(\x03R\x10reclaimableBytes\x12\x1f\n" +
+	"\vcache_bytes\x18\x05 \x01(\x03R\n" +
+	"cacheBytes\x12?\n" +
+	"\bsessions\x18\x06 \x03(\v2#.remoteagent.v1.ImageSessionStorageR\bsessions\"s\n" +
+	"\x13ImageSessionStorage\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05bytes\x18\x02 \x01(\x03R\x05bytes\x12'\n" +
+	"\x0fprotected_bytes\x18\x03 \x01(\x03R\x0eprotectedBytes*\x88\x01\n" +
 	"\n" +
 	"PlanChoice\x12\x1b\n" +
 	"\x17PLAN_CHOICE_UNSPECIFIED\x10\x00\x12\x19\n" +
@@ -3502,7 +3698,7 @@ func file_remoteagent_v1_local_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_local_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_remoteagent_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
+var file_remoteagent_v1_local_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
 var file_remoteagent_v1_local_proto_goTypes = []any{
 	(PlanChoice)(0),                      // 0: remoteagent.v1.PlanChoice
 	(ImageUploadState)(0),                // 1: remoteagent.v1.ImageUploadState
@@ -3561,100 +3757,105 @@ var file_remoteagent_v1_local_proto_goTypes = []any{
 	(*CompleteImageUploadResponse)(nil),  // 54: remoteagent.v1.CompleteImageUploadResponse
 	(*AbortImageUploadRequest)(nil),      // 55: remoteagent.v1.AbortImageUploadRequest
 	(*AbortImageUploadResponse)(nil),     // 56: remoteagent.v1.AbortImageUploadResponse
-	nil,                                  // 57: remoteagent.v1.CreateSessionRequest.EnvEntry
-	(SessionStatus)(0),                   // 58: remoteagent.v1.SessionStatus
-	(*timestamppb.Timestamp)(nil),        // 59: google.protobuf.Timestamp
-	(Agent)(0),                           // 60: remoteagent.v1.Agent
-	(ApprovalMode)(0),                    // 61: remoteagent.v1.ApprovalMode
-	(*Event)(nil),                        // 62: remoteagent.v1.Event
-	(ImageFormat)(0),                     // 63: remoteagent.v1.ImageFormat
+	(*ImageStorageUsage)(nil),            // 57: remoteagent.v1.ImageStorageUsage
+	(*ImageSessionStorage)(nil),          // 58: remoteagent.v1.ImageSessionStorage
+	nil,                                  // 59: remoteagent.v1.CreateSessionRequest.EnvEntry
+	(SessionStatus)(0),                   // 60: remoteagent.v1.SessionStatus
+	(*timestamppb.Timestamp)(nil),        // 61: google.protobuf.Timestamp
+	(Agent)(0),                           // 62: remoteagent.v1.Agent
+	(ApprovalMode)(0),                    // 63: remoteagent.v1.ApprovalMode
+	(*Event)(nil),                        // 64: remoteagent.v1.Event
+	(ImageFormat)(0),                     // 65: remoteagent.v1.ImageFormat
 }
 var file_remoteagent_v1_local_proto_depIdxs = []int32{
-	58, // 0: remoteagent.v1.Session.status:type_name -> remoteagent.v1.SessionStatus
-	59, // 1: remoteagent.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	60, // 2: remoteagent.v1.Session.agent:type_name -> remoteagent.v1.Agent
-	61, // 3: remoteagent.v1.Session.mode:type_name -> remoteagent.v1.ApprovalMode
-	59, // 4: remoteagent.v1.Session.attention_since:type_name -> google.protobuf.Timestamp
-	59, // 5: remoteagent.v1.Session.ended_at:type_name -> google.protobuf.Timestamp
-	57, // 6: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
-	61, // 7: remoteagent.v1.CreateSessionRequest.mode:type_name -> remoteagent.v1.ApprovalMode
-	60, // 8: remoteagent.v1.CreateSessionRequest.agent:type_name -> remoteagent.v1.Agent
+	60, // 0: remoteagent.v1.Session.status:type_name -> remoteagent.v1.SessionStatus
+	61, // 1: remoteagent.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	62, // 2: remoteagent.v1.Session.agent:type_name -> remoteagent.v1.Agent
+	63, // 3: remoteagent.v1.Session.mode:type_name -> remoteagent.v1.ApprovalMode
+	61, // 4: remoteagent.v1.Session.attention_since:type_name -> google.protobuf.Timestamp
+	61, // 5: remoteagent.v1.Session.ended_at:type_name -> google.protobuf.Timestamp
+	59, // 6: remoteagent.v1.CreateSessionRequest.env:type_name -> remoteagent.v1.CreateSessionRequest.EnvEntry
+	63, // 7: remoteagent.v1.CreateSessionRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	62, // 8: remoteagent.v1.CreateSessionRequest.agent:type_name -> remoteagent.v1.Agent
 	2,  // 9: remoteagent.v1.CreateSessionResponse.session:type_name -> remoteagent.v1.Session
 	2,  // 10: remoteagent.v1.ListSessionsResponse.sessions:type_name -> remoteagent.v1.Session
 	2,  // 11: remoteagent.v1.GetSessionResponse.session:type_name -> remoteagent.v1.Session
-	62, // 12: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
-	60, // 13: remoteagent.v1.ListModelsRequest.agent:type_name -> remoteagent.v1.Agent
+	64, // 12: remoteagent.v1.WatchEventsResponse.event:type_name -> remoteagent.v1.Event
+	62, // 13: remoteagent.v1.ListModelsRequest.agent:type_name -> remoteagent.v1.Agent
 	28, // 14: remoteagent.v1.ListModelsResponse.models:type_name -> remoteagent.v1.ModelInfo
-	61, // 15: remoteagent.v1.SetApprovalModeRequest.mode:type_name -> remoteagent.v1.ApprovalMode
+	63, // 15: remoteagent.v1.SetApprovalModeRequest.mode:type_name -> remoteagent.v1.ApprovalMode
 	0,  // 16: remoteagent.v1.AnswerPlanRequest.choice:type_name -> remoteagent.v1.PlanChoice
-	61, // 17: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
+	63, // 17: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
 	39, // 18: remoteagent.v1.DaemonSettings.claude:type_name -> remoteagent.v1.AgentDefaults
-	61, // 19: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
+	63, // 19: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
 	38, // 20: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	38, // 21: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
-	38, // 22: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	2,  // 23: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
-	1,  // 24: remoteagent.v1.ImageUploadStatus.state:type_name -> remoteagent.v1.ImageUploadState
-	63, // 25: remoteagent.v1.BeginImageUploadRequest.format:type_name -> remoteagent.v1.ImageFormat
-	46, // 26: remoteagent.v1.BeginImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	46, // 27: remoteagent.v1.PutImageChunkResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	46, // 28: remoteagent.v1.GetImageUploadStatusResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	46, // 29: remoteagent.v1.CompleteImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	3,  // 30: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
-	5,  // 31: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
-	7,  // 32: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
-	9,  // 33: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
-	11, // 34: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
-	13, // 35: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
-	44, // 36: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
-	15, // 37: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
-	25, // 38: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
-	27, // 39: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
-	30, // 40: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
-	32, // 41: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
-	34, // 42: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
-	36, // 43: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
-	40, // 44: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
-	42, // 45: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
-	47, // 46: remoteagent.v1.LocalService.BeginImageUpload:input_type -> remoteagent.v1.BeginImageUploadRequest
-	49, // 47: remoteagent.v1.LocalService.PutImageChunk:input_type -> remoteagent.v1.PutImageChunkRequest
-	51, // 48: remoteagent.v1.LocalService.GetImageUploadStatus:input_type -> remoteagent.v1.GetImageUploadStatusRequest
-	53, // 49: remoteagent.v1.LocalService.CompleteImageUpload:input_type -> remoteagent.v1.CompleteImageUploadRequest
-	55, // 50: remoteagent.v1.LocalService.AbortImageUpload:input_type -> remoteagent.v1.AbortImageUploadRequest
-	17, // 51: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
-	19, // 52: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
-	21, // 53: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
-	23, // 54: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
-	4,  // 55: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
-	6,  // 56: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
-	8,  // 57: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
-	10, // 58: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
-	12, // 59: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
-	14, // 60: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
-	45, // 61: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
-	16, // 62: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
-	26, // 63: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
-	29, // 64: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
-	31, // 65: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
-	33, // 66: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
-	35, // 67: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
-	37, // 68: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
-	41, // 69: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
-	43, // 70: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
-	48, // 71: remoteagent.v1.LocalService.BeginImageUpload:output_type -> remoteagent.v1.BeginImageUploadResponse
-	50, // 72: remoteagent.v1.LocalService.PutImageChunk:output_type -> remoteagent.v1.PutImageChunkResponse
-	52, // 73: remoteagent.v1.LocalService.GetImageUploadStatus:output_type -> remoteagent.v1.GetImageUploadStatusResponse
-	54, // 74: remoteagent.v1.LocalService.CompleteImageUpload:output_type -> remoteagent.v1.CompleteImageUploadResponse
-	56, // 75: remoteagent.v1.LocalService.AbortImageUpload:output_type -> remoteagent.v1.AbortImageUploadResponse
-	18, // 76: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
-	20, // 77: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
-	22, // 78: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
-	24, // 79: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
-	55, // [55:80] is the sub-list for method output_type
-	30, // [30:55] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	57, // 21: remoteagent.v1.GetSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
+	38, // 22: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
+	38, // 23: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	57, // 24: remoteagent.v1.UpdateSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
+	2,  // 25: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
+	1,  // 26: remoteagent.v1.ImageUploadStatus.state:type_name -> remoteagent.v1.ImageUploadState
+	65, // 27: remoteagent.v1.BeginImageUploadRequest.format:type_name -> remoteagent.v1.ImageFormat
+	46, // 28: remoteagent.v1.BeginImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	46, // 29: remoteagent.v1.PutImageChunkResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	46, // 30: remoteagent.v1.GetImageUploadStatusResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	46, // 31: remoteagent.v1.CompleteImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	58, // 32: remoteagent.v1.ImageStorageUsage.sessions:type_name -> remoteagent.v1.ImageSessionStorage
+	3,  // 33: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
+	5,  // 34: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
+	7,  // 35: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
+	9,  // 36: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
+	11, // 37: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
+	13, // 38: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
+	44, // 39: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
+	15, // 40: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
+	25, // 41: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
+	27, // 42: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
+	30, // 43: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
+	32, // 44: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
+	34, // 45: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
+	36, // 46: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
+	40, // 47: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
+	42, // 48: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
+	47, // 49: remoteagent.v1.LocalService.BeginImageUpload:input_type -> remoteagent.v1.BeginImageUploadRequest
+	49, // 50: remoteagent.v1.LocalService.PutImageChunk:input_type -> remoteagent.v1.PutImageChunkRequest
+	51, // 51: remoteagent.v1.LocalService.GetImageUploadStatus:input_type -> remoteagent.v1.GetImageUploadStatusRequest
+	53, // 52: remoteagent.v1.LocalService.CompleteImageUpload:input_type -> remoteagent.v1.CompleteImageUploadRequest
+	55, // 53: remoteagent.v1.LocalService.AbortImageUpload:input_type -> remoteagent.v1.AbortImageUploadRequest
+	17, // 54: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
+	19, // 55: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
+	21, // 56: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
+	23, // 57: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
+	4,  // 58: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
+	6,  // 59: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
+	8,  // 60: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
+	10, // 61: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
+	12, // 62: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
+	14, // 63: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
+	45, // 64: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
+	16, // 65: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
+	26, // 66: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
+	29, // 67: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
+	31, // 68: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
+	33, // 69: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
+	35, // 70: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
+	37, // 71: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
+	41, // 72: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
+	43, // 73: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
+	48, // 74: remoteagent.v1.LocalService.BeginImageUpload:output_type -> remoteagent.v1.BeginImageUploadResponse
+	50, // 75: remoteagent.v1.LocalService.PutImageChunk:output_type -> remoteagent.v1.PutImageChunkResponse
+	52, // 76: remoteagent.v1.LocalService.GetImageUploadStatus:output_type -> remoteagent.v1.GetImageUploadStatusResponse
+	54, // 77: remoteagent.v1.LocalService.CompleteImageUpload:output_type -> remoteagent.v1.CompleteImageUploadResponse
+	56, // 78: remoteagent.v1.LocalService.AbortImageUpload:output_type -> remoteagent.v1.AbortImageUploadResponse
+	18, // 79: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
+	20, // 80: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
+	22, // 81: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
+	24, // 82: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
+	58, // [58:83] is the sub-list for method output_type
+	33, // [33:58] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_local_proto_init() }
@@ -3670,7 +3871,7 @@ func file_remoteagent_v1_local_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_local_proto_rawDesc), len(file_remoteagent_v1_local_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   56,
+			NumMessages:   58,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

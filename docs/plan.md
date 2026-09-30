@@ -217,13 +217,15 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v5](design/client-v5.html) 是当前界面目标：保留 v4 全部页面和排序规则，统一新会话卡片、历史字重、分段栏和输入控件；网页与 Android 已实现 v2，继续按 v5 核查。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v6](design/client-v6.html) 是当前界面目标：保留 v5 全部页面，补充图片存储的占用、限额与清理入口；网页与 Android 已实现。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
 **会话排序进度**（2026-09-30）：网页首页、宽屏侧栏、项目页与 Android 首页、项目页按 client-v4 统一排序；daemon 在加密会话摘要中提供日志重建的等待和退出时间。升级兼容规则见 [architecture.md 的会话列表排序](architecture.md#会话列表排序)。
 
 **v5 界面复查**（2026-09-30）：网页与 Android 已实现新会话卡片归组、历史层级、紧凑分段栏和输入控件宽度约束；Android 补齐新建首条消息在历史到达前的显示，以及大字号模式面板滚动。网页窄屏设置仍能访问高上下文提示；长项目名不再撑高输入区。网页全量测试、Android JVM 测试、4 项模拟器 Compose 仪器测试和 R8 构建通过；实测边界见 [browser-notes](browser-notes.md#v5-界面复查) 与 [android-notes §7](android-notes.md#7-v5-界面复查)。
 
 **Go 侧进度**（2026-09-30）：协议、server 和 daemon 已完成——会话图片（预览、显示版、按序上传、去重、降级）、从客户端发图（分块上传、逐张粘贴、阶段落盘、失败清理、重启恢复）、账户项目偏好和设备目录的存取与推送、指令签名和事件来源。在隔离的 server、daemon 和 tmux 上用真实 CLI 验过（Codex 0.159.0 GPT-6-Luna low，Claude Code 2.1.285 haiku，测试客户端是 `internal/remoteclient`）：两个 CLI 各新建一个第一条消息带图的会话；Codex 空闲时发两张图、Claude Code 运行中发两张图；3.8 MB 和 4.3 MB 的图显示版都在 1 MiB 以内；11.6 MB 带 GPS 的原图在两个 CLI 的记录里都没有 EXIF；电脑终端里显示 `[Image #N]`，模型都读出了图里的字；Codex 的 `view_image`、生成图，Claude Code 的 `Read`，以及两个 CLI 在终端本地粘贴的图都带预览和大图；第二张图丢失时不提交并清空输入框；粘贴中途杀掉 daemon，重启后清空并记为失败；注入期间本地敲的键在提交后出现在新输入框里；18.9 MB 的 rollout 行照常解析；server 数据库和 WAL 里没有正文、路径和图片明文。客户端的显示和发送在各自的进度里验收。
+
+图片存储管理已按 [client-v6](design/client-v6.html) 实现：引用回收、执行结束后的原图 LRU、固定缓存和手机草稿容量、一个可配置上传上限及占用与清理入口。规则见 [architecture §17](architecture.md#17-会话里的图片)。
 
 **Android 进度**（2026-09-30）：v2 的手机画面已按 client-v3 实现并推到 main，逻辑在 `:core`（`Model.kt` 的工具与队列状态、`Prefs.kt`、`Images.kt`）并有 JVM 测试，`:core` 的集成测试对真实 Go server 验了图片存取、两个客户端并发改项目偏好、客户端改名同步。模拟器（API 36）上用隔离的 server、daemon 和包名 `.v2dev` 的副本（debug 和 R8 的 `minified` 各走一遍）连真实 CLI（Claude Code 2.1.285 haiku，Codex 0.159.0 GPT-6-Luna low）验过：工具开始即显示和计时、并行调用、Claude Code 自己转到后台的命令标为待确认；独立中断入口、键盘弹出收成「设置…」；审批停靠和允许；Claude Code 多选「提交 N 项」、计划「继续规划」、Haiku 不提供自动模式；新建卡片选 CLI、配置两行、只打开终端后处理信任弹窗；常用、移除和撤销、恢复，隐藏项目的会话仍在主页；设备目录、客户端改名、设备默认模型、额度页；Claude Code `Read` 的图片预览、大图、保存和分享；从手机给两个 CLI 各发两张图（带方向标记的 6.7 MB 照片压成 669 KB 并转正）、原图 8.9 MB 分块上传后转正且没有 EXIF、新建会话第一条消息带图、进程被杀后待发图片从加密存储恢复并重传。实测见 [android-notes §6](android-notes.md#6-v2-客户端)。
 
@@ -254,7 +256,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 - 客户端切换 fast 模式是否要做（优先级低）
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[architecture §17](architecture.md#17-会话里的图片)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
 - 新会话的默认模式没在 daemon 设置里指定、沿用 CLI 自己的配置时，客户端不知道它是什么（实测 Claude Code 本机 `defaultMode` 是 bypass，新建卡片只能写「默认审批」，启动前没有完全放行的确认）；需要 daemon 在设置或机器元数据里报出各 CLI 实际的默认模式，客户端才能按「新 CLI 默认完全放行仍需确认」处理
-- Android 未发送图片草稿目前只在发送、移除或退出账户时删除，没有期限和总量限制；daemon 离线时等待同步的显示版和本机预览索引也没有独立配额。需要定出草稿过期提示与配额拒绝策略，避免静默淘汰仍要用的内容。server 的过期图片保留状态行，SQLite 空间用于后续复用；是否需要定期压缩数据库及历史元数据期限也待定。
+- server 的过期图片仍保留状态行，SQLite 空间用于后续复用；是否需要定期压缩数据库及历史元数据期限仍待定。
 - 图片过期后要不要支持从电脑重新取（daemon 从 rollout 或 transcript 里重新编码上传）；需要机器在线，也要一个新的指令
 
 **Android App**

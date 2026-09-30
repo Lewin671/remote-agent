@@ -20,4 +20,14 @@ public interface UpdateSettingsRequestOrBuilder extends
    * @return The settings.
    */
   io.github.lewin671.remoteagent.proto.DaemonSettings getSettings();
+
+  /**
+   * <pre>
+   * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+   * </pre>
+   *
+   * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+   * @return The cleanImages.
+   */
+  boolean getCleanImages();
 }

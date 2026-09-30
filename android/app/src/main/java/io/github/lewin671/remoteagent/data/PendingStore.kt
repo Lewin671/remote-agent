@@ -7,6 +7,7 @@ import io.github.lewin671.remoteagent.core.hex
 import io.github.lewin671.remoteagent.core.randomBytes
 import io.github.lewin671.remoteagent.core.sha256
 import java.io.File
+import io.github.lewin671.remoteagent.core.ImageDiskPolicy
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -22,6 +23,15 @@ import javax.crypto.spec.SecretKeySpec
  * here goes into backups, and logging out deletes it all.
  */
 class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
+    private val prefs = context.getSharedPreferences("image-storage", Context.MODE_PRIVATE)
+    private val limit = ImageDiskPolicy.DRAFT_LIMIT
+    val used: Long get() = synchronized(this) { ImageDiskPolicy.bytes(dir) }
+    val expired: Int get() = prefs.getInt("expired-drafts", 0)
+    @Synchronized fun expire(): Int {
+        val n = ImageDiskPolicy.expireDrafts(dir)
+        if (n > 0) prefs.edit().putInt("expired-drafts", expired + n).apply()
+        return n
+    }
     private val dir = File(context.noBackupFilesDir, "pending-images").apply { mkdirs() }
     private val keyFile = File(dir, "key.bin")
     // Read or made at first use; forgotten with everything else on logout,
@@ -32,30 +42,57 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
 
     private fun folder(draft: String) = File(dir, sha256(draft.toByteArray()).hex().take(32)).apply { mkdirs() }
 
-    override fun put(folder: String, name: String, data: ByteArray) {
+    @Synchronized override fun put(folder: String, name: String, data: ByteArray) {
         val draft = folder
         // Sealed first: the first use of the key may clear what it cannot open.
+        expire()
         val sealed = seal(data)
         val f = File(folder(draft), name)
-        // A temporary name of its own: two saves never write the same file.
+        // Keep each save's temporary file independent.
         val tmp = File(f.parentFile, "$name.${java.util.UUID.randomUUID()}.tmp")
-        tmp.writeBytes(sealed)
-        tmp.renameTo(f)
+        ImageDiskPolicy.requireRoom(dir, f, sealed.size.toLong(), limit)
+        try {
+            tmp.writeBytes(sealed)
+            check(tmp.renameTo(f)) { "没能保存待发图片" }
+        } finally { tmp.delete() }
+        if (draft == "outbox" && name == "index") {
+            // Protect only records named by the durable outbox index. A
+            // failed save before that leaves ordinary expiring draft files.
+            val protected = data.toString(Charsets.UTF_8).lineSequence().mapNotNull { line ->
+                val parts = line.split("\t")
+                if (parts.size != 2) null else sha256("out:${parts[0]}:${parts[1]}".toByteArray()).hex().take(32)
+            }.toSet() + f.parentFile!!.name
+            for (d in dir.listFiles()?.filter { it.isDirectory }.orEmpty()) {
+                val marker = File(d, ".keep")
+                if (d.name in protected) marker.createNewFile() else marker.delete()
+            }
+        }
+        f.parentFile?.setLastModified(System.currentTimeMillis())
     }
 
-    override fun get(folder: String, name: String): ByteArray? = folder.let { draft -> File(folder(draft), name).takeIf { it.exists() }?.let { runCatching { open(it.readBytes()) }.getOrNull() } }
+    @Synchronized override fun get(folder: String, name: String): ByteArray? {
+        expire()
+        val f = File(folder(folder), name)
+        if (!f.exists()) return null
+        f.parentFile?.setLastModified(System.currentTimeMillis())
+        return runCatching { open(f.readBytes()) }.getOrNull()
+    }
 
-    override fun remove(folder: String, name: String) {
+    override @Synchronized fun remove(folder: String, name: String) {
         File(folder(folder), name).delete()
     }
 
-    override fun names(folder: String): List<String> = folder(folder).list()?.filter { !it.endsWith(".tmp") }.orEmpty()
+    @Synchronized override fun names(folder: String): List<String> {
+        expire()
+        return folder(folder).list()?.filter { !it.endsWith(".tmp") }.orEmpty()
+    }
 
-    override fun clearFolder(folder: String) {
+    @Synchronized override fun clearFolder(folder: String) {
         folder(folder).deleteRecursively()
     }
 
-    fun clearAll() {
+    @Synchronized fun clearAll() {
+        cachedKey?.fill(0)
         cachedKey = null
         dir.listFiles()?.forEach { if (it != keyFile) it.deleteRecursively() }
         keyFile.delete()

@@ -352,8 +352,15 @@ func (s *session) readRollout() {
 		if err != nil {
 			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", errClass(err))
 		}
-		for _, f := range s.parser.Images() {
+		found := s.parser.Images()
+		for _, f := range found {
 			s.images.process(f, r.Path)
+			if f.Ref.ImageId != "" {
+				s.d.uploads.touchPath(f.Ref.Path)
+			}
+		}
+		if len(found) > 0 {
+			_, _ = s.d.trimImageCache(defaultImageCacheQuota)
 		}
 		consume := s.annotate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
@@ -377,6 +384,13 @@ func (s *session) readRollout() {
 		}
 		s.mu.Unlock()
 		for _, e := range evs {
+			if m := e.GetUserMessage(); m != nil {
+				for _, ref := range m.Images {
+					if ref.UploadId != "" && ref.ImageId != "" {
+						s.d.uploads.embedded(ref.UploadId)
+					}
+				}
+			}
 			if e.GetTurnEnded() != nil {
 				// A request still waiting was answered in the terminal
 				// (or interrupted there) since the turn is over.
@@ -614,6 +628,7 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 		return fmt.Errorf("save input queue: %w", err)
 	}
 	s.mu.Unlock()
+	s.d.uploads.releaseRefs(prev[idx].Images, s.meta.ID, requestID)
 	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
 	}}}, origin))

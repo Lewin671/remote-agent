@@ -68,18 +68,27 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 	}
 	origin := originOf(ctx)
 	var images []queuedImage
+	if req.Msg.RequestId == "" {
+		req.Msg.RequestId = newID(8)
+	}
+	s.mu.Lock()
+	seen := s.queue.seen(req.Msg.RequestId)
+	s.mu.Unlock()
+	if seen {
+		return connect.NewResponse(&pb.SendResponse{}), nil
+	}
 	if len(req.Msg.ImageIds) > 0 {
 		owner, err := imageOwner(origin)
 		if err != nil {
 			return nil, err
 		}
-		if images, err = h.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID); err != nil {
+		if images, err = h.d.uploads.take(req.Msg.ImageIds, owner, s.meta.ID, req.Msg.RequestId); err != nil {
 			return nil, err
 		}
 	}
 	pos, err := s.enqueue(req.Msg.Text, req.Msg.RequestId, images, origin)
 	if err != nil {
-		h.d.uploads.untake(images, s.meta.ID)
+		h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil
@@ -250,7 +259,11 @@ func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.L
 }
 
 func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
-	return connect.NewResponse(&pb.GetSettingsResponse{Settings: h.d.settings()}), nil
+	usage, err := h.d.imageStorage(false)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.GetSettingsResponse{Settings: h.d.settings(), ImageStorage: usage}), nil
 }
 
 func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.UpdateSettingsRequest]) (*connect.Response[pb.UpdateSettingsResponse], error) {
@@ -261,7 +274,11 @@ func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.Up
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(&pb.UpdateSettingsResponse{Settings: st}), nil
+	usage, err := h.d.imageStorage(req.Msg.CleanImages)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.UpdateSettingsResponse{Settings: st, ImageStorage: usage}), nil
 }
 
 func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.ResumeSessionRequest]) (*connect.Response[pb.ResumeSessionResponse], error) {

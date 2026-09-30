@@ -554,7 +554,7 @@ export class DemoRemote extends Remote {
           { agent: Agent.CODEX, version: "0.71.0", verified: false, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS },
           { agent: Agent.CLAUDE, version: "2.3.1", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS, defaultModeVaries: true },
         ],
-        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true },
+        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true, imageStorage: true },
       });
       if (!empty) {
         machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true });
@@ -795,11 +795,11 @@ export class DemoRemote extends Remote {
         if (machineId === "vps") throw new CommandError("unknown", "连接超时");
         return create(CommandResultSchema, { kind: { case: "listModels", value: cmd.value.agent === Agent.CLAUDE ? claudeModels : models } });
       case "getSettings":
-        return create(CommandResultSchema, { kind: { case: "getSettings", value: { settings: this.settingsFor() } } });
+        return create(CommandResultSchema, { kind: { case: "getSettings", value: { settings: this.settingsFor(), imageStorage: { uploadBytes: 200n << 20n, reservedBytes: 12n << 20n, protectedBytes: 80n << 20n, reclaimableBytes: 120n << 20n, cacheBytes: 32n << 20n, sessions: [] } } } });
       case "updateSettings":
         if (cmd.value.settings?.approvalTimeoutSeconds === 3000) throw new CommandError("unavailable", `${m.meta?.hostname} 不在线`);
         this.saved = create(DaemonSettingsSchema, cmd.value.settings);
-        return create(CommandResultSchema, { kind: { case: "updateSettings", value: { settings: this.saved } } });
+        return create(CommandResultSchema, { kind: { case: "updateSettings", value: { settings: this.saved, imageStorage: { uploadBytes: cmd.value.cleanImages ? 80n << 20n : 200n << 20n, reservedBytes: 12n << 20n, protectedBytes: 80n << 20n, reclaimableBytes: cmd.value.cleanImages ? 0n : 120n << 20n, cacheBytes: cmd.value.cleanImages ? 0n : 32n << 20n, sessions: [] } } } });
       case "listDirectories": {
         const path = cmd.value.path || "/Users/me";
         if (path.endsWith("Downloads")) throw new CommandError("permission_denied", "没有读取权限");
@@ -834,6 +834,7 @@ export class DemoRemote extends Remote {
 
   private settingsFor() {
     return (this.saved ??= create(DaemonSettingsSchema, {
+      imageUploadQuotaBytes: 1n << 30n,
       approvalTimeoutSeconds: 600,
       defaultModel: "gpt-6-astra",
       defaultEffort: "medium",

@@ -105,6 +105,7 @@ type Daemon struct {
 
 	// resumeMu makes resumes one at a time: two for the same session
 	// would both pass the checks and share its startup files.
+	cacheMu  sync.Mutex
 	resumeMu sync.Mutex
 }
 
@@ -112,6 +113,8 @@ type Daemon struct {
 func New(cfg Config) *Daemon {
 	cfg.defaults()
 	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}, uploads: newUploads()}
+	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
+	d.uploads.pins = d.protectedImageSessions
 	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
 	d.agents[pb.Agent_AGENT_CLAUDE] = claude.New(cfg.ClaudeBin, cfg.ClaudeHome)
 	return d
@@ -168,7 +171,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
 		}
 	}
-	go d.uploads.gcLoop(ctx.Done())
+	go d.imageGCLoop(ctx.Done())
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
 	}
@@ -243,6 +246,7 @@ func (d *Daemon) restore() error {
 		}
 		s := newSession(d, dir, *m, d.terminal(m), log)
 		d.sessions[m.ID] = s
+		d.uploads.restoreRefs(s)
 		s.cancelStaleApprovals()
 		if m.Exited && alive {
 			// Marked exited while still running, as when an earlier daemon
@@ -395,14 +399,15 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	}
 	// The first message's images move into the session before the CLI
 	// starts: if they cannot, nothing starts.
-	images, err := d.uploads.take(req.ImageIds, owner, id)
+	firstRequest := newID(8)
+	images, err := d.uploads.take(req.ImageIds, owner, id, firstRequest)
 	if err != nil {
 		os.Remove(envFile)
 		log.Close()
 		return nil, err
 	}
 	fail := func(err error) (*session, error) {
-		d.uploads.untake(images, id)
+		d.uploads.untake(images, id, firstRequest)
 		log.Close()
 		_ = os.RemoveAll(dir) // a session that never started leaves nothing
 		return nil, err
@@ -431,7 +436,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered. A session whose
 		// first message cannot be accepted is not started.
-		if _, err := s.enqueue(req.Prompt, "", images, origin); err != nil {
+		if _, err := s.enqueue(req.Prompt, firstRequest, images, origin); err != nil {
 			_ = d.cfg.Tmux.KillSession(m.Tmux)
 			return fail(err)
 		}

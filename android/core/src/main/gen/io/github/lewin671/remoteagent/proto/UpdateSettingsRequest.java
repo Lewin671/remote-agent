@@ -65,6 +65,44 @@ public  final class UpdateSettingsRequest extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int CLEAN_IMAGES_FIELD_NUMBER = 2;
+  private boolean cleanImages_;
+  /**
+   * <pre>
+   * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+   * </pre>
+   *
+   * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+   * @return The cleanImages.
+   */
+  @java.lang.Override
+  public boolean getCleanImages() {
+    return cleanImages_;
+  }
+  /**
+   * <pre>
+   * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+   * </pre>
+   *
+   * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+   * @param value The cleanImages to set.
+   */
+  private void setCleanImages(boolean value) {
+    
+    cleanImages_ = value;
+  }
+  /**
+   * <pre>
+   * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+   * </pre>
+   *
+   * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+   */
+  private void clearCleanImages() {
+
+    cleanImages_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.UpdateSettingsRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -209,6 +247,46 @@ public  final class UpdateSettingsRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+     * </pre>
+     *
+     * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+     * @return The cleanImages.
+     */
+    @java.lang.Override
+    public boolean getCleanImages() {
+      return instance.getCleanImages();
+    }
+    /**
+     * <pre>
+     * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+     * </pre>
+     *
+     * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+     * @param value The cleanImages to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCleanImages(boolean value) {
+      copyOnWrite();
+      instance.setCleanImages(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
+     * </pre>
+     *
+     * <code>bool clean_images = 2 [json_name = "cleanImages"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCleanImages() {
+      copyOnWrite();
+      instance.clearCleanImages();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.UpdateSettingsRequest)
   }
   @java.lang.Override
@@ -227,9 +305,11 @@ public  final class UpdateSettingsRequest extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "settings_",
+            "cleanImages_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0001\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u1009\u0000";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
