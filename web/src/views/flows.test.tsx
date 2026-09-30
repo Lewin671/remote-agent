@@ -1127,3 +1127,83 @@ describe("who did what (v2)", () => {
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
   });
 });
+
+describe("pictures in a session (v2)", () => {
+  it("numbers a message's pictures, chips placeholders among the words, and opens the viewer", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-img-claude")!;
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    const first = host.querySelector(".me")!;
+    expect([...first.querySelectorAll(".pic .n")].map((n) => n.textContent)).toEqual(["1", "2"]);
+    expect(first.textContent).toContain("电脑上，图 2手机上");
+    expect(first.textContent).not.toContain("[Image #");
+    // Seven pictures: four in a row, the rest folded.
+    expect(host.textContent).toContain("+3");
+    await click(host.querySelector<HTMLButtonElement>(".pic")!);
+    expect(host.querySelector(".viewer")?.textContent).toContain("1 / 14");
+  });
+
+  it("says what the viewer can show for each state of the display copy", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-img-claude")!;
+    // Tests have no canvas to draw the demo's previews: give them bytes.
+    for (const e of r.events("s-img-claude"))
+      if (e.kind.case === "toolCall" || e.kind.case === "userMessage")
+        for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    const open = async (label: string) => {
+      await click(host.querySelector<HTMLButtonElement>(`.pic[aria-label="${label}"]`)!);
+    };
+    const note = () => host.querySelector(".viewer .vnote")?.textContent;
+    await open("图片没有同步");
+    expect(note()).toBe("图片没有同步");
+    await click(button("回到消息"));
+    await open("图片 wide.png");
+    expect(note()).toBe("只有预览，原图在电脑上");
+    await click(button("回到消息"));
+    await open("图片 old.png");
+    await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
+    await click(button("回到消息"));
+    await open("图片 flaky.png");
+    await vi.waitFor(() => expect(note()).toBe("没能下载 · 点按重试"), { timeout: 3000 });
+    await click(host.querySelector<HTMLButtonElement>(".viewer .vnote")!);
+    await vi.waitFor(() => expect(note()).not.toBe("没能下载 · 点按重试"), { timeout: 3000 });
+  });
+
+  it("shows only a count from a daemon older than v2", () => {
+    const r = demo();
+    const s = r.sessions.get("s-idle")!;
+    r.events("s-idle").push(create(EventSchema, { seq: 3n, kind: { case: "userMessage", value: { text: "看图", imageCount: 2 } } }));
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    expect(host.textContent).toContain("2 张图片（电脑端版本较旧，这里看不到）");
+  });
+});
+
+it("revokes every blob: URL made for a picture once nothing shows it", async () => {
+  const made: string[] = [];
+  const revoked: string[] = [];
+  const create_ = vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+    const u = "blob:test/" + made.length;
+    made.push(u);
+    return u;
+  });
+  const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation((u) => void revoked.push(u));
+  try {
+    const { Pic } = await import("./Images");
+    const { ImageRefSchema, ImageFormat, ImageSync } = await import("../gen/remoteagent/v1/event_pb");
+    const ref = create(ImageRefSchema, { sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), width: 10, height: 10 });
+    mount(<Pic image={ref} />);
+    expect(made.length).toBe(1);
+    expect(host.querySelector("img")?.getAttribute("src")).toBe(made[0]);
+    act(() => root!.unmount());
+    root = undefined;
+    expect(revoked).toEqual(made);
+    // A preview that is not the format it claims is never given a URL.
+    const liar = create(ImageRefSchema, { sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: new TextEncoder().encode("<svg/>") });
+    mount(<Pic image={liar} />);
+    expect(made.length).toBe(1);
+  } finally {
+    create_.mockRestore();
+    revoke.mockRestore();
+  }
+});

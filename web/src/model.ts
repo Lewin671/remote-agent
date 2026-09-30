@@ -921,6 +921,7 @@ function visible(e: Event, d: Derived): boolean {
     case "planProposed":
     case "toolStarted":
     case "planAnswered":
+    case "imageGenerated":
       return true;
     case "turnEnded":
       return k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n;

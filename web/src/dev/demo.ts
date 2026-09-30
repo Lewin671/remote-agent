@@ -17,6 +17,11 @@ import {
   ApprovalDecision,
   ApprovalMode,
   EventSchema,
+  ImageFormat,
+  ImageRefSchema,
+  type ImageRef,
+  ImageSource,
+  ImageSync,
   InputStage,
   InputStatus,
   OriginKind,
@@ -82,6 +87,73 @@ interface Fixture {
   updated: number;
   // An event, or one with its origin: [kind, origin].
   events: (EventKind | [EventKind, EventInit["origin"]])[];
+}
+
+// Pictures: what each demo image looks like (drawn on a canvas in the
+// browser, like the mockup's sketches), its size, and how GetImage treats
+// it: exp- expired, fail- fails once, bad- is not what it claims.
+type Look = "ui" | "empty" | "web" | "gen";
+const looks = new Map<string, { look: Look; w: number; h: number }>();
+let imageN = 0;
+function img(look: Look, w: number, h: number, init: Omit<Partial<ImageRef>, "$typeName"> = {}, id?: string): ImageRef {
+  const imageId = id ?? `img${++imageN}`;
+  looks.set(imageId, { look, w, h });
+  const scale = 320 / Math.max(w, h);
+  return create(ImageRefSchema, { imageId, source: ImageSource.USER, sync: ImageSync.SYNCED, format: ImageFormat.PNG, width: w, height: h, displayWidth: w, displayHeight: h, previewFormat: ImageFormat.PNG, previewWidth: Math.round(w * scale), previewHeight: Math.round(h * scale), ...init });
+}
+
+/** Draws a demo picture; PNG bytes, or undefined without a canvas. */
+async function draw(look: Look, w: number, h: number): Promise<Uint8Array | undefined> {
+  if (typeof OffscreenCanvas === "undefined") return undefined;
+  const c = new OffscreenCanvas(w, h);
+  const g = c.getContext("2d");
+  if (!g) return undefined;
+  const rect = (x: number, y: number, rw: number, rh: number, color: string) => {
+    g.fillStyle = color;
+    g.fillRect(x * w, y * h, rw * w, rh * h);
+  };
+  if (look === "gen") {
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#8ec5ff");
+    sky.addColorStop(0.72, "#e4f2ff");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#ffd27a";
+    g.beginPath();
+    g.arc(w * 0.76, h * 0.28, Math.min(w, h) * 0.09, 0, 7);
+    g.fill();
+    g.fillStyle = "#4c9a74";
+    g.beginPath();
+    g.ellipse(w * 0.28, h, w * 0.6, h * 0.4, 0, 0, 7);
+    g.fill();
+    g.fillStyle = "#2f7a5a";
+    g.beginPath();
+    g.ellipse(w * 0.84, h * 1.04, w * 0.7, h * 0.46, 0, 0, 7);
+    g.fill();
+  } else {
+    rect(0, 0, 1, 1, look === "web" ? "#ffffff" : "#fafbfc");
+    rect(0, 0, 1, look === "web" ? 0.1 : 0.12, look === "web" ? "#e3e7ec" : "#1f2733");
+    if (look === "ui") {
+      rect(0.15, 0.31, 0.56, 0.05, "#d5dae1");
+      rect(0.15, 0.43, 0.44, 0.05, "#d5dae1");
+      rect(0.1, 0.56, 0.8, 0.16, "#e7eaee");
+      rect(0.15, 0.84, 0.7, 0.07, "#2f6feb");
+    } else if (look === "empty") {
+      g.fillStyle = "#c9d6f2";
+      g.beginPath();
+      g.arc(w * 0.5, h * 0.4, Math.min(w, h) * 0.13, 0, 7);
+      g.fill();
+      rect(0.22, 0.55, 0.56, 0.04, "#d5dae1");
+      rect(0.31, 0.62, 0.38, 0.03, "#e3e6ea");
+    } else {
+      rect(0, 0.1, 0.24, 0.9, "#eef1f4");
+      rect(0.4, 0.27, 0.46, 0.07, "#d5dae1");
+      rect(0.4, 0.43, 0.34, 0.07, "#d5dae1");
+      rect(0.74, 0.7, 0.16, 0.09, "#2f6feb");
+    }
+  }
+  const blob = await c.convertToBlob({ type: "image/png" });
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 const fromMe = (requestId = "") => ({ kind: OriginKind.CLIENT, deviceId: ME, requestId });
@@ -302,6 +374,51 @@ function fixtures(): Record<string, Fixture> {
         [{ case: "inputState", value: { requestId: "q-android", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "最后检查 README。" } }, fromAndroid],
       ],
     },
+    "s-img": {
+      machine: "mac",
+      updated: now - 14 * min,
+      info: { title: "调整空状态", cwd: "/Users/me/Code/web", status: SessionStatus.IDLE, model: "gpt-6-astra", effort: "medium", ...ctxAuto, contextTokens: 18n, contextWindow: 100n },
+      events: [
+        [{ case: "userMessage", value: { text: "[Image #1] 参考这张改一下空状态", images: [img("empty", 1170, 2532, { cliIndex: 1, path: "/Users/me/Desktop/empty-before.png" })] } }, fromLocal],
+        { case: "turnStarted", value: {} },
+        { case: "toolCall", value: { title: "rg -n EmptyState web/src", kind: ToolKind.COMMAND, status: "completed", exitCode: 0 } },
+        { case: "toolCall", value: { title: "pnpm dev", kind: ToolKind.COMMAND, status: "completed", exitCode: 0 } },
+        { case: "toolCall", value: { title: "view_image shots/empty-before.png", kind: ToolKind.OTHER, status: "completed", images: [img("empty", 1170, 2532, { source: ImageSource.TOOL, path: "/Users/me/Code/web/shots/empty-before.png" })] } },
+        { case: "toolCall", value: { title: "view_image shots/empty-after.png", kind: ToolKind.OTHER, status: "completed", images: [img("ui", 1170, 2532, { source: ImageSource.TOOL, path: "/Users/me/Code/web/shots/empty-after.png" })] } },
+        { case: "agentMessage", value: { text: "改好了，左边是改前，右边是改后。" } },
+        { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED, durationMs: 64_000n } },
+        { case: "userMessage", value: { text: "生成一张空状态插画，风格和现在的图标一致" } },
+        { case: "imageGenerated", value: { callId: "ig1", revisedPrompt: "A flat, friendly illustration of an empty inbox on a hill under a warm sun, soft blue sky, matching a rounded icon set.", images: [img("gen", 1536, 1024, { source: ImageSource.GENERATED, path: "/Users/me/Code/web/public/empty.png" })] } },
+        { case: "agentMessage", value: { text: "生成好了，放到了 [web/public/empty.png](/Users/me/Code/web/public/empty.png)。" } },
+      ],
+    },
+    "s-img-claude": {
+      machine: "mac",
+      updated: now - 16 * min,
+      info: { title: "首页改版", cwd: "/Users/me/Code/web", status: SessionStatus.IDLE, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "medium", mode: ApprovalMode.ASK, permissionMode: "default", contextTokens: 24n, contextWindow: 100n },
+      events: [
+        [{ case: "userMessage", value: { text: "[Image #1]电脑上，[Image #2]手机上，为什么手机上这么挤？", images: [img("web", 2880, 1800, { cliIndex: 1 }), img("ui", 1170, 2532, { cliIndex: 2 })] } }, fromLocal],
+        { case: "toolCall", value: { title: "Read shots/home-mobile-v1.png", itemType: "Read", kind: ToolKind.OTHER, status: "completed", images: [img("ui", 1170, 2532, { source: ImageSource.TOOL, path: "/Users/me/Code/web/shots/home-mobile-v1.png", originalWidth: 1170, originalHeight: 2532 })] } },
+        { case: "agentMessage", value: { text: "窄屏下还是两列、间距 8px。我改成单列、间距 16px。" } },
+        {
+          case: "toolCall",
+          value: {
+            title: "Read shots/*.png",
+            itemType: "Read",
+            kind: ToolKind.OTHER,
+            status: "completed",
+            images: [
+              img("web", 2880, 1800, { source: ImageSource.TOOL, sync: ImageSync.NAME_ONLY, path: "/Users/me/Code/web/shots/full-page.png", previewFormat: ImageFormat.UNSPECIFIED }),
+              img("web", 2880, 1800, { source: ImageSource.TOOL, sync: ImageSync.PREVIEW_ONLY, path: "/Users/me/Code/web/shots/wide.png" }),
+              img("web", 2880, 1800, { source: ImageSource.TOOL, path: "/Users/me/Code/web/shots/old.png" }, "exp-1"),
+              img("web", 2880, 1800, { source: ImageSource.TOOL, path: "/Users/me/Code/web/shots/flaky.png" }, "fail-1"),
+            ],
+          },
+        },
+        [{ case: "userMessage", value: { text: "这几张都看一下", images: [img("ui", 1170, 2532, { cliIndex: 3 }), img("empty", 1170, 2532, { cliIndex: 4 }), img("ui", 1170, 2532, { cliIndex: 5 }), img("empty", 1170, 2532, { cliIndex: 6 }), img("web", 1600, 1000, { cliIndex: 7 }), img("web", 1600, 1000, { cliIndex: 8 }), img("ui", 1170, 2532, { cliIndex: 9 }, "bad-1")] } }, fromMe()],
+        { case: "agentMessage", value: { text: "单列布局改好了，测试也通过了。" } },
+      ],
+    },
     "s-hist": {
       machine: "mac",
       updated: now - 3 * 60 * min,
@@ -443,6 +560,7 @@ export class DemoRemote extends Remote {
         }),
       );
     }
+    void this.drawPreviews();
     const out = (sid: string, sendId: string, text: string, status: "sending" | "sent" | "failed", error?: string) => {
       this.outboxes.set(sid, [...this.outbox(sid), { sendId, requestId: "r-" + sendId, deadline: now + 60_000, text, status, error }]);
     };
@@ -455,6 +573,41 @@ export class DemoRemote extends Remote {
     out("s-msg", "o-sending", "最后提交", "sending");
     out("s-msg", "o-failed", "这两个页面底部的按钮都点不到", "sent");
     out("s-multi", "q-multi", "补充库存回滚测试。", "sent");
+  }
+
+  /** Fills in the demo pictures' previews, where there is a canvas. */
+  private async drawPreviews() {
+    for (const events of this.evs.values())
+      for (const e of events) {
+        const k = e.kind;
+        const refs = k.case === "userMessage" || k.case === "toolCall" || k.case === "imageGenerated" ? k.value.images : [];
+        for (const r of refs) {
+          const l = looks.get(r.imageId);
+          if (!l || r.sync === ImageSync.NAME_ONLY) continue;
+          const bytes = await draw(l.look, r.previewWidth, r.previewHeight);
+          if (bytes) r.preview = bytes;
+        }
+      }
+    this.changed();
+  }
+
+  override async getImage(sid: string, imageId: string) {
+    const cached = this.cachedImage(sid, imageId);
+    if (cached) return cached;
+    await sleep(900);
+    if (this.conn !== "online") throw new CommandError("unavailable", "和服务器断线了");
+    if (imageId.startsWith("exp-")) return { kind: "expired" as const };
+    if (imageId.startsWith("bad-")) return { kind: "bad" as const };
+    const n = (this.attempts.get(imageId) ?? 0) + 1;
+    this.attempts.set(imageId, n);
+    if (imageId.startsWith("fail-") && n === 1) throw new CommandError("unavailable", "连接超时");
+    const l = looks.get(imageId) ?? { look: "web" as Look, w: 1600, h: 1000 };
+    const scale = Math.min(1, 2048 / Math.max(l.w, l.h));
+    const bytes = await draw(l.look, Math.round(l.w * scale), Math.round(l.h * scale));
+    if (!bytes) return { kind: "missing" as const };
+    const out = { kind: "ok" as const, blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "image/png" }), width: Math.round(l.w * scale), height: Math.round(l.h * scale), format: ImageFormat.PNG };
+    (this as unknown as { imageCache: Map<string, unknown> }).imageCache.set(sid + "/" + imageId, out);
+    return out;
   }
 
   override start() {

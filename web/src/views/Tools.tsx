@@ -9,6 +9,8 @@ import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb"
 import { clock, decisionText, duration, toolClock, toolName as toolKindName, toolsSummary, type Derived, type RunningTool } from "../model";
 import type { Remote } from "../remote";
 import { NavBar, useNow } from "../ui";
+import { imagesNote } from "../imageview";
+import { ImageStrip } from "./Images";
 
 /** Shortens the absolute paths in a tool title (see shortenPaths), or a
  * whole path such as a file edit's title, spaces and all. */
@@ -140,6 +142,7 @@ export function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; dec
           <span className="muted">{Math.round(secs)}s</span>
         ) : null}
       </button>
+      <ImageStrip refs={t.images} className="under-tool" />
       {open && raw && <div className="toolout">{raw}</div>}
       {(open || !ok) && lines.length > 0 && (
         <div className="toolout">
@@ -158,13 +161,19 @@ export function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; dec
 
 export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
   const [open, setOpen] = useState(false);
+  // Pictures the calls returned stay in view with the group folded.
+  const images = calls.flatMap((c) => c.images);
   return (
     <>
       <button className="tool tgrp" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="ok">✓</span>
-        <b>{toolsSummary(calls)}</b>
+        <b>
+          {toolsSummary(calls)}
+          {imagesNote(images.length)}
+        </b>
         <span className="muted">{open ? "▾" : "▸"}</span>
       </button>
+      {!open && <ImageStrip refs={images} className="under-tool" />}
       {open && (
         <div className="grpbody">
           {calls.map((t, i) => (

@@ -25,7 +25,8 @@ import {
   type Keys,
 } from "./crypto";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { Agent, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, type Event, type ImageFormat } from "./gen/remoteagent/v1/event_pb";
+import { matchesFormat, mimeOf } from "./imageview";
 import { SessionSchema, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
@@ -46,6 +47,7 @@ import {
   CommandResultSchema,
   CommandSchema,
   DeviceMetaSchema,
+  ImagePayloadSchema,
   MachineMetaSchema,
   ProjectPrefsSchema,
   TerminalFrameSchema,
@@ -160,6 +162,17 @@ export interface TermConn {
 export type ConnState = "connecting" | "online" | "offline";
 
 export const COMMAND_TTL_MS = 60_000;
+
+/** How many opened display copies stay in memory. */
+const IMAGE_CACHE = 40;
+
+/** A display copy fetched with GetImage: shown only when it opened where
+ * it belongs and is the format it says. */
+export type ImageResult =
+  | { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat }
+  | { kind: "expired" } // kept past its retention: only the preview is left
+  | { kind: "missing" } // never stored
+  | { kind: "bad" }; // did not open, or is not the format it claims
 
 /** The account preferences object with the project list's settings. */
 export const PREFS_OBJECT = "project-prefs";
@@ -1018,6 +1031,54 @@ export class Remote {
   retryPrefs() {
     const f = this.prefs.failed;
     if (f) void this.changePrefs(f.op.kind, f.op.path, f.op);
+  }
+
+  // --- images ---
+
+  // Display copies opened this visit, newest last, so a picture seen once
+  // opens again offline. Only in memory; a few dozen at most.
+  private imageCache = new Map<string, ImageResult>();
+
+  /** The display copy of an image in a session: fetched, opened with the
+   * session key where it belongs, and checked to be the format it says.
+   * Throws when it cannot be fetched now (offline, network). */
+  async getImage(sid: string, imageId: string): Promise<ImageResult> {
+    const key = sid + "/" + imageId;
+    const hit = this.imageCache.get(key);
+    if (hit) {
+      this.imageCache.delete(key);
+      this.imageCache.set(key, hit);
+      return hit;
+    }
+    const s = this.sessions.get(sid);
+    if (!s) throw new Error("未知会话");
+    let res;
+    try {
+      res = await this.api.getImage({ sessionId: sid, imageId });
+    } catch (e) {
+      if (e instanceof ConnectError && e.code === Code.NotFound) return { kind: "missing" };
+      if (e instanceof ConnectError && e.code === Code.Unimplemented) return { kind: "missing" };
+      throw e;
+    }
+    if (res.expired || !res.image) return { kind: "expired" };
+    let out: ImageResult;
+    try {
+      const { msg } = await openMessage(s.key, res.image, { kind: PayloadKind.IMAGE, machineId: s.machineId, sessionId: sid, requestId: imageId }, ImagePayloadSchema);
+      out = matchesFormat(msg.data, msg.format) ? { kind: "ok", blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], { type: mimeOf(msg.format) }), width: msg.width, height: msg.height, format: msg.format } : { kind: "bad" };
+    } catch (e) {
+      this.report(e);
+      out = { kind: "bad" };
+    }
+    if (out.kind === "ok") {
+      this.imageCache.set(key, out);
+      while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
+    }
+    return out;
+  }
+
+  /** An image already opened this visit, without asking the server. */
+  cachedImage(sid: string, imageId: string): ImageResult | undefined {
+    return this.imageCache.get(sid + "/" + imageId);
   }
 
   /** Authorization for services called outside this class. */

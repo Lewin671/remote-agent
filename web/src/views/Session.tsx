@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import type { Event } from "../gen/remoteagent/v1/event_pb";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
+import { sessionImages, splitPlaceholders } from "../imageview";
+import { GenCard, ImageStrip, ImageViewer, OpenImage } from "./Images";
 import { ApprovalDecision, InputStatus, SessionStatus, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
 import {
@@ -113,6 +115,12 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   };
 
   const items = dockItems(session, d, machine);
+  const pictures = useMemo(() => sessionImages(events), [events, events.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [viewing, setViewing] = useState<number>();
+  const openImage = useCallback((ref: ImageRef) => {
+    const i = pictures.findIndex((p) => p.ref === ref);
+    if (i >= 0) setViewing(i);
+  }, [pictures]);
   // Display names for the model chip; the list is cached per machine.
   useEffect(() => {
     if (machine?.online && !inactive) remote.listModels(session.machineId, agent).catch(() => undefined);
@@ -289,6 +297,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   );
 
   return (
+    <OpenImage.Provider value={openImage}>
     <div className={"session" + (tab === "term" && !wide ? " termmode" : "")} ref={rootRef}>
       {header}
       <ConnBar remote={remote} />
@@ -332,7 +341,21 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       )}
       {sheet === "mode" && <ModeSheet remote={remote} s={session} onClose={() => setSheet("")} />}
       {sheet === "model" && <SessionSheet remote={remote} s={session} running={d.running} onClose={() => setSheet("")} />}
+      {viewing !== undefined && (
+        <ImageViewer
+          remote={remote}
+          sid={sid}
+          images={pictures}
+          start={viewing}
+          agent={agentLabel}
+          title={title}
+          wide={wide}
+          onClose={() => setViewing(undefined)}
+          showPath={(p) => shortenPath(p, session.info?.cwd ?? "", machine?.meta?.home ?? "")}
+        />
+      )}
     </div>
+    </OpenImage.Provider>
   );
 }
 
@@ -530,13 +553,33 @@ function Row({
     case "userMessage": {
       const label = originLabel(e.origin, who.ctx);
       const from = label === undefined ? (d.typedLocally.has(e.seq) ? `${machine} 终端` : "") : label === "本客户端" ? (who.many ? `本客户端 · ${who.self}` : "") : label;
+      const images = k.value.images;
+      const segs = splitPlaceholders(k.value.text, images);
+      // A daemon older than v2 only counts them.
+      const unseen = images.length === 0 ? k.value.imageCount : 0;
       return (
         <div className="me">
-          <div>{k.value.text}</div>
+          <ImageStrip refs={images} numbered />
+          {segs.length > 0 && (
+            <div>
+              {segs.map((x, i) =>
+                "text" in x ? (
+                  <span key={i}>{x.text}</span>
+                ) : (
+                  <span key={i} className="ichip">
+                    图 {x.image}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
+          {unseen > 0 && <small>{unseen} 张图片（电脑端版本较旧，这里看不到）</small>}
           {from && <small>{from}</small>}
         </div>
       );
     }
+    case "imageGenerated":
+      return <GenCard refs={k.value.images} prompt={k.value.revisedPrompt} />;
     case "agentMessage":
       return (
         <div className={"ai" + (k.value.phase === "commentary" ? " commentary" : "")}>

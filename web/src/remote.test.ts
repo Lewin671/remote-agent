@@ -139,3 +139,46 @@ it("replays a project pin on another client's sealed copy after a conflict", asy
   // The server only ever held ciphertext.
   expect(new TextDecoder().decode(stored.envelope!.ciphertext)).not.toContain("billing");
 });
+
+it("shows a display copy only where it belongs and in the format it claims", async () => {
+  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { ImagePayloadSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { ImageFormat } = await import("./gen/remoteagent/v1/event_pb");
+  const { create } = await import("@bufbuild/protobuf");
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
+  class Probe extends Remote {
+    constructor() {
+      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+    }
+  }
+  const r = new Probe();
+  r.sessions.set("s1", { id: "s1", machineId: "m1", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n });
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+  const seal = (imageId: string, format: number, data: Uint8Array) =>
+    sealMessage(key, { kind: PayloadKind.IMAGE, machineId: "m1", sessionId: "s1", requestId: imageId }, ImagePayloadSchema, create(ImagePayloadSchema, { format, width: 2, height: 1, data }));
+  const store: Record<string, unknown> = {
+    good: { image: await seal("good", ImageFormat.PNG, png) },
+    liar: { image: await seal("liar", ImageFormat.PNG, new TextEncoder().encode("<svg onload=x>")) },
+    moved: { image: await seal("other", ImageFormat.PNG, png) },
+    old: { expired: true },
+  };
+  (r as unknown as { api: object }).api = {
+    getImage: async (req: { imageId: string }) => {
+      if (!(req.imageId in store)) throw new ConnectError("no such image", Code.NotFound);
+      return store[req.imageId];
+    },
+  };
+  const good = await r.getImage("s1", "good");
+  expect(good.kind).toBe("ok");
+  expect(good.kind === "ok" && good.blob.type).toBe("image/png");
+  expect((await r.getImage("s1", "liar")).kind).toBe("bad");
+  // An envelope for another image, served under this ID, does not open here.
+  expect((await r.getImage("s1", "moved")).kind).toBe("bad");
+  expect((await r.getImage("s1", "old")).kind).toBe("expired");
+  expect((await r.getImage("s1", "never")).kind).toBe("missing");
+  // Seen once, it opens again without the server.
+  (r as unknown as { api: object }).api = { getImage: async () => { throw new ConnectError("offline", Code.Unavailable); } };
+  expect((await r.getImage("s1", "good")).kind).toBe("ok");
+  await expect(r.getImage("s1", "liar")).rejects.toThrow();
+});
