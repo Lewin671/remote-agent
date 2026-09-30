@@ -61,4 +61,17 @@ class ProjectTest {
         d.follow(first, drafting = false)
         assertEquals(mine, d.value)
     }
+
+    @Test
+    fun aReopenedDraftKeepsWhereItWasGoing() {
+        val suggested = NewConfig("m1", "/work/reopen", Agent.AGENT_CODEX)
+        val first = Drafts.newSession("/work/reopen", suggested)
+        val mine = NewConfig("m2", "/work/reopen", Agent.AGENT_CLAUDE)
+        first.config.choose(mine)
+        first.text.value = "修一下登录"
+        // Back out and in again, with the project now suggesting something else.
+        val again = Drafts.newSession("/work/reopen", NewConfig("m3", "/work/reopen", Agent.AGENT_CODEX))
+        assertEquals("修一下登录", again.text.value)
+        assertEquals(mine, again.config.value)
+    }
 }

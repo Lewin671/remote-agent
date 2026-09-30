@@ -70,9 +70,19 @@ class Outgoing(val requestId: String, val text: String) {
  * instance state, which the system may write to disk in plaintext.
  */
 object Drafts {
+    /** A first message with the configuration it will start with, kept and restored together. */
+    class NewSession(initial: NewConfig?) {
+        val text = mutableStateOf("")
+        val config = DraftConfig(initial)
+    }
+
     private val texts = HashMap<String, androidx.compose.runtime.MutableState<String>>()
+    private val newSessions = HashMap<String, NewSession>()
 
     fun of(key: String): androidx.compose.runtime.MutableState<String> = texts.getOrPut(key) { mutableStateOf("") }
+
+    /** The new-session draft of a project; [initial] only seeds one that does not exist yet. */
+    fun newSession(project: String, initial: NewConfig?): NewSession = newSessions.getOrPut(project) { NewSession(initial) }
 }
 
 /** Messages sent from this device, per session, for this run of the app. */

@@ -214,9 +214,12 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val key = initial?.cwd ?: name
-    val draft = remember(key) { DraftConfig(initial) }
+    // Text and configuration live and come back together, so a draft
+    // reopened later still goes where it was going.
+    val entry = Drafts.newSession(key, initial)
+    val draft = entry.config
     val config = draft.value
-    var text by Drafts.of("new:$key")
+    var text by entry.text
     var change by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
