@@ -35,6 +35,9 @@ const (
 	imageWait      = 6 * time.Second // for one "[Image #N]" to appear
 	unrecognized   = time.Second     // the path showing as text this long
 	clearWait      = 2 * time.Second
+	// imageStartDelay is how long a new session's input box must have
+	// been ready before images are pasted into it.
+	imageStartDelay = 3 * time.Second
 )
 
 // recentInputs bounds the submitted messages remembered for matching the
@@ -231,8 +234,11 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	// screen.
 	s.mu.Lock()
 	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
+	// Just after it starts, Codex has once taken a pasted image path as
+	// plain text; images wait until the input box has been up a moment.
+	young := len(in.Images) > 0 && !s.readySince.IsZero() && time.Since(s.readySince) < imageStartDelay
 	s.mu.Unlock()
-	if starting {
+	if starting || young {
 		return notWritten, nil
 	}
 	s.noteWait(scr)

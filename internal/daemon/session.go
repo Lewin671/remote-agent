@@ -64,8 +64,10 @@ type session struct {
 	screen      agent.Screen
 	prevScreen  agent.Screen
 	sawComposer bool
-	planOpen    bool
-	driving     bool // a control operation is using the terminal's menus
+	// readySince is when the session last left STARTING.
+	readySince time.Time
+	planOpen   bool
+	driving    bool // a control operation is using the terminal's menus
 	// seenModes are the permission modes the screen has shown, by the
 	// model family in use then: which modes are on offer depends on it.
 	seenModes map[string]map[string]bool
@@ -192,6 +194,9 @@ func (s *session) observe(e *pb.Event) {
 	case *pb.Event_QuestionAnswered:
 		delete(s.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_SessionState:
+		if s.status == pb.SessionStatus_SESSION_STATUS_STARTING && k.SessionState.Status != pb.SessionStatus_SESSION_STATUS_STARTING {
+			s.readySince = time.Now()
+		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
 		if s.status != pb.SessionStatus_SESSION_STATUS_STARTING {
 			s.sawComposer = true
