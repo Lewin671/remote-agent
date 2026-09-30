@@ -30,7 +30,7 @@ export function windowLabel(minutes: number): string {
 export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: number, online: boolean): QuotaRow {
   if (!l) return { label: fallbackLabel, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
   const label = l.windowMinutes > 0n ? windowLabel(Number(l.windowMinutes)) : fallbackLabel;
-  const pct = Math.round(l.usedPercent);
+  const pct = l.usedPercent;
   const resetMs = Number(l.resetsAt) * 1000;
   const passed = resetMs > 0 && resetMs <= now;
   let reset = "";
@@ -39,7 +39,7 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
     const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
     reset = `${d.toDateString() === new Date(now).toDateString() ? "" : days[d.getDay()] + " "}${hm} 重置`;
   }
-  const used = pct >= 100 ? "已用尽" : `已用 ${pct}%`;
+  const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
   if (passed) return { label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${used}；重置时间已过，不能据此确认额度已经恢复` };
   if (!online) return { label, used, percent: pct, reset, tone: "stale", note: "上次记录：电脑离线，可能已变化" };
   return { label, used, percent: pct, reset, tone: pct >= 100 ? "full" : pct >= 80 ? "warn" : "", note: "" };
@@ -86,12 +86,13 @@ function when(ms: number, now: number): string {
 }
 
 function windowRow(w: QuotaWindow | undefined, label: string, now: number, stale: boolean, observed: string, heard: string): QuotaRow & { key: string } {
-  const key = label;
+  const key = w?.name ?? label;
+  if (w && w.windowMinutes > 0n) label = windowLabel(Number(w.windowMinutes));
   const seen = observed ? `${heard} ${observed}` : "";
   if (!w || w.usedPercent === undefined)
     return { key, label, used: "未获取", reset: seen, tone: "", note: "没有收到这项额度数据" };
-  const pct = Math.round(w.usedPercent);
-  const used = pct >= 100 ? "已用尽" : `已用 ${pct}%`;
+  const pct = w.usedPercent;
+  const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
   const resetMs = Number(w.resetsAtMs);
   if (resetMs > 0 && resetMs <= now)
     return { key, label, used: "等待更新", percent: pct, reset: seen, tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };

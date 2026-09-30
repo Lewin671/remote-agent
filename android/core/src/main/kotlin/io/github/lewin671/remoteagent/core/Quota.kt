@@ -63,7 +63,7 @@ fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean, zone: ZoneId = Zone
     val label = nameLabel(w)
     if (!w.hasUsedPercent()) return QuotaRow(label, "未获取", null, "", QuotaTone.NORMAL, "没有收到这项额度数据")
     val pct = w.usedPercent
-    val used = if (pct >= 100) "已用尽" else "已用 ${Math.round(pct)}%"
+    val used = if (pct >= 100) "已用尽" else "已用 ${kotlin.math.floor(pct).toInt()}%"
     val passed = w.resetsAtMs in 1..now
     val reset = if (w.resetsAtMs > 0 && !passed) "${clockText(w.resetsAtMs, now, zone)} 重置" else ""
     if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复")
@@ -89,7 +89,7 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
                     meta.secondaryLimit.takeIf { meta.hasSecondaryLimit() }?.let { QuotaWindow.newBuilder().setName("secondary").setUsedPercent(it.usedPercent).setResetsAtMs(it.resetsAt * 1000).setWindowMinutes(it.windowMinutes).build() },
                 )
                 val title = agentName(agent) + meta.planType.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty()
-                out += QuotaGroup(agent, title, if (ws.isEmpty()) QuotaStatus.WAITING else QuotaStatus.OK, ws.map { quotaRow(it, now, !m.online, zone) }, "", "", !m.online && ws.isNotEmpty())
+                out += QuotaGroup(agent, title, if (ws.isEmpty()) QuotaStatus.WAITING else QuotaStatus.OK, if (ws.isEmpty()) emptyList() else completeWindows(agent, ws).map { quotaRow(it, now, !m.online, zone) }, "", "", !m.online && ws.isNotEmpty())
             } else {
                 out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
             }
@@ -98,6 +98,12 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
         for (q in entries) out += group(agent, q, entries.size > 1, m.online, now, zone)
     }
     return out
+}
+
+private fun completeWindows(agent: Agent, windows: List<QuotaWindow>): List<QuotaWindow> {
+    val expected = if (agent == Agent.AGENT_CLAUDE) listOf("five_hour", "seven_day") else listOf("primary", "secondary")
+    val byName = windows.associateBy { it.name }
+    return expected.map { byName[it] ?: QuotaWindow.newBuilder().setName(it).build() } + windows.filter { it.name !in expected }
 }
 
 private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean, now: Long, zone: ZoneId): QuotaGroup {
@@ -115,7 +121,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         else -> ""
     }
     val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${q.plan}" else "") + which
-    val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING) emptyList() else q.windowsList.map { quotaRow(it, now, lastRecord, zone) }
+    val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord, zone) }
     val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now, zone) else ""
     return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
 }

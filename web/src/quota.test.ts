@@ -96,3 +96,15 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     expect(quotaSummary(views.filter((v) => v.agent === Agent.CODEX))).toBe("5 小时 已用 20%");
   });
 });
+
+it("uses reported durations and raw percentages for warning thresholds", () => {
+  const window = create(QuotaWindowSchema, { name: "primary", usedPercent: 99.6, windowMinutes: 120n });
+  const q = create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.OK, windows: [window] });
+  const [v] = quotaViews([q], [Agent.CODEX], now, true);
+  expect(v.rows[0]).toMatchObject({ label: "2 小时", used: "已用 99%", percent: 99.6, tone: "warn" });
+  expect(v.banner).toBe("2 小时额度即将用尽");
+  expect(quotaRow(lim(99.6, 120, 60), "5 小时", now, true)).toMatchObject({ used: "已用 99%", tone: "warn" });
+  expect(quotaRow(lim(79.6, 120, 60), "5 小时", now, true).tone).toBe("");
+  window.usedPercent = 79.6;
+  expect(quotaViews([q], [Agent.CODEX], now, true)[0].banner).toBe("");
+});

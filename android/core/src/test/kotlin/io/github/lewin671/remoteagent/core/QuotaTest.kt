@@ -73,4 +73,30 @@ class QuotaTest {
         val gs = quotaGroups(machine(true, a, b), now, zone).filter { it.agent == Agent.AGENT_CLAUDE }
         assertEquals(listOf("Claude Code · 会话 bbbb", "Claude Code · 账户 f00dbeef99"), gs.map { it.title })
     }
+
+    @Test
+    fun absentWindowsAreUnknownAndReportedDurationsAreKept() {
+        for ((agent, name) in listOf(Agent.AGENT_CLAUDE to "five_hour", Agent.AGENT_CODEX to "primary")) {
+            val window = w(name, 99.6).toBuilder().setWindowMinutes(120).build()
+            val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).addWindows(window).build()
+            val g = quotaGroups(machine(true, q), now, zone).single { it.agent == agent }
+            assertEquals("2 小时", g.rows[0].label)
+            assertEquals("已用 99%", g.rows[0].used)
+            assertEquals(QuotaTone.WARN, g.rows[0].tone)
+            assertEquals("2 小时额度即将用尽", quotaBanner(g))
+            assertEquals("未获取", g.rows[1].used)
+            assertEquals(null, g.rows[1].percent)
+            assertEquals("只有 2 小时用量可用；7 天额度暂时未知。", quotaPartial(g))
+        }
+    }
+
+    @Test
+    fun oldDaemonAlsoShowsItsMissingWindow() {
+        val meta = MachineMeta.newBuilder().setPrimaryLimit(
+            io.github.lewin671.remoteagent.proto.RateLimit.newBuilder().setUsedPercent(28.0).setWindowMinutes(300)
+        ).build()
+        val g = quotaGroups(MachineView("m", true, 0, meta), now, zone).single { it.agent == Agent.AGENT_CODEX }
+        assertEquals("未获取", g.rows[1].used)
+        assertEquals("只有 5 小时用量可用；7 天额度暂时未知。", quotaPartial(g))
+    }
 }
