@@ -290,3 +290,42 @@ func TestClaudeApprovalMatchesWholeInput(t *testing.T) {
 	}
 	h.s.retractApprovals()
 }
+
+// Client switches the model, then the mode, then the next reply comes:
+// no context after the switch may carry the old model, which a client
+// would show as a switch back.
+func TestClaudeContextsAfterModelThenModeSwitch(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}}`,
+		`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.bindRollout("cc-1", path)
+	mark := h.s.log.LastSeq()
+	// What setModel and setApprovalMode record, and the mode seen on the
+	// screen afterwards.
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: pb.ApprovalMode_APPROVAL_MODE_AUTO}}})
+	h.term.setScreen(strings.Replace(ccIdle, "⏸ manual mode on", "⏵⏵ auto mode on (shift+tab to cycle)", 1))
+	h.s.checkScreen()
+	h.s.checkScreen()
+	h.writeRollout(`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"auto","message":{"role":"user","content":"go"}}`,
+		`{"type":"assistant","message":{"id":"m2","model":"claude-sonnet-5-5","stop_reason":"end_turn","content":[{"type":"text","text":"y"}]},"perTurnEffort":"low"}`)
+	h.s.readRollout()
+	evs, _ := h.s.log.Since(mark)
+	n := 0
+	for _, e := range evs {
+		if c := e.GetTurnContext(); c != nil {
+			n++
+			if !strings.Contains(c.Model, "sonnet") || c.Effort != "low" {
+				t.Errorf("context with the old model: %v", c)
+			}
+		}
+	}
+	if n == 0 {
+		t.Fatal("no contexts")
+	}
+	if i := h.s.info(); !strings.Contains(i.Model, "sonnet") || i.PermissionMode != "auto" {
+		t.Fatalf("info %v %v", i.Model, i.PermissionMode)
+	}
+}
