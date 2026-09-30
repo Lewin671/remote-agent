@@ -3,7 +3,10 @@ package io.github.lewin671.remoteagent.core
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The cases of "paths in tool titles" in web/src/model.test.ts, one for one: both clients must show the same. */
+/**
+ * The cases of "paths in tool titles" in web/src/model.test.ts, one for one
+ * (copied from there): both clients must show the same.
+ */
 class ShortPathsTest {
     // title, cwd, home, shown
     private val cases = listOf(
@@ -24,11 +27,20 @@ class ShortPathsTest {
         listOf("tail /home/me/app/log.txt", "/srv/app", "", "tail ~/app/log.txt"),
         listOf("cat /Users/me/notes.md", "", "/Users/me", "cat ~/notes.md"),
         listOf("/Users/me", "/Users/me/Code/foo", "/Users/me", "~"),
+        listOf("Read /Users/me/Code/foo[archive]/a", "/Users/me/Code/foo", "/Users/me", "Read ~/Code/foo[archive]/a"),
+        listOf("cat \"/Users/me/Code/foo bar/a\"", "/Users/me/Code/foo", "/Users/me", "cat \"~/Code/foo bar/a\""),
+        listOf("cat \"/Users/me/Code/foo/a b.go\"", "/Users/me/Code/foo", "/Users/me", "cat \"a b.go\""),
+        listOf("ls /Users/me/Code/foo.bak/x", "/Users/me/Code/foo", "/Users/me", "ls ~/Code/foo.bak/x"),
+        listOf("(cd /Users/me/Code/foo/sub)", "/Users/me/Code/foo", "/Users/me", "(cd sub)"),
+        listOf("cat /Users/me/Code/foo", "/Users/me/Code/foo", "/Users/me", "cat ."),
+        listOf("echo /Users/meow/x", "/Users/me/Code/foo", "/Users/me", "echo /Users/meow/x"),
+        listOf("Read /Users/me/Code/foo[x]", "/Users/me/Code/foo", "", "Read ~/Code/foo[x]"),
+        listOf("tail /home/me/app:12", "/srv/app", "/home/me", "tail ~/app:12"),
     )
 
     @Test
     fun matchesTheWebClient() {
-        assertEquals(17, cases.size)
+        assertEquals(26, cases.size)
         for ((title, cwd, home, shown) in cases) assertEquals(title, shown, shortenPaths(title, cwd, home))
     }
 }

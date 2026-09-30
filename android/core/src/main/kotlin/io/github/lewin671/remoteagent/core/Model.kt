@@ -389,34 +389,45 @@ fun optionLabel(label: String): Pair<String, Boolean> {
     return if (m != null) m.groupValues[1] to true else label to false
 }
 
-private val pathWord = Regex("""(^|[\s'"=:(\[{,])(/[^\s'"`()\[\]{}<>|;&,]*)""")
-private val homeDir = Regex("^/(?:Users|home)/[^/]+(?=/|$)")
+private val pathToken = Regex("""(^|[\s=:(\[{,])(?:(["'])(/[^"'\n]*)\2|(/[^\s"'`]*))""")
+private val homeDir = Regex("^/(?:Users|home)/[^/:]+")
+private val lineSuffix = Regex("^:\\d+(?::\\d+)*$")
 
 /** macOS reports /tmp, /var and /etc under /private: the same place. */
 private fun samePlace(p: String) = p.replaceFirst(Regex("^/private(?=/(?:tmp|var|etc)(?:/|$))"), "")
 
 /**
  * Absolute paths in a tool title, shortened for display, exactly as
- * shortenPaths in web/src/model.ts (its cases are ported to ShortPathsTest).
- * Only whole path words change: a word starting with / after the start, a
- * space, a quote, =, :, (, [, { or a comma. Under the session folder a
- * path becomes relative to it and the folder itself "."; else under the
- * home folder ~/…, and without a known home /Users/<name> and /home/<name>
- * count as one. URLs and relative paths stay as they are.
+ * shortenPaths in web/src/model.ts (its cases are copied into
+ * ShortPathsTest). Paths are whole tokens: a quoted one is the whole quoted
+ * text, spaces and all; an unquoted one runs to whitespace or a quote; a
+ * token starts with / after the start, a space, =, :, (, [, { or a comma.
+ * Under the session folder a path becomes relative to it, the folder itself
+ * "."; else under the home folder ~/…, and without a known home
+ * /Users/<name> and /home/<name> count as one. A folder only matches when
+ * what follows it is /, nothing or a :line suffix; anything else, or
+ * anything unsure, stays as written.
  */
 fun shortenPaths(text: String, cwd: String, home: String = ""): String {
     val base = samePlace(cwd).trimEnd('/')
     val h = samePlace(home).trimEnd('/')
-    return pathWord.replace(text) { m ->
+    // What follows a folder in its token: a subpath, nothing, or :line[:col].
+    fun under(p: String, dir: String): String? {
+        if (dir.isEmpty() || !p.startsWith(dir)) return null
+        val rest = p.substring(dir.length)
+        return if (rest.isEmpty() || rest[0] == '/' || lineSuffix.matches(rest)) rest else null
+    }
+    fun shorten(path: String): String? {
+        val p = samePlace(path)
+        under(p, base)?.let { r -> return if (r.isEmpty() || r == "/") "." else if (r[0] == '/') r.substring(1) else ".$r" }
+        val hm = h.ifEmpty { homeDir.find(p)?.value.orEmpty() }
+        return under(p, hm)?.let { "~$it" }
+    }
+    return pathToken.replace(text) { m ->
         val before = m.groupValues[1]
-        val p = samePlace(m.groupValues[2])
-        when {
-            base.isNotEmpty() && p == base -> "$before."
-            base.isNotEmpty() && p.startsWith("$base/") -> before + p.substring(base.length + 1)
-            h.isNotEmpty() && (p == h || p.startsWith("$h/")) -> before + "~" + p.substring(h.length)
-            h.isEmpty() && homeDir.containsMatchIn(p) -> before + p.replaceFirst(homeDir, "~")
-            else -> m.value
-        }
+        val quoted = m.groups[3]?.value
+        val short = shorten(quoted ?: m.groups[4]?.value.orEmpty()) ?: return@replace m.value
+        if (quoted != null) before + m.groupValues[2] + short + m.groupValues[2] else before + short
     }
 }
 
