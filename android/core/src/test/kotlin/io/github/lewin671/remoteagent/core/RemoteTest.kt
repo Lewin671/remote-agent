@@ -223,6 +223,24 @@ class RemoteTest {
     }
 
     @Test
+    fun aFrozenAttemptResendsTheSameRequest() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true }
+        val a = Attempt()
+        val cmd = Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
+        val first = a.next { r.prepare(daemon.id, "s1", cmd) }
+        r.forward(first)
+        // Pretend the answer was lost: the retry carries the same request ID and deadline.
+        a.settle(CommandException(CommandException.UNKNOWN, "lost"))
+        r.forward(a.next { r.prepare(daemon.id, "s1", cmd) })
+        val (h1, _) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
+        val (h2, _) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
+        assertEquals(h1.requestId, h2.requestId)
+        assertEquals(h1.deadlineMs, h2.deadlineMs)
+    }
+
+    @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
         val r = client()
         r.start()

@@ -155,6 +155,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     var change by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
+    val key = initial?.cwd ?: name
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
     Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp)) {
         Text("＋ 新会话", style = MaterialTheme.typography.titleSmall, color = p.fg2)
@@ -169,14 +170,26 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             FilledIconButton(
                 onClick = {
                     val cfg = config ?: return@FilledIconButton
-                    act.run({
-                        remote.machineCommand(cfg.machineId, remote.cmd {
+                    // While an earlier start's outcome is unknown, only it is
+                    // sent again, as it was: the daemon then answers from its
+                    // log instead of starting a second session.
+                    val start = Starts.of(key)
+                    val prepared = start.attempt.next {
+                        start.prompt = text.trim()
+                        remote.prepare(cfg.machineId, "", remote.cmd {
                             createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
                                 .setModel(cfg.model).setEffort(cfg.effort).setMode(cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).build()
                         })
+                    }
+                    act.run({
+                        try {
+                            remote.forward(prepared).also { start.attempt.settle() }
+                        } catch (e: Exception) {
+                            throw start.attempt.settle(e) ?: e
+                        }
                     }) { r ->
                         r?.createSession?.session?.id?.let {
-                            Outbox.rememberPrompt(it, text.trim())
+                            Outbox.rememberPrompt(it, start.prompt)
                             nav.session(it)
                         }
                         text = ""
@@ -194,6 +207,13 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         if (c != null && state.machines[c.machineId]?.online != true) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
         if (act.running) Text("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…", color = p.muted, style = MaterialTheme.typography.bodySmall)
         if (act.error.isNotEmpty()) Text("启动失败：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        val frozen = Starts.of(key)
+        if (!act.running && frozen.attempt.frozen) {
+            Text(
+                "上次的启动结果不确定。再点 ↑ 会重发同一个请求（「${frozen.prompt.take(40)}」），电脑收到过就不会再启动一次",
+                color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
     val c = config
     if (change && c != null) ConfigSheet(state, c, onDone = { config = it; change = false }, onClose = { change = false })
@@ -374,4 +394,16 @@ fun NewProjectScreen() {
             Text("用 ${projectName(d.path)} 这个目录")
         }
     }
+}
+
+/** New-session starts per project, for this run of the app: one whose outcome is unknown is retried as it was. */
+object Starts {
+    class Start {
+        val attempt = io.github.lewin671.remoteagent.core.Attempt()
+        var prompt = ""
+    }
+
+    private val byProject = HashMap<String, Start>()
+
+    fun of(project: String): Start = byProject.getOrPut(project) { Start() }
 }
