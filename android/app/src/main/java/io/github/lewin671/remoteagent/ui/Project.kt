@@ -521,4 +521,6 @@ object Starts {
     private val byProject = HashMap<String, Start>()
 
     fun of(project: String): Start = byProject.getOrPut(project) { Start() }
+
+    fun clear() = byProject.clear()
 }

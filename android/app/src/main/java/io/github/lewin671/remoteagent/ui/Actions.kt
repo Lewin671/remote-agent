@@ -83,6 +83,36 @@ object Drafts {
 
     /** The new-session draft of a project; [initial] only seeds one that does not exist yet. */
     fun newSession(project: String, initial: NewConfig?): NewSession = newSessions.getOrPut(project) { NewSession(initial) }
+
+    fun clear() {
+        texts.clear()
+        newSessions.clear()
+    }
+}
+
+/**
+ * What this run keeps in memory for the signed-in account: drafts, messages
+ * sent from here, and starts and answers whose outcome may be unknown. They
+ * are keyed by project path, session or question ID, which another account
+ * can share, so all of it goes when the account changes or is logged out.
+ */
+object AccountMemory {
+    private var account: String? = null
+
+    /** The account now in use; a different one than before starts from nothing. */
+    fun use(account: String) {
+        if (account != this.account) clear()
+        this.account = account
+    }
+
+    /** Forgets everything, e.g. on logout. */
+    fun clear() {
+        account = null
+        Drafts.clear()
+        Outbox.clear()
+        Starts.clear()
+        Answers.clear()
+    }
 }
 
 /** Messages sent from this device, per session, for this run of the app. */
@@ -127,6 +157,12 @@ object Outbox {
     }
 
     fun prompt(sid: String): String? = prompts[sid]
+
+    fun clear() {
+        bySession.clear()
+        prompts.clear()
+        drafts.clear()
+    }
 
     /** Local text of a request, for queued messages. */
     fun text(sid: String, requestId: String): String? = bySession[sid]?.firstOrNull { it.requestId == requestId }?.text

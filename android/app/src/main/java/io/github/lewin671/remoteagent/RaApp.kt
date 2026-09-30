@@ -16,6 +16,7 @@ import io.github.lewin671.remoteagent.data.Prefs
 import io.github.lewin671.remoteagent.data.RoomCache
 import io.github.lewin671.remoteagent.data.Vault
 import io.github.lewin671.remoteagent.push.Push
+import io.github.lewin671.remoteagent.ui.AccountMemory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -100,6 +101,8 @@ class RaApp : Application() {
     }
 
     private fun use(acct: Account) {
+        // Drafts and the like are kept per account, and only in memory.
+        AccountMemory.use("${acct.server} ${acct.deviceId}")
         val r = Remote(acct, http, RoomCache(db.dao()), log = { Log.i(TAG, it) })
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.
@@ -119,6 +122,7 @@ class RaApp : Application() {
     suspend fun logout() {
         _remote.value?.close()
         _remote.value = null
+        AccountMemory.clear()
         withContext(Dispatchers.IO) {
             vault.clear()
             db.clearAllTables()

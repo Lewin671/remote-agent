@@ -190,6 +190,8 @@ object Answers {
 
     fun of(questionId: String, index: Int): Answer = byQuestion.getOrPut("$questionId#$index") { Answer() }
 
+    fun clear() = byQuestion.clear()
+
     /**
      * Sends [options], or the earlier answer while its outcome is unknown,
      * and returns the options that were answered.
