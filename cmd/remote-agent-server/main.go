@@ -16,6 +16,11 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/server"
+
+	// The server runs in a scratch image, which has no CA certificates.
+	// Web Push and FCM need them, so the binary carries Mozilla's roots
+	// and uses them when the system has none.
+	_ "golang.org/x/crypto/x509roots/fallback"
 )
 
 func main() {
