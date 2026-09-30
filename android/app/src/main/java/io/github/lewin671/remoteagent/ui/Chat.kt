@@ -435,7 +435,7 @@ fun ToolLine(mark: String, markColor: Color, title: String, modifier: Modifier =
         modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 4.dp).heightIn(min = 20.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(mark, style = T.meta, color = markColor)
+        Mark(mark, markColor)
         if (bold) Text(title, style = ts(13.sp, FontWeight.Medium), color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         else Text(title, style = T.mono, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (meta.isNotEmpty()) Text(meta, style = T.meta, color = metaColor ?: p.muted, maxLines = 1)

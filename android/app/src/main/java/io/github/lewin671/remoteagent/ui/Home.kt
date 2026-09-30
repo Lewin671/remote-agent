@@ -168,7 +168,7 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, last: Boolean = fals
             Text(
                 androidx.compose.ui.text.buildAnnotatedString {
                     if (ended) append(st.text) else {
-                        pushStyle(androidx.compose.ui.text.SpanStyle(color = p.toneInk(st.tone), fontWeight = FontWeight.SemiBold))
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = p.toneInk(st.tone), fontWeight = platformWeight(FontWeight.SemiBold)))
                         append(st.text)
                         pop()
                     }

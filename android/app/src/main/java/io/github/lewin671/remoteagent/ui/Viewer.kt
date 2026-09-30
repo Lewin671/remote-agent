@@ -134,7 +134,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 ImageSource.IMAGE_SOURCE_GENERATED -> "$agent 生成的图片"
                 else -> "用户粘贴"
             }
-            Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, maxLines = 2)
+            Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = MaterialTheme.typography.bodySmall, fontFamily = MonoFamily, maxLines = 2)
             val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
             val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
             Text(listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it) }).joinToString(" · "), color = Color(0xFFB9BFC6), style = MaterialTheme.typography.bodySmall)

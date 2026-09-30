@@ -698,7 +698,7 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
                 androidx.compose.ui.text.buildAnnotatedString {
                     parts.forEachIndexed { i, part ->
                         if (i > 0) append(" / ")
-                        if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.fg, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)); append(part); pop() } else append(part)
+                        if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.fg, fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.SemiBold))); append(part); pop() } else append(part)
                     }
                 },
                 style = T.mono13, color = p.muted, modifier = Modifier.padding(bottom = 6.dp),

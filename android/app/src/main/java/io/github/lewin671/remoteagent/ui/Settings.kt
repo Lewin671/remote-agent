@@ -130,7 +130,13 @@ fun SettingsScreen() {
     val scope = rememberCoroutineScope()
     var logout by remember { mutableStateOf(false) }
     var storage by remember { mutableStateOf(false) }
+    var licenses by remember { mutableStateOf(false) }
     val t = now()
+    if (licenses) {
+        androidx.activity.compose.BackHandler { licenses = false }
+        LicensesPage { licenses = false }
+        return
+    }
     if (storage) {
         androidx.activity.compose.BackHandler { storage = false }
         PhoneImageStoragePage { storage = false }
@@ -195,6 +201,7 @@ fun SettingsScreen() {
         Group(rows = listOf(
             { GRow("服务器", remote.account.server.removePrefix("https://")) },
             { GRow("版本", "${io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME} · ${io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7)}") },
+            { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
             { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
         ))
         Spacer(Modifier.height(24.dp))
@@ -559,7 +566,7 @@ fun PairScreen() {
                     Box(Modifier.padding(top = 14.dp, bottom = 10.dp).size(170.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(12.dp)) {
                         Image(bmp.asImageBitmap(), "配对二维码", Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
                     }
-                    Text(i.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
+                    Text(i.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
                     Text("在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
                     Text("◌ 等待新设备…", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 10.dp))
                 }
@@ -621,6 +628,34 @@ private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsa
 }
 
 /** 图片存储 · 这台手机 (Android): drafts and the viewing cache, limited apart; clearing the cache keeps drafts. */
+/** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
+private val bundledFonts = listOf(
+    Triple("Inter", "界面中的西文和数字", io.github.lewin671.remoteagent.R.raw.ofl_inter),
+    Triple("JetBrains Mono", "代码、路径和命令", io.github.lewin671.remoteagent.R.raw.ofl_jetbrains_mono),
+    Triple("Sarasa Fixed SC", "终端", io.github.lewin671.remoteagent.R.raw.ofl_sarasa_gothic),
+)
+
+@Composable
+fun LicensesPage(onBack: () -> Unit) {
+    val p = pal
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    var open by remember { mutableStateOf<Int?>(null) }
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+    Column(Modifier.fillMaxSize().background(p.soft)) {
+        NavBar("开源许可", onBack)
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            GLabel("字体 · SIL Open Font License 1.1")
+            Group(rows = bundledFonts.mapIndexed { i, (name, use, _) -> @Composable { GRow(name, use, onClick = { open = if (open == i) null else i }) } })
+            open?.let { i ->
+                val text = remember(i) { res.openRawResource(bundledFonts[i].third).bufferedReader().use { it.readText() } }
+                Text(text, style = T.meta, color = p.fg2, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+    }
+}
+
 @Composable
 fun PhoneImageStoragePage(onBack: () -> Unit) {
     val app = RaApp.instance

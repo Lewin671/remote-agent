@@ -159,8 +159,8 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     if (menu) ActionSheet(
         info = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(shortPath(s.info?.cwd.orEmpty()) + " · " + machineLabel(state, s.machineId), style = T.meta, color = p.muted, fontFamily = FontFamily.Monospace)
-                Text("会话 ${s.id.take(16)}", style = T.meta, color = p.muted, fontFamily = FontFamily.Monospace)
+                Text(shortPath(s.info?.cwd.orEmpty()) + " · " + machineLabel(state, s.machineId), style = T.meta, color = p.muted, fontFamily = MonoFamily)
+                Text("会话 ${s.id.take(16)}", style = T.meta, color = p.muted, fontFamily = MonoFamily)
             }
         },
         actions = buildList {

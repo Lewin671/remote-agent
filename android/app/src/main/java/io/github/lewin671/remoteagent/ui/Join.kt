@@ -178,7 +178,7 @@ fun JoinScreen(app: RaApp) {
                     androidx.compose.foundation.text.BasicTextField(
                         code, { v -> code = v.filter { it.isDigit() || it == ' ' }.take(9); commit = null },
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 10.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = 4.sp, textAlign = TextAlign.Center, color = p.fg),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = MonoFamily, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = 4.sp, textAlign = TextAlign.Center, color = p.fg),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true,
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
                         decorationBox = { inner ->

@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,8 +20,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,14 +30,16 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -424,7 +430,7 @@ fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onCl
             if (desc != null) Text(desc, style = ts(12.sp, lineHeight = 1.45f), color = p.muted)
         }
         trailing?.invoke()
-        if (checked) Text("✓", style = T.bodyB, color = p.blue)
+        if (checked) Mark("✓", p.blue, 16.dp, 1.8.dp)
     }
 }
 
@@ -532,7 +538,7 @@ fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
                         null, tint = if (on) p.blue else p.muted, modifier = Modifier.size(22.dp),
                     )
                     if (r == "home" && waiting > 0) Text(
-                        "$waiting", style = T.tab.copy(fontWeight = FontWeight.Bold, lineHeight = 16.sp), color = Color.White,
+                        "$waiting", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
                         modifier = Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp).clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
                     )
                 }
@@ -558,5 +564,32 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
                 }
             }
         }
+    }
+}
+
+/**
+ * ✓ ✕ ◌ drawn as strokes (design-system §5), so the marks keep one size and
+ * weight instead of taking whatever glyph the system font has. Other marks
+ * fall back to text.
+ */
+@Composable
+fun Mark(mark: String, color: Color, size: Dp = 12.dp, stroke: Dp = 1.4.dp) {
+    when (mark) {
+        "✓", "✕", "◌", "○" -> Canvas(Modifier.size(size)) {
+            val w = stroke.toPx()
+            val s = this.size.minDimension
+            when (mark) {
+                "✓" -> drawPath(
+                    Path().apply { moveTo(s * 0.12f, s * 0.54f); lineTo(s * 0.4f, s * 0.8f); lineTo(s * 0.9f, s * 0.22f) },
+                    color, style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                )
+                "✕" -> {
+                    drawLine(color, Offset(s * 0.2f, s * 0.2f), Offset(s * 0.8f, s * 0.8f), w, StrokeCap.Round)
+                    drawLine(color, Offset(s * 0.8f, s * 0.2f), Offset(s * 0.2f, s * 0.8f), w, StrokeCap.Round)
+                }
+                else -> drawCircle(color, radius = s * 0.34f, style = Stroke(w, pathEffect = if (mark == "◌") PathEffect.dashPathEffect(floatArrayOf(w * 1.2f, w * 1.3f)) else null))
+            }
+        }
+        else -> Text(mark, style = T.meta, color = color)
     }
 }

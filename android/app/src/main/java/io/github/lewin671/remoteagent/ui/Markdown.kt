@@ -26,10 +26,23 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.withAnnotation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -142,7 +155,7 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
             c == '`' -> {
                 val end = s.indexOf('`', i + 1)
                 if (end > i) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = codeBg, fontSize = 13.sp)) { append(s.substring(i + 1, end)) }
+                    withAnnotation(CODE, "") { withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp)) { append(s.substring(i + 1, end)) } }
                     i = end + 1
                 } else {
                     append(c); i++
@@ -151,7 +164,7 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
             s.startsWith("**", i) -> {
                 val end = s.indexOf("**", i + 2)
                 if (end > i + 2) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(inline(s.substring(i + 2, end), codeBg, link)) }
+                    withStyle(SpanStyle(fontWeight = platformWeight(FontWeight.Bold))) { append(inline(s.substring(i + 2, end), codeBg, link)) }
                     i = end + 2
                 } else {
                     append("**"); i += 2
@@ -176,7 +189,7 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
                         withLink(LinkAnnotation.Url(url, TextLinkStyles(SpanStyle(color = link)))) { append(label) }
                     } else {
                         // File references read as code, not as links.
-                        withStyle(SpanStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)) { append(label) }
+                        withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp)) { append(label) }
                     }
                     i = end + 1
                 } else {
@@ -208,15 +221,18 @@ fun Markdown(text: String, modifier: Modifier = Modifier) {
                 }
                 Box(Modifier.padding(top = gap)) {
                     when (b) {
-                        is Block.Heading -> Text(inline(b.text, p.chip, p.blue), style = if (b.level <= 2) T.h17 else T.bodyB, color = p.fg)
-                        is Block.Para -> Text(inline(b.text.replace("\n", " "), p.chip, p.blue), style = body)
+                        is Block.Heading -> RichText(inline(b.text, p.chip, p.blue), style = (if (b.level <= 2) T.h17 else T.bodyB).copy(color = p.fg))
+                        is Block.Para -> RichText(inline(b.text.replace("\n", " "), p.chip, p.blue), style = body)
                         is Block.Item -> Row(Modifier.padding(start = (b.depth * 20).dp)) {
-                            Box(Modifier.width(20.dp), contentAlignment = Alignment.TopCenter) { Text(b.marker, style = body, color = p.fg) }
-                            Text(inline(b.text, p.chip, p.blue), style = body)
+                            // CJK fonts draw • as a small centered dot; draw the disc the mockup's list uses.
+                            Box(Modifier.width(20.dp).height(with(LocalDensity.current) { body.lineHeight.toDp() }), contentAlignment = Alignment.Center) {
+                                if (b.marker == "•") Box(Modifier.size(5.dp).background(p.fg, CircleShape)) else Text(b.marker, style = body, color = p.fg)
+                            }
+                            RichText(inline(b.text, p.chip, p.blue), style = body)
                         }
                         is Block.Quote -> Row {
                             Box(Modifier.width(3.dp).background(p.line).padding(vertical = 2.dp)) { Text(" ") }
-                            Text(inline(b.text, p.chip, p.blue), style = body, color = p.muted, modifier = Modifier.padding(start = 10.dp))
+                            RichText(inline(b.text, p.chip, p.blue), style = body.copy(color = p.muted), modifier = Modifier.padding(start = 10.dp))
                         }
                         is Block.Code -> CodeBlock(b.text)
                         is Block.Table -> TableBlock(b)
@@ -226,6 +242,40 @@ fun Markdown(text: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+private const val CODE = "code"
+
+/**
+ * Text whose inline code sits on a rounded chip, as the mockup's `.ai code`
+ * (padding 1×4, radius 4): a span background would fill the whole line
+ * height with square corners.
+ */
+@Composable
+fun RichText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier) {
+    val bg = pal.chip
+    val codes = remember(text) { text.getStringAnnotations(CODE, 0, text.length) }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        text, style = style, onTextLayout = { layout = it },
+        modifier = if (codes.isEmpty()) modifier else modifier.drawBehind {
+            val l = layout ?: return@drawBehind
+            val padX = 3.dp.toPx()
+            val half = 13.sp.toPx() * 0.72f
+            for (a in codes) {
+                if (a.end <= a.start) continue
+                for (line in l.getLineForOffset(a.start)..l.getLineForOffset(a.end - 1)) {
+                    val s = maxOf(a.start, l.getLineStart(line))
+                    val e = minOf(a.end, l.getLineEnd(line, visibleEnd = true))
+                    if (e <= s) continue
+                    val x0 = l.getBoundingBox(s).left
+                    val x1 = l.getBoundingBox(e - 1).right
+                    val mid = (l.getLineTop(line) + l.getLineBottom(line)) / 2
+                    drawRoundRect(bg, Offset(x0 - padX, mid - half), Size(x1 - x0 + padX * 2, half * 2), CornerRadius(4.dp.toPx()))
+                }
+            }
+        },
+    )
 }
 
 /** A code block in a reply: soft, a line around, radius 6, mono 12. */
@@ -254,7 +304,7 @@ private fun TableBlock(t: Block.Table) {
                             inline(row.getOrElse(ci) { "" }, p.chip, p.blue),
                             Modifier.widthIn(min = 48.dp, max = 240.dp).padding(horizontal = 7.dp, vertical = 3.dp),
                             style = T.sm, color = p.fg,
-                            fontWeight = if (ri == 0) FontWeight.SemiBold else null,
+                            fontWeight = if (ri == 0) platformWeight(FontWeight.SemiBold) else null,
                         )
                     }
                 }

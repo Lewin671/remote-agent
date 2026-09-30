@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -13,12 +14,14 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.core.Tone
 import io.github.lewin671.remoteagent.data.ThemeMode
 
@@ -111,9 +114,38 @@ val avatarGradients = listOf(
 
 private val centered = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
+/**
+ * The mockup's weights as they look on a Mac (design-system §3): Latin in
+ * SF at the nominal weight, Chinese in PingFang, whose heaviest weight is
+ * Semibold. Noto Sans CJK on Android draws each weight heavier than
+ * PingFang, so a requested weight falls one step for Chinese, while
+ * [UiFamily] registers each Inter file at that lowered weight so Latin keeps
+ * the nominal one: 500 → 450, 600 → 500, 700 → 600.
+ */
+fun platformWeight(w: FontWeight): FontWeight = when {
+    w >= FontWeight.Bold -> FontWeight.SemiBold
+    w >= FontWeight.SemiBold -> FontWeight.Medium
+    w >= FontWeight.Medium -> FontWeight(450)
+    else -> w
+}
+
+/** Inter (SIL OFL 1.1, Latin subset) for Latin and digits; Chinese falls back to the system font. */
+val UiFamily = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight(450)),
+    Font(R.font.inter_semibold, FontWeight.Medium),
+    Font(R.font.inter_bold, FontWeight.SemiBold),
+)
+
+/** JetBrains Mono (SIL OFL 1.1) for code, paths and commands, instead of the system's DroidSansMono. */
+val MonoFamily = FontFamily(
+    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
+    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
+)
+
 /** A size of design-system §3 at the mockup's line height (1.5 unless said). */
 fun ts(size: TextUnit, weight: FontWeight = FontWeight.Normal, lineHeight: Float = 1.5f): TextStyle =
-    TextStyle(fontSize = size, fontWeight = weight, lineHeight = (size.value * lineHeight).sp, lineHeightStyle = centered)
+    TextStyle(fontFamily = UiFamily, fontSize = size, fontWeight = platformWeight(weight), lineHeight = (size.value * lineHeight).sp, lineHeightStyle = centered)
 
 /** The type scale: 30 / 22 / 17 / 15 / 13 / 12, and 11 for tab labels and badges. */
 object T {
@@ -128,8 +160,8 @@ object T {
     val meta = ts(12.sp)
     val metaB = ts(12.sp, FontWeight.SemiBold)
     val tab = ts(11.sp)
-    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 18.sp, lineHeightStyle = centered)
-    val mono13 = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 19.5.sp, lineHeightStyle = centered)
+    val mono = TextStyle(fontFamily = MonoFamily, fontSize = 12.sp, lineHeight = 18.sp, lineHeightStyle = centered)
+    val mono13 = TextStyle(fontFamily = MonoFamily, fontSize = 13.sp, lineHeight = 19.5.sp, lineHeightStyle = centered)
 }
 
 private val type = Typography(

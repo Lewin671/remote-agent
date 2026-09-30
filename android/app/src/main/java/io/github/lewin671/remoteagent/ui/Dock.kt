@@ -407,8 +407,8 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
                     Modifier.padding(top = 1.dp).size(18.dp).clip(RoundedCornerShape(4.dp)).background(if (sel) p.blueBg else androidx.compose.ui.graphics.Color.Transparent)
                         .border(1.dp, if (sel) p.blueBg else p.muted, RoundedCornerShape(4.dp)),
                     contentAlignment = Alignment.Center,
-                ) { if (sel) Text("✓", style = ts(12.sp, FontWeight.Bold, 1f), color = androidx.compose.ui.graphics.Color.White) }
-                else if (sel) Text("✓", style = T.smB, color = p.blue)
+                ) { if (sel) Mark("✓", androidx.compose.ui.graphics.Color.White, 12.dp, 1.8.dp) }
+                else if (sel) Box(Modifier.padding(top = 3.dp)) { Mark("✓", p.blue, 13.dp, 1.6.dp) }
                 Column(Modifier.weight(1f)) {
                     Text(label, style = T.sm, color = p.fg)
                     if (o.description.isNotEmpty()) Text(o.description, style = T.meta, color = p.muted)
