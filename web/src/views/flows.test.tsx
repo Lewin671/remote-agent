@@ -1450,3 +1450,18 @@ it("asks to restore a project removed while its draft is on the wide home (revie
   await click(button("恢复到项目列表"));
   await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
 });
+
+it("marks a quota window as waiting for an update once its reset time passes (review B13)", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
+  try {
+    const r = demo();
+    const { QuotaPage } = await import("./Settings");
+    mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+    expect(host.textContent).not.toContain("等待更新");
+    // The demo's 5-hour window resets in three hours; nothing else changes.
+    act(() => void vi.advanceTimersByTime(3 * 60 * 60_000 + 60_000));
+    expect(host.textContent).toContain("等待更新");
+  } finally {
+    vi.useRealTimers();
+  }
+});

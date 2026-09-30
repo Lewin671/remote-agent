@@ -7,12 +7,13 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
-import { Alert, Banner, Dot, NavBar, Sheet, useRemote } from "../ui";
+import { Alert, Banner, Dot, NavBar, Sheet, useNow, useRemote } from "../ui";
 import { clientName, shortId } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
   useRemote(remote);
+  useNow(30_000); // for the machines' quota lines
   const [leaving, setLeaving] = useState(false);
   const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
   const push = usePush(remote);
@@ -110,7 +111,8 @@ function quotaLine(m: MachineView): string {
 /** On a machine's page: each CLI's quota in a line, and the way to all. */
 function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
-  const now = Date.now();
+  // Reset times pass with nothing else changing.
+  const now = useNow(30_000);
   const codex = m.meta?.primaryLimit ?? m.meta?.secondaryLimit;
   return (
     <div className="grp">
@@ -147,6 +149,8 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
  * not collected yet, and says so rather than showing anything made up. */
 export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: (r: string) => void; onBack: () => void }) {
   useRemote(remote);
+  // Reset times pass with nothing else changing.
+  const clock = useNow(30_000);
   const m = remote.machines.get(id);
   if (!m)
     return (
@@ -156,7 +160,7 @@ export function QuotaPage({ remote, id, go, onBack }: { remote: Remote; id: stri
       </div>
     );
   const agents = machineAgents(m);
-  const now = Date.now();
+  const now = clock;
   const meta = m.meta;
   const rows = [quotaRow(meta?.primaryLimit, "5 小时", now, m.online), quotaRow(meta?.secondaryLimit, "7 天", now, m.online)];
   const got = !!(meta?.primaryLimit || meta?.secondaryLimit);
