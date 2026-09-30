@@ -321,6 +321,7 @@ const claudeModels = create(ListModelsResponseSchema, {
   defaultModel: "sonnet",
   models: [
     { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
+    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
     { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
     { slug: "haiku", displayName: "Haiku", efforts: [] },
   ],

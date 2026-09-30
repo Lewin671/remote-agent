@@ -124,8 +124,11 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const effort = s.info?.effort ?? "";
   const cur = findModel(models?.models, model);
   const list = models?.models ?? [];
-  // The current model stays in view even when it is not among the first three.
-  const shown = all ? list : [...list.slice(0, 3), ...(cur && !list.slice(0, 3).includes(cur) ? [cur] : [])];
+  // A short list shows whole, so no model is out of reach behind 全部模型
+  // (Claude Code offers four); a long one shows three, and the current
+  // model even when it is not among them.
+  const few = list.length <= 5;
+  const shown = all || few ? list : [...list.slice(0, 3), ...(cur && !list.slice(0, 3).includes(cur) ? [cur] : [])];
   const offline = remote.conn !== "online";
   const locked = !!switching || running || offline;
   const set = async (m: ModelInfo, e: string) => {
@@ -188,7 +191,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
             {m === cur && <span className="ck">✓</span>}
           </button>
         ))}
-        {models && !all && list.length > 3 && (
+        {models && !all && !few && (
           <button className="mi link-row" onClick={() => setAll(true)}>
             全部模型 ›
           </button>

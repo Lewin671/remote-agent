@@ -799,3 +799,22 @@ describe("a message the session ended before sending", () => {
     expect(r.drafts.get("s-idle")).toBe("顺便补一个测试");
   });
 });
+
+it("lists every Claude Code model after switching away from haiku", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-claude-idle")!;
+  s.info = { ...s.info!, model: "claude-sonnet-5-5", effort: "medium" };
+  const switched: unknown[] = [];
+  const real = r.command.bind(r);
+  r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
+    if (cmd?.case === "setModel") switched.push(cmd.value);
+    return real(sid, cmd, slot);
+  };
+  mount(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />);
+  await vi.waitFor(() => expect(button(/^Haiku/)).toBeTruthy(), { timeout: 3000 });
+  expect(button(/^Opus/)).toBeTruthy();
+  await click(button(/^Haiku/));
+  // Haiku has no effort levels: none is sent.
+  await vi.waitFor(() => expect(switched).toHaveLength(1));
+  expect(switched[0]).toMatchObject({ model: "haiku", effort: "" });
+});
