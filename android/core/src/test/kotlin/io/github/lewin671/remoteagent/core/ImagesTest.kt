@@ -275,3 +275,12 @@ class SessionImagesTest {
         assertEquals(listOf("i1", "i2", "t", "g"), sessionImages(events).map { it.ref.imageId })
     }
 }
+
+class TitleTest {
+    @Test
+    fun titlesAndPreviewsLeaveOutImagePlaceholders() {
+        val s = SessionView("s", "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("[Image #1]Which half is red?").setPreview("[Image #1] [Image #2] look").build())
+        assertEquals("Which half is red?", titleOf(s))
+        assertEquals("look", previewOf(s, Status.IDLE))
+    }
+}

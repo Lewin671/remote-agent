@@ -157,8 +157,9 @@ fun titleOf(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): String {
     return if (created > 0) "${projectName(i.cwd)} · ${hhmm(created, zone)}" else projectName(i.cwd)
 }
 
-/** Text for one-line previews: Markdown marks removed. */
+/** Text for one-line previews: Markdown marks and the CLIs' image placeholders removed. */
 fun plain(text: String): String = text
+    .replace(Regex("\\[Image #\\d+]\\s*"), "")
     .replace(Regex("```[a-zA-Z0-9]*"), "")
     .replace(Regex("`([^`]*)`"), "$1")
     .replace(Regex("\\*\\*([^*]+)\\*\\*"), "$1")

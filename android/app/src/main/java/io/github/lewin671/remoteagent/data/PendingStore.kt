@@ -29,9 +29,11 @@ class PendingStore(context: Context) {
     private fun folder(draft: String) = File(dir, sha256(draft.toByteArray()).hex().take(32)).apply { mkdirs() }
 
     fun put(draft: String, name: String, data: ByteArray) {
+        // Sealed first: the first use of the key may clear what it cannot open.
+        val sealed = seal(data)
         val f = File(folder(draft), name)
         val tmp = File(f.parentFile, "$name.tmp")
-        tmp.writeBytes(seal(data))
+        tmp.writeBytes(sealed)
         tmp.renameTo(f)
     }
 
@@ -41,7 +43,7 @@ class PendingStore(context: Context) {
         File(folder(draft), name).delete()
     }
 
-    fun names(draft: String): List<String> = folder(draft).list()?.filter { !it.endsWith(".tmp") }.orEmpty()
+    fun names(draft: String): List<String> = key.let { _ -> folder(draft).list()?.filter { !it.endsWith(".tmp") }.orEmpty() }
 
     fun clearDraft(draft: String) {
         folder(draft).deleteRecursively()

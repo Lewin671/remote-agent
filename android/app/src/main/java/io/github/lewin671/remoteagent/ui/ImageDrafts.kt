@@ -101,7 +101,8 @@ class ImageDraft(val key: String) {
                 val p = withContext(Dispatchers.Default) { processImage(context, img.uri!!, original) }
                 img.processed = p
                 img.thumb = withContext(Dispatchers.Default) { thumbnail(p.bytes) }
-                withContext(Dispatchers.IO) { save(img, p) }
+                // Kept for a reclaimed process; sending does not depend on it.
+                withContext(Dispatchers.IO) { runCatching { save(img, p) }.onFailure { android.util.Log.w("remote-agent", "pending image not kept: ${it.javaClass.simpleName}") } }
                 machine()?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
