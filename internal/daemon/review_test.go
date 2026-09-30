@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -105,4 +107,66 @@ func TestRestartWithEmptyBoxFails(t *testing.T) {
 		st := inputStates(h, "r1")
 		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_FAILED
 	})
+}
+
+// failingHoldTerm is a terminal whose PTY host stops renewing holds after
+// the first: the hold lapses a few seconds later.
+type failingHoldTerm struct{ *fakeTerm }
+
+func (f failingHoldTerm) Control() (control, error) {
+	return &failingHold{fakeControl: fakeControl{f.fakeTerm}}, nil
+}
+
+type failingHold struct {
+	fakeControl
+	n int
+}
+
+func (c *failingHold) Hold(d time.Duration) error {
+	c.n++
+	if c.n > 1 {
+		return errors.New("stuck")
+	}
+	return c.fakeControl.Hold(d)
+}
+
+// G4: once the hold may have lapsed, nothing more is written: not the
+// text and Enter, not Ctrl-U.
+func TestNoWritesAfterTheHoldLapses(t *testing.T) {
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	h.s.term = failingHoldTerm{h.term}
+	pasted := time.Time{}
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		if strings.Contains(b, imgs[0].Path) {
+			pasted = time.Now()
+			go func() {
+				// Converted slowly, after the hold lapsed.
+				time.Sleep(holdFor)
+				f.mu.Lock()
+				f.screen = composerScreen("[Image #1]")
+				f.mu.Unlock()
+			}()
+		}
+	}
+	h.s.enqueue("late", "r1", imgs, originLocal)
+	runInjector(t, h)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		st := inputStates(h, "r1")
+		if len(st) > 0 && st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_QUEUED {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	_ = pasted
+	for _, w := range h.term.written() {
+		if strings.Contains(w, "\r") || w == "\x15" {
+			t.Fatalf("wrote %q after the hold lapsed", w)
+		}
+	}
+	st := inputStates(h, "r1")
+	if s := st[len(st)-1]; s.Status != pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL {
+		t.Fatalf("status %v", s.Status)
+	}
 }

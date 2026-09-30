@@ -57,13 +57,16 @@ type lease struct {
 	deadline time.Time
 	stop     chan struct{}
 	done     sync.WaitGroup
+
+	mu sync.Mutex
+	ok time.Time // last hold the PTY host confirmed
 }
 
 func holdLease(c control, total time.Duration) (*lease, error) {
 	if err := c.Hold(holdFor); err != nil {
 		return nil, err
 	}
-	l := &lease{c: c, deadline: time.Now().Add(total), stop: make(chan struct{})}
+	l := &lease{c: c, deadline: time.Now().Add(total), stop: make(chan struct{}), ok: time.Now()}
 	l.done.Add(1)
 	go func() {
 		defer l.done.Done()
@@ -77,11 +80,25 @@ func holdLease(c control, total time.Duration) (*lease, error) {
 				if time.Until(l.deadline) <= 0 {
 					return
 				}
-				_ = c.Hold(min(holdFor, time.Until(l.deadline)+time.Second))
+				at := time.Now()
+				if c.Hold(min(holdFor, time.Until(l.deadline)+time.Second)) == nil {
+					l.mu.Lock()
+					l.ok = at
+					l.mu.Unlock()
+				}
 			}
 		}
 	}()
 	return l, nil
+}
+
+// holding reports whether local keys are surely still held: the last
+// confirmed hold has not run out (with a second to spare), and the total
+// has not passed. Every write to the terminal requires it.
+func (l *lease) holding() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return time.Since(l.ok) < holdFor-time.Second && time.Now().Before(l.deadline)
 }
 
 // left is how long the lease still holds for sure: what remains of the
@@ -259,25 +276,32 @@ func (s *session) inject(in input) (inputOutcome, error) {
 			return notWritten, err
 		}
 		for _, im := range in.Images {
-			if l.left() < imageWait {
-				return s.abandon(c, in, got, footer, false, "timeout"), nil
+			if l.left() < imageWait || !l.holding() {
+				return s.abandon(c, l, in, got, footer, false, "timeout"), nil
 			}
 			if err := c.Write(agent.PastePath(im.Path)); err != nil {
-				return s.abandon(c, in, got, footer, false, "write_failed"), err
+				return s.abandon(c, l, in, got, footer, false, "write_failed"), err
 			}
 			n, reason := s.waitPlaceholder(got, im.Path, footer)
 			if reason != "" {
-				return s.abandon(c, in, got, footer, false, reason), nil
+				return s.abandon(c, l, in, got, footer, false, reason), nil
 			}
 			got = append(got, n)
 			if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_PASTING_IMAGES, got); err != nil {
-				return s.abandon(c, in, got, footer, false, "write_failed"), err
+				return s.abandon(c, l, in, got, footer, false, "write_failed"), err
 			}
 		}
 		if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED, got); err != nil {
-			return s.abandon(c, in, got, footer, false, "write_failed"), err
+			return s.abandon(c, l, in, got, footer, false, "write_failed"), err
 		}
 		in.Indexes = got
+	}
+	if !l.holding() {
+		// Local keys may have got in: nothing more is written.
+		if len(got) > 0 {
+			return s.abandon(c, l, in, got, footer, false, "timeout"), nil
+		}
+		return notWritten, nil
 	}
 	hist := s.newHistory(-1)
 	if err := s.markInflight(hist.offset(), in.RequestID); err != nil {
@@ -285,9 +309,19 @@ func (s *session) inject(in input) (inputOutcome, error) {
 			return notWritten, nil
 		}
 		if len(got) > 0 {
-			return s.abandon(c, in, got, footer, false, "write_failed"), err
+			return s.abandon(c, l, in, got, footer, false, "write_failed"), err
 		}
 		return notWritten, err
+	}
+	// Saving the mark may have taken a while: the hold and the input box
+	// are checked once more right before the Enter.
+	if !l.holding() || !s.boxHolds(got, footer) {
+		if len(got) > 0 {
+			s.unmarkInflight(in.RequestID, pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED)
+			return s.abandon(c, l, in, got, footer, false, "timeout"), nil
+		}
+		s.unmarkInflight(in.RequestID, pb.InputStage_INPUT_STAGE_WAITING)
+		return notWritten, nil
 	}
 	if err := c.Write(s.ag.Paste(in.Text)); err != nil {
 		// A failed reply does not prove the bytes were not written, so
@@ -347,9 +381,9 @@ func (s *session) waitPlaceholder(before []int32, path, footer string) (int32, s
 // the message FAILED, or NEEDS_TERMINAL when the input box could not be
 // verified to be back to empty. extra allows placeholders that were not
 // yet recorded (after a restart). The caller still holds local input.
-func (s *session) abandon(c control, in input, got []int32, footer string, extra bool, reason string) inputOutcome {
+func (s *session) abandon(c control, l *lease, in input, got []int32, footer string, extra bool, reason string) inputOutcome {
 	status := pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
-	if s.clearPasted(c, in, got, footer, extra, reason == "timeout") {
+	if l.holding() && s.clearPasted(c, in, got, footer, extra, reason == "timeout") {
 		status = pb.InputStatus_INPUT_STATUS_FAILED
 	}
 	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", reason, "status", status.String())
@@ -641,4 +675,34 @@ func (s *session) markInflight(offset int64, requestID string) error {
 		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING,
 	}}})
 	return nil
+}
+
+// boxHolds reports whether the input box holds exactly the placeholders
+// got (or nothing, without images).
+func (s *session) boxHolds(got []int32, footer string) bool {
+	styled, err := s.term.Capture()
+	if err != nil {
+		return false
+	}
+	text, ok := s.ag.ComposerText(styled, footer)
+	if !ok {
+		return false
+	}
+	text = strings.ReplaceAll(text, "\n", "")
+	rest, all := agent.StripPlaceholders(text, got)
+	return all && strings.TrimSpace(rest) == "" && len(agent.ImagePlaceholders(text)) == len(got)
+}
+
+// unmarkInflight takes back an inflight mark when nothing was written
+// after it.
+func (s *session) unmarkInflight(requestID string, stage pb.InputStage) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		return
+	}
+	s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq, s.queue.Queue[0].Stage = nil, 0, stage
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+	}
 }
