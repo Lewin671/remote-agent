@@ -40,4 +40,14 @@ public interface SessionStateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDetailBytes();
+
+  /**
+   * <pre>
+   * The stable terminal screen is asking whether to implement a plan.
+   * </pre>
+   *
+   * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+   * @return The planOpen.
+   */
+  boolean getPlanOpen();
 }

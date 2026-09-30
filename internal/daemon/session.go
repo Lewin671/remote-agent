@@ -61,6 +61,7 @@ type session struct {
 	usage       *pb.TokenUsage
 	title       string
 	preview     string
+	ordering    sessionOrdering
 	screen      agent.Screen
 	prevScreen  agent.Screen
 	sawComposer bool
@@ -165,6 +166,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // observe updates derived state from an event. Callers hold s.mu or are
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
+	s.ordering.observe(e)
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnStarted:
 		s.running = true
@@ -202,6 +204,7 @@ func (s *session) observe(e *pb.Event) {
 			s.readySince = time.Now()
 		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
+		s.planOpen = k.SessionState.PlanOpen
 		if s.status != pb.SessionStatus_SESSION_STATUS_STARTING {
 			s.sawComposer = true
 		}
@@ -415,6 +418,7 @@ func (s *session) checkScreen() bool {
 		s.mu.Unlock()
 		return true
 	}
+	planChanged := s.planOpen != scr.PlanOpen
 	s.planOpen = scr.PlanOpen
 	retract := s.watchApprovals(scr, styled)
 	if scr.Mode != "" {
@@ -458,8 +462,8 @@ func (s *session) checkScreen() bool {
 	}
 	// RUNNING is derived from turn events; the state event only records
 	// startup, popups and exit.
-	if next != status || nextDetail != detail {
-		s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail}}})
+	if next != status || nextDetail != detail || planChanged {
+		s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
 	}
 	return true
 }
@@ -559,6 +563,8 @@ func (s *session) info() *pb.Session {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
 	}
 	out.Title, out.Preview = s.title, s.preview
+	out.AttentionSince = s.ordering.attentionSince(out)
+	out.EndedAt = s.ordering.endedAt
 	return out
 }
 

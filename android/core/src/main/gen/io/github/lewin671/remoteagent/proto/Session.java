@@ -1387,6 +1387,142 @@ public  final class Session extends
     fullAccessUnavailable_ = false;
   }
 
+  public static final int ATTENTION_SINCE_FIELD_NUMBER = 29;
+  private com.google.protobuf.Timestamp attentionSince_;
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttentionSince() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getAttentionSince() {
+    return attentionSince_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : attentionSince_;
+  }
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttentionSince(com.google.protobuf.Timestamp value) {
+    value.getClass();  // minimal bytecode null check
+    attentionSince_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeAttentionSince(com.google.protobuf.Timestamp value) {
+    value.getClass();  // minimal bytecode null check
+    if (attentionSince_ != null &&
+        attentionSince_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      attentionSince_ =
+        com.google.protobuf.Timestamp.newBuilder(attentionSince_).mergeFrom(value).buildPartial();
+    } else {
+      attentionSince_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   */
+  private void clearAttentionSince() {
+    attentionSince_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int ENDED_AT_FIELD_NUMBER = 30;
+  private com.google.protobuf.Timestamp endedAt_;
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   */
+  @java.lang.Override
+  public boolean hasEndedAt() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getEndedAt() {
+    return endedAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : endedAt_;
+  }
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEndedAt(com.google.protobuf.Timestamp value) {
+    value.getClass();  // minimal bytecode null check
+    endedAt_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeEndedAt(com.google.protobuf.Timestamp value) {
+    value.getClass();  // minimal bytecode null check
+    if (endedAt_ != null &&
+        endedAt_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      endedAt_ =
+        com.google.protobuf.Timestamp.newBuilder(endedAt_).mergeFrom(value).buildPartial();
+    } else {
+      endedAt_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   */
+  private void clearEndedAt() {
+    endedAt_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2881,6 +3017,148 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttentionSince() {
+      return instance.hasAttentionSince();
+    }
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getAttentionSince() {
+      return instance.getAttentionSince();
+    }
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    public Builder setAttentionSince(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setAttentionSince(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    public Builder setAttentionSince(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttentionSince(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    public Builder mergeAttentionSince(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeAttentionSince(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Start of the currently displayed wait, not relay upload time.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+     */
+    public Builder clearAttentionSince() {  copyOnWrite();
+      instance.clearAttentionSince();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    @java.lang.Override
+    public boolean hasEndedAt() {
+      return instance.hasEndedAt();
+    }
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getEndedAt() {
+      return instance.getEndedAt();
+    }
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    public Builder setEndedAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setEndedAt(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    public Builder setEndedAt(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setEndedAt(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    public Builder mergeEndedAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeEndedAt(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Actual session exit time, rebuilt from the encrypted event log.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+     */
+    public Builder clearEndedAt() {  copyOnWrite();
+      instance.clearEndedAt();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -2926,13 +3204,15 @@ public  final class Session extends
             "mode_",
             "permissionMode_",
             "fullAccessUnavailable_",
+            "attentionSince_",
+            "endedAt_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001e\u0000\u0001\u0001\u001e\u001e\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n" +
               "\u0208\u000b\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208" +
               "\u0012\u0208\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208" +
-              "\u0019\f\u001a\f\u001b\u0208\u001c\u0007";
+              "\u0019\f\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

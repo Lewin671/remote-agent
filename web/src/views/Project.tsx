@@ -2,7 +2,7 @@
 // start a new session in it.
 
 import { useEffect, useRef, useState } from "react";
-import { exited, machineName, projectName, shortPath } from "../model";
+import { compareLive, compareEnded, exited, machineName, projectName, shortPath } from "../model";
 import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
 import { SessionRow } from "./Home";
@@ -18,8 +18,8 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   const ns = useNewSession(remote, pkey, go);
   const p = ns.p;
   const name = p?.name ?? projectName(pkey);
-  const live = p?.sessions.filter((s) => !exited(s)) ?? [];
-  const ended = p?.sessions.filter(exited) ?? [];
+  const live = p?.sessions.filter((s) => !exited(s)).sort(compareLive) ?? [];
+  const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
   const [shownEnded, setShownEnded] = useState(wide ? PAGE : 3);
   const [scrolled, setScrolled] = useState(false);
   const endedRef = useRef<HTMLDivElement>(null);

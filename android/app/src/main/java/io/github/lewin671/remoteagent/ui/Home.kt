@@ -42,6 +42,9 @@ import io.github.lewin671.remoteagent.core.Status
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.derive
+import io.github.lewin671.remoteagent.core.liveOrder
+import io.github.lewin671.remoteagent.core.attentionOrder
+import io.github.lewin671.remoteagent.core.endedMs
 import io.github.lewin671.remoteagent.core.exited
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.previewOf
@@ -60,10 +63,9 @@ fun HomeScreen() {
     val state by remote.state.collectAsState()
     val p = pal
     val t = now()
-    val all = state.sessions.values.sortedByDescending { it.updatedMs }
-    val attention = all.filter { statusIn(state, it).tone == io.github.lewin671.remoteagent.core.Tone.WAIT }
-    val running = all.filter { !exited(it) && it !in attention && statusIn(state, it) != Status.OFFLINE } +
-        all.filter { statusIn(state, it) == Status.OFFLINE }
+    val all = state.sessions.values.sortedWith(liveOrder)
+    val attention = all.filter { statusIn(state, it).tone == io.github.lewin671.remoteagent.core.Tone.WAIT }.sortedWith(attentionOrder(state))
+    val running = all.filter { !exited(it) && it !in attention }
     val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
     var showAll by remember { mutableStateOf(false) }
 
@@ -152,7 +154,7 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, divider: Boolean, sh
     Column(Modifier.fillMaxWidth().clickableRow { nav.session(s.id) }.padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(titleOf(s), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Text(whenText(s.updatedMs, t), style = MaterialTheme.typography.bodySmall, color = p.faint)
+            Text(whenText(if (exited(s)) endedMs(s) else s.updatedMs, t), style = MaterialTheme.typography.bodySmall, color = p.faint)
         }
         val preview = previewOf(s, st)
         if (preview.isNotEmpty()) Text(preview, style = MaterialTheme.typography.bodyMedium, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)

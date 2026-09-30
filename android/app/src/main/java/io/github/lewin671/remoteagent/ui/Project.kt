@@ -57,6 +57,7 @@ import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.defaultMode
 import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.core.sessionOrder
 import io.github.lewin671.remoteagent.core.exited
 import io.github.lewin671.remoteagent.core.machineAgents
 import io.github.lewin671.remoteagent.core.modeOf
@@ -193,7 +194,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val state by remote.state.collectAsState()
     val p = pal
     val t = now()
-    val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
+    val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedWith(sessionOrder)
     val active = sessions.filter { !exited(it) }
     val ended = sessions.filter { exited(it) }
     var showEnded by rememberSaveable { mutableStateOf(false) }

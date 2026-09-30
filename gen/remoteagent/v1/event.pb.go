@@ -2975,7 +2975,9 @@ type SessionState struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Status SessionStatus          `protobuf:"varint,1,opt,name=status,proto3,enum=remoteagent.v1.SessionStatus" json:"status,omitempty"`
 	// Popup title when blocked, exit reason when exited.
-	Detail        string `protobuf:"bytes,2,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail string `protobuf:"bytes,2,opt,name=detail,proto3" json:"detail,omitempty"`
+	// The stable terminal screen is asking whether to implement a plan.
+	PlanOpen      bool `protobuf:"varint,3,opt,name=plan_open,json=planOpen,proto3" json:"plan_open,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3022,6 +3024,13 @@ func (x *SessionState) GetDetail() string {
 		return x.Detail
 	}
 	return ""
+}
+
+func (x *SessionState) GetPlanOpen() bool {
+	if x != nil {
+		return x.PlanOpen
+	}
+	return false
 }
 
 // InputState tracks a message sent with Send. The text itself appears in
@@ -3301,10 +3310,11 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x10QuestionAnswered\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x128\n" +
-	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"]\n" +
+	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"z\n" +
 	"\fSessionState\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.remoteagent.v1.SessionStatusR\x06status\x12\x16\n" +
-	"\x06detail\x18\x02 \x01(\tR\x06detail\"\xdb\x01\n" +
+	"\x06detail\x18\x02 \x01(\tR\x06detail\x12\x1b\n" +
+	"\tplan_open\x18\x03 \x01(\bR\bplanOpen\"\xdb\x01\n" +
 	"\n" +
 	"InputState\x12\x1d\n" +
 	"\n" +

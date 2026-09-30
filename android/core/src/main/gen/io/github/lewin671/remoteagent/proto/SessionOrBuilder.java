@@ -372,4 +372,42 @@ public interface SessionOrBuilder extends
    * @return The fullAccessUnavailable.
    */
   boolean getFullAccessUnavailable();
+
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   * @return Whether the attentionSince field is set.
+   */
+  boolean hasAttentionSince();
+  /**
+   * <pre>
+   * Start of the currently displayed wait, not relay upload time.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp attention_since = 29 [json_name = "attentionSince"];</code>
+   * @return The attentionSince.
+   */
+  com.google.protobuf.Timestamp getAttentionSince();
+
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   * @return Whether the endedAt field is set.
+   */
+  boolean hasEndedAt();
+  /**
+   * <pre>
+   * Actual session exit time, rebuilt from the encrypted event log.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp ended_at = 30 [json_name = "endedAt"];</code>
+   * @return The endedAt.
+   */
+  com.google.protobuf.Timestamp getEndedAt();
 }

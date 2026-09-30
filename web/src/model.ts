@@ -25,6 +25,17 @@ export interface SessionLike {
   updatedMs: bigint;
 }
 
+// List positions use session lifecycle times, not relay upload times.
+const byID = (a: SessionLike, b: SessionLike) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+export const createdMs = (s: SessionLike) => s.info?.createdAt ? timestampMs(s.info.createdAt) : 0;
+export const endedMs = (s: SessionLike) => s.info?.endedAt ? timestampMs(s.info.endedAt) : createdMs(s);
+export const attentionMs = (s: SessionLike) => s.info?.attentionSince ? timestampMs(s.info.attentionSince) : createdMs(s);
+export const compareLive = (a: SessionLike, b: SessionLike) => createdMs(b) - createdMs(a) || byID(a, b);
+export const compareEnded = (a: SessionLike, b: SessionLike) => endedMs(b) - endedMs(a) || byID(a, b);
+export function compareAttention(a: SessionLike, b: SessionLike, machines: ReadonlyMap<string, MachineLike>): number {
+  return statePriority.indexOf(stateOf(a, machines.get(a.machineId)).kind) - statePriority.indexOf(stateOf(b, machines.get(b.machineId)).kind) || attentionMs(a) - attentionMs(b) || byID(a, b);
+}
+
 // --- agents ---
 
 /** The CLI a session runs; sessions from before Claude Code are Codex's. */
@@ -68,7 +79,7 @@ export function projectName(key: string): string {
 
 export function projects<S extends SessionLike>(sessions: Iterable<S>): Project<S>[] {
   const byKey = new Map<string, Project<S>>();
-  const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs));
+  const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b));
   for (const s of sorted) {
     const key = projectKey(s);
     let p = byKey.get(key);
@@ -80,7 +91,7 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>): Project<
     p.updatedMs = Math.max(p.updatedMs, Number(s.updatedMs));
     if (!p.machines.includes(s.machineId)) p.machines.push(s.machineId);
   }
-  return [...byKey.values()].sort((a, b) => b.updatedMs - a.updatedMs);
+  return [...byKey.values()].sort((a, b) => b.updatedMs - a.updatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 }
 
 export function machineName(m?: MachineLike): string {

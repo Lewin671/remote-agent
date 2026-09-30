@@ -217,7 +217,9 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v3](design/client-v3.html) 是新的界面目标（保留 v2 全部页面并补充 Android 终端字号行）；网页与 Android 当前实现仍以 v1 为基线，v2 设计稿不代表客户端已改完。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v4](design/client-v4.html) 是新的界面目标（保留 v3 全部页面并统一会话排序）；各端实现与验收进度见下文。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+
+**会话排序进度**（2026-09-30）：网页首页、宽屏侧栏、项目页与 Android 首页、项目页按 client-v4 统一排序；daemon 在加密会话摘要中提供日志重建的等待和退出时间。升级兼容规则见 [architecture.md 的会话列表排序](architecture.md#会话列表排序)。
 
 **Go 侧进度**（2026-09-30）：协议、server 和 daemon 已完成——会话图片（预览、显示版、按序上传、去重、降级）、从客户端发图（分块上传、逐张粘贴、阶段落盘、失败清理、重启恢复）、账户项目偏好和设备目录的存取与推送、指令签名和事件来源。在隔离的 server、daemon 和 tmux 上用真实 CLI 验过（Codex 0.159.0 GPT-6-Luna low，Claude Code 2.1.285 haiku，测试客户端是 `internal/remoteclient`）：两个 CLI 各新建一个第一条消息带图的会话；Codex 空闲时发两张图、Claude Code 运行中发两张图；3.8 MB 和 4.3 MB 的图显示版都在 1 MiB 以内；11.6 MB 带 GPS 的原图在两个 CLI 的记录里都没有 EXIF；电脑终端里显示 `[Image #N]`，模型都读出了图里的字；Codex 的 `view_image`、生成图，Claude Code 的 `Read`，以及两个 CLI 在终端本地粘贴的图都带预览和大图；第二张图丢失时不提交并清空输入框；粘贴中途杀掉 daemon，重启后清空并记为失败；注入期间本地敲的键在提交后出现在新输入框里；18.9 MB 的 rollout 行照常解析；server 数据库和 WAL 里没有正文、路径和图片明文。客户端的显示和发送在各自的进度里验收。
 

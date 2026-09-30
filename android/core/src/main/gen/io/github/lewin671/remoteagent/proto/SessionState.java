@@ -127,6 +127,44 @@ public  final class SessionState extends
 
   }
 
+  public static final int PLAN_OPEN_FIELD_NUMBER = 3;
+  private boolean planOpen_;
+  /**
+   * <pre>
+   * The stable terminal screen is asking whether to implement a plan.
+   * </pre>
+   *
+   * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+   * @return The planOpen.
+   */
+  @java.lang.Override
+  public boolean getPlanOpen() {
+    return planOpen_;
+  }
+  /**
+   * <pre>
+   * The stable terminal screen is asking whether to implement a plan.
+   * </pre>
+   *
+   * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+   * @param value The planOpen to set.
+   */
+  private void setPlanOpen(boolean value) {
+
+    planOpen_ = value;
+  }
+  /**
+   * <pre>
+   * The stable terminal screen is asking whether to implement a plan.
+   * </pre>
+   *
+   * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+   */
+  private void clearPlanOpen() {
+
+    planOpen_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.SessionState parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -339,6 +377,46 @@ public  final class SessionState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The stable terminal screen is asking whether to implement a plan.
+     * </pre>
+     *
+     * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+     * @return The planOpen.
+     */
+    @java.lang.Override
+    public boolean getPlanOpen() {
+      return instance.getPlanOpen();
+    }
+    /**
+     * <pre>
+     * The stable terminal screen is asking whether to implement a plan.
+     * </pre>
+     *
+     * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+     * @param value The planOpen to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPlanOpen(boolean value) {
+      copyOnWrite();
+      instance.setPlanOpen(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The stable terminal screen is asking whether to implement a plan.
+     * </pre>
+     *
+     * <code>bool plan_open = 3 [json_name = "planOpen"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPlanOpen() {
+      copyOnWrite();
+      instance.clearPlanOpen();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.SessionState)
   }
   @java.lang.Override
@@ -357,10 +435,11 @@ public  final class SessionState extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "status_",
             "detail_",
+            "planOpen_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

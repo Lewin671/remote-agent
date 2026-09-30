@@ -40,7 +40,7 @@ fun machineAgents(m: MachineView?): List<Agent> {
 data class Project(
     val key: String,
     val name: String,
-    /** Most recent first. */
+    /** Recent activity first, used for new-session defaults. UI lists sort separately. */
     val sessions: List<SessionView>,
     val updatedMs: Long,
     val paths: List<String>,
@@ -57,7 +57,7 @@ fun projects(state: RemoteState): List<Project> {
     val byKey = LinkedHashMap<String, MutableList<SessionView>>()
     for (s in state.sessions.values) byKey.getOrPut(projectKey(s)) { mutableListOf() } += s
     return byKey.map { (key, list) ->
-        val sorted = list.sortedByDescending { it.updatedMs }
+        val sorted = list.sortedWith(compareByDescending<SessionView> { it.updatedMs }.thenBy { it.id })
         Project(
             key = key,
             name = projectName(key),
@@ -66,7 +66,7 @@ fun projects(state: RemoteState): List<Project> {
             paths = sorted.mapNotNull { it.info?.cwd?.takeIf { c -> c.isNotEmpty() } }.distinct(),
             machines = sorted.map { machineName(state.machines[it.machineId], it.machineId) }.distinct(),
         )
-    }.sortedByDescending { it.updatedMs }
+    }.sortedWith(compareByDescending<Project> { it.updatedMs }.thenBy { it.key })
 }
 
 /**
@@ -104,6 +104,19 @@ fun avatarIndex(key: String): Int {
     for (c in key) h = (h * 31 + c.code) and 0xffffffffL
     return (h % 4).toInt()
 }
+
+// Missing lifecycle timestamps from old daemons fall back to creation time;
+// incomplete metadata uses zero, never the changing relay timestamp.
+fun createdMs(s: SessionView): Long = s.info?.takeIf { it.hasCreatedAt() }?.createdAt?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: 0
+fun endedMs(s: SessionView): Long = s.info?.takeIf { it.hasEndedAt() }?.endedAt?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: createdMs(s)
+fun attentionMs(s: SessionView): Long = s.info?.takeIf { it.hasAttentionSince() }?.attentionSince?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: createdMs(s)
+val liveOrder: Comparator<SessionView> = compareByDescending<SessionView> { createdMs(it) }.thenBy { it.id }
+val endedOrder: Comparator<SessionView> = compareByDescending<SessionView> { endedMs(it) }.thenBy { it.id }
+val sessionOrder: Comparator<SessionView> = Comparator { a, b ->
+    val group = exited(a).compareTo(exited(b))
+    if (group != 0) group else if (exited(a)) endedOrder.compare(a, b) else liveOrder.compare(a, b)
+}
+fun attentionOrder(state: RemoteState): Comparator<SessionView> = compareBy<SessionView> { statusOf(it, state.machines[it.machineId]).ordinal }.thenBy { attentionMs(it) }.thenBy { it.id }
 
 // --- sessions ---
 

@@ -4,6 +4,10 @@
 import { useState } from "react";
 import {
   agentOf,
+  compareAttention,
+  compareLive,
+  compareEnded,
+  endedMs,
   ago,
   askTitle,
   derive,
@@ -17,7 +21,6 @@ import {
   projects,
   shortPath,
   stateOf,
-  statePriority,
   titleOf,
   when,
   type Project,
@@ -33,17 +36,16 @@ export type { Go };
 
 /** Sessions waiting for the user, oldest wait first. */
 export function todoList(remote: Remote): SessionView[] {
-  const rank = (s: SessionView) => statePriority.indexOf(stateOf(s, remote.machines.get(s.machineId)).kind);
   return [...remote.sessions.values()]
     .filter((s) => needsAttention(s, remote.machines.get(s.machineId)))
-    .sort((a, b) => rank(a) - rank(b) || Number(a.updatedMs - b.updatedMs));
+    .sort((a, b) => compareAttention(a, b, remote.machines));
 }
 
 /** Live sessions: not ended, and not already under 需要处理. */
 function liveList(remote: Remote): SessionView[] {
   return [...remote.sessions.values()]
     .filter((s) => !exited(s) && !needsAttention(s, remote.machines.get(s.machineId)))
-    .sort((a, b) => Number(b.updatedMs - a.updatedMs));
+    .sort((a, b) => compareLive(a, b));
 }
 
 /** A session waiting for the user. Command approvals are handled right
@@ -142,7 +144,7 @@ export function SessionRow({
       <div className="sm">
         <div className="row1">
           <b>{titleOf(s)}</b>
-          <span>{when(s.updatedMs)}</span>
+          <span>{when(ended ? BigInt(endedMs(s)) : s.updatedMs)}</span>
         </div>
         {!compact && <div className="pv">{previewOf(s, st, pending)}</div>}
         <div className="mc">
@@ -325,7 +327,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
   const groups = useProjectGroups(remote);
   const projectRow = (p: Project<SessionView>, pinned: boolean) => {
     const n = p.sessions.filter((s) => !exited(s)).length;
-    const ended = p.sessions.filter(exited);
+    const ended = p.sessions.filter(exited).sort(compareEnded);
     const isOpen = open.has(p.key);
     return (
       <div key={p.key}>
@@ -357,7 +359,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
             {ended.slice(0, 2).map((s) => (
               <button key={s.id} className={"sub-sess" + (s.id === selected ? " sel" : "")} onClick={() => go("s/" + s.id)}>
                 <span>{titleOf(s)}</span>
-                <span>{ago(s.updatedMs)}</span>
+                <span>{ago(endedMs(s))}</span>
               </button>
             ))}
             <button className="sub-sess link" onClick={() => go("p/" + encodeURIComponent(p.key))}>

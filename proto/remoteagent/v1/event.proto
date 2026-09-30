@@ -443,6 +443,8 @@ message SessionState {
   SessionStatus status = 1;
   // Popup title when blocked, exit reason when exited.
   string detail = 2;
+  // The stable terminal screen is asking whether to implement a plan.
+  bool plan_open = 3;
 }
 
 enum InputStatus {

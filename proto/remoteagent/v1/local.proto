@@ -95,6 +95,10 @@ message Session {
   // FULL_ACCESS cannot be switched to: Claude Code only offers bypass to
   // sessions started with it allowed. Always false for Codex.
   bool full_access_unavailable = 28;
+  // Start of the currently displayed wait, not relay upload time.
+  google.protobuf.Timestamp attention_since = 29;
+  // Actual session exit time, rebuilt from the encrypted event log.
+  google.protobuf.Timestamp ended_at = 30;
 }
 
 message CreateSessionRequest {
