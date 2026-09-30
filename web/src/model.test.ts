@@ -441,16 +441,16 @@ describe("events", () => {
     expect([...d.terminalChanges.entries()]).toEqual([[3n, "模型切到了 gpt-6-luna · low"]]);
   });
 
-  it("does not take a mode-only context's old model for a terminal switch", () => {
+  it("notes nothing when a mode-only context carries the switched model", () => {
+    // Since e54e35f the daemon's contexts after a model switch from here
+    // carry the new model, a mode-only one included.
     const ctx = (permissionMode: string, model: string) => ({ case: "turnContext", value: { permissionMode, model } });
     const d = derive(
       events(
         ctx("default", "claude-haiku-4-5-20251001"),
         { case: "settingsChanged", value: { model: "sonnet", effort: "medium" } },
-        // The mode changed before the next reply; the context still names
-        // the model it had.
-        ctx("acceptEdits", "claude-haiku-4-5-20251001"),
-        ctx("acceptEdits", "claude-sonnet-5-5"), // the switch, confirmed
+        ctx("acceptEdits", "claude-sonnet-5-5"), // mode changed before the next reply
+        ctx("acceptEdits", "claude-sonnet-5-5"),
         ctx("acceptEdits", "claude-opus-5-5"), // then changed at the computer
       ),
       Agent.CLAUDE,
@@ -458,6 +458,22 @@ describe("events", () => {
     expect([...d.terminalChanges.entries()]).toEqual([
       [3n, "模式切到了 acceptEdits"],
       [5n, "模型切到了 claude-opus-5-5"],
+    ]);
+  });
+
+  it("notes a switch back made in the terminal after a switch from here", () => {
+    const ctx = (model: string) => ({ case: "turnContext", value: { approvalsReviewer: "user", approvalPolicy: "on-request", model, effort: "medium" } });
+    const d = derive(
+      events(
+        ctx("gpt-6-astra"),
+        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "medium" } },
+        ctx("gpt-6-astra"), // switched back at the computer before the next turn
+        ctx("gpt-6-sol"), // and to Sol again there
+      ),
+    );
+    expect([...d.terminalChanges.entries()]).toEqual([
+      [3n, "模型切到了 gpt-6-astra · medium"],
+      [4n, "模型切到了 gpt-6-sol · medium"],
     ]);
   });
 

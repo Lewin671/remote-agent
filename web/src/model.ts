@@ -440,8 +440,6 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
   // The model and effort last switched to from here, until a context shows
   // a model.
   let expected: { model: string; effort: string } | undefined;
-  // The model the latest context named.
-  let lastModel = "";
   const queuedAt = new Map<string, bigint>();
   // A plan was proposed since entering plan mode: leaving it is the plan's
   // answer, however given, not a mode switch made in the terminal.
@@ -547,15 +545,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         // screen; it says nothing about the model.
         // After a switch from here, the next context is compared with what
         // was chosen; a different model means the terminal changed it since.
-        // A context that repeats the previous context's model while a
-        // switch from here is unconfirmed carries that field over (Claude
-        // Code's mode, read off the screen, may come with the old model);
-        // it is not a sighting of the model and settles nothing.
-        const inherited = !!expected && c.model === lastModel && !modelIs(c.model, expected.model);
         const changed = expected ? !(modelIs(c.model, expected.model) && (!expected.effort || !c.effort || c.effort === expected.effort)) : mm !== model;
-        if ((model || expected) && c.model && changed && !planning && !inherited) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
-        if (c.model && !planning && !inherited) expected = undefined;
-        if (c.model) lastModel = c.model;
+        if ((model || expected) && c.model && changed && !planning) changes.push(`模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`);
+        if (c.model && !planning) expected = undefined;
         if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
         if (m) mode = m;
         if (!planning && c.model) model = mm;
