@@ -1,8 +1,10 @@
 package codex
 
 import (
-	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"fmt"
 	"testing"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // Every started call ends with a ToolCall of the same ID: from the item
@@ -59,5 +61,57 @@ func TestYieldedExecAtTurnEnd(t *testing.T) {
 	evs, _ := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"task_complete","turn_id":"t"}}`))
 	if len(evs) != 2 || evs[0].GetToolCall().GetBackground() != pb.ToolBackground_TOOL_BACKGROUND_STILL_RUNNING || evs[0].GetToolCall().CallId != "c1" {
 		t.Fatalf("events %v", evs)
+	}
+}
+
+// Notifications precede a yielded cell and its eventual result. They must
+// neither finish the call nor prevent a wait from continuing the same call.
+func TestExecNotificationsDoNotFinishCall(t *testing.T) {
+	for _, replay := range []bool{false, true} {
+		t.Run(fmt.Sprintf("replay=%v", replay), func(t *testing.T) {
+			p := NewParser()
+			feed := func(line string) []*pb.Event {
+				t.Helper()
+				evs, err := p.Parse([]byte(line))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return evs
+			}
+			starts := feed(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"notify(123); await slowTool()"}}`)
+			if replay {
+				p = NewParser()
+				p.Replay(starts[0])
+			}
+			for _, text := range []string{"123", ""} {
+				evs := feed(fmt.Sprintf(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":%q}}`, text))
+				if len(evs) != 0 || p.calls["c1"] == nil {
+					t.Fatalf("notification ended call: %v", evs)
+				}
+			}
+			feed(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 7"}}`)
+			evs := feed(`{"type":"response_item","payload":{"type":"function_call","name":"wait","call_id":"w1","arguments":"{\"cell_id\":\"7\"}"}}`)
+			if len(evs) != 0 {
+				t.Fatalf("wait became a new call: %v", evs)
+			}
+			evs = feed(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"w1","output":"progress"}}`)
+			if len(evs) != 0 || p.calls["c1"] == nil {
+				t.Fatal("wait notification ended call")
+			}
+			// A later output on the same wait still belongs to the original exec.
+			evs = feed(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"w1","output":"Script completed\nOutput:\nDone"}}`)
+			if len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" || evs[0].GetToolCall().GetStatus() != "completed" {
+				t.Fatalf("completion %v", evs)
+			}
+		})
+	}
+}
+
+func TestPlainFunctionResultFinishesCall(t *testing.T) {
+	p := NewParser()
+	p.Parse([]byte(`{"type":"response_item","payload":{"type":"function_call","name":"sleep","call_id":"c1","arguments":"{}"}}`))
+	evs, err := p.Parse([]byte(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"Slept"}}`))
+	if err != nil || len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" {
+		t.Fatalf("events %v, err %v", evs, err)
 	}
 }

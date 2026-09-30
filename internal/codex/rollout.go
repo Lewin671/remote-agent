@@ -45,6 +45,8 @@ type Parser struct {
 // openCall is a tool call between its start and its output.
 type openCall struct {
 	title string
+	// exec outputs may be notifications before the final Script banner.
+	exec bool
 	// reported: a ToolCall with this call's ID went out.
 	reported bool
 	items    int
@@ -82,7 +84,7 @@ func (p *Parser) Replay(e *pb.Event) {
 		p.generated[g.CallId] = true
 	}
 	if t := e.GetToolStarted(); t != nil && t.CallId != "" {
-		p.calls[t.CallId] = &openCall{title: t.Title}
+		p.calls[t.CallId] = &openCall{title: t.Title, exec: t.ItemType == "exec"}
 		p.current = t.CallId
 	}
 	if c := e.GetToolCall(); c != nil {
@@ -867,9 +869,9 @@ func (p *Parser) startCall(callID, name, input string) []*pb.Event {
 			return nil
 		}
 	}
-	p.calls[callID] = &openCall{title: toolTitle(name, input)}
+	p.calls[callID] = &openCall{title: toolTitle(name, input), exec: name == "exec"}
 	p.current = callID
-	return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: p.calls[callID].title, CallId: callID}}})
+	return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: p.calls[callID].title, CallId: callID, ItemType: name}}})
 }
 
 // claim gives a tool call reported by an item the ID of the call running
@@ -896,7 +898,6 @@ func (p *Parser) claim(tc *pb.ToolCall) {
 func (p *Parser) callOutput(callID string, raw json.RawMessage) []*pb.Event {
 	target := callID
 	if t, ok := p.waits[callID]; ok {
-		delete(p.waits, callID)
 		target = t
 	}
 	text := outputText(raw)
@@ -904,8 +905,20 @@ func (p *Parser) callOutput(callID string, raw json.RawMessage) []*pb.Event {
 		p.cells[m[1]] = target
 		return nil
 	}
-	evs := p.toolOutputImages(target, raw)
 	oc := p.calls[target]
+	if oc != nil && oc.exec && !strings.HasPrefix(text, "Script completed") && !strings.HasPrefix(text, "Script failed") {
+		// notify()/yield_control() produce extra output records, not an end.
+		// Images remain visible, but cannot close the outer exec either.
+		evs := p.toolOutputImages(target, raw)
+		for _, e := range evs {
+			if tc := e.GetToolCall(); tc != nil {
+				oc.items++
+				tc.CallId = target + "#output" + strconv.Itoa(oc.items)
+			}
+		}
+		return evs
+	}
+	evs := p.toolOutputImages(target, raw)
 	for _, e := range evs {
 		if tc := e.GetToolCall(); tc != nil && oc != nil {
 			p.current = target
@@ -921,6 +934,11 @@ func (p *Parser) callOutput(callID string, raw json.RawMessage) []*pb.Event {
 		evs = append(evs, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
 	}
 	delete(p.calls, target)
+	for wait, c := range p.waits {
+		if c == target {
+			delete(p.waits, wait)
+		}
+	}
 	for cell, c := range p.cells {
 		if c == target {
 			delete(p.cells, cell)
