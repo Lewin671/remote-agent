@@ -40,6 +40,9 @@ export class Tray {
   original = false;
   note = "";
   machineId = "";
+  // Called when images are first chosen, as typing the first letter is: a
+  // new session's draft then holds its project and settings.
+  onAdd?: () => void;
   // Each change of what an item should be starts a new generation; results
   // of an older one are dropped.
   private gen = new Map<string, number>();
@@ -55,6 +58,7 @@ export class Tray {
   add(files: Blob[]) {
     const room = Math.max(0, this.max - this.items.length);
     const taken = files.slice(0, room);
+    if (taken.length) this.onAdd?.();
     const left = files.length - taken.length;
     this.note = left > 0 ? `一条消息最多 ${this.max} 张，多选的 ${left} 张没有加入` : "";
     for (const file of taken) {

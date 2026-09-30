@@ -300,6 +300,10 @@ export function NewBox({
     start: "描述任务，⌘/Ctrl+Enter 开始",
   }[variant];
   const tray = ns.tray;
+  tray.onAdd = () => {
+    ns.latch();
+    onDraft?.();
+  };
   const images = tray.items.length;
   const disabled = cannot || (ns.expired && !ns.changes(text)) || (images ? !tray.ready() : !text.trim());
   const [toast, setToast] = useState("");

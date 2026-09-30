@@ -1374,3 +1374,42 @@ describe("a failed message with images (review B6)", () => {
     expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
   });
 });
+
+describe("an image-only new-session draft (review B8)", () => {
+  const pick = () =>
+    act(async () => {
+      const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
+      Object.defineProperty(input, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  const stub = (r: DemoRemote) => {
+    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    r.uploadImage = async () => "id-a";
+  };
+  const bump = (r: DemoRemote, sid: string) =>
+    act(() => {
+      r.sessions.get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
+      r.touch();
+    });
+
+  it("keeps its launch settings once an image is chosen", async () => {
+    const r = demo();
+    stub(r);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    await pick();
+    bump(r, "s-claude");
+    expect(host.querySelector(".newbox .cli-pick")!.textContent).not.toContain("Claude Code");
+  });
+
+  it("keeps its project on the wide home once an image is chosen", async () => {
+    const r = demo();
+    stub(r);
+    mount(<WideHome remote={r} go={() => undefined} />);
+    await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
+    const before = host.querySelector(".wide-project-tools .chip")!.textContent;
+    await pick();
+    bump(r, "s-plan");
+    expect(host.querySelector(".wide-project-tools .chip")!.textContent).toBe(before);
+    expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
+  });
+});
