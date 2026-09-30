@@ -854,3 +854,20 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
     expect(refusedForFullAccess(new CommandError("unknown", "full access"))).toBe(false);
   });
 });
+
+describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
+  const started = (callId: string, title: string) => ({ case: "toolStarted", value: { title, callId, kind: ToolKind.COMMAND } });
+  const call = (callId: string, title: string, extra: object = {}) => ({ case: "toolCall", value: { title, callId, kind: ToolKind.COMMAND, status: "completed", exitCode: 0, ...extra } });
+  const shape = (list: Event[]) =>
+    timeline(list, derive(list, Agent.CODEX)).map((i) => (i.kind === "event" ? (i.event.kind.case === "toolCall" ? "call:" + i.event.kind.value.callId : i.event.kind.case) : i.kind === "tools" ? "tools" + i.calls.length : i.kind + ":" + ("tool" in i ? i.tool.callId : "call" in i ? i.call.callId : "")));
+
+  it("pairs by call ID and takes a #2 continuation as a result of its own, not an orphan", () => {
+    const list = events({ case: "turnStarted", value: {} }, started("c1", "go test"), started("c2", "go vet"), call("c2", "go vet"), call("c1", "go test"), call("c1#2", "go test"));
+    const d = derive(list, Agent.CODEX);
+    expect(d.tools).toEqual([]);
+    expect(shape(list)).toEqual(["tools3"]);
+    const ended = derive(events(...list.map((e) => e.kind), { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } }), Agent.CODEX);
+    expect(ended.unsettled).toEqual([]);
+  });
+
+});
