@@ -23,6 +23,7 @@ dependencies {
     api(libs.okhttp)
     api(libs.coroutines.core)
     implementation(libs.bouncycastle)
+    implementation(libs.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
@@ -44,6 +45,7 @@ tasks.test {
     systemProperty("raServer", testServer.absolutePath)
     // The test vectors are shared with Go and TypeScript.
     systemProperty("vectors", rootProject.file("../internal/e2e/testdata/vectors.json").absolutePath)
+    systemProperty("inputDigests", rootProject.file("../internal/agent/testdata/digest-vectors.json").absolutePath)
     systemProperty("kotlinVectors", rootProject.file("../internal/e2e/testdata/kotlin-vectors.json").absolutePath)
     // ./gradlew :core:test -PupdateVectors rewrites kotlin-vectors.json.
     if (project.hasProperty("updateVectors")) systemProperty("updateVectors", "1")

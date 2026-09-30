@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.derive
+import io.github.lewin671.remoteagent.core.inputDigest
+import io.github.lewin671.remoteagent.proto.ApprovalDecision
+import io.github.lewin671.remoteagent.proto.ApprovalRequested
+import io.github.lewin671.remoteagent.proto.ApprovalResolved
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.SettingsChanged
@@ -64,23 +68,72 @@ class ChatTest {
         assertEquals("4 分 12 秒 · 100 tokens", (items[4] as ChatItem.TurnEnd).text)
     }
 
+    private fun req(id: String, tool: String, input: String, command: String = "") =
+        Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId(id).setToolName(tool).setToolInputJson(input).setCommand(command))
+
+    private fun resolved(id: String, d: ApprovalDecision, message: String = "") =
+        Event.newBuilder().setApprovalResolved(ApprovalResolved.newBuilder().setApprovalId(id).setDecision(d).setMessage(message))
+
+    private fun call(tool: String, input: String, kind: ToolKind, title: String, digest: Boolean = true) =
+        Event.newBuilder().setToolCall(
+            ToolCall.newBuilder().setItemType(tool).setKind(kind).setTitle(title)
+                .setInputDigest(if (digest) inputDigest(tool, input) else ""),
+        )
+
     @Test
-    fun showsAnApprovedCallOnceWithItsDecision() {
+    fun keepsTheApprovalLineWithoutADigest() {
+        // Codex: no digests, so the approval stays a line where it was asked.
         val events = listOf(
-            ev(1, Event.newBuilder().setApprovalRequested(io.github.lewin671.remoteagent.proto.ApprovalRequested.newBuilder().setApprovalId("a").setToolName("Write"))),
-            ev(2, Event.newBuilder().setApprovalResolved(io.github.lewin671.remoteagent.proto.ApprovalResolved.newBuilder().setApprovalId("a").setDecision(io.github.lewin671.remoteagent.proto.ApprovalDecision.APPROVAL_DECISION_ALLOW))),
-            ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setTitle("/private/tmp/w/CONTRIBUTING.md"))),
-            ev(4, Event.newBuilder().setApprovalRequested(io.github.lewin671.remoteagent.proto.ApprovalRequested.newBuilder().setApprovalId("b").setCommand("curl x"))),
-            ev(5, Event.newBuilder().setApprovalResolved(io.github.lewin671.remoteagent.proto.ApprovalResolved.newBuilder().setApprovalId("b").setDecision(io.github.lewin671.remoteagent.proto.ApprovalDecision.APPROVAL_DECISION_DENY))),
-            ev(6, Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("ok"))),
+            ev(1, req("a", "shell", "", command = "curl /Users/me/x")),
+            ev(2, resolved("a", ApprovalDecision.APPROVAL_DECISION_ALLOW)),
+            ev(3, call("shell", "", ToolKind.TOOL_KIND_COMMAND, "curl /Users/me/x", digest = false)),
+        )
+        val items = buildChat(events, derive(events), "MacBook", "/tmp/w", "/Users/me")
+        assertEquals("curl ~/x  已允许", (items[0] as ChatItem.Note).text)
+        assertEquals("", (items[1] as ChatItem.Tool).decision)
+    }
+
+    @Test
+    fun putsDecisionsOnTheirOwnCallsWhenRunInParallel() {
+        val a = """{"file_path":"/tmp/w/a.txt","content":"a"}"""
+        val b = """{"file_path":"/tmp/w/b.txt","content":"b"}"""
+        // Both asked and decided before either result; b's result comes first.
+        val events = listOf(
+            ev(1, req("A", "Write", a)),
+            ev(2, req("B", "Write", b)),
+            ev(3, resolved("A", ApprovalDecision.APPROVAL_DECISION_ALLOW)),
+            ev(4, resolved("B", ApprovalDecision.APPROVAL_DECISION_DENY, "不行")),
+            ev(5, call("Write", b, ToolKind.TOOL_KIND_FILE_CHANGE, "/tmp/w/b.txt")),
+            ev(6, call("Write", a, ToolKind.TOOL_KIND_FILE_CHANGE, "/tmp/w/a.txt")),
         )
         val items = buildChat(events, derive(events), "MacBook", "/tmp/w")
-        val tool = items[0] as ChatItem.Tool
-        assertEquals("已允许", tool.decision)
-        assertEquals("编辑 CONTRIBUTING.md", toolTitle(tool.call, "/tmp/w"))
-        // A denial with no call after it stays a line of its own.
-        assertEquals("curl x  已拒绝", (items[1] as ChatItem.Note).text)
-        assertEquals(3, items.size)
+        assertEquals(2, items.size)
+        val first = items[0] as ChatItem.Tool
+        val second = items[1] as ChatItem.Tool
+        assertEquals("编辑 b.txt", toolTitle(first.call, "/tmp/w"))
+        assertEquals("已拒绝：不行" to false, first.decision to first.decisionOk)
+        assertEquals("编辑 a.txt", toolTitle(second.call, "/tmp/w"))
+        assertEquals("已允许" to true, second.decision to second.decisionOk)
+    }
+
+    @Test
+    fun keepsLinesWhenCallsCannotBeToldApart() {
+        val x = """{"command":"ls"}"""
+        // The same input asked twice: no certain match, so both stay lines.
+        val events = listOf(
+            ev(1, req("A", "Bash", x, command = "ls")),
+            ev(2, resolved("A", ApprovalDecision.APPROVAL_DECISION_ALLOW)),
+            ev(3, req("B", "Bash", x, command = "ls")),
+            ev(4, resolved("B", ApprovalDecision.APPROVAL_DECISION_ALLOW)),
+            ev(5, call("Bash", x, ToolKind.TOOL_KIND_COMMAND, "ls")),
+            ev(6, call("Bash", x, ToolKind.TOOL_KIND_COMMAND, "ls")),
+        )
+        val items = buildChat(events, derive(events), "MacBook")
+        assertEquals(listOf("ls  已允许", "ls  已允许"), items.filterIsInstance<ChatItem.Note>().map { it.text })
+        assertEquals(2, (items.last() as ChatItem.Tools).calls.size)
+        // A call before the request is not its call either.
+        val early = listOf(ev(1, call("Bash", x, ToolKind.TOOL_KIND_COMMAND, "ls")), ev(2, req("A", "Bash", x, command = "ls")), ev(3, resolved("A", ApprovalDecision.APPROVAL_DECISION_ALLOW)))
+        assertEquals(1, buildChat(early, derive(early), "M").filterIsInstance<ChatItem.Note>().size)
     }
 
     @Test

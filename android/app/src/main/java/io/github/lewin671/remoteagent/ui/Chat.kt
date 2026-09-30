@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Derived
+import io.github.lewin671.remoteagent.core.inputDigest
 import io.github.lewin671.remoteagent.core.shortenPaths
 import io.github.lewin671.remoteagent.core.dateTime
 import io.github.lewin671.remoteagent.core.decisionText
@@ -73,20 +74,63 @@ fun toolsSummary(calls: List<ToolCall>): String = when {
     else -> "完成了 ${calls.size} 个工具调用"
 }
 
+/** Canceled, or answered in the CLI's own prompt: the call that follows shows what happened. */
+private fun recorded(d: ApprovalDecision) =
+    d != ApprovalDecision.APPROVAL_DECISION_CANCELED && d != ApprovalDecision.APPROVAL_DECISION_TERMINAL
+
+private fun decisionLine(d: ApprovalDecision, message: String) = decisionText(d) + if (message.isNotEmpty()) "：$message" else ""
+
+/** Decisions to show on their tool calls (by the call's seq), and the approvals they came from. */
+class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged: Set<String>)
+
+/**
+ * Which decided approvals are shown on their tool call instead of a line
+ * of their own, exactly as approvalsOnCalls in web/src/model.ts: the call's
+ * input_digest equals the digest of the request's input (inputDigest, as
+ * the daemon computes it) for the same tool, exactly one decided request
+ * and exactly one call share it, and the call comes after the request.
+ * Codex and older events have no digest and keep their own line; so do
+ * parallel or repeated calls that cannot be told apart.
+ */
+fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {
+    val reqs = LinkedHashMap<String, MutableList<Pair<String, Long>>>()
+    val calls = HashMap<String, MutableList<Long>>()
+    for (e in events) when (e.kindCase) {
+        Event.KindCase.APPROVAL_REQUESTED -> {
+            val a = e.approvalRequested
+            if (a.approvalId !in d.resolved) continue
+            val digest = inputDigest(a.toolName, a.toolInputJson)
+            if (digest.isEmpty()) continue
+            reqs.getOrPut(a.toolName + "\u0000" + digest) { mutableListOf() } += a.approvalId to e.seq
+        }
+        Event.KindCase.TOOL_CALL -> {
+            val t = e.toolCall
+            if (t.inputDigest.isNotEmpty()) calls.getOrPut(t.itemType + "\u0000" + t.inputDigest) { mutableListOf() } += e.seq
+        }
+        else -> {}
+    }
+    val onCall = HashMap<Long, Pair<String, Boolean>>()
+    val merged = HashSet<String>()
+    for ((key, rs) in reqs) {
+        val cs = calls[key].orEmpty()
+        if (rs.size != 1 || cs.size != 1 || cs[0] < rs[0].second) continue
+        val (decision, message) = d.resolved.getValue(rs[0].first)
+        onCall[cs[0]] = decisionLine(decision, message) to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
+        merged += rs[0].first
+    }
+    return ApprovalDecisions(onCall, merged)
+}
+
 /**
  * The chat's rows. Runs of two or more completed tool calls fold into one
- * line. An approval is not a row of its own when the call it allowed or
- * denied follows: that call carries the decision, so one call shows once.
+ * line. A decided approval is a line where it was asked, unless
+ * approvalDecisions ties it to its call, which then carries the decision.
  */
 fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = ""): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
     var runKey = ""
-    val requested = HashMap<String, String>()
-    // A decided approval waiting for the call it was about.
-    var decided: ChatItem.Note? = null
-    var decidedOk = true
-    var decidedText = ""
+    val decisions = approvalDecisions(events, d)
     var turnTokens = 0L
     var lastTotal = 0L
     var lastPct: Int? = null
@@ -100,21 +144,17 @@ fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""
         }
         run.clear()
     }
-    fun flush() {
-        flushRun()
-        decided?.let { out += it }
-        decided = null
-    }
+    fun flush() = flushRun()
     for (e in events) {
         val k = "e${e.seq}"
         when (e.kindCase) {
             Event.KindCase.TOOL_CALL -> {
                 val t = e.toolCall
-                val note = decided
-                if (note != null) {
+                val decided = decisions.onCall[e.seq]
+                if (decided != null) {
+                    // Kept out of a fold so that its decision stays in sight.
                     flushRun()
-                    out += ChatItem.Tool(k, t, decidedText, decidedOk)
-                    decided = null
+                    out += ChatItem.Tool(k, t, decided.first, decided.second)
                 } else if (toolOk(t)) {
                     if (run.isEmpty()) runKey = k
                     run += t
@@ -135,18 +175,16 @@ fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""
                 flush()
                 out += ChatItem.Thought(k, e.reasoning.text)
             }
-            Event.KindCase.APPROVAL_REQUESTED -> requested[e.approvalRequested.approvalId] =
-                e.approvalRequested.command.ifEmpty { e.approvalRequested.toolName.ifEmpty { e.approvalRequested.description } }
-            Event.KindCase.APPROVAL_RESOLVED -> {
-                val r = e.approvalResolved
-                // Canceled, or answered in the CLI's own prompt: the call that
-                // follows shows what happened.
-                if (r.decision == ApprovalDecision.APPROVAL_DECISION_CANCELED || r.decision == ApprovalDecision.APPROVAL_DECISION_TERMINAL) continue
+            Event.KindCase.APPROVAL_REQUESTED -> {
+                // A decided request is a line where it was asked, unless its
+                // call carries the decision instead.
+                val a = e.approvalRequested
+                val r = d.resolved[a.approvalId] ?: continue
+                if (a.approvalId in decisions.merged || !recorded(r.first)) continue
                 flush()
-                val ok = r.decision == ApprovalDecision.APPROVAL_DECISION_ALLOW
-                decidedOk = ok
-                decidedText = decisionText(r.decision) + if (r.message.isNotEmpty()) "：" + r.message else ""
-                decided = ChatItem.Note(k, listOf(shortenPaths(requested[r.approvalId].orEmpty(), cwd, home), decidedText).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
+                val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW
+                val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
+                out += ChatItem.Note(k, listOf(what, decisionLine(r.first, r.second)).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
