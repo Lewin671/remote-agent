@@ -101,31 +101,71 @@ fun jpegOrientation(b: ByteArray): Int {
     return 1
 }
 
+/** Whether an application or comment segment is kept: JFIF, the color profile and Adobe's color transform. */
+private fun keepJpegSegment(b: ByteArray, marker: Int, start: Int, end: Int): Boolean = when (marker) {
+    0xE0 -> String(b, start + 4, minOf(5, end - start - 4), Charsets.ISO_8859_1).startsWith("JFIF")
+    0xE2 -> String(b, start + 4, minOf(12, end - start - 4), Charsets.ISO_8859_1).startsWith("ICC_PROFILE")
+    0xEE -> true
+    0xFE -> false
+    in 0xE1..0xEF -> false
+    else -> true
+}
+
 /**
  * A JPEG without its metadata: Exif and XMP (APP1), IPTC (APP13), comments
- * and the other application segments go; JFIF (APP0), the color profile
- * (APP2 ICC_PROFILE) and Adobe's color transform (APP14) stay, since the
- * picture depends on them. The image data is not touched. Take the
- * orientation into account first: without Exif the picture shows as
- * stored.
+ * and the other application segments go wherever they are, before the
+ * first scan, between the scans of a progressive JPEG or right before the
+ * end; JFIF (APP0), the color profile (APP2 ICC_PROFILE) and Adobe's color
+ * transform (APP14) stay, since the picture depends on them. Only the
+ * entropy-coded data of each scan is copied without being parsed, up to the
+ * next marker; anything after the end marker goes. Take the orientation
+ * into account first: without Exif the picture shows as stored.
  */
 fun stripJpeg(b: ByteArray): ByteArray {
-    val (segs, sos) = jpegSegments(b) ?: throw IllegalArgumentException("不是能读的 JPEG")
+    fun bad(): Nothing = throw IllegalArgumentException("不是能读的 JPEG")
+    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_JPEG) bad()
     val out = ByteArrayOutputStream(b.size)
     out.write(b, 0, 2)
-    for (s in segs) {
-        val keep = when (s.marker) {
-            0xE0 -> String(b, s.start + 4, minOf(5, s.end - s.start - 4), Charsets.ISO_8859_1).startsWith("JFIF")
-            0xE2 -> String(b, s.start + 4, minOf(12, s.end - s.start - 4), Charsets.ISO_8859_1).startsWith("ICC_PROFILE")
-            0xEE -> true
-            0xFE -> false
-            in 0xE1..0xEF -> false
-            else -> true
+    var i = 2
+    while (true) {
+        if (i + 2 > b.size || b[i] != 0xFF.toByte()) bad()
+        val marker = b[i + 1].toInt() and 0xff
+        when {
+            // Fill bytes before a marker.
+            marker == 0xFF -> i++
+            marker == 0xD9 -> {
+                out.write(b, i, 2)
+                return out.toByteArray()
+            }
+            marker in 0xD0..0xD7 || marker == 0x01 -> {
+                out.write(b, i, 2)
+                i += 2
+            }
+            else -> {
+                if (i + 4 > b.size) bad()
+                val len = u16(b, i + 2, false)
+                if (len < 2 || i + 2 + len > b.size) bad()
+                val end = i + 2 + len
+                if (keepJpegSegment(b, marker, i, end)) out.write(b, i, end - i)
+                i = end
+                if (marker == 0xDA) {
+                    // The scan's coded data runs to the next marker other than
+                    // a stuffed zero or a restart marker.
+                    var j = i
+                    while (j + 1 < b.size) {
+                        if (b[j] == 0xFF.toByte()) {
+                            val n = b[j + 1].toInt() and 0xff
+                            if (n != 0x00 && n !in 0xD0..0xD7) break
+                            j += 2
+                        } else j++
+                    }
+                    if (j + 1 >= b.size) bad()
+                    out.write(b, i, j - i)
+                    i = j
+                }
+            }
         }
-        if (keep) out.write(b, s.start, s.end - s.start)
     }
-    out.write(b, sos, b.size - sos)
-    return out.toByteArray()
 }
 
 private fun pngChunks(b: ByteArray): List<Triple<String, Int, Int>>? {

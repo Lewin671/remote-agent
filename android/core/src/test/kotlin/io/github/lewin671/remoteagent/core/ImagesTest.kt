@@ -284,3 +284,66 @@ class TitleTest {
         assertEquals("look", previewOf(s, Status.IDLE))
     }
 }
+
+class JpegAfterScanTest {
+    private fun jpeg(progressive: Boolean): ByteArray {
+        val img = BufferedImage(64, 48, BufferedImage.TYPE_INT_RGB)
+        for (x in 0 until 64) for (y in 0 until 48) img.setRGB(x, y, (x * 4 shl 16) or (y * 5 shl 8) or 90)
+        val w = ImageIO.getImageWritersByFormatName("jpeg").next()
+        val out = ByteArrayOutputStream()
+        w.output = ImageIO.createImageOutputStream(out)
+        val p = w.defaultWriteParam
+        if (progressive) p.progressiveMode = javax.imageio.ImageWriteParam.MODE_DEFAULT
+        w.write(null, javax.imageio.IIOImage(img, null, null), p)
+        w.dispose()
+        return out.toByteArray()
+    }
+
+    private fun seg(marker: Int, payload: ByteArray): ByteArray {
+        val l = payload.size + 2
+        return byteArrayOf(0xFF.toByte(), marker.toByte(), (l shr 8).toByte(), l.toByte()) + payload
+    }
+
+    /** The bytes with [extra] put right before EOI. */
+    private fun beforeEoi(j: ByteArray, extra: ByteArray): ByteArray = j.copyOfRange(0, j.size - 2) + extra + j.copyOfRange(j.size - 2, j.size)
+
+    private fun pixels(b: ByteArray): IntArray = ImageIO.read(ByteArrayInputStream(b)).let { it.getRGB(0, 0, it.width, it.height, null, 0, it.width) }
+
+    private fun leaks(b: ByteArray, s: String) = String(b, Charsets.ISO_8859_1).contains(s)
+
+    @Test
+    fun aCommentBeforeTheEndIsDropped() {
+        val src = beforeEoi(jpeg(false), seg(0xFE, "GPS 31.2304N 121.4737E".toByteArray()))
+        val out = stripJpeg(src)
+        assertFalse(leaks(out, "GPS 31.23"))
+        assertArrayEquals(pixels(src), pixels(out))
+    }
+
+    @Test
+    fun exifAfterTheScanIsDropped() {
+        val src = beforeEoi(jpeg(false), seg(0xE1, "Exif\u0000\u0000".toByteArray(Charsets.ISO_8859_1) + "LOCATION-AFTER-SCAN".toByteArray()))
+        val out = stripJpeg(src)
+        assertFalse(leaks(out, "LOCATION-AFTER-SCAN"))
+        assertArrayEquals(pixels(src), pixels(out))
+    }
+
+    @Test
+    fun aProgressiveJpegKeepsEveryScanAndLosesItsComments() {
+        val base = jpeg(true)
+        // Put a comment between the first two scans.
+        val s = String(base, Charsets.ISO_8859_1)
+        val second = s.indexOf("ÿÚ", s.indexOf("ÿÚ") + 2)
+        assertTrue(second > 0)
+        val src = base.copyOfRange(0, second) + seg(0xFE, "BETWEEN-SCANS".toByteArray()) + base.copyOfRange(second, base.size)
+        val out = stripJpeg(src)
+        assertFalse(leaks(out, "BETWEEN-SCANS"))
+        assertArrayEquals(pixels(base), pixels(out))
+        assertEquals(s.split("ÿÚ").size, String(out, Charsets.ISO_8859_1).split("ÿÚ").size)
+    }
+
+    @Test
+    fun whatFollowsTheEndIsDropped() {
+        val src = jpeg(false) + "TRAILER-GPS".toByteArray()
+        assertFalse(leaks(stripJpeg(src), "TRAILER-GPS"))
+    }
+}
