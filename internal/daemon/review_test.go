@@ -206,3 +206,23 @@ func TestOriginMatchesOnce(t *testing.T) {
 		t.Fatalf("ambiguous: %v %q", third.Origin, third.GetUserMessage().RequestId)
 	}
 }
+
+// G8: the transcript may record the interrupt before the write returns;
+// its origin is known by then.
+func TestInterruptOriginIsKnownBeforeTheKey(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.running = true
+	remote := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev"}
+	ended := &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED}}}
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		if b == "\x1b" {
+			h.s.annotate([]*pb.Event{ended})
+		}
+	}
+	if ok, err := h.s.interruptBy(remote); !ok || err != nil {
+		t.Fatal(ok, err)
+	}
+	if ended.Origin.GetDeviceId() != "dev" {
+		t.Fatalf("origin %v", ended.Origin)
+	}
+}

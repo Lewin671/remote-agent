@@ -668,12 +668,19 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 		return false, err
 	}
 	defer c.Close()
-	if err := c.Write(s.ag.Interrupt()); err != nil {
-		return true, err
-	}
+	// Known before the key goes out: the transcript may record the end of
+	// the turn before the write returns.
 	s.mu.Lock()
 	s.interruptedBy = origin
 	s.mu.Unlock()
+	if err := c.Write(s.ag.Interrupt()); err != nil {
+		s.mu.Lock()
+		if s.interruptedBy == origin {
+			s.interruptedBy = nil
+		}
+		s.mu.Unlock()
+		return true, err
+	}
 	return true, nil
 }
 
@@ -739,12 +746,19 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items) {
 		return errNotAnswering
 	}
-	if err := s.ag.Answer(heldTerm{s.term, c}, q, index, options); err != nil {
-		return err
-	}
+	// Known before the keys go out: the transcript may record the answer
+	// before Answer returns.
 	s.mu.Lock()
 	s.answeredBy[questionID] = origin
 	s.mu.Unlock()
+	if err := s.ag.Answer(heldTerm{s.term, c}, q, index, options); err != nil {
+		s.mu.Lock()
+		if s.answeredBy[questionID] == origin {
+			delete(s.answeredBy, questionID)
+		}
+		s.mu.Unlock()
+		return err
+	}
 	return nil
 }
 
