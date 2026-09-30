@@ -1,5 +1,5 @@
 // Development only: a Remote with made-up machines and sessions in every
-// state docs/design/client-v1.html draws, and no server. Opened with ?demo
+// state docs/design/client-v8.html draws, and no server. Opened with ?demo
 // on the dev server; builds leave this file out. Options:
 //   ?demo&conn=connecting|reconnecting|fail   the server link's states
 //   ?demo&term=closed                        terminals that drop at once
@@ -9,6 +9,12 @@
 //                                            fails, or the server has none
 //   ?demo&long=1                            long project, machine and session names
 //   ?demo&devices=unsupported                a server without ListDevices
+//   ?demo&many=1&pick=1                     many sessions/projects, picker search
+//   ?demo&project-settings=1#/p/<encoded path>   project settings sheet
+//   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
+//   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
+//   ?demo&cancel=failed&queue-all=1#/s/s-multi  cancel retry
+//   ?demo&deny=1                          inline optional denial reason
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -25,6 +31,7 @@ import {
   ImageSync,
   InputStage,
   InputStatus,
+  SendMode,
   OriginKind,
   SessionStatus,
   ToolKind,
@@ -178,7 +185,7 @@ function fixtures(): Record<string, Fixture> {
         { case: "agentMessage", value: { text: answer } },
         { case: "toolCall", value: { title: "/Users/me/Code/foo/auth/login.go", kind: ToolKind.FILE_CHANGE, status: "completed" } },
         { case: "toolStarted", value: { title: "go test /Users/me/Code/foo/auth/..." } },
-        { case: "inputState", value: { requestId: "q-run", status: InputStatus.QUEUED } },
+        { case: "inputState", value: { requestId: "q-run", status: InputStatus.QUEUED, text: "顺便补一个测试", mode: SendMode.STEER } },
       ],
     },
     "s-appr": {
@@ -190,7 +197,7 @@ function fixtures(): Record<string, Fixture> {
         { case: "turnStarted", value: {} },
         { case: "toolCall", value: { title: "/Users/me/Code/foo/internal/handler/api.go", kind: ToolKind.FILE_CHANGE, status: "completed" } },
         { case: "approvalRequested", value: { approvalId: "a0", command: "mkdir -p internal/handler", toolName: "shell" } },
-        { case: "approvalResolved", value: { approvalId: "a0", decision: ApprovalDecision.ALLOW } },
+        { case: "approvalResolved", value: { approvalId: "a0", decision: ApprovalDecision.ALLOW_ALWAYS, message: "Yes, and don't ask again for commands that start with `mkdir`" } },
         { case: "agentMessage", value: { text: "拆分完成，跑一下测试确认没有破坏现有行为。" } },
         {
           case: "approvalRequested",
@@ -371,8 +378,11 @@ function fixtures(): Record<string, Fixture> {
         { case: "approvalRequested", value: { approvalId: "mx", command: "go test ./...", toolName: "Bash" } },
         [{ case: "approvalResolved", value: { approvalId: "mx", decision: ApprovalDecision.ALLOW } }, fromAndroid],
         { case: "turnStarted", value: {} },
-        [{ case: "inputState", value: { requestId: "q-multi", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "补充库存回滚测试。" } }, fromMe()],
-        [{ case: "inputState", value: { requestId: "q-android", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "最后检查 README。" } }, fromAndroid],
+        [{ case: "inputState", value: { requestId: "q-multi", status: InputStatus.QUEUED, stage: InputStage.WAITING, mode: SendMode.QUEUE, text: "补充库存回滚测试。" } }, fromMe()],
+        [{ case: "inputState", value: { requestId: "q-android", status: InputStatus.QUEUED, stage: InputStage.WAITING, mode: SendMode.QUEUE, text: "最后检查 README。" } }, fromAndroid],
+        [{ case: "inputState", value: { requestId: "q-held", status: InputStatus.QUEUED, mode: SendMode.STEER, text: "这条消息会在当前工具结束后并入。" } }, fromMe()],
+        [{ case: "inputState", value: { requestId: "q-held", status: InputStatus.HELD_BY_CLI } }, fromMe()],
+        [{ case: "inputState", value: { requestId: "q-paused", status: InputStatus.QUEUED, mode: SendMode.QUEUE, paused: true, text: "中断前排着的这条消息需要手动发送。" } }, fromMe()],
       ],
     },
     "s-img": {
@@ -512,6 +522,7 @@ const screen = (title: string) =>
 const trust = ["\x1b[33m  Folder access\x1b[0m", "  ~/Code/billing", "", "  Trust this folder? Codex can", "  read, edit, and run files here.", "", "\x1b[34m› 1. Trust and continue\x1b[0m", "  2. Quit", "", "  enter continue · esc quit"].join("\r\n");
 
 export class DemoRemote extends Remote {
+  override demoFlag(name: string): boolean { return this.opts.has(name); }
   private evs = new Map<string, Event[]>();
   private attempts = new Map<string, number>();
 
@@ -554,11 +565,11 @@ export class DemoRemote extends Remote {
           { agent: Agent.CODEX, version: "0.71.0", verified: false, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS },
           { agent: Agent.CLAUDE, version: "2.3.1", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS, defaultModeVaries: true },
         ],
-        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true, imageStorage: true },
+        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true, imageStorage: true, sendModes: true, approvalAlways: true },
       });
       if (!empty) {
-        machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true });
-        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true, capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxChunkBytes: 786432 } });
+        machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true, capabilities: { sendModes: true, approvalAlways: true } });
+        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true, capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxChunkBytes: 786432, sendModes: true, approvalAlways: true } });
         machine("mini", "Mac mini", false);
       }
     }
@@ -578,12 +589,21 @@ export class DemoRemote extends Remote {
         }),
       );
     }
+    if (this.opts.has("many")) for (let i = 0; i < 16; i++) {
+      const id = `s-extra-${i}`;
+      const info = create(SessionSchema, { title: `项目 ${i + 1} 的会话`, cwd: `/Users/me/Code/project-${i + 1}`, status: i < 7 ? SessionStatus.RUNNING : SessionStatus.IDLE, model: "gpt-6-astra", effort: "medium", createdAt: timestampFromMs(now - (i + 1) * min) });
+      this.sessions.set(id, { id, machineId: "mac", key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(now - (i + 1) * min) });
+      this.evs.set(id, []);
+    }
     if (this.opts.has("long")) for (const m of this.machines.values()) if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
     void this.drawPreviews();
     const out = (sid: string, sendId: string, text: string, status: "sending" | "sent" | "failed", error?: string) => {
       this.outboxes.set(sid, [...this.outbox(sid), { sendId, requestId: "r-" + sendId, deadline: now + 60_000, text, status, error }]);
     };
     out("s-run", "q-run", "顺便补一个测试", "sent");
+    if (this.opts.has("draft")) this.drafts.set("s-run", "请检查这段很长的路径 /Users/me/Code/foo/internal/generated/remoteagent/v1/client/session/messages/pending.ts，并补充测试");
+    if (this.opts.get("cancel") === "failed") this.cancels.set("q-multi", { state: "failed", error: "failed_precondition" });
+    this.stored.prefs = applyOp(this.stored.prefs, { id: "seed-settings", kind: "settings", path: "/Users/me/Code/foo", at: now, settings: { agent: Agent.CODEX, machineId: "mac", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.ASK } });
     out("s-ask", "q-ask", "跑一下测试", "sent");
     out("s-popup", "q-popup", "看下这些脚本是做什么的", "sent");
     out("s-msg", "o-unconf", "把 lint 也跑一下", "sent");
@@ -712,7 +732,7 @@ export class DemoRemote extends Remote {
         this.attempts.set(requestId!, n);
         if (text?.includes("失败") && n === 1) throw new CommandError("unknown", "连接超时");
         void slot;
-        this.push(sid, { case: "inputState", value: { requestId, status: InputStatus.QUEUED } });
+        this.push(sid, { case: "inputState", value: { requestId, status: InputStatus.QUEUED, text, mode: cmd.value.mode } });
         void (async () => {
           await sleep(1500);
           if (text?.includes("终端")) return this.push(sid, { case: "inputState", value: { requestId, status: InputStatus.UNCONFIRMED } });
@@ -730,7 +750,7 @@ export class DemoRemote extends Remote {
       case "resolveApproval": {
         const v = cmd.value;
         if (v.message?.includes("失败")) throw new CommandError("unknown", "连接超时");
-        this.push(sid, { case: "approvalResolved", value: { approvalId: v.approvalId, decision: v.allow ? ApprovalDecision.ALLOW : ApprovalDecision.DENY, message: v.message } });
+        this.push(sid, { case: "approvalResolved", value: { approvalId: v.approvalId, decision: v.always ? ApprovalDecision.ALLOW_ALWAYS : v.allow ? ApprovalDecision.ALLOW : ApprovalDecision.DENY, message: v.always ? "Yes, and don't ask again for commands that start with `go test`" : v.message } });
         this.patch(sid, { pendingApprovals: Math.max(0, (s.info?.pendingApprovals ?? 1) - 1) });
         return ok();
       }
@@ -748,6 +768,9 @@ export class DemoRemote extends Remote {
         return ok();
       case "cancelInput":
         this.push(sid, { case: "inputState", value: { requestId: cmd.value.requestId, status: InputStatus.CANCELED } });
+        return ok();
+      case "resumeInput":
+        this.push(sid, { case: "inputState", value: { requestId: cmd.value.requestId, status: InputStatus.QUEUED, paused: false } });
         return ok();
       case "interrupt":
         this.push(sid, { case: "turnEnded", value: { outcome: TurnOutcome.ABORTED } });

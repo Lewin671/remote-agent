@@ -35,7 +35,7 @@ export function stageText(stage: InputStage | undefined): string {
 /** Pending input is shown at the end of the chat, on every client. */
 export function PendingBubbles({ remote, session, d }: { remote: Remote; session: SessionView; d: Derived }) {
   const ids = queuedIds(d);
-  const [all, setAll] = useState(false);
+  const [all, setAll] = useState(() => remote.demoFlag("queue-all"));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
   const sid = session.id;
