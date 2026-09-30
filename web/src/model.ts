@@ -463,6 +463,10 @@ export interface Derived {
   questions: Map<string, QuestionAsked>; // pending
   answered: Map<string, string[]>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
+  // Messages the session ended before writing: canceled for that reason
+  // ("exited"), or, from daemons that recorded nothing, still queued when
+  // the session ended. Never sent; not waiting either.
+  unsent: Set<string>;
   running: boolean;
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
@@ -489,6 +493,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     questions: new Map(),
     answered: new Map(),
     inputs: new Map(),
+    unsent: new Set(),
     running: false,
     tools: [],
     typedLocally: new Set(),
@@ -541,6 +546,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
+        if (k.value.status === InputStatus.CANCELED && k.value.reason === "exited") d.unsent.add(k.value.requestId);
+        else if (k.value.status !== InputStatus.QUEUED) d.unsent.delete(k.value.requestId);
         if (k.value.status === InputStatus.QUEUED && !queuedAt.has(k.value.requestId)) queuedAt.set(k.value.requestId, e.seq);
         if (k.value.status === InputStatus.SUBMITTED) {
           // Codex marks a message submitted before recording it. Claude
@@ -622,6 +629,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       }
       case "sessionState":
         if (k.value.status === SessionStatus.EXITED) {
+          // Anything still queued was not written, and will not be.
+          for (const [id, st] of d.inputs) if (st === InputStatus.QUEUED) d.unsent.add(id);
           d.running = false;
           d.approvals.clear();
           d.questions.clear();
@@ -760,6 +769,8 @@ function visible(e: Event, d: Derived): boolean {
     case "questionAsked":
       return d.answered.has(k.value.questionId);
     case "inputState":
+      // A message never sent shows once, where it was queued.
+      if (d.unsent.has(k.value.requestId)) return k.value.status === InputStatus.QUEUED;
       return k.value.status === InputStatus.CANCELED || k.value.status === InputStatus.UNCONFIRMED;
     case "settingsChanged":
       return k.value.compacted || !!k.value.model || !!modeName(k.value.mode);
@@ -787,8 +798,13 @@ export function timeline(events: Event[], d: Derived): Item[] {
     else out.push({ kind: "event", key: String(run.first.seq), event: run.first });
     run = undefined;
   };
+  const unsentShown = new Set<string>();
   for (const e of events) {
     if (!visible(e, d)) continue;
+    if (e.kind.case === "inputState" && d.unsent.has(e.kind.value.requestId)) {
+      if (unsentShown.has(e.kind.value.requestId)) continue;
+      unsentShown.add(e.kind.value.requestId);
+    }
     const k = e.kind;
     if (k.case === "approvalRequested" && merged.approvals.has(k.value.approvalId)) continue;
     const decision = merged.calls.get(e.seq);

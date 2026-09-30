@@ -100,6 +100,13 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
   const composer = useRef<HTMLTextAreaElement>(null);
+  // Remounting the input shows a draft put back from the chat.
+  const [composerKey, setComposerKey] = useState(0);
+  const restore = (text: string) => {
+    remote.drafts.set(sid, text);
+    setComposerKey((k) => k + 1);
+    setTimeout(() => composer.current?.focus());
+  };
 
   const items = dockItems(session, d, machine);
   // Display names for the model chip; the list is cached per machine.
@@ -193,7 +200,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
 
   const chat = (
     <div className="ccol" ref={colRef}>
-      <ChatBody remote={remote} session={session} events={events} d={d} agent={agent} machine={mname} />
+      <ChatBody remote={remote} session={session} events={events} d={d} agent={agent} machine={mname} onRestore={restore} />
       {toast && (
         <div className="toast" onClick={() => setToast("")}>
           {toast}
@@ -223,6 +230,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <EndCard remote={remote} session={session} ended={ended} machineOnline={machine?.online ?? false} agent={agent} mname={mname} lastSeen={machine?.lastSeenMs ?? 0n} />
       ) : (
         <Composer
+          key={composerKey}
           ref={composer}
           wide={wide}
           online={online}
@@ -288,7 +296,23 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
 
 /** The chat: history, what runs now, and messages on their way. Follows
  * the bottom unless scrolled up, then offers a way back. */
-function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remote; session: SessionView; events: Event[]; d: Derived; agent: Agent; machine: string }) {
+function ChatBody({
+  remote,
+  session,
+  events,
+  d,
+  agent,
+  machine,
+  onRestore,
+}: {
+  remote: Remote;
+  session: SessionView;
+  events: Event[];
+  d: Derived;
+  agent: Agent;
+  machine: string;
+  onRestore: (text: string) => void;
+}) {
   const sid = session.id;
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -344,7 +368,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -480,7 +504,23 @@ function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
   );
 }
 
-function Row({ it, d, short, machine, agent, textOf }: { it: Item; d: Derived; short: Short; machine: string; agent: Agent; textOf: Map<string, string> }) {
+function Row({
+  it,
+  d,
+  short,
+  machine,
+  agent,
+  textOf,
+  onRestore,
+}: {
+  it: Item;
+  d: Derived;
+  short: Short;
+  machine: string;
+  agent: Agent;
+  textOf: Map<string, string>;
+  onRestore: (text: string) => void;
+}) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
   const e = it.event;
@@ -534,6 +574,22 @@ function Row({ it, d, short, machine, agent, textOf }: { it: Item; d: Derived; s
       ) : null;
     }
     case "inputState": {
+      if (d.unsent.has(k.value.requestId)) {
+        // The session ended before writing it. Not sent again by itself:
+        // the text can go back into the input, to send after resuming.
+        const text = textOf.get(k.value.requestId);
+        return text ? (
+          <div className="me warn unsent">
+            <div>{text}</div>
+            <small>
+              会话结束，没有发出
+              <button onClick={() => onRestore(text)}>放回输入框</button>
+            </small>
+          </div>
+        ) : (
+          <div className="sysline warn">有一条消息会话结束，没有发出</div>
+        );
+      }
       if (k.value.status === InputStatus.CANCELED) return <div className="sysline">取消了一条排队的消息</div>;
       const text = textOf.get(k.value.requestId);
       const note = `已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发`;
@@ -620,7 +676,8 @@ function Queue({ remote, session, d, outbox }: { remote: Remote; session: Sessio
   const sid = session.id;
   const text = new Map(outbox.map((o) => [o.sendId, o.text]));
   const prompt = remote.prompts.get(sid);
-  const ids = [...d.inputs.entries()].filter(([, s]) => s === InputStatus.QUEUED).map(([id]) => id);
+  // Queued, and not left behind by a session that ended.
+  const ids = [...d.inputs.entries()].filter(([id, s]) => s === InputStatus.QUEUED && !d.unsent.has(id)).map(([id]) => id);
   // The first message of a session started here shows in the chat.
   const shown = prompt ? ids.filter((id) => text.has(id)) : ids;
   if (shown.length === 0) return null;

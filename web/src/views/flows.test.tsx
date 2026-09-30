@@ -7,7 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
@@ -765,4 +765,37 @@ it("titles a running file edit as it will be titled once done", () => {
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const running = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
   expect(running).toContain("编辑 hello.txt");
+});
+
+describe("a message the session ended before sending", () => {
+  function setup(ended: boolean, cancelEvent: boolean) {
+    const r = demo();
+    const s = r.sessions.get("s-idle")!;
+    const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
+    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "m1", requestId: "x", deadline: 0, text: "顺便补一个测试", status: "sent" }]);
+    push({ case: "inputState", value: { requestId: "m1", status: InputStatus.QUEUED } });
+    if (cancelEvent) push({ case: "inputState", value: { requestId: "m1", status: InputStatus.CANCELED, reason: "exited" } });
+    push({ case: "sessionState", value: { status: SessionStatus.EXITED } });
+    s.info = { ...s.info!, status: ended ? SessionStatus.EXITED : SessionStatus.IDLE };
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    return r;
+  }
+
+  it("says it was not sent, and can go back into the input after resuming", async () => {
+    setup(false, true);
+    expect(host.textContent).toContain("会话结束，没有发出");
+    expect(host.textContent).not.toContain("取消了一条排队的消息");
+    expect(host.querySelector(".queued")).toBeNull();
+    await click(button("放回输入框"));
+    expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("顺便补一个测试");
+  });
+
+  it("is not left queued for ever when an older daemon recorded nothing", async () => {
+    const r = setup(true, false);
+    expect(host.textContent).toContain("会话结束，没有发出");
+    expect(host.querySelector(".queued")).toBeNull();
+    await click(button("放回输入框"));
+    // No input while ended: the text waits as the draft for after resuming.
+    expect(r.drafts.get("s-idle")).toBe("顺便补一个测试");
+  });
 });

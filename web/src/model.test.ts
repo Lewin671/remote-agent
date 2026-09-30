@@ -153,6 +153,25 @@ describe("message phases", () => {
   });
 });
 
+describe("messages the session ended before sending", () => {
+  it("are neither queued nor canceled by the user", () => {
+    const list = events(
+      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED } },
+      { case: "inputState", value: { requestId: "b", status: InputStatus.QUEUED } },
+      { case: "inputState", value: { requestId: "c", status: InputStatus.QUEUED } },
+      { case: "inputState", value: { requestId: "b", status: InputStatus.CANCELED } }, // the user's own cancel
+      { case: "inputState", value: { requestId: "a", status: InputStatus.CANCELED, reason: "exited" } },
+      // An older daemon wrote nothing for c; the session then ended.
+      { case: "sessionState", value: { status: SessionStatus.EXITED } },
+    );
+    const d = derive(list);
+    expect([...d.unsent].sort()).toEqual(["a", "c"]);
+    const rows = timeline(list, d).map((it) => (it.kind === "event" && it.event.kind.case === "inputState" ? `${it.event.kind.value.requestId}:${it.event.kind.value.status}` : it.kind));
+    // Each unsent message shows once, where it was queued; b's cancel as before.
+    expect(rows).toEqual([`a:${InputStatus.QUEUED}`, `c:${InputStatus.QUEUED}`, `b:${InputStatus.CANCELED}`, "event"]);
+  });
+});
+
 describe("tools", () => {
   it("pairs completions by call ID when the CLI gives one", () => {
     const d = derive(
