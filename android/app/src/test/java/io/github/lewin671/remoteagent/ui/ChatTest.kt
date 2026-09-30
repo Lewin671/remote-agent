@@ -63,4 +63,38 @@ class ChatTest {
         assertEquals("上下文已压缩 · 86% → 14%", (items[3] as ChatItem.Note).text)
         assertEquals("4 分 12 秒 · 100 tokens", (items[4] as ChatItem.TurnEnd).text)
     }
+
+    @Test
+    fun showsAnApprovedCallOnceWithItsDecision() {
+        val events = listOf(
+            ev(1, Event.newBuilder().setApprovalRequested(io.github.lewin671.remoteagent.proto.ApprovalRequested.newBuilder().setApprovalId("a").setToolName("Write"))),
+            ev(2, Event.newBuilder().setApprovalResolved(io.github.lewin671.remoteagent.proto.ApprovalResolved.newBuilder().setApprovalId("a").setDecision(io.github.lewin671.remoteagent.proto.ApprovalDecision.APPROVAL_DECISION_ALLOW))),
+            ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setTitle("/private/tmp/w/CONTRIBUTING.md"))),
+            ev(4, Event.newBuilder().setApprovalRequested(io.github.lewin671.remoteagent.proto.ApprovalRequested.newBuilder().setApprovalId("b").setCommand("curl x"))),
+            ev(5, Event.newBuilder().setApprovalResolved(io.github.lewin671.remoteagent.proto.ApprovalResolved.newBuilder().setApprovalId("b").setDecision(io.github.lewin671.remoteagent.proto.ApprovalDecision.APPROVAL_DECISION_DENY))),
+            ev(6, Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("ok"))),
+        )
+        val items = buildChat(events, derive(events), "MacBook", "/tmp/w")
+        val tool = items[0] as ChatItem.Tool
+        assertEquals("已允许", tool.decision)
+        assertEquals("编辑 CONTRIBUTING.md", toolTitle(tool.call, "/tmp/w"))
+        // A denial with no call after it stays a line of its own.
+        assertEquals("curl x  已拒绝", (items[1] as ChatItem.Note).text)
+        assertEquals(3, items.size)
+    }
+
+    @Test
+    fun foldsOnlyCompletedCalls() {
+        val events = listOf(
+            ev(1, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("a"))),
+            ev(2, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("b").setExitCode(1))),
+            ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("c"))),
+            ev(4, Event.newBuilder().setToolCall(ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setTitle("d"))),
+        )
+        val items = buildChat(events, derive(events), "MacBook")
+        assertEquals(listOf("a"), listOf((items[0] as ChatItem.Tool).call.title))
+        assertEquals("b", (items[1] as ChatItem.Tool).call.title)
+        assertEquals("完成了 2 个工具调用", toolsSummary((items[2] as ChatItem.Tools).calls))
+        assertEquals("~/x", relativePath("/Users/me/x", "/tmp/w"))
+    }
 }

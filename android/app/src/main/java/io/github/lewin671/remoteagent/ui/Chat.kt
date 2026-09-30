@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Derived
+import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.core.dateTime
 import io.github.lewin671.remoteagent.core.decisionText
 import io.github.lewin671.remoteagent.core.eventTime
@@ -46,68 +47,120 @@ sealed interface ChatItem {
     data class User(override val key: String, val text: String, val local: Boolean, val time: Long) : ChatItem
     data class Agent(override val key: String, val text: String) : ChatItem
     data class Thought(override val key: String, val text: String) : ChatItem
+
+    /** One tool call; [decision] says how its approval went, if it needed one. */
+    data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true) : ChatItem
+
+    /** Two or more completed tool calls in a row, folded into one line. */
     data class Tools(override val key: String, val calls: List<ToolCall>) : ChatItem
     data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0) : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
     data class TurnEnd(override val key: String, val text: String) : ChatItem
 }
 
-fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> {
+fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
+
+/** A path relative to the session's folder; macOS reports /tmp as /private/tmp. */
+fun relativePath(path: String, cwd: String): String {
+    fun norm(p: String) = p.replaceFirst(Regex("^/private/"), "/")
+    val p = norm(path)
+    val base = norm(cwd).trimEnd('/') + "/"
+    return if (cwd.isNotEmpty() && p.startsWith(base)) p.removePrefix(base) else shortPath(path)
+}
+
+/** How a tool call is named in the chat, as on the web. */
+fun toolTitle(t: ToolCall, cwd: String): String =
+    if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 " + relativePath(t.title, cwd) else t.title.ifEmpty { t.itemType }
+
+/** "运行了 3 条命令" and the like, for a folded run. */
+fun toolsSummary(calls: List<ToolCall>): String = when {
+    calls.all { it.kind == ToolKind.TOOL_KIND_COMMAND } -> "运行了 ${calls.size} 条命令"
+    calls.all { it.kind == ToolKind.TOOL_KIND_FILE_CHANGE } -> "编辑了 ${calls.size} 个文件"
+    else -> "完成了 ${calls.size} 个工具调用"
+}
+
+/**
+ * The chat's rows. Runs of two or more completed tool calls fold into one
+ * line. An approval is not a row of its own when the call it allowed or
+ * denied follows: that call carries the decision, so one call shows once.
+ */
+fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
-    val tools = mutableListOf<ToolCall>()
-    var toolKey = ""
+    val run = mutableListOf<ToolCall>()
+    var runKey = ""
     val requested = HashMap<String, String>()
+    // A decided approval waiting for the call it was about.
+    var decided: ChatItem.Note? = null
+    var decidedOk = true
+    var decidedText = ""
     var turnTokens = 0L
     var lastTotal = 0L
     var lastPct: Int? = null
     // A compaction note waiting for the usage after it: its index and the percent before.
     var compacted: Pair<Int, Int?>? = null
-    fun flushTools() {
-        if (tools.isNotEmpty()) out += ChatItem.Tools(toolKey, tools.toList())
-        tools.clear()
+    fun flushRun() {
+        when (run.size) {
+            0 -> {}
+            1 -> out += ChatItem.Tool(runKey, run[0])
+            else -> out += ChatItem.Tools(runKey, run.toList())
+        }
+        run.clear()
+    }
+    fun flush() {
+        flushRun()
+        decided?.let { out += it }
+        decided = null
     }
     for (e in events) {
         val k = "e${e.seq}"
-        if (e.kindCase == Event.KindCase.TOOL_CALL) {
-            if (tools.isEmpty()) toolKey = k
-            tools += e.toolCall
-            continue
-        }
         when (e.kindCase) {
+            Event.KindCase.TOOL_CALL -> {
+                val t = e.toolCall
+                val note = decided
+                if (note != null) {
+                    flushRun()
+                    out += ChatItem.Tool(k, t, decidedText, decidedOk)
+                    decided = null
+                } else if (toolOk(t)) {
+                    if (run.isEmpty()) runKey = k
+                    run += t
+                } else {
+                    flushRun()
+                    out += ChatItem.Tool(k, t)
+                }
+            }
             Event.KindCase.USER_MESSAGE -> {
-                flushTools()
+                flush()
                 out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e))
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
-                flushTools()
+                flush()
                 out += ChatItem.Agent(k, e.agentMessage.text)
             }
             Event.KindCase.REASONING -> if (e.reasoning.text.isNotBlank()) {
-                flushTools()
+                flush()
                 out += ChatItem.Thought(k, e.reasoning.text)
             }
             Event.KindCase.APPROVAL_REQUESTED -> requested[e.approvalRequested.approvalId] =
                 e.approvalRequested.command.ifEmpty { e.approvalRequested.toolName.ifEmpty { e.approvalRequested.description } }
             Event.KindCase.APPROVAL_RESOLVED -> {
-                flushTools()
                 val r = e.approvalResolved
-                val what = requested[r.approvalId].orEmpty()
+                // Canceled, or answered in the CLI's own prompt: the call that
+                // follows shows what happened.
+                if (r.decision == ApprovalDecision.APPROVAL_DECISION_CANCELED || r.decision == ApprovalDecision.APPROVAL_DECISION_TERMINAL) continue
+                flush()
                 val ok = r.decision == ApprovalDecision.APPROVAL_DECISION_ALLOW
-                val icon = when (r.decision) {
-                    ApprovalDecision.APPROVAL_DECISION_ALLOW -> "✓"
-                    ApprovalDecision.APPROVAL_DECISION_CANCELED -> "–"
-                    ApprovalDecision.APPROVAL_DECISION_TERMINAL -> "↗"
-                    else -> "✕"
-                }
-                out += ChatItem.Note(k, listOf(what, decisionText(r.decision) + (if (r.message.isNotEmpty()) "：" + r.message else "")).filter { it.isNotEmpty() }.joinToString("  "), icon, if (ok) 1 else 2)
+                decidedOk = ok
+                decidedText = decisionText(r.decision) + if (r.message.isNotEmpty()) "：" + r.message else ""
+                decided = ChatItem.Note(k, listOf(requested[r.approvalId].orEmpty(), decidedText).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
-                flushTools()
+                flush()
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
                 out += ChatItem.Note(k, if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、"), "✓", 1)
             }
             Event.KindCase.PLAN_PROPOSED -> {
-                flushTools()
+                flush()
                 out += ChatItem.Plan(k, e.planProposed.text)
             }
             Event.KindCase.TOKEN_USAGE -> {
@@ -123,7 +176,7 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
             }
             Event.KindCase.TURN_STARTED -> turnTokens = 0
             Event.KindCase.TURN_ENDED -> {
-                flushTools()
+                flush()
                 val t = e.turnEnded
                 val parts = mutableListOf<String>()
                 if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断"
@@ -132,30 +185,30 @@ fun buildChat(events: List<Event>, d: Derived, machine: String): List<ChatItem> 
                 if (parts.isNotEmpty()) out += ChatItem.TurnEnd(k, parts.joinToString(" · "))
             }
             Event.KindCase.SETTINGS_CHANGED -> {
-                flushTools()
                 val c = e.settingsChanged
                 val text = when {
                     c.compacted -> "上下文已压缩"
-                    c.model.isNotEmpty() -> "已切换到 ${c.model} · ${c.effort}"
+                    c.model.isNotEmpty() -> "已切换到 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
                     else -> modeOf(c.mode)?.let { "审批模式切到了 ${it.text}" }
                 }
                 if (text != null) {
+                    flush()
                     if (c.compacted) compacted = out.size to lastPct
                     out += ChatItem.Note(k, text)
                 }
             }
             Event.KindCase.TURN_CONTEXT -> d.terminalChanges[e.seq]?.let {
-                flushTools()
+                flush()
                 out += ChatItem.Note(k, "$machine 终端里$it")
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
-                flushTools()
+                flush()
                 out += ChatItem.Note(k, dateTime(eventTime(e)) + " 结束")
             }
             else -> {}
         }
     }
-    flushTools()
+    flush()
     return out
 }
 
@@ -168,21 +221,8 @@ fun duration(ms: Long): String {
     }
 }
 
-private fun failed(t: ToolCall) = t.status == "failed" || (t.hasExitCode() && t.exitCode != 0)
-
-private fun summary(calls: List<ToolCall>): String {
-    val cmds = calls.count { it.kind == ToolKind.TOOL_KIND_COMMAND }
-    val edits = calls.count { it.kind == ToolKind.TOOL_KIND_FILE_CHANGE }
-    val other = calls.size - cmds - edits
-    return listOfNotNull(
-        if (cmds > 0) "运行了 $cmds 条命令" else null,
-        if (edits > 0) "编辑了 $edits 处文件" else null,
-        if (other > 0) "调用了 $other 个工具" else null,
-    ).joinToString("，")
-}
-
 @Composable
-fun ChatItemView(item: ChatItem, agent: String) {
+fun ChatItemView(item: ChatItem, agent: String, cwd: String = "") {
     val p = pal
     when (item) {
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
@@ -197,14 +237,12 @@ fun ChatItemView(item: ChatItem, agent: String) {
         is ChatItem.Thought -> Expandable("▸ 思考", "▾ 思考", Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
             Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
+        is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+            ToolRow(item.call, cwd, item.decision, item.decisionOk)
+        }
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            if (item.calls.size == 1) ToolRow(item.calls[0])
-            else {
-                val bad = item.calls.count(::failed)
-                Expandable(
-                    (if (bad > 0) "✕ " else "✓ ") + summary(item.calls), "▾ " + summary(item.calls),
-                    color = if (bad > 0) p.red else p.muted,
-                ) { Column { item.calls.forEach { ToolRow(it) } } }
+            Expandable("✓ " + toolsSummary(item.calls) + "  ▸", "✓ " + toolsSummary(item.calls) + "  ▾") {
+                Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd) } }
             }
         }
         is ChatItem.Note -> Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -247,24 +285,41 @@ fun Expandable(closed: String, opened: String, modifier: Modifier = Modifier, co
 }
 
 @Composable
-private fun ToolRow(t: ToolCall) {
+private fun ToolRow(t: ToolCall, cwd: String, decision: String = "", decisionOk: Boolean = true) {
     val p = pal
-    val bad = failed(t)
-    Expandable(
-        (if (bad) "✕ " else "✓ ") + t.title.lines().first().take(160),
-        "▾ " + t.title.lines().first().take(160),
-        color = if (bad) p.red else p.muted,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-            if (t.input.isNotEmpty() && t.input != t.title) CodeBlock(t.input, maxLines = 30)
-            if (t.output.isNotEmpty()) {
-                CodeBlock(t.output + if (t.outputTruncated) "\n…" else "", maxLines = 40)
-            }
-            val meta = listOfNotNull(
-                if (t.hasExitCode()) "退出码 ${t.exitCode}" else null,
-                if (t.durationMs > 0) duration(t.durationMs) else null,
+    val ok = toolOk(t)
+    var open by rememberSaveable(t.callId, t.title) { mutableStateOf(false) }
+    val out = t.output.trimEnd('\n')
+    Column(Modifier.animateContentSize()) {
+        Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (ok) "✓" else "✕", color = if (ok) p.green else p.red, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                toolTitle(t, cwd).lines().first(),
+                style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = p.fg2,
+                maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
-            if (meta.isNotEmpty()) Text(meta.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = p.faint, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+            if (decision.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                Text(decision, style = MaterialTheme.typography.bodySmall, color = if (decisionOk) p.muted else p.red, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (!ok && t.hasExitCode()) {
+                Spacer(Modifier.width(8.dp))
+                Text("退出码 ${t.exitCode}", style = MaterialTheme.typography.bodySmall, color = p.red)
+            } else if (t.durationMs >= 1000) {
+                Spacer(Modifier.width(8.dp))
+                Text("${t.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = p.faint)
+            }
+        }
+        if (open) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                if (t.input.isNotEmpty() && t.input != t.title) CodeBlock(t.input, maxLines = 30)
+                if (out.isNotEmpty()) CodeBlock(out + if (t.outputTruncated) "\n…（已截断）" else "", maxLines = 40)
+            }
+        } else if (!ok && out.isNotEmpty()) {
+            // A failure shows its first line without opening.
+            val lines = out.lines()
+            CodeBlock(lines.first() + if (lines.size > 1) "\n… 还有 ${lines.size - 1} 行，展开" else "", maxLines = 2, modifier = Modifier.clickable { open = true })
         }
     }
 }

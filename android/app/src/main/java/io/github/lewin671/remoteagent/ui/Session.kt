@@ -212,7 +212,8 @@ private fun ChatPane(
     val nav = LocalNav.current
     val remote = LocalRemote.current
     val machine = machineLabel(state, s.machineId)
-    val items = remember(events, d) { buildChat(events, d, machine) }
+    val cwd = s.info?.cwd.orEmpty()
+    val items = remember(events, d, cwd) { buildChat(events, d, machine, cwd) }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val outbox = Outbox.of(s.id)
@@ -238,7 +239,7 @@ private fun ChatPane(
         Box(Modifier.weight(1f)) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                 if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
-                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent())) }
+                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd) }
                 if (error != null) item {
                     Card(Modifier.padding(12.dp)) {
                         Column(Modifier.padding(14.dp)) {
