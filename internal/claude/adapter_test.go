@@ -558,7 +558,7 @@ func TestSetModeIdleBurst(t *testing.T) {
 	if o := offered(factsUnknown, "   Haiku 4.5  │  w   auto mode unavailable for this model"); o["auto"] {
 		t.Fatal("the note was not read")
 	}
-	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "haiku"}, ""); !o["auto"] {
+	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-sonnet-5-5"}, ""); !o["auto"] {
 		t.Fatal("a mode seen on the screen is on offer")
 	}
 }
@@ -593,4 +593,3 @@ func TestAutoNoteOnlyInStatusArea(t *testing.T) {
 		t.Fatal("the note in the status area was not read")
 	}
 }
-

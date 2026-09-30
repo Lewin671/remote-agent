@@ -63,8 +63,10 @@ type session struct {
 	prevScreen  agent.Screen
 	sawComposer bool
 	planOpen    bool
-	driving     bool            // a control operation is using the terminal's menus
-	seenModes   map[string]bool // permission modes the screen has shown
+	driving     bool // a control operation is using the terminal's menus
+	// seenModes are the permission modes the screen has shown, by the
+	// model family in use then: which modes are on offer depends on it.
+	seenModes map[string]map[string]bool
 	// openCalls counts calls started and not completed, and doneCalls
 	// holds calls completed lately, by input digest, to tie them to
 	// approval requests.
@@ -242,6 +244,20 @@ func (s *session) emitLocked(settings bool, evs ...*pb.Event) {
 	s.mu.Unlock()
 }
 
+// modeFacts tells the adapter what is known of the modes on offer.
+func (s *session) modeFacts() agent.ModeFacts {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f := agent.ModeFacts{FullAccess: !s.meta.NoFullAccess}
+	if s.context != nil {
+		f.Model = s.context.Model
+	}
+	for m := range s.seenModes[agent.ModelFamily(f.Model)] {
+		f.Seen = append(f.Seen, m)
+	}
+	return f
+}
+
 // noteScreenMode records a permission mode seen on the screen as the
 // session's context. The context is copied, changed and logged under the
 // lock settings events are logged under, so that it cannot carry a model
@@ -385,10 +401,17 @@ func (s *session) checkScreen() bool {
 	s.planOpen = scr.PlanOpen
 	retract := s.watchApprovals(scr, styled)
 	if scr.Mode != "" {
-		if s.seenModes == nil {
-			s.seenModes = map[string]bool{}
+		family := ""
+		if s.context != nil {
+			family = agent.ModelFamily(s.context.Model)
 		}
-		s.seenModes[scr.Mode] = true
+		if s.seenModes == nil {
+			s.seenModes = map[string]map[string]bool{}
+		}
+		if s.seenModes[family] == nil {
+			s.seenModes[family] = map[string]bool{}
+		}
+		s.seenModes[family][scr.Mode] = true
 	}
 	modeSeen := ""
 	if scr.Mode != "" && (s.context == nil || s.context.PermissionMode != scr.Mode) {

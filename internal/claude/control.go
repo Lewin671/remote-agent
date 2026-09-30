@@ -330,11 +330,13 @@ func crosses(from, to string, limit int, offer map[string]bool) bool {
 func offered(facts agent.ModeFacts, plain string) map[string]bool {
 	offer := map[string]bool{"default": true, "acceptEdits": true, "plan": true, "bypassPermissions": facts.FullAccess}
 	model := strings.ToLower(facts.Model)
+	// What says auto is not on offer now wins over having seen it, which
+	// the daemon counts per model.
 	switch {
-	case slices.Contains(facts.Seen, "auto"):
-		offer["auto"] = true
 	case strings.Contains(plain, "auto mode unavailable for this model"), strings.Contains(model, "haiku"):
 		offer["auto"] = false
+	case slices.Contains(facts.Seen, "auto"):
+		offer["auto"] = true
 	case strings.HasPrefix(model, "claude-") || model == "sonnet" || model == "opus" || model == "fable":
 		offer["auto"] = true
 	}

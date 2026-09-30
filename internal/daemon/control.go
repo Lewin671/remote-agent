@@ -116,15 +116,7 @@ func (s *session) setModel(model, effort string) error {
 // setApprovalMode switches the approval mode.
 func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
 	running := s.isRunning()
-	s.mu.Lock()
-	facts := agent.ModeFacts{FullAccess: !s.meta.NoFullAccess}
-	if s.context != nil {
-		facts.Model = s.context.Model
-	}
-	for m := range s.seenModes {
-		facts.Seen = append(facts.Seen, m)
-	}
-	s.mu.Unlock()
+	facts := s.modeFacts()
 	if err := s.drive(func(t agent.Term) error { return s.ag.SetMode(t, mode, running, facts) }); err != nil {
 		return err
 	}

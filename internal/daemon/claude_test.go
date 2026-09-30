@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -458,4 +459,26 @@ func TestClaudeApprovalAfterItsCallCompleted(t *testing.T) {
 	go h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/fast","description":"x"}`))
 	eventually(t, "the second card", func() bool { return h.s.info().PendingApprovals == 1 })
 	h.s.retractApprovals()
+}
+
+// Modes seen on the screen count for the model in use then (review
+// verify3 P2).
+func TestClaudeSeenModesPerModel(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	auto := strings.Replace(ccIdle, "⏸ manual mode on", "⏵⏵ auto mode on (shift+tab to cycle)", 1)
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "claude-sonnet-5-5"}}})
+	h.term.setScreen(auto)
+	h.s.checkScreen()
+	h.s.checkScreen()
+	if f := h.s.modeFacts(); !slices.Contains(f.Seen, "auto") {
+		t.Fatalf("sonnet: %v", f)
+	}
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "haiku"}}})
+	if f := h.s.modeFacts(); slices.Contains(f.Seen, "auto") {
+		t.Fatalf("haiku: %v", f)
+	}
+	h.s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: "sonnet", Effort: "low"}}})
+	if f := h.s.modeFacts(); !slices.Contains(f.Seen, "auto") {
+		t.Fatalf("sonnet again: %v", f)
+	}
 }
