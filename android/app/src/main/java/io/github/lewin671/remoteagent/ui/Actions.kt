@@ -173,6 +173,13 @@ class OutgoingRecords(private val files: SealedFiles) {
     }
 }
 
+/** The latest state of each message by request ID, from a session's events. */
+fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<String, io.github.lewin671.remoteagent.proto.InputStatus> {
+    val out = HashMap<String, io.github.lewin671.remoteagent.proto.InputStatus>()
+    for (e in events) if (e.kindCase == io.github.lewin671.remoteagent.proto.Event.KindCase.INPUT_STATE) out[e.inputState.requestId] = e.inputState.status
+    return out
+}
+
 /** The messages the CLI has recorded: the ones to let go of. */
 fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>): List<Outgoing> =
     list.filter { inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED }
@@ -186,12 +193,54 @@ object Outbox {
         mutableStateListOf<Outgoing>().also { list -> runCatching { list += records.load(sid, ::thumbnail) } }
     }
 
-    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, imageIds: List<String> = emptyList(), images: List<PendingImage> = emptyList(), original: Boolean = false) {
-        val o = Outgoing(newRequestId(), text, imageIds, images, original)
+    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String) {
+        val o = Outgoing(newRequestId(), text)
         of(sid) += o
-        // Kept until the CLI has it; only then do the images go.
-        if (images.isNotEmpty()) runCatching { records.save(sid, o, original) }
         deliver(scope, remote, sid, o)
+    }
+
+    /**
+     * Sends a message with images. They are first kept on disk, sealed, off
+     * the main thread; only once that worked is the message sent and
+     * [onKept] told true, for the caller to take the images out of the draft.
+     * If keeping them failed nothing is sent and the draft stays as it is.
+     */
+    fun sendWithImages(
+        scope: CoroutineScope, remote: Remote, sid: String, text: String,
+        imageIds: List<String>, images: List<PendingImage>, original: Boolean,
+        store: (String, Outgoing, Boolean) -> Unit = { s, o, orig -> records.save(s, o, orig) },
+        onKept: (Result<Unit>) -> Unit,
+    ) {
+        val o = Outgoing(newRequestId(), text, imageIds, images, original)
+        scope.launch {
+            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { store(sid, o, original) } }
+            onKept(kept)
+            if (kept.isFailure) return@launch
+            of(sid) += o
+            watch(remote, sid)
+            deliver(scope, remote, sid, o)
+        }
+    }
+
+    private val watching = HashSet<String>()
+
+    /**
+     * Follows a session's events while messages with images wait here, and
+     * lets them go once the CLI has recorded them, whether or not the chat
+     * is on screen.
+     */
+    fun watch(remote: Remote, sid: String) {
+        if (!watching.add(sid)) return
+        io.github.lewin671.remoteagent.RaApp.instance.scope.launch {
+            try {
+                remote.events(sid).collect { ev ->
+                    settle(sid, inputStates(ev.events))
+                    if (of(sid).none { it.images.isNotEmpty() }) throw kotlinx.coroutines.CancellationException("nothing left to settle")
+                }
+            } finally {
+                watching.remove(sid)
+            }
+        }
     }
 
     fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
@@ -249,6 +298,7 @@ object Outbox {
 
     fun clear() {
         bySession.clear()
+        watching.clear()
         prompts.clear()
         drafts.clear()
     }

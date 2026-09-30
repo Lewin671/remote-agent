@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
@@ -224,8 +225,8 @@ private fun ChatPane(
     val cwd = s.info?.cwd.orEmpty()
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
     val outbox = Outbox.of(s.id)
-    // Messages the CLI has recorded let go of their images.
-    LaunchedEffect(d.inputs.size, events.size) { Outbox.settle(s.id, d.inputs) }
+    // Messages with images from an earlier run are followed until the CLI has them.
+    LaunchedEffect(s.id) { if (Outbox.of(s.id).any { it.images.isNotEmpty() }) Outbox.watch(remote, s.id) }
     val devices = state.devices
     val items = remember(events, d, cwd, home, outbox.size, devices) {
         buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) }) { o ->
@@ -517,6 +518,7 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     var focused by remember { mutableStateOf(false) }
     val compact = ime && focused
     val images = ImageDrafts.forSession(s.id)
+    var keeping by remember { mutableStateOf(false) }
     val machine = state.machines[s.machineId]
     val maxImg = maxImages(machine)
     val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
@@ -582,13 +584,24 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
                     if (msg.isEmpty() && images.images.isEmpty()) return@FilledIconButton
                     // Every image must be on the computer first: never a message with some of them.
                     if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
-                    text = ""
                     val picked = images.images.toList()
-                    // Kept on disk with the message until the CLI has it (Outbox).
-                    Outbox.send(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original)
-                    images.detach(picked)
+                    if (picked.isEmpty()) {
+                        text = ""
+                        Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+                        return@FilledIconButton
+                    }
+                    // Kept on disk with the message until the CLI has it; sent
+                    // only once that worked, and only then out of the draft.
+                    keeping = true
+                    Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
+                        keeping = false
+                        kept.onSuccess {
+                            if (text.trim() == msg) text = ""
+                            images.detach(picked)
+                        }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
+                    }
                 },
-                enabled = online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
+                enabled = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
                 modifier = Modifier.size(44.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
             ) { Icon(Icons.Default.ArrowUpward, "发送", tint = p.card) }
