@@ -184,5 +184,5 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 0.159.0 起，输入框提示符写成 `\e[0;1m›`（先重置再加粗），不再是 `\e[1m›`；样式不变，写法变了。之前的用户消息仍是加粗加淡、选中行仍是加粗反色
 - 0.159.0 在新目录里启动时，先画出输入框，随后才弹出 `Trust this folder?`，首次启动还会在上方画一个大的点阵 logo；状态栏末尾可能多一个转圈字符
 - 输入框为空时按一次 Ctrl-C 就退出了 Codex（输入框有内容时，第一次是清空）
-- 粘贴图片路径（0.159.0，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：一次粘贴的内容只有一个图片文件的绝对路径时，输入框里变成 `[Image #N]`；路径后面带文字、或者路径里有空格时不转换。图片在**提交时**才读：粘贴后删掉文件再提交，rollout 里记的是 `Codex could not read the local image at …: No such file or directory`，模型看不到这张图。能读到时，rollout 的用户消息依次是 `<image name=[Image #1] path="…">`、`input_image`、`</image>`，最后是正文（带 `[Image #1]` 占位）。几张图片路径、文字和回车一次写入，Codex 照常提交，图片和文字的顺序不变
+- 粘贴图片路径（0.159.0，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：一次粘贴的内容只有一个图片文件的绝对路径时，输入框里变成 `[Image #N]`；路径后面带文字、或者路径里有空格时不转换。图片在**提交时**才读：粘贴后删掉文件再提交，rollout 里记的是 `Codex could not read the local image at …: No such file or directory`，模型看不到这张图。能读到时，rollout 的用户消息依次是 `<image name=[Image #1] path="…">`、`input_image`、`</image>`，最后是正文（带 `[Image #1]` 占位）。几张图片路径、文字和回车一次写入，Codex 照常提交，图片和文字的顺序不变。大图（同日实测）：4000×3000 的 PNG 被缩到 1824×1368 再内嵌；7.7 MB 的 1600×1600 噪点 PNG 原样内嵌，rollout 因此多出 10 MB 左右的 base64。两张模型都能看到
 

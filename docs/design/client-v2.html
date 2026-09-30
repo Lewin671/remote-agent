@@ -625,6 +625,14 @@
   .att-tray .pic { width:56px; height:56px; }
   .pic .x { position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
   .att-tray .pic .ring { width:24px; height:24px; margin:-12px 0 0 -12px; }
+  .newbox .att-in { width:40px; height:40px; border-radius:50%; background:var(--chip); color:var(--fg2); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
+  .newbox .att-tray { padding:0 0 8px; }
+  .att-meta { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:0 2px 6px; }
+  .att-meta .orig { display:inline-flex; align-items:center; gap:5px; min-height:28px; color:var(--fg2); }
+  .att-meta .orig i { width:14px; height:14px; border-radius:50%; border:1.5px solid var(--muted); display:inline-block; }
+  .att-meta .orig.on i { border:4px solid var(--blue-bg); }
+  .pic .pct { position:absolute; left:0; right:0; bottom:0; height:4px; background:rgba(0,0,0,.35); }
+  .pic .pct b { display:block; height:100%; background:var(--blue-bg); }
   .drop { position:relative; }
   .drop::after { content:"松开以添加图片"; position:absolute; inset:0; border:2px dashed var(--blue); border-radius:18px; background:var(--blue-soft); color:var(--blue); font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; }
   .lightbox { position:absolute; inset:34px 0 0; background:rgba(0,0,0,.86); display:grid; grid-template-columns:64px 1fr 64px; grid-template-rows:48px 1fr auto; color:#f2f3f5; }
@@ -666,7 +674,7 @@
     <li>补齐 Claude Code 多选、长问题完整页、计划、不可用模式、设备默认值；终端按键栏加入左右方向键。</li>
     <li>工具调用开始就展示命令与调用耗时；输入区上方保留执行摘要，补画并行、未收到结果、断线和后台工作的状态。</li>
     <li>审批仍是允许 / 拒绝 / 附理由拒绝；命令可展开，连接超时写未收到确认，重试保持原决定。</li>
-    <li>显示会话里的图片：电脑上粘贴的图、Agent 查看的图挂在消息和工具行下面，Codex 生成的图单独成卡片；点开看大图，可保存和分享。输入区加「＋」发图片：选图后先压缩并传到电脑，发出后在电脑终端里就是 <code>[Image #N]</code>。</li>
+    <li>显示会话里的图片：电脑上粘贴的图、Agent 查看的图挂在消息和工具行下面，Codex 生成的图单独成卡片；点开看大图，可保存和分享。输入区和新建卡片加「＋」发图片，一条最多 6 张，可选原图：选图后先传到电脑，发出后在电脑终端里就是 <code>[Image #N]</code>。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
@@ -753,7 +761,7 @@
       </div>
       <div class="newbox">
         <div class="nh"><span>＋ 新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
-        <div class="row2"><div class="in">在 foo 里开始一个任务…</div><div class="go">↑</div></div>
+        <div class="row2"><div class="att-in">＋</div><div class="in">在 foo 里开始一个任务…</div><div class="go">↑</div></div>
         <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div><div class="onlyterm">只打开终端 ›</div>
       </div>
     </div>
@@ -771,7 +779,7 @@
       </div>
       <div class="newbox" style="margin-bottom:6px">
         <div class="nh"><span>＋ 新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
-        <div class="row2"><div class="in typed">给登录接口加限流</div><div class="go">↑</div></div>
+        <div class="row2"><div class="att-in">＋</div><div class="in typed">给登录接口加限流</div><div class="go">↑</div></div>
         <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div>
       </div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
@@ -2134,7 +2142,7 @@ git status --short gen/</pre>
 </div>
 <div class="cap" style="width:auto;text-align:left">宽屏：聊天里的预览放大到 140px 高；点开在会话区上方打开大图，←/→ 切换、Esc 关闭，可以保存和复制</div>
 
-<div class="note" style="margin:32px 0 20px">从客户端发图片：输入区左下角的「＋」打开系统的图片选择（相册、拍照、文件），一次可以选多张；宽屏上也可以拖进输入区或直接粘贴。选好后在本机压缩，并立即传到电脑上，发送时和文字一起交给 CLI，电脑终端里显示为 <code>[Image #N]</code>。发出的图和在电脑上粘贴的图显示方式相同。</div>
+<div class="note" style="margin:32px 0 20px">从客户端发图片：输入区左下角和新建卡片里的「＋」打开系统的图片选择（相册、拍照、文件），一条消息最多 6 张；宽屏上也可以拖进输入区或直接粘贴。默认在本机压缩，也可以勾选「原图」；选好后立即传到电脑上，发送时和文字一起交给 CLI，电脑终端里显示为 <code>[Image #N]</code>。发出的图和在电脑上粘贴的图显示方式相同。</div>
 <div class="screens">
 
   <div>
@@ -2146,9 +2154,9 @@ git status --short gen/</pre>
         <div class="ai">单列布局改好了，测试也通过了。</div>
         <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +12 −9</code></div>
       </div>
-      <div class="compose-card"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="ring"></span><span class="x">✕</span></i></div><div class="draft typed">这两个页面底部的按钮都点不到</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">31%</span><span class="go44 off">↑</span></div></div>
+      <div class="compose-card"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="ring"></span><span class="x">✕</span></i></div><div class="att-meta"><span class="orig"><i></i>原图</span><span>2 / 6</span></div><div class="draft typed">这两个页面底部的按钮都点不到</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">31%</span><span class="go44 off">↑</span></div></div>
     </div>
-    <div class="cap">选好的图排在输入框上方，可以逐张移除。转圈表示还在传到电脑，全部传完才能发送；文字可以先写</div>
+    <div class="cap">选好的图排在输入框上方，可以逐张移除，最多 6 张。转圈表示还在传到电脑，全部传完才能发送；文字可以先写。「原图」默认不选，只对这一条消息生效</div>
   </div>
 
   <div>
@@ -2188,6 +2196,25 @@ git status --short gen/</pre>
     <div class="cap">电脑终端里看到的是同一条消息：CLI 自己把图片记成 <code>[Image #N]</code>，和在电脑上粘贴的一样</div>
   </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>web</b><span>~/Code/web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="body">
+        <div class="label">会话</div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>首页改版</b><span>9:38</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · MacBook</div></div></div>
+      </div>
+      <div class="newbox" style="margin-bottom:6px">
+        <div class="nh"><span>＋ 新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
+        <div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="pct"><b style="width:62%"></b></span><span class="x">✕</span></i></div>
+        <div class="att-meta"><span class="orig on"><i></i>原图 · 共 9.8 MB</span><span>2 / 6</span></div>
+        <div class="row2"><div class="att-in">＋</div><div class="in typed">按截图把设置页重做一遍</div><div class="go" style="opacity:.4">↑</div></div>
+        <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div>
+      </div>
+    </div>
+    <div class="cap">新建会话的第一条消息同样可以带图：图先传到选中的机器，会话建好后和第一句话一起发出。选了原图时写总大小，底部细条是分块上传的进度；两个 CLI 仍会把过大的图缩到 2000px 左右，原图保住的是画质</div>
+  </div>
+
 </div>
 
 <div class="stgrid" style="margin-top:28px">
@@ -2195,6 +2222,18 @@ git status --short gen/</pre>
     <div class="st-h">发图 · 传到电脑中 / 失败</div>
     <div class="att-tray"><i class="pic land web" style="width:56px"><span class="ring"></span><span class="x">✕</span></i><i class="pic port ui" style="width:56px"><span class="badge">重试</span><span class="x">✕</span></i></div>
     <div class="st-c">选图后立即压缩并传到电脑。失败的图标出来，点按重试或移除；还有图没传完时发送按钮置灰</div>
+  </div>
+  <div class="st">
+    <div class="st-h">发图 · 最多 6 张</div>
+    <div class="att-tray" style="gap:4px"><i class="pic port ui" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i><i class="pic port empty" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i><i class="pic port ui" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i></div>
+    <div class="banner">一条消息最多 6 张，多选的 2 张没有加入</div>
+    <div class="st-c">满 6 张后「＋」置灰；一次多选超出时按选择顺序取前 6 张，并提示没加入的数量</div>
+  </div>
+  <div class="st">
+    <div class="st-h">新建 · 换了机器</div>
+    <div class="att-tray"><i class="pic port ui" style="width:56px"><span class="ring"></span></i><i class="pic land web" style="width:56px"><span class="ring"></span></i></div>
+    <div class="banner">已换到 VPS-dev，图片正在重新上传</div>
+    <div class="st-c">图片传给的是机器，新建时换机器要重新上传；发出之前客户端一直留着处理好的图，不用重新选</div>
   </div>
   <div class="st">
     <div class="st-h">发图 · 没能发送</div>
@@ -2273,7 +2312,7 @@ git status --short gen/</pre>
 <a class="cli-pick" href="#cli">Claude Code ▾</a>
 </div>
 <div class="row2">
-<div class="in typed">给登录接口加限流</div>
+<div class="att-in">＋</div><div class="in typed">给登录接口加限流</div>
 <div class="go">↑</div>
 </div>
 <div class="cfg">
@@ -3491,7 +3530,7 @@ git status --short gen/</pre>
     <div class="dm">
       <div class="start">
         <h3>开始一个任务</h3><div class="wide-project-tools"><span class="chip"><div class="av xs c1">f</div>foo ▾</span><a class="cli-pick" href="#cli">Claude Code ▾</a><span class="small muted">MacBook · 询问</span></div>
-        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet · high ▾</em></span><span class="go44">↑</span></div></div><div class="small" style="color:var(--blue);padding:8px 0">只打开终端 ›</div>
+        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet · high ▾</em></span><span class="go44">↑</span></div></div><div class="small" style="color:var(--blue);padding:8px 0">只打开终端 ›</div>
         <div class="small muted">沿用 foo 最近一次的 Claude Code 设置 · <span style="color:var(--blue)">更改机器与目录</span></div>
         <div class="label">需要处理</div>
         <div class="todo">
@@ -3586,7 +3625,7 @@ git status --short gen/</pre>
           <div class="av lg c1">f</div>
           <div style="flex:1"><div style="font-size:22px;font-weight:700">foo</div><div class="muted small">~/Code/foo · MacBook · VPS-dev</div></div>
         </div>
-        <div class="wide-project-tools"><a class="cli-pick" href="#cli">Claude Code ▾</a><span class="small muted">MacBook · 询问</span><span class="small" style="color:var(--blue)">更改</span></div><div class="compose-card"><div class="draft">在 foo 里开始新会话…</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet · high ▾</em></span><span class="go44">↑</span></div></div>
+        <div class="wide-project-tools"><a class="cli-pick" href="#cli">Claude Code ▾</a><span class="small muted">MacBook · 询问</span><span class="small" style="color:var(--blue)">更改</span></div><div class="compose-card"><div class="draft">在 foo 里开始新会话…</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet · high ▾</em></span><span class="go44">↑</span></div></div>
         <div class="label" style="padding-left:0;padding-right:0">进行中 <span>1</span></div>
         <div class="sess" style="padding-left:0;padding-right:0"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
         <div class="label" style="padding-left:0;padding-right:0">已结束 <span>12</span></div>
