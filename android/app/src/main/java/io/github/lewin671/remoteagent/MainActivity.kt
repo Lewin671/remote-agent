@@ -63,8 +63,6 @@ import io.github.lewin671.remoteagent.ui.SessionScreen
 import io.github.lewin671.remoteagent.ui.SettingsScreen
 import io.github.lewin671.remoteagent.ui.pal
 import io.github.lewin671.remoteagent.ui.statusIn
-import java.net.URLDecoder
-import java.net.URLEncoder
 
 class MainActivity : ComponentActivity() {
     /** A session to open, from a notification. */
@@ -141,7 +139,7 @@ class MainActivity : ComponentActivity() {
                     composable("settings") { SettingsScreen() }
                     composable("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
                     composable("project/{key}?focus={focus}") {
-                        ProjectScreen(dec(it.arguments?.getString("key")), it.arguments?.getString("focus") == "1")
+                        ProjectScreen(routeValue(it.arguments?.getString("key")), it.arguments?.getString("focus") == "1")
                     }
                     composable("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
                     composable("pair") { PairScreen() }
@@ -172,8 +170,8 @@ class MainActivity : ComponentActivity() {
     private fun remember(nav: NavHostController) = Nav(
         back = { if (!nav.popBackStack()) finish() },
         session = { nav.navigate("session/$it") { launchSingleTop = true } },
-        project = { nav.navigate("project/${enc(it)}") },
-        projectNew = { nav.navigate("project/${enc(it)}?focus=1") },
+        project = { nav.navigate("project/${routeArg(it)}") },
+        projectNew = { nav.navigate("project/${routeArg(it)}?focus=1") },
         home = { nav.navigate("home") { popUpTo("home") { inclusive = true } } },
         settings = { nav.navigate("settings") },
         device = { nav.navigate("device/$it") },
@@ -186,8 +184,22 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_SESSION = "session"
-        // Project keys are paths; keep them in one path segment.
-        private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
-        private fun dec(s: String?) = URLDecoder.decode(s.orEmpty(), "UTF-8")
     }
 }
+
+/**
+ * A project key, which is an absolute path, as one route segment:
+ * percent-encoded as a URI, so Navigation's own decoding gives the path back
+ * (architecture §8). Everything but unreserved characters is escaped,
+ * including "/", "%", "+", "?" and "&".
+ */
+fun routeArg(s: String): String = buildString {
+    for (b in s.toByteArray(Charsets.UTF_8)) {
+        val c = b.toInt() and 0xff
+        if (c.toChar().let { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it in "-._~" }) append(c.toChar())
+        else append('%').append("0123456789ABCDEF"[c shr 4]).append("0123456789ABCDEF"[c and 15])
+    }
+}
+
+/** The key back from a route argument, which Navigation has already decoded once. */
+fun routeValue(arg: String?): String = arg.orEmpty()
