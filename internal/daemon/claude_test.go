@@ -482,3 +482,104 @@ func TestClaudeSeenModesPerModel(t *testing.T) {
 		t.Fatalf("sonnet again: %v", f)
 	}
 }
+
+// bashCall writes a Bash call with command cmd and ID id, started
+// and, if done, completed.
+func (h *harness) bashCall(id, cmd string, done bool) {
+	h.writeRollout(`{"type":"assistant","message":{"id":"m-` + id + `","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"` + id + `","name":"Bash","input":{"command":"` + cmd + `"}}]}}`)
+	if done {
+		h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"` + id + `","content":"ok"}]}}`)
+	}
+}
+
+// askBash sends a PermissionRequest for cmd and reports whether it got a
+// card (true) or was let through silently (false).
+func (h *harness) askBash(cmd string) bool {
+	h.t.Helper()
+	before := h.s.info().PendingApprovals
+	out := make(chan []byte, 1)
+	go func() {
+		b, _ := h.s.hook(context.Background(), claudePermission("Bash", `{"command":"`+cmd+`"}`))
+		out <- b
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case <-out:
+			return false
+		default:
+		}
+		if h.s.info().PendingApprovals > before {
+			return true
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	h.t.Fatal("neither a card nor an answer")
+	return false
+}
+
+// After a restart: an old call started before it and completing after
+// it, while a new identical call runs, is no evidence for the new call's
+// request (review verify4 P1).
+func TestClaudeRanBeforeAfterRestart(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.bashCall("t1", "make test", false)
+	h.s.bindRollout("cc-1", path)
+	h.s.readRollout()
+	// Restart.
+	m := h.s.meta
+	h.s.log.Close()
+	h.open(m)
+	h.bashCall("t2", "make test", false)
+	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.readRollout()
+	if !h.askBash("make test") {
+		t.Fatal("the new call's request was let through on the old call's completion")
+	}
+	h.s.retractApprovals()
+	// Nor with a completion from before the restart and the new call not
+	// read yet.
+	m = h.s.meta
+	h.s.log.Close()
+	h.open(m)
+	if !h.askBash("make test") {
+		t.Fatal("let through with nothing known of the new call")
+	}
+	h.s.retractApprovals()
+}
+
+// A call left running when the CLI was killed does not hold up the
+// evidence for calls after resuming (review verify4 P2).
+func TestClaudeRanBeforeAfterResume(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.bashCall("t1", "make test", false) // killed while it ran
+	h.s.bindRollout("cc-1", path)
+	h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_EXITED}}})
+	h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed"}}})
+	h.writeRollout(`{"type":"user","promptId":"p2","origin":{"kind":"human"},"message":{"role":"user","content":"again"}}`)
+	h.bashCall("t2", "make test", true)
+	h.s.readRollout()
+	if h.askBash("make test") {
+		t.Fatal("a card for a call that already ran")
+	}
+}
+
+// Two identical calls in parallel, one done: its request cannot be told
+// from the other's, so it gets a card.
+func TestClaudeRanBeforeParallel(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.bashCall("t1", "make test", false)
+	h.bashCall("t2", "make test", false)
+	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.bindRollout("cc-1", path)
+	if !h.askBash("make test") {
+		t.Fatal("let through while an identical call still runs")
+	}
+	h.s.retractApprovals()
+}
