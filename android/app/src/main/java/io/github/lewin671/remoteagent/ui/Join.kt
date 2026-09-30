@@ -69,6 +69,8 @@ fun JoinScreen(app: RaApp) {
     var error by remember { mutableStateOf("") }
     var job by remember { mutableStateOf<Job?>(null) }
     var stopped by remember { mutableStateOf(false) }
+    // Registering has begun: canceling now would misreport the outcome.
+    var registering by remember { mutableStateOf(false) }
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = BuildConfig.DEBUG)
 
@@ -80,21 +82,38 @@ fun JoinScreen(app: RaApp) {
             try {
                 val l = link.copy(server = checkedServer(link.server))
                 val acct = withContext(Dispatchers.IO) {
-                    joinByPairing(l, app.http, { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } }, { stopped })
+                    joinByPairing(l, app.http, { emoji -> scope.launch { step = JoinStep.Emoji(emoji) } }, { stopped }, { registering = true })
                 }
                 app.joined(acct)
             } catch (e: Exception) {
-                if (!stopped) error = errorText(e)
+                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表"
+                else if (!stopped) error = errorText(e)
+                registering = false
                 step = JoinStep.Form
             }
         }
     }
 
-    BackHandler(enabled = step != JoinStep.Form) {
+    /**
+     * Stops waiting: no more polling or joining by itself, the one-off pairing
+     * key goes with the job. The server is kept and the old code cleared; the
+     * server may still hold the old request. Once registering has begun the
+     * join goes on and its outcome is shown instead.
+     */
+    fun cancel() {
+        if (registering) {
+            error = "已经在登记这台手机，稍等结果"
+            return
+        }
         stopped = true
         job?.cancel()
+        code = ""
+        commit = null
+        error = "已取消本次加入。旧请求可能还占着配对码：请在已有设备上拒绝它，再生成新码"
         step = JoinStep.Form
     }
+
+    BackHandler(enabled = step != JoinStep.Form) { cancel() }
 
     when (val s = step) {
         JoinStep.Scan -> QrScanner(
@@ -126,7 +145,7 @@ fun JoinScreen(app: RaApp) {
                         CircularProgressIndicator(Modifier.padding(end = 10.dp).size(18.dp), strokeWidth = 2.dp)
                         Text("等待允许…", color = p.muted)
                     }
-                    TextButton(onClick = { stopped = true; job?.cancel(); step = JoinStep.Form }) { Text("取消") }
+                    TextButton(onClick = { cancel() }) { Text("取消，图案不一致也点这里") }
                 }
                 JoinStep.Working -> {
                     Text("加入账户", style = MaterialTheme.typography.headlineSmall)

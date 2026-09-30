@@ -170,6 +170,8 @@ suspend fun joinByPairing(
     http: OkHttpClient,
     onEmoji: (List<String>) -> Unit,
     stopped: () -> Boolean,
+    /** Called when registering starts: from here on the join is not canceled, its outcome is reported. */
+    onRegistering: () -> Unit = {},
 ): Account {
     val api = Api(link.server, http)
     val key = PairKey()
@@ -205,6 +207,9 @@ suspend fun joinByPairing(
     val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, get)
     val (_, payload) = Envelopes.openMessage(s.key, done.payload, Place(PayloadKind.PAYLOAD_KIND_PAIRING, requestId = id), PairingPayload::parseFrom)
     if (payload.server != link.server) throw PairException("账户属于另一个服务器")
+    // Canceled while the other device was allowing it: stop before registering.
+    if (stopped()) throw PairException("已取消本次加入")
+    onRegistering()
     val acct = joinWithRoot(payload.root.toByteArray(), payload.server, http)
     // Tells the other device it went through. If this is lost, that device
     // reports the outcome as unknown; the join itself stands.
