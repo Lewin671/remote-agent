@@ -42,6 +42,24 @@ import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.proto.TurnOutcome
 
+data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false)
+
+/** A new session's acknowledged prompt until history records it; never resend it here. */
+fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>): StartPrompt? {
+    if (prompt.isNullOrEmpty() || events.any { it.hasUserMessage() }) return null
+    val first = d.inputs.keys.firstOrNull { it !in localIds }
+    val status = first?.let { d.inputs[it] }
+    val error = first?.let { d.failures[it] }.orEmpty()
+    return when (status) {
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED -> null
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED -> StartPrompt(prompt, "没能发送" + if (error.isEmpty()) "" else "：$error", true)
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> StartPrompt(prompt, "请到终端确认" + if (error.isEmpty()) "" else "：$error", true)
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED -> StartPrompt(prompt, "已送到终端，但没能确认 CLI 收到，不会自动重发", true)
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED -> StartPrompt(prompt, "已送达电脑，等待输入框就绪")
+        else -> StartPrompt(prompt, "已送达电脑")
+    }
+}
+
 /** What the chat shows, built from the events. */
 sealed interface ChatItem {
     val key: String

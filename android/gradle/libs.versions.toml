@@ -11,6 +11,7 @@ okhttp = "5.4.0"
 bouncycastle = "1.81"
 serialization = "1.9.0"
 junit = "4.13.2"
+android-test-runner = "1.6.2"
 compose-bom = "2025.06.01"
 core-ktx = "1.16.0"
 activity = "1.10.1"
@@ -64,6 +65,10 @@ camera-view = { module = "androidx.camera:camera-view", version.ref = "camera" }
 zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+
+compose-ui-test = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+android-test-runner = { module = "androidx.test:runner", version.ref = "android-test-runner" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

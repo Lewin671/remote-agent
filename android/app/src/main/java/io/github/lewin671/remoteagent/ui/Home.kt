@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Project
 import io.github.lewin671.remoteagent.core.RemoteState
@@ -151,9 +152,9 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, divider: Boolean, sh
     val nav = LocalNav.current
     val st = statusIn(state, s)
     if (divider) androidx.compose.material3.HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-    Column(Modifier.fillMaxWidth().clickableRow { nav.session(s.id) }.padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth().clickableRow { nav.session(s.id) }.padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(titleOf(s), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(titleOf(s), style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (exited(s)) FontWeight.Normal else FontWeight.SemiBold), color = if (exited(s)) p.fg2 else p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(end = 8.dp))
             Text(whenText(if (exited(s)) endedMs(s) else s.updatedMs, t), style = MaterialTheme.typography.bodySmall, color = p.faint)
         }
         val preview = previewOf(s, st)
@@ -165,7 +166,7 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, divider: Boolean, sh
                 add(machineLabel(state, s.machineId))
                 if (s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) add(agentName(s.agent()))
             }
-            Text(" · " + parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1)
+            Text(" · " + parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
     }
 }

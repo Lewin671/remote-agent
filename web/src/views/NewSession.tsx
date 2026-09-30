@@ -326,8 +326,8 @@ export function NewBox({
   const p = ns.parts;
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
-    box: `在 ${name} 里开始一个任务…`,
-    prompt: `在 ${name} 里开始新会话…`,
+    box: "描述任务…",
+    prompt: "描述任务…",
     start: "描述任务，⌘/Ctrl+Enter 开始",
   }[variant];
   const tray = ns.tray;
@@ -436,11 +436,11 @@ export function NewBox({
   let body;
   if (variant === "box")
     body = (
-      <div className="newbox">
+      <div className="newbox" role="group" aria-label={`${name} · 新会话`}>
         {error}
         {notes}
         <div className="nh">
-          <span>＋ 新会话</span>
+          <span>新会话</span>
           {cliPick}
         </div>
         {trayView}

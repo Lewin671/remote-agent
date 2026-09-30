@@ -2,7 +2,7 @@
 
 按风险从高到低推进：先把最依赖实测、最容易出意外的本地这一侧跑通，再接 server、加密和客户端。每个阶段完成后打 tag。
 
-MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前并行推进三件事**：Android 原生 App、接入 Claude Code、客户端 v2 设计及后续改版（网页和 Android 当前仍按 v1 实现）；P3 以及「不做」里的功能先不碰。
+MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已经完成。**当前并行推进三件事**：Android 原生 App、接入 Claude Code、客户端 v2 改版及真机验收（网页和 Android 已实现 v2，当前界面目标为 v5）；P3 以及「不做」里的功能先不碰。
 
 | 阶段 | 内容 | 做完后能证明什么 |
 |---|---|---|
@@ -12,7 +12,7 @@ MVP（P0 到 P2，对应 [scope.md](scope.md) 里「做」的全部内容）已�
 | **A Android 原生 App**（进行中） | 纯 Kotlin 的原生客户端：原生终端、富通知、在通知里审批 | 手机上的体验达到原生水平，手机上不再需要 PWA |
 | **C 接入 Claude Code**（进行中） | daemon 抽出每个 CLI 的接口，Claude Code 和 Codex 同等支持 | 在手机上操作 Claude Code 和操作 Codex 没有区别 |
 | **W 网页按 v1 改版**（已实现，待真机验收） | 按 [design/client-v1.html](design/client-v1.html) 改网页，手机和宽屏一起改 | 网页和界面稿一致 |
-| **W2 / A6 客户端 v2**（设计稿已完成，代码待实现） | CLI、输入区、项目管理、多端体验及会话里的图片 | 各端按 v2 使用，仍保持同一原生会话 |
+| **W2 / A6 客户端 v2**（两端已实现，继续真机验收） | CLI、输入区、项目管理、多端体验及会话里的图片 | 各端按 v2 使用，仍保持同一原生会话 |
 | **P3 以后** | 附件等 | |
 
 ## P0 本地打通
@@ -217,9 +217,11 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v4](design/client-v4.html) 是新的界面目标（保留 v3 全部页面并统一会话排序）；各端实现与验收进度见下文。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v5](design/client-v5.html) 是当前界面目标：保留 v4 全部页面和排序规则，统一新会话卡片、历史字重、分段栏和输入控件；网页与 Android 已实现 v2，继续按 v5 核查。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
 **会话排序进度**（2026-09-30）：网页首页、宽屏侧栏、项目页与 Android 首页、项目页按 client-v4 统一排序；daemon 在加密会话摘要中提供日志重建的等待和退出时间。升级兼容规则见 [architecture.md 的会话列表排序](architecture.md#会话列表排序)。
+
+**v5 界面复查**（2026-09-30）：网页与 Android 已实现新会话卡片归组、历史层级、紧凑分段栏和输入控件宽度约束；Android 补齐新建首条消息在历史到达前的显示，以及大字号模式面板滚动。网页窄屏设置仍能访问高上下文提示；长项目名不再撑高输入区。网页全量测试、Android JVM 测试、4 项模拟器 Compose 仪器测试和 R8 构建通过；实测边界见 [browser-notes](browser-notes.md#v5-界面复查) 与 [android-notes §7](android-notes.md#7-v5-界面复查)。
 
 **Go 侧进度**（2026-09-30）：协议、server 和 daemon 已完成——会话图片（预览、显示版、按序上传、去重、降级）、从客户端发图（分块上传、逐张粘贴、阶段落盘、失败清理、重启恢复）、账户项目偏好和设备目录的存取与推送、指令签名和事件来源。在隔离的 server、daemon 和 tmux 上用真实 CLI 验过（Codex 0.159.0 GPT-6-Luna low，Claude Code 2.1.285 haiku，测试客户端是 `internal/remoteclient`）：两个 CLI 各新建一个第一条消息带图的会话；Codex 空闲时发两张图、Claude Code 运行中发两张图；3.8 MB 和 4.3 MB 的图显示版都在 1 MiB 以内；11.6 MB 带 GPS 的原图在两个 CLI 的记录里都没有 EXIF；电脑终端里显示 `[Image #N]`，模型都读出了图里的字；Codex 的 `view_image`、生成图，Claude Code 的 `Read`，以及两个 CLI 在终端本地粘贴的图都带预览和大图；第二张图丢失时不提交并清空输入框；粘贴中途杀掉 daemon，重启后清空并记为失败；注入期间本地敲的键在提交后出现在新输入框里；18.9 MB 的 rollout 行照常解析；server 数据库和 WAL 里没有正文、路径和图片明文。客户端的显示和发送在各自的进度里验收。
 

@@ -2,6 +2,9 @@ package io.github.lewin671.remoteagent.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,9 +42,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -135,21 +135,7 @@ fun SessionScreen(sid: String) {
     Column(Modifier.fillMaxSize().background(p.card)) {
         SessionTopBar(state, s, status, d.running, onTerminal = { tab = 1 })
         ConnBanner(state)
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-            SegmentedButton(tab == 0, { tab = 0 }, SegmentedButtonDefaults.itemShape(0, 2), icon = {}) { Text("聊天") }
-            SegmentedButton(
-                tab == 1, { tab = 1 }, SegmentedButtonDefaults.itemShape(1, 2),
-                enabled = status != Status.EXITED, icon = {},
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("终端")
-                    if (status == Status.POPUP) {
-                        Spacer(Modifier.width(4.dp))
-                        Dot(p.orange, 6)
-                    }
-                }
-            }
-        }
+        SessionTabs(tab, status != Status.EXITED, status == Status.POPUP) { tab = it }
         if (tab == 1 && status != Status.EXITED) {
             TerminalPane(remote, sid, sessionRunning = status != Status.EXITED, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
@@ -169,7 +155,7 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = nav.back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
         Column(Modifier.weight(1f)) {
-            Text(titleOf(s), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(titleOf(s), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusLabel(status)
                 Text(
@@ -228,8 +214,11 @@ private fun ChatPane(
     // Messages with images from an earlier run are followed until the CLI has them.
     LaunchedEffect(s.id) { if (Outbox.of(s.id).any { it.images.isNotEmpty() }) Outbox.watch(remote, s.id) }
     val devices = state.devices
+    val initialPrompt = Outbox.prompt(s.id)
+    val initialId = if (initialPrompt != null) d.inputs.keys.firstOrNull { id -> outbox.none { it.requestId == id } } else null
+    val startPrompt = pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet())
     val items = remember(events, d, cwd, home, outbox.size, devices) {
-        buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) }) { o ->
+        buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) ?: initialPrompt?.takeIf { _ -> it == initialId } }) { o ->
             io.github.lewin671.remoteagent.core.originLabel(o, state, remote.account.deviceId, machine)
         }
     }
@@ -266,7 +255,13 @@ private fun ChatPane(
             )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-                if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
+                if (!loaded && events.isEmpty() && startPrompt == null) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
+                if (startPrompt != null) item(key = "start-prompt") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
+                        Box(Modifier.background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) { Text(startPrompt.text, style = MaterialTheme.typography.bodyLarge) }
+                        Text(startPrompt.caption, style = MaterialTheme.typography.bodySmall, color = if (startPrompt.warning) p.orangeInk else p.muted)
+                    }
+                }
                 items(items, key = { it.key }) {
                     ChatItemView(it, agentName(s.agent()), cwd, home) { requestId, text ->
                         // A message the session ended before writing: text and images back.
@@ -507,7 +502,7 @@ private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin67
  * draft stays and sending and settings wait.
  */
 @Composable
-private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
+internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     var text by Outbox.draft(s.id)
@@ -526,7 +521,7 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
     LaunchedEffect(blocked, images.images.size) { if (blocked == null) images.sendAllTo(remote, s.machineId) }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-            .background(p.soft, RoundedCornerShape(20.dp)).padding(horizontal = 6.dp, vertical = 4.dp),
+            .border(1.dp, p.line, RoundedCornerShape(16.dp)).background(p.soft, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         ImageStrip(images, remote, s.machineId, maxImg)
         androidx.compose.foundation.text.BasicTextField(
@@ -550,61 +545,63 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
                 }
             },
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            ImageAddButton(images, remote, s.machineId, blocked, maxImg)
-            val label = io.github.lewin671.remoteagent.core.modeLabel(s)
-            val mode = label?.mode
-            Chip(
-                (label?.text ?: "模式") + " ▾",
-                color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
-                bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
-            ) { if (online) sheet = 1 }
-            val pc = contextPercent(s)
-            if (compact) {
-                Chip("设置…" + if ((pc ?: 0) > 80) " ●" else "", color = if ((pc ?: 0) > 80) p.orangeInk else p.fg2) { if (online) sheet = 2 }
-            } else {
-                // Claude Code records full model IDs; show the alias the list offers.
-                var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
-                LaunchedEffect(s.machineId, s.agent()) {
-                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val foldSettings = compact || maxWidth / LocalDensity.current.fontScale < 300.dp
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ImageAddButton(images, remote, s.machineId, blocked, maxImg)
+                val label = io.github.lewin671.remoteagent.core.modeLabel(s)
+                val mode = label?.mode
+                InputControl(
+                    (label?.text ?: "模式") + " ▾", enabled = online,
+                    color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
+                    bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
+                ) { if (online) sheet = 1 }
+                val pc = contextPercent(s)
+                if (foldSettings) {
+                    InputControl("设置…" + if ((pc ?: 0) > 80) " ●" else "", modifier = Modifier.weight(1f), enabled = online, color = if ((pc ?: 0) > 80) p.orangeInk else p.fg2) { sheet = 2 }
+                } else {
+                    // Claude Code records full model IDs; show the alias the list offers.
+                    var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+                    LaunchedEffect(s.machineId, s.agent()) {
+                        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+                    }
+                    val raw = s.info?.model.orEmpty()
+                    val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
+                    val effort = s.info?.effort.orEmpty()
+                    Box(Modifier.weight(1f)) {
+                        InputControl(if (model.isEmpty()) "会话设置 ▾" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾", enabled = online, modifier = Modifier.fillMaxWidth()) { sheet = 2 }
+                    }
+                    // Unknown context is left out, never shown as 0%.
+                    pc?.let { InputControl("$it%", enabled = online, color = if (it > 80) p.orangeInk else p.fg2, bg = if (it > 80) p.orangeSoft else p.chip) { if (online) sheet = 2 } }
                 }
-                val raw = s.info?.model.orEmpty()
-                val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
-                val effort = s.info?.effort.orEmpty()
-                Box(Modifier.weight(1f, fill = false)) {
-                    Chip(if (model.isEmpty()) "模型读取中" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { if (online) sheet = 2 }
-                }
-                // Unknown context is left out, never shown as 0%.
-                pc?.let { Chip("$it%", color = if (it > 80) p.orangeInk else p.fg2, bg = if (it > 80) p.orangeSoft else p.chip) { if (online) sheet = 2 } }
+                FilledIconButton(
+                    onClick = {
+                        val msg = text.trim()
+                        if (msg.isEmpty() && images.images.isEmpty()) return@FilledIconButton
+                        // Every image must be on the computer first: never a message with some of them.
+                        if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
+                        val picked = images.images.toList()
+                        if (picked.isEmpty()) {
+                            text = ""
+                            Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+                            return@FilledIconButton
+                        }
+                        // Kept on disk with the message until the CLI has it; sent
+                        // only once that worked, and only then out of the draft.
+                        keeping = true
+                        Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
+                            keeping = false
+                            kept.onSuccess {
+                                if (text.trim() == msg) text = ""
+                                images.detach(picked)
+                            }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
+                        }
+                    },
+                    enabled = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
+                    modifier = Modifier.size(44.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg, contentColor = androidx.compose.ui.graphics.Color.White),
+                ) { Icon(Icons.Default.ArrowUpward, "发送") }
             }
-            Spacer(Modifier.weight(1f))
-            FilledIconButton(
-                onClick = {
-                    val msg = text.trim()
-                    if (msg.isEmpty() && images.images.isEmpty()) return@FilledIconButton
-                    // Every image must be on the computer first: never a message with some of them.
-                    if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
-                    val picked = images.images.toList()
-                    if (picked.isEmpty()) {
-                        text = ""
-                        Outbox.send(RaApp.instance.scope, remote, s.id, msg)
-                        return@FilledIconButton
-                    }
-                    // Kept on disk with the message until the CLI has it; sent
-                    // only once that worked, and only then out of the draft.
-                    keeping = true
-                    Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
-                        keeping = false
-                        kept.onSuccess {
-                            if (text.trim() == msg) text = ""
-                            images.detach(picked)
-                        }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
-                    }
-                },
-                enabled = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
-                modifier = Modifier.size(44.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
-            ) { Icon(Icons.Default.ArrowUpward, "发送", tint = p.card) }
         }
     }
     if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在上面的按钮里。", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.orangeInk)

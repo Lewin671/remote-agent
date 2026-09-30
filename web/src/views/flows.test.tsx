@@ -54,6 +54,23 @@ async function click(b: HTMLElement | undefined) {
   await act(async () => b!.click());
 }
 
+it("preserves the context warning and settings action when a phone narrows", async () => {
+  const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
+  const r = demo();
+  const s = r.sessions.get("s-ctx")!;
+  try {
+    act(() => viewport.setViewport({ width: 320, height: 740 }));
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    expect(host.querySelector(".ctl.model")?.textContent).toContain("设置…");
+    expect(host.querySelector(".ctl.model .hot")?.getAttribute("aria-label")).toBe("上下文 86%");
+    expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
+    await click(host.querySelector<HTMLButtonElement>(".ctl.model")!);
+    expect(host.textContent).toContain("会话设置");
+  } finally {
+    act(() => viewport.setViewport({ width: 1024, height: 768 }));
+  }
+});
+
 it("lets the home card handle one approval after another", async () => {
   const r = demo();
   mount(<Home remote={r} go={() => undefined} />);

@@ -1,4 +1,4 @@
-/* Follows docs/design/client-v1.html: its palette, type scale, spacing and
+/* Follows docs/design/client-v5.html: its palette, type scale, spacing and
    parts. Font sizes are 12 / 13 / 15 / 17 / 22 / 30 only, 11 for the tab
    labels. Text colors and solid button fills are separate tokens, so body
    text keeps 4.5:1 in both themes. Anything tappable is at least 44×44. */
@@ -797,3 +797,18 @@ input.field { margin: 0; }
 .row.quota.full .v { color: var(--red); } .row.quota.full .bar i { background: var(--red-bg); }
 .row.quota.stale .bar i { background: var(--gray); }
 .row.col .hint { margin-top: 4px; }
+
+/* v5: grouped creation, quiet history, bounded identity and input controls. */
+.sess.ended .row1 b { font-weight: 400; }
+.navbar .title b { font-weight: 600; }
+.phead > div:last-child { flex: 1; min-width: 0; }
+.phead .pname { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+.phead .muted.small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.newbox { border-radius: 16px; box-shadow: none; border: 1px solid var(--line); padding: 6px 12px; }
+.newbox .nh { color: var(--fg2); font-size: 13px; font-weight: 500; }
+.compose-card { border-radius: 16px; padding: 8px; }
+.seg { border-radius: 12px; padding: 3px; }
+.seg button { border-radius: 9px; }
+.phone .seg button { min-height: 44px; }
+.ctl { border-radius: 10px; }
+.compose-card.folded .ctl.model { color: var(--blue); background: none; }

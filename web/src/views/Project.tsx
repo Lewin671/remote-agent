@@ -32,7 +32,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
     <div className="phead">
       <Avatar name={name} size="lg" />
       <div>
-        <div className="pname">{name}</div>
+        <div className="pname" title={name}>{name}</div>
         <div className="muted small">{[shortPath(pkey), ...machines].join(" · ")}</div>
         {!wide && ended.length > 0 && (
           <div className="small">

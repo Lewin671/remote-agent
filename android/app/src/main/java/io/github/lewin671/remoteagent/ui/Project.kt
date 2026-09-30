@@ -1,6 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -205,8 +207,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Avatar(key, 44)
                     Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(projectName(key), style = MaterialTheme.typography.headlineSmall)
+                    Column(Modifier.weight(1f)) {
+                        Text(projectName(key), style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -366,9 +368,10 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     }
     val c = config
     val agents = machineAgents(c?.let { state.machines[it.machineId] })
-    Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().imePadding().padding(horizontal = 12.dp, vertical = 8.dp)
+        .clip(RoundedCornerShape(16.dp)).border(1.dp, p.line, RoundedCornerShape(16.dp)).background(p.card).padding(horizontal = 12.dp, vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("＋ 新会话", style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f))
+            Text("新会话", style = MaterialTheme.typography.labelMedium, color = p.fg2, modifier = Modifier.weight(1f))
             if (c != null) {
                 // The CLI is chosen here, not in a second-level sheet; one installed CLI is just named.
                 if (agents.size > 1) Chip(agentName(c.agent) + " ▾") { pickCli = true }
@@ -388,7 +391,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                     maxLines = 6,
                     decorationBox = { inner ->
                         androidx.compose.foundation.layout.Box {
-                            if (text.isEmpty()) Text("在 $name 里开始一个任务…", style = MaterialTheme.typography.bodyLarge, color = p.faint)
+                            if (text.isEmpty()) Text("描述任务…", style = MaterialTheme.typography.bodyLarge, color = p.faint)
                             inner()
                         }
                     },
@@ -399,8 +402,8 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                         (images.images.isEmpty() || images.ready(machine)) &&
                         true,
                     modifier = Modifier.size(44.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
-                ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg, contentColor = androidx.compose.ui.graphics.Color.White),
+                ) { Icon(Icons.Default.ArrowUpward, "开始") }
             }
         }
         // Claude Code records full model IDs; name them as its list does.
@@ -411,8 +414,8 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             val shown = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, c.model) { it.slug } }
             val (l1, l2) = configLines(state, shown?.let { c.copy(model = it.displayName.ifEmpty { it.slug }) } ?: c, defaults)
             Column(Modifier.weight(1f)) {
-                Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known)) p.red else p.muted)
-                Text(l2, style = MaterialTheme.typography.bodySmall, color = p.muted)
+                Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(l2, style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             TextButton(onClick = { change = true }) { Text("更改") }
         }

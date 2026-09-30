@@ -45,6 +45,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.lewin671.remoteagent"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 26
         targetSdk = 35
         versionCode = product.getProperty("androidVersionCode").toInt()
@@ -144,4 +145,8 @@ dependencies {
     implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test)
+    androidTestImplementation(libs.android.test.runner)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

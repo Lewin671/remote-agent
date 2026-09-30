@@ -78,7 +78,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         remote.command(s.id, remote.cmd { setApprovalMode = SetApprovalModeRequest.newBuilder().setSessionId(s.id).setMode(m.proto).build() })
     }) { onClose() }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
             Text("${agentName(s.agent())} · 审批模式", style = MaterialTheme.typography.titleMedium)
             // A mode set in the terminal outside the four is shown as it is.
             s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }?.let {

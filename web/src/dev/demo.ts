@@ -7,6 +7,7 @@
 //   ?demo&list=fail                          the first listing fails
 //   ?demo&prefs=fail | prefs=unsupported     saving project preferences
 //                                            fails, or the server has none
+//   ?demo&long=1                            long project, machine and session names
 //   ?demo&devices=unsupported                a server without ListDevices
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
@@ -564,6 +565,10 @@ export class DemoRemote extends Remote {
     if (empty) return;
     for (const [id, f] of Object.entries(fixtures())) {
       const info: Session = create(SessionSchema, { id, createdAt: timestampFromMs(f.updated - 5 * min), ...f.info });
+      if (this.opts.has("long")) {
+        info.title = (info.title || "长会话标题") + "：检查输入区、项目列表和跨端状态同步是否正确处理长标题";
+        if (info.cwd === "/Users/me/Code/foo") info.cwd = "/Users/me/Code/remote-agent-with-a-very-long-project-name";
+      }
       this.sessions.set(id, { id, machineId: f.machine, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: BigInt(f.events.length), updatedMs: BigInt(f.updated) });
       this.evs.set(
         id,
@@ -573,6 +578,7 @@ export class DemoRemote extends Remote {
         }),
       );
     }
+    if (this.opts.has("long")) for (const m of this.machines.values()) if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
     void this.drawPreviews();
     const out = (sid: string, sendId: string, text: string, status: "sending" | "sent" | "failed", error?: string) => {
       this.outboxes.set(sid, [...this.outbox(sid), { sendId, requestId: "r-" + sendId, deadline: now + 60_000, text, status, error }]);

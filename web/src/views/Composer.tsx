@@ -2,12 +2,19 @@
 // draft with the mode, model, context and send in one card, and above it a
 // status line with what runs, the queue and a fixed interrupt.
 
-import { useLayoutEffect, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import type { Tray } from "../attach";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentOf, CONTEXT_WARN, contextPercent, modeOf, queuedIds, queueReason, toolPeek, type Derived } from "../model";
 import type { Remote, SessionView } from "../remote";
 import { Alert, Dot, useNow } from "../ui";
+
+// Fold into the same settings control used with the phone keyboard.
+const narrowQuery = matchMedia("(max-width: 359px)");
+function subscribeNarrow(onChange: () => void) {
+  narrowQuery.addEventListener("change", onChange);
+  return () => narrowQuery.removeEventListener("change", onChange);
+}
 
 /** The draft grows to about six lines, then scrolls inside. */
 const DRAFT_MAX = 132;
@@ -136,6 +143,8 @@ export function Composer({
 }) {
   // The draft is the session's, not this input's: it survives opening an
   // approval, plan, queue or tool page and coming back.
+  const narrow = useSyncExternalStore(subscribeNarrow, () => narrowQuery.matches);
+  const folded = slim || (!wide && narrow);
   const [text, setTextState] = useState(draft);
   const setText = (v: string) => {
     setTextState(v);
@@ -168,7 +177,7 @@ export function Composer({
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : tool ? "继续输入，不会打断当前工具…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
   const high = pct !== undefined && pct > CONTEXT_WARN;
   return (
-    <div className={"compose-card" + (slim ? " slim" : "") + (dropping ? " drop" : "")} {...cardProps}>
+    <div className={"compose-card" + (slim ? " slim" : "") + (folded ? " folded" : "") + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}
       <textarea
         ref={input}
@@ -196,7 +205,7 @@ export function Composer({
             {mode.text} ▾
           </button>
         )}
-        {slim ? (
+        {folded ? (
           <button className="ctl model" onMouseDown={(e) => e.preventDefault()} onClick={onModel} disabled={!online}>
             <em>设置…</em>
             {high && <span className="hot" aria-label={`上下文 ${pct}%`} />}
@@ -204,7 +213,7 @@ export function Composer({
         ) : (
           <>
             <button className="ctl model" onClick={onModel} disabled={!online}>
-              <em>{model || "模型读取中"} ▾</em>
+              <em>{model || "会话设置"} ▾</em>
             </button>
             {pct !== undefined && (
               <button className={"ctl context" + (high ? " warn" : "")} onClick={onModel} disabled={!online} aria-label={`上下文 ${pct}%`}>

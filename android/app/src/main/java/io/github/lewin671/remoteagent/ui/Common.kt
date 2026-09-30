@@ -3,6 +3,8 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -124,7 +127,7 @@ fun Avatar(key: String, size: Int = 36) {
 fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) {
     val p = pal
     Row(modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = p.fg2)
+        Text(title, style = MaterialTheme.typography.labelMedium, color = p.muted)
         if (count != null) {
             Spacer(Modifier.width(6.dp))
             Text("$count", style = MaterialTheme.typography.bodySmall, color = p.muted)
@@ -147,7 +150,7 @@ fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: 
 fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> Unit)? = null) {
     val p = pal
     Box(
-        Modifier.heightIn(min = 32.dp).clip(RoundedCornerShape(16.dp)).background(bg ?: p.chip)
+        Modifier.heightIn(min = if (onClick != null) 44.dp else 32.dp).clip(RoundedCornerShape(16.dp)).background(bg ?: p.chip)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
@@ -211,3 +214,34 @@ fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines
 fun statusIn(state: RemoteState, s: SessionView): Status = statusOf(s, state.machines[s.machineId])
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
+
+/** A bounded input control; the hit area remains 44 dp even with small type. */
+@Composable
+fun InputControl(text: String, modifier: Modifier = Modifier, color: Color? = null, bg: Color? = null, enabled: Boolean = true, onClick: () -> Unit) {
+    val p = pal
+    Box(modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(bg ?: p.card)
+        .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+        .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) {
+        Text(text, style = MaterialTheme.typography.labelSmall, color = (color ?: p.fg2).copy(alpha = if (enabled) 1f else .45f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+fun SessionTabs(selected: Int, terminalEnabled: Boolean, needsTerminal: Boolean, onSelect: (Int) -> Unit) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+        .clip(RoundedCornerShape(12.dp)).background(p.seg).padding(3.dp)
+        .selectableGroup(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        listOf("聊天", "终端").forEachIndexed { index, title ->
+            val enabled = index == 0 || terminalEnabled
+            Row(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(9.dp))
+                .background(if (index == selected) p.card else Color.Transparent)
+                .selectable(selected = selected == index, enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(index) })
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Text(title, style = MaterialTheme.typography.labelMedium, color = if (!enabled) p.faint else if (selected == index) p.fg else p.muted)
+                if (index == 1 && needsTerminal) { Spacer(Modifier.width(5.dp)); Dot(p.orange, 6) }
+            }
+        }
+    }
+}

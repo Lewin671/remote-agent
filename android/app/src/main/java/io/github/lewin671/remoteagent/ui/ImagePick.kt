@@ -70,7 +70,7 @@ fun ImageAddButton(draft: ImageDraft, remote: Remote, machineId: String?, blocke
                 }
             }
         },
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(44.dp),
     ) { Text("＋", color = if (blocked != null || full) p.faint else p.fg2, style = MaterialTheme.typography.titleMedium) }
 }
 

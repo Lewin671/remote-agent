@@ -18,6 +18,27 @@ import org.junit.Test
 
 class ChatTest {
     @Test
+    fun retainsAcknowledgedStartUntilHistoryArrivesAndShowsFailuresHonestly() {
+        val d = io.github.lewin671.remoteagent.core.Derived()
+        assertEquals("first", pendingStartPrompt("first", emptyList(), d, emptySet())?.text)
+        d.inputs["later-local"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED
+        d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED
+        assertEquals("已送达电脑，等待输入框就绪", pendingStartPrompt("first", emptyList(), d, setOf("later-local"))?.caption)
+        val recorded = listOf(Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("first")).build())
+        assertEquals(null, pendingStartPrompt("first", recorded, d, setOf("later-local")))
+        d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
+        assertEquals(null, pendingStartPrompt("first", emptyList(), d, setOf("later-local")))
+        d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED
+        d.failures["start"] = "CLI 没认出图片"
+        val failed = pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!
+        assertTrue(failed.warning)
+        assertEquals("没能发送：CLI 没认出图片", failed.caption)
+        d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED
+        assertTrue(pendingStartPrompt("first", emptyList(), d, setOf("later-local"))!!.warning)
+        assertEquals(null, pendingStartPrompt(null, emptyList(), d, emptySet()))
+    }
+
+    @Test
     fun parsesMarkdownBlocks() {
         val b = parseMarkdown(
             """
