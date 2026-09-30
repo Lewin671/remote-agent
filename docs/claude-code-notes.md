@@ -182,6 +182,11 @@
 - 转换是**异步**的：图片路径、文字和回车一次写入时，文字先出现在输入框里，`[Image #N]` 随后追加到末尾，回车被吞掉，消息留在输入框里没有提交。分开写入、等 `[Image #N]` 出现后再写文字和回车，就能正常提交
 - 大图会被处理后再存（2026-09-29 实测）：粘贴 4000×3000 的 PNG，transcript 里是 2000×1500 的 PNG；粘贴 7.7 MB 的 1600×1600 噪点 PNG，transcript 里是约 470 KB 的 JPEG，尺寸不变。两张模型都能看到
 - 运行中粘贴图片再回车同样会排队。这时 `queued_command` 附件的 `prompt` 不是字符串，而是 text 块加 image 块的数组，同一条附件带 `imagePasteIds`；`queue-operation` 的 `content` 仍是字符串（`[Image #5]这张图…`）
+- 逐张粘贴（2.1.284，haiku，2026-09-29 实测）：小图 0.1 秒内出现 `[Image #N]`，4 MB 的 1200×1200 噪点 PNG 约 0.5 秒，9 MB 的 2000×1500 约 1.3 秒；占位之间加一个空格，正文紧贴在最后一个占位后面（`[Image #3]这张图…`），占位和正文同一种样式。连着粘贴 5 张不等待，也都依次出现
+- 认不出的图：内容不是图片的 `.png`、不存在的路径都不转换，路径按普通文字接在前一个占位后面，没有提示
+- 清空输入框：**Ctrl-U** 一次删掉整行，包括占位；删掉的图不随后续消息提交（transcript 的 `imagePasteIds` 只有后来那张），编号继续累加不复用。Ctrl-U 在运行中同样安全，不像 Esc 会中断这一轮
+- 运行中排队的消息显示在输入框**上方**，同样以 `❯ [Image #10] [Image #11]…` 开头，所以找新出现的占位只能看两条横线之间的输入框，不能搜整个屏幕。输入框随后显示淡色的 `Press up to edit queued messages`
+- 提交的证据：空闲时是 `type: user` 的记录，`imagePasteIds` 就是屏幕上的编号，另有一条 `isMeta` 的 `[Image: source: <路径>]`；运行中是 `queue-operation` 的 `enqueue`（`content` 带占位的原文）和随后的 `queued_command` 附件（`prompt` 数组带 image 块，`imagePasteIds` 同上），附件要等当前工具调用结束才写
 
 后台工作（haiku 实测）：
 

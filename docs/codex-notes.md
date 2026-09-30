@@ -185,4 +185,11 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 0.159.0 在新目录里启动时，先画出输入框，随后才弹出 `Trust this folder?`，首次启动还会在上方画一个大的点阵 logo；状态栏末尾可能多一个转圈字符
 - 输入框为空时按一次 Ctrl-C 就退出了 Codex（输入框有内容时，第一次是清空）
 - 粘贴图片路径（0.159.0，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：一次粘贴的内容只有一个图片文件的绝对路径时，输入框里变成 `[Image #N]`；路径后面带文字、或者路径里有空格时不转换。图片在**提交时**才读：粘贴后删掉文件再提交，rollout 里记的是 `Codex could not read the local image at …: No such file or directory`，模型看不到这张图。能读到时，rollout 的用户消息依次是 `<image name=[Image #1] path="…">`、`input_image`、`</image>`，最后是正文（带 `[Image #1]` 占位）。几张图片路径、文字和回车一次写入，Codex 照常提交，图片和文字的顺序不变。大图（同日实测）：4000×3000 的 PNG 被缩到 1824×1368 再内嵌；7.7 MB 的 1600×1600 噪点 PNG 原样内嵌，rollout 因此多出 10 MB 左右的 base64。两张模型都能看到
+- 逐张粘贴多张图（0.159.0，GPT-6-Luna low，2026-09-29 实测）：每粘贴一次路径，输入框里**立即**多一个 `[Image #N]`（6 张 4 MB 的噪点 PNG 连着粘贴，50ms 后已经全部出现），占位之间 Codex 自己加一个空格；占位是青色（`\e[38;5;6m`），和正文颜色不同。编号在每个输入框里从 1 开始：清空输入框后再粘贴，又从 `[Image #1]` 起
+- 认不出的图：内容不是图片的 `.png`、不存在的路径、没有扩展名的文件、HEIC 都不转换，路径按普通文字进入输入框，紧接在前一个占位后面。PNG、JPEG、GIF 都能转换
+- 清空输入框：**Ctrl-U**（`\x15`）一次删掉整行，包括占位；删掉的图不会随后续消息提交（清空后粘贴一张绿图再提交，rollout 里只有这一张）。空输入框按 Ctrl-U 什么也不发生，不像 Ctrl-C 会退出。只清当前这一行：多行草稿要另想办法
+- 运行中粘贴两张图、正文再回车：出现在 `Messages to be submitted after next tool call` 下面，`history.jsonl` 在回车时就记下 `[Image #1] [Image #2] 正文`，rollout 的用户消息要等下一次工具调用之后（实测晚 22 秒）才写入
+- rollout 里的用户消息分两处：先是 `response_item` 的 `message`（`role: user`），依次是 `<image name=[Image #1] path="…">`、`input_image`（data URL）、`</image>` 和正文；随后的 `event_msg` `item_completed` 里 `UserMessage` 只有 `local_image`（`path`）和正文，正文带 `text_elements`，每个占位的 `byte_range` 和 `placeholder` 都写明了。图片的字节只在前一条里
+- `view_image`：模型先写 `custom_tool_call`（`exec`，脚本里调用 `tools.view_image`），然后是 `item_completed` 的 `ImageView`（只有 `path`），**最后**才是 `custom_tool_call_output`，其中的 `output` 数组带 `input_image`。三者之间没有共同的 ID。0.116.0 的历史记录是 `function_call`（`view_image`）后跟 `function_call_output`，没有 `ImageView`
+- 生成图（0.142.5 的历史记录）：同一张图记两次，先是 `item_completed` 的 `Extension`（`kind: image_gen.generation`，`result` 为 PNG 的 base64，另有 `revisedPrompt`、`savedPath`），再是 `response_item` 的 `image_generation_call`，两者 `id` 相同，`status` 都是 `generating`
 
