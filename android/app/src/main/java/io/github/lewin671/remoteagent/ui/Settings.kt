@@ -212,21 +212,6 @@ private fun Toggle(title: String, sub: String, value: Boolean, onChange: (Boolea
     }
 }
 
-private fun limitText(l: RateLimit): String {
-    val reset = if (l.resetsAt > 0) {
-        val z = Instant.ofEpochSecond(l.resetsAt).atZone(ZoneId.systemDefault())
-        " · ${z.monthValue}月${z.dayOfMonth}日 ${z.hour}:${"%02d".format(z.minute)} 重置"
-    } else ""
-    return "已用 ${l.usedPercent.toInt()}%$reset"
-}
-
-private fun windowName(minutes: Long): String = when {
-    minutes <= 0 -> "额度"
-    minutes < 60 * 24 -> "${minutes / 60} 小时"
-    minutes == 60L * 24 * 7 -> "本周"
-    else -> "${minutes / 60 / 24} 天"
-}
-
 /** 设备详情: usage windows, CLI versions, defaults for new sessions, timeout, projects, remove. */
 @Composable
 fun DeviceScreen(id: String) {
@@ -264,9 +249,9 @@ fun DeviceScreen(id: String) {
             SectionHeader("账户额度")
             Card(Modifier.padding(horizontal = 12.dp), onClick = { nav.quota(id) }) {
                 Column(Modifier.padding(vertical = 4.dp)) {
-                    for (agent in machineAgents(m)) Row44 {
-                        Text(agentName(agent), Modifier.weight(1f))
-                        Text(quotaSummary(m, agent), color = p.muted, style = MaterialTheme.typography.bodyMedium)
+                    for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())) Row44 {
+                        Text(g.title, Modifier.weight(1f))
+                        Text(io.github.lewin671.remoteagent.core.quotaLine(g), color = p.muted, style = MaterialTheme.typography.bodyMedium)
                     }
                     Row44 { Text("查看全部额度 ›", color = p.blue) }
                 }
@@ -404,19 +389,11 @@ private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings
     }
 }
 
-/** One line per CLI on the device page: its account's usage, or why there is none. */
-fun quotaSummary(m: io.github.lewin671.remoteagent.core.MachineView, agent: Agent): String {
-    if (agent == Agent.AGENT_CLAUDE) return "暂不支持读取额度"
-    val meta = m.meta ?: return "暂未获取额度"
-    val ls = listOf(meta.primaryLimit, meta.secondaryLimit).filter { it.windowMinutes > 0 || it.usedPercent > 0 }
-    if (ls.isEmpty()) return "暂未获取额度"
-    return ls.joinToString(" · ") { "${windowName(it.windowMinutes)} ${if (it.usedPercent >= 100) "已用尽" else "已用 ${it.usedPercent.toInt()}%"}" } + if (!m.online) "（上次记录）" else ""
-}
-
 /**
- * 账户额度: each CLI's account usage on this machine, apart. What is not
- * known is said, never shown as 0%; an offline machine's numbers are its
- * last record, and a reset time that passed only waits for an update.
+ * 账户额度: each CLI's account usage on this machine, apart, as the daemon
+ * reads it. What is not known is said, never shown as 0%; an offline
+ * machine's or a failed read's numbers are the last record, and a reset
+ * time that passed only waits for an update.
  */
 @Composable
 fun QuotaScreen(id: String) {
@@ -431,39 +408,65 @@ fun QuotaScreen(id: String) {
             Text("这台机器已经移除了", Modifier.padding(16.dp), color = p.muted)
             return@PageScaffold
         }
+        val groups = io.github.lewin671.remoteagent.core.quotaGroups(m, t)
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Text(machineLabel(state, id) + if (m.online) " · 在线" else " · 离线", Modifier.padding(horizontal = 16.dp), color = p.muted)
             if (!m.online) Text("机器离线，显示上次记录", Modifier.padding(16.dp), color = p.orangeInk)
-            for (agent in machineAgents(m)) {
-                val meta = m.meta
-                SectionHeader(agentName(agent) + (if (agent != Agent.AGENT_CLAUDE && meta?.planType?.isNotEmpty() == true) " · ${meta.planType}" else "") + (if (!m.online) " · 上次记录" else ""))
+            for (g in groups) {
+                SectionHeader(g.title + if (g.lastRecord) " · 上次记录" else "")
                 Card(Modifier.padding(horizontal = 12.dp)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (agent == Agent.AGENT_CLAUDE) {
-                            Text("暂不支持读取额度", style = MaterialTheme.typography.titleSmall)
-                            Text("电脑上的 remote-agent 还没有采集 Claude Code 的额度。可在本机 Claude Code 中查看 /usage。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                        when (g.status) {
+                            io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED -> {
+                                Text("暂不支持读取额度", style = MaterialTheme.typography.titleSmall)
+                                Text(g.detail.ifEmpty { "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。" } + if (g.agent == Agent.AGENT_CLAUDE) " 可在本机 Claude Code 中查看 /usage。" else "", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                            }
+                            io.github.lewin671.remoteagent.core.QuotaStatus.WAITING -> {
+                                Text("暂未获取额度", style = MaterialTheme.typography.titleSmall)
+                                Text("等待 ${agentName(g.agent)} 返回额度数据", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                            }
+                            io.github.lewin671.remoteagent.core.QuotaStatus.FAILED -> {
+                                Text("没能读取 ${agentName(g.agent)} 额度" + if (g.detail.isNotEmpty()) "：${g.detail}" else "", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
+                                if (g.rows.isEmpty()) Text("暂未获取额度", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                            }
+                            else -> {}
+                        }
+                        // Used up or close to it; nothing switches CLI or model by itself.
+                        io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let {
+                            Text("$it，不会自动切换 CLI 或模型", style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
+                        }
+                        for (r in g.rows) {
+                            Row {
+                                Text(r.label, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    r.used,
+                                    color = when (r.tone) {
+                                        io.github.lewin671.remoteagent.core.QuotaTone.FULL, io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
+                                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.muted
+                                        else -> p.fg2
+                                    },
+                                )
+                            }
+                            r.percent?.let { pc ->
+                                LinearProgressIndicator(
+                                    progress = { (pc / 100).toFloat().coerceIn(0f, 1f) }, Modifier.fillMaxWidth(),
+                                    color = when (r.tone) {
+                                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.gray
+                                        io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blue
+                                        else -> p.orange
+                                    },
+                                    trackColor = p.track,
+                                )
+                            }
+                            val sub = listOf(r.reset, r.note).filter { it.isNotEmpty() }.joinToString(" · ")
+                            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = p.muted)
+                        }
+                        io.github.lewin671.remoteagent.core.quotaPartial(g).takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = p.muted) }
+                        if (g.received.isNotEmpty()) Text(g.received, style = MaterialTheme.typography.bodySmall, color = p.faint)
+                        if (g.agent == Agent.AGENT_CLAUDE && g.status != io.github.lewin671.remoteagent.core.QuotaStatus.OK) {
                             val claudeSession = state.sessions.values.filter { it.machineId == id && it.info?.agent == Agent.AGENT_CLAUDE && !io.github.lewin671.remoteagent.core.exited(it) }.maxByOrNull { it.updatedMs }
                             if (claudeSession != null) TextButton(onClick = { nav.sessionTerminal(claudeSession.id) }, enabled = m.online) { Text("去终端查看 /usage ›") }
                             else Text("没有进行中的 Claude Code 会话：先打开一个会话再去终端查看。", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                        } else {
-                            val ls = listOfNotNull(meta?.primaryLimit, meta?.secondaryLimit).filter { it.windowMinutes > 0 || it.usedPercent > 0 }
-                            if (ls.isEmpty()) Text("暂未获取额度", style = MaterialTheme.typography.titleSmall)
-                            for (l in ls) {
-                                val passed = l.resetsAt > 0 && l.resetsAt * 1000 < t
-                                val full = l.usedPercent >= 100
-                                Row {
-                                    Text(windowName(l.windowMinutes), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        (if (!m.online) "上次" else "") + if (full) "已用尽" else "已用 ${l.usedPercent.toInt()}%",
-                                        color = if (full || l.usedPercent >= 80) p.orangeInk else p.fg2,
-                                    )
-                                }
-                                LinearProgressIndicator(
-                                    progress = { (l.usedPercent / 100).toFloat().coerceIn(0f, 1f) }, Modifier.fillMaxWidth(),
-                                    color = if (!m.online || passed) p.gray else if (l.usedPercent >= 80) p.orange else p.blue, trackColor = p.track,
-                                )
-                                Text(if (passed) "重置时间已过 · 等待更新，不能据此确认额度已经恢复" else limitText(l), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                            }
                         }
                     }
                 }
