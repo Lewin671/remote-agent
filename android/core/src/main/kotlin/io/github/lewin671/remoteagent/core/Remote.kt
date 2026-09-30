@@ -674,9 +674,14 @@ class Remote(
      * screenshots of the screens. Only for a Remote that was never started:
      * nothing is fetched, and commands fail as they would offline.
      */
-    fun showForTest(state: RemoteState, events: Map<String, List<Event>> = emptyMap()) {
+    fun showForTest(
+        state: RemoteState,
+        events: Map<String, List<Event>> = emptyMap(),
+        modelLists: Map<Pair<String, Agent>, ListModelsResponse> = emptyMap(),
+    ) {
         check(!running) { "showForTest on a started Remote" }
         _state.value = state
+        for ((key, response) in modelLists) models["${key.first}/${key.second.number}"] = CompletableDeferred(response)
         for ((sid, list) in events) eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(list, loaded = true)
     }
 

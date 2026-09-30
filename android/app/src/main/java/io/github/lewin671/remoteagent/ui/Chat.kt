@@ -123,7 +123,15 @@ fun toolTitle(t: io.github.lewin671.remoteagent.core.RunningTool, cwd: String, h
 private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: String, home: String): String {
     // A file edit's title is one path, spaces and all.
     if (kind == ToolKind.TOOL_KIND_FILE_CHANGE) return "编辑 " + shortenPath(title, cwd, home)
-    return shortenPaths(title.ifEmpty { itemType }, cwd, home)
+    val fallback = when (itemType) {
+        "ToolCall", "CommandExecution" -> when (kind) {
+            ToolKind.TOOL_KIND_COMMAND -> "命令"
+            ToolKind.TOOL_KIND_FILE_CHANGE -> "编辑"
+            else -> "工具"
+        }
+        else -> itemType.ifEmpty { "工具" }
+    }
+    return shortenPaths(title.takeUnless { it == "ToolCall" || it == "CommandExecution" }.orEmpty().ifEmpty { fallback }, cwd, home)
 }
 
 /**
@@ -133,6 +141,8 @@ private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: Stri
  */
 fun toolRaw(t: ToolCall, cwd: String, home: String): String {
     if (t.input.isNotEmpty() && t.input != t.title) return t.input
+    if (t.title == "ToolCall" || t.title == "CommandExecution" ||
+        t.title.isEmpty() && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")) return ""
     val asIs = if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 " + t.title else t.title.ifEmpty { t.itemType }
     return if (asIs != toolTitle(t, cwd, home)) t.title.ifEmpty { t.itemType } else ""
 }
@@ -148,7 +158,8 @@ fun toolsSummary(calls: List<ToolCall>): String = when {
 private fun recorded(d: ApprovalDecision) =
     d != ApprovalDecision.APPROVAL_DECISION_CANCELED && d != ApprovalDecision.APPROVAL_DECISION_TERMINAL
 
-private fun decisionLine(d: ApprovalDecision, message: String) = decisionText(d) + if (message.isNotEmpty()) "：$message" else ""
+private fun decisionLine(d: ApprovalDecision, message: String) = decisionText(d) + if (message.isNotEmpty()) " · " +
+    (if (d == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS) io.github.lewin671.remoteagent.core.approvalAlwaysText(message) else message) else ""
 
 /** Decisions to show on their tool calls (by the call's seq), and the approvals they came from. */
 class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged: Set<String>)
@@ -304,7 +315,7 @@ fun buildChat(
                 val r = d.resolved[a.approvalId] ?: continue
                 if (a.approvalId in decisions.merged || !recorded(r.first)) continue
                 flush()
-                val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW
+                val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW || r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
                 val by = who(d.resolvedBy[a.approvalId])?.takeIf { it != "本客户端" }
                 out += ChatItem.Note(k, what, if (ok) "✓" else "✕", if (ok) 1 else 2, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: ""))
@@ -443,19 +454,6 @@ fun ToolLine(mark: String, markColor: Color, title: String, modifier: Modifier =
     }
 }
 
-/** A tool's output under its line, indented past the mark. */
-@Composable
-fun ToolOut(text: String, modifier: Modifier = Modifier, more: String? = null) {
-    val p = pal
-    Column(
-        modifier.padding(start = 20.dp, bottom = 6.dp).fillMaxWidth().clip(Radii.XS).background(p.soft)
-            .horizontalScroll(rememberScrollState()).padding(horizontal = 9.dp, vertical = 6.dp),
-    ) {
-        Text(text, style = T.mono, color = p.fg2, softWrap = false)
-        if (more != null) Text(more, style = T.mono, color = p.muted)
-    }
-}
-
 @Composable
 fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
     val p = pal
@@ -484,7 +482,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             }
             if (open) Column(Modifier.padding(start = 12.dp)) {
                 item.calls.forEachIndexed { ci, c ->
-                    ToolRow(c, cwd, home)
+                    Text(toolTitle(c, cwd, home).lines().first(), style = T.mono, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     // Each call's images stay under it when the group is open.
                     if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
                 }
@@ -542,28 +540,13 @@ fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = nul
 private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "", decisionOk: Boolean = true) {
     val p = pal
     val ok = toolOk(t)
-    var open by rememberSaveable(t.callId, t.title) { mutableStateOf(false) }
-    val out = t.output.trimEnd('\n')
     // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
     val meta = listOfNotNull(
         if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
         decision.takeIf { it.isNotEmpty() },
     ).joinToString(" · ").ifEmpty { if (t.durationMs >= 1000) "${t.durationMs / 1000}s" else "" }
-    Column(Modifier.animateContentSize()) {
-        ToolLine(
-            if (ok) "✓" else "✕", if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
-            meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.muted, onClick = { open = !open },
-        )
-        if (open) {
-            val raw = toolRaw(t, cwd, home)
-            if (raw.isNotEmpty()) ToolOut(raw)
-            if (out.isNotEmpty()) ToolOut(out.lines().take(40).joinToString("\n"), more = if (t.outputTruncated || out.lines().size > 40) "…（已截断）" else null)
-        } else if (!ok && out.isNotEmpty()) {
-            // A failure shows its first line without opening.
-            val lines = out.lines()
-            ToolOut(lines.first(), Modifier.clickable { open = true }, more = if (lines.size > 1) "… 还有 ${lines.size - 1} 行，展开" else null)
-        }
-    }
+    ToolLine(if (ok) "✓" else "✕", if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
+        meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.muted)
 }
 
 /**
@@ -574,15 +557,9 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
 @Composable
 private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: String = "") {
     val p = pal
-    val chat = LocalChat.current
-    ActiveTool(
-        "◌ " + io.github.lewin671.remoteagent.core.backgroundTitle(t.kind, t.itemType, chat?.agent ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) + " · 状态待确认 —",
-        toolTitle(t, cwd, home).lines().first(),
-        io.github.lewin671.remoteagent.core.backgroundNote(t.background) + if (decision.isNotEmpty()) " · $decision" else "",
-        onDetails = null,
-        onTerminal = if (chat != null && chat.terminalOpen && chat.frozenAt == 0L) chat.onTerminal else null,
-        key = "bg" + t.callId,
-    )
+    val title = toolTitle(t, cwd, home).lines().first()
+    val generic = (t.title.isEmpty() || t.title == "ToolCall" || t.title == "CommandExecution") && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")
+    ToolLine("◌", p.blue, if (generic) "后台运行" else title, meta = if (generic) "" else "后台运行")
 }
 
 /** Ordinary messages append without rebuilding old rows. State-changing events use the full builder. */

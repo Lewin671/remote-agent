@@ -84,8 +84,11 @@ import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.core.whenText
+import io.github.lewin671.remoteagent.core.pendingInputs
 import io.github.lewin671.remoteagent.proto.CancelInputRequest
 import io.github.lewin671.remoteagent.proto.InputStatus
+import io.github.lewin671.remoteagent.proto.SendMode
+import io.github.lewin671.remoteagent.proto.ResumeInputRequest
 import io.github.lewin671.remoteagent.proto.InterruptRequest
 import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
 import io.github.lewin671.remoteagent.proto.StopSessionRequest
@@ -135,7 +138,7 @@ fun SessionScreen(sid: String) {
 
     val term = tab == 1 && status != Status.EXITED
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
-        SessionTopBar(state, s, status, d.running, dark = term)
+        SessionTopBar(state, s, status, d.running || status == Status.RUNNING, dark = term)
         ConnBanner(state)
         SessionTabs(tab, status != Status.EXITED, status == Status.POPUP, dark = term) { tab = it }
         if (tab == 1 && status != Status.EXITED) {
@@ -154,21 +157,35 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     val remote = LocalRemote.current
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
+    var projectSettings by remember { mutableStateOf(false) }
     val act = rememberAction()
-    StatusNavBar(titleOf(s), agentName(s.agent()), status, "${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}", nav.back, { menu = true }, dark)
+    val mode = if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
+    val subtitle = status.text + if (status == Status.EXITED) "" else " · ${mode?.text ?: "未知"}"
+    val rich = if (mode?.mode == Mode.FULL) androidx.compose.ui.text.buildAnnotatedString {
+        append(status.text + " · ")
+        pushStyle(androidx.compose.ui.text.SpanStyle(color = p.red)); append(mode.text); pop()
+    } else null
+    NavBar(titleOf(s), nav.back, subtitle = subtitle, dot = p.tone(status.tone), more = { menu = true }, dark = dark, subtitleRich = rich)
     if (menu) ActionSheet(
         info = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(shortPath(s.info?.cwd.orEmpty()) + " · " + machineLabel(state, s.machineId), style = T.meta, color = p.muted, fontFamily = MonoFamily)
-                Text("会话 ${s.id.take(16)}", style = T.meta, color = p.muted, fontFamily = MonoFamily)
+                Text("${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}", style = T.meta, color = p.muted)
+                Text("${shortPath(s.info?.cwd.orEmpty())} · 会话 ${s.id.take(16)}", style = T.meta, color = p.muted, fontFamily = MonoFamily)
             }
         },
         actions = buildList {
+            add(SheetAction("项目设置") { projectSettings = true })
             if (running) add(SheetAction("中断本轮") { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
             if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true) { confirmStop = true })
         },
         onDismiss = { menu = false },
     )
+    if (projectSettings) projectConfig(state, projectKey(s))?.let { initial ->
+        NewSettingsSheet(state, initial, projectName(projectKey(s)), onDone = {
+            PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
+            projectSettings = false
+        }, onClose = { projectSettings = false })
+    }
     if (act.error.isNotEmpty()) Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.meta)
     if (confirmStop) Confirm(
         "结束这个会话？",
@@ -208,6 +225,13 @@ private fun ChatPane(
             io.github.lewin671.remoteagent.core.originLabel(o, state, remote.account.deviceId, machine)
         }
     }
+    val pendingInputs = pendingInputs(d)
+    LaunchedEffect(d.inputs) {
+        d.inputs.forEach { (id, status) ->
+            if (status != InputStatus.INPUT_STATUS_QUEUED && status != InputStatus.INPUT_STATUS_HELD_BY_CLI) Cancels.states.remove(id)
+        }
+    }
+    var allPending by remember { mutableStateOf(false) }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
@@ -233,9 +257,6 @@ private fun ChatPane(
             val chatCtx = ChatContext(
                 s.id, s.agent(), d,
                 frozenAt = if (state.conn == ConnState.ONLINE) 0 else state.offlineSinceMs,
-                terminalOpen = status != Status.EXITED && status != Status.OFFLINE,
-                onTerminal = onTerminal,
-                onTool = { seq -> nav.tool(s.id, seq) },
                 onImage = { seq, i -> nav.image(s.id, seq, i) },
             )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
@@ -254,6 +275,13 @@ private fun ChatPane(
                 }
                 if (error != null) item {
                     Banner("后面的记录没读到：$error", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), Tone2.ERROR, action = "重试", onAction = { remote.retryEvents(s.id) })
+                }
+                val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
+                items(visiblePending.size, key = { "pending-${visiblePending[it].id}" }) { i ->
+                    PendingBubble(s.id, visiblePending[i], i + 1, state, remote)
+                }
+                if (pendingInputs.size > 3 && !allPending) item {
+                    TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true })
                 }
                 // Messages from this device, until the chat shows them.
                 val pending = outbox.filter { o ->
@@ -278,6 +306,40 @@ private fun ChatPane(
             }
         }
         Bottom(state, s, status, d, onTerminal, onDetail = { aid -> nav.approval(s.id, aid) }, onPlan = { nav.plan(s.id) })
+    }
+}
+
+@Composable
+private fun PendingBubble(sid: String, pending: io.github.lewin671.remoteagent.core.PendingInput, index: Int, state: RemoteState, remote: io.github.lewin671.remoteagent.core.Remote) {
+    val p = pal
+    var expanded by remember(pending.id) { mutableStateOf(false) }
+    val cancel = Cancels.states[pending.id]
+    val resume = rememberAction()
+    val online = state.conn == ConnState.ONLINE
+    val label = when {
+        cancel == Cancels.State.Canceling -> "正在取消…"
+        cancel is Cancels.State.Failed -> "取消没成功，仍在排队"
+        resume.running -> "正在发送…"
+        resume.error.isNotEmpty() -> "发送没成功，仍已暂停"
+        pending.paused -> "已暂停 · 中断前排着的"
+        pending.held -> "插入这一轮 · 等当前工具结束后并入"
+        pending.mode == SendMode.SEND_MODE_QUEUE -> "排队 · 这一轮结束后发"
+        else -> "插入这一轮 · 等待送达"
+    }
+    val origin = io.github.lewin671.remoteagent.core.originLabel(pending.origin, state, remote.account.deviceId, "")
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp), horizontalAlignment = Alignment.End) {
+        Column(Modifier.fillMaxWidth(.8f).clip(Radii.MD).background(p.card).border(1.dp, p.line, Radii.MD).clickable { expanded = !expanded }.padding(10.dp)) {
+            Text(pending.text.ifEmpty { "（图片）" }, style = T.body, color = p.fg, maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis)
+        }
+        Row(Modifier.fillMaxWidth(.8f).heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label + if (origin != null && origin != "本客户端") " · $origin" else if (index > 0 && pending.mode == SendMode.SEND_MODE_QUEUE) " · 第 $index 条" else "",
+                style = T.meta, color = if (cancel is Cancels.State.Failed) p.red else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (pending.paused && cancel != Cancels.State.Canceling) TextAction(if (resume.error.isNotEmpty()) "重试发送" else "发送", {
+                resume.run({ remote.command(sid, remote.cmd { resumeInput = ResumeInputRequest.newBuilder().setSessionId(sid).setRequestId(pending.id).build() }) })
+            }, enabled = online && !resume.running, style = T.metaB)
+            if (cancel != Cancels.State.Canceling) TextAction(if (cancel is Cancels.State.Failed) "重试" else "取消", { Cancels.cancel(remote, sid, pending.id) }, enabled = online, style = T.metaB)
+        }
     }
 }
 
@@ -377,7 +439,6 @@ private fun Bottom(
             is DockItem.Popup -> PopupDock(s, first.title, dockItems.size - 1, onTerminal)
         }
     }
-    StatusStrip(state, s, d, status)
     Composer(state, s, d, status, onFocus = {})
 }
 
@@ -397,33 +458,6 @@ private fun EndCard(title: String, text: String, dot: androidx.compose.ui.graphi
 }
 
 /**
- * The line above the message box (client-v7): the queue's count and why it
- * waits, and 中断, which stays in the same place with or without a draft.
- * Running tools are told in the chat, where they started.
- */
-@Composable
-private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status) {
-    val p = pal
-    val remote = LocalRemote.current
-    val nav = LocalNav.current
-    val online = state.conn == ConnState.ONLINE
-    // Interrupt while it works; a session waiting for the user has ⋯ for that.
-    val running = status == Status.RUNNING || status == Status.STARTING
-    val q = io.github.lewin671.remoteagent.core.queued(d)
-    if (!running && q.isEmpty()) return
-    val interrupt = rememberAction()
-    ComposeStatus(
-        queue = if (q.isNotEmpty()) "排队 ${q.size} 条" else null,
-        why = if (q.isNotEmpty()) io.github.lewin671.remoteagent.core.queueWhy(s, status).short else null,
-        onQueue = { nav.queue(s.id) },
-        interrupt = if (running && online) (if (interrupt.running) "中断中…" else "中断") else null,
-        onInterrupt = { interrupt.run({ remote.command(s.id, remote.cmd { this.interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) },
-        interruptEnabled = !interrupt.running,
-    )
-    if (interrupt.error.isNotEmpty()) Text("没能中断：${interrupt.error}", Modifier.padding(horizontal = 16.dp), style = T.meta, color = p.red)
-}
-
-/**
  * The message box (client-v7): ＋, the text from one line up to about six,
  * and ↑. 添加图片, the mode, the model and the context are in the ＋ menu;
  * full access stays in sight under the text, a full context is an orange dot
@@ -434,6 +468,7 @@ private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin67
 internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
     val p = pal
     val remote = LocalRemote.current
+    val interruptAction = rememberAction()
     var text by Outbox.draft(s.id)
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val online = state.conn == ConnState.ONLINE
@@ -456,7 +491,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val effort = s.info?.effort.orEmpty()
     val label = io.github.lewin671.remoteagent.core.modeLabel(s)
     val pc = contextPercent(s)
-    fun send() {
+    fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
         if (msg.isEmpty() && images.images.isEmpty()) return
         // Every image must be on the computer first: never a message with some of them.
@@ -464,13 +499,13 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         val picked = images.images.toList()
         if (picked.isEmpty()) {
             text = ""
-            Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+            Outbox.send(RaApp.instance.scope, remote, s.id, msg, mode)
             return
         }
         // Kept on disk with the message until the CLI has it; sent
         // only once that worked, and only then out of the draft.
         keeping = true
-        Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
+        Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original, mode) { kept ->
             keeping = false
             kept.onSuccess {
                 if (text.trim() == msg) text = ""
@@ -486,7 +521,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
             else -> "消息"
         },
         canSend = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
-        onSend = ::send,
+        onSend = { send() },
         menu = listOfNotNull(
             MenuEntry("添加图片", enabled = blocked == null, onClick = pick),
             MenuEntry("模式：${label?.text ?: "未知"} ▾") { sheet = 1 },
@@ -496,10 +531,14 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         ),
         menuEnabled = online,
         contextHigh = (pc ?: 0) > 80,
-        warning = if (label?.mode == Mode.FULL) "完全放行" else null,
+        onQueue = if (running && io.github.lewin671.remoteagent.core.capabilities(machine)?.sendModes == true) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
+        onInterrupt = if (running) ({ interruptAction.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) }) else null,
+        canInterrupt = online && !interruptAction.running,
+        hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
         onFocus = onFocus,
         top = { ImageStrip(images, remote, s.machineId, maxImg) },
     )
+    if (interruptAction.error.isNotEmpty()) Banner("没能中断：${interruptAction.error}", Modifier.padding(horizontal = 12.dp), Tone2.ERROR)
     if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在 ＋ 菜单里。", Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp), style = T.meta, color = p.orangeInk)
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })

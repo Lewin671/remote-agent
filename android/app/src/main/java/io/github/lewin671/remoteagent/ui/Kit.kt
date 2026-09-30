@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.animation.core.animateFloat
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -142,6 +144,8 @@ fun NavBar(
     more: (() -> Unit)? = null,
     dark: Boolean = false,
     right: (@Composable () -> Unit)? = null,
+    subtitleColor: Color? = null,
+    subtitleRich: androidx.compose.ui.text.AnnotatedString? = null,
 ) {
     val p = pal
     val link = if (dark) TermColors.link else p.blue
@@ -151,7 +155,7 @@ fun NavBar(
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (agent != null) Text(agent, style = ts(12.sp, FontWeight.Medium), color = if (dark) TermColors.dim else p.muted, maxLines = 1)
             }
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -159,7 +163,8 @@ fun NavBar(
                     Dot(dot)
                     Spacer(Modifier.width(5.dp))
                 }
-                Text(subtitle, style = T.meta, color = if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitleRich != null) Text(subtitleRich, style = T.meta, color = if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                else Text(subtitle, style = T.meta, color = subtitleColor ?: if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Box(Modifier.size(44.dp).then(if (more != null) Modifier.tap { more() } else Modifier), contentAlignment = Alignment.Center) {
@@ -186,8 +191,13 @@ fun LargeTitle(text: String, modifier: Modifier = Modifier, action: (() -> Unit)
             Modifier.size(44.dp).tap { action() }.semantics { contentDescription = actionLabel },
             contentAlignment = Alignment.Center,
         ) {
-            Box(Modifier.size(36.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
-                Text("＋", color = p.blue, style = ts(22.sp, lineHeight = 1f))
+            androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
+                val stroke = 2.dp.toPx()
+                drawRoundRect(p.blue, topLeft = androidx.compose.ui.geometry.Offset(stroke, stroke),
+                    size = androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), size.height - 5.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                drawLine(p.blue, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .65f),
+                    androidx.compose.ui.geometry.Offset(size.width * .96f, size.height * .16f), strokeWidth = 3.dp.toPx())
             }
         }
     }
@@ -303,8 +313,8 @@ fun Banner(text: String, modifier: Modifier = Modifier, tone: Tone2 = Tone2.PLAI
 
 /** A text action: blue, or red for 中断; 44 dp tall. */
 @Composable
-fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true) {
-    Box(modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else .45f), contentAlignment = Alignment.CenterStart) {
+fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true, alignment: Alignment = Alignment.CenterStart) {
+    Box(modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else .45f), contentAlignment = alignment) {
         Text(text, style = style, color = color ?: pal.blue, maxLines = 1)
     }
 }
@@ -339,6 +349,20 @@ fun GRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val p = pal
+    if (value != null && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f) {
+        Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
+            .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                lead?.invoke()
+                Text(text, style = T.body, color = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted,
+                    maxLines = 1, modifier = Modifier.weight(1f))
+                trailing?.invoke()
+                if (chevron) Arrow(p.muted, T.sm)
+            }
+            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
+        }
+        return
+    }
     Row(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp),
@@ -575,7 +599,15 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
 @Composable
 fun Mark(mark: String, color: Color, size: Dp = 12.dp, stroke: Dp = 1.4.dp) {
     when (mark) {
-        "✓", "✕", "◌", "○" -> Canvas(Modifier.size(size)) {
+        "✓", "✕", "◌", "○" -> {
+            val rotation = if (mark == "◌") {
+                val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "tool spinner")
+                val angle by transition.animateFloat(0f, 360f,
+                    androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
+                    label = "rotation")
+                angle
+            } else 0f
+            Canvas(Modifier.size(size).then(if (mark == "◌") Modifier.rotate(rotation) else Modifier)) {
             val w = stroke.toPx()
             val s = this.size.minDimension
             when (mark) {
@@ -588,6 +620,7 @@ fun Mark(mark: String, color: Color, size: Dp = 12.dp, stroke: Dp = 1.4.dp) {
                     drawLine(color, Offset(s * 0.8f, s * 0.2f), Offset(s * 0.2f, s * 0.8f), w, StrokeCap.Round)
                 }
                 else -> drawCircle(color, radius = s * 0.34f, style = Stroke(w, pathEffect = if (mark == "◌") PathEffect.dashPathEffect(floatArrayOf(w * 1.2f, w * 1.3f)) else null))
+            }
             }
         }
         else -> Text(mark, style = T.meta, color = color)

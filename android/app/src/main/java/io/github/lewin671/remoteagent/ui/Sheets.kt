@@ -229,21 +229,7 @@ fun ApprovalPage(sid: String, aid: String) {
             Code(a.command.ifEmpty { a.toolInputJson })
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line).padding(top = 8.dp, bottom = 16.dp)) {
-            ReasonField(reason, { reason = it }, "拒绝理由（可选），会告诉 ${agentName(s.agent())}")
-            val r = Resolves.of(aid)
-            fun resolve(allow: Boolean) = act.run({
-                resolveApproval(remote, s, a, allow, if (allow) "" else reason.trim())
-                null
-            }) { nav.back() }
-            if (reason.isBlank()) Btns {
-                Btn("拒绝", { resolve(false) }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = !act.running && !r.attempt.frozen)
-                Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running && !r.attempt.frozen)
-            } else Btn("发送理由并拒绝", { resolve(false) }, Modifier.fillMaxWidth(), BtnKind.NEGATIVE, enabled = !act.running && !r.attempt.frozen)
-            if (!act.running && r.attempt.frozen && !r.attempt.expired) Banner(
-                "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}", Modifier.padding(top = 8.dp), Tone2.ERROR, action = "重试",
-                onAction = { act.run({ resolveApproval(remote, s, a, r.allow, r.message); null }) { nav.back() } },
-            )
-            else if (act.error.isNotEmpty()) Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
+            ApprovalButtons(s, a, compact = false)
         }
     }
 }

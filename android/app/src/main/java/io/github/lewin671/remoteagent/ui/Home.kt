@@ -77,6 +77,7 @@ fun HomeScreen() {
     val running = all.filter { !exited(it) && it !in attention }
     val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
     var showAll by remember { mutableStateOf(false) }
+    var showRunning by remember { mutableStateOf(false) }
     var pick by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(Modifier.fillMaxSize().background(p.card)) {
@@ -103,13 +104,16 @@ fun HomeScreen() {
         }
         if (running.isNotEmpty()) {
             item { Label("进行中", running.size) }
-            items(running, key = { "r" + it.id }) { s -> SessionRow(state, s, t, last = s == running.last()) }
+            val shown = if (showRunning) running else running.take(5)
+            items(shown, key = { "r" + it.id }) { s -> SessionRow(state, s, t, last = s == shown.last()) }
+            if (!showRunning && running.size > 5) item { TextAction("还有 ${running.size - 5} 个进行中 ›", { showRunning = true }, Modifier.padding(horizontal = 16.dp)) }
         }
         if (groups.pinned.isNotEmpty() || groups.others.isNotEmpty() || groups.hidden.isNotEmpty()) {
             item { Label(if (groups.pinned.isNotEmpty()) "常用项目" else "项目", action = "管理", onAction = { nav.manageProjects() }) }
             items(groups.pinned, key = { "p" + it.key }) { ProjectRow(state, it, t, last = it == groups.pinned.last()) }
             if (groups.pinned.isNotEmpty() && groups.others.isNotEmpty()) item { Label("其他项目") }
-            items(groups.others, key = { "o" + it.key }) { ProjectRow(state, it, t, last = it == groups.others.last()) }
+            items(groups.others.take(5), key = { "o" + it.key }) { ProjectRow(state, it, t, last = it == groups.others.take(5).last()) }
+            if (groups.others.size > 5) item { TextAction("全部项目 ›", { nav.manageProjects() }, Modifier.padding(horizontal = 16.dp)) }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

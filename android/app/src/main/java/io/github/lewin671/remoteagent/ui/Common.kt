@@ -68,11 +68,8 @@ class Nav(
     val plan: (String) -> Unit,
     val newProject: () -> Unit,
     val pickProject: () -> Unit,
-    /** A tool's details, by the seq of its start. */
-    val tool: (sid: String, seq: Long) -> Unit = { _, _ -> },
     /** The session with its terminal showing. */
     val sessionTerminal: (String) -> Unit = {},
-    val queue: (String) -> Unit = {},
     val manageProjects: () -> Unit = {},
     val devices: () -> Unit = {},
     val quota: (String) -> Unit = {},

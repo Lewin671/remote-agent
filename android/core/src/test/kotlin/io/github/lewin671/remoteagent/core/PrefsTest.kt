@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.proto.AccountPrefsObject
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.ProjectPrefs
+import io.github.lewin671.remoteagent.proto.ProjectSettings
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -45,6 +46,25 @@ class PrefsTest {
         assertEquals(listOf("/p/foo"), b.pinned)
         assertEquals(setOf("/p/billing"), b.hidden)
         assertEquals(b, codec.open(server.obj))
+    }
+
+    @Test
+    fun settingsConflictRedoesOneProjectAndPreservesOtherSettingsAndUnknownFields() {
+        val server = FakeServer()
+        val first = ProjectSettings.newBuilder().setPath("/a").setMachineId("mac").build()
+        val second = ProjectSettings.newBuilder().setPath("/b").setMachineId("vps").build()
+        write(server, PrefsObject.EMPTY, PrefsOp.SetSettings(first), "s1")
+        val stale = PrefsObject.EMPTY
+        val after = write(server, stale, PrefsOp.SetSettings(second), "s2")
+        assertEquals(listOf(first, second), after.prefs.settingsList)
+        val updated = first.toBuilder().setModel("new-model").build()
+        val again = write(server, after, PrefsOp.SetSettings(updated), "s3")
+        assertEquals(listOf(second, updated), again.prefs.settingsList)
+        val unknown = byteArrayOf(0x9a.toByte(), 0x06, 0x01, 0x51)
+        val newer = ProjectPrefs.parseFrom(again.prefs.toByteArray() + unknown)
+        val pinned = applyPrefsOp(newer, PrefsOp.Pin("/c"), "s4", 1000)
+        assertTrue(pinned.toByteArray().asList().windowed(unknown.size).any { it == unknown.asList() })
+        assertEquals(listOf(second, updated), pinned.settingsList)
     }
 
     @Test

@@ -90,6 +90,13 @@ class ToolsTest {
         assertTrue(awaitingApproval(d.tools[0], d))
         val other = derive(listOf(turn, start(2, "ls", "y", digest = "d2")), Agent.AGENT_CLAUDE)
         assertFalse(awaitingApproval(other.tools[0], other))
+        val codex = derive(listOf(turn, start(2, "exec", "x", input = "go test ./..."),
+            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setCommand("go test ./...")))), Agent.AGENT_CODEX)
+        assertTrue(awaitingApproval(codex.tools[0], codex))
+        assertFalse(awaitingApproval(RunningTool("different", "y", 100_000, input = "ls"), codex))
+        val byTitle = derive(listOf(turn, start(2, "rm -rf build", "x"),
+            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setCommand("rm -rf build")))), Agent.AGENT_CODEX)
+        assertTrue(awaitingApproval(byTitle.tools[0], byTitle))
     }
 
     @Test

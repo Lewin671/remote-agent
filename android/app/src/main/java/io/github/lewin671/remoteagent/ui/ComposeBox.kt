@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,14 +55,21 @@ class MenuEntry(val text: String, val enabled: Boolean = true, val onClick: () -
 /** Places the ＋ menu 8 dp above the message box, at its left edge. */
 private class AboveProvider(private val gap: Int) : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset =
-        IntOffset(anchorBounds.left, (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
+        IntOffset(anchorBounds.left.coerceAtMost((windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+            (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
+}
+
+/** Places the send menu above the composer, aligned with its send button. */
+private class RightAboveProvider(private val gap: Int) : PopupPositionProvider {
+    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset =
+        IntOffset((anchorBounds.right - popupContentSize.width).coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+            (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
 }
 
 /**
- * The one message box of client-v7, for a session and for a new one: ＋,
- * the text from one line up to about six, and send; the settings wait in
- * the ＋ menu. [warning] stays in sight (完全放行); [contextHigh] puts an
- * orange dot on ＋. [top] is what goes above the text, such as the images.
+ * The shared message box: ＋, one to six lines of text, and the send position.
+ * In a running session that position becomes interrupt when empty; long-press
+ * send offers queue when supported. [contextHigh] puts an orange dot on ＋.
  */
 @Composable
 fun ComposeBox(
@@ -74,14 +82,18 @@ fun ComposeBox(
     modifier: Modifier = Modifier,
     menuEnabled: Boolean = true,
     contextHigh: Boolean = false,
-    warning: String? = null,
     sendLabel: String = "发送",
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
     top: (@Composable () -> Unit)? = null,
+    onQueue: (() -> Unit)? = null,
+    onInterrupt: (() -> Unit)? = null,
+    canInterrupt: Boolean = false,
+    hasDraft: Boolean = text.isNotBlank(),
 ) {
     val p = pal
     var open by remember { mutableStateOf(false) }
+    var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     Box(modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 12.dp)) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.card).border(1.dp, p.line, RoundedCornerShape(24.dp)).padding(3.dp)) {
@@ -111,17 +123,20 @@ fun ComposeBox(
                         }
                     },
                 )
+                val interrupt = !hasDraft && onInterrupt != null
                 Box(
-                    Modifier.size(44.dp).clickable(enabled = canSend, role = Role.Button, onClickLabel = sendLabel, onClick = onSend)
-                        .semantics { contentDescription = sendLabel },
+                    Modifier.size(44.dp).combinedClickable(enabled = if (interrupt) canInterrupt else canSend, role = Role.Button,
+                        onClickLabel = if (interrupt) "中断本轮" else sendLabel,
+                        onClick = { if (interrupt) onInterrupt?.invoke() else onSend() },
+                        onLongClick = if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
+                        .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Box(Modifier.size(32.dp).alpha(if (canSend) 1f else .4f).clip(CircleShape).background(p.blueBg), contentAlignment = Alignment.Center) {
-                        Text("↑", style = ts(16.sp, FontWeight.SemiBold, 1f), color = Color.White)
+                    Box(Modifier.size(32.dp).alpha(if (if (interrupt) canInterrupt else canSend) 1f else .4f).clip(CircleShape).background(if (interrupt) p.chip else p.blueBg), contentAlignment = Alignment.Center) {
+                        Text(if (interrupt) "■" else "↑", style = ts(16.sp, FontWeight.SemiBold, 1f), color = if (interrupt) p.red else Color.White)
                     }
                 }
             }
-            if (warning != null) Text(warning, style = T.meta, color = p.red, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp))
         }
         if (open) Popup(popupPositionProvider = AboveProvider(gap), onDismissRequest = { open = false }, properties = PopupProperties(focusable = true)) {
             Column(
@@ -134,29 +149,17 @@ fun ComposeBox(
                 ) { Text(e.text, style = T.sm, color = p.fg) }
             }
         }
-    }
-}
-
-/**
- * The line above the message box: the queue and why it waits, and 中断,
- * which stays in the same place with or without a draft.
- */
-@Composable
-fun ComposeStatus(queue: String?, why: String?, onQueue: () -> Unit, interrupt: String?, onInterrupt: () -> Unit, interruptEnabled: Boolean = true) {
-    val p = pal
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (queue != null) Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onQueue).padding(end = 4.dp), contentAlignment = Alignment.Center) {
-            ArrowText(queue, p.blue, T.meta)
-        }
-        if (why != null) Text(why, style = T.meta, color = p.muted, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-        Box(Modifier.weight(1f))
-        if (interrupt != null) Box(
-            Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = interruptEnabled, role = Role.Button, onClick = onInterrupt).alpha(if (interruptEnabled) 1f else .45f),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).clip(RoundedCornerShape(1.dp)).background(p.red))
-                Text(" $interrupt", style = T.sm, color = p.red)
+        if (sendMenu) Popup(popupPositionProvider = RightAboveProvider(gap), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
+            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 190.dp, max = 250.dp).shadow(8.dp, Radii.SM).clip(Radii.SM).background(p.card).border(1.dp, p.line, Radii.SM).padding(8.dp)) {
+                for ((label, detail, action) in listOf(
+                    Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
+                    Triple("这一轮结束后再发", "先排队，结束后按顺序发出", { onQueue?.invoke() }),
+                )) {
+                    Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { sendMenu = false; action() }, verticalArrangement = Arrangement.Center) {
+                        Text(label, style = T.smB, color = p.fg)
+                        Text(detail, style = T.meta, color = p.muted)
+                    }
+                }
             }
         }
     }

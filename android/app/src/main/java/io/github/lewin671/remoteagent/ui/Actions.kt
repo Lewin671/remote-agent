@@ -66,6 +66,7 @@ class Outgoing(
     val images: List<PendingImage> = emptyList(),
     /** They were sent as originals. */
     val original: Boolean = false,
+    val mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
 ) {
     enum class State { SENDING, SENT, FAILED, UNKNOWN }
 
@@ -147,6 +148,7 @@ class OutgoingRecords(private val files: SealedFiles) {
         saveImages(files, f, o.images, original)
         files.put(f, "text", o.text.toByteArray())
         files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
+        files.put(f, "mode", o.mode.name.toByteArray())
         val line = "$sid\t${o.requestId}"
         val idx = index()
         if (line !in idx) writeIndex(idx + line)
@@ -160,7 +162,9 @@ class OutgoingRecords(private val files: SealedFiles) {
             val text = files.get(f, "text")?.toString(Charsets.UTF_8) ?: return@mapNotNull null
             val ids = files.get(f, "ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
             val (images, original) = loadImages(files, f, thumb)
-            Outgoing(req, text, ids, images, original).apply {
+            val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
+                ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
+            Outgoing(req, text, ids, images, original, mode).apply {
                 // From a run that ended: whether it reached the computer is not known.
                 state = Outgoing.State.UNKNOWN
                 error = "App 重启过，不确定这条有没有送到"
@@ -193,8 +197,8 @@ object Outbox {
         mutableStateListOf<Outgoing>().also { list -> runCatching { list += records.load(sid, ::thumbnail) } }
     }
 
-    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String) {
-        val o = Outgoing(newRequestId(), text)
+    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER) {
+        val o = Outgoing(newRequestId(), text, mode = mode)
         of(sid) += o
         deliver(scope, remote, sid, o)
     }
@@ -208,10 +212,11 @@ object Outbox {
     fun sendWithImages(
         scope: CoroutineScope, remote: Remote, sid: String, text: String,
         imageIds: List<String>, images: List<PendingImage>, original: Boolean,
+        mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
         store: (String, Outgoing, Boolean) -> Unit = { s, o, orig -> records.save(s, o, orig) },
         onKept: (Result<Unit>) -> Unit,
     ) {
-        val o = Outgoing(newRequestId(), text, imageIds, images, original)
+        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode)
         scope.launch {
             val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { store(sid, o, original) } }
             onKept(kept)
@@ -248,7 +253,12 @@ object Outbox {
         o.error = ""
         scope.launch {
             try {
-                remote.command(sid, remote.cmd { send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds).build() })
+                val machine = remote.state.value.sessions[sid]?.machineId?.let { remote.state.value.machines[it] }
+                val wireMode = io.github.lewin671.remoteagent.core.wireSendMode(o.mode, io.github.lewin671.remoteagent.core.capabilities(machine)?.sendModes == true)
+                remote.command(sid, remote.cmd {
+                    send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds)
+                        .apply { if (wireMode != io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_UNSPECIFIED) mode = wireMode }.build()
+                })
                 o.state = Outgoing.State.SENT
             } catch (e: Exception) {
                 o.error = errorText(e)

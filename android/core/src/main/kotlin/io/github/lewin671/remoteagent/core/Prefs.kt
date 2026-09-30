@@ -11,6 +11,7 @@ import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import io.github.lewin671.remoteagent.proto.ProjectPref
 import io.github.lewin671.remoteagent.proto.ProjectPrefs
+import io.github.lewin671.remoteagent.proto.ProjectSettings
 
 const val PROJECT_PREFS = "project-prefs"
 const val RECENT_OPS = 64
@@ -23,6 +24,9 @@ sealed interface PrefsOp {
     data class Unpin(override val path: String) : PrefsOp
     data class Hide(override val path: String) : PrefsOp
     data class Unhide(override val path: String) : PrefsOp
+    data class SetSettings(val settings: ProjectSettings) : PrefsOp {
+        override val path: String get() = settings.path
+    }
 }
 
 /**
@@ -46,9 +50,19 @@ fun applyPrefsOp(base: ProjectPrefs, op: PrefsOp, opId: String, now: Long): Proj
             if (hidden.none { it.path == op.path }) hidden += pref(op.path)
         }
         is PrefsOp.Unhide -> hidden.removeAll { it.path == op.path }
+        is PrefsOp.SetSettings -> Unit
     }
     val ops = (base.recentOpsList + opId).takeLast(RECENT_OPS)
-    return ProjectPrefs.newBuilder().setSchema(1).addAllPinned(pinned).addAllHidden(hidden).addAllRecentOps(ops).build()
+    // toBuilder keeps fields this client did not change, including unknown
+    // protobuf fields written by a newer client.
+    return base.toBuilder().setSchema(1).clearPinned().addAllPinned(pinned)
+        .clearHidden().addAllHidden(hidden).clearRecentOps().addAllRecentOps(ops)
+        .apply {
+            if (op is PrefsOp.SetSettings) {
+                val entries = base.settingsList.filter { it.path != op.path } + op.settings
+                clearSettings().addAllSettings(entries)
+            }
+        }.build()
 }
 
 /** The preferences as the account has them, decrypted, at a revision. */

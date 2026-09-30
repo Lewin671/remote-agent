@@ -8,6 +8,8 @@ import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.InputStatus
+import io.github.lewin671.remoteagent.proto.InputState
+import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.PlanProposed
 import io.github.lewin671.remoteagent.proto.QuestionAsked
 import io.github.lewin671.remoteagent.proto.SessionStatus
@@ -376,6 +378,8 @@ class Derived(
     val answered: HashMap<String, List<String>> = HashMap(),
     /** Latest state per request ID of messages sent with Send. */
     val inputs: LinkedHashMap<String, InputStatus> = LinkedHashMap(),
+    /** Full latest input state: mode and pause are needed for pending bubbles. */
+    val inputDetails: LinkedHashMap<String, InputState> = LinkedHashMap(),
     /** What the daemon accepted, per request ID: text, images and sender, shared by every client (v2 daemons). */
     val accepted: HashMap<String, Accepted> = HashMap(),
     /** Why a message ended FAILED or NEEDS_TERMINAL, per request ID. */
@@ -461,6 +465,11 @@ internal class EventReducer(agent: Agent) {
                 Event.KindCase.INPUT_STATE -> {
                     val st = e.inputState
                     d.inputs[st.requestId] = st.status
+                    val before = d.inputDetails[st.requestId]
+                    d.inputDetails[st.requestId] = st.toBuilder().apply {
+                        if (before != null && st.mode == SendMode.SEND_MODE_UNSPECIFIED) mode = before.mode
+                        if (before != null && st.text.isEmpty()) text = before.text
+                    }.build()
                     val prev = d.accepted[st.requestId]
                     if (prev == null && st.status == InputStatus.INPUT_STATUS_QUEUED && (st.text.isNotEmpty() || st.imageIdsCount > 0)) {
                         d.accepted[st.requestId] = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage)
@@ -580,6 +589,7 @@ internal class EventReducer(agent: Agent) {
         questions = LinkedHashMap(d.questions),
         answered = HashMap(d.answered),
         inputs = LinkedHashMap(d.inputs),
+        inputDetails = LinkedHashMap(d.inputDetails),
         accepted = HashMap(d.accepted),
         failures = HashMap(d.failures),
         unsent = LinkedHashMap(d.unsent),
@@ -612,9 +622,11 @@ class EventProjection {
     }
 }
 
-/** A running tool waits for an approval rather than runs: the daemon's digests of the two inputs match. */
-fun awaitingApproval(t: RunningTool, d: Derived): Boolean =
-    t.inputDigest.isNotEmpty() && d.approvals.values.any { it.inputDigest == t.inputDigest }
+/** Match Claude Code by daemon digest, or Codex by the command it reported for the call. */
+fun awaitingApproval(t: RunningTool, d: Derived): Boolean = d.approvals.values.any { a ->
+    if (t.inputDigest.isNotEmpty()) a.inputDigest.isNotEmpty() && a.inputDigest == t.inputDigest
+    else a.inputDigest.isEmpty() && a.command.isNotEmpty() && (a.command == t.input || a.command == t.title)
+}
 
 /**
  * How long a tool has run, in ms, or null when its start time is unknown.
@@ -647,6 +659,7 @@ fun eventTime(e: Event): Long = if (e.hasTime()) e.time.seconds * 1000 + e.time.
 
 fun decisionText(d: ApprovalDecision): String = when (d) {
     ApprovalDecision.APPROVAL_DECISION_ALLOW -> "已允许"
+    ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS -> "已允许"
     ApprovalDecision.APPROVAL_DECISION_DENY -> "已拒绝"
     ApprovalDecision.APPROVAL_DECISION_TIMEOUT -> "超时，已拒绝"
     ApprovalDecision.APPROVAL_DECISION_CANCELED -> "已取消"
@@ -732,7 +745,34 @@ fun failureText(reason: String, agent: Agent): String = when (reason) {
 }
 
 /** Messages the daemon accepted and has not written yet, in the order it accepted them. */
-fun queued(d: Derived): List<String> = d.inputs.filterValues { it == InputStatus.INPUT_STATUS_QUEUED }.keys.toList()
+fun queued(d: Derived): List<String> = d.inputs.filterValues { it == InputStatus.INPUT_STATUS_QUEUED || it == InputStatus.INPUT_STATUS_HELD_BY_CLI }.keys.toList()
+
+data class PendingInput(val id: String, val text: String, val mode: SendMode, val paused: Boolean, val held: Boolean, val origin: io.github.lewin671.remoteagent.proto.Origin?)
+
+fun wireSendMode(mode: SendMode, supported: Boolean): SendMode {
+    if (!supported && mode == SendMode.SEND_MODE_QUEUE) throw IllegalStateException("电脑不支持排队发送")
+    return if (supported) mode else SendMode.SEND_MODE_UNSPECIFIED
+}
+
+/** Only inputs the model has not received; event order is acceptance order. */
+fun pendingInputs(d: Derived): List<PendingInput> = d.inputDetails.values.mapNotNull { st ->
+    if (st.status != InputStatus.INPUT_STATUS_QUEUED && st.status != InputStatus.INPUT_STATUS_HELD_BY_CLI) return@mapNotNull null
+    val accepted = d.accepted[st.requestId]
+    PendingInput(st.requestId, accepted?.text ?: st.text, st.mode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER,
+        st.paused, st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI, accepted?.origin)
+}
+
+/** CLI's native second approval option, translated only when its form is known. */
+fun approvalAlwaysText(message: String): String {
+    Regex("(?:Yes, and )?don't ask again for commands that start with [`]?(.+?)[`]?$").matchEntire(message)?.let {
+        return "`${it.groupValues[1].trim('`')}` 开头的命令以后不再问"
+    }
+    Regex("(?:Yes, and )?always allow access to (.+?) from this project$").matchEntire(message)?.let {
+        return "本项目访问 ${it.groupValues[1]} 以后不再问"
+    }
+    if (message.contains("accept edits", ignoreCase = true)) return "本会话自动接受编辑"
+    return message
+}
 
 /**
  * Why the first queued message waits: a short form for the line above the

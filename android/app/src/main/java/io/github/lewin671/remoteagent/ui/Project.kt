@@ -56,6 +56,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
@@ -83,12 +87,13 @@ import io.github.lewin671.remoteagent.proto.GetSettingsRequest
 import io.github.lewin671.remoteagent.proto.ListDirectoriesRequest
 import io.github.lewin671.remoteagent.proto.ListDirectoriesResponse
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
+import io.github.lewin671.remoteagent.proto.ProjectSettings
 
 /**
  * The modes a new session can be started in besides the default. Neither CLI
  * starts in plan, and full access is only ever the confirmed machine default.
  */
-val newSessionModes = listOf(Mode.ASK, Mode.AUTO)
+val newSessionModes = listOf(Mode.ASK, Mode.AUTO, Mode.FULL)
 
 /** How a new session starts; empty model, effort and mode mean the machine's defaults. */
 data class NewConfig(
@@ -107,15 +112,17 @@ data class NewConfig(
  * machine the project used, with its defaults.
  */
 fun projectConfig(state: RemoteState, key: String): NewConfig? {
+    state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }?.let {
+        return NewConfig(it.machineId, key, effectiveAgent(it.agent), it.model, it.effort, modeOf(it.mode)?.takeUnless { m -> m == Mode.PLAN })
+    }
     val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
     val last = sessions.firstOrNull() ?: return null
-    val mode = modeOf(last)?.takeIf { it != Mode.FULL && it != Mode.PLAN }
-    if (state.machines[last.machineId]?.online != false) {
-        return NewConfig(last.machineId, key, last.agent(), last.info?.model.orEmpty(), last.info?.effort.orEmpty(), mode)
-    }
-    val other = sessions.map { it.machineId }.distinct().firstOrNull { state.machines[it]?.online == true } ?: return NewConfig(last.machineId, key, last.agent())
-    return NewConfig(other, key, last.agent().takeIf { it in machineAgents(state.machines[other]) } ?: Agent.AGENT_CODEX)
+    val mode = modeOf(last)?.takeUnless { it == Mode.PLAN }
+    return NewConfig(last.machineId, key, last.agent(), last.info?.model.orEmpty(), last.info?.effort.orEmpty(), mode)
 }
+
+fun NewConfig.settings(now: Long): ProjectSettings = ProjectSettings.newBuilder().setPath(cwd).setMachineId(machineId)
+    .setAgent(agent).setModel(model).setEffort(effort).setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setUpdatedMs(now).build()
 
 /**
  * The mode a CLI gives a session started without one, as the daemon reads
@@ -140,7 +147,7 @@ fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
 /** The mode a start uses: chosen, or the CLI's effective default on that machine. */
 fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent): String = when {
     chosen != null -> chosen.text
-    !d.known -> "默认模式（不确定，可能是完全放行）"
+    !d.known -> "CLI 配置（未读到）"
     d.mode != null -> "默认：${d.mode.text}"
     else -> "默认：${agentName(agent)} 自己的模式"
 } + if (chosen == null && d.varies) "（项目设置可能不同）" else ""
@@ -167,36 +174,23 @@ class DraftConfig(initial: NewConfig?) {
     }
 }
 
-/** What pressing send does about the approval mode. */
+/** Mode sent for a new session; unspecified lets the daemon use the CLI configuration. */
 sealed interface LaunchMode {
     /** Start in this mode; UNSPECIFIED leaves it to the CLI's default, which the daemon checks again in the folder. */
     data class Send(val mode: ApprovalMode) : LaunchMode
 
-    /** The default is full access, or not known: start only after the user confirms it (architecture §7). */
-    data object ConfirmFull : LaunchMode
 }
 
 /**
  * Resolves the mode of a start. A chosen mode is sent as it is. Without one
  * the CLI's effective default on the machine decides (AgentInfo): full
- * access, or a default nobody knows, is confirmed first; otherwise the
- * choice is left to the daemon, which refuses a folder whose own settings
- * make it full access unless that was confirmed.
+ * access or an unknown default is left to the daemon without a dialog.
  */
-fun launchMode(chosen: Mode?, d: DefaultMode): LaunchMode = when {
-    chosen != null -> LaunchMode.Send(chosen.proto)
-    !d.known || d.mode == Mode.FULL -> LaunchMode.ConfirmFull
-    else -> LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
-}
+fun launchMode(chosen: Mode?, d: DefaultMode): LaunchMode = LaunchMode.Send(chosen?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
 
-/** The session a start created, or null when it did not (refused, or asked to confirm first). */
+/** The session a start created, or null when it did not. */
 fun startedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): String? =
     r?.takeIf { it.hasCreateSession() && it.createSession.hasSession() }?.createSession?.session?.id?.takeIf { it.isNotEmpty() }
-
-/** The daemon refused a start because the folder's default is full access and nobody confirmed it. */
-fun refusedForFullAccess(e: Throwable): Boolean =
-    e is io.github.lewin671.remoteagent.core.CommandException && e.fromDaemon && e.code == "failed_precondition" &&
-        (e.message ?: "").contains("full access", ignoreCase = true)
 
 /**
  * A project: its sessions, and at the bottom the message box that starts a
@@ -213,27 +207,54 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val active = sessions.filter { !exited(it) }
     val ended = sessions.filter { exited(it) }
     var showEnded by rememberSaveable { mutableStateOf(false) }
-    val machines = sessions.map { machineLabel(state, it.machineId) }.distinct()
+    val machines = sessions.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.SessionView> { it.updatedMs }.thenBy { it.id })
+        .map { machineLabel(state, it.machineId) }.distinct()
     val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var typing by remember { mutableStateOf(false) }
     val compact = ime && typing
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
+    var settingsOpen by remember { mutableStateOf(false) }
+    val selected = projectConfig(state, key)
+    var summaryModels by remember(key, selected?.machineId, selected?.agent) { mutableStateOf<ListModelsResponse?>(null) }
+    LaunchedEffect(selected?.machineId, selected?.agent) {
+        val cfg = selected ?: return@LaunchedEffect
+        summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
+    }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) shortPath(key) else null)
+        NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) shortPath(key) else null, more = { settingsOpen = true })
         LazyColumn(Modifier.weight(1f)) {
             if (!compact) item {
                 Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Avatar(key, 52)
                     Column(Modifier.weight(1f)) {
                         Text(projectName(key), style = T.h22, color = p.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.sm, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("${active.size} 个进行中 · ", style = T.sm, color = p.muted)
-                            if (ended.isNotEmpty()) Box(Modifier.clickable { showEnded = !showEnded }) { ArrowText("已结束 ${ended.size}", p.blue, T.smB, down = showEnded) }
-                            else Text("没有已结束的会话", style = T.sm, color = p.muted)
+                            Box(Modifier.clickable(enabled = ended.isNotEmpty()) { showEnded = !showEnded }) { ArrowText("已结束 ${ended.size}", p.blue, T.smB, down = showEnded) }
+                        }
+                        if (selected != null) {
+                            val summary = projectSummary(state, selected, summaryModels)
+                            val full = selected.mode == Mode.FULL || (selected.mode == null && defaultModeOf(state.machines[selected.machineId], selected.agent).mode == Mode.FULL)
+                            val shown = buildAnnotatedString {
+                                if (full && summary.contains(Mode.FULL.text)) {
+                                    val start = summary.indexOf(Mode.FULL.text)
+                                    append(summary.substring(0, start))
+                                    withStyle(SpanStyle(color = p.red)) { append(Mode.FULL.text) }
+                                    append(summary.substring(start + Mode.FULL.text.length))
+                                } else append(summary)
+                            }
+                            Text(shown, style = T.sm, color = p.muted, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).testTag("project-settings-summary").clickable { settingsOpen = true })
                         }
                     }
                 }
+            }
+            when (val change = PrefsChanges.states[key]) {
+                PrefsChanges.State.Saving -> item { Banner("正在保存项目设置…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
+                is PrefsChanges.State.Failed -> item { Banner("项目设置没能保存：${change.error}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), tone = Tone2.ERROR,
+                    action = "重试", onAction = { PrefsChanges.run(remote, change.op) }) }
+                else -> {}
             }
             if (hidden) item { HiddenBanner(state, key) }
             if (active.isNotEmpty()) {
@@ -251,7 +272,25 @@ fun ProjectScreen(key: String, focus: Boolean) {
         // notifications; starting a new session there restores it first.
         if (!hidden) NewSessionBox(state, projectConfig(state, key), projectName(key), focus, onFocus = { typing = it })
     }
+    if (settingsOpen && selected != null) NewSettingsSheet(state, selected, projectName(key), onDone = {
+        PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
+        Drafts.newSession(key, selected).config.choose(it)
+        settingsOpen = false
+    }, onClose = { settingsOpen = false })
 }
+
+fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse? = null): String {
+    val default = defaultModeOf(state.machines[c.machineId], c.agent)
+    val mode = effectiveModeText(c.mode, default)
+    val modelId = c.model.ifEmpty { models?.defaultModel.orEmpty() }
+    val chosen = models?.let { io.github.lewin671.remoteagent.core.findModel(it.modelsList, modelId) { m -> m.slug } }
+    return listOf(agentName(c.agent), mode,
+        machineLabel(state, c.machineId), chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" },
+        c.effort.ifEmpty { chosen?.defaultEffort.orEmpty() }).filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
+    chosen?.text ?: if (!default.known) "审批：CLI 配置（未读到）" else default.mode?.text ?: "CLI 自己的模式"
 
 /** 这个项目已从列表移除 · 恢复: a notice, not a button in the way. */
 @Composable
@@ -294,10 +333,9 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
         (listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" })
 
 /**
- * The new-session box (client-v7): ＋, 描述任务…, ↑. The configuration
- * follows the project until a draft is begun, then stays (architecture §8),
- * and is looked at or changed in 新会话设置 from ＋; a machine that goes
- * offline is replaced only by the user's choice. The first message starts
+ * The new-session box (client-v8): ＋ adds images; configuration comes from
+ * project settings and stays with an active draft. An offline machine is
+ * replaced only by the user's choice for this send. The first message starts
  * the session: there is no start without one.
  */
 @Composable
@@ -313,7 +351,6 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val config = draft.value
     var text by entry.text
     val images = ImageDrafts.forProject(key)
-    var settings by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
     val drafting = text.isNotBlank() || images.images.isNotEmpty()
@@ -328,7 +365,6 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
     LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
     val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
-    var confirmFull by remember { mutableStateOf<NewConfig?>(null) }
     fun launch(cfg: NewConfig, mode: ApprovalMode, confirmedFull: Boolean = false) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
@@ -350,17 +386,14 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
             } catch (e: Exception) {
                 val err = start.attempt.settle(e) ?: e
-                // The folder's own settings make it full access: nothing ran; ask, then send a new request.
-                if (refusedForFullAccess(err)) {
-                    confirmFull = cfg
-                    return@run null
-                }
                 throw err
             }
         }) { r ->
             // Only a session that started takes the draft; a refusal that asks
             // for confirmation, or no answer, leaves text and images as they are.
             val sid = startedSession(r) ?: return@run
+            if (state.prefsSupported && state.prefs?.prefs?.settingsList?.any { it.path == key } != true)
+                PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings((initial ?: cfg).settings(System.currentTimeMillis())))
             Outbox.rememberPrompt(sid, start.prompt)
             nav.session(sid)
             if (text.trim() == start.prompt) text = ""
@@ -377,10 +410,8 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         if (st.attempt.frozen && text.trim() != st.prompt) st.attempt.abandon()
         // An unknown start is resent as prepared, with the mode it had.
         if (st.attempt.frozen) return launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
-        when (val m = launchMode(cfg.mode, defaultModeOf(state.machines[cfg.machineId], cfg.agent))) {
-            is LaunchMode.Send -> launch(cfg, m.mode)
-            LaunchMode.ConfirmFull -> confirmFull = cfg
-        }
+        launch(cfg, cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED, confirmedFull = cfg.mode == Mode.FULL ||
+            defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode == Mode.FULL)
     }
     val c = config
     val notices = @Composable {
@@ -402,31 +433,14 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         }
     }
     notices()
-    val fullDefault = c != null && (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known)))
     ComposeBox(
         text, { text = it }, "描述任务…",
         canSend = c != null && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
         onSend = ::start,
-        menu = listOf(
-            MenuEntry("添加图片", enabled = blocked == null, onClick = pick),
-            MenuEntry("新会话设置 ›", enabled = c != null) { settings = true },
-        ),
-        warning = if (fullDefault) (if (c!!.mode == Mode.FULL) "完全放行 · 发送前确认" else if (defaults.known) "当前默认：完全放行 · 发送前确认" else "默认模式未知，可能是完全放行 · 发送前确认") else null,
+        menu = listOf(MenuEntry("添加图片", enabled = blocked == null, onClick = pick)),
         sendLabel = "开始", focusRequester = fr, onFocus = onFocus,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )
-    confirmFull?.let { cfg ->
-        val d = defaultModeOf(state.machines[cfg.machineId], cfg.agent)
-        Confirm(
-            "以完全放行启动？",
-            "${machineLabel(state, cfg.machineId)} 上 ${agentName(cfg.agent)} " +
-                (if (d.known && d.mode == Mode.FULL) "的默认审批模式是完全放行" else "在这个目录里的默认审批模式可能是完全放行") +
-                "：这个会话里执行命令、改文件都不会再问你。不想这样可以在「新会话设置」里选询问或自动。",
-            "完全放行启动", danger = true,
-            onDismiss = { confirmFull = null },
-        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, confirmedFull = true) }
-    }
-    if (settings && c != null) NewSettingsSheet(state, c, name, onDone = { draft.choose(it); settings = false }, onClose = { settings = false })
 }
 
 /** The old name, for pages that start a session in a folder of their own. */
@@ -464,15 +478,27 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
     }
 }
 
-/** A row of 新会话设置: a short label, the value at the right, ›. */
+/** A project-setting row: a short label, the value at the right, ›. */
 @Composable
 private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: androidx.compose.ui.graphics.Color? = null, valueColor: androidx.compose.ui.graphics.Color? = null) {
     val p = pal
+    if (LocalDensity.current.fontScale >= 1.8f) {
+        Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Text(label, style = T.sm, color = p.muted, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                if (dot != null) Dot(dot)
+                Text(value, style = T.sm, color = valueColor ?: p.fg2, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false))
+                Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint, modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        return
+    }
     Row(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(label, style = T.sm, color = p.muted, modifier = Modifier.width(34.dp).weight(1f))
+        Text(label, style = T.sm, color = p.muted, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
         if (dot != null) Dot(dot)
         Text(value, style = T.sm, color = valueColor ?: p.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.widthIn(max = 200.dp))
         Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint)
@@ -480,8 +506,8 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
 }
 
 /**
- * 新会话设置 (client-v7): CLI, machine (those the project used), folder,
- * model and effort, and approval mode, each chosen on a page of the sheet.
+ * 项目设置 (client-v8): CLI, machine, model and effort, and approval mode,
+ * each chosen on a page of the sheet. The folder is the project's read-only path.
  * Changing the CLI or machine keeps the draft.
  */
 @Composable
@@ -503,28 +529,41 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
     }
     val used = state.sessions.values.filter { projectKey(it) == initial.cwd }.map { it.machineId }.distinct().ifEmpty { state.machines.keys.toList() }
     val agents = machineAgents(state.machines[c.machineId])
+    val blockedPrefs = prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
     val shownModel = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, c.model) { it.slug } }
     Sheet(onClose) {
         when (page) {
             "" -> {
-                SheetHead("新会话设置", "完成", { onDone(c) })
+                SheetHead("项目设置", if (blockedPrefs == null) "完成" else null, { onDone(c) })
+                if (blockedPrefs != null) Banner(blockedPrefs)
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Avatar(c.cwd, 22)
+                    Column(Modifier.weight(1f)) {
+                        Text(name, style = T.bodyB, color = p.fg)
+                        Text(shortPath(c.cwd), style = T.mono, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                FieldLabel("新会话")
                 Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
                     val rows = listOf<@Composable () -> Unit>(
                         { SetRow("CLI", agentName(c.agent), if (agents.size > 1) ({ page = "cli" }) else null) },
                         { SetRow("机器", machineLabel(state, c.machineId), { page = "machine" }, dot = if (state.machines[c.machineId]?.online == true) p.green else p.gray) },
-                        { SetRow("目录", shortPath(c.cwd), null) },
                         {
                             SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
                         },
-                        { SetRow("审批", modeLabel(c.mode, defaults, c.agent), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
+                        { SetRow("审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
                     )
                     rows.forEachIndexed { i, r ->
                         if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.line, thickness = 1.dp)
                         r()
                     }
                 }
-                Hint("沿用 $name 最近会话的设置；更换 CLI 或机器会保留草稿。")
+                Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, c.cwd)) "取消常用" else "设为常用", {
+                    PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, c.cwd)) io.github.lewin671.remoteagent.core.PrefsOp.Unpin(c.cwd) else io.github.lewin671.remoteagent.core.PrefsOp.Pin(c.cwd))
+                }, enabled = blockedPrefs == null)
+                TextAction("从项目列表移除", { PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.Hide(c.cwd)); onClose() }, enabled = blockedPrefs == null, color = p.red)
             }
             "cli" -> {
                 SheetHead("新会话使用的 CLI", onBack = { page = "" })
@@ -571,13 +610,13 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
             }
             "mode" -> {
                 SheetHead("审批模式", onBack = { page = "" })
-                ListItem("默认", modeLabel(null, defaults, c.agent), checked = c.mode == null, onClick = { c = c.copy(mode = null); page = "" })
+                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { c = c.copy(mode = null); page = "" })
                 newSessionModes.forEachIndexed { i, m ->
                     // Claude Code's haiku has no auto mode.
                     val off = m == Mode.AUTO && c.agent == Agent.AGENT_CLAUDE && c.model.contains("haiku", ignoreCase = true)
                     ListItem(m.text, if (off) "当前 Haiku 模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { c = c.copy(mode = m); page = "" })
                 }
-                Hint("完全放行只能沿用电脑上的默认设置，发送前会再确认一次。")
+                Hint("完全放行的新会话直接按此设置启动。")
             }
         }
     }
@@ -588,6 +627,11 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
 fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> Unit) {
     val p = pal
     val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
+    var search by remember { mutableStateOf("") }
+    val all = groups.pinned + groups.others
+    if (all.size > 8) OutlinedTextField(search, { search = it }, label = { Text("搜索项目") }, singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+    val match: (io.github.lewin671.remoteagent.core.Project) -> Boolean = { search.isBlank() || it.name.contains(search, true) || it.key.contains(search, true) }
     @Composable
     fun row(pr: io.github.lewin671.remoteagent.core.Project) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line).clickable { onPick(pr.key) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -602,10 +646,10 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
             Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint)
         }
     }
-    if (groups.pinned.isNotEmpty()) FieldLabel("常用项目")
-    groups.pinned.forEach { row(it) }
-    if (groups.others.isNotEmpty()) FieldLabel(if (groups.pinned.isNotEmpty()) "其他项目" else "项目")
-    groups.others.forEach { row(it) }
+    if (groups.pinned.any(match)) FieldLabel("常用项目")
+    groups.pinned.filter(match).forEach { row(it) }
+    if (groups.others.any(match)) FieldLabel(if (groups.pinned.isNotEmpty()) "其他项目" else "项目")
+    groups.others.filter(match).forEach { row(it) }
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onNew), verticalAlignment = Alignment.CenterVertically) {
         Text("＋ 新项目…", style = T.bodyB, color = p.blue)
         Text("  选机器和目录", style = T.meta, color = p.muted)
@@ -736,11 +780,26 @@ fun NewProjectAtScreen(machine: String, path: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val p = pal
-    Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        NavBar(projectName(path), nav.back, subtitle = shortPath(path) + " · " + machineLabel(state, machine))
-        Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
-        NewSessionBox(state, NewConfig(machine, path, machineAgents(state.machines[machine]).first()), projectName(path), focus = true)
+    val initial = projectConfig(state, path) ?: NewConfig(machine, path, machineAgents(state.machines[machine]).first())
+    val entry = Drafts.newSession(path, initial)
+    val selected = entry.config.value ?: initial
+    var summaryModels by remember(selected.machineId, selected.agent) { mutableStateOf<ListModelsResponse?>(null) }
+    LaunchedEffect(selected.machineId, selected.agent) {
+        summaryModels = runCatching { remote.listModels(selected.machineId, selected.agent) }.getOrNull()
     }
+    var settingsOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
+        NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = true })
+        Text(projectSummary(state, selected, summaryModels), style = T.sm, color = if (selected.mode == Mode.FULL) p.red else p.muted,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { settingsOpen = true }.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
+        NewSessionBox(state, initial, projectName(path), focus = true)
+    }
+    if (settingsOpen) NewSettingsSheet(state, selected, projectName(path), onDone = {
+        entry.config.choose(it)
+        PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
+        settingsOpen = false
+    }, onClose = { settingsOpen = false })
 }
 
 /** New-session starts per project, for this run of the app: one whose outcome is unknown is retried as it was. */

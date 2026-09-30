@@ -316,7 +316,7 @@ fun DeviceScreen(id: String) {
                     val eff = defaultModeOf(m, agent)
                     val cur = modeOf(d.mode)
                     val timeoutRow: @Composable () -> Unit = { GRow("审批超时", "${s.approvalTimeoutSeconds / 60} 分钟 ›", onClick = if (save.running) null else ({ pickTimeout = true })) }
-                    GLabel("${agentName(agent)} · 新会话默认设置")
+                    GLabel("${agentName(agent)} · 新项目默认设置")
                     Group(rows = listOfNotNull<@Composable () -> Unit>(
                         @Composable { GRow("模型", d.model.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
                         @Composable { GRow("推理强度", d.effort.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
@@ -492,10 +492,6 @@ fun QuotaScreen(id: String) {
                     else -> {}
                 }
                 for (r in g.rows) rows += @Composable { QuotaRowView(r, received = if (r.percent != null) g.received else "") }
-                if (g.agent == Agent.AGENT_CLAUDE && g.status != io.github.lewin671.remoteagent.core.QuotaStatus.OK) {
-                    val claudeSession = state.sessions.values.filter { it.machineId == id && it.info?.agent == Agent.AGENT_CLAUDE && !io.github.lewin671.remoteagent.core.exited(it) }.maxByOrNull { it.updatedMs }
-                    rows += @Composable { GRow("去终端查看 /usage", onClick = claudeSession?.let { cs -> { nav.sessionTerminal(cs.id) } }, chevron = true, enabled = m.online && claudeSession != null) }
-                }
                 if (rows.isNotEmpty()) Group(rows = rows)
                 // Used up or close to it; nothing switches CLI or model by itself.
                 io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let { Text("$it，不会自动切换 CLI 或模型", style = T.sm, color = p.orangeInk, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }

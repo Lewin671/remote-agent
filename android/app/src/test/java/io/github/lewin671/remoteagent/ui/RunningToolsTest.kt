@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.ToolCall
@@ -80,14 +81,17 @@ class RunningToolsTest {
     }
 
     @Test
-    fun theSummaryNamesTheToolOrCountsThem() {
-        val one = derive(listOf(turn, start(2, "go test", "a")), Agent.AGENT_CLAUDE)
-        assertEquals("Bash · 处理中", toolSummary(one, Agent.AGENT_CLAUDE, 10_000, 0))
-        val two = derive(listOf(turn, start(2, "go test", "a"), start(3, "go vet", "b")), Agent.AGENT_CLAUDE)
-        assertEquals("2 项处理中", toolSummary(two, Agent.AGENT_CLAUDE, 10_000, 0))
-        val bg = derive(listOf(turn, start(2, "go test", "a"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED)))), Agent.AGENT_CLAUDE)
-        assertEquals("后台工作 · 去终端确认", toolSummary(bg, Agent.AGENT_CLAUDE, 10_000, 0))
+    fun aMatchingCodexApprovalReplacesTheRunningTimer() {
+        val events = listOf(turn, start(2, "exec", "a", "go test ./..."),
+            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("p").setCommand("go test ./..."))))
+        val d = derive(events, Agent.AGENT_CODEX)
+        val tool = d.tools.single()
+        val state = toolState(tool, false, d, 0)
+        assertEquals(ToolState.APPROVAL, state)
+        assertEquals("—", toolTimer(tool, state, 500_000, 0))
+        assertEquals(ToolState.RUNNING, toolState(io.github.lewin671.remoteagent.core.RunningTool("other", "b", tool.since, input = "ls"), false, d, 0))
     }
+
 }
 
 class BackgroundFieldTest {

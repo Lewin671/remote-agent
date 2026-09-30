@@ -185,6 +185,7 @@ object Resolves {
         val attempt = io.github.lewin671.remoteagent.core.Attempt()
         var allow = false
         var message = ""
+        var always = false
     }
 
     private val byApproval = HashMap<String, Resolve>()
@@ -195,15 +196,16 @@ object Resolves {
 }
 
 /** Sends [allow], or the earlier decision while its outcome is unknown; returns the decision that went. */
-suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, s: SessionView, a: ApprovalRequested, allow: Boolean, message: String): Boolean {
+suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, s: SessionView, a: ApprovalRequested, allow: Boolean, message: String, always: Boolean = false): Boolean {
     val r = Resolves.of(a.approvalId)
     try {
         val retry = r.attempt.frozen
         val prepared = r.attempt.next {
             r.allow = allow
             r.message = message
+            r.always = always
             remote.prepare(s.machineId, s.id, remote.cmd {
-                resolveApproval = ResolveApprovalRequest.newBuilder().setSessionId(s.id).setApprovalId(a.approvalId).setAllow(allow).setMessage(message).build()
+                resolveApproval = ResolveApprovalRequest.newBuilder().setSessionId(s.id).setApprovalId(a.approvalId).setAllow(allow).setMessage(message).setAlways(always).build()
             })
         }
         remote.forward(prepared, retryOfUnknown = retry)
@@ -224,40 +226,44 @@ suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, 
 fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reasonOpen: Boolean = false, onReason: (Boolean) -> Unit = {}, onCard: Boolean = false) {
     val p = pal
     val remote = LocalRemote.current
-    val nav = LocalNav.current
+    val state by remote.state.collectAsState()
     val act = rememberAction()
     val r = Resolves.of(a.approvalId)
     var which by remember { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
     var reason by Drafts.of("deny:${a.approvalId}")
+    var opened by remember(a.approvalId) { mutableStateOf(false) }
+    val alwaysAvailable = io.github.lewin671.remoteagent.core.capabilities(state.machines[s.machineId])?.approvalAlways == true
     val stuck = r.attempt.frozen
-    fun resolve(allow: Boolean, message: String = "") {
+    fun resolve(allow: Boolean, message: String = "", always: Boolean = false) {
         which = allow
-        act.run({ resolveApproval(remote, s, a, allow, message); null })
+        act.run({ resolveApproval(remote, s, a, allow, message, always); null })
     }
-    if (reasonOpen && !stuck) {
-        ReasonField(reason, { reason = it }, "告诉 ${agentName(s.agent())} 为什么不行")
-        Btn(
-            if (act.running) "拒绝中…" else "发送理由并拒绝", { resolve(false, reason.trim()) }, Modifier.fillMaxWidth(), BtnKind.NEGATIVE,
-            enabled = !act.running && reason.isNotBlank(),
-        )
-        DockFoot("", "不附理由") { onReason(false) }
+    if (act.running || stuck || which != null) {
+        if (act.running || (act.error.isEmpty() && !stuck))
+            Text(if (act.running) "正在送到电脑…" else "已提交，等待电脑确认", style = T.meta, color = p.muted)
+    } else if (opened || reasonOpen) {
+        ReasonField(reason, { reason = it }, "拒绝理由（可选）")
+        Btns {
+            Btn("取消", { opened = false; onReason(false) }, Modifier.weight(1f), BtnKind.SECONDARY)
+            Btn("不允许", { resolve(false, reason.trim()) }, Modifier.weight(1f), BtnKind.NEGATIVE)
+        }
     } else {
         Btns {
-            Btn(if (act.running && which == false) "拒绝中…" else "拒绝", { resolve(false) }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = !act.running && !stuck, bg = if (onCard) p.card else null)
-            Btn(if (act.running && which == true) "允许中…" else "允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running && !stuck)
+            Btn("不允许", { opened = true; onReason(true) }, Modifier.weight(1f), BtnKind.NEGATIVE, bg = if (onCard) p.card else null)
+            Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY)
         }
-        if (!stuck) DockFoot("", "附理由拒绝 ›") { if (compact) nav.approval(s.id, a.approvalId) else onReason(true) }
+        if (alwaysAvailable) TextAction("允许，这类请求以后不再问", { resolve(true, always = true) }, modifier = Modifier.fillMaxWidth(), style = T.smB, alignment = Alignment.Center)
     }
     if (!act.running && stuck) {
         val what = if (r.allow) "允许" else "拒绝"
         Banner(
             if (r.attempt.expired) "不确定「$what」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-            else "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}。重试会再发同一个「$what」",
+            else "没送到电脑：${act.error.ifEmpty { "结果未知" }}",
             Modifier.padding(top = 8.dp), Tone2.ERROR,
-            action = if (!r.attempt.expired) "重试" else null, onAction = { resolve(r.allow, r.message) },
+            action = if (!r.attempt.expired) "重试" else null, onAction = { resolve(r.allow, r.message, r.always) },
         )
     } else if (act.error.isNotEmpty()) {
-        Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
+        Banner("没送到电脑：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR, action = "重试", onAction = { resolve(r.allow, r.message, r.always) })
     }
 }
 

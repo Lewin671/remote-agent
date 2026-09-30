@@ -203,6 +203,15 @@ class ChatTest {
     }
 
     @Test
+    fun rawCodexItemTypesAreNotToolTitles() {
+        val generic = ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_OTHER).setItemType("ToolCall").setTitle("ToolCall").build()
+        assertEquals("工具", toolTitle(generic, ""))
+        assertEquals("", toolRaw(generic, "", ""))
+        val command = generic.toBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setItemType("CommandExecution").setTitle("CommandExecution").build()
+        assertEquals("命令", toolTitle(command, ""))
+    }
+
+    @Test
     fun namesARunningCallAsWhenItIsDone() {
         val events = listOf(ev(1, Event.newBuilder().setToolStarted(io.github.lewin671.remoteagent.proto.ToolStarted.newBuilder()
             .setTitle("/private/tmp/w/hello.txt").setCallId("c").setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setItemType("Write"))))

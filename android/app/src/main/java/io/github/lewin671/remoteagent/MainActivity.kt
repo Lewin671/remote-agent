@@ -70,8 +70,6 @@ import io.github.lewin671.remoteagent.ui.ProjectScreen
 import io.github.lewin671.remoteagent.ui.RaTheme
 import io.github.lewin671.remoteagent.ui.SessionScreen
 import io.github.lewin671.remoteagent.ui.SettingsScreen
-import io.github.lewin671.remoteagent.ui.ToolPage
-import io.github.lewin671.remoteagent.ui.QueuePage
 import io.github.lewin671.remoteagent.ui.ManageProjectsScreen
 import io.github.lewin671.remoteagent.ui.HiddenProjectsScreen
 import io.github.lewin671.remoteagent.ui.OpenTerminal
@@ -183,8 +181,6 @@ class MainActivity : ComponentActivity() {
                     composable("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
                     composable("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
                     composable("projects/hidden") { HiddenProjectsScreen() }
-                    composable("queue/{sid}") { QueuePage(it.arguments?.getString("sid").orEmpty()) }
-                    composable("tool/{sid}/{seq}") { ToolPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0) }
                 }
                 if (tabs) BottomBar(remote, route, nav)
             }
@@ -213,8 +209,6 @@ class MainActivity : ComponentActivity() {
         plan = { nav.navigate("plan/$it") },
         newProject = { nav.navigate("newproject") },
         pickProject = { nav.navigate("pick") },
-        tool = { sid, seq -> nav.navigate("tool/$sid/$seq") },
-        queue = { nav.navigate("queue/$it") },
         manageProjects = { nav.navigate("projects") },
         devices = { nav.navigate("devices") },
         quota = { nav.navigate("quota/$it") },
