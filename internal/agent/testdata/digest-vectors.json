@@ -1,0 +1,57 @@
+[
+  {
+    "tool": "Bash",
+    "input": "{\"command\":\"mkdir -p internal/handler\",\"description\":\"Make the package\"}",
+    "digest": "d8c43fb75a65aa77b738d5eb44c712cdd8e8a72d28f62d58e323268e6df4de41"
+  },
+  {
+    "tool": "Bash",
+    "input": "{\"description\":\"x\",\"command\":\"echo '\u003ca\u003e \u0026 b' | wc -l\"}",
+    "digest": "be04a4ed99d9032342488d70168c0f23a8f00c0803bff4ea05fc6209150352c1"
+  },
+  {
+    "tool": "Write",
+    "input": "{\"file_path\":\"/tmp/a.txt\",\"content\":\"hello\"}",
+    "digest": "c04e16bc0af29af9c09954fe38dc797845afcd89e670ecd79160e007095f61e0"
+  },
+  {
+    "tool": "Write",
+    "input": "{ \"content\" : \"line 1\\nline 2\\ttab\", \"file_path\": \"/tmp/b.txt\" }",
+    "digest": "760efde1fd7919a9fee765f91387af2d0efd7523ea4b6181f4f33a028a55c94f"
+  },
+  {
+    "tool": "Edit",
+    "input": "{\"file_path\":\"/tmp/c.go\",\"old_string\":\"a \u003c b \u0026\u0026 c \u003e d\",\"new_string\":\"x\",\"replace_all\":false}",
+    "digest": "be3c3f40d218247799e6450a92f304af65226b4d67d28cf83a66e6c391291ef6"
+  },
+  {
+    "tool": "Edit",
+    "input": "{\"z\":1,\"a\":[1,2.5,-3e-7,1e21,100000000000000000000],\"m\":{\"b\":null,\"a\":true}}",
+    "digest": "289111f6e1a465b0e6cbc202e3c9f48230cf2d95995aa451925e48578a3169f8"
+  },
+  {
+    "tool": "Write",
+    "input": "{\"content\":\"中文 🦊 \u2028 \\u0008\\u000c\\u0001 \\\"q\\\" \\\\ /\",\"file_path\":\"/tmp/d\"}",
+    "digest": "b24220a9e827b8b363313164213f66790cc2040f25754355ab15a198b298be8d"
+  },
+  {
+    "tool": "WebFetch",
+    "input": "{\"url\":\"https://example.com/?a=1\u0026b=2\",\"prompt\":\"\u003csummary\u003e\"}",
+    "digest": "c20b1e255c3f85e92da068d6eb03f0d0b364b2d9685e28273475255b13c2d098"
+  },
+  {
+    "tool": "Read",
+    "input": "{\"é\":1,\"e\":2,\"z\":3,\"Z\":4,\"éa\":5}",
+    "digest": "f769bc7d9992a7f8ec9703251b50ec04aca0a621a6bb2d4acd6c52182d636499"
+  },
+  {
+    "tool": "Bash",
+    "input": "{\"command\":\"\"}",
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "tool": "Bash",
+    "input": "not json",
+    "digest": ""
+  }
+]

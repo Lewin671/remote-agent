@@ -13,6 +13,7 @@ import {
   derive,
   dockItems,
   findModel,
+  inputDigest,
   inheritConfig,
   machineAgents,
   minutesLeft,
@@ -518,32 +519,61 @@ describe("events", () => {
 });
 
 describe("approval records", () => {
-  it("stay rows of their own, never lent to a parallel tool call", () => {
-    // Claude Code runs tools in parallel: two approvals wait, then an
-    // unrelated call finishes first, then the approved ones.
-    const list = events(
-      { case: "turnStarted", value: {} },
-      { case: "toolStarted", value: { title: "Read a.go", callId: "r" } },
-      { case: "toolStarted", value: { title: "mkdir x", callId: "m" } },
-      { case: "toolStarted", value: { title: "rm y", callId: "d" } },
-      { case: "approvalRequested", value: { approvalId: "A", toolName: "Bash", command: "mkdir x", toolInputJson: '{"command":"mkdir x"}' } },
-      { case: "approvalRequested", value: { approvalId: "B", toolName: "Bash", command: "rm y", toolInputJson: '{"command":"rm y"}' } },
-      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.DENY } },
-      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
-      { case: "toolCall", value: { title: "Read a.go", callId: "r", kind: ToolKind.OTHER, status: "completed" } },
-      { case: "toolCall", value: { title: "mkdir x", callId: "m", kind: ToolKind.COMMAND, status: "completed", exitCode: 0 } },
-      { case: "toolCall", value: { title: "rm y", callId: "d", kind: ToolKind.COMMAND, status: "failed" } },
-    );
+  const bash = (command: string) => JSON.stringify({ command, description: "" });
+  const approval = (approvalId: string, command: string) => ({ case: "approvalRequested", value: { approvalId, toolName: "Bash", command, toolInputJson: bash(command) } });
+  const call = (title: string, callId: string, digest: string, status = "completed") => ({
+    case: "toolCall",
+    value: { title, callId, itemType: "Bash", inputDigest: digest, kind: ToolKind.COMMAND, status },
+  });
+  const rows = (list: Event[]) => {
     const d = derive(list, Agent.CLAUDE);
-    const rows = timeline(list, d).map((it) => {
+    return timeline(list, d).map((it) => {
       if (it.kind !== "event") return it.kind;
       const k = it.event.kind;
       if (k.case === "approvalRequested") return `record ${k.value.command} ${decisionText(d.resolved.get(k.value.approvalId)!.decision)}`;
-      if (k.case === "toolCall") return `tool ${k.value.title}`;
+      if (k.case === "toolCall") return `tool ${k.value.title}${it.decision ? " " + decisionText(it.decision) : ""}`;
       return k.case;
     });
-    // Each decision is on its own approval's row, keyed by approval ID;
-    // tool rows carry no decision.
-    expect(rows).toEqual(["record mkdir x 已允许", "record rm y 已拒绝", "tools", "tool rm y"]);
+  };
+
+  it("show on the tool call they were for, only when it is surely that call", () => {
+    // Claude Code runs tools in parallel: approvals wait, an unrelated call
+    // finishes first, then the approved ones, out of order.
+    const list = events(
+      { case: "turnStarted", value: {} },
+      approval("A", "mkdir x"),
+      approval("B", "rm y"),
+      approval("C", "npm test"),
+      approval("D", "npm test"),
+      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.DENY } },
+      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
+      { case: "approvalResolved", value: { approvalId: "C", decision: ApprovalDecision.ALLOW } },
+      { case: "approvalResolved", value: { approvalId: "D", decision: ApprovalDecision.ALLOW } },
+      { case: "toolCall", value: { title: "Read a.go", callId: "r", itemType: "Read", inputDigest: inputDigest("Read", '{"file_path":"a.go"}'), kind: ToolKind.OTHER, status: "completed" } },
+      call("rm y", "d", "", "failed"), // no digest: an older daemon
+      call("mkdir x", "m", inputDigest("Bash", bash("mkdir x"))),
+      call("npm test", "t1", inputDigest("Bash", bash("npm test"))),
+      call("npm test", "t2", inputDigest("Bash", bash("npm test"))),
+    );
+    expect(rows(list)).toEqual([
+      // B has no call it can surely be tied to, and C and D two each.
+      "record rm y 已拒绝",
+      "record npm test 已允许",
+      "record npm test 已允许",
+      "tool Read a.go",
+      "tool rm y",
+      // A's call carries A's result, and A's own row goes.
+      "tool mkdir x 已允许",
+      "tools",
+    ]);
+  });
+
+  it("stay rows of their own for Codex, whose calls have no digest", () => {
+    const list = events(
+      { case: "approvalRequested", value: { approvalId: "A", toolName: "shell", command: "mkdir x", toolInputJson: "" } },
+      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
+      { case: "toolCall", value: { title: "mkdir x", kind: ToolKind.COMMAND, status: "completed" } },
+    );
+    expect(rows(list)).toEqual(["record mkdir x 已允许", "tool mkdir x"]);
   });
 });

@@ -410,7 +410,7 @@ function toolTitle(t: ToolCall, short: Short): string {
   return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short(t.title) : short(t.title || t.itemType);
 }
 
-function ToolRow({ t, short }: { t: ToolCall; short: Short }) {
+function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?: ApprovalDecision }) {
   const [open, setOpen] = useState(false);
   const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
   const secs = Number(t.durationMs) / 1000;
@@ -424,7 +424,13 @@ function ToolRow({ t, short }: { t: ToolCall; short: Short }) {
       <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span>
         <code>{toolTitle(t, short)}</code>
-        {!ok && t.exitCode !== undefined ? <span className="exit">退出码 {t.exitCode}</span> : secs >= 1 ? <span className="muted">{Math.round(secs)}s</span> : null}
+        {decision !== undefined ? (
+          <span className="muted">{decisionText(decision)}</span>
+        ) : !ok && t.exitCode !== undefined ? (
+          <span className="exit">退出码 {t.exitCode}</span>
+        ) : secs >= 1 ? (
+          <span className="muted">{Math.round(secs)}s</span>
+        ) : null}
       </button>
       {open && raw && <div className="toolout">{raw}</div>}
       {(open || !ok) && lines.length > 0 && (
@@ -489,7 +495,7 @@ function Row({ it, d, short, machine, agent, textOf }: { it: Item; d: Derived; s
         </details>
       );
     case "toolCall":
-      return <ToolRow t={k.value} short={short} />;
+      return <ToolRow t={k.value} short={short} decision={it.decision} />;
     case "turnEnded":
       return <div className="sysline">已中断</div>;
     case "approvalRequested": {

@@ -22,12 +22,15 @@ import {
 } from "../gen/remoteagent/v1/event_pb";
 import { DaemonSettingsSchema, ListModelsResponseSchema, SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResult, type TerminalFrame } from "../gen/remoteagent/v1/remote_pb";
+import { inputDigest } from "../model";
 import { CommandError, Remote, type CommandKind, type History, type RequestSlot, type SessionView, type TermConn } from "../remote";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
 type SessionInit = MessageInitShape<typeof SessionSchema>;
 
 const now = Date.now();
+// A Claude Code write, approved from here: its row carries the result.
+const writeInput = JSON.stringify({ file_path: "/Users/me/Code/bar/errors.go", content: "package errors" });
 const min = 60_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -183,6 +186,12 @@ function fixtures(): Record<string, Fixture> {
       },
       events: [
         { case: "userMessage", value: { text: "整理错误码" } },
+        { case: "approvalRequested", value: { approvalId: "cw", toolName: "Write", toolInputJson: writeInput } },
+        { case: "approvalResolved", value: { approvalId: "cw", decision: ApprovalDecision.ALLOW } },
+        {
+          case: "toolCall",
+          value: { title: "/Users/me/Code/bar/errors.go", itemType: "Write", kind: ToolKind.FILE_CHANGE, status: "completed", inputDigest: inputDigest("Write", writeInput) },
+        },
         { case: "agentMessage", value: { text: "错误码已按模块分组。" } },
       ],
     },
