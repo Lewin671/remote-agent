@@ -9,6 +9,7 @@ import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
+import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
@@ -722,4 +723,13 @@ it("isolates saved launch choices by project and account and reconfirms full acc
   another.account.deviceId = "another-device";
   act(() => root!.render(<Box key="another" remote={another} project={foo} />));
   expect(ns!.cfg.model).not.toBe("gpt-6-luna");
+});
+
+it("names a new project's default model as Codex does, even when /model hides it", async () => {
+  const r = demo();
+  // The machine's default is a model Codex leaves out of its list.
+  (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
+  r.draftMachines.set("/Users/me/Code/new", "mac");
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+  await vi.waitFor(() => expect(host.querySelector(".newbox .cfg em")!.textContent).toContain("GPT-6.1-Sol low"), { timeout: 3000 });
 });

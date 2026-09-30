@@ -378,6 +378,22 @@ export function findModel<M extends { slug: string }>(models: M[] | undefined, i
   return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
 }
 
+/** The name to show for a model: its display name from the machine's
+ * list; the ID as is while the list has not come; and for a Codex model
+ * missing from the list (the machine's default may be one Codex hides
+ * from /model), the name Codex gives such slugs: gpt-6.1-sol is
+ * GPT-6.1-Sol. */
+export function modelLabel<M extends { slug: string; displayName: string }>(models: M[] | undefined, id: string, agent: Agent = Agent.CODEX): string {
+  if (!id) return "";
+  const m = findModel(models, id);
+  if (m?.displayName) return m.displayName;
+  if (!models || agent === Agent.CLAUDE) return id;
+  return id
+    .split("-")
+    .map((w) => (/^gpt$/i.test(w) ? "GPT" : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join("-");
+}
+
 /** Whether the model a CLI reports (id) is the one chosen by slug or
  * alias. */
 export function modelIs(id: string, slug: string): boolean {

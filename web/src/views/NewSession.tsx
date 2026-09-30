@@ -10,6 +10,7 @@ import {
   agentName,
   ago,
   findModel,
+  modelLabel,
   inheritConfig,
   machineAgents,
   machineName,
@@ -76,7 +77,7 @@ export function describe(cfg: NewConfig, m: MachineLike | undefined, info: Retur
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
-  const modelText = slug ? `${model?.displayName || slug}${effort ? " " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
+  const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
   const mode = modeName(cfg.mode || def.mode) || "默认审批";
   const parts = [machineName(m)];
   if (machineAgents(m).length > 1 || cfg.agent !== Agent.CODEX) parts.push(agentName(cfg.agent));

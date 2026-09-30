@@ -13,6 +13,7 @@ import {
   derive,
   dockItems,
   findModel,
+  modelLabel,
   inheritConfig,
   machineAgents,
   minutesLeft,
@@ -305,6 +306,22 @@ describe("approval modes", () => {
 
   it("records approvals answered in the terminal", () => {
     expect(decisionText(ApprovalDecision.TERMINAL)).toBe("已在终端处理");
+  });
+});
+
+describe("model labels", () => {
+  const list = [
+    { slug: "gpt-6-sol", displayName: "GPT-6-Sol" },
+    { slug: "sonnet", displayName: "Sonnet" },
+  ];
+  it("names a model by its display name, the list's or Codex's", () => {
+    expect(modelLabel(list, "gpt-6-sol")).toBe("GPT-6-Sol");
+    // The machine's default, hidden from /model and so from the list.
+    expect(modelLabel(list, "gpt-6.1-sol")).toBe("GPT-6.1-Sol");
+    expect(modelLabel(list, "claude-sonnet-5-5", Agent.CLAUDE)).toBe("Sonnet");
+    expect(modelLabel(list, "claude-opus-9", Agent.CLAUDE)).toBe("claude-opus-9");
+    // The list has not come yet: the ID as is.
+    expect(modelLabel(undefined, "gpt-6.1-sol")).toBe("gpt-6.1-sol");
   });
 });
 

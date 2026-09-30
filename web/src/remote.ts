@@ -44,7 +44,7 @@ import { CommandResultSchema, CommandSchema, MachineMetaSchema, TerminalFrameSch
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
-import { findModel, type Outgoing } from "./model";
+import { modelLabel, type Outgoing } from "./model";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
 export interface MachineView {
@@ -827,7 +827,7 @@ export class Remote {
 
   /** A model's display name, once the machine's list has been fetched. */
   modelName(machineId: string, agent: Agent, slug: string): string {
-    return findModel(this.modelLists.get(machineId + "/" + agent)?.models, slug)?.displayName || slug;
+    return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
   }
 
   /** The models a machine's CLI offers, fetched once per page load. */
