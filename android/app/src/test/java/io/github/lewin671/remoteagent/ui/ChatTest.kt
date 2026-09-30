@@ -95,6 +95,5 @@ class ChatTest {
         assertEquals(listOf("a"), listOf((items[0] as ChatItem.Tool).call.title))
         assertEquals("b", (items[1] as ChatItem.Tool).call.title)
         assertEquals("完成了 2 个工具调用", toolsSummary((items[2] as ChatItem.Tools).calls))
-        assertEquals("~/x", relativePath("/Users/me/x", "/tmp/w"))
     }
 }

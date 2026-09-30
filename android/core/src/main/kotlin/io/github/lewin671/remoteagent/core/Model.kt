@@ -389,6 +389,37 @@ fun optionLabel(label: String): Pair<String, Boolean> {
     return if (m != null) m.groupValues[1] to true else label to false
 }
 
+private val pathWord = Regex("""(^|[\s'"=:(\[{,])(/[^\s'"`()\[\]{}<>|;&,]*)""")
+private val homeDir = Regex("^/(?:Users|home)/[^/]+(?=/|$)")
+
+/** macOS reports /tmp, /var and /etc under /private: the same place. */
+private fun samePlace(p: String) = p.replaceFirst(Regex("^/private(?=/(?:tmp|var|etc)(?:/|$))"), "")
+
+/**
+ * Absolute paths in a tool title, shortened for display, exactly as
+ * shortenPaths in web/src/model.ts (its cases are ported to ShortPathsTest).
+ * Only whole path words change: a word starting with / after the start, a
+ * space, a quote, =, :, (, [, { or a comma. Under the session folder a
+ * path becomes relative to it and the folder itself "."; else under the
+ * home folder ~/…, and without a known home /Users/<name> and /home/<name>
+ * count as one. URLs and relative paths stay as they are.
+ */
+fun shortenPaths(text: String, cwd: String, home: String = ""): String {
+    val base = samePlace(cwd).trimEnd('/')
+    val h = samePlace(home).trimEnd('/')
+    return pathWord.replace(text) { m ->
+        val before = m.groupValues[1]
+        val p = samePlace(m.groupValues[2])
+        when {
+            base.isNotEmpty() && p == base -> "$before."
+            base.isNotEmpty() && p.startsWith("$base/") -> before + p.substring(base.length + 1)
+            h.isNotEmpty() && (p == h || p.startsWith("$h/")) -> before + "~" + p.substring(h.length)
+            h.isEmpty() && homeDir.containsMatchIn(p) -> before + p.replaceFirst(homeDir, "~")
+            else -> m.value
+        }
+    }
+}
+
 fun shortPath(p: String): String = p.replace(Regex("^/Users/[^/]+"), "~").replace(Regex("^/home/[^/]+"), "~")
 
 /** Minutes left until a deadline, for "剩 N 分钟". */

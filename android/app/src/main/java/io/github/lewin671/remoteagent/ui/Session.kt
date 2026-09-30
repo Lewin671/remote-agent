@@ -213,7 +213,8 @@ private fun ChatPane(
     val remote = LocalRemote.current
     val machine = machineLabel(state, s.machineId)
     val cwd = s.info?.cwd.orEmpty()
-    val items = remember(events, d, cwd) { buildChat(events, d, machine, cwd) }
+    val home = state.machines[s.machineId]?.meta?.home.orEmpty()
+    val items = remember(events, d, cwd, home) { buildChat(events, d, machine, cwd, home) }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val outbox = Outbox.of(s.id)
@@ -239,7 +240,7 @@ private fun ChatPane(
         Box(Modifier.weight(1f)) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                 if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
-                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd) }
+                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd, home) }
                 if (error != null) item {
                     Card(Modifier.padding(12.dp)) {
                         Column(Modifier.padding(14.dp)) {
@@ -253,7 +254,7 @@ private fun ChatPane(
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text(tool.title.lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(io.github.lewin671.remoteagent.core.shortenPaths(tool.title.lines().first(), cwd, home), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         if (tool.since > 0) Text(duration((t - tool.since).coerceAtLeast(0)), style = MaterialTheme.typography.bodySmall, color = p.faint)
                     }
                 }

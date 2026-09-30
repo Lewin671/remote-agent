@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Derived
-import io.github.lewin671.remoteagent.core.shortPath
+import io.github.lewin671.remoteagent.core.shortenPaths
 import io.github.lewin671.remoteagent.core.dateTime
 import io.github.lewin671.remoteagent.core.decisionText
 import io.github.lewin671.remoteagent.core.eventTime
@@ -60,17 +60,11 @@ sealed interface ChatItem {
 
 fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
 
-/** A path relative to the session's folder; macOS reports /tmp as /private/tmp. */
-fun relativePath(path: String, cwd: String): String {
-    fun norm(p: String) = p.replaceFirst(Regex("^/private/"), "/")
-    val p = norm(path)
-    val base = norm(cwd).trimEnd('/') + "/"
-    return if (cwd.isNotEmpty() && p.startsWith(base)) p.removePrefix(base) else shortPath(path)
+/** How a tool call is named in the chat: paths shortened, as on the web; the details keep them whole. */
+fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String {
+    val title = shortenPaths(t.title.ifEmpty { t.itemType }, cwd, home)
+    return if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 $title" else title
 }
-
-/** How a tool call is named in the chat, as on the web. */
-fun toolTitle(t: ToolCall, cwd: String): String =
-    if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 " + relativePath(t.title, cwd) else t.title.ifEmpty { t.itemType }
 
 /** "运行了 3 条命令" and the like, for a folded run. */
 fun toolsSummary(calls: List<ToolCall>): String = when {
@@ -84,7 +78,7 @@ fun toolsSummary(calls: List<ToolCall>): String = when {
  * line. An approval is not a row of its own when the call it allowed or
  * denied follows: that call carries the decision, so one call shows once.
  */
-fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""): List<ChatItem> {
+fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = ""): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
     var runKey = ""
@@ -152,7 +146,7 @@ fun buildChat(events: List<Event>, d: Derived, machine: String, cwd: String = ""
                 val ok = r.decision == ApprovalDecision.APPROVAL_DECISION_ALLOW
                 decidedOk = ok
                 decidedText = decisionText(r.decision) + if (r.message.isNotEmpty()) "：" + r.message else ""
-                decided = ChatItem.Note(k, listOf(requested[r.approvalId].orEmpty(), decidedText).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
+                decided = ChatItem.Note(k, listOf(shortenPaths(requested[r.approvalId].orEmpty(), cwd, home), decidedText).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
@@ -222,7 +216,7 @@ fun duration(ms: Long): String {
 }
 
 @Composable
-fun ChatItemView(item: ChatItem, agent: String, cwd: String = "") {
+fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "") {
     val p = pal
     when (item) {
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
@@ -238,11 +232,11 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "") {
             Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            ToolRow(item.call, cwd, item.decision, item.decisionOk)
+            ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
         }
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
             Expandable("✓ " + toolsSummary(item.calls) + "  ▸", "✓ " + toolsSummary(item.calls) + "  ▾") {
-                Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd) } }
+                Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd, home) } }
             }
         }
         is ChatItem.Note -> Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -285,7 +279,7 @@ fun Expandable(closed: String, opened: String, modifier: Modifier = Modifier, co
 }
 
 @Composable
-private fun ToolRow(t: ToolCall, cwd: String, decision: String = "", decisionOk: Boolean = true) {
+private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "", decisionOk: Boolean = true) {
     val p = pal
     val ok = toolOk(t)
     var open by rememberSaveable(t.callId, t.title) { mutableStateOf(false) }
@@ -295,7 +289,7 @@ private fun ToolRow(t: ToolCall, cwd: String, decision: String = "", decisionOk:
             Text(if (ok) "✓" else "✕", color = if (ok) p.green else p.red, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.width(6.dp))
             Text(
-                toolTitle(t, cwd).lines().first(),
+                toolTitle(t, cwd, home).lines().first(),
                 style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = p.fg2,
                 maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
