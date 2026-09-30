@@ -5,9 +5,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DemoRemote } from "../dev/demo";
+import { ANDROID, DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
@@ -1569,3 +1569,17 @@ it("retries a confirmed start whose reply was lost as the same request, confirme
   expect(sent[2].confirm).toBe(true);
 });
 
+it("does not put another client's images into this input (review W3)", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  for (const [kind, origin] of [
+    [{ case: "inputState", value: { requestId: "x1", status: InputStatus.QUEUED, text: "看这两张", imageIds: ["i1", "i2"] } }, { kind: OriginKind.CLIENT, deviceId: ANDROID }],
+    [{ case: "inputState", value: { requestId: "x1", status: InputStatus.FAILED, reason: "image_not_recognized" } }, undefined],
+  ] as const)
+    r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never, origin: origin as never }));
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(button("放回输入框", host.querySelector(".me.fail")!));
+  expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
+  expect(host.querySelector(".att-tray")).toBeNull();
+  expect(host.textContent).toContain("图片是另一客户端上传的");
+});

@@ -116,11 +116,17 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
    * on the computer, with this device's copies of them when it has them. */
   const restore = (text: string, from?: string) => {
     const o = from ? remote.outbox(sid).find((x) => x.sendId === from) : undefined;
-    const ids = o?.imageIds ?? (from ? d.accepted.get(from)?.imageIds : undefined) ?? [];
+    const acc = from ? d.accepted.get(from) : undefined;
+    // An uploaded image can be sent only by the device that uploaded it:
+    // another client's images are not put into this input.
+    const ours = !!o || acc?.origin?.deviceId === remote.account.deviceId;
+    const ids = ours ? (o?.imageIds ?? acc?.imageIds ?? []) : [];
+    const foreign = !ours && (acc?.imageIds.length ?? 0) > 0;
     // All of the message or none of it: never a message short of images.
     if (ids.length && !tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] }))))
       return setToast(`输入框里已有 ${tray.items.length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`);
     remote.drafts.set(sid, text);
+    if (foreign) setToast("这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片");
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
   };
