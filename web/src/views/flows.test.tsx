@@ -1333,3 +1333,44 @@ describe("the first message of a session started here (review B5, B9)", () => {
   });
 
 });
+
+describe("a failed message with images (review B6)", () => {
+  function setup(text: string) {
+    const r = demo();
+    const s = r.sessions.get("s-idle")!;
+    const blob = new Blob([new Uint8Array(4)], { type: "image/png" });
+    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "f1", requestId: "x", deadline: 0, text, imageIds: ["i1", "i2"], thumbs: [blob, blob], status: "sent" }]);
+    for (const kind of [
+      { case: "inputState", value: { requestId: "f1", status: InputStatus.QUEUED, text, imageIds: ["i1", "i2"] } },
+      { case: "inputState", value: { requestId: "f1", status: InputStatus.FAILED, reason: "image_not_recognized" } },
+    ])
+      r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
+    const sent: { text?: string; imageIds?: string[] }[] = [];
+    const real = r.command.bind(r);
+    r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
+      if (cmd?.case === "send") sent.push({ text: cmd.value.text, imageIds: cmd.value.imageIds });
+      return real(sid, cmd, slot);
+    };
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    return { r, sent };
+  }
+  const row = () => host.querySelector(".me.fail")!;
+
+  it("puts text and images back into the input, to send them again", async () => {
+    const t = setup("看这两张");
+    await click(button("放回输入框", row()));
+    expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
+    expect(host.querySelectorAll(".att-tray .pic").length).toBe(2);
+    await click(host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!);
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(t.sent[0]).toEqual({ text: "看这两张", imageIds: ["i1", "i2"] });
+  });
+
+  it("can retry or restore a message of images only", async () => {
+    const t = setup("");
+    expect(button("放回输入框", row())).toBeTruthy();
+    await click(button("重试", row()));
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
+  });
+});

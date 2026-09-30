@@ -110,14 +110,18 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const composer = useRef<HTMLTextAreaElement>(null);
   // Remounting the input shows a draft put back from the chat.
   const [composerKey, setComposerKey] = useState(0);
-  const restore = (text: string) => {
+  const items = dockItems(session, d, machine);
+  const tray = useTray(remote, sid, session.machineId, maxImages(machine));
+  /** Puts a message back into the input: its text, and its images, still
+   * on the computer, with this device's copies of them when it has them. */
+  const restore = (text: string, from?: string) => {
     remote.drafts.set(sid, text);
+    const o = from ? remote.outbox(sid).find((x) => x.sendId === from) : undefined;
+    const ids = o?.imageIds ?? (from ? d.accepted.get(from)?.imageIds : undefined) ?? [];
+    if (ids.length) tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] })));
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
   };
-
-  const items = dockItems(session, d, machine);
-  const tray = useTray(remote, sid, session.machineId, maxImages(machine));
   const attachWhy = attachBlocked(remote, machine);
   const drop = useDropPaste(tray, attachWhy, setToastRef.current);
   const pictures = useMemo(() => sessionImages(events), [events, events.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -391,7 +395,7 @@ function ChatBody({
   d: Derived;
   agent: Agent;
   machine: string;
-  onRestore: (text: string) => void;
+  onRestore: (text: string, from?: string) => void;
   onTool: (seq: bigint) => void;
   onTerminal?: () => void;
 }) {
@@ -555,7 +559,7 @@ function Row({
   machine: string;
   agent: Agent;
   textOf: Map<string, string>;
-  onRestore: (text: string) => void;
+  onRestore: (text: string, from?: string) => void;
   nameModel: (id: string) => string;
   remote: Remote;
   onTool: (seq: bigint) => void;
@@ -660,12 +664,13 @@ function Row({
         // The session ended before writing it. Not sent again by itself:
         // the text can go back into the input, to send after resuming.
         const text = textOf.get(k.value.requestId);
-        return text ? (
+        const images = d.accepted.get(k.value.requestId)?.imageIds.length ?? 0;
+        return text !== undefined && (text || images) ? (
           <div className="me warn unsent">
-            <div>{text}</div>
+            <div>{text || `${images} 张图片`}</div>
             <small>
               会话结束，没有发出
-              <button onClick={() => onRestore(text)}>放回输入框</button>
+              <button onClick={() => onRestore(text, k.value.requestId)}>放回输入框</button>
             </small>
           </div>
         ) : (
@@ -690,15 +695,15 @@ function Row({
           );
         return (
           <div className="me fail">
-            <div>{text || "一条消息"}</div>
+            {!text && images.length > 0 ? <div>{images.length} 张图片</div> : <div>{text || "一条消息"}</div>}
             <small>
               没能发送：{why}
-              {mine && text && (
+              {mine && (text || images.length > 0) && (
                 <button disabled={remote.replaced.has(k.value.requestId)} onClick={() => remote.resend(sid, k.value.requestId, text, images)}>
                   {remote.replaced.has(k.value.requestId) ? "已重新发送" : "重试"}
                 </button>
               )}
-              {text && <button onClick={() => onRestore(text)}>放回输入框</button>}
+              {(text || images.length > 0) && <button onClick={() => onRestore(text, k.value.requestId)}>放回输入框</button>}
             </small>
           </div>
         );

@@ -64,6 +64,14 @@ export class Tray {
     this.onChange();
   }
 
+  /** Images already on the current machine, put back from a message that
+   * was not sent; nothing is prepared or uploaded again. */
+  restore(images: { imageId: string; thumb?: Blob }[]) {
+    for (const im of images.slice(0, Math.max(0, this.max - this.items.length)))
+      this.items.push({ key: "t" + ++keys, file: im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId });
+    this.onChange();
+  }
+
   remove(key: string) {
     this.items.find((i) => i.key === key)?.abort?.();
     this.items = this.items.filter((i) => i.key !== key);
