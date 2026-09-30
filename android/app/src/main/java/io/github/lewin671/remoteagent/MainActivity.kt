@@ -134,6 +134,14 @@ class MainActivity : ComponentActivity() {
                 askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        // Say what this client is, sealed, so other clients can tell it apart.
+        val devices by remote.state.collectAsState()
+        LaunchedEffect(devices.devices[remote.account.deviceId]?.metaRev, devices.conn) {
+            val me = devices.devices[remote.account.deviceId]
+            if (me != null && me.meta == null && devices.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) {
+                runCatching { remote.renameDevice(me.id, "", "android", "Android ${Build.VERSION.RELEASE} · ${Build.MODEL}") }
+            }
+        }
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
@@ -153,6 +161,8 @@ class MainActivity : ComponentActivity() {
                     composable("newproject") { NewProjectScreen() }
                     composable("pick") { PickProjectScreen() }
                     composable("projects") { ManageProjectsScreen() }
+                    composable("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
+                    composable("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
                     composable("projects/hidden") { HiddenProjectsScreen() }
                     composable("queue/{sid}") { QueuePage(it.arguments?.getString("sid").orEmpty()) }
                     composable("tool/{sid}/{seq}") { ToolPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0) }
@@ -192,6 +202,8 @@ class MainActivity : ComponentActivity() {
         tool = { sid, seq -> nav.navigate("tool/$sid/$seq") },
         queue = { nav.navigate("queue/$it") },
         manageProjects = { nav.navigate("projects") },
+        devices = { nav.navigate("devices") },
+        client = { nav.navigate("client/$it") },
         hiddenProjects = { nav.navigate("projects/hidden") },
         sessionTerminal = { sid ->
             OpenTerminal.requested[sid] = true

@@ -204,7 +204,7 @@ class ChatTest {
         val events = listOf(ev(1, input("mine", q)), ev(2, input("other", q)), ev(3, input("gone", q)), ev(4, input("gone", c)), ev(5, input("mine", c, "exited")), ev(6, input("other", c, "exited")), ev(7, exit()))
         val d = derive(events)
         assertEquals(listOf("mine", "other"), d.unsent.keys.toList())
-        val items = buildChat(events, d, "M") { if (it == "mine") "补一个测试" else null }
+        val items = buildChat(events, d, "M", textOf = { if (it == "mine") "补一个测试" else null })
         assertEquals(listOf(ChatItem.Unsent("umine", "mine", "补一个测试"), ChatItem.Unsent("uother", "other", null)), items.filterIsInstance<ChatItem.Unsent>())
         // An older daemon left it queued: the exit settles it, and nothing stays in the queue.
         val old = listOf(ev(1, input("a", q)), ev(2, exit()))

@@ -34,6 +34,7 @@ import io.github.lewin671.remoteagent.core.dateTime
 import io.github.lewin671.remoteagent.core.decisionText
 import io.github.lewin671.remoteagent.core.eventTime
 import io.github.lewin671.remoteagent.core.modeOf
+import io.github.lewin671.remoteagent.core.originOrNull
 import io.github.lewin671.remoteagent.proto.ApprovalDecision
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.SessionStatus
@@ -45,7 +46,8 @@ import io.github.lewin671.remoteagent.proto.TurnOutcome
 sealed interface ChatItem {
     val key: String
 
-    data class User(override val key: String, val text: String, val local: Boolean, val time: Long) : ChatItem
+    /** [from]: who sent it, when the daemon says (v2): a client's name, 本客户端, or the computer's terminal. */
+    data class User(override val key: String, val text: String, val local: Boolean, val time: Long, val from: String? = null) : ChatItem
     data class Agent(override val key: String, val text: String) : ChatItem
     data class Thought(override val key: String, val text: String) : ChatItem
 
@@ -162,6 +164,8 @@ fun buildChat(
     cwd: String = "",
     home: String = "",
     textOf: (String) -> String? = { null },
+    /** Names who caused an event (Event.origin); see originLabel. */
+    who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null },
 ): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
@@ -240,7 +244,7 @@ fun buildChat(
             Event.KindCase.TOOL_CALL -> if (e.seq !in placed) addCall(k, e, io.github.lewin671.remoteagent.core.wentToBackground(e.toolCall))
             Event.KindCase.USER_MESSAGE -> {
                 flush()
-                out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e))
+                out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e), who(e.originOrNull()))
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
                 flush()
@@ -259,12 +263,14 @@ fun buildChat(
                 flush()
                 val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
-                out += ChatItem.Note(k, listOf(what, decisionLine(r.first, r.second)).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
+                val by = who(d.resolvedBy[a.approvalId])?.takeIf { it != "本客户端" }
+                out += ChatItem.Note(k, listOf(what, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: "")).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
-                out += ChatItem.Note(k, if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、"), "✓", 1)
+                val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
+                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + (by?.let { " · $it" } ?: ""), "✓", 1)
             }
             Event.KindCase.PLAN_PROPOSED -> {
                 flush()
@@ -286,17 +292,18 @@ fun buildChat(
                 flush()
                 val t = e.turnEnded
                 val parts = mutableListOf<String>()
-                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断"
+                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断" + (who(e.originOrNull())?.let { "（$it）" } ?: "")
                 if (t.durationMs > 0) parts += duration(t.durationMs)
                 if (turnTokens > 0) parts += if (turnTokens >= 1000) "${(turnTokens + 500) / 1000}k tokens" else "$turnTokens tokens"
                 if (parts.isNotEmpty()) out += ChatItem.TurnEnd(k, parts.joinToString(" · "))
             }
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged
+                val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
                 val text = when {
                     c.compacted -> "上下文已压缩"
-                    c.model.isNotEmpty() -> "已切换到 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
-                    else -> modeOf(c.mode)?.let { "审批模式切到了 ${it.text}" }
+                    c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "已切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                    else -> modeOf(c.mode)?.let { (by?.let { b -> "$b 将模式切到 " } ?: "审批模式切到了 ") + it.text }
                 }
                 if (text != null) {
                     flush()
@@ -333,7 +340,8 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
     val p = pal
     when (item) {
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
-            if (item.local) Text("在终端里输入", style = MaterialTheme.typography.bodySmall, color = p.faint)
+            val from = item.from ?: if (item.local) "在终端里输入" else null
+            if (from != null) Text(from, style = MaterialTheme.typography.bodySmall, color = p.faint)
             Box(Modifier.widthIn(max = 320.dp).background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
                 androidx.compose.foundation.text.selection.SelectionContainer {
                     Text(item.text, style = MaterialTheme.typography.bodyLarge, color = p.fg)

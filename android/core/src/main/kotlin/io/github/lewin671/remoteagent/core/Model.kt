@@ -320,14 +320,28 @@ fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean 
  */
 class BackgroundTool(val tool: RunningTool, /** The call returned (it went to the background) rather than never coming back. */ val returned: Boolean)
 
+/** A message as the daemon accepted it, and how far it has got. */
+data class Accepted(
+    val text: String,
+    val imageIds: List<String>,
+    val origin: io.github.lewin671.remoteagent.proto.Origin?,
+    val stage: io.github.lewin671.remoteagent.proto.InputStage,
+)
+
 class Derived(
     /** Pending approvals, in the order they were asked. */
     val approvals: LinkedHashMap<String, ApprovalRequested> = LinkedHashMap(),
     val resolved: HashMap<String, Pair<ApprovalDecision, String>> = HashMap(),
+    /** Who decided an approval, when the daemon says (v2). */
+    val resolvedBy: HashMap<String, io.github.lewin671.remoteagent.proto.Origin> = HashMap(),
     val questions: LinkedHashMap<String, QuestionAsked> = LinkedHashMap(),
     val answered: HashMap<String, List<String>> = HashMap(),
     /** Latest state per request ID of messages sent with Send. */
     val inputs: LinkedHashMap<String, InputStatus> = LinkedHashMap(),
+    /** What the daemon accepted, per request ID: text, images and sender, shared by every client (v2 daemons). */
+    val accepted: HashMap<String, Accepted> = HashMap(),
+    /** Why a message ended FAILED or NEEDS_TERMINAL, per request ID. */
+    val failures: HashMap<String, String> = HashMap(),
     /**
      * Messages that never went out because the session ended: request ID to
      * the seq of the event that says so. The daemon records them as CANCELED
@@ -373,6 +387,7 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
             Event.KindCase.APPROVAL_RESOLVED -> {
                 d.approvals.remove(e.approvalResolved.approvalId)
                 d.resolved[e.approvalResolved.approvalId] = e.approvalResolved.decision to e.approvalResolved.message
+                e.originOrNull()?.let { d.resolvedBy[e.approvalResolved.approvalId] = it }
             }
             Event.KindCase.QUESTION_ASKED -> if (!e.questionAsked.async) d.questions[e.questionAsked.questionId] = e.questionAsked
             Event.KindCase.QUESTION_ANSWERED -> {
@@ -395,7 +410,15 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 d.tools.clear()
             }
             Event.KindCase.INPUT_STATE -> {
-                d.inputs[e.inputState.requestId] = e.inputState.status
+                val st = e.inputState
+                d.inputs[st.requestId] = st.status
+                val prev = d.accepted[st.requestId]
+                if (prev == null && st.status == InputStatus.INPUT_STATUS_QUEUED && (st.text.isNotEmpty() || st.imageIdsCount > 0)) {
+                    d.accepted[st.requestId] = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage)
+                } else if (prev != null && st.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED) {
+                    d.accepted[st.requestId] = prev.copy(stage = st.stage)
+                }
+                if (st.status == InputStatus.INPUT_STATUS_FAILED || st.status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL) d.failures[st.requestId] = st.reason
                 if (e.inputState.status == InputStatus.INPUT_STATUS_CANCELED && e.inputState.reason == "exited") d.unsent[e.inputState.requestId] = e.seq
                 if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
                     // Codex marks a message submitted before recording it;
@@ -410,7 +433,11 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                     }
                 }
             }
-            Event.KindCase.USER_MESSAGE -> {
+            Event.KindCase.USER_MESSAGE -> if (e.hasOrigin() && e.origin.kind != io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNSPECIFIED) {
+                // A v2 daemon says who sent it: no guessing.
+                if (e.origin.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL) d.typedLocally += e.seq
+                else if (submitted > 0) submitted--
+            } else {
                 if (submitted > 0) submitted--
                 // Codex sends this itself when a plan is approved.
                 else if (e.userMessage.text != "Implement the plan.") {
@@ -593,6 +620,18 @@ fun minutesLeft(deadlineMs: Long, now: Long = System.currentTimeMillis()): Long 
 
 // --- the message queue ---
 
+/** Why a message was not submitted (InputState.reason), in words. */
+fun failureText(reason: String, agent: Agent): String = when (reason) {
+    "image_not_recognized" -> "${agentName(agent)} 没认出图片"
+    "input_changed" -> "终端输入框里有别的内容"
+    "timeout" -> "等待超时"
+    "restarted" -> "电脑上的 remote-agent 重启了"
+    "write_failed" -> "写入终端失败"
+    "exited" -> "会话已结束"
+    "" -> "原因未知"
+    else -> reason
+}
+
 /** Messages the daemon accepted and has not written yet, in the order it accepted them. */
 fun queued(d: Derived): List<String> = d.inputs.filterValues { it == InputStatus.INPUT_STATUS_QUEUED }.keys.toList()
 
@@ -629,3 +668,47 @@ fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome = 
     InputStatus.INPUT_STATUS_SUBMITTED, InputStatus.INPUT_STATUS_UNCONFIRMED -> CancelOutcome.WRITTEN
     else -> CancelOutcome.UNKNOWN
 }
+
+// --- devices and where actions came from ---
+
+/** A client's name: the one given in its sealed metadata, else its platform and the end of its ID. */
+fun clientName(d: DeviceView?, id: String): String {
+    val name = d?.meta?.name.orEmpty().trim()
+    if (name.isNotEmpty()) return name
+    val platform = when (d?.meta?.platform) {
+        "android" -> "Android"
+        "web" -> "浏览器"
+        null, "" -> "客户端"
+        else -> d.meta!!.platform
+    }
+    return "$platform · ${shortId(id)}"
+}
+
+/** The last four hex digits of a device ID, as shown next to a name. */
+fun shortId(id: String): String = id.takeLast(4)
+
+/**
+ * Who an event says caused it (Event.origin), for display, or null when
+ * the event does not say. Only a signed client is named, and only by the
+ * account's device list; anything unsure is "另一客户端", never a guess.
+ */
+fun originLabel(o: io.github.lewin671.remoteagent.proto.Origin?, state: RemoteState, me: String, machine: String): String? {
+    if (o == null) return null
+    return when (o.kind) {
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT -> when {
+            o.deviceId == me -> "本客户端"
+            o.deviceId.isEmpty() -> "另一客户端"
+            else -> state.devices[o.deviceId]?.let { clientName(it, o.deviceId) } ?: "客户端 · ${shortId(o.deviceId)}"
+        }
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNVERIFIED_CLIENT -> "另一客户端"
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 本地终端"
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_SYSTEM -> null
+        else -> null
+    }
+}
+
+fun Event.originOrNull(): io.github.lewin671.remoteagent.proto.Origin? = if (hasOrigin()) origin else null
+
+/** What the machine says it supports; a daemon older than v2 says nothing and gets none of it. */
+fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineCapabilities? =
+    m?.meta?.takeIf { it.hasCapabilities() }?.capabilities

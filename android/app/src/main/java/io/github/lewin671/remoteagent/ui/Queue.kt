@@ -122,7 +122,7 @@ fun QueuePage(sid: String) {
         Text("${titleOf(s)} · ${agentName(agent)}", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
         val status = statusIn(state, s)
         Text(
-            "本轮结束后按顺序发送。取消只对尚未送入终端的消息生效。",
+            "本轮结束后按顺序发送。取消只对尚未送入终端的消息生效。这是电脑上的同一条队列，所有客户端看到同样的已接受消息。",
             Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = p.muted,
         )
         val online = state.conn == ConnState.ONLINE
@@ -134,16 +134,26 @@ fun QueuePage(sid: String) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val where = if (i == 0) queueWhy(s, status).long else "等待发送"
+                        val writing = when (d.accepted[id]?.stage) {
+                            io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_PASTING_IMAGES -> "正在粘贴图片"
+                            io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_IMAGES_RECOGNIZED, io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_SUBMITTING -> "正在送入终端"
+                            else -> null
+                        }
+                        val where = writing ?: if (i == 0) queueWhy(s, status).long else "等待发送"
                         Text(
                             "${i + 1} · " + if (c == Cancels.State.Canceling) "正在取消…" else where,
                             style = MaterialTheme.typography.labelMedium, color = p.muted, modifier = Modifier.weight(1f),
                         )
                         if (c == Cancels.State.Canceling) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        else if (writing != null) Text("不能取消", style = MaterialTheme.typography.bodySmall, color = p.faint)
                         else TextButton(onClick = { Cancels.cancel(remote, sid, id) }, enabled = online) { Text("取消") }
                     }
+                    val acc = d.accepted[id]
+                    val from = io.github.lewin671.remoteagent.core.originLabel(acc?.origin, state, remote.account.deviceId, machineLabel(state, s.machineId))
+                    if (from != null) Text(from, style = MaterialTheme.typography.labelSmall, color = p.faint)
                     Text(
-                        Outbox.text(sid, id) ?: Outbox.prompt(sid)?.takeIf { ids.size == 1 } ?: "（另一客户端发送的消息，送入终端后才能看到内容）",
+                        acc?.text?.takeIf { it.isNotEmpty() || acc.imageIds.isNotEmpty() }?.let { t -> t + if (acc.imageIds.isNotEmpty()) "（${acc.imageIds.size} 张图）" else "" }
+                            ?: Outbox.text(sid, id) ?: Outbox.prompt(sid)?.takeIf { ids.size == 1 } ?: "（另一客户端发送的消息，送入终端后才能看到内容）",
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (c == Cancels.State.Canceling) p.faint else p.fg,
                     )

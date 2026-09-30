@@ -223,7 +223,12 @@ private fun ChatPane(
     val cwd = s.info?.cwd.orEmpty()
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
     val outbox = Outbox.of(s.id)
-    val items = remember(events, d, cwd, home, outbox.size) { buildChat(events, d, machine, cwd, home) { Outbox.text(s.id, it) } }
+    val devices = state.devices
+    val items = remember(events, d, cwd, home, outbox.size, devices) {
+        buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) }) { o ->
+            io.github.lewin671.remoteagent.core.originLabel(o, state, remote.account.deviceId, machine)
+        }
+    }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val t = now(1000)
@@ -270,9 +275,10 @@ private fun ChatPane(
                 // Messages from this device, until the chat shows them.
                 val pending = outbox.filter { o ->
                     val st = d.inputs[o.requestId]
-                    st == null || o.state == Outgoing.State.FAILED || o.state == Outgoing.State.UNKNOWN || st == InputStatus.INPUT_STATUS_UNCONFIRMED
+                    st == null || o.state == Outgoing.State.FAILED || o.state == Outgoing.State.UNKNOWN || st == InputStatus.INPUT_STATUS_UNCONFIRMED ||
+                        st == InputStatus.INPUT_STATUS_FAILED || st == InputStatus.INPUT_STATUS_NEEDS_TERMINAL
                 }
-                items(pending, key = { "out" + it.requestId }) { o -> OutgoingView(s.id, o, d.inputs[o.requestId]) }
+                items(pending, key = { "out" + it.requestId }) { o -> OutgoingView(s.id, o, d.inputs[o.requestId], d.failures[o.requestId], onTerminal) }
                 item { Spacer(Modifier.height(8.dp)) }
             }
             }
@@ -294,14 +300,31 @@ private fun ChatPane(
 }
 
 @Composable
-private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?) {
+private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure: String?, onTerminal: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
         Box(Modifier.background(p.blueSoft.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
             Text(o.text, style = MaterialTheme.typography.bodyLarge, color = p.fg2)
         }
+        val agent = remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
         when {
+            // Nothing was submitted and the terminal is as it was.
+            input == InputStatus.INPUT_STATUS_FAILED -> {
+                Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框已恢复原样", style = MaterialTheme.typography.bodySmall, color = p.red)
+                Row {
+                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.send(RaApp.instance.scope, remote, sid, o.text) }) { Text("重试") }
+                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.draft(sid).value = o.text }) { Text("放回输入框") }
+                }
+            }
+            // Not submitted, and part of it may still be in the input box.
+            input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
+                Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框里可能还留着一部分，请去终端处理，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.red)
+                Row {
+                    TextButton(onClick = onTerminal) { Text("去终端 ›") }
+                    TextButton(onClick = { Outbox.remove(sid, o); Outbox.draft(sid).value = o.text }) { Text("放回输入框") }
+                }
+            }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
             o.state == Outgoing.State.SENDING -> Text("◌ 发送中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
             o.state == Outgoing.State.SENT -> Text("已送达电脑", style = MaterialTheme.typography.bodySmall, color = p.muted)

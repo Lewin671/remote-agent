@@ -100,18 +100,14 @@ fun SettingsScreen() {
                 }
             }
         }
-        SectionHeader("设备")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionHeader("电脑", modifier = Modifier.weight(1f))
+            TextButton(onClick = { nav.devices() }, Modifier.padding(end = 8.dp)) { Text("全部设备 ›") }
+        }
         Card(Modifier.padding(horizontal = 12.dp)) {
             Column {
-                Row44 {
-                    Text("▢", color = p.muted)
-                    Column(Modifier.weight(1f)) {
-                        Text("这台手机", style = MaterialTheme.typography.titleSmall)
-                        Text("本机 · ${remote.account.deviceId.take(8)}", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                    }
-                }
-                for (m in state.machines.values.sortedBy { machineLabel(state, it.id) }) {
-                    HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
+                for ((i, m) in state.machines.values.sortedBy { machineLabel(state, it.id) }.withIndex()) {
+                    if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
                     Row44(onClick = { nav.device(m.id) }) {
                         Text("⌘", color = p.muted)
                         Column(Modifier.weight(1f)) {
@@ -125,11 +121,39 @@ fun SettingsScreen() {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.faint)
                     }
                 }
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
+                if (state.machines.isNotEmpty()) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
                 Row44(onClick = { nav.pair() }) { Text("＋ 添加设备", color = p.blue, style = MaterialTheme.typography.titleSmall) }
             }
         }
-        SectionHeader("通知")
+        SectionHeader("客户端")
+        Card(Modifier.padding(horizontal = 12.dp)) {
+            Column {
+                val me = remote.account.deviceId
+                Row44(onClick = if (state.devicesSupported) ({ nav.client(me) }) else null) {
+                    Text("▢", color = p.muted)
+                    Column(Modifier.weight(1f)) {
+                        Text(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), style = MaterialTheme.typography.titleSmall)
+                        Text("当前客户端", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                    }
+                }
+                val others = state.devices.values.filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != me }
+                for (c in others.sortedBy { it.createdMs }.take(3)) {
+                    HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
+                    Row44(onClick = { nav.client(c.id) }) {
+                        Text("▢", color = p.muted)
+                        Column(Modifier.weight(1f)) {
+                            Text(io.github.lewin671.remoteagent.core.clientName(c, c.id), style = MaterialTheme.typography.titleSmall)
+                            Text("已配对", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.faint)
+                    }
+                }
+                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
+                if (state.devicesSupported) Row44(onClick = { nav.devices() }) { Text("全部客户端 ›", color = p.blue) }
+                else Text("服务器还不支持设备目录，更新服务器后才能看到其他客户端", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
+            }
+        }
+        SectionHeader("本客户端的通知")
         Card(Modifier.padding(horizontal = 12.dp)) {
             Column {
                 Toggle("等我处理时", "审批、提问、计划、终端弹窗", settings.notifyAttention) { v -> scope.launch { app.prefs.update { it.copy(notifyAttention = v) }; Push.register(app, remote) } }

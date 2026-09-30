@@ -900,6 +900,7 @@ class Remote(
         api.client.removeDevice(RemoveDeviceRequest.newBuilder().setDeviceId(deviceId).build(), Api.headers(token)).value()
         withContext(dispatcher) {
             dropMachine(deviceId)
+            devices.remove(deviceId)
             publish()
         }
     }

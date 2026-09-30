@@ -70,6 +70,8 @@ class Nav(
     val sessionTerminal: (String) -> Unit = {},
     val queue: (String) -> Unit = {},
     val manageProjects: () -> Unit = {},
+    val devices: () -> Unit = {},
+    val client: (String) -> Unit = {},
     val hiddenProjects: () -> Unit = {},
 )
 
