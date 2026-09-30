@@ -281,15 +281,14 @@ func TestClaudeApprovalMatchesWholeInput(t *testing.T) {
 		t.Fatalf("pending %d", n)
 	}
 
-	// Two identical requests: which one ran is unknown, so neither goes.
+	// Two identical requests: the same question; one completion settles
+	// one of them.
 	for i := 0; i < 2; i++ {
 		go h.s.hook(context.Background(), claudePermission("Bash", `{"command":"make test"}`))
 	}
 	eventually(t, "three cards", func() bool { return h.s.info().PendingApprovals == 3 })
 	h.s.retractFor(&pb.ToolCall{ItemType: "Bash", Input: "make test", InputDigest: agent.InputDigest("Bash", []byte(`{"command":"make test"}`))})
-	if n := h.s.info().PendingApprovals; n != 3 {
-		t.Fatalf("an ambiguous call settled a card: %d pending", n)
-	}
+	eventually(t, "one settled", func() bool { return h.s.info().PendingApprovals == 2 })
 	h.s.retractApprovals()
 }
 
@@ -431,34 +430,20 @@ func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
 	}
 }
 
-// Answered in the terminal and run before the hook's request reached the
-// daemon: the request gets no card (review C8, completion first).
+// A call completed before its request was registered: the request still
+// gets a card, which goes when the turn ends (architecture §16).
 func TestClaudeApprovalAfterItsCallCompleted(t *testing.T) {
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
-	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
-		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"touch /w/fast"}}]}}`,
-		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.bashCall("t1", "touch /w/fast", true)
 	h.s.bindRollout("cc-1", path)
-	out := make(chan []byte, 1)
-	go func() {
-		b, _ := h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/fast","description":"x"}`))
-		out <- b
-	}()
-	select {
-	case b := <-out:
-		if b != nil {
-			t.Fatalf("hook printed %s", b)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("a card waits for a call that already ran")
+	if !h.askBash("touch /w/fast") {
+		t.Fatal("no card")
 	}
-	// A later request with the same input, whose call has not run, gets
-	// its card.
-	h.writeRollout(`{"type":"assistant","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"touch /w/fast"}}]}}`)
-	go h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/fast","description":"x"}`))
-	eventually(t, "the second card", func() bool { return h.s.info().PendingApprovals == 1 })
-	h.s.retractApprovals()
+	h.writeRollout(`{"type":"system","subtype":"turn_duration","durationMs":5}`)
+	h.s.readRollout()
+	eventually(t, "the card withdrawn at the end of the turn", func() bool { return h.s.info().PendingApprovals == 0 })
 }
 
 // Modes seen on the screen count for the model in use then (review
@@ -550,24 +535,6 @@ func TestClaudeRanBeforeAfterRestart(t *testing.T) {
 	h.s.retractApprovals()
 }
 
-// A call left running when the CLI was killed does not hold up the
-// evidence for calls after resuming (review verify4 P2).
-func TestClaudeRanBeforeAfterResume(t *testing.T) {
-	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
-	path := filepath.Join(h.dir, "rollout.jsonl")
-	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
-	h.bashCall("t1", "make test", false) // killed while it ran
-	h.s.bindRollout("cc-1", path)
-	h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_EXITED}}})
-	h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed"}}})
-	h.writeRollout(`{"type":"user","promptId":"p2","origin":{"kind":"human"},"message":{"role":"user","content":"again"}}`)
-	h.bashCall("t2", "make test", true)
-	h.s.readRollout()
-	if h.askBash("make test") {
-		t.Fatal("a card for a call that already ran")
-	}
-}
-
 // Two identical calls in parallel, one done: its request cannot be told
 // from the other's, so it gets a card.
 func TestClaudeRanBeforeParallel(t *testing.T) {
@@ -607,6 +574,28 @@ func TestClaudeApprovalCarriesInputDigest(t *testing.T) {
 	}
 	if req == "" || req != call {
 		t.Fatalf("approval %q, call %q", req, call)
+	}
+	h.s.retractApprovals()
+}
+
+// Two requests with the same input and one completion: both got cards,
+// one is withdrawn, the other stays for its own call.
+func TestClaudeIdenticalRequestsOneCompletion(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.bashCall("t1", "make test", false)
+	h.bashCall("t2", "make test", false)
+	h.s.bindRollout("cc-1", path)
+	if !h.askBash("make test") || !h.askBash("make test") {
+		t.Fatal("a request without a card")
+	}
+	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.readRollout()
+	eventually(t, "one withdrawn", func() bool { return h.s.info().PendingApprovals == 1 })
+	time.Sleep(50 * time.Millisecond)
+	if n := h.s.info().PendingApprovals; n != 1 {
+		t.Fatalf("pending %d", n)
 	}
 	h.s.retractApprovals()
 }

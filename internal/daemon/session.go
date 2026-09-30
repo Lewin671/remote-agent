@@ -67,13 +67,6 @@ type session struct {
 	// seenModes are the permission modes the screen has shown, by the
 	// model family in use then: which modes are on offer depends on it.
 	seenModes map[string]map[string]bool
-	// openCalls are the calls of this turn started and not completed, by
-	// call ID, with their input digests; doneCalls are calls of this turn
-	// seen starting and completed lately, by digest. They tell a request
-	// whose call already ran. Both are emptied at turn boundaries, exit,
-	// resume and restart: what is unsure gets a card.
-	openCalls map[string]string
-	doneCalls map[string]time.Time
 	// Why queued input is not being written, and since when.
 	waitReason string
 	waitSince  time.Time
@@ -130,8 +123,6 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		parser:    ag.NewParser(),
 		meta:      m,
 		approvals: map[string]*approval{},
-		openCalls: map[string]string{},
-		doneCalls: map[string]time.Time{},
 		questions: map[string]*pb.QuestionAsked{},
 		wake:      make(chan struct{}, 1),
 		done:      make(chan struct{}),
@@ -143,9 +134,6 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		s.observe(e)
 		s.parser.Replay(e)
 	})
-	// Completions from before a restart are no evidence for requests
-	// after it.
-	clear(s.doneCalls)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
@@ -162,7 +150,6 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // observe updates derived state from an event. Callers hold s.mu or are
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
-	s.trackCalls(e)
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnStarted:
 		s.running = true
@@ -1015,12 +1002,6 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		s.mu.Unlock()
 		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}
-	if s.ranBefore(a) {
-		// Answered in the terminal and run before this request reached
-		// the daemon: there is nothing left to ask.
-		s.mu.Unlock()
-		return nil, nil
-	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
 	defer func() {
@@ -1159,96 +1140,33 @@ func (s *session) retractApprovals() {
 	}
 }
 
-// retractFor settles as answered in the terminal the waiting approval
-// whose tool call has completed: the one request for the same tool with
-// the same complete input, compared by digest however long it is. Several
-// such requests, as parallel identical calls, cannot be told apart, and
-// none is settled.
+// retractFor settles as answered in the terminal a waiting approval whose
+// tool call has completed: a request for the same tool with the same
+// complete input, compared by digest however long it is. Identical
+// requests are the same question, so one completion settles one of them,
+// the oldest, as Claude Code shows its prompts in turn. A call that
+// completed before its request was registered is not looked for: that
+// card stays until the turn ends, and answering it does nothing
+// (architecture §16).
 func (s *session) retractFor(c *pb.ToolCall) {
 	if c.InputDigest == "" {
 		return
 	}
 	s.mu.Lock()
 	var match *approval
-	n := 0
 	for _, a := range s.approvals {
-		if !a.claimed && a.tool == c.ItemType && a.digest == c.InputDigest {
+		if !a.claimed && a.tool == c.ItemType && a.digest == c.InputDigest && (match == nil || a.deadline.Before(match.deadline)) {
 			match = a
-			n++
 		}
 	}
-	if n != 1 {
+	if match == nil {
 		s.mu.Unlock()
 		return
 	}
-	// The completion answered this request, not one still to come.
-	delete(s.doneCalls, c.InputDigest)
 	match.claimed = true
 	delete(s.approvals, match.id)
 	s.mu.Unlock()
 	match.decision <- decision{terminal: true}
-}
-
-// doneFor is how long a completed call is remembered for a request that
-// arrives after it (the hook starts a process and dials the daemon).
-const doneFor = 30 * time.Second
-
-// ranBefore reports, and forgets, whether the call a request is for has
-// surely completed: a call of this turn with its digest was seen starting
-// and completed lately, and no call with it is still running. Anything
-// less gets a card. Callers hold s.mu.
-func (s *session) ranBefore(a *approval) bool {
-	if a.digest == "" {
-		return false
-	}
-	t, ok := s.doneCalls[a.digest]
-	if !ok || time.Since(t) > doneFor {
-		return false
-	}
-	for _, d := range s.openCalls {
-		if d == a.digest {
-			return false
-		}
-	}
-	delete(s.doneCalls, a.digest)
-	return true
-}
-
-// trackCalls keeps openCalls and doneCalls; see there. Callers hold s.mu.
-func (s *session) trackCalls(e *pb.Event) {
-	switch k := e.Kind.(type) {
-	case *pb.Event_TurnStarted, *pb.Event_TurnEnded:
-		clear(s.openCalls)
-		clear(s.doneCalls)
-	case *pb.Event_SessionState:
-		// Exited, or started again: calls left open are void.
-		if st := k.SessionState.Status; st == pb.SessionStatus_SESSION_STATUS_EXITED || st == pb.SessionStatus_SESSION_STATUS_STARTING {
-			clear(s.openCalls)
-			clear(s.doneCalls)
-		}
-	case *pb.Event_ToolStarted:
-		if k.ToolStarted.CallId != "" {
-			s.openCalls[k.ToolStarted.CallId] = k.ToolStarted.InputDigest
-		}
-	case *pb.Event_ToolCall:
-		d, ok := s.openCalls[k.ToolCall.CallId]
-		if !ok {
-			return // not seen starting: no evidence
-		}
-		delete(s.openCalls, k.ToolCall.CallId)
-		if d == "" {
-			return
-		}
-		now := time.Now()
-		for x, t := range s.doneCalls {
-			if now.Sub(t) > doneFor {
-				delete(s.doneCalls, x)
-			}
-		}
-		if len(s.doneCalls) < 200 {
-			s.doneCalls[d] = now
-		}
-	}
 }
 
 // promptKey is text a permission prompt shows for a tool call: the start
