@@ -119,6 +119,11 @@ func (s *session) isRunningNoRead() bool {
 // setModel switches the model and effort for this session only, while no
 // turn is running.
 func (s *session) setModel(model, effort string) error {
+	return s.setModelBy(model, effort, originLocal)
+}
+
+// setModelBy is setModel on behalf of origin.
+func (s *session) setModelBy(model, effort string, origin *pb.Origin) error {
 	if err := s.ag.CheckEffort(effort); err != nil {
 		return err
 	}
@@ -133,18 +138,23 @@ func (s *session) setModel(model, effort string) error {
 	}); err != nil {
 		return err
 	}
-	s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}})
+	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin))
 	return nil
 }
 
 // setApprovalMode switches the approval mode.
 func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
+	return s.setApprovalModeBy(mode, originLocal)
+}
+
+// setApprovalModeBy is setApprovalMode on behalf of origin.
+func (s *session) setApprovalModeBy(mode pb.ApprovalMode, origin *pb.Origin) error {
 	// The facts too are read with the terminal held: a model switch that
 	// held it until then changes them.
 	if err := s.drive(func(t agent.Term, busy bool) error { return s.ag.SetMode(t, mode, busy, s.modeFacts()) }); err != nil {
 		return err
 	}
-	s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}})
+	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin))
 	return nil
 }
 
@@ -163,7 +173,14 @@ func (s *session) compact() error {
 }
 
 // answerPlan answers the CLI's prompt about a proposed plan.
-func (s *session) answerPlan(choice pb.PlanChoice) error {
+func (s *session) answerPlan(choice pb.PlanChoice) error { return s.answerPlanBy(choice, originLocal) }
+
+// answerPlanBy is answerPlan on behalf of origin, which is recorded.
+func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 	// The adapter checks on the held screen that the plan prompt shows.
-	return s.drive(func(t agent.Term, _ bool) error { return s.ag.AnswerPlan(t, choice) })
+	if err := s.drive(func(t agent.Term, _ bool) error { return s.ag.AnswerPlan(t, choice) }); err != nil {
+		return err
+	}
+	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin))
+	return nil
 }

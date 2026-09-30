@@ -248,3 +248,44 @@ func busy(lines []line, top int) bool {
 	}
 	return false
 }
+
+// ComposerText is the text between the input box's rules, without the
+// prompt, the cursor cell and dim placeholder text. ok is false when no
+// input box shows.
+func ComposerText(styled string) (string, bool) {
+	var lines []line
+	for _, l := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
+		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), "\u00a0", " ")})
+	}
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1].plain) == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > bottomLines {
+		lines = lines[len(lines)-bottomLines:]
+	}
+	top, bottom := composer(lines)
+	if top < 0 {
+		return "", false
+	}
+	if bottom == top+1 && emptyPrompt(lines[top].styled) {
+		return "", true
+	}
+	var parts []string
+	for i := top; i < bottom; i++ {
+		var b strings.Builder
+		for _, r := range agent.Runs(lines[i].styled) {
+			if r.Dim {
+				continue
+			}
+			b.WriteString(r.Text)
+		}
+		t := strings.ReplaceAll(b.String(), "\u00a0", " ")
+		if i == top {
+			if j := strings.Index(t, promptMark); j >= 0 {
+				t = t[j+len(promptMark):]
+			}
+		}
+		parts = append(parts, strings.TrimSpace(t))
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n")), true
+}

@@ -189,3 +189,42 @@ func startsDim(s string) bool {
 	st, rest := leadingStyle(s, true)
 	return rest != "" && st.dim
 }
+
+// ComposerText is the text in the input box: the prompt line and the lines
+// under it up to the blank line before the status line. ok is false when
+// no input box shows or a popup covers it.
+func ComposerText(styled string) (string, bool) {
+	lines := strings.Split(strings.TrimRight(styled, "\n"), "\n")
+	for len(lines) > 0 && strings.TrimSpace(StripANSI(lines[len(lines)-1])) == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > bottomLines {
+		lines = lines[len(lines)-bottomLines:]
+	}
+	scr := AnalyzeScreen(styled)
+	if !scr.ComposerReady {
+		return "", false
+	}
+	if scr.DraftEmpty {
+		return "", true
+	}
+	composer := -1
+	for i, l := range lines {
+		if st, rest := leadingStyle(l, false); strings.HasPrefix(rest, promptMark) && st.bold && !st.dim && !st.reverse {
+			composer = i
+		}
+	}
+	if composer < 0 {
+		return "", false
+	}
+	_, rest := leadingStyle(lines[composer], false)
+	parts := []string{strings.TrimSpace(StripANSI(strings.TrimPrefix(rest, promptMark)))}
+	for _, l := range lines[composer+1:] {
+		t := strings.TrimSpace(StripANSI(l))
+		if t == "" || t == scr.Footer {
+			break
+		}
+		parts = append(parts, t)
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n")), true
+}

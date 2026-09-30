@@ -90,6 +90,9 @@ type Daemon struct {
 	ctx    context.Context
 	agents map[pb.Agent]agent.Adapter
 
+	// uploads are images clients sent for messages.
+	uploads *uploads
+
 	mu       sync.Mutex
 	sessions map[string]*session
 	limits   *pb.TokenUsage // latest usage limits seen in any session
@@ -105,7 +108,7 @@ type Daemon struct {
 // New returns a daemon; call Run to start it.
 func New(cfg Config) *Daemon {
 	cfg.defaults()
-	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}}
+	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}, uploads: newUploads()}
 	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
 	d.agents[pb.Agent_AGENT_CLAUDE] = claude.New(cfg.ClaudeBin, cfg.ClaudeHome)
 	return d
@@ -160,6 +163,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
 		}
 	}
+	go d.uploads.gcLoop(ctx.Done())
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
 	}
@@ -283,6 +287,12 @@ func (s *session) cancelStaleApprovals() {
 
 // create starts a new CLI session in tmux.
 func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
+	return d.createBy(req, originLocal)
+}
+
+// createBy is create on behalf of origin, who sent the first message's
+// images.
+func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*session, error) {
 	cwd := req.Cwd
 	if cwd == "" {
 		return nil, errors.New("cwd is required")
@@ -295,6 +305,10 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	}
 	ag, err := d.knownAgent(req.Agent)
 	if err != nil {
+		return nil, err
+	}
+	// The first message's images must be here before a session starts.
+	if err := d.uploads.check(req.ImageIds, deviceOf(origin)); err != nil {
 		return nil, err
 	}
 	if ag.Bin() == "" {
@@ -358,10 +372,17 @@ func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	d.mu.Unlock()
 	s.start(d.ctx)
 	slog.Info("created session", "session", id)
-	if strings.TrimSpace(req.Prompt) != "" {
+	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 {
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered.
-		if _, err := s.send(req.Prompt, ""); err != nil {
+		images, err := d.uploads.take(req.ImageIds, deviceOf(origin), id)
+		if err == nil {
+			_, err = s.enqueue(req.Prompt, "", images, origin)
+			if err != nil {
+				d.uploads.untake(images, id)
+			}
+		}
+		if err != nil {
 			slog.Warn("queue first message", "session", id, "err", err)
 		}
 	}
@@ -385,7 +406,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	cx := d.agents[pb.Agent_AGENT_CODEX]
 	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
 	m.Agents = d.installed()
-	m.Capabilities = capabilities()
+	m.Capabilities = d.capabilities()
 	d.mu.Lock()
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType

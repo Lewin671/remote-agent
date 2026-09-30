@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"google.golang.org/protobuf/proto"
 )
@@ -37,6 +38,22 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("the command has no valid request ID")
 		return
 	}
+
+	// Who sent it: a device whose signature checks out against its
+	// registration with the account key, or, without a signature, the
+	// device the server names, unverified.
+	origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, RequestId: h.RequestId}
+	id, err := e2e.VerifySender(c.keys.AccountPublicKey(), call.Command, h.Sender, call.SenderRegistration, call.SenderRegistrationSignature)
+	switch {
+	case err == nil:
+		origin.DeviceId = id
+	case errors.Is(err, e2e.ErrUnsigned):
+		origin.Kind, origin.DeviceId = pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT, call.SenderDeviceId
+	default:
+		fail("the command's device signature does not verify")
+		return
+	}
+	ctx = agent.WithOrigin(ctx, origin)
 
 	var reject *pb.CommandResult
 	now := time.Now()
@@ -167,6 +184,36 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	case *pb.Command_GetSettings:
 		err = machine(func() error {
 			return call(ctx, l.GetSettings, k.GetSettings, func(m *pb.GetSettingsResponse) { out.Kind = &pb.CommandResult_GetSettings{GetSettings: m} })
+		})
+	case *pb.Command_BeginImageUpload:
+		err = machine(func() error {
+			return call(ctx, l.BeginImageUpload, k.BeginImageUpload, func(m *pb.BeginImageUploadResponse) {
+				out.Kind = &pb.CommandResult_BeginImageUpload{BeginImageUpload: m}
+			})
+		})
+	case *pb.Command_PutImageChunk:
+		err = machine(func() error {
+			return call(ctx, l.PutImageChunk, k.PutImageChunk, func(m *pb.PutImageChunkResponse) {
+				out.Kind = &pb.CommandResult_PutImageChunk{PutImageChunk: m}
+			})
+		})
+	case *pb.Command_GetImageUploadStatus:
+		err = machine(func() error {
+			return call(ctx, l.GetImageUploadStatus, k.GetImageUploadStatus, func(m *pb.GetImageUploadStatusResponse) {
+				out.Kind = &pb.CommandResult_GetImageUploadStatus{GetImageUploadStatus: m}
+			})
+		})
+	case *pb.Command_CompleteImageUpload:
+		err = machine(func() error {
+			return call(ctx, l.CompleteImageUpload, k.CompleteImageUpload, func(m *pb.CompleteImageUploadResponse) {
+				out.Kind = &pb.CommandResult_CompleteImageUpload{CompleteImageUpload: m}
+			})
+		})
+	case *pb.Command_AbortImageUpload:
+		err = machine(func() error {
+			return call(ctx, l.AbortImageUpload, k.AbortImageUpload, func(m *pb.AbortImageUploadResponse) {
+				out.Kind = &pb.CommandResult_AbortImageUpload{AbortImageUpload: m}
+			})
 		})
 	case *pb.Command_UpdateSettings:
 		err = machine(func() error {

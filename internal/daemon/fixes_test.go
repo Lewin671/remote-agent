@@ -216,13 +216,13 @@ func TestHistoryMatchesSession(t *testing.T) {
 	path := h.d.cfg.HistoryPath
 	hist := h.s.newHistory(-1)
 	os.WriteFile(path, []byte(`{"session_id":"other","text":"same"}`+"\n"), 0o600)
-	if hist.submitted("same", "mine") {
+	if hist.submitted(input{Text: "same"}.matches, "mine") {
 		t.Fatal("another session's line counted")
 	}
 	f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
 	f.WriteString(`{"session_id":"mine","text":"same"}` + "\n")
 	f.Close()
-	if !hist.submitted("same", "mine") {
+	if !hist.submitted(input{Text: "same"}.matches, "mine") {
 		t.Fatal("own line not counted")
 	}
 }
@@ -344,7 +344,7 @@ func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
 	if err == nil {
 		t.Skip("directory is writable despite chmod")
 	}
-	if written || len(h.term.written()) != 0 {
+	if written != notWritten || len(h.term.written()) != 0 {
 		t.Fatal("wrote although the mark was not saved")
 	}
 	if h.s.queue.Queue[0].Inflight != nil {

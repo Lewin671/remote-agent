@@ -1,0 +1,598 @@
+package daemon
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
+)
+
+// Writing queued messages into the CLI (architecture §6, §17).
+//
+// A message is written while local keys are held, only into an empty input
+// box. Images go first: each file path is pasted on its own and must turn
+// into a new "[Image #N]" in the input box before the next; then the text
+// and Enter. Every stage is saved before the write it leads to, so that
+// after a restart the daemon knows what the input box may hold. If an
+// image is not taken, nothing is submitted: the input box is emptied with
+// Ctrl-U if it holds only what was pasted, and the message ends FAILED;
+// if that cannot be verified it ends NEEDS_TERMINAL. Neither is retried.
+
+// Holding local keys: the hold is renewed while a message is written, but
+// the whole write is bounded, so that a stuck daemon or CLI never keeps
+// the user out of their own terminal for long.
+const (
+	injectBase     = 10 * time.Second // text-only messages and cleanup
+	injectPerImage = 8 * time.Second
+	imageWait      = 6 * time.Second // for one "[Image #N]" to appear
+	unrecognized   = time.Second     // the path showing as text this long
+	clearWait      = 2 * time.Second
+)
+
+// recentInputs bounds the submitted messages remembered for matching the
+// CLI's record of them, which may come late (Codex writes a message sent
+// during a turn after the next tool call).
+const recentInputs = 20
+
+// lease holds local input and renews the hold until end, or until the
+// deadline, after which the PTY host lets the hold lapse.
+type lease struct {
+	c        control
+	deadline time.Time
+	stop     chan struct{}
+	done     sync.WaitGroup
+}
+
+func holdLease(c control, total time.Duration) (*lease, error) {
+	if err := c.Hold(holdFor); err != nil {
+		return nil, err
+	}
+	l := &lease{c: c, deadline: time.Now().Add(total), stop: make(chan struct{})}
+	l.done.Add(1)
+	go func() {
+		defer l.done.Done()
+		t := time.NewTicker(holdFor / 3)
+		defer t.Stop()
+		for {
+			select {
+			case <-l.stop:
+				return
+			case <-t.C:
+				if time.Until(l.deadline) <= 0 {
+					return
+				}
+				_ = c.Hold(min(holdFor, time.Until(l.deadline)+time.Second))
+			}
+		}
+	}()
+	return l, nil
+}
+
+// left is how long the lease still holds for sure: what remains of the
+// total, less a margin for a cleanup.
+func (l *lease) left() time.Duration { return time.Until(l.deadline) - clearWait }
+
+func (l *lease) end() {
+	close(l.stop)
+	l.done.Wait()
+	_ = l.c.Release()
+}
+
+// inputOutcome is what one attempt at writing the head message came to.
+type inputOutcome int
+
+const (
+	notWritten inputOutcome = iota // the terminal was not ready; try later
+	written                        // the Enter went out; settle it
+	finished                       // failed before Enter and reported
+)
+
+// enqueue accepts a message and saves the queue before returning, so an
+// accepted message survives a daemon restart. It returns the queue
+// position; a retried request ID is accepted once (position 0).
+func (s *session) enqueue(text, requestID string, images []queuedImage, origin *pb.Origin) (int, error) {
+	s.mu.Lock()
+	if s.meta.Exited {
+		s.mu.Unlock()
+		return 0, errExited
+	}
+	if requestID == "" {
+		requestID = newID(8)
+	} else if s.queue.seen(requestID) {
+		s.mu.Unlock()
+		return 0, nil
+	}
+	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
+	s.queue.Queue = append(s.queue.Queue[:len(s.queue.Queue):len(s.queue.Queue)], input{
+		Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING,
+	})
+	s.queue.remember(requestID)
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
+		s.mu.Unlock()
+		return 0, fmt.Errorf("save input queue: %w", err)
+	}
+	pos := len(s.queue.Queue)
+	s.mu.Unlock()
+	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text}
+	for _, im := range images {
+		st.ImageIds = append(st.ImageIds, im.ID)
+	}
+	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin))
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
+	return pos, nil
+}
+
+// send queues text from this computer.
+func (s *session) send(text, requestID string) (int, error) {
+	return s.enqueue(text, requestID, nil, originLocal)
+}
+
+func (s *session) emitInput(requestID string, status pb.InputStatus) {
+	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status}}})
+}
+
+// injectLoop submits queued input one message at a time, in order.
+func (s *session) injectLoop(ctx context.Context) {
+	retry := time.NewTimer(time.Hour)
+	defer retry.Stop()
+	for {
+		s.mu.Lock()
+		var next input
+		ok := len(s.queue.Queue) > 0 && !s.meta.Exited
+		if ok {
+			next = s.queue.Queue[0]
+		}
+		s.mu.Unlock()
+		if ok {
+			outcome := written
+			var err error
+			switch {
+			case next.Inflight != nil:
+				// Written, possibly by a previous daemon: settle it
+				// without ever writing it again.
+			case next.Stage == pb.InputStage_INPUT_STAGE_PASTING_IMAGES || next.Stage == pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED:
+				// A previous daemon stopped while pasting images.
+				outcome, err = s.recoverPaste(next)
+			default:
+				outcome, err = s.inject(next)
+			}
+			if err != nil {
+				slog.Warn("inject", "session", s.meta.ID, "err", err)
+			}
+			switch outcome {
+			case notWritten:
+				retry.Reset(s.d.cfg.RetryInterval)
+				goto wait
+			case finished:
+				continue
+			}
+			s.mu.Lock()
+			if len(s.queue.Queue) > 0 {
+				next = s.queue.Queue[0]
+			}
+			s.mu.Unlock()
+			if !s.settle(ctx, next) {
+				return // ctx done; it stays inflight for the next daemon
+			}
+			continue
+		}
+	wait:
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.wake:
+		case <-retry.C:
+		}
+	}
+}
+
+// inject tries once to write the head message. It leaves the message
+// queued when the terminal is not ready: a popup is open or the local user
+// has an unsent draft, which is never overwritten or merged.
+func (s *session) inject(in input) (inputOutcome, error) {
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
+	c, err := s.term.Control()
+	if err != nil {
+		return notWritten, err
+	}
+	defer c.Close()
+	l, err := holdLease(c, injectBase+time.Duration(len(in.Images))*injectPerImage)
+	if err != nil {
+		return notWritten, err
+	}
+	// Local keys typed after the release reach the CLI after the Enter,
+	// in the fresh input box.
+	defer l.end()
+	time.Sleep(settle)
+	styled, err := s.term.Capture()
+	if err != nil {
+		return notWritten, err
+	}
+	scr := s.ag.Analyze(styled)
+	if !scr.ComposerReady || !scr.DraftEmpty {
+		s.noteWait(scr)
+		return notWritten, nil
+	}
+	// While the CLI starts, its input box can flash before a startup
+	// dialog covers it; wait until the status check has seen a settled
+	// screen.
+	s.mu.Lock()
+	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
+	s.mu.Unlock()
+	if starting {
+		return notWritten, nil
+	}
+	s.noteWait(scr)
+	var got []int32
+	if len(in.Images) > 0 {
+		if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_PASTING_IMAGES, nil); err != nil {
+			if errors.Is(err, errHeadChanged) {
+				return notWritten, nil // canceled meanwhile
+			}
+			return notWritten, err
+		}
+		for _, im := range in.Images {
+			if l.left() < imageWait {
+				return s.abandon(c, in, got, false, "timeout"), nil
+			}
+			if err := c.Write(agent.PastePath(im.Path)); err != nil {
+				return s.abandon(c, in, got, false, "write_failed"), err
+			}
+			n, reason := s.waitPlaceholder(got, im.Path)
+			if reason != "" {
+				return s.abandon(c, in, got, false, reason), nil
+			}
+			got = append(got, n)
+			if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_PASTING_IMAGES, got); err != nil {
+				return s.abandon(c, in, got, false, "write_failed"), err
+			}
+		}
+		if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED, got); err != nil {
+			return s.abandon(c, in, got, false, "write_failed"), err
+		}
+		in.Indexes = got
+	}
+	hist := s.newHistory(-1)
+	if err := s.markInflight(hist.offset(), in.RequestID); err != nil {
+		if errors.Is(err, errHeadChanged) {
+			return notWritten, nil
+		}
+		if len(got) > 0 {
+			return s.abandon(c, in, got, false, "write_failed"), err
+		}
+		return notWritten, err
+	}
+	if err := c.Write(s.ag.Paste(in.Text)); err != nil {
+		// A failed reply does not prove the bytes were not written, so
+		// the message is only settled from the CLI's records, never
+		// resent.
+		return written, err
+	}
+	return written, nil
+}
+
+// waitPlaceholder waits for the input box to show one more image
+// placeholder than it did, and nothing else, after a file path was pasted.
+// It returns the new placeholder's N, or why not.
+func (s *session) waitPlaceholder(before []int32, path string) (int32, string) {
+	deadline := time.Now().Add(imageWait)
+	var pathSince time.Time
+	for {
+		styled, err := s.term.Capture()
+		if err == nil {
+			text, ok := s.ag.ComposerText(styled)
+			nums := agent.ImagePlaceholders(text)
+			rest, _ := agent.StripPlaceholders(text, nums)
+			rest = strings.TrimSpace(rest)
+			switch {
+			case !ok:
+				// A popup or menu took the screen.
+				return 0, "input_changed"
+			case rest == "" && len(nums) == len(before)+1 && slices.Equal(nums[:len(before)], before):
+				return nums[len(before)], ""
+			case rest == "" && len(nums) == len(before) && slices.Equal(nums, before):
+				// Not converted yet (Claude Code converts in the
+				// background).
+				pathSince = time.Time{}
+			case rest != "" && strings.Contains(path, rest) || strings.HasSuffix(rest, path):
+				// The path shows as text: the CLI did not take the file.
+				if pathSince.IsZero() {
+					pathSince = time.Now()
+				} else if time.Since(pathSince) >= unrecognized {
+					return 0, "image_not_recognized"
+				}
+			default:
+				return 0, "input_changed"
+			}
+		}
+		if time.Now().After(deadline) {
+			return 0, "timeout"
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// abandon ends a message that failed before its Enter: it empties the
+// input box if it holds only what was pasted for the message, and reports
+// the message FAILED, or NEEDS_TERMINAL when the input box could not be
+// verified to be back to empty. extra allows placeholders that were not
+// yet recorded (after a restart). The caller still holds local input.
+func (s *session) abandon(c control, in input, got []int32, extra bool, reason string) inputOutcome {
+	status := pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
+	if s.clearPasted(c, in, got, extra, reason == "timeout") {
+		status = pb.InputStatus_INPUT_STATUS_FAILED
+	}
+	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", reason, "status", status.String())
+	s.finishInput(in, status, reason)
+	return finished
+}
+
+// clearPasted empties the input box if it holds only this message's image
+// placeholders and file paths, and reports whether it is verified empty
+// afterwards. After a timeout an empty box does not count: the CLI may
+// still be converting an image and add its placeholder later.
+func (s *session) clearPasted(c control, in input, got []int32, extra, timedOut bool) bool {
+	styled, err := s.term.Capture()
+	if err != nil {
+		return false
+	}
+	text, ok := s.ag.ComposerText(styled)
+	if !ok {
+		return false
+	}
+	if text == "" {
+		return !timedOut
+	}
+	rest, all := agent.StripPlaceholders(text, got)
+	if !all {
+		return false
+	}
+	if extra {
+		nums := agent.ImagePlaceholders(rest)
+		if len(got)+len(nums) > len(in.Images) {
+			return false
+		}
+		rest, _ = agent.StripPlaceholders(rest, nums)
+	}
+	for _, im := range in.Images {
+		rest = strings.ReplaceAll(rest, im.Path, "")
+	}
+	if strings.TrimSpace(rest) != "" {
+		return false // something else is in the input box: not ours to delete
+	}
+	if err := c.Write(s.ag.ClearInput()); err != nil {
+		return false
+	}
+	deadline := time.Now().Add(clearWait)
+	for time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+		if styled, err := s.term.Capture(); err == nil {
+			if text, ok := s.ag.ComposerText(styled); ok && text == "" {
+				return !timedOut
+			}
+		}
+	}
+	return false
+}
+
+// recoverPaste settles a message a previous daemon was pasting images for
+// when it stopped. It is not written again; what was pasted is cleared if
+// it is all that the input box holds.
+func (s *session) recoverPaste(in input) (inputOutcome, error) {
+	s.ctlMu.Lock()
+	defer s.ctlMu.Unlock()
+	c, err := s.term.Control()
+	if err != nil {
+		return notWritten, err
+	}
+	defer c.Close()
+	l, err := holdLease(c, injectBase)
+	if err != nil {
+		return notWritten, err
+	}
+	defer l.end()
+	time.Sleep(settle)
+	return s.abandon(c, in, in.Indexes, true, "restarted"), nil
+}
+
+// setStage saves how far the head message has got and reports it.
+func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int32) error {
+	s.mu.Lock()
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		s.mu.Unlock()
+		return errHeadChanged
+	}
+	prev := s.queue.Queue[0]
+	s.queue.Queue[0].Stage, s.queue.Queue[0].Indexes = stage, slices.Clone(indexes)
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue[0] = prev
+		s.mu.Unlock()
+		return err
+	}
+	s.mu.Unlock()
+	if stage != prev.Stage {
+		s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+			RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: stage,
+		}}})
+	}
+	return nil
+}
+
+// finishInput removes the head message and reports its outcome.
+func (s *session) finishInput(in input, status pb.InputStatus, reason string) {
+	if !s.popInput(in.RequestID) {
+		return // the session exited and reported it already
+	}
+	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: status, Reason: reason}}})
+}
+
+// settle waits for evidence that the written head message was submitted,
+// records the outcome and removes it from the queue. It returns false if
+// ctx ended first.
+func (s *session) settle(ctx context.Context, in input) bool {
+	hist := s.newHistory(*in.Inflight)
+	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
+	status := pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+	for time.Now().Before(deadline) {
+		s.readRollout()
+		s.mu.Lock()
+		cliID := s.meta.CodexSessionID
+		s.mu.Unlock()
+		if hist.submitted(in.matches, cliID) || s.loggedUserMessage(in) {
+			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
+	}
+	s.finishInput(in, status, "")
+	return true
+}
+
+// matches reports whether text the CLI recorded is this message: with
+// this message's image placeholders taken out, the same text. Both the
+// text and the images are evidence: a record without the placeholders
+// does not count for a message with images.
+func (in input) matches(recorded string) bool {
+	if len(in.Images) > 0 {
+		stripped, ok := agent.StripPlaceholders(recorded, in.Indexes)
+		if !ok || len(in.Indexes) != len(in.Images) {
+			return false
+		}
+		recorded = stripped
+	}
+	return normalizeText(recorded) == normalizeText(in.Text)
+}
+
+// matchesMessage reports whether a parsed user message is this message,
+// its images included.
+func (in input) matchesMessage(m *pb.UserMessage) bool {
+	if !in.matches(m.Text) {
+		return false
+	}
+	return len(in.pairImages(m)) == len(in.Images)
+}
+
+// pairImages maps this message's images to the refs of a parsed user
+// message: by the file path (Codex records it) or the placeholder number.
+func (in input) pairImages(m *pb.UserMessage) map[int]*pb.ImageRef {
+	out := map[int]*pb.ImageRef{}
+	for i, im := range in.Images {
+		for _, ref := range m.Images {
+			if ref.Path != "" && filepath.Clean(ref.Path) == filepath.Clean(im.Path) ||
+				ref.Path == "" && i < len(in.Indexes) && ref.CliIndex == in.Indexes[i] {
+				out[i] = ref
+				break
+			}
+		}
+	}
+	return out
+}
+
+// loggedUserMessage reports whether the message was logged as a user
+// message after it was written.
+func (s *session) loggedUserMessage(in input) bool {
+	evs, _ := s.log.Since(in.InflightSeq)
+	for _, e := range evs {
+		if m := e.GetUserMessage(); m != nil && in.matchesMessage(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// annotateUserMessage ties a parsed user message to the message that was
+// written for it, recording its origin, request ID and the upload ID of
+// each image. A message nothing was written for came from the local
+// terminal. Callers hold s.mu.
+func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) {
+	var cands []input
+	inflight := false
+	if len(s.queue.Queue) > 0 && s.queue.Queue[0].Inflight != nil {
+		cands = append(cands, s.queue.Queue[0])
+		inflight = true
+	}
+	for i := len(s.recent) - 1; i >= 0; i-- {
+		cands = append(cands, s.recent[i])
+	}
+	for _, in := range cands {
+		if !in.matchesMessage(m) {
+			continue
+		}
+		m.RequestId = in.RequestID
+		for i, ref := range in.pairImages(m) {
+			ref.UploadId = in.Images[i].ID
+		}
+		withOrigin(e, in.Origin.pb())
+		return
+	}
+	if !inflight {
+		withOrigin(e, originLocal)
+	}
+}
+
+// popInput removes the head message if it is requestID and reports
+// whether it did. A message that was written is remembered a while, to
+// match the CLI's record of it.
+func (s *session) popInput(requestID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		return false
+	}
+	if in := s.queue.Queue[0]; in.Inflight != nil {
+		s.recent = append(s.recent, in)
+		if len(s.recent) > recentInputs {
+			s.recent = s.recent[1:]
+		}
+	}
+	s.queue.Queue = s.queue.Queue[1:]
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", err)
+	}
+	return true
+}
+
+// markInflight records, before the head message's text and Enter are
+// written, where the submit log and the event log stood.
+func (s *session) markInflight(offset int64, requestID string) error {
+	seq := s.log.LastSeq()
+	s.mu.Lock()
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		s.mu.Unlock()
+		return errHeadChanged
+	}
+	prev := s.queue.Queue[0]
+	s.queue.Queue[0].Inflight = &offset
+	s.queue.Queue[0].InflightSeq = seq
+	s.queue.Queue[0].Stage = pb.InputStage_INPUT_STAGE_SUBMITTING
+	if err := s.queue.save(s.dir); err != nil {
+		s.queue.Queue[0] = prev
+		s.mu.Unlock()
+		return err
+	}
+	s.mu.Unlock()
+	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING,
+	}}})
+	return nil
+}

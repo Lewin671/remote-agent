@@ -105,7 +105,7 @@ func TestSubmitted(t *testing.T) {
 		`{"type":"user","origin":{"kind":"human"},"message":{"content":[{"type":"text","text":"hello world"}]}}`: true,
 		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"other"}}`:                  false,
 	} {
-		if got := a.Submitted([]byte(line), "hello world", ""); got != want {
+		if got := a.Submitted([]byte(line), func(r string) bool { return strings.Join(strings.Fields(r), " ") == "hello world" }, ""); got != want {
 			t.Errorf("%s: %v", line, got)
 		}
 	}

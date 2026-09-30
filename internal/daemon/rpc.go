@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -34,7 +35,11 @@ func rpcErr(err error) error {
 }
 
 func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.CreateSessionRequest]) (*connect.Response[pb.CreateSessionResponse], error) {
-	s, err := h.d.create(req.Msg)
+	s, err := h.d.createBy(req.Msg, originOf(ctx))
+	var ce *connect.Error
+	if errors.As(err, &ce) {
+		return nil, err
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -54,15 +59,21 @@ func (h *handler) GetSession(ctx context.Context, req *connect.Request[pb.GetSes
 }
 
 func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
-	if req.Msg.Text == "" {
+	if req.Msg.Text == "" && len(req.Msg.ImageIds) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text is empty"))
 	}
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	pos, err := s.send(req.Msg.Text, req.Msg.RequestId)
+	origin := originOf(ctx)
+	images, err := h.d.uploads.take(req.Msg.ImageIds, deviceOf(origin), s.meta.ID)
 	if err != nil {
+		return nil, err
+	}
+	pos, err := s.enqueue(req.Msg.Text, req.Msg.RequestId, images, origin)
+	if err != nil {
+		h.d.uploads.untake(images, s.meta.ID)
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil
@@ -73,7 +84,7 @@ func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.Interru
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	ok, err := s.interrupt()
+	ok, err := s.interruptBy(originOf(ctx))
 	if err != nil {
 		return nil, rpcErr(err)
 	}
@@ -96,7 +107,7 @@ func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.R
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.resolve(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Message); err != nil {
+	if err := s.resolveBy(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Message, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
@@ -111,7 +122,7 @@ func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.An
 	if len(options) == 0 {
 		options = []int32{req.Msg.Option}
 	}
-	if err := s.answer(req.Msg.QuestionId, options, req.Msg.QuestionIndex); err != nil {
+	if err := s.answerBy(req.Msg.QuestionId, options, req.Msg.QuestionIndex, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil
@@ -163,7 +174,7 @@ func (h *handler) CancelInput(ctx context.Context, req *connect.Request[pb.Cance
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.cancelInput(req.Msg.RequestId); err != nil {
+	if err := s.cancelInputBy(req.Msg.RequestId, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.CancelInputResponse{}), nil
@@ -174,7 +185,7 @@ func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModel
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.setModel(req.Msg.Model, req.Msg.Effort); err != nil {
+	if err := s.setModelBy(req.Msg.Model, req.Msg.Effort, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetModelResponse{}), nil
@@ -196,7 +207,7 @@ func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.S
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.setApprovalMode(req.Msg.Mode); err != nil {
+	if err := s.setApprovalModeBy(req.Msg.Mode, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetApprovalModeResponse{}), nil
@@ -218,7 +229,7 @@ func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.Answer
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.answerPlan(req.Msg.Choice); err != nil {
+	if err := s.answerPlanBy(req.Msg.Choice, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerPlanResponse{}), nil
@@ -256,4 +267,54 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil
+}
+
+func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.BeginImageUploadRequest]) (*connect.Response[pb.BeginImageUploadResponse], error) {
+	st, err := h.d.uploads.begin(req.Msg, deviceOf(originOf(ctx)))
+	if err != nil {
+		return nil, uploadErr(err)
+	}
+	return connect.NewResponse(&pb.BeginImageUploadResponse{Status: st}), nil
+}
+
+func (h *handler) PutImageChunk(ctx context.Context, req *connect.Request[pb.PutImageChunkRequest]) (*connect.Response[pb.PutImageChunkResponse], error) {
+	st, err := h.d.uploads.put(req.Msg, deviceOf(originOf(ctx)))
+	if err != nil {
+		return nil, uploadErr(err)
+	}
+	return connect.NewResponse(&pb.PutImageChunkResponse{Status: st}), nil
+}
+
+func (h *handler) GetImageUploadStatus(ctx context.Context, req *connect.Request[pb.GetImageUploadStatusRequest]) (*connect.Response[pb.GetImageUploadStatusResponse], error) {
+	st, err := h.d.uploads.status(req.Msg.TransferId, deviceOf(originOf(ctx)))
+	if err != nil {
+		return nil, uploadErr(err)
+	}
+	return connect.NewResponse(&pb.GetImageUploadStatusResponse{Status: st}), nil
+}
+
+func (h *handler) CompleteImageUpload(ctx context.Context, req *connect.Request[pb.CompleteImageUploadRequest]) (*connect.Response[pb.CompleteImageUploadResponse], error) {
+	st, err := h.d.uploads.complete(req.Msg.TransferId, deviceOf(originOf(ctx)))
+	if err != nil {
+		return nil, uploadErr(err)
+	}
+	return connect.NewResponse(&pb.CompleteImageUploadResponse{Status: st}), nil
+}
+
+func (h *handler) AbortImageUpload(ctx context.Context, req *connect.Request[pb.AbortImageUploadRequest]) (*connect.Response[pb.AbortImageUploadResponse], error) {
+	if err := h.d.uploads.abort(req.Msg.TransferId, deviceOf(originOf(ctx))); err != nil {
+		return nil, uploadErr(err)
+	}
+	return connect.NewResponse(&pb.AbortImageUploadResponse{}), nil
+}
+
+// uploadErr keeps the codes of upload errors and hides the others, which
+// may name files.
+func uploadErr(err error) error {
+	var ce *connect.Error
+	if errors.As(err, &ce) {
+		return err
+	}
+	slog.Error("image upload", "err", err)
+	return connect.NewError(connect.CodeInternal, errors.New("the machine could not store the image"))
 }

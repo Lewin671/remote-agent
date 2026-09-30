@@ -306,10 +306,11 @@ type historyEntry struct {
 	Text      string `json:"text"`
 }
 
-// Submitted reports whether a history.jsonl line records text. When the
-// Codex session ID is known, only that session's lines count, so identical
-// text sent to another session is not mistaken for this one's.
-func (a *Adapter) Submitted(line []byte, text, sessionID string) bool {
+// Submitted reports whether a history.jsonl line records text that match
+// accepts. When the Codex session ID is known, only that session's lines
+// count, so identical text sent to another session is not mistaken for
+// this one's.
+func (a *Adapter) Submitted(line []byte, match func(recorded string) bool, sessionID string) bool {
 	var e historyEntry
 	if json.Unmarshal(line, &e) != nil {
 		return false
@@ -317,7 +318,7 @@ func (a *Adapter) Submitted(line []byte, text, sessionID string) bool {
 	if sessionID != "" && e.SessionID != sessionID {
 		return false
 	}
-	return NormalizeText(e.Text) == NormalizeText(text)
+	return match(e.Text)
 }
 
 // NormalizeText collapses white space for comparing submitted text.
@@ -341,6 +342,9 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 }
 
 func (a *Adapter) Paste(text string) []byte { return agent.PasteBytes(text) }
+
+func (a *Adapter) ComposerText(styled string) (string, bool) { return ComposerText(styled) }
+func (a *Adapter) ClearInput() []byte                        { return []byte(agent.KeyClearLine) }
 
 // Interrupt is Esc; never Ctrl-C, which clears the input box and, pressed
 // again, quits Codex.

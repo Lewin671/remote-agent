@@ -364,9 +364,10 @@ func (a *Adapter) NewParser() agent.Parser { return NewParser() }
 // at once, or as queued while a turn runs.
 func (a *Adapter) SubmitLog(transcript string) string { return transcript }
 
-// Submitted reports whether a transcript line records text as typed: a
-// user message, a message queued while a turn runs, or one taken into it.
-func (a *Adapter) Submitted(line []byte, text, _ string) bool {
+// Submitted reports whether a transcript line records, as typed, text
+// that match accepts: a user message, a message queued while a turn runs,
+// or one taken into it. The text keeps its "[Image #N]" placeholders.
+func (a *Adapter) Submitted(line []byte, match func(recorded string) bool, _ string) bool {
 	var r struct {
 		Type      string  `json:"type"`
 		Operation string  `json:"operation"`
@@ -376,39 +377,45 @@ func (a *Adapter) Submitted(line []byte, text, _ string) bool {
 			Content json.RawMessage `json:"content"`
 		} `json:"message"`
 		Attachment *struct {
-			Type   string `json:"type"`
-			Prompt string `json:"prompt"`
+			Type   string          `json:"type"`
+			Prompt json.RawMessage `json:"prompt"`
 		} `json:"attachment"`
 	}
 	if json.Unmarshal(line, &r) != nil {
 		return false
 	}
-	want := codex.NormalizeText(text)
 	switch r.Type {
 	case "queue-operation":
-		return r.Operation == "enqueue" && codex.NormalizeText(r.Content) == want
+		return r.Operation == "enqueue" && match(r.Content)
 	case "attachment":
-		return r.Attachment != nil && r.Attachment.Type == "queued_command" && codex.NormalizeText(r.Attachment.Prompt) == want
+		return r.Attachment != nil && r.Attachment.Type == "queued_command" && match(contentText(r.Attachment.Prompt))
 	case "user":
 		if r.Origin == nil || r.Origin.Kind != "human" || r.Message == nil {
 			return false
 		}
-		var s string
-		if json.Unmarshal(r.Message.Content, &s) == nil {
-			return codex.NormalizeText(s) == want
-		}
-		var blocks []block
-		if json.Unmarshal(r.Message.Content, &blocks) == nil {
-			var parts []string
-			for _, b := range blocks {
-				if b.Type == "text" {
-					parts = append(parts, b.Text)
-				}
-			}
-			return codex.NormalizeText(strings.Join(parts, "\n")) == want
-		}
+		return match(contentText(r.Message.Content))
 	}
 	return false
+}
+
+// contentText is the text of message content: a string, or the text of
+// its blocks.
+func contentText(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var blocks []block
+	if json.Unmarshal(raw, &blocks) != nil {
+		return ""
+	}
+	var parts []string
+	for _, b := range blocks {
+		if b.Type == "text" {
+			parts = append(parts, b.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 // HookEvents turns AskUserQuestion and ExitPlanMode calls, reported by
@@ -458,8 +465,10 @@ func applySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext 
 	return ctx
 }
 
-func (a *Adapter) Analyze(styled string) agent.Screen { return AnalyzeScreen(styled) }
-func (a *Adapter) Paste(text string) []byte           { return agent.PasteBytes(text) }
+func (a *Adapter) Analyze(styled string) agent.Screen        { return AnalyzeScreen(styled) }
+func (a *Adapter) Paste(text string) []byte                  { return agent.PasteBytes(text) }
+func (a *Adapter) ComposerText(styled string) (string, bool) { return ComposerText(styled) }
+func (a *Adapter) ClearInput() []byte                        { return []byte(agent.KeyClearLine) }
 
 // Interrupt is Esc. Only sent while a turn runs: pressed twice in an idle
 // input box it opens the rewind menu.

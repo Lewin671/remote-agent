@@ -37,7 +37,7 @@ func (s *session) newHistory(offset int64) *history {
 
 // submitted reports whether a line recording text was appended since the
 // last call.
-func (h *history) submitted(text, cliSessionID string) bool {
+func (h *history) submitted(match func(recorded string) bool, cliSessionID string) bool {
 	if h.r == nil {
 		return false
 	}
@@ -46,7 +46,7 @@ func (h *history) submitted(text, cliSessionID string) bool {
 		return false
 	}
 	for _, l := range lines {
-		if h.ag.Submitted(l.Data, text, cliSessionID) {
+		if h.ag.Submitted(l.Data, match, cliSessionID) {
 			return true
 		}
 	}

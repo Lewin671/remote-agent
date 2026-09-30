@@ -77,10 +77,17 @@ type session struct {
 	detail     string
 	approvals  map[string]*approval
 	questions  map[string]*pb.QuestionAsked
-	queue      *queueState
-	wake       chan struct{} // pokes the injector
-	done       chan struct{} // closed when the session's goroutines stop
-	stop       context.CancelFunc
+	// answeredBy and interruptedBy remember who answered a question or
+	// interrupted the turn through remote-agent, for the transcript
+	// record that follows.
+	answeredBy    map[string]*pb.Origin
+	interruptedBy *pb.Origin
+	queue         *queueState
+	// recent are messages written lately, for matching late records.
+	recent []input
+	wake   chan struct{} // pokes the injector
+	done   chan struct{} // closed when the session's goroutines stop
+	stop   context.CancelFunc
 }
 
 type approval struct {
@@ -107,6 +114,8 @@ type decision struct {
 	// terminal: the request was answered in the terminal; the hook's
 	// output no longer matters.
 	terminal bool
+	// origin is who answered through remote-agent.
+	origin *pb.Origin
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
@@ -117,20 +126,21 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	}
 	ag := d.adapter(m.Agent)
 	s := &session{
-		d:         d,
-		ag:        ag,
-		dir:       dir,
-		term:      term,
-		log:       log,
-		parser:    ag.NewParser(),
-		meta:      m,
-		approvals: map[string]*approval{},
-		questions: map[string]*pb.QuestionAsked{},
-		wake:      make(chan struct{}, 1),
-		done:      make(chan struct{}),
-		status:    pb.SessionStatus_SESSION_STATUS_STARTING,
-		queue:     q,
-		images:    openImageStore(dir),
+		d:          d,
+		ag:         ag,
+		dir:        dir,
+		term:       term,
+		log:        log,
+		parser:     ag.NewParser(),
+		meta:       m,
+		approvals:  map[string]*approval{},
+		questions:  map[string]*pb.QuestionAsked{},
+		answeredBy: map[string]*pb.Origin{},
+		wake:       make(chan struct{}, 1),
+		done:       make(chan struct{}),
+		status:     pb.SessionStatus_SESSION_STATUS_STARTING,
+		queue:      q,
+		images:     openImageStore(dir),
 	}
 	// Rebuild derived state from the events already logged.
 	log.Each(func(e *pb.Event) {
@@ -333,6 +343,7 @@ func (s *session) readRollout() {
 		for _, f := range s.parser.Images() {
 			s.images.process(f, r.Path)
 		}
+		s.annotate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", err)
 			// Read this line and the rest of the batch again next time.
@@ -476,7 +487,7 @@ func (s *session) markExited(detail string) {
 			s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 				RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED, Reason: "exited",
 			}}})
-		case s.loggedUserMessage(in.InflightSeq, in.Text):
+		case s.loggedUserMessage(in):
 			s.emitInput(in.RequestID, pb.InputStatus_INPUT_STATUS_SUBMITTED)
 		default:
 			// Written, maybe submitted: as when confirming times out.
@@ -486,6 +497,10 @@ func (s *session) markExited(detail string) {
 	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
 	}}})
+	// Images sent for the session are kept while it runs: Codex reads
+	// them when a message is submitted, and the model may look at a path
+	// again later.
+	s.d.uploads.dropSession(m.ID)
 	if s.stop != nil {
 		s.stop()
 	}
@@ -548,46 +563,14 @@ func summary(text string, n int) string {
 	return ""
 }
 
-// send queues text for injection and saves the queue before returning,
-// so an accepted message survives a daemon restart. It returns the queue
-// position; a retried request ID is accepted once.
-func (s *session) send(text, requestID string) (int, error) {
-	s.mu.Lock()
-	if s.meta.Exited {
-		s.mu.Unlock()
-		return 0, errExited
-	}
-	if requestID == "" {
-		requestID = newID(8)
-	} else if s.queue.seen(requestID) {
-		s.mu.Unlock()
-		return 0, nil
-	}
-	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
-	s.queue.Queue = append(s.queue.Queue[:len(s.queue.Queue):len(s.queue.Queue)], input{Text: text, RequestID: requestID})
-	s.queue.remember(requestID)
-	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue, s.queue.Seen = prevQueue, prevSeen
-		s.mu.Unlock()
-		return 0, fmt.Errorf("save input queue: %w", err)
-	}
-	pos := len(s.queue.Queue)
-	s.mu.Unlock()
-	s.emitInput(requestID, pb.InputStatus_INPUT_STATUS_QUEUED)
-	select {
-	case s.wake <- struct{}{}:
-	default:
-	}
-	return pos, nil
-}
-
-func (s *session) emitInput(requestID string, status pb.InputStatus) {
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status}}})
-}
-
 // cancelInput removes a queued message unless it is already being
 // written.
 func (s *session) cancelInput(requestID string) error {
+	return s.cancelInputBy(requestID, originLocal)
+}
+
+// cancelInputBy is cancelInput on behalf of origin.
+func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	s.mu.Lock()
 	idx := -1
 	for i, in := range s.queue.Queue {
@@ -600,7 +583,7 @@ func (s *session) cancelInput(requestID string) error {
 		s.mu.Unlock()
 		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
 	}
-	if s.queue.Queue[idx].Inflight != nil {
+	if in := s.queue.Queue[idx]; in.Inflight != nil || in.Stage > pb.InputStage_INPUT_STAGE_WAITING {
 		s.mu.Unlock()
 		return errWriting
 	}
@@ -613,7 +596,9 @@ func (s *session) cancelInput(requestID string) error {
 		return fmt.Errorf("save input queue: %w", err)
 	}
 	s.mu.Unlock()
-	s.emitInput(requestID, pb.InputStatus_INPUT_STATUS_CANCELED)
+	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
+	}}}, origin))
 	return nil
 }
 
@@ -647,182 +632,11 @@ func (s *session) noteWait(scr agent.Screen) {
 	}
 }
 
-// injectLoop submits queued input one message at a time, in order.
-func (s *session) injectLoop(ctx context.Context) {
-	retry := time.NewTimer(time.Hour)
-	defer retry.Stop()
-	for {
-		s.mu.Lock()
-		var next input
-		ok := len(s.queue.Queue) > 0 && !s.meta.Exited
-		if ok {
-			next = s.queue.Queue[0]
-		}
-		s.mu.Unlock()
-		if ok {
-			if next.Inflight == nil {
-				written, err := s.inject(next)
-				if err != nil {
-					slog.Warn("inject", "session", s.meta.ID, "err", err)
-				}
-				if !written {
-					retry.Reset(s.d.cfg.RetryInterval)
-					goto wait
-				}
-				s.mu.Lock()
-				if len(s.queue.Queue) > 0 {
-					next = s.queue.Queue[0]
-				}
-				s.mu.Unlock()
-			}
-			// The message was written, possibly by a previous daemon.
-			// Settle it without ever writing it again.
-			if !s.settle(ctx, next) {
-				return // ctx done; it stays inflight for the next daemon
-			}
-			continue
-		}
-	wait:
-		select {
-		case <-ctx.Done():
-			return
-		case <-s.wake:
-		case <-retry.C:
-		}
-	}
-}
-
-// settle waits for evidence that the written head message was submitted,
-// records the outcome and removes it from the queue. It returns false if
-// ctx ended first.
-func (s *session) settle(ctx context.Context, in input) bool {
-	hist := s.newHistory(*in.Inflight)
-	deadline := time.Now().Add(s.d.cfg.SubmitTimeout)
-	status := pb.InputStatus_INPUT_STATUS_UNCONFIRMED
-	for time.Now().Before(deadline) {
-		s.readRollout()
-		s.mu.Lock()
-		cliID := s.meta.CodexSessionID
-		s.mu.Unlock()
-		if hist.submitted(in.Text, cliID) || s.loggedUserMessage(in.InflightSeq, in.Text) {
-			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
-	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
-		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
-	}
-	// The session may have exited meanwhile and reported it already.
-	if s.popInput(in.RequestID) {
-		s.emitInput(in.RequestID, status)
-	}
-	return true
-}
-
-// loggedUserMessage reports whether a user message with text was logged
-// after seq.
-func (s *session) loggedUserMessage(seq uint64, text string) bool {
-	want := normalizeText(text)
-	evs, _ := s.log.Since(seq)
-	for _, e := range evs {
-		if m := e.GetUserMessage(); m != nil && normalizeText(m.Text) == want {
-			return true
-		}
-	}
-	return false
-}
-
-// popInput removes the head message if it is requestID and reports
-// whether it did.
-func (s *session) popInput(requestID string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
-		return false
-	}
-	s.queue.Queue = s.queue.Queue[1:]
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", s.meta.ID, "err", err)
-	}
-	return true
-}
-
-// markInflight records, before the head message is written, where
-// history.jsonl and the event log stood.
-func (s *session) markInflight(offset int64, requestID string) error {
-	seq := s.log.LastSeq()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
-		return errHeadChanged
-	}
-	s.queue.Queue[0].Inflight = &offset
-	s.queue.Queue[0].InflightSeq = seq
-	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq = nil, 0
-		return err
-	}
-	return nil
-}
-
-// inject tries once to write text. It returns false, leaving the input
-// queued, when the terminal is not ready: a popup is open or the local
-// user has an unsent draft, which is never overwritten or merged.
-func (s *session) inject(in input) (bool, error) {
-	s.ctlMu.Lock()
-	defer s.ctlMu.Unlock()
-	c, err := s.term.Control()
-	if err != nil {
-		return false, err
-	}
-	defer c.Close()
-	if err := c.Hold(holdFor); err != nil {
-		return false, err
-	}
-	// Local keys typed after the release reach Codex after the Enter, in
-	// the fresh input box.
-	defer c.Release()
-	time.Sleep(settle)
-	styled, err := s.term.Capture()
-	if err != nil {
-		return false, err
-	}
-	scr := s.ag.Analyze(styled)
-	if !scr.ComposerReady || !scr.DraftEmpty {
-		s.noteWait(scr)
-		return false, nil
-	}
-	// While Codex starts, its input box can flash before a startup dialog
-	// covers it; wait until the status check has seen a settled screen.
-	s.mu.Lock()
-	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
-	s.mu.Unlock()
-	if starting {
-		return false, nil
-	}
-	s.noteWait(scr)
-	hist := s.newHistory(-1)
-	if err := s.markInflight(hist.offset(), in.RequestID); err != nil {
-		if errors.Is(err, errHeadChanged) {
-			return false, nil // canceled meanwhile; the loop picks the new head
-		}
-		return false, err
-	}
-	if err := c.Write(s.ag.Paste(in.Text)); err != nil {
-		// A failed reply does not prove the bytes were not written, so
-		// the message is only settled from Codex's records, never resent.
-		return true, err
-	}
-	return true, nil
-}
-
 // interrupt presses Esc if a turn is running.
-func (s *session) interrupt() (bool, error) {
+func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) }
+
+// interruptBy is interrupt on behalf of origin.
+func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	s.readRollout()
 	s.mu.Lock()
 	running, exited := s.running, s.meta.Exited
@@ -849,12 +663,23 @@ func (s *session) interrupt() (bool, error) {
 		return false, err
 	}
 	defer c.Close()
-	return true, c.Write(s.ag.Interrupt())
+	if err := c.Write(s.ag.Interrupt()); err != nil {
+		return true, err
+	}
+	s.mu.Lock()
+	s.interruptedBy = origin
+	s.mu.Unlock()
+	return true, nil
 }
 
 // answer picks options (1-based) of the question that is showing. With
 // index set, that must be the index-th question of the call.
 func (s *session) answer(questionID string, options []int32, index *int32) error {
+	return s.answerBy(questionID, options, index, originLocal)
+}
+
+// answerBy is answer on behalf of origin.
+func (s *session) answerBy(questionID string, options []int32, index *int32, origin *pb.Origin) error {
 	s.readRollout()
 	s.mu.Lock()
 	_, ok := s.questions[questionID]
@@ -909,7 +734,39 @@ func (s *session) answer(questionID string, options []int32, index *int32) error
 	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items) {
 		return errNotAnswering
 	}
-	return s.ag.Answer(heldTerm{s.term, c}, q, index, options)
+	if err := s.ag.Answer(heldTerm{s.term, c}, q, index, options); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.answeredBy[questionID] = origin
+	s.mu.Unlock()
+	return nil
+}
+
+// annotate records who caused parsed events, as far as the daemon knows:
+// the question it answered or the turn it interrupted for a client.
+func (s *session) annotate(evs []*pb.Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range evs {
+		switch k := e.Kind.(type) {
+		case *pb.Event_QuestionAnswered:
+			o := s.answeredBy[k.QuestionAnswered.QuestionId]
+			delete(s.answeredBy, k.QuestionAnswered.QuestionId)
+			if o == nil {
+				o = originLocal
+			}
+			withOrigin(e, o)
+		case *pb.Event_TurnEnded:
+			if k.TurnEnded.Outcome == pb.TurnOutcome_TURN_OUTCOME_ABORTED && s.interruptedBy != nil {
+				withOrigin(e, s.interruptedBy)
+			}
+			s.interruptedBy = nil
+			clear(s.answeredBy)
+		case *pb.Event_UserMessage:
+			s.annotateUserMessage(e, k.UserMessage)
+		}
+	}
 }
 
 func (s *session) kill() error {
@@ -1042,10 +899,10 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	}()
 	s.emit(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: req}})
 
-	resolved := func(d pb.ApprovalDecision, msg string) {
-		s.emit(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
+	resolved := func(d pb.ApprovalDecision, msg string, o *pb.Origin) {
+		s.emit(withOrigin(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
 			ApprovalId: a.id, Decision: d, Message: msg,
-		}}})
+		}}}, o))
 	}
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -1058,24 +915,24 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 			break
 		}
 		msg := fmt.Sprintf("remote-agent: no answer within %s, denied", timeout)
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg)
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg, originSystem)
 		return agent.PermissionDecision(false, msg), nil
 	case <-ctx.Done():
 		if !s.claim(a) {
 			d = <-a.decision
 			break
 		}
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "")
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "", originSystem)
 		return nil, ctx.Err()
 	}
 	if d.terminal {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "")
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "", originLocal)
 		return nil, nil
 	}
 	if d.allow {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message)
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message, d.origin)
 	} else {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message)
+		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message, d.origin)
 	}
 	return agent.PermissionDecision(d.allow, denialFor(d)), nil
 }
@@ -1108,6 +965,11 @@ func (s *session) claim(a *approval) bool {
 // resolve answers a pending approval. Success means the answer is the one
 // the CLI receives.
 func (s *session) resolve(id string, allow bool, message string) error {
+	return s.resolveBy(id, allow, message, originLocal)
+}
+
+// resolveBy is resolve on behalf of origin.
+func (s *session) resolveBy(id string, allow bool, message string, origin *pb.Origin) error {
 	s.mu.Lock()
 	a, ok := s.approvals[id]
 	if !ok || a.claimed {
@@ -1121,7 +983,7 @@ func (s *session) resolve(id string, allow bool, message string) error {
 	a.claimed = true
 	delete(s.approvals, id)
 	s.mu.Unlock()
-	a.decision <- decision{allow: allow, message: message}
+	a.decision <- decision{allow: allow, message: message, origin: origin}
 	return nil
 }
 

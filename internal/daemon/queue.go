@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // maxSeen bounds how many request IDs are remembered for deduplication.
@@ -13,6 +15,15 @@ const maxSeen = 1000
 type input struct {
 	Text      string `json:"text"`
 	RequestID string `json:"request_id,omitempty"`
+	// Images are pasted before the text, in order.
+	Images []queuedImage `json:"images,omitempty"`
+	// Origin is who sent it.
+	Origin *storedOrigin `json:"origin,omitempty"`
+	// Stage is how far writing it has got; it is saved before each write
+	// to the terminal, so a restart knows what the input box may hold.
+	Stage pb.InputStage `json:"stage,omitempty"`
+	// Indexes are the N of the "[Image #N]" each pasted image became.
+	Indexes []int32 `json:"indexes,omitempty"`
 	// Inflight is set just before the message is written to the terminal:
 	// it holds the history.jsonl offset at that moment. After a crash, the
 	// history from there tells whether the message was submitted.
@@ -49,11 +60,7 @@ func (q *queueState) save(dir string) error {
 	if err != nil {
 		return err
 	}
-	tmp := filepath.Join(dir, "queue.json.tmp")
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, filepath.Join(dir, "queue.json"))
+	return writeFileSync(filepath.Join(dir, "queue.json"), b)
 }
 
 func (q *queueState) seen(id string) bool {

@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/relay"
@@ -37,6 +38,7 @@ type fakeBackend struct {
 	resolved []*pb.ResolveApprovalRequest
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
+	origins      []*pb.Origin
 	images       map[string]relay.ImageUpload
 	imageResults []string
 }
@@ -169,6 +171,7 @@ type fakeLocal struct {
 func (f *fakeLocal) Send(ctx context.Context, req *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
 	f.b.mu.Lock()
 	f.b.sends = append(f.b.sends, req.Msg)
+	f.b.origins = append(f.b.origins, agent.OriginFrom(ctx))
 	n := len(f.b.sends)
 	f.b.mu.Unlock()
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(n)}), nil
@@ -734,5 +737,40 @@ func TestImagesGoUpBeforeTheirEvents(t *testing.T) {
 		if b, err := os.ReadFile(name); err == nil && bytes.Contains(b, []byte(marker)) {
 			t.Fatalf("%s contains plaintext", name)
 		}
+	}
+}
+
+func TestCommandOrigins(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+	ctx := context.Background()
+	send := func(id string) *pb.Command {
+		return &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "sess1", Text: "hi", RequestId: id}}}
+	}
+	// Signed: the device is known for sure.
+	if _, err := e.client.Do(ctx, s, send("a")); err != nil {
+		t.Fatal(err)
+	}
+	// Unsigned, as from an older client: the server's word only.
+	e.client.Unsigned = true
+	if _, err := e.client.Do(ctx, s, send("b")); err != nil {
+		t.Fatal(err)
+	}
+	e.client.Unsigned = false
+	// A signature that does not check out is refused.
+	env, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("c"))
+	env.Signature[0] ^= 1
+	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("bad signature: %v", err)
+	}
+	e.backend.mu.Lock()
+	defer e.backend.mu.Unlock()
+	o := e.backend.origins
+	if len(o) != 2 || o[0].Kind != pb.OriginKind_ORIGIN_KIND_CLIENT || o[0].DeviceId != e.client.DeviceID || o[0].RequestId == "" ||
+		o[1].Kind != pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT || o[1].DeviceId != e.client.DeviceID {
+		t.Fatalf("origins %v", o)
 	}
 }

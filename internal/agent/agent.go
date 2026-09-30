@@ -5,10 +5,13 @@
 package agent
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -95,9 +98,11 @@ type Source interface {
 	// SubmitLog is the file where the CLI records submitted input, given
 	// the session's transcript path (possibly empty).
 	SubmitLog(transcript string) string
-	// Submitted reports whether a line of the submit log records text as
-	// submitted in the CLI session cliSessionID (empty if unknown).
-	Submitted(line []byte, text, cliSessionID string) bool
+	// Submitted reports whether a line of the submit log records, in the
+	// CLI session cliSessionID (empty if unknown), submitted text that
+	// match accepts. The text is as the CLI recorded it, with its image
+	// placeholders.
+	Submitted(line []byte, match func(recorded string) bool, cliSessionID string) bool
 	// HookEvents are events a hook call shows before the transcript does;
 	// the parser is told about them and does not repeat them.
 	HookEvents(h *Hook) []*pb.Event
@@ -148,6 +153,14 @@ type Controller interface {
 	Analyze(styled string) Screen
 	// Paste is what to write to submit text.
 	Paste(text string) []byte
+	// ComposerText is the text in the input box, as shown, "" when it is
+	// empty; ok is false when no input box shows. Placeholders such as
+	// "[Image #1]" are part of it.
+	ComposerText(styled string) (text string, ok bool)
+	// ClearInput is what to write to empty an input box that holds one
+	// line. It must be harmless in an empty box and never interrupt a
+	// running turn or quit the CLI (Ctrl-C and Esc do).
+	ClearInput() []byte
 	// Interrupt is what to write to interrupt a running turn.
 	Interrupt() []byte
 	// Answer picks options of the question showing. index, if set, is the
@@ -369,4 +382,57 @@ func EventImages(e *pb.Event) []*pb.ImageRef {
 		return k.ImageGenerated.Images
 	}
 	return nil
+}
+
+type originKey struct{}
+
+// WithOrigin returns ctx carrying who asked for a command, for the daemon
+// to record in the events the command causes.
+func WithOrigin(ctx context.Context, o *pb.Origin) context.Context {
+	return context.WithValue(ctx, originKey{}, o)
+}
+
+// OriginFrom returns the origin WithOrigin put in ctx, or nil.
+func OriginFrom(ctx context.Context) *pb.Origin {
+	o, _ := ctx.Value(originKey{}).(*pb.Origin)
+	return o
+}
+
+// PastePath is a bracketed paste of a file path alone, without Enter: how
+// both CLIs take an image file into the input box.
+func PastePath(path string) []byte {
+	return []byte("\x1b[200~" + path + "\x1b[201~")
+}
+
+// KeyClearLine is Ctrl-U, which both CLIs take as deleting the input box's
+// line (codex-notes §10, claude-code-notes §10).
+const KeyClearLine = "\x15"
+
+// imagePlaceholderRE matches the placeholders the CLIs show for images.
+var imagePlaceholderRE = regexp.MustCompile(`\[Image #(\d+)\]`)
+
+// ImagePlaceholders returns the N of each "[Image #N]" in text, in order.
+func ImagePlaceholders(text string) []int32 {
+	var out []int32
+	for _, m := range imagePlaceholderRE.FindAllStringSubmatch(text, -1) {
+		if n, err := strconv.Atoi(m[1]); err == nil {
+			out = append(out, int32(n))
+		}
+	}
+	return out
+}
+
+// StripPlaceholders removes one "[Image #N]" for each of indexes from
+// text, and reports whether all were there. Other text, including
+// placeholders the user wrote, stays.
+func StripPlaceholders(text string, indexes []int32) (string, bool) {
+	for _, n := range indexes {
+		tok := "[Image #" + strconv.Itoa(int(n)) + "]"
+		i := strings.Index(text, tok)
+		if i < 0 {
+			return text, false
+		}
+		text = text[:i] + " " + text[i+len(tok):]
+	}
+	return text, true
 }
