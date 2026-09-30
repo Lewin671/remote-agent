@@ -62,10 +62,15 @@ sealed interface ChatItem {
 fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
 
 /** How a tool call is named in the chat: paths shortened, as on the web; the details keep them whole. */
-fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String {
+fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String = toolTitle(t.kind, t.title, t.itemType, cwd, home)
+
+/** The same for a call still running, so that its row reads the same before and after. */
+fun toolTitle(t: io.github.lewin671.remoteagent.core.RunningTool, cwd: String, home: String = ""): String = toolTitle(t.kind, t.title, t.itemType, cwd, home)
+
+private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: String, home: String): String {
     // A file edit's title is one path, spaces and all.
-    if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) return "编辑 " + shortenPath(t.title, cwd, home)
-    return shortenPaths(t.title.ifEmpty { t.itemType }, cwd, home)
+    if (kind == ToolKind.TOOL_KIND_FILE_CHANGE) return "编辑 " + shortenPath(title, cwd, home)
+    return shortenPaths(title.ifEmpty { itemType }, cwd, home)
 }
 
 /**

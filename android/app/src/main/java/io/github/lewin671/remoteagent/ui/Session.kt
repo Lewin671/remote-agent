@@ -254,7 +254,7 @@ private fun ChatPane(
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text(io.github.lewin671.remoteagent.core.shortenPaths(tool.title.lines().first(), cwd, home), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(toolTitle(tool, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         if (tool.since > 0) Text(duration((t - tool.since).coerceAtLeast(0)), style = MaterialTheme.typography.bodySmall, color = p.faint)
                     }
                 }

@@ -180,4 +180,14 @@ class ChatTest {
         val other = same.toBuilder().setInput("{\"command\":\"go test ./...\",\"timeout\":60}").build()
         assertEquals(other.input, toolRaw(other, "", ""))
     }
+
+    @Test
+    fun namesARunningCallAsWhenItIsDone() {
+        val events = listOf(ev(1, Event.newBuilder().setToolStarted(io.github.lewin671.remoteagent.proto.ToolStarted.newBuilder()
+            .setTitle("/private/tmp/w/hello.txt").setCallId("c").setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setItemType("Write"))))
+        val running = derive(events).tools.single()
+        assertEquals("编辑 hello.txt", toolTitle(running, "/tmp/w"))
+        val done = ToolCall.newBuilder().setTitle("/private/tmp/w/hello.txt").setKind(ToolKind.TOOL_KIND_FILE_CHANGE).setItemType("Write").build()
+        assertEquals(toolTitle(done, "/tmp/w"), toolTitle(running, "/tmp/w"))
+    }
 }

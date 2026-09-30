@@ -251,7 +251,13 @@ fun contextPercent(s: SessionView): Int? {
 
 // --- events ---
 
-class RunningTool(val title: String, val callId: String, val since: Long)
+class RunningTool(
+    val title: String,
+    val callId: String,
+    val since: Long,
+    val kind: io.github.lewin671.remoteagent.proto.ToolKind = io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_UNSPECIFIED,
+    val itemType: String = "",
+)
 
 class Derived(
     /** Pending approvals, in the order they were asked. */
@@ -328,7 +334,7 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                     unclaimed = e.seq
                 }
             }
-            Event.KindCase.TOOL_STARTED -> d.tools += RunningTool(e.toolStarted.title, e.toolStarted.callId, eventTime(e))
+            Event.KindCase.TOOL_STARTED -> e.toolStarted.let { d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType) }
             Event.KindCase.TOOL_CALL -> {
                 // Claude Code runs tools in parallel and pairs them by ID;
                 // Codex gives no ID and they pair in order.
