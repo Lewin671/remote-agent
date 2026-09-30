@@ -105,7 +105,7 @@ fun ArrowText(text: String, color: Color, style: TextStyle = T.sm, down: Boolean
     }
 }
 
-/** A project's letter on its fixed gradient: 40 on lists, 22 in sheets, 52 on the project page, 16 in chips. */
+/** A project's letter on a gradient picked by its name, as on the web: 40 on lists, 22 in sheets, 52 on the project page, 16 in chips. */
 @Composable
 fun Avatar(key: String, size: Int = 40) {
     val (radius, font) = when {
@@ -115,7 +115,7 @@ fun Avatar(key: String, size: Int = 40) {
         else -> 4 to 9
     }
     Box(
-        Modifier.size(size.dp).clip(RoundedCornerShape(radius.dp)).background(avatarGradients[avatarIndex(key) % avatarGradients.size]),
+        Modifier.size(size.dp).clip(RoundedCornerShape(radius.dp)).background(avatarGradients[avatarIndex(projectName(key)) % avatarGradients.size]),
         contentAlignment = Alignment.Center,
     ) {
         Text(projectName(key).take(1).lowercase(), color = Color.White, style = ts(font.sp, FontWeight.Bold, 1.2f))
