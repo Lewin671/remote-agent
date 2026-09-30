@@ -9,6 +9,8 @@ import android.net.Uri
 import android.os.Build
 import io.github.lewin671.remoteagent.core.COMPRESSED_LONG_SIDE
 import io.github.lewin671.remoteagent.core.MAX_ORIGINAL_BYTES
+import io.github.lewin671.remoteagent.core.MAX_DECODE_PIXELS
+import io.github.lewin671.remoteagent.core.decodeSample
 import io.github.lewin671.remoteagent.core.detectFormat
 import io.github.lewin671.remoteagent.core.fitLongSide
 import io.github.lewin671.remoteagent.core.orientationOf
@@ -55,39 +57,54 @@ private fun orientationMatrix(o: Int): Matrix = Matrix().apply {
 }
 
 /**
- * Decodes and turns the picture upright, at most [maxLong] on its long
- * side (0: full size). Formats the CLIs read are decoded here with the
- * orientation they record applied; others (HEIC) go through ImageDecoder,
- * which turns them itself.
+ * Pixels this process may decode at once: the fixed cap, and a share of
+ * the heap that leaves room for the rotated copy and the encoded bytes.
  */
-private fun decodeUpright(data: ByteArray, maxLong: Int): Bitmap {
+private fun pixelBudget(): Long = minOf(MAX_DECODE_PIXELS, Runtime.getRuntime().maxMemory() / 4 / 4)
+
+/** A decoded picture and the sample size it was decoded at (1: full size). */
+private class Decoded(val bitmap: Bitmap, val sample: Int)
+
+/**
+ * Decodes and turns the picture upright, at most [maxLong] on its long
+ * side (0: full size), never more than [pixelBudget] pixels: the size is
+ * read first and the image sampled down to fit. Formats the CLIs read are
+ * decoded here with the orientation they record applied; others (HEIC) go
+ * through ImageDecoder, which turns them itself. Intermediate bitmaps are
+ * recycled as soon as the next one exists.
+ */
+private fun decodeUpright(data: ByteArray, maxLong: Int): Decoded {
+    val budget = pixelBudget()
     val fmt = detectFormat(data)
     if (fmt == null) {
         if (Build.VERSION.SDK_INT < 28) throw IllegalArgumentException("这台手机读不了这种图片格式")
-        return ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))) { d, info, _ ->
+        var sample = 1
+        val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))) { d, info, _ ->
             d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-            if (maxLong > 0) {
-                val (w, h) = fitLongSide(info.size.width, info.size.height, maxLong)
-                d.setTargetSize(w, h)
-            }
+            sample = decodeSample(info.size.width, info.size.height, maxLong, budget)
+            val (w, h) = if (maxLong > 0) fitLongSide(info.size.width, info.size.height, maxLong) else info.size.width to info.size.height
+            val (bw, bh) = if (w.toLong() * h > budget) (info.size.width / sample) to (info.size.height / sample) else w to h
+            if (bw != info.size.width || bh != info.size.height) d.setTargetSize(bw, bh)
         }
+        return Decoded(bmp, sample)
     }
     val o = orientationOf(data)
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
     if (bounds.outWidth <= 0) throw IllegalArgumentException("解不出这张图片")
-    var sample = 1
-    if (maxLong > 0) while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxLong) sample *= 2
-    val raw = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
+    val sample = decodeSample(bounds.outWidth, bounds.outHeight, maxLong, budget)
+    var bmp = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
         ?: throw IllegalArgumentException("解不出这张图片")
-    var bmp = raw
     if (maxLong > 0) {
-        val (w, h) = fitLongSide(raw.width, raw.height, maxLong)
-        if (w != raw.width) bmp = Bitmap.createScaledBitmap(raw, w, h, true)
+        val (w, h) = fitLongSide(bmp.width, bmp.height, maxLong)
+        if (w != bmp.width) bmp = Bitmap.createScaledBitmap(bmp, w, h, true).also { if (it !== bmp) bmp.recycle() }
     }
-    if (o != 1) bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, orientationMatrix(o), true)
-    return bmp
+    if (o != 1) bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, orientationMatrix(o), true).also { if (it !== bmp) bmp.recycle() }
+    return Decoded(bmp, sample)
 }
+
+/** One image is prepared at a time: several full-size decodes at once could run out of memory. */
+private val preparing = Any()
 
 private fun encode(b: Bitmap, png: Boolean, quality: Int): ByteArray =
     ByteArrayOutputStream().also { b.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
@@ -100,7 +117,16 @@ private fun encode(b: Bitmap, png: Boolean, quality: Int): ByteArray =
  * the CLIs do not read, is re-encoded at the highest quality instead, and
  * [Processed.note] says so.
  */
-fun processImage(context: Context, uri: Uri, original: Boolean): Processed {
+fun processImage(context: Context, uri: Uri, original: Boolean): Processed = synchronized(preparing) {
+    try {
+        prepare(context, uri, original)
+    } catch (e: OutOfMemoryError) {
+        // An error, not an exception: without this it would end the app.
+        throw ImageTooLarge("这张图太大，手机内存不够处理")
+    }
+}
+
+private fun prepare(context: Context, uri: Uri, original: Boolean): Processed {
     val data = readUri(context, uri, if (original) MAX_ORIGINAL_BYTES * 3 else 80L * 1024 * 1024)
     if (original) {
         stripOriginal(data)?.let { clean ->
@@ -110,23 +136,29 @@ fun processImage(context: Context, uri: Uri, original: Boolean): Processed {
             return Processed(clean, detectFormat(clean)!!, b.outWidth, b.outHeight)
         }
         val turned = detectFormat(data) != null
-        val bmp = decodeUpright(data, 0)
+        val d = decodeUpright(data, 0)
+        val bmp = d.bitmap
         val png = bmp.hasAlpha()
         val out = encode(bmp, png, if (turned) 100 else 95)
+        val (w, h) = bmp.width to bmp.height
+        bmp.recycle()
         if (out.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge("原图超过 20 MB")
+        val shrunk = if (d.sample > 1) "；像素超过手机能处理的上限，缩小到 1/${d.sample}" else ""
         return Processed(
-            out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, bmp.width, bmp.height,
-            if (turned) "按拍摄方向转正后以最高画质重新编码" else "转成了 ${if (png) "PNG" else "JPEG"}，保留原始尺寸",
+            out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h,
+            (if (turned) "按拍摄方向转正后以最高画质重新编码" else "转成了 ${if (png) "PNG" else "JPEG"}，保留原始尺寸") + shrunk,
         )
     }
-    var bmp = decodeUpright(data, COMPRESSED_LONG_SIDE)
+    var bmp = decodeUpright(data, COMPRESSED_LONG_SIDE).bitmap
     val png = bmp.hasAlpha()
     var q = 85
     var out = encode(bmp, png, q)
     while (out.size > COMPRESSED_TARGET && (q > 60 || maxOf(bmp.width, bmp.height) > 800)) {
         if (!png && q > 60) q -= 10
-        else bmp = Bitmap.createScaledBitmap(bmp, (bmp.width * 0.8).toInt().coerceAtLeast(1), (bmp.height * 0.8).toInt().coerceAtLeast(1), true)
+        else bmp = Bitmap.createScaledBitmap(bmp, (bmp.width * 0.8).toInt().coerceAtLeast(1), (bmp.height * 0.8).toInt().coerceAtLeast(1), true).also { if (it !== bmp) bmp.recycle() }
         out = encode(bmp, png, q)
     }
-    return Processed(out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, bmp.width, bmp.height)
+    val (w, h) = bmp.width to bmp.height
+    bmp.recycle()
+    return Processed(out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h)
 }

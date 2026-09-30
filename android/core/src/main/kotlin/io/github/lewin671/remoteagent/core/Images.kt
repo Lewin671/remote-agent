@@ -436,3 +436,21 @@ fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.Imag
     val base = if (laterRefs) text else t.trimStart()
     return placeholder.replace(base) { m -> if (m.groupValues[1].toInt() in known) "图 ${m.groupValues[1]}" else m.value }
 }
+
+/** Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB. */
+const val MAX_DECODE_PIXELS = 40_000_000L
+
+/**
+ * The power-of-two sample size to decode a [w]×[h] image at: small enough
+ * that the decoded picture fits [pixelBudget] (so memory has a bound,
+ * rotation's second copy included in the caller's budget), and no smaller
+ * than needed for a long side of [minLong] (0: as large as the budget
+ * allows).
+ */
+fun decodeSample(w: Int, h: Int, minLong: Int, pixelBudget: Long): Int {
+    require(w > 0 && h > 0) { "图片没有尺寸" }
+    var s = 1
+    if (minLong > 0) while (maxOf(w, h) / (s * 2) >= minLong) s *= 2
+    while ((w.toLong() / s) * (h.toLong() / s) > pixelBudget) s *= 2
+    return s
+}

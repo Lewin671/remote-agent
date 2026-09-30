@@ -347,3 +347,19 @@ class JpegAfterScanTest {
         assertFalse(leaks(stripJpeg(src), "TRAILER-GPS"))
     }
 }
+
+class DecodeBudgetTest {
+    @Test
+    fun aHugePictureIsDecodedWithinTheBudget() {
+        // A 200 MP panorama as an original: never decoded whole.
+        val s = decodeSample(20_000, 10_000, 0, MAX_DECODE_PIXELS)
+        assertTrue((20_000L / s) * (10_000L / s) <= MAX_DECODE_PIXELS)
+        assertEquals(4, s)
+        // A 12 MP photo fits as it is.
+        assertEquals(1, decodeSample(4032, 3024, 0, MAX_DECODE_PIXELS))
+        // Compressed: sampled down toward the 2048 long side, then the budget.
+        assertEquals(1, decodeSample(4032, 3024, 2048, MAX_DECODE_PIXELS))
+        assertEquals(2, decodeSample(8064, 6048, 2048, MAX_DECODE_PIXELS))
+        assertEquals(8, decodeSample(4032, 3024, 0, 300_000))
+    }
+}
