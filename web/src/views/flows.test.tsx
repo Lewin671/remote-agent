@@ -1490,3 +1490,28 @@ it("asks and sends again confirmed when the daemon finds the folder starts in fu
   expect(sent[1].confirm).toBe(true);
   expect(sent[1].id).not.toBe(sent[0].id);
 });
+
+it("starts a new session with images and no words (Go 61c4bb2)", async () => {
+  const r = demo();
+  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+  r.uploadImage = async () => "id-a";
+  const sent: { prompt?: string; imageIds?: string[] }[] = [];
+  r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push({ prompt: cmd.value.prompt, imageIds: cmd.value.imageIds });
+      throw new CommandError("failed_precondition", "stop here");
+    }
+    void slot;
+    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+  };
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
+    Object.defineProperty(input, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false));
+  await click(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!);
+  await vi.waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0]).toEqual({ prompt: "", imageIds: ["id-a"] });
+});
