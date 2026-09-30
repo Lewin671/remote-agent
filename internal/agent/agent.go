@@ -304,19 +304,23 @@ func PermissionDecision(allow bool, message string) []byte {
 // terminal delivers pasted text and a key press. Control characters other
 // than newline and tab are removed so the text cannot end the paste early
 // or send keys of its own.
+//
+// With no text left (a message of images only) it is Enter alone: Claude
+// Code does not submit after an empty paste.
 func PasteBytes(text string) []byte {
-	var b strings.Builder
-	b.WriteString("\x1b[200~")
+	var body strings.Builder
 	for _, r := range strings.ReplaceAll(text, "\r\n", "\n") {
 		if r == utf8.RuneError {
 			continue
 		}
 		if r == '\n' || r == '\t' || (r >= 0x20 && r != 0x7f && !(r >= 0x80 && r < 0xa0)) {
-			b.WriteRune(r)
+			body.WriteRune(r)
 		}
 	}
-	b.WriteString("\x1b[201~\r")
-	return []byte(b.String())
+	if body.Len() == 0 {
+		return []byte("\r")
+	}
+	return []byte("\x1b[200~" + body.String() + "\x1b[201~\r")
 }
 
 // Term is a session's terminal while the daemon holds it for an adapter.

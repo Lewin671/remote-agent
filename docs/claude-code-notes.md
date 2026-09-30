@@ -188,6 +188,7 @@
 - 清空输入框：**Ctrl-U** 一次删掉整行，包括占位；删掉的图不随后续消息提交（transcript 的 `imagePasteIds` 只有后来那张），编号继续累加不复用。Ctrl-U 在运行中同样安全，不像 Esc 会中断这一轮
 - 运行中排队的消息显示在输入框**上方**，同样以 `❯ [Image #10] [Image #11]…` 开头，所以找新出现的占位只能看两条横线之间的输入框，不能搜整个屏幕。输入框随后显示淡色的 `Press up to edit queued messages`
 - 经 remote-agent 发图的实测（2.1.285，haiku，2026-09-30；Claude Code 在实测期间从 2.1.284 自动更新）：转换中的输入框是空的，看不到路径，转换完才出现占位；5200×3900、11.6 MB 的 JPEG 在 transcript 里是 2000×1500、约 360 KB，上传前去掉的 EXIF（含 GPS）不在 transcript 里。运行中发两张图，`queued_command` 在当前工具调用结束后写入，模型读出了两张图的字。haiku 收到粘贴的图后还会自己用 `Read` 再读一次这个文件
+- 只有图、没有文字的消息（2.1.285，2026-09-30 实测）：输入框里只有 `[Image #N]` 时，单独按回车照常提交；但先写一段空的 bracketed paste（`\e[200~\e[201~`）再按回车，消息留在输入框里不提交。Codex 0.159.0 两种写法都会提交
 - 提交的证据：空闲时是 `type: user` 的记录，`imagePasteIds` 就是屏幕上的编号，另有一条 `isMeta` 的 `[Image: source: <路径>]`；运行中是 `queue-operation` 的 `enqueue`（`content` 带占位的原文）和随后的 `queued_command` 附件（`prompt` 数组带 image 块，`imagePasteIds` 同上），附件要等当前工具调用结束才写
 
 后台工作（haiku 实测）：
