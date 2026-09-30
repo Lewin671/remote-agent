@@ -103,6 +103,7 @@ func AnalyzeScreen(styled string) agent.Screen {
 
 	s.ComposerReady = true
 	s.DraftEmpty = bottom == top+1 && emptyPrompt(lines[top].styled)
+	s.Busy = busy(lines, top)
 	for _, l := range lines[bottom+1:] {
 		if s.Footer == "" && strings.TrimSpace(l.plain) != "" {
 			s.Footer = strings.TrimSpace(l.plain)
@@ -224,6 +225,28 @@ func BackgroundWork(styled string) string {
 		}
 	}
 	return ""
+}
+
+// spinnerRE matches the line Claude Code shows above the input box while
+// it works: "· Fermenting… (8s · ↓ 118 tokens)", "· Compacting
+// conversation… (2s)".
+var spinnerRE = regexp.MustCompile(`…\s*\(\d+s\b`)
+
+// busy reports whether the screen shows Claude Code working: its spinner
+// line just above the input box, or the input box's prompt dimmed (color
+// 246), as while a turn runs (claude-code-notes §4).
+func busy(lines []line, top int) bool {
+	for i := top - 2; i >= 0 && i >= top-3; i-- {
+		if spinnerRE.MatchString(lines[i].plain) {
+			return true
+		}
+	}
+	for _, r := range agent.Runs(lines[top].styled) {
+		if strings.Contains(r.Text, promptMark) {
+			return r.FG == 246
+		}
+	}
+	return false
 }
 
 // StatusArea is the plain text under the input box: the status line, the

@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -598,4 +599,59 @@ func TestClaudeIdenticalRequestsOneCompletion(t *testing.T) {
 		t.Fatalf("pending %d", n)
 	}
 	h.s.retractApprovals()
+}
+
+// A turn that starts while a mode switch waits for the terminal (an
+// injection holds it) is seen once the switch has the terminal: the
+// running rules apply, not the idle ones it read before (review final P1).
+func TestClaudeModeSwitchRechecksRunningUnderLock(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"hi"}}`,
+		`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+	h.s.bindRollout("cc-1", path)
+	h.term.setScreen(strings.Replace(ccIdle, "⏸ manual mode on", "⏸ plan mode on (shift+tab to cycle)", 1))
+	h.s.ctlMu.Lock() // an injection holds the terminal
+	errc := make(chan error, 1)
+	go func() { errc <- h.s.setApprovalMode(pb.ApprovalMode_APPROVAL_MODE_ASK) }()
+	time.Sleep(100 * time.Millisecond) // it has found the session idle
+	// The injected message starts a turn.
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"go"}}`)
+	h.s.ctlMu.Unlock()
+	err := <-errc
+	for _, w := range h.term.written() {
+		if strings.Contains(w, agent.KeyBTab) {
+			t.Fatalf("pressed Shift+Tab through looser modes while a turn ran: %q (%v)", h.term.written(), err)
+		}
+	}
+	if !errors.Is(err, errBusy) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+// Nor does a model switch or compaction go ahead once a turn has started
+// while it waited.
+func TestClaudeModelAndCompactRecheckRunningUnderLock(t *testing.T) {
+	for _, op := range []string{"model", "compact"} {
+		h := claudeHarness(t, Config{})
+		path := filepath.Join(h.dir, "rollout.jsonl")
+		h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"message":{"role":"user","content":"hi"}}`,
+			`{"type":"system","subtype":"turn_duration","durationMs":1}`)
+		h.s.bindRollout("cc-1", path)
+		h.s.ctlMu.Lock()
+		errc := make(chan error, 1)
+		go func() {
+			if op == "model" {
+				errc <- h.s.setModel("sonnet", "low")
+			} else {
+				errc <- h.s.compact()
+			}
+		}()
+		time.Sleep(100 * time.Millisecond)
+		h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+		h.s.ctlMu.Unlock()
+		if err := <-errc; !errors.Is(err, errBusy) || len(h.term.written()) != 0 {
+			t.Fatalf("%s: %v %q", op, err, h.term.written())
+		}
+	}
 }

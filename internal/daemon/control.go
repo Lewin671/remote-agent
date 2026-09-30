@@ -29,7 +29,12 @@ func (h heldTerm) Write(b []byte) error     { return h.c.Write(b) }
 
 // drive runs op with the terminal held for it. The status check is paused
 // meanwhile so that the menus it opens are not reported as popups.
-func (s *session) drive(op func(t agent.Term) error) error {
+//
+// op is told whether the CLI is busy as found once the terminal is held,
+// not before: an injection that held it until then may have started a
+// turn. Busy means a turn in the transcript, a message written and not yet
+// confirmed, or the screen showing the CLI at work.
+func (s *session) drive(op func(t agent.Term, busy bool) error) error {
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
@@ -72,7 +77,21 @@ func (s *session) drive(op func(t agent.Term) error) error {
 		s.mu.Unlock()
 	}()
 	time.Sleep(settle)
-	return op(heldTerm{s.term, c})
+	return op(heldTerm{s.term, c}, s.busyNow())
+}
+
+// busyNow tells whether a turn runs or is starting; the caller holds the
+// terminal, so no injection happens meanwhile.
+func (s *session) busyNow() bool {
+	s.readRollout()
+	s.mu.Lock()
+	busy := s.running || len(s.queue.Queue) > 0 && s.queue.Queue[0].Inflight != nil
+	s.mu.Unlock()
+	if busy {
+		return true
+	}
+	scr, _, err := s.screenNow()
+	return err != nil || scr.Busy
 }
 
 // screenNow captures and analyzes the terminal.
@@ -106,7 +125,12 @@ func (s *session) setModel(model, effort string) error {
 	if s.isRunning() {
 		return errBusy
 	}
-	if err := s.drive(func(t agent.Term) error { return s.ag.SetModel(t, model, effort) }); err != nil {
+	if err := s.drive(func(t agent.Term, busy bool) error {
+		if busy {
+			return errBusy
+		}
+		return s.ag.SetModel(t, model, effort)
+	}); err != nil {
 		return err
 	}
 	s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}})
@@ -115,9 +139,9 @@ func (s *session) setModel(model, effort string) error {
 
 // setApprovalMode switches the approval mode.
 func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
-	running := s.isRunning()
-	facts := s.modeFacts()
-	if err := s.drive(func(t agent.Term) error { return s.ag.SetMode(t, mode, running, facts) }); err != nil {
+	// The facts too are read with the terminal held: a model switch that
+	// held it until then changes them.
+	if err := s.drive(func(t agent.Term, busy bool) error { return s.ag.SetMode(t, mode, busy, s.modeFacts()) }); err != nil {
 		return err
 	}
 	s.emit(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}})
@@ -130,10 +154,16 @@ func (s *session) compact() error {
 	if s.isRunning() {
 		return errBusy
 	}
-	return s.drive(func(t agent.Term) error { return s.ag.Compact(t, s.isRunningNoRead) })
+	return s.drive(func(t agent.Term, busy bool) error {
+		if busy {
+			return errBusy
+		}
+		return s.ag.Compact(t, s.isRunningNoRead)
+	})
 }
 
 // answerPlan answers the CLI's prompt about a proposed plan.
 func (s *session) answerPlan(choice pb.PlanChoice) error {
-	return s.drive(func(t agent.Term) error { return s.ag.AnswerPlan(t, choice) })
+	// The adapter checks on the held screen that the plan prompt shows.
+	return s.drive(func(t agent.Term, _ bool) error { return s.ag.AnswerPlan(t, choice) })
 }

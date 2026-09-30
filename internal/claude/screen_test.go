@@ -38,15 +38,22 @@ func TestAnalyzeScreen(t *testing.T) {
 		{"multi-line draft", screen("\x1b[39m❯ ", "  line2\x1b[7m \x1b[0m"),
 			agent.Screen{ComposerReady: true, Mode: "default"}},
 		{"running", screen("\x1b[38;5;246m❯ \x1b[7m\x1b[39m \x1b[0m"),
-			agent.Screen{ComposerReady: true, DraftEmpty: true, Mode: "default"}},
+			agent.Screen{ComposerReady: true, DraftEmpty: true, Mode: "default", Busy: true}},
 		{"queued placeholder", screen("\x1b[38;5;246m❯ \x1b[7m\x1b[39mP\x1b[0;2mress up to edit queued messages\x1b[0m"),
-			agent.Screen{ComposerReady: true, DraftEmpty: true, Mode: "default"}},
+			agent.Screen{ComposerReady: true, DraftEmpty: true, Mode: "default", Busy: true}},
 	} {
 		got := AnalyzeScreen(c.screen)
 		got.Footer = ""
 		if got != c.want {
 			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
 		}
+	}
+	// The spinner line above the input box, before the prompt dims.
+	idle := "\x1b[39m❯\u00a0\x1b[7m \x1b[0m\n" + rule + "\n" + footer + manual + "\n"
+	spin := "\x1b[38;5;174m·\x1b[39m \x1b[38;5;180mFermenting…\x1b[38;5;174m \x1b[38;5;246m(8s · ↓ 118 tokens)\x1b[39m\n" + titledRule + "\n" + idle
+	done := "✻ Worked for 5s · done 4:54 PM\n" + titledRule + "\n" + idle
+	if !AnalyzeScreen(spin).Busy || AnalyzeScreen(done).Busy {
+		t.Error("spinner line")
 	}
 	s := AnalyzeScreen(strings.Replace(screen("\x1b[39m❯ \x1b[7m \x1b[0m"), manual, bypass, 1))
 	if s.Mode != "bypassPermissions" || s.Footer != "Haiku 4.5  │  ra-cc-work" {

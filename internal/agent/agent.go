@@ -194,6 +194,9 @@ type Screen struct {
 	// Mode is the permission mode the screen shows, in the CLI's own
 	// words (Claude Code: "default", "acceptEdits", ...); empty if none.
 	Mode string
+	// Busy: the screen shows the CLI working (Claude Code's spinner line
+	// or its dimmed prompt), whatever the transcript says yet.
+	Busy bool
 }
 
 // Hook is a hook call's payload. Codex and Claude Code use the same field
