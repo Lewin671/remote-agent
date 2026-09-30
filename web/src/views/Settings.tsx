@@ -8,26 +8,30 @@ import { errorText, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { Alert, Banner, Dot, NavBar, Sheet, useRemote } from "../ui";
+import { clientName, shortId } from "../devices";
+import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
   useRemote(remote);
   const [leaving, setLeaving] = useState(false);
   const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
   const push = usePush(remote);
+  const me = remote.account.deviceId;
+  const clients = [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT);
+  const others = clients.filter((d) => d.id !== me);
   return (
     <div className="body gray">
       <div className="large">
         <h3>设置</h3>
       </div>
       {push.top}
-      <div className="glabel">设备</div>
+      <div className="glabel with-link">
+        电脑
+        <button className="link" onClick={() => go("devices")}>
+          全部设备 ›
+        </button>
+      </div>
       <div className="grp">
-        <div className="row">
-          <span className="ico" style={{ background: "#8e99a6" }}>
-            ▢
-          </span>
-          这个浏览器<span className="v">本机</span>
-        </div>
         {machines.map((m) => (
           <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
             <span className="ico" style={{ background: "#5b8def" }}>
@@ -45,6 +49,28 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           ＋ 添加设备
         </button>
       </div>
+      <div className="glabel">客户端</div>
+      <div className="grp">
+        <button className="row" onClick={() => go("c/" + me)}>
+          {clientName(remote.devices.get(me), me)}
+          <span className="v">当前 ›</span>
+        </button>
+        {others.slice(0, 3).map((d) => (
+          <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
+            {clientName(d)}
+            <span className="v">已配对 ›</span>
+          </button>
+        ))}
+        {remote.devicesStatus === "unsupported" ? (
+          <div className="row help">服务器版本较旧，看不到其他客户端。</div>
+        ) : (
+          others.length > 3 && (
+            <button className="row add" onClick={() => go("devices")}>
+              全部客户端 ›
+            </button>
+          )
+        )}
+      </div>
       {push.group}
       <div className="glabel">外观</div>
       <div className="grp">
@@ -61,21 +87,191 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           退出并删除本机密钥
         </button>
       </div>
-      {leaving && (
+      {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+/** Leaving the account on this browser: its keys go, nothing else. */
+function LeaveAlert({ onCancel }: { onCancel: () => void }) {
+  return (
+    <Alert
+      title="退出这个浏览器？"
+      titleRed
+      text="这个浏览器里的账户密钥会被删除，要重新配对才能再用。电脑上的会话不受影响。"
+      ok="退出"
+      danger
+      onCancel={onCancel}
+      onOk={async () => {
+        await forgetAccount();
+        location.hash = "";
+        location.reload();
+      }}
+    />
+  );
+}
+
+/** 设备: computers, which run the CLIs, apart from clients, which operate
+ * sessions. Paired is not online, watching or owning anything. */
+export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: string) => void; onBack: () => void }) {
+  useRemote(remote);
+  const me = remote.account.deviceId;
+  const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
+  const clients = [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT).sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : Number(a.createdMs - b.createdMs)));
+  return (
+    <div className="page gray">
+      <NavBar onBack={onBack} title={<span className="tname">设备</span>} />
+      <div className="body">
+        <div className="glabel">电脑 · 运行 CLI</div>
+        <div className="grp">
+          {machines.map((m) => (
+            <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
+              {machineName(m)}
+              <span className="v">
+                {m.online ? (
+                  <>
+                    <Dot tone="idle" />
+                    在线
+                  </>
+                ) : (
+                  ago(m.lastSeenMs) || "离线"
+                )}{" "}
+                ›
+              </span>
+            </button>
+          ))}
+          {machines.length === 0 && <div className="row help">还没有电脑。</div>}
+        </div>
+        <div className="glabel">客户端 · 操作会话</div>
+        <div className="grp">
+          {remote.devicesStatus === "unsupported" && <div className="row help">服务器版本较旧，只能看到这个浏览器。</div>}
+          {remote.devicesStatus === "error" && (
+            <div className="row help">
+              没能读取设备列表
+              <button className="link" onClick={() => void remote.loadDevices()}>
+                重试
+              </button>
+            </div>
+          )}
+          {(clients.length ? clients : [{ id: me, meta: undefined }]).map((d) => (
+            <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
+              {clientName(d, d.id)}
+              <span className="v">{d.id === me ? "当前客户端" : "已配对 ›"}</span>
+            </button>
+          ))}
+        </div>
+        <div className="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码。已配对不表示现在正在查看。</div>
+        <div className="grp">
+          <button className="row add" onClick={() => go("add")}>
+            ＋ 添加电脑或客户端
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A client: its name (sealed; synced to the other clients), its ID to
+ * check, and removing it, or leaving on this one. */
+export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: (r: string) => void; onBack: () => void }) {
+  useRemote(remote);
+  const d = remote.devices.get(id);
+  const current = id === remote.account.deviceId;
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [removing, setRemoving] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const canEdit = remote.devicesStatus === "ready" && remote.conn === "online";
+  const save = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await remote.renameDevice(id, name);
+      setRenaming(false);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="page gray">
+      <NavBar onBack={onBack} title={<span className="tname">{clientName(d, id)}</span>} sub={current ? "当前客户端" : "已配对的客户端"} />
+      <div className="body">
+        <div className="glabel">客户端</div>
+        <div className="grp">
+          <button
+            className="row"
+            disabled={!canEdit}
+            onClick={() => {
+              setName(d?.meta?.name ?? "");
+              setRenaming(true);
+            }}
+          >
+            名称<span className="v">{d?.meta?.name || "未命名"} ›</span>
+          </button>
+          {d?.meta?.description && (
+            <div className="row">
+              运行在<span className="v">{d.meta.description}</span>
+            </div>
+          )}
+          <div className="row">
+            设备 ID<span className="v mono">…{shortId(id)}</span>
+          </div>
+        </div>
+        <div className="manage-hint">修改名称同步到其他客户端。{current ? "" : "通知开关要在那台设备上设置，不在这里远程修改。"}</div>
+        {error && (
+          <div className="gbanner">
+            <Banner kind="err">没能保存名称：{error}</Banner>
+          </div>
+        )}
+        <div className="grp">
+          {current ? (
+            <button className="row danger" onClick={() => setLeaving(true)}>
+              退出并删除本机密钥
+            </button>
+          ) : (
+            <button className="row danger" disabled={remote.conn !== "online"} onClick={() => setRemoving(true)}>
+              移除这个客户端…
+            </button>
+          )}
+        </div>
+        {!current && <div className="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。</div>}
+      </div>
+      {renaming && (
+        <Sheet onClose={() => setRenaming(false)}>
+          <h4>客户端名称</h4>
+          <input className="field" autoFocus value={name} placeholder={clientName(undefined, id)} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="客户端名称" />
+          <div className="hint">名称加密后同步，服务器看不到。留空就用类型和 ID 短码。</div>
+          <div className="btns" style={{ marginTop: 12 }}>
+            <button className="btn pri" disabled={busy} onClick={() => void save()}>
+              {busy ? "保存中…" : "保存"}
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {removing && (
         <Alert
-          title="退出这个浏览器？"
+          title={`移除 ${clientName(d, id)}？`}
           titleRed
-          text="这个浏览器里的账户密钥会被删除，要重新配对才能再用。电脑上的会话不受影响。"
-          ok="退出"
+          text="它的登录会失效、推送订阅会删除；电脑上的会话和历史不受影响。它持有账户密钥，仍可以重新加入。"
+          ok="移除"
           danger
-          onCancel={() => setLeaving(false)}
+          onCancel={() => setRemoving(false)}
           onOk={async () => {
-            await forgetAccount();
-            location.hash = "";
-            location.reload();
+            setRemoving(false);
+            try {
+              await remote.removeDevice(id);
+              go("devices");
+            } catch (e) {
+              setError(errorText(e));
+            }
           }}
         />
       )}
+      {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
     </div>
   );
 }
@@ -147,7 +343,7 @@ function usePush(remote: Remote) {
   );
   const group = (
     <>
-      <div className="glabel">通知</div>
+      <div className="glabel">本客户端的通知</div>
       <div className="grp">
         <div className="row">
           等我处理时
@@ -364,7 +560,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             const follow = "跟随配置";
             return (
               <div key={a}>
-                <div className="glabel">新会话默认设置{agents.length > 1 ? ` · ${agentName(a)}` : ""}</div>
+                <div className="glabel">{agentName(a)} · 新会话默认设置</div>
                 <div className="grp">
                   <button className="row" onClick={() => setPick({ agent: a, what: "model" })}>
                     模型<span className="v">{def.model ? modelName(a, def.model) : follow} ›</span>

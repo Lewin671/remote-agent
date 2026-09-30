@@ -701,3 +701,10 @@ a { color: var(--blue); }
 .removed-note .btns { margin-top: 8px; }
 .removed-note .banner { margin-top: 8px; }
 .body > .pad > .banner { margin: 4px 0; }
+
+/* Settings and devices. */
+.glabel.with-link { display: flex; justify-content: space-between; align-items: center; padding-right: 16px; }
+.glabel .link { font-size: 13px; font-weight: 400; min-height: 32px; }
+.row:disabled { opacity: .5; }
+.row.help .link { margin-left: 8px; font-size: 13px; }
+input.field { margin: 0; }
