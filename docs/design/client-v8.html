@@ -62,7 +62,7 @@
   .large h3 { font-size: 30px; margin: 0; letter-spacing: -.5px; }
   .large .conn { font-size: 12px; color: var(--muted); margin-left: 8px; margin-right: auto; display: inline-flex; align-items: center; gap: 5px; align-self: center; margin-top: 8px; }
   .hit { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex: none; }
-  .newbtn { height: 34px; padding: 0 14px; border-radius: 17px; background: var(--blue-soft); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .newbtn { width: 44px; height: 44px; color: var(--blue); display: flex; align-items: center; justify-content: center; }
   /* 导航栏：左右按钮 44×44 */
   .navbar { display: flex; align-items: center; padding: 0 4px 4px; flex: none; }
   .navbar .back, .navbar .more { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 26px; flex: none; }
@@ -787,7 +787,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页「新会话」选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，摘要和输入框用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行：中断按钮放进输入框、发送左边；排队的消息作为待发气泡留在对话末尾，就地取消，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成文字按钮「新会话」，和宽屏侧栏一致；「＋」只表示往消息里添加东西。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，摘要和输入框用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行：中断按钮放进输入框、发送左边；排队的消息作为待发气泡留在对话末尾，就地取消，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -801,7 +801,7 @@
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn">新会话</div></div></div>
+        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
 
         <div class="label">需要处理 <span>4</span></div>
         <div class="todo">
@@ -829,7 +829,7 @@
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn">新会话</div></div></div>
+        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
         <div class="label">进行中 <span>3</span></div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv">已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
@@ -854,7 +854,7 @@
 
 <!-- ============================= -->
 <h2 id="new">新建会话</h2>
-<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送，按项目设置里的 CLI、机器、模型和审批模式新建。设置属于项目，改了只影响之后新建的会话；输入框的「＋」只添加图片。主页右上角的「新会话」先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
+<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送，按项目设置里的 CLI、机器、模型和审批模式新建。设置属于项目，改了只影响之后新建的会话；输入框的「＋」只添加图片。主页右上角的新建按钮（方框加笔）先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
 <div class="screens">
   <div>
     <div class="phone">
@@ -925,7 +925,7 @@
         </div>
       </div>
     </div>
-    <div class="cap">从主页新建：右上角「新会话」先帮你选项目。选中后进入第 2 步，输入框已聚焦、键盘已弹出</div>
+    <div class="cap">从主页新建：右上角的新建按钮先帮你选项目。选中后进入第 2 步，输入框已聚焦、键盘已弹出</div>
   </div>
 
   <div>
@@ -1570,7 +1570,7 @@ GPT-6-Astra · medium ▾
   </ul>
   <h4>尺寸</h4>
   <ul>
-    <li>可点区域不小于 44×44；按钮本身可以更小（如 34 高的「新会话」），点击区由外层补足</li>
+    <li>可点区域不小于 44×44；图标本身可以更小（如 24 的新建图标），点击区由外层补足</li>
     <li>终端按键分两行，六个主键与三个辅助键均不小于 44×44，不把常用方向键藏进横向滚动</li>
     <li>手机上主要内容左右留 16，停靠区和状态卡左右留 12</li>
   </ul>
