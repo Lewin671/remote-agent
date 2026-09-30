@@ -125,3 +125,14 @@ it("never sends the compressed bytes when 原图 is on and the original failed (
   expect(tray.ready()).toBe(false);
   expect(uploaded).toEqual([10]);
 });
+
+describe("putting a message's images back (review W2, W4)", () => {
+  it("refuses, adding nothing, when they do not all fit", async () => {
+    const { tray } = setup();
+    tray.add([1, 2, 3, 4, 5].map((i) => file("d" + i)));
+    await vi.waitFor(() => expect(tray.ready()).toBe(true));
+    expect(tray.restore([{ imageId: "a" }, { imageId: "b" }])).toBe(false);
+    expect(tray.items.length).toBe(5);
+  });
+
+});

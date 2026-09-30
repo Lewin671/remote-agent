@@ -70,11 +70,14 @@ export class Tray {
   }
 
   /** Images already on the current machine, put back from a message that
-   * was not sent; nothing is prepared or uploaded again. */
-  restore(images: { imageId: string; thumb?: Blob }[]) {
-    for (const im of images.slice(0, Math.max(0, this.max - this.items.length)))
+   * was not sent; nothing is prepared or uploaded again. All or nothing:
+   * false, with nothing added, when they do not all fit. */
+  restore(images: { imageId: string; thumb?: Blob }[]): boolean {
+    if (this.items.length + images.length > this.max) return false;
+    for (const im of images)
       this.items.push({ key: "t" + ++keys, file: im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId });
     this.onChange();
+    return true;
   }
 
   remove(key: string) {

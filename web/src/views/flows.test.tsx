@@ -1568,3 +1568,4 @@ it("retries a confirmed start whose reply was lost as the same request, confirme
   expect(sent[2]).toEqual(sent[1]);
   expect(sent[2].confirm).toBe(true);
 });
+

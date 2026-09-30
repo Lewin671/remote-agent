@@ -115,10 +115,12 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   /** Puts a message back into the input: its text, and its images, still
    * on the computer, with this device's copies of them when it has them. */
   const restore = (text: string, from?: string) => {
-    remote.drafts.set(sid, text);
     const o = from ? remote.outbox(sid).find((x) => x.sendId === from) : undefined;
     const ids = o?.imageIds ?? (from ? d.accepted.get(from)?.imageIds : undefined) ?? [];
-    if (ids.length) tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] })));
+    // All of the message or none of it: never a message short of images.
+    if (ids.length && !tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] }))))
+      return setToast(`输入框里已有 ${tray.items.length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`);
+    remote.drafts.set(sid, text);
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
   };
