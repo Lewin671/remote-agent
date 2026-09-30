@@ -348,7 +348,7 @@ func (s *session) readRollout() {
 		for _, f := range s.parser.Images() {
 			s.images.process(f, r.Path)
 		}
-		s.annotate(evs)
+		consume := s.annotate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
 			// Read this line and the rest of the batch again next time.
@@ -362,6 +362,9 @@ func (s *session) readRollout() {
 			return
 		}
 		s.mu.Lock()
+		// Only now that the events are logged are the records they were
+		// matched to used up; a failed write reads them again.
+		consume()
 		for _, e := range evs {
 			s.observe(e)
 		}
@@ -769,27 +772,40 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 }
 
 // annotate records who caused parsed events, as far as the daemon knows:
-// the question it answered or the turn it interrupted for a client.
-func (s *session) annotate(evs []*pb.Event) {
+// the question it answered or the turn it interrupted for a client, the
+// message it wrote. It returns what uses the matched records up, to be
+// run, with s.mu held, once the events are logged.
+func (s *session) annotate(evs []*pb.Event) (consume func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var done []func()
 	for _, e := range evs {
 		switch k := e.Kind.(type) {
 		case *pb.Event_QuestionAnswered:
-			o := s.answeredBy[k.QuestionAnswered.QuestionId]
-			delete(s.answeredBy, k.QuestionAnswered.QuestionId)
+			id := k.QuestionAnswered.QuestionId
+			o := s.answeredBy[id]
 			if o == nil {
 				o = originLocal
 			}
 			withOrigin(e, o)
+			done = append(done, func() { delete(s.answeredBy, id) })
 		case *pb.Event_TurnEnded:
 			if k.TurnEnded.Outcome == pb.TurnOutcome_TURN_OUTCOME_ABORTED && s.interruptedBy != nil {
 				withOrigin(e, s.interruptedBy)
 			}
-			s.interruptedBy = nil
-			clear(s.answeredBy)
+			done = append(done, func() {
+				s.interruptedBy = nil
+				clear(s.answeredBy)
+			})
 		case *pb.Event_UserMessage:
-			s.annotateUserMessage(e, k.UserMessage)
+			if f := s.annotateUserMessage(e, k.UserMessage); f != nil {
+				done = append(done, f)
+			}
+		}
+	}
+	return func() {
+		for _, f := range done {
+			f()
 		}
 	}
 }

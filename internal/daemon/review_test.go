@@ -6,6 +6,8 @@ import (
 	"errors"
 	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/tail"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -190,13 +192,13 @@ func TestOriginMatchesOnce(t *testing.T) {
 		return &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "yes"}}}
 	}
 	first := msg()
-	h.s.annotate([]*pb.Event{first})
+	annotateLogged(h.s, first)
 	if first.Origin.GetDeviceId() != "dev" {
 		t.Fatalf("first: %v", first.Origin)
 	}
 	h.s.popInput("r1")
 	second := msg()
-	h.s.annotate([]*pb.Event{second})
+	annotateLogged(h.s, second)
 	if second.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {
 		t.Fatalf("second: %v", second.Origin)
 	}
@@ -207,7 +209,7 @@ func TestOriginMatchesOnce(t *testing.T) {
 		{Text: "ok", RequestID: "b", Origin: storeOrigin(&pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d2"}), Inflight: &off},
 	}
 	third := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "ok"}}}
-	h.s.annotate([]*pb.Event{third})
+	annotateLogged(h.s, third)
 	if third.Origin.GetDeviceId() != "" || third.GetUserMessage().RequestId != "" {
 		t.Fatalf("ambiguous: %v %q", third.Origin, third.GetUserMessage().RequestId)
 	}
@@ -316,4 +318,40 @@ func TestFailedInterruptKeepsEarlierOrigin(t *testing.T) {
 	if h.s.interruptedBy.GetDeviceId() != "a" {
 		t.Fatalf("origin %v", h.s.interruptedBy)
 	}
+}
+
+// V2: when logging a parsed user message fails, it is read again; its
+// origin must still be found then.
+func TestOriginSurvivesAFailedLogWrite(t *testing.T) {
+	h := newHarness(t, Config{})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	os.WriteFile(path, []byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"UserMessage","id":"u","content":[{"type":"text","text":"hi"}]}}}`+"\n"), 0o600)
+	h.s.reader = tail.NewReader(path, 0)
+	off := int64(0)
+	h.s.queue.Queue = []input{{Text: "hi", RequestID: "r1", Inflight: &off, Origin: storeOrigin(&pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev"})}}
+	h.s.log.Close()
+	h.s.readRollout() // fails to log
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	h.s.readRollout()
+	for _, e := range h.events() {
+		if m := e.GetUserMessage(); m != nil {
+			if e.Origin.GetDeviceId() != "dev" || m.RequestId != "r1" {
+				t.Fatalf("origin %v request %q", e.Origin, m.RequestId)
+			}
+			return
+		}
+	}
+	t.Fatal("user message not logged")
+}
+
+// annotateLogged annotates as readRollout does after a successful write.
+func annotateLogged(s *session, evs ...*pb.Event) {
+	consume := s.annotate(evs)
+	s.mu.Lock()
+	consume()
+	s.mu.Unlock()
 }

@@ -605,8 +605,9 @@ func (s *session) loggedUserMessage(in input) bool {
 // written for it, recording its origin, request ID and the upload ID of
 // each image. Each written message is matched once. When several could be
 // the one and they came from different places, none is named. A message
-// nothing was written for came from the local terminal. Callers hold s.mu.
-func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) {
+// nothing was written for came from the local terminal. It returns what
+// uses the match up, run once the event is logged. Callers hold s.mu.
+func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) func() {
 	type cand struct {
 		in   input
 		head bool
@@ -629,11 +630,11 @@ func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) {
 		if !inflight {
 			withOrigin(e, originLocal)
 		}
-		return
+		return nil
 	}
 	for _, c := range cands[1:] {
 		if !proto.Equal(c.in.Origin.pb(), cands[0].in.Origin.pb()) {
-			return // cannot tell whose it is
+			return nil // cannot tell whose it is
 		}
 	}
 	// The oldest of the candidates is taken: remembered ones before the
@@ -648,10 +649,21 @@ func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) {
 		ref.UploadId = in.Images[i].ID
 	}
 	withOrigin(e, in.Origin.pb())
-	if pick.head {
-		s.queue.Queue[0].matched = true
-	} else {
-		s.recent = append(s.recent[:pick.i:pick.i], s.recent[pick.i+1:]...)
+	id, head := in.RequestID, pick.head
+	return func() {
+		if head {
+			if len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == id {
+				s.queue.Queue[0].matched = true
+				return
+			}
+		}
+		// Popped meanwhile, or remembered: take it out of the memory.
+		for i, r := range s.recent {
+			if r.RequestID == id {
+				s.recent = append(s.recent[:i:i], s.recent[i+1:]...)
+				return
+			}
+		}
 	}
 }
 
