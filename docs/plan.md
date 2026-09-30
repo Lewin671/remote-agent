@@ -219,6 +219,8 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 [client-v3](design/client-v3.html) 是新的界面目标（保留 v2 全部页面并补充 Android 终端字号行）；网页与 Android 当前实现仍以 v1 为基线，v2 设计稿不代表客户端已改完。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
+**Go 侧进度**（2026-09-30）：协议、server 和 daemon 已完成——会话图片（预览、显示版、按序上传、去重、降级）、从客户端发图（分块上传、逐张粘贴、阶段落盘、失败清理、重启恢复）、账户项目偏好和设备目录的存取与推送、指令签名和事件来源。在隔离的 server、daemon 和 tmux 上用真实 CLI 验过（Codex 0.159.0 GPT-6-Luna low，Claude Code 2.1.285 haiku，测试客户端是 `internal/remoteclient`）：两个 CLI 各新建一个第一条消息带图的会话；Codex 空闲时发两张图、Claude Code 运行中发两张图；3.8 MB 和 4.3 MB 的图显示版都在 1 MiB 以内；11.6 MB 带 GPS 的原图在两个 CLI 的记录里都没有 EXIF；电脑终端里显示 `[Image #N]`，模型都读出了图里的字；Codex 的 `view_image`、生成图，Claude Code 的 `Read`，以及两个 CLI 在终端本地粘贴的图都带预览和大图；第二张图丢失时不提交并清空输入框；粘贴中途杀掉 daemon，重启后清空并记为失败；注入期间本地敲的键在提交后出现在新输入框里；18.9 MB 的 rollout 行照常解析；server 数据库和 WAL 里没有正文、路径和图片明文。客户端的显示和发送在各自的进度里验收。
+
 - 新建卡片直接选择 CLI；机器与审批模式完整显示；输入期间配置稳定，切换 CLI 验证模型、强度和模式。
 - 统一输入区、独立中断入口、键盘精简设置行、上下文与模型面板、队列完整查看和取消反馈。
 - Claude Code 多选与长问题、计划操作差异、不可用模式、按 CLI 的设备默认设置、终端左右方向键。
