@@ -151,6 +151,7 @@ class Remote(
     private val frameQueue: Int = 1024,
 ) {
     private val keys = Keys.derive(account.root)
+    private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http)
     private val dispatcher = Dispatchers.IO.limitedParallelism(1)
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -608,7 +609,9 @@ class Remote(
     fun prepare(machineId: String, sessionId: String, cmd: Command): PreparedCommand {
         val requestId = newRequestId()
         val deadline = clock() + COMMAND_TTL_MS
-        val env = Envelopes.seal(
+        // Signed by this device, so a daemon can tell who sent it
+        // (architecture §9); older daemons ignore the signature.
+        val env = signEnvelope(device, Envelopes.seal(
             keys.command,
             Header.newBuilder()
                 .setKind(PayloadKind.PAYLOAD_KIND_COMMAND)
@@ -619,7 +622,7 @@ class Remote(
                 .setSender(account.deviceId)
                 .build(),
             cmd,
-        )
+        ))
         return PreparedCommand(machineId, sessionId, requestId, deadline, env)
     }
 

@@ -81,6 +81,10 @@ class Keys private constructor(
     val meta: ByteArray,
     val command: ByteArray,
     val notify: ByteArray,
+    /** Seals account preference objects (ProjectPrefs). */
+    val prefs: ByteArray,
+    /** Seals client devices' metadata (DeviceMeta). */
+    val deviceMeta: ByteArray,
 ) {
     companion object {
         fun derive(root: ByteArray): Keys {
@@ -91,6 +95,8 @@ class Keys private constructor(
                 meta = deriveKey(root, "machine-meta"),
                 command = deriveKey(root, "command"),
                 notify = deriveKey(root, "notify"),
+                prefs = deriveKey(root, "account-prefs"),
+                deviceMeta = deriveKey(root, "device-meta"),
             )
         }
 
@@ -224,5 +230,27 @@ object Envelopes {
         return h to msg
     }
 }
+
+private const val ENVELOPE_SIGNATURE_CONTEXT = "remote-agent/v1/envelope-signature\u0000"
+
+/**
+ * What a device signs for an envelope (Envelope.signature): a context,
+ * then the header, nonce and ciphertext as transmitted, each with its
+ * length as a big-endian uint32. Same as SignedEnvelopeBytes in Go.
+ */
+fun signedEnvelopeBytes(env: Envelope): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    out.write(ENVELOPE_SIGNATURE_CONTEXT.toByteArray())
+    for (part in listOf(env.header, env.nonce, env.ciphertext)) {
+        val n = part.size()
+        out.write(byteArrayOf((n ushr 24).toByte(), (n ushr 16).toByte(), (n ushr 8).toByte(), n.toByte()))
+        part.writeTo(out)
+    }
+    return out.toByteArray()
+}
+
+/** The envelope with the device's signature, so the daemon can tell which device sent it. */
+fun signEnvelope(device: SigningKey, env: Envelope): Envelope =
+    env.toBuilder().setSignature(ByteString.copyFrom(device.sign(signedEnvelopeBytes(env)))).build()
 
 fun newRequestId(): String = randomBytes(16).hex()

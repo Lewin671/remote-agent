@@ -44,6 +44,7 @@ tasks.test {
     systemProperty("raServer", testServer.absolutePath)
     // The test vectors are shared with Go and TypeScript.
     systemProperty("vectors", rootProject.file("../internal/e2e/testdata/vectors.json").absolutePath)
+    systemProperty("v2Vectors", rootProject.file("../internal/e2e/testdata/v2-vectors.json").absolutePath)
     systemProperty("kotlinVectors", rootProject.file("../internal/e2e/testdata/kotlin-vectors.json").absolutePath)
     // ./gradlew :core:test -PupdateVectors rewrites kotlin-vectors.json.
     if (project.hasProperty("updateVectors")) systemProperty("updateVectors", "1")
