@@ -441,6 +441,26 @@ describe("events", () => {
     expect([...d.terminalChanges.entries()]).toEqual([[3n, "模型切到了 gpt-6-luna · low"]]);
   });
 
+  it("does not take a mode-only context's old model for a terminal switch", () => {
+    const ctx = (permissionMode: string, model: string) => ({ case: "turnContext", value: { permissionMode, model } });
+    const d = derive(
+      events(
+        ctx("default", "claude-haiku-4-5-20251001"),
+        { case: "settingsChanged", value: { model: "sonnet", effort: "medium" } },
+        // The mode changed before the next reply; the context still names
+        // the model it had.
+        ctx("acceptEdits", "claude-haiku-4-5-20251001"),
+        ctx("acceptEdits", "claude-sonnet-5-5"), // the switch, confirmed
+        ctx("acceptEdits", "claude-opus-5-5"), // then changed at the computer
+      ),
+      Agent.CLAUDE,
+    );
+    expect([...d.terminalChanges.entries()]).toEqual([
+      [3n, "模式切到了 acceptEdits"],
+      [5n, "模型切到了 claude-opus-5-5"],
+    ]);
+  });
+
   it("records context use around a compaction", () => {
     const d = derive(
       events(
