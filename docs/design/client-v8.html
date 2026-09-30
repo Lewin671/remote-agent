@@ -703,6 +703,7 @@
   .compose-pop > a { min-height:44px; display:flex; align-items:center; text-decoration:none; }
   .compose-pop > div { min-height:44px; display:flex; align-items:center; overflow-wrap:anywhere; }
   .compose-card .go44 { border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; grid-column:3; grid-row:1; width:44px; height:44px; align-self:end; background:var(--blue-bg); color:var(--on-solid); border:6px solid var(--card); }
+  .navbar .title em.risk { font-style:normal; color:var(--red); }
   .compose-card .access-warning { grid-column:1 / -1; grid-row:2; color:var(--red); font-size:12px; padding:2px 12px; }
   .compose-card .att-tray, .compose-card .att-meta { grid-column:1 / -1; }
   .compose-card:has(.att-tray) .draft, .compose-card:has(.att-tray) .compose-menu, .compose-card:has(.att-tray) .go44 { grid-row:3; }
@@ -787,7 +788,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，摘要和输入框用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1035,7 +1036,7 @@
       <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：设置…</div></div></details><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap">键盘弹出：等待事项仍为一行，输入框随正文增长；「＋」里可查看模式、模型与上下文；完全放行仍常驻提示</div>
+    <div class="cap">键盘弹出：等待事项仍为一行，输入框随正文增长；「＋」里可查看模式、模型与上下文；完全放行写在导航栏第二行</div>
   </div>
 
   <div>
@@ -1299,7 +1300,7 @@ Sonnet · high ▾
 <span class="tname">重构订单模块</span>
 <span class="agent-id">Claude Code</span>
 </b>
-<span>运行中 · shop · iMac</span>
+<span>运行中 · <em class="risk">完全放行</em> · shop · iMac</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -1315,7 +1316,7 @@ Sonnet · high ▾
 </div>
 <div class="compose-card slim">
 <div class="draft typed">也检查下并发扣减</div>
-<div class="access-warning">完全放行</div><div class="controls">
+<div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：完全放行 ▾</div><div>模型：
 设置…
 </div></div></details>
@@ -1384,7 +1385,7 @@ Sonnet · high ▾
 </div>
 </div>
 </div>
-<div class="cap">键盘弹出：输入区保持单行起步，仍显示完全放行；有草稿时发送位是 ↑，中断从 ⋯ 菜单，展开详情后草稿保留</div>
+<div class="cap">键盘弹出：输入区保持单行起步；完全放行用红字写在导航栏第二行，不占输入框；有草稿时发送位是 ↑，中断从 ⋯ 菜单，展开详情后草稿保留</div>
 </div>
 <div>
 <div class="phone">
@@ -1728,8 +1729,8 @@ GPT-6-Astra · medium ▾
   <div class="st">
     <div class="st-h">新建 · 项目默认完全放行 / 模式未知</div>
     <a class="proj-cfg" href="#project-settings"><em>Codex ·</em> <span class="red">完全放行</span><em>· MacBook · GPT-6-Astra</em></a>
-    <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="access-warning">完全放行</div><div class="controls"><details class="compose-menu"><summary aria-label="添加图片">＋</summary></details><span class="go44">↑</span></div></div>
-    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，摘要和输入框用红字标出。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
+    <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><details class="compose-menu"><summary aria-label="添加图片">＋</summary></details><span class="go44">↑</span></div></div>
+    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要里用红字标出，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
   </div>
   <div class="st">
     <div class="st-h">主页 · 加载中 / 空账户</div>
@@ -2744,7 +2745,7 @@ Sonnet · high ▾
         <div class="btns"><div class="btn">取消</div><div class="btn danger">切换</div></div>
       </div>
     </div>
-    <div class="cap">切到完全放行前二次确认，输入区常驻红色文字提示</div>
+    <div class="cap">切到完全放行前二次确认；之后导航栏第二行常驻红字「完全放行」</div>
   </div>
 
   <div>
