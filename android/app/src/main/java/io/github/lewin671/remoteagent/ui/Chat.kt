@@ -508,24 +508,32 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
     }
 }
 
-/** A call that returned while its command went on in the background: not a success, its end is not known. */
+/**
+ * A call that went on in the background: its event is its start, and
+ * nothing reliable says when it ends, so it is never shown as done.
+ * Worded as on the web client.
+ */
 @Composable
 private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: String = "") {
     val p = pal
+    val chat = LocalChat.current
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(p.soft, RoundedCornerShape(12.dp)).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("◌", color = p.muted, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.width(8.dp))
-            Text("后台命令 · 状态待确认", style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f))
-            if (decision.isNotEmpty()) Text(decision, style = MaterialTheme.typography.bodySmall, color = p.muted)
+            Text(
+                io.github.lewin671.remoteagent.core.backgroundTitle(t.kind, t.itemType, chat?.agent ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) + " · 状态待确认",
+                style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f),
+            )
+            if (t.backgroundId.isNotEmpty()) Text(t.backgroundId, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = p.muted)
         }
         Text(toolTitle(t, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(backgroundNote(t), style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text(io.github.lewin671.remoteagent.core.backgroundNote(t.background), style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (decision.isNotEmpty()) Text(decision, style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
+            if (chat != null && chat.terminalOpen && chat.frozenAt == 0L) androidx.compose.material3.TextButton(onClick = chat.onTerminal) { Text("去终端 ›") }
+            else Text("终端不可用", style = MaterialTheme.typography.bodySmall, color = p.faint)
+        }
     }
 }
-
-/** What a background call's row says: how it got there, when the daemon says, and that its end is not known. */
-fun backgroundNote(t: ToolCall): String =
-    io.github.lewin671.remoteagent.core.backgroundReason(t.background).ifEmpty { "调用已返回，命令转到了后台" } +
-        "；它什么时候结束这里不知道。请到终端确认。"
 

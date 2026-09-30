@@ -107,6 +107,8 @@ class BackgroundFieldTest {
         assertEquals("e2", tool.key)
         assertTrue(tool.background)
         assertTrue(items.none { it is ChatItem.Running })
-        assertTrue(backgroundNote(tool.call).startsWith("本轮结束时仍在运行"))
+        assertEquals("这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。", io.github.lewin671.remoteagent.core.backgroundNote(tool.call.background))
+        assertEquals("后台命令", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE))
+        assertEquals("Task（后台）", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_OTHER, "Task", Agent.AGENT_CLAUDE))
     }
 }

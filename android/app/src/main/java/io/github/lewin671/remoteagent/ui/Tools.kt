@@ -133,7 +133,7 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
             if (state == ToolState.RUNNING) CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp)
             else Text("◌", color = p.muted, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.width(8.dp))
-            val label = if (item.unfinished) "后台命令" else toolLabel(tool.kind, tool.itemType, ctx.agent)
+            val label = if (item.unfinished) io.github.lewin671.remoteagent.core.backgroundTitle(tool.kind, tool.itemType, ctx.agent) else toolLabel(tool.kind, tool.itemType, ctx.agent)
             Text("$label · ${state.text}", style = MaterialTheme.typography.titleSmall, color = if (state == ToolState.APPROVAL) p.orangeInk else p.fg2, modifier = Modifier.weight(1f))
             Text(toolTimer(tool, state, t, ctx.frozenAt), style = MaterialTheme.typography.bodySmall, color = p.muted)
         }

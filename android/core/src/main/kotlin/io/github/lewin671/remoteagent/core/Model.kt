@@ -317,14 +317,22 @@ fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean 
         c.background != io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED ||
         backgroundInput(c.input) || c.output.startsWith("Command running in background with ID:")
 
-/** How a call got to the background, in words; empty when not known. */
-fun backgroundReason(b: io.github.lewin671.remoteagent.proto.ToolBackground): String = when (b) {
-    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED -> "按模型的要求转到后台"
-    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT -> "运行超时后转到后台"
-    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_BY_USER -> "在终端里被转到后台"
-    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING -> "本轮结束时仍在运行"
-    else -> ""
+/** Why a call is in the background and what that means, as the web client says it. */
+fun backgroundNote(b: io.github.lewin671.remoteagent.proto.ToolBackground): String {
+    val rest = "它什么时候结束这里不知道，请到终端确认。"
+    return when (b) {
+        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED -> "按模型的要求在后台运行；"
+        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT -> "运行超时后被移到后台继续运行；"
+        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_BY_USER -> "在电脑终端里被移到后台（Ctrl+B）；"
+        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING -> "这一轮结束时它仍在运行；"
+        else -> "调用已返回，命令转到了后台；"
+    } + rest
 }
+
+/** A background call's title: 后台命令 for a shell call, else the tool's name with （后台）. */
+fun backgroundTitle(kind: io.github.lewin671.remoteagent.proto.ToolKind, itemType: String, agent: Agent): String =
+    if (kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND || kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_UNSPECIFIED) "后台命令"
+    else "${toolLabel(kind, itemType, agent)}（后台）"
 
 /**
  * A tool whose end is not known (architecture §13, 工具执行反馈): its call
