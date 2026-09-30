@@ -1,7 +1,5 @@
 package io.github.lewin671.remoteagent.term
 
-import android.graphics.Paint
-import android.graphics.Typeface
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -28,47 +26,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.res.ResourcesCompat
 import com.termux.view.TerminalView
+import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
 import kotlinx.coroutines.launch
-import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.min
-
-/** Width of a monospace character as a fraction of the font size. */
-private val charRatio: Float by lazy {
-    val p = Paint().apply { typeface = Typeface.MONOSPACE; textSize = 100f }
-    p.measureText("M") / 100f
-}
-
-private val lineRatio: Float by lazy {
-    val p = Paint().apply { typeface = Typeface.MONOSPACE; textSize = 100f }
-    p.fontSpacing / 100f
-}
-
-/** The largest font size in pixels at which [cols] columns fit in [width], measured as the renderer does. */
-private fun fitFont(width: Float, cols: Int): Int {
-    val p = Paint().apply { typeface = Typeface.MONOSPACE }
-    var size = floor(width / (cols * charRatio)).toInt() + 1
-    while (size > 4) {
-        p.textSize = size.toFloat()
-        if (p.measureText("X") * cols <= width) return size
-        size--
-    }
-    return size
-}
 
 /**
  * The key bar's keys (client-v2): the arrows and Enter on the first row with
@@ -97,7 +77,7 @@ internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
 /**
  * The live terminal of a session with its toolbar and key bar. The font is
  * scaled so the whole tmux window fits; the keyboard and rotation never
- * resize the remote window, only "适配我的屏幕" does.
+ * resize the remote window. Font changes refit only an already fitted window.
  */
 @Composable
 fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier) {
@@ -117,6 +97,17 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             term.dismissResized()
         }
     }
+    val context = LocalContext.current
+    val typeface = remember(context) { requireNotNull(ResourcesCompat.getFont(context, R.font.sarasa_fixed_sc_regular)) }
+    val preferences = remember(context) { context.getSharedPreferences("terminal-display", android.content.Context.MODE_PRIVATE) }
+    var fontDp by remember { mutableIntStateOf(preferences.getInt("font-dp", 14).coerceIn(10, 22)) }
+    var refitAfterFontChange by remember { mutableStateOf(false) }
+    fun changeFont(delta: Int) {
+        fontDp = (fontDp + delta).coerceIn(10, 22)
+        preferences.edit().putInt("font-dp", fontDp).apply()
+        refitAfterFontChange = true
+    }
+    val hostView = LocalView.current
     val density = LocalDensity.current
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     val p = pal
@@ -141,6 +132,15 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 TextButton(onClick = { term.toggleFit() }) { Text(if (fitted) "还原" else "⤢ 适配我的屏幕") }
             }
         }
+        Row(
+            Modifier.fillMaxWidth().background(p.soft).height(40.dp).padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("字号", style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.weight(1f))
+            TextButton(onClick = { changeFont(-1) }, enabled = fontDp > 10) { Text("A−") }
+            Text("$fontDp", style = MaterialTheme.typography.bodyMedium, color = p.muted)
+            TextButton(onClick = { changeFont(1) }, enabled = fontDp < 22) { Text("A+") }
+        }
         if (resized) {
             Column(Modifier.fillMaxWidth().background(p.orangeSoft).padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text("远端尺寸已变化", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
@@ -153,21 +153,31 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(Color.Black)) {
             val widthPx = constraints.maxWidth
             val heightPx = constraints.maxHeight
-            var fontPx by remember { mutableIntStateOf(0) }
             val (cols, rows) = size
-            // Keep the size chosen without the keyboard while it is up.
-            if (!imeVisible || fontPx == 0) {
-                val pad = with(density) { 8.dp.toPx() }
-                val w = if (cols > 0) fitFont(widthPx - pad, cols) else 0
-                val h = if (rows > 0) floor((heightPx - pad) / (rows * lineRatio)).toInt() else 0
-                val maxPx = with(density) { 16.dp.toPx() }.toInt()
-                val chosen = if (w > 0 && h > 0) min(w, h) else with(density) { 12.dp.toPx() }.toInt()
-                fontPx = chosen.coerceIn(5, maxPx)
-                val readable = with(density) { 12.dp.toPx() }
-                term.fitSize = floor((widthPx - pad) / (readable * charRatio)).toInt() to floor((heightPx - pad) / (readable * lineRatio)).toInt()
+            // Opening the keyboard must neither shrink the font nor resize the shared window.
+            var fullHeightPx by remember { mutableIntStateOf(heightPx) }
+            // adjustResize can arrive before Compose's IME insets update. Read the
+            // native insets too, so the smaller keyboard viewport never becomes our baseline.
+            val keyboardVisible = imeVisible ||
+                ViewCompat.getRootWindowInsets(hostView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (!keyboardVisible) fullHeightPx = heightPx
+            val sizingHeight = fullHeightPx
+            val pad = with(density) { 8.dp.roundToPx() }
+            val preferredPx = with(density) { fontDp.dp.roundToPx() }
+            val preferredGeometry = remember(typeface, preferredPx) { terminalGeometry(typeface, preferredPx) }
+            term.fitSize = preferredGeometry.capacity(widthPx - pad, sizingHeight - pad)
+            val fontPx = remember(typeface, preferredPx, widthPx, sizingHeight, cols, rows, pad) {
+                terminalFontPixels(typeface, preferredPx, widthPx - pad, sizingHeight - pad, cols, rows)
             }
-            val lineHeightPx = remember(fontPx) { max(1, kotlin.math.ceil(Paint().apply { typeface = Typeface.MONOSPACE; textSize = fontPx.toFloat() }.fontSpacing).toInt()) }
-            val contentPx = max(heightPx, (rows.coerceAtLeast(1) + 1) * lineHeightPx)
+            LaunchedEffect(fontDp, refitAfterFontChange) {
+                if (refitAfterFontChange) {
+                    if (fitted) term.fitToScreen()
+                    refitAfterFontChange = false
+                }
+            }
+            val geometry = remember(typeface, fontPx) { terminalGeometry(typeface, fontPx) }
+            val lineHeightPx = geometry.lineHeight
+            val contentPx = max(heightPx, rows.coerceAtLeast(1) * lineHeightPx + geometry.topOffset)
             val scroll = rememberScrollState()
             fun followCursor() {
                 val em = term.session.emulator ?: return
@@ -189,6 +199,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                             isFocusable = true
                             isFocusableInTouchMode = true
                             setTextSize(fontPx)
+                            setTypeface(typeface)
                             tag = fontPx
                             attachSession(term.session)
                             term.view = this

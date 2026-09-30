@@ -147,11 +147,20 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
             c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setFit(false)).build())
             fit.release()
         } else {
-            val (cols, rows) = fitSize
-            if (cols < 10 || rows < 5) return
-            c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setCols(cols).setRows(rows).setFit(true)).build())
-            fit.request(cols to rows)
+            fitToScreen()
         }
+        _resizedElsewhere.value = false
+        _fitted.value = fit.fitted
+    }
+
+    /** Explicit user font changes may refit an already fitted window. */
+    fun fitToScreen() {
+        if (_state.value != State.Live) return
+        val c = conn ?: return
+        val (cols, rows) = fitSize
+        if (cols < 10 || rows < 5) return
+        c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setCols(cols).setRows(rows).setFit(true)).build())
+        fit.request(cols to rows)
         _resizedElsewhere.value = false
         _fitted.value = fit.fitted
     }

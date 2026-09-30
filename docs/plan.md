@@ -178,6 +178,7 @@ server、加密、网页、终端视图、按项目分组、推送、开机自�
 - 模拟器上走过：输码配对（电脑发起）和 App 发起、电脑输码加入，两边 emoji 一致；会话列表、项目页、聊天；发消息收到回复；审批在停靠区允许、附理由拒绝，在通知里允许和拒绝，推送点开直接进审批页；Claude Code 的多选提问；中断；结束和恢复；切换审批模式；在项目里新建 Codex 和 Claude Code（haiku）会话，信任目录的弹窗去终端用按键栏处理；终端的输入、按键栏、键盘弹出和旋转不改远端尺寸、适配和还原；server 停掉再起，断线期间的事件补齐且不重复；App 进程被杀后收推送、重开后先显示缓存；移除设备；亮色和暗色
 - 推送：用真实的 Firebase 项目联调，server 用 FCM HTTP v1 发送，App 在后台和进程被杀后都收到并解密；通知默认只写通用文案，设置里打开后才有命令和按钮
 - R8：`minified` 构建类型（release 加允许明文 HTTP）在模拟器上走过同样的流程
+- Android 终端字体与字号：已内置更纱 Fixed SC，按实际绘制度量适配，新增字号调节与本机记忆；模拟器验收见 [android-notes §2](android-notes.md#2-termux-终端组件)，真机效果仍待确认。
 - 没做：宽屏布局（界面稿的宽屏画面只给网页）；终端输出积压后断开重连的逻辑已实现但没有用真实的大量输出触发过
 
 ### 不做
@@ -216,7 +217,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 ## W2 / A6 客户端按 v2 更新（待实现）
 
-[client-v2](design/client-v2.html) 是新的界面目标；网页与 Android 当前实现仍以 v1 为基线，v2 设计稿不代表客户端已改完。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
+[client-v3](design/client-v3.html) 是新的界面目标（保留 v2 全部页面并补充 Android 终端字号行）；网页与 Android 当前实现仍以 v1 为基线，v2 设计稿不代表客户端已改完。范围见 [scope.md](scope.md)，项目偏好规则见 [architecture.md](architecture.md#项目列表偏好)。
 
 - 新建卡片直接选择 CLI；机器与审批模式完整显示；输入期间配置稳定，切换 CLI 验证模型、强度和模式。
 - 统一输入区、独立中断入口、键盘精简设置行、上下文与模型面板、队列完整查看和取消反馈。
@@ -244,7 +245,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 - 以后做不做原生 iOS：做的话，再比较把 `:core` 迁到 KMP 和改用 gomobile 复用 Go
 - 待验证：平台 JCA 能否导入导出原始 32 字节的 X25519、Ed25519 密钥（现在一直用 Bouncy Castle）
-- 真手机上验证：中文输入法在终端里输入；设了锁屏时通知里的「允许」「拒绝」要先解锁；FCM 在国内网络和省电策略下的到达；连续使用一天没有 ANR 和崩溃（模拟器上只验证了英文输入和没有锁屏的情况，见 [android-notes.md](android-notes.md)）
+- 真手机上验证：终端更纱字体的中文、符号和 emoji 显示，以及字号调节、键盘弹出和旋转；中文输入法在终端里输入；设了锁屏时通知里的「允许」「拒绝」要先解锁；FCM 在国内网络和省电策略下的到达；连续使用一天没有 ANR 和崩溃（模拟器上只验证了英文输入和没有锁屏的情况，见 [android-notes.md](android-notes.md)）
 
 **P1、P2 遗留**
 
