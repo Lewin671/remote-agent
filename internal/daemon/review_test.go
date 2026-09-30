@@ -62,3 +62,47 @@ func TestClearLeavesMultilineDrafts(t *testing.T) {
 		t.Fatalf("wrote %q", w)
 	}
 }
+
+// G5: after a restart the CLI may still be converting a pasted image, so
+// an empty input box proves nothing at first: a placeholder that shows up
+// later makes it the terminal's to sort out, and nothing is deleted.
+func TestRestartWaitsForLateConversion(t *testing.T) {
+	defer func(w time.Duration) { conversionWindow = w }(conversionWindow)
+	conversionWindow = 1500 * time.Millisecond
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	h.s.queue.Queue = []input{{Text: "one", RequestID: "r1", Images: imgs, Stage: pb.InputStage_INPUT_STAGE_PASTING_IMAGES}}
+	h.s.queue.save(h.dir)
+	h.term.setScreen(idleScreen)
+	go func() {
+		time.Sleep(700 * time.Millisecond)
+		h.term.setScreen(composerScreen("[Image #5]"))
+	}()
+	runInjector(t, h)
+	eventually(t, "settled", func() bool {
+		st := inputStates(h, "r1")
+		return len(st) > 0 && st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_QUEUED
+	})
+	st := inputStates(h, "r1")
+	if s := st[len(st)-1]; s.Status != pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL {
+		t.Fatalf("status %v", s.Status)
+	}
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("writes %q", w)
+	}
+}
+
+// With the box empty for the whole window, the message failed cleanly.
+func TestRestartWithEmptyBoxFails(t *testing.T) {
+	defer func(w time.Duration) { conversionWindow = w }(conversionWindow)
+	conversionWindow = 300 * time.Millisecond
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	h.s.queue.Queue = []input{{Text: "one", RequestID: "r1", Images: imgs, Stage: pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED}}
+	h.s.queue.save(h.dir)
+	runInjector(t, h)
+	eventually(t, "failed", func() bool {
+		st := inputStates(h, "r1")
+		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_FAILED
+	})
+}

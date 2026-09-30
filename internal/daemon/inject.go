@@ -40,6 +40,11 @@ const (
 	imageStartDelay = 3 * time.Second
 )
 
+// conversionWindow is how long, after a restart, an image pasted before it
+// may take to turn into a placeholder (Claude Code converts in the
+// background: about a second for 9 MB).
+var conversionWindow = 10 * time.Second
+
 // recentInputs bounds the submitted messages remembered for matching the
 // CLI's record of them, which may come late (Codex writes a message sent
 // during a turn after the next tool call).
@@ -406,8 +411,13 @@ func (s *session) clearPasted(c control, in input, got []int32, footer string, e
 }
 
 // recoverPaste settles a message a previous daemon was pasting images for
-// when it stopped. It is not written again; what was pasted is cleared if
-// it is all that the input box holds.
+// when it stopped. It is never written again, and nothing is deleted: the
+// hold ended with the old daemon, so what the input box holds may be the
+// user's (who may have cleared it and pasted images of their own, whose
+// placeholders Codex numbers alike). The CLI may also still be converting
+// an image the old daemon pasted. The message is FAILED only if the box
+// stays empty for the whole conversion window; anything else leaves it to
+// the terminal. Later messages wait meanwhile.
 func (s *session) recoverPaste(in input) (inputOutcome, error) {
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
@@ -416,13 +426,32 @@ func (s *session) recoverPaste(in input) (inputOutcome, error) {
 		return notWritten, err
 	}
 	defer c.Close()
-	l, err := holdLease(c, injectBase)
+	l, err := holdLease(c, conversionWindow+injectBase)
 	if err != nil {
 		return notWritten, err
 	}
 	defer l.end()
-	time.Sleep(settle)
-	return s.abandon(c, in, in.Indexes, "", true, "restarted"), nil
+	status := pb.InputStatus_INPUT_STATUS_FAILED
+	deadline := time.Now().Add(conversionWindow)
+	for {
+		styled, err := s.term.Capture()
+		var text string
+		ok := false
+		if err == nil {
+			text, ok = s.ag.ComposerText(styled, "")
+		}
+		if !ok || text != "" {
+			status = pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
+			break
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", "restarted", "status", status.String())
+	s.finishInput(in, status, "restarted")
+	return finished, nil
 }
 
 // setStage saves how far the head message has got and reports it.
