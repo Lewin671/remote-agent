@@ -28,6 +28,8 @@ class Vault(context: Context) {
     private val accountFile = File(dir, "account.bin")
     private val notifyFile = File(dir, "notify.bin")
 
+    fun hasAccount(): Boolean = accountFile.exists()
+
     fun load(): Account? {
         val blob = read(accountFile, ACCOUNT_ALIAS) ?: return null
         return DataInputStream(ByteArrayInputStream(blob)).use { s ->

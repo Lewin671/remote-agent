@@ -11,7 +11,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -82,8 +86,17 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = pal.bg) {
                     val loaded by app.loaded.collectAsState()
                     val remote by app.remote.collectAsState()
+                    val accountError by app.accountError.collectAsState()
                     val r = remote
                     when {
+                        !loaded && accountError.isNotEmpty() -> Column(
+                            Modifier.fillMaxSize().padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(accountError)
+                            TextButton(onClick = { app.loadAccount() }) { Text("重试") }
+                        }
                         !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         r == null -> JoinScreen(app)
                         else -> Main(r)

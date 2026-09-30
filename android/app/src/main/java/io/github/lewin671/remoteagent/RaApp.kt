@@ -41,30 +41,23 @@ class RaApp : Application() {
     private val _remote = MutableStateFlow<Remote?>(null)
     val remote: StateFlow<Remote?> = _remote.asStateFlow()
     private val _loaded = MutableStateFlow(false)
-    /** The stored account has been read. */
+    /** The stored account has been read, or there is none. */
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+    private val _accountError = MutableStateFlow("")
+    /** Why the stored account could not be read, e.g. the phone was locked. */
+    val accountError: StateFlow<String> = _accountError.asStateFlow()
     private var foreground = false
+    private var loading = false
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         // Kept light: a push may start the process just to show a notification.
         Push.createChannels(this)
-        scope.launch {
-            val acct = withContext(Dispatchers.IO) {
-                try {
-                    vault.load()
-                } catch (e: Exception) {
-                    Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
-                    null
-                }
-            }
-            if (acct != null) use(acct)
-            _loaded.value = true
-        }
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 foreground = true
+                loadAccount()
                 _remote.value?.let { r ->
                     r.start()
                     scope.launch { Push.register(this@RaApp, r) }
@@ -81,6 +74,29 @@ class RaApp : Application() {
                 _remote.value?.reconnectNow()
             }
         })
+    }
+
+    /**
+     * Reads the account, only in the foreground (architecture §15): a process
+     * a push started while the phone was locked could not open it, and does
+     * not need the root key to show a notification. A failure, such as a
+     * phone locked again meanwhile, is retried at the next start.
+     */
+    fun loadAccount() {
+        if (_remote.value != null || loading) return
+        loading = true
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { if (vault.hasAccount()) vault.load() else null } }
+            loading = false
+            result.onSuccess { acct ->
+                _accountError.value = ""
+                if (acct != null) use(acct)
+                _loaded.value = true
+            }.onFailure { e ->
+                Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
+                _accountError.value = "读不出这台手机保存的账户（${e.javaClass.simpleName}）。解锁手机后重试"
+            }
+        }
     }
 
     private fun use(acct: Account) {

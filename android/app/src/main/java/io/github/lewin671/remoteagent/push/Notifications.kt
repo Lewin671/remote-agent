@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.push
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -92,6 +93,25 @@ object Notifier {
 
     fun id(session: String, approval: String?): Int = (approval ?: session).hashCode()
 
+    /** How a push is shown. */
+    data class Display(val detailed: Boolean, val buttons: Boolean, val visibility: Int)
+
+    /**
+     * Content only when turned on and the phone is unlocked, and then hidden
+     * from the lock screen altogether (VISIBILITY_SECRET): VISIBILITY_PRIVATE
+     * alone shows everything to users who allow sensitive content on the
+     * lock screen. Buttons only from API 31, where they can require
+     * unlocking; below that a tap opens the approval page in the app.
+     */
+    fun display(showContent: Boolean, hasContent: Boolean, locked: Boolean, sdk: Int): Display {
+        val detailed = showContent && hasContent && !locked
+        return Display(
+            detailed = detailed,
+            buttons = detailed && sdk >= 31,
+            visibility = if (detailed) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PRIVATE,
+        )
+    }
+
     /**
      * Shows a push. Without [showContent], only generic text: tapping it opens
      * the session. With it, the approval itself and 拒绝 / 允许 buttons that
@@ -103,6 +123,8 @@ object Notifier {
         val channel = if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED) Push.CHANNEL_TURN else Push.CHANNEL_ATTENTION
         val approval = c?.takeIf { it.hasApproval() }?.approval
         val nid = id(session, approval?.approvalId)
+        val locked = context.getSystemService(KeyguardManager::class.java).isDeviceLocked
+        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT)
         val public = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notify)
             .setContentTitle("remote-agent")
@@ -110,7 +132,7 @@ object Notifier {
             .build()
         val b = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notify)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(how.visibility)
             .setPublicVersion(public)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -118,7 +140,7 @@ object Notifier {
             .setAllowSystemGeneratedContextualActions(false)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(openIntent(context, session, approval?.approvalId, nid))
-        if (!showContent || c == null) {
+        if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {
             val what = approval.command.ifEmpty { approval.description.ifEmpty { approval.toolName } }
@@ -126,7 +148,7 @@ object Notifier {
                 .setContentText(what)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(listOf(approval.description, what).filter { it.isNotEmpty() }.distinct().joinToString("\n")))
             if (approval.deadlineMs > 0) b.setTimeoutAfter((approval.deadlineMs - System.currentTimeMillis()).coerceAtLeast(1000))
-            if (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis()) {
+            if (how.buttons && (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis())) {
                 b.addAction(action(context, c, false, nid))
                 // A command not shown in full is allowed from the full page.
                 b.addAction(
@@ -187,6 +209,11 @@ class ApprovalReceiver : BroadcastReceiver() {
         val allow = intent.getBooleanExtra("allow", false)
         val deadline = intent.getLongExtra("deadline", 0)
         val nid = intent.getIntExtra("nid", 0)
+        // The buttons require unlocking (API 31+); check anyway.
+        if (context.getSystemService(KeyguardManager::class.java).isDeviceLocked) {
+            Notifier.update(context, nid, "请先解锁手机，再打开 App 审批", true)
+            return
+        }
         if (deadline in 1..System.currentTimeMillis()) {
             Notifier.update(context, nid, "这条审批已超时，按规则拒绝了", true)
             return
@@ -225,7 +252,26 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val d = inputData
         val nid = d.getInt("nid", 0)
         val allow = d.getBoolean("allow", false)
-        val acct = RaApp.instance.vault.load() ?: return Result.failure()
+        val request = d.getString("request").orEmpty()
+        val deadline = d.getLong("deadline", 0)
+        val attempts = applicationContext.getSharedPreferences("approval-attempts", Context.MODE_PRIVATE)
+        // An earlier attempt of this reply may have gone through.
+        fun wasUnknown() = attempts.getBoolean(request, false)
+        fun finish(text: String): Result {
+            attempts.edit().remove(request).apply()
+            Notifier.update(applicationContext, nid, text, true)
+            return Result.failure()
+        }
+        val acct = try {
+            RaApp.instance.vault.load()
+        } catch (e: Exception) {
+            // The phone locked again before this ran: the account key needs it unlocked.
+            if (System.currentTimeMillis() + 5_000 < deadline) {
+                Notifier.update(applicationContext, nid, "手机锁上了，解锁后继续提交…", false)
+                return Result.retry()
+            }
+            return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：手机一直锁着，审批已超时")
+        } ?: return finish("没能提交：这台手机没有账户")
         val p = PreparedCommand(
             d.getString("machine").orEmpty(), d.getString("session").orEmpty(), d.getString("request").orEmpty(),
             d.getLong("deadline", 0), Envelope.parseFrom(ByteString.copyFrom(d.getByteArray("envelope") ?: return Result.failure())),
@@ -233,18 +279,19 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val remote = Remote(acct, RaApp.instance.http)
         try {
             remote.forward(p)
+            attempts.edit().remove(request).apply()
             Notifier.update(applicationContext, nid, if (allow) "已允许" else "已拒绝", true)
             return Result.success()
         } catch (e: CommandException) {
+            if (e.unknown) attempts.edit().putBoolean(request, true).apply()
             if ((e.unknown || e.code == "network") && System.currentTimeMillis() + 5_000 < p.deadlineMs && runAttemptCount < 5) {
                 Notifier.update(applicationContext, nid, "还在提交…（${errorText(e)}）", false)
                 return Result.retry()
             }
-            Notifier.update(applicationContext, nid, if (e.unknown) "不确定是否生效，请打开 App 看一眼" else "没能提交：${errorText(e)}", true)
-            return Result.failure()
+            // Expired after an unknown attempt: that attempt may have worked.
+            return finish(if (e.unknown || wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：${errorText(e)}")
         } catch (e: Exception) {
-            Notifier.update(applicationContext, nid, "没能提交：${errorText(e)}", true)
-            return Result.failure()
+            return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：${errorText(e)}")
         } finally {
             remote.close()
         }
