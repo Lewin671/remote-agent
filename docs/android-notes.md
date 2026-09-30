@@ -92,7 +92,7 @@
 
 - **和设计稿同尺寸对照**：设计稿的手机内容区是 304×644 CSS px。`adb shell wm size 798x1691`（420 dpi 下即 304×644 dp）后跑仪器测试 `V7Gallery`，用 `UiAutomation.takeScreenshot()` 截整屏，底部弹层和对话框也能截进来；设计稿一侧用浏览器对每个 `.phone` 截图，去掉 8 px 边框后缩到同宽并排比较。用完要 `wm size reset`
 - **固定数据**：`Remote.showForTest` 直接放入列表和历史，不连 server；需要读模型列表或设置的画面因此显示读取失败的状态，属于测试数据，不是界面问题
-- **平台差异**：系统字体是 Roboto / Noto CJK，不是设计稿的 PingFang，`✓`、`‹`、`›`、`●` 等符号的字形和大小略有不同；等宽字体更宽，命令截断的位置不同；状态栏和手势导航条由系统绘制。颜色、圆角、间距和字号按设计稿取值，并排比较肉眼无差别
+- **平台差异**：中文是系统的 Noto Sans CJK（可变字重，`/system/etc/fonts.xml` 里 100–900 各档都指向 `NotoSansCJK-Regular.ttc` 的 wght 轴），同一标称字重比苹方重，按 [design-system §3](design-system.md#3-字号与字重) 降一档；西文和等宽改为打包的 Inter、JetBrains Mono，`✓ ✕ ◌` 和列表圆点画成矢量。CJK 字体里的 `•` 是很小的居中点，不能直接当列表圆点用。`‹`、`›` 的字形仍略有不同；状态栏和手势导航条由系统绘制。颜色、圆角、间距和字号按设计稿取值，并排比较肉眼无差别
 - **字号 130%**：`settings put system font_scale 1.3` 下 304 dp 宽的全部画面没有越界或遮挡；等待事项展开后内容在 240 dp 内滚动，操作按钮仍可见
 - **构建坑**：同一工作树里交替用和不用 `-PappIdSuffix` 构建时，配置缓存会沿用上次是否启用推送的判断，而 `google-services.json` 已被另一次构建删掉，报 `File google-services.json is missing`。本地调试固定带同一个后缀，或加 `--no-configuration-cache`
 

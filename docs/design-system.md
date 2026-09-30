@@ -56,8 +56,29 @@
 | 11 | 只用于底部标签栏文字和图片角标 |
 
 - 字重只用 400、500、600；700 只给头像字母和计数角标
-- 代码、路径、命令用等宽 12 号（对话正文里的行内路径用 13 号）
+- 代码、路径、命令用等宽 12 号（对话正文里的行内路径用 13 号）；行内代码是带圆角的浅底小块，不是整行高的底色
 - 配对码这类需要逐位核对的数字可以用更大的等宽字，这是唯一的例外
+
+**字体与平台字重**。设计稿按 Apple 设备的效果画：西文 SF Pro，中文苹方。苹方最粗只有 Semibold，所以 CSS 的 600 和 700 在中文上都显示为 Semibold。其他平台的中文来自 Noto Sans CJK 等字体，同一标称字重下明显更重（2026-09-30 在 API 36 模拟器上和设计稿同倍率对比过），因此：
+
+| 设计稿字重 | Apple 设备 | Android 与其他平台的中文 | 其他平台的西文 |
+|---|---|---|---|
+| 400 | 400 | 400 | Inter Regular |
+| 500 | 500 | 450 | Inter Medium |
+| 600 | 600 | 500 | Inter SemiBold |
+| 700 | 700 | 600 | Inter Bold |
+
+- Apple 设备只调用系统自带的 SF Pro、苹方和 SF Mono，不打包也不引用它们的文件
+- 其他平台的西文和数字用 Inter，代码、路径和命令用 JetBrains Mono；中文仍由系统字体回退。实现方式是把各个 Inter 字重登记在下调后的字重上，西文保持标称字重，只有中文随请求降一档：网页见 `web/src/styles.css`，Android 见 `Theme.kt` 的 `platformWeight`
+- 符号 ✓ ✕ ◌ 和列表圆点在 Android 上画成矢量，不依赖系统字体的字形
+
+打包的字体只用允许再分发的开源许可，并随附许可证原文：
+
+| 字体 | 用途 | 来源 | 许可 | 许可证位置 |
+|---|---|---|---|---|
+| Inter 4.1（西文子集） | 其他平台的界面西文和数字 | github.com/rsms/inter | SIL OFL 1.1 | Android `res/raw/ofl_inter.txt`（设置 › 开源许可）；网页 `/fonts/OFL-Inter.txt` |
+| JetBrains Mono 2.304 | 代码、路径和命令 | github.com/JetBrains/JetBrainsMono | SIL OFL 1.1 | Android `res/raw/ofl_jetbrains_mono.txt`；网页 `/fonts/OFL-JetBrainsMono.txt` |
+| Sarasa Fixed SC 1.0.42 | Android 终端 | github.com/be5invis/Sarasa-Gothic | SIL OFL 1.1 | Android `res/raw/ofl_sarasa_gothic.txt` |
 
 ## 4. 间距、圆角与阴影
 
