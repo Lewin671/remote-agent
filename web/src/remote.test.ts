@@ -3,7 +3,7 @@ import { envelopeSigned } from "./crypto";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it, vi } from "vitest";
-import { CommandError, COMMAND_TTL_MS, newSlot, Remote, uncertain, type RequestSlot } from "./remote";
+import { CommandError, COMMAND_TTL_MS, newSlot, Remote, uncertain, type CommandKind, type RequestSlot } from "./remote";
 
 it("reuses a request slot only when the outcome is unknown", () => {
   // Timed out or cut off: the command may have run; a retry must reuse
@@ -181,4 +181,48 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   (r as unknown as { api: object }).api = { getImage: async () => { throw new ConnectError("offline", Code.Unavailable); } };
   expect((await r.getImage("s1", "good")).kind).toBe("ok");
   await expect(r.getImage("s1", "liar")).rejects.toThrow();
+});
+
+it("uploads an image in chunks and resumes from what the machine has after a lost reply", async () => {
+  const { DemoRemote } = await import("./dev/demo");
+  const r = DemoRemote.create(new URLSearchParams());
+  const bytes = new Uint8Array(2_000_000).map((_, i) => i % 251);
+  const calls: string[] = [];
+  let persisted = 0n;
+  let lost = true;
+  r.machineCommand = async (_m: string, cmd: CommandKind) => {
+    const { create } = await import("@bufbuild/protobuf");
+    const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+    const status = (extra = {}) => ({ status: { transferId: "t", state: 1, persistedBytes: persisted, totalBytes: BigInt(bytes.length), maxChunkBytes: 1_000_000, ...extra } });
+    switch (cmd?.case) {
+      case "beginImageUpload":
+        calls.push(`begin ${cmd.value.totalBytes} ${cmd.value.sha256?.length}`);
+        return create(CommandResultSchema, { kind: { case: "beginImageUpload", value: status() } });
+      case "putImageChunk": {
+        calls.push(`put ${cmd.value.offset} ${cmd.value.data?.length}`);
+        expect(cmd.value.offset).toBe(persisted);
+        expect([...cmd.value.data!.slice(0, 3)]).toEqual([...bytes.slice(Number(cmd.value.offset), Number(cmd.value.offset) + 3)]);
+        persisted += BigInt(cmd.value.data!.length);
+        // The reply to the second chunk is lost, though it was stored.
+        if (persisted > 800_000n && lost) {
+          lost = false;
+          throw new CommandError("unknown", "连接超时");
+        }
+        return create(CommandResultSchema, { kind: { case: "putImageChunk", value: status() } });
+      }
+      case "getImageUploadStatus":
+        calls.push("status");
+        return create(CommandResultSchema, { kind: { case: "getImageUploadStatus", value: status() } });
+      case "completeImageUpload":
+        calls.push("complete");
+        return create(CommandResultSchema, { kind: { case: "completeImageUpload", value: status({ state: 2, imageId: "img-1" }) } });
+    }
+    throw new Error("unexpected " + cmd?.case);
+  };
+  const progress: number[] = [];
+  const id = await r.uploadImage("mac", { bytes, format: "jpeg" }, (d) => progress.push(d));
+  expect(id).toBe("img-1");
+  // Chunks of at most 768 KiB, each starting where the machine is.
+  expect(calls).toEqual([`begin 2000000 32`, "put 0 786432", "put 786432 786432", "status", "put 1572864 427136", "complete"]);
+  expect(progress.at(-1)).toBe(2_000_000);
 });

@@ -25,7 +25,7 @@ import {
   type Keys,
 } from "./crypto";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { Agent, type Event, type ImageFormat } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ImageFormat, type Event } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import { SessionSchema, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -162,6 +162,10 @@ export interface TermConn {
 export type ConnState = "connecting" | "online" | "offline";
 
 export const COMMAND_TTL_MS = 60_000;
+
+/** Largest piece of an image upload: each is sealed into one command,
+ * which must stay under 1 MiB. */
+const UPLOAD_CHUNK = 768 * 1024;
 
 /** How many opened display copies stay in memory. */
 const IMAGE_CACHE = 40;
@@ -1034,6 +1038,50 @@ export class Remote {
   }
 
   // --- images ---
+
+  /** Uploads an image to a machine for a message, in pieces that each fit
+   * one command, and returns the image ID to send with it. After a reply
+   * that was lost, it asks the machine how far it got and goes on from
+   * there; the machine checks the length and hash at the end. */
+  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined): Promise<string> {
+    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
+    const transferId = newRequestID();
+    const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
+    const total = p.bytes.length;
+    const statusOf = (r: CommandResult) => {
+      const k = r.kind;
+      const st = k.case === "beginImageUpload" || k.case === "putImageChunk" || k.case === "getImageUploadStatus" || k.case === "completeImageUpload" ? k.value.status : undefined;
+      if (!st) throw new Error("意外的回复");
+      return st;
+    };
+    // A step whose outcome is unknown is followed by asking where it got.
+    const step = async (cmd: CommandKind) => {
+      for (let i = 0; ; i++) {
+        try {
+          return statusOf(await this.machineCommand(machineId, cmd));
+        } catch (e) {
+          if (!uncertain(e) || i >= 2) throw e;
+          try {
+            return statusOf(await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId } }));
+          } catch (e2) {
+            if (!uncertain(e2) || i >= 2) throw e2;
+          }
+        }
+      }
+    };
+    let st = await step({ case: "beginImageUpload", value: { transferId, format, totalBytes: BigInt(total), sha256 } });
+    const chunk = Math.min(UPLOAD_CHUNK, st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK);
+    for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
+      if (guard > total / chunk + 10) throw new Error("上传没有进展");
+      const offset = Number(st.persistedBytes);
+      progress(offset, total);
+      st = await step({ case: "putImageChunk", value: { transferId, offset: BigInt(offset), data: p.bytes.subarray(offset, offset + chunk) } });
+    }
+    progress(total, total);
+    st = await step({ case: "completeImageUpload", value: { transferId } });
+    if (!st.imageId) throw new Error("电脑没有返回图片 ID");
+    return st.imageId;
+  }
 
   // Display copies opened this visit, newest last, so a picture seen once
   // opens again offline. Only in memory; a few dozen at most.
