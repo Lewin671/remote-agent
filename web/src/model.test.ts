@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import { CommandError } from "./remote";
@@ -44,6 +44,7 @@ import {
   titleOf,
   toolsSummary,
   toolClock,
+  backgroundNote,
   toolPeek,
   when,
   type MachineLike,
@@ -870,4 +871,25 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
     expect(ended.unsettled).toEqual([]);
   });
 
+  it("shows a call that went on in the background as started, status unknown, with why", () => {
+    const list = events(
+      { case: "turnStarted", value: {} },
+      started("c1", "npm run dev"),
+      call("c1", "npm run dev", { status: "running", exitCode: undefined, background: ToolBackground.STILL_RUNNING }),
+      { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } },
+    );
+    const d = derive(list, Agent.CODEX);
+    expect(shape(list)[0]).toBe("background:c1");
+    expect(d.background.map((t) => t.callId)).toEqual(["c1"]);
+    expect(toolPeek(d, 0, undefined)).toEqual({ text: "后台工作 · 去终端确认", off: false });
+    expect(backgroundNote(ToolBackground.STILL_RUNNING)).toContain("这一轮结束时它仍在运行");
+    expect(backgroundNote(ToolBackground.TIMED_OUT)).toContain("超时");
+    expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");
+    expect(backgroundNote(ToolBackground.REQUESTED)).toContain("要求");
+  });
+
+  it("still recognizes a background command from its text on older daemons", () => {
+    const list = events({ case: "turnStarted", value: {} }, { case: "toolCall", value: { title: "npm run dev", callId: "t1", itemType: "Bash", kind: ToolKind.COMMAND, status: "completed", output: "Command running in background with ID: b123" } });
+    expect(shape(list)).toEqual(["background:t1"]);
+  });
 });

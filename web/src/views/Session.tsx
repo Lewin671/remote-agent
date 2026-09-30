@@ -42,7 +42,7 @@ import { ComposeStatus, Composer, promptIdOf } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { QueuePage } from "./Queue";
 import { TerminalView } from "./Terminal";
-import { ActiveTool, ToolGroup, ToolPage, ToolRow, toolTitle, type Short } from "./Tools";
+import { ActiveTool, BackgroundTool, ToolGroup, ToolPage, ToolRow, toolTitle, type Short } from "./Tools";
 
 type Tab = "chat" | "term" | "split";
 
@@ -568,6 +568,7 @@ function Row({
   sid: string;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
+  if (it.kind === "background") return <BackgroundTool call={it.call} short={short} remote={remote} onTerminal={onTerminal} />;
   if (it.kind === "running" || it.kind === "unsettled")
     return <ActiveTool tool={{ ...it.tool, title: toolTitle(it.tool, short) }} d={d} unsettled={it.kind === "unsettled"} aborted={it.kind === "unsettled" && it.aborted} remote={remote} onDetail={() => onTool(it.tool.seq)} onTerminal={onTerminal} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;

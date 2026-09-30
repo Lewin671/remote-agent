@@ -5,7 +5,7 @@
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
-import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SessionStatus, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SessionStatus, ToolBackground, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
 import type { Session } from "./gen/remoteagent/v1/local_pb";
 import { DefaultModeSource, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
@@ -553,6 +553,9 @@ export interface Derived {
   // background, or simply unheard of. Their state is not known; cleared
   // when the next turn starts.
   unsettled: RunningTool[];
+  // Calls that went on in the background this turn: started, not known to
+  // have ended. Cleared when the next turn starts.
+  background: ToolCall[];
   // How each ToolStarted ended: its ToolCall's seq, or "unsettled".
   toolEnds: Map<bigint, bigint | "unsettled">;
   // Whether the turn an unsettled tool belonged to was interrupted.
@@ -587,6 +590,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     running: false,
     tools: [],
     unsettled: [],
+    background: [],
     toolEnds: new Map(),
     abortedTools: new Set(),
     typedLocally: new Set(),
@@ -634,6 +638,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       case "turnStarted":
         d.running = true;
         d.unsettled = [];
+        d.background = [];
         break;
       case "turnEnded":
         d.running = false;
@@ -699,6 +704,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           d.toolEnds.set(d.tools[i].seq, e.seq);
           d.tools.splice(i, 1);
         }
+        if (isBackground(k.value)) d.background.push(k.value);
         break;
       }
       case "tokenUsage":
@@ -797,7 +803,7 @@ export function toolName(t: Pick<RunningTool, "itemType" | "kind">): string {
  * how many run, work left in the background, or, while disconnected, the
  * last reading. undefined when nothing runs. */
 export function toolPeek(d: Derived, now: number, lostAt: number | undefined): { text: string; off: boolean } | undefined {
-  if (d.tools.length === 0) return d.unsettled.length ? { text: "后台工作 · 去终端确认", off: false } : undefined;
+  if (d.tools.length === 0) return d.unsettled.length || d.background.length ? { text: "后台工作 · 去终端确认", off: false } : undefined;
   const oldest = d.tools.reduce((a, t) => (t.since && (!a.since || t.since < a.since) ? t : a), d.tools[0]);
   const c = toolClock(oldest.since, now, lostAt);
   if (c?.frozen) return { text: `等待同步 · 上次 ${clock(c.ms)}`, off: true };
@@ -952,7 +958,9 @@ export type Item =
   // A tool that started and has no result yet, and one the turn ended
   // without a result for.
   | { kind: "running"; key: string; tool: RunningTool }
-  | { kind: "unsettled"; key: string; tool: RunningTool; aborted: boolean };
+  | { kind: "unsettled"; key: string; tool: RunningTool; aborted: boolean }
+  // A call that went on in the background: started, end unknown.
+  | { kind: "background"; key: string; call: ToolCall };
 
 /** Whether an event draws anything in the chat. */
 function visible(e: Event, d: Derived): boolean {
@@ -985,6 +993,30 @@ function visible(e: Event, d: Derived): boolean {
       return k.value.status === SessionStatus.EXITED;
   }
   return false;
+}
+
+/** Whether a call went on in the background: the daemon says so (v2), or,
+ * from older daemons, Claude Code's result says it. Its event is then its
+ * start, not its end. */
+export function isBackground(t: ToolCall): boolean {
+  if (t.background !== ToolBackground.UNSPECIFIED) return true;
+  return /\b(?:command )?running in (?:the )?background with ID\b/i.test(t.output);
+}
+
+/** Why a call is in the background, and what that means. */
+export function backgroundNote(b: ToolBackground): string {
+  const rest = "它什么时候结束这里不知道，请到终端确认。";
+  switch (b) {
+    case ToolBackground.REQUESTED:
+      return "按模型的要求在后台运行；" + rest;
+    case ToolBackground.TIMED_OUT:
+      return "运行超时后被移到后台继续运行；" + rest;
+    case ToolBackground.BY_USER:
+      return "在电脑终端里被移到后台（Ctrl+B）；" + rest;
+    case ToolBackground.STILL_RUNNING:
+      return "这一轮结束时它仍在运行；" + rest;
+  }
+  return "调用已返回，命令转到了后台；" + rest;
 }
 
 function toolOk(t: ToolCall): boolean {
@@ -1025,6 +1057,11 @@ export function timeline(events: Event[], d: Derived): Item[] {
       // Shown on its own, so the decision is not folded away.
       flush();
       out.push({ kind: "event", key: String(e.seq), event: e, decision, approvalId: merged.ids.get(e.seq) });
+      return;
+    }
+    if (k.case === "toolCall" && isBackground(k.value)) {
+      flush();
+      out.push({ kind: "background", key: "b" + e.seq, call: k.value });
       return;
     }
     if (k.case === "toolCall" && toolOk(k.value)) {

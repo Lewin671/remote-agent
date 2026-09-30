@@ -6,7 +6,7 @@
 import { useState } from "react";
 import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
 import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
-import { clock, decisionText, duration, toolClock, toolName as toolKindName, toolsSummary, type Derived, type RunningTool } from "../model";
+import { backgroundNote, clock, decisionText, duration, toolClock, toolName as toolKindName, toolsSummary, type Derived, type RunningTool } from "../model";
 import type { Remote } from "../remote";
 import { NavBar, useNow } from "../ui";
 import { imagesNote } from "../imageview";
@@ -258,6 +258,28 @@ export function ToolPage({
           </div>
         )}
         <div className="draft-note">中断不保证结束后台进程；后台命令在终端里处理。</div>
+      </div>
+    </div>
+  );
+}
+
+/** A call that went on in the background: its event is its start, and
+ * nothing reliable says when it ends, so it is never shown as done. */
+export function BackgroundTool({ call, short, remote, onTerminal }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
+  const online = remote.conn === "online";
+  const name = toolKindName(call);
+  return (
+    <div className="active-tool off bg">
+      <div className="th">
+        <span>◌</span>
+        <b>{name === "命令" ? "后台命令" : `${name}（后台）`} · 状态待确认</b>
+        {call.backgroundId && <span className="elapsed mono">{call.backgroundId}</span>}
+      </div>
+      <pre>{call.kind === ToolKind.COMMAND || call.kind === ToolKind.UNSPECIFIED ? commandOf({ input: call.input, title: toolTitle(call, short), itemType: call.itemType }) : toolTitle(call, short)}</pre>
+      <div className="td">{backgroundNote(call.background)}</div>
+      <div className="ta">
+        <span />
+        {online && onTerminal ? <button onClick={onTerminal}>去终端 ›</button> : <span className="muted">终端不可用</span>}
       </div>
     </div>
   );
