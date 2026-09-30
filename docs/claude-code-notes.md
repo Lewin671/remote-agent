@@ -148,6 +148,7 @@
 - 屏幕：`Ready to code?` / `Here is Claude's plan:` / 计划正文 / `Claude has written up a plan and is ready to execute. Would you like to proceed?`，选项随可用的模式变化：
   - bypass 可用时：`1. Yes, and switch to BYPASS PERMISSIONS (no further prompts) for this session`
   - bypass 不可用时：`1. Yes, auto-accept edits`
+  - bypass 不可用、auto 可用时（sonnet，以 `--permission-mode default` 启动）：`1. Yes, and use auto mode`
   - 两种情况下第 2、3 项都是 `2. Yes, manually approve edits`、`3. Tell Claude what to change`（下面一行 `shift+tab to approve with this feedback`）
 - 按 2：计划被批准（`tool_result` 为 `User has approved your plan…`，另有 `plan_mode_exit` 附件），模式回到 manual，模型开始执行
 - 按 3：光标移到第 3 项，它变成输入框，打的字替换掉选项文字（`❯ 3. make it a single step`），回车后这是一次带说明的拒绝：`tool_result` 为 `…the user said:\nmake it a single step`，模型留在 Plan 模式重新规划
