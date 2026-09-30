@@ -113,26 +113,27 @@ func TestSubmitted(t *testing.T) {
 
 // fakeClaude is a terminal that reacts to keys like Claude Code 2.1.284.
 type fakeClaude struct {
-	screen   string
-	writes   []string
-	mode     int  // index in cycle
-	noBypass bool // bypass not on offer
-	noAuto   bool
-	typed    string
-	menu     []string // model menu labels
-	cursor   int
-	effort   int // index in efforts
-	cached   bool
-	confirm  bool
-	note     string
-	question *pb.Question
-	picked   []int
-	ticked   map[int]bool
-	review   bool
-	plan     bool
-	stuck    bool   // s does nothing in the model menu
-	wrap     int    // wrap question and plan text after this many characters
-	planText string // the plan prompt as drawn, if set
+	screen     string
+	writes     []string
+	mode       int  // index in cycle
+	noBypass   bool // bypass not on offer
+	noAuto     bool
+	typed      string
+	menu       []string // model menu labels
+	cursor     int
+	effort     int // index in efforts
+	cached     bool
+	confirm    bool
+	note       string
+	question   *pb.Question
+	picked     []int
+	ticked     map[int]bool
+	review     bool
+	plan       bool
+	stuck      bool   // s does nothing in the model menu
+	wrap       int    // wrap question and plan text after this many characters
+	planText   string // the plan prompt as drawn, if set
+	background string // appended to the mode line
 }
 
 func (f *fakeClaude) wrapped(s string) string {
@@ -192,7 +193,7 @@ func (f *fakeClaude) draw() {
 		b.WriteString(rule + "\n Claude has written up a plan and is ready to execute. Would you like to proceed?\n" +
 			" ❯ 1. Yes, auto-accept edits\n   2. Yes, manually approve edits\n   3. Tell Claude what to change\n")
 	default:
-		b.WriteString(rule + "\n\x1b[39m❯ " + f.typed + "\x1b[7m \x1b[0m\n" + rule + "\n   Haiku 4.5\n  " + f.modeLine() + "\n")
+		b.WriteString(rule + "\n\x1b[39m❯ " + f.typed + "\x1b[7m \x1b[0m\n" + rule + "\n   Haiku 4.5\n  " + f.modeLine() + f.background + "\n")
 	}
 	f.screen = b.String()
 }
@@ -243,13 +244,15 @@ func (f *fakeClaude) Write(b []byte) error {
 		f.picked = append(f.picked, n)
 	case f.plan:
 		f.plan = false
-	case k == agent.KeyBTab:
-		for {
-			f.mode = (f.mode + 1) % len(cycle)
-			if (cycle[f.mode] == "bypassPermissions" && f.noBypass) || (cycle[f.mode] == "auto" && f.noAuto) {
-				continue
+	case k != "" && strings.Count(k, agent.KeyBTab)*len(agent.KeyBTab) == len(k):
+		for range strings.Count(k, agent.KeyBTab) {
+			for {
+				f.mode = (f.mode + 1) % len(cycle)
+				if (cycle[f.mode] == "bypassPermissions" && f.noBypass) || (cycle[f.mode] == "auto" && f.noAuto) {
+					continue
+				}
+				break
 			}
-			break
 		}
 	case k == "/model" || k == "/plan":
 		f.typed = k
@@ -495,5 +498,59 @@ func TestResumeDoesNotTakeUpALaterBypassDefault(t *testing.T) {
 	argv, _ = a.Argv(&agent.Launch{Dir: t.TempDir(), SessionID: "x", Resume: true})
 	if j := strings.Join(argv, " "); strings.Contains(j, "--permission-mode") {
 		t.Fatalf("argv %q", j)
+	}
+}
+
+// Idle, a way through looser modes is taken in bursts: too few presses
+// land in a mode then known to be on offer, and a second burst goes on.
+// With background work showing it is refused (review C1).
+func TestSetModeIdleBurst(t *testing.T) {
+	a := New("claude", "")
+	f := &fakeClaude{noAuto: true}
+	f.mode = index("plan")
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); err != nil || cycle[f.mode] != "default" {
+		t.Fatalf("plan → ask: %v %s", err, cycle[f.mode])
+	}
+	// plan → bypass (assumed not on offer: 1 press) → then 1 more.
+	if w := strings.Join(f.writes, "|"); w != agent.KeyBTab+"|"+agent.KeyBTab {
+		t.Fatalf("keys %q", f.writes)
+	}
+	// Everything on offer: auto from default goes through bypass at once.
+	f = &fakeClaude{}
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_AUTO, false); err != nil || cycle[f.mode] != "auto" {
+		t.Fatalf("default → auto: %v %s", err, cycle[f.mode])
+	}
+	// Auto not on offer: back where it started.
+	f = &fakeClaude{noAuto: true}
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_AUTO, false); !errors.Is(err, agent.ErrUnsupported) || cycle[f.mode] != "default" {
+		t.Fatalf("auto unavailable: %v %s", err, cycle[f.mode])
+	}
+	// Background work: refused, nothing pressed.
+	for _, bg := range []string{" · 1 shell", "\n  ⏺ main\n  ◯ general-purpose  sleep  6s"} {
+		f = &fakeClaude{background: bg}
+		f.mode = index("plan")
+		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); !errors.Is(err, agent.ErrBackground) || len(f.writes) != 0 {
+			t.Fatalf("background %q: %v %q", bg, err, f.writes)
+		}
+	}
+	// A safe way needs no burst and ignores background work.
+	f = &fakeClaude{background: " · 1 shell"}
+	f.mode = index("acceptEdits")
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, true); err != nil || cycle[f.mode] != "plan" {
+		t.Fatalf("safe way: %v %s", err, cycle[f.mode])
+	}
+}
+
+func TestBackgroundWork(t *testing.T) {
+	base := rule + "\n\x1b[39m❯ \x1b[7m \x1b[0m\n" + rule + "\n   Haiku\n"
+	for scr, want := range map[string]string{
+		base + "  ⏵⏵ accept edits on · 1 shell · ← for agents\n":                                                             "1 shell",
+		"✻ Waiting for 1 background agent to finish\n" + base + "  ⏸ manual mode on\n":                                       "1 background agent",
+		base + "  ⏸ manual mode on\n  ⏺ main\n  ◯ general-purpose  task  6s\n":                                               "a background agent",
+		"✻ Worked for 5s · done 4:54 PM · 1 shell still running\n" + base + "  ⏸ manual mode on · /tasks to see subagents\n": "",
+	} {
+		if got := BackgroundWork(scr); got != want {
+			t.Errorf("%q: got %q, want %q", scr, got, want)
+		}
 	}
 }

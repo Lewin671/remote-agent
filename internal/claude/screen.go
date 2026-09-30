@@ -188,3 +188,40 @@ func emptyPrompt(styled string) bool {
 	}
 	return reversed.Len() == 0 || dim.Len() > 0
 }
+
+// backgroundRE matches Claude Code's live notes about background work: the
+// mode line's "· 1 shell", "Waiting for 1 background agent to finish", and
+// the rows of running subagents under the mode line (claude-code-notes §10).
+var backgroundRE = regexp.MustCompile(`\b\d+ shells?\b|\b\d+ background (?:agents?|tasks?)\b|^\s*◯ `)
+
+var waitingRE = regexp.MustCompile(`Waiting for \d+ background (?:agents?|tasks?)`)
+
+// BackgroundWork describes background work the screen shows as running,
+// or is empty. Only the live parts are read: the line above the input box
+// and what is under it; older notes in the conversation are not.
+func BackgroundWork(styled string) string {
+	var lines []line
+	for _, l := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
+		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), " ", " ")})
+	}
+	top, bottom := composer(lines)
+	if top < 0 {
+		return ""
+	}
+	// Above the input box only the live "Waiting for …" counts; a turn's
+	// summary ("… · 1 shell still running") stays after the shell ends.
+	if top >= 2 {
+		if m := waitingRE.FindString(lines[top-2].plain); m != "" {
+			return strings.TrimPrefix(m, "Waiting for ")
+		}
+	}
+	for _, l := range lines[bottom+1:] {
+		if m := backgroundRE.FindString(l.plain); m != "" {
+			if strings.Contains(m, "◯") {
+				return "a background agent"
+			}
+			return m
+		}
+	}
+	return ""
+}

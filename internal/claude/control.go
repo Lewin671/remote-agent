@@ -323,8 +323,10 @@ func crosses(from, to string, limit int) bool {
 // While a turn runs, no mode on the way, nor on the way back should the
 // mode not be on offer, may be looser than the one asked for: a tool call
 // could get through in that moment. Idle, Shift+Tab has no other way
-// round (there is no reverse key, and /plan only enters Plan mode), and no
-// tool call is made then, so the way may pass looser modes.
+// round (there is no reverse key, and /plan only enters Plan mode), so a
+// way through looser modes is taken, but only with no background work on
+// the screen, and with the presses sent at once (burst), shortening the
+// moment (architecture §16).
 func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) error {
 	want, ok := permissionModes[mode]
 	if !ok {
@@ -346,11 +348,17 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) erro
 		return agent.ErrBusy
 	}
 	if want == "plan" && !running {
-		if err := agent.Slash(t, "/plan"); err != nil {
+		return enterPlan(t)
+	}
+	if crosses(start, want, limit) || (want == "auto" || want == "bypassPermissions") && crosses(want, start, limit) {
+		styled, err := t.Capture()
+		if err != nil {
 			return err
 		}
-		_, err := waitFor(t, "Plan mode", func(s agent.Screen, _ string) bool { return s.ComposerReady && s.Mode == "plan" })
-		return err
+		if bg := BackgroundWork(styled); bg != "" {
+			return fmt.Errorf("%w (%s), and switching to %s passes a looser mode on the way; try again when it has finished", agent.ErrBackground, bg, want)
+		}
+		return burst(t, start, want)
 	}
 	press := func() (string, error) {
 		before, _, err := screenNow(t)
@@ -392,6 +400,83 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) erro
 		return fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported)
 	}
 	return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
+}
+
+func enterPlan(t agent.Term) error {
+	if err := agent.Slash(t, "/plan"); err != nil {
+		return err
+	}
+	_, err := waitFor(t, "Plan mode", func(s agent.Screen, _ string) bool { return s.ComposerReady && s.Mode == "plan" })
+	return err
+}
+
+// burst goes from one mode to another with all the Shift+Tabs sent at
+// once, without reading the screen in between. Which of bypass and auto
+// are on offer is not known beforehand, so it assumes neither but the
+// target: pressing too few lands in one of them, which is then known to
+// be on offer, and a second burst goes on from there; pressing too many
+// cannot happen. If the target is not on offer, it goes back.
+func burst(t agent.Term, start, want string) error {
+	offered := map[string]bool{"default": true, "acceptEdits": true, "plan": true, start: true, want: true}
+	cur := start
+	for try := 0; try < 3; try++ {
+		n := 0
+		for i := index(cur) + 1; ; i++ {
+			m := cycle[i%len(cycle)]
+			if offered[m] {
+				n++
+			}
+			if m == want {
+				break
+			}
+		}
+		if err := t.Write([]byte(strings.Repeat(agent.KeyBTab, n))); err != nil {
+			return err
+		}
+		m, err := settledMode(t)
+		if err != nil {
+			return err
+		}
+		if m == want {
+			return nil
+		}
+		if offered[m] {
+			// The target was skipped: it is not on offer.
+			delete(offered, want)
+			if start == "plan" {
+				_ = enterPlan(t)
+			} else if m != start {
+				_ = burst(t, m, start)
+			}
+			return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
+		}
+		offered[m] = true
+		cur = m
+	}
+	return errors.New("the permission mode did not settle")
+}
+
+// settledMode waits for the mode line to show the same mode three times
+// in a row, as a burst of key presses is taken in.
+func settledMode(t agent.Term) (string, error) {
+	last, same := "", 0
+	deadline := time.Now().Add(agent.MenuWait)
+	for {
+		if scr, _, err := screenNow(t); err == nil && scr.ComposerReady && scr.Mode != "" {
+			if scr.Mode == last {
+				same++
+			} else {
+				last, same = scr.Mode, 1
+			}
+			if same >= 3 {
+				return last, nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return "", errors.New("timed out waiting for the permission mode")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func index(mode string) int {

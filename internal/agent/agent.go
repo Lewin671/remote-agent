@@ -22,6 +22,7 @@ var (
 	ErrNoPlan      = errors.New("the CLI is not asking about a plan")
 	ErrUnsupported = errors.New("this CLI does not support that")
 	ErrNotFound    = errors.New("not found")
+	ErrBackground  = errors.New("background work is running")
 )
 
 // HookTimeoutSeconds is the timeout the CLIs give the PermissionRequest
