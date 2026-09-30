@@ -222,6 +222,22 @@ function decodeSource(bytes: Uint8Array, format: ImageFormat): { blob: Blob; ori
   return { blob: new Blob([bytes as Uint8Array<ArrayBuffer>]), orientation: 1 };
 }
 
+/** Most pixels handed to the browser's decoder: its bitmap takes four
+ * bytes each, whatever the file's size. */
+export const MAX_DECODE_PIXELS = 64 * 1024 * 1024;
+
+/** Refuses, from the header alone, an image too large to decode here. */
+function checkDecodable(bytes: Uint8Array, format: ImageFormat) {
+  if (format !== "jpeg" && format !== "png" && format !== "webp" && format !== "gif") return;
+  let size;
+  try {
+    size = imageSize(bytes, format);
+  } catch {
+    return; // the decoder decides
+  }
+  if (size.width * size.height > MAX_DECODE_PIXELS) throw new ImageError("too_large", `${size.width}x${size.height}`, "图片尺寸太大");
+}
+
 async function readBlob(file: Blob): Promise<Uint8Array> {
   return new Uint8Array(await file.arrayBuffer());
 }
@@ -235,6 +251,7 @@ async function readBlob(file: Blob): Promise<Uint8Array> {
 export async function compressImage(file: Blob, backend: ImageBackend = browserBackend): Promise<PreparedImage> {
   const bytes = await readBlob(file);
   const format = sniffFormat(bytes);
+  checkDecodable(bytes, format);
   const { blob, orientation } = decodeSource(bytes, format);
   const img = await backend.decode(blob);
   try {
@@ -273,6 +290,7 @@ async function reencode(
   mode: "png" | "jpeg" | "auto",
   jpegQuality: number,
 ): Promise<OriginalImage> {
+  checkDecodable(bytes, format);
   const { blob, orientation } = decodeSource(bytes, format);
   const img = await backend.decode(blob);
   try {

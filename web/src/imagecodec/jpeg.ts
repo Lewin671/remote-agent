@@ -8,6 +8,7 @@
 // cameras and phones write. Everything else yields undefined and the
 // caller re-encodes instead.
 
+import { ImageError } from "./error";
 import { malformed } from "./error";
 import { EOI, jpegSegments, keepJpegSegment, SOS } from "./metadata";
 
@@ -285,6 +286,10 @@ function decodeScan(
   restartInterval: number,
 ): void {
   const { mcusX, mcusY } = layout(width, height, comps);
+  // The header's size is only a claim: bound what it would allocate before
+  // reading a single coefficient (a rotation needs a second grid as big).
+  const bytes = comps.reduce((n, c) => n + c.bw * c.bh * 64 * 2, 0);
+  if (bytes > MAX_COEFFICIENT_BYTES) throw new ImageError("too_large", `${width}x${height} needs ${bytes} coefficient bytes`, "图片尺寸太大");
   for (const c of comps) c.coef = new Int16Array(c.bw * c.bh * 64);
   const single = comps.length === 1;
   const r = new BitReader(b, start, end);
@@ -696,6 +701,9 @@ export function encodeJpegCoefficients(j: JpegCoefficients): Uint8Array {
  * orientation. Returns undefined when the transform cannot be perfect or
  * the coding is not supported; throws ImageError on malformed data.
  */
+/** Largest coefficient grid decoded: about 64 megapixels of 4:2:0. */
+export const MAX_COEFFICIENT_BYTES = 192 * 1024 * 1024;
+
 export function rotateJpegLossless(b: Uint8Array, orientation: number): Uint8Array | undefined {
   if (!TRANSFORMS[orientation]) return undefined;
   const j = decodeJpegCoefficients(b);

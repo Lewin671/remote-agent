@@ -13,6 +13,7 @@ import {
   orientationMatrix,
   prepareOriginal,
   readOrientation,
+  rotateJpegLossless,
   sha256Hex,
   sniffFormat,
   stripMetadata,
@@ -443,5 +444,33 @@ describe("prepareOriginal", () => {
     const b = fixture(s420);
     const out = await prepareOriginal(blob(b.subarray(0, b.length - 2)), f.backend);
     expect(out).toMatchObject({ format: "jpeg", reencoded: true });
+  });
+});
+
+describe("oversized images (review B3)", () => {
+  /** s420 with its frame header claiming 60000 × 60000. */
+  function huge(): Uint8Array {
+    const b = fixture(s420).slice();
+    for (let i = 2; i < b.length - 9; i++)
+      if (b[i] === 0xff && (b[i + 1] === 0xc0 || b[i + 1] === 0xc1)) {
+        b[i + 5] = 60000 >> 8;
+        b[i + 6] = 60000 & 255;
+        b[i + 7] = 60000 >> 8;
+        b[i + 8] = 60000 & 255;
+        return b;
+      }
+    throw new Error("no SOF");
+  }
+
+  it("refuses to rotate before allocating coefficients for a huge frame", () => {
+    expect(() => rotateJpegLossless(huge(), 6)).toThrow(ImageError);
+  });
+
+  it("does not hand a huge image to the decoder, compressed or original", async () => {
+    const f = fakeBackend(60000, 60000);
+    await expect(compressImage(new Blob([huge() as Uint8Array<ArrayBuffer>]), f.backend)).rejects.toThrow(ImageError);
+    const photo = withSegments(huge(), segment(0xe1, exifOrientation(6)));
+    await expect(prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), f.backend)).rejects.toThrow(ImageError);
+    expect(f.calls.filter((c) => c.op === "decode")).toEqual([]);
   });
 });
