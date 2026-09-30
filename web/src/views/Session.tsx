@@ -90,7 +90,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [colRef, colHeight] = useHeight();
   const room = colHeight > 0 ? colHeight * 0.45 : Infinity;
   const canSplit = wide && width >= 840;
-  const [tabPick, setTab] = useState<Tab>("chat");
+  const [tabPick, setTab] = useState<Tab>(() => (remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : "chat"));
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
   if (inactive && tab !== "chat") tab = "chat";
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");

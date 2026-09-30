@@ -15,6 +15,9 @@ import {
   findModel,
   modelLabel,
   inheritConfig,
+  newConfigIssue,
+  switchAgent,
+  switchMachine,
   machineAgents,
   minutesLeft,
   modeOf,
@@ -729,5 +732,35 @@ describe("approval records", () => {
       { case: "toolCall", value: { title: "mkdir x", kind: ToolKind.COMMAND, status: "completed" } },
     );
     expect(rows(list)).toEqual(["record mkdir x 已允许", "tool mkdir x"]);
+  });
+});
+
+describe("switching a new session's CLI or machine (v2)", () => {
+  const base = { machineId: "m1", cwd: "/Users/me/Code/foo", agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO };
+
+  it("keeps where it starts and takes the new CLI's defaults", () => {
+    expect(switchAgent(base, Agent.CLAUDE)).toEqual({ ...base, agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
+    // The same CLI again changes nothing.
+    expect(switchAgent(base, Agent.CODEX)).toEqual(base);
+  });
+
+  it("never carries full access over to another CLI", () => {
+    // It was confirmed for Codex; Claude Code's start asks again, or uses its own default.
+    expect(switchAgent({ ...base, mode: ApprovalMode.FULL_ACCESS }, Agent.CLAUDE).mode).toBe(ApprovalMode.UNSPECIFIED);
+  });
+
+  it("takes a CLI the new machine has, and its defaults", () => {
+    const claudeOnly: MachineLike = { id: "m2", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, { agent: Agent.CLAUDE })] }) };
+    expect(switchMachine(base, claudeOnly)).toEqual({ ...base, machineId: "m2", agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
+    const codex: MachineLike = { id: "m3", online: true, lastSeenMs: 0n };
+    expect(switchMachine(base, codex)).toMatchObject({ machineId: "m3", agent: Agent.CODEX, model: "", mode: ApprovalMode.UNSPECIFIED });
+  });
+
+  it("refuses a mode the model cannot run in", () => {
+    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO)).toBe("Haiku 没有自动模式，换一种审批模式再开始");
+    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5", ApprovalMode.AUTO)).not.toBe("");
+    expect(newConfigIssue(Agent.CLAUDE, "sonnet", ApprovalMode.AUTO)).toBe("");
+    expect(newConfigIssue(Agent.CODEX, "haiku", ApprovalMode.AUTO)).toBe("");
+    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.ASK)).toBe("");
   });
 });

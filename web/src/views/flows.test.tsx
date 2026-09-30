@@ -143,7 +143,7 @@ it("keeps the dock's buttons out of its scrolling content", () => {
 it("follows the project's latest session as sessions change", () => {
   const r = demo();
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
-  const line = () => host.querySelector(".newbox .cfg em")!.textContent ?? "";
+  const line = () => host.querySelector(".newbox .cli-pick")!.textContent ?? "";
   expect(line()).not.toContain("Claude Code");
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
@@ -678,14 +678,12 @@ it("keeps a project's model and effort after Done and a page reload", async () =
   const page = (r: DemoRemote) => <ProjectPage remote={r} pkey={project} go={() => undefined} onBack={() => undefined} wide />;
   const r = demo();
   mount(page(r));
-  await click(button("更改"));
-  await click(button(/^模型/));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
+  await click(host.querySelector<HTMLButtonElement>(".compose-card .ctl.model")!);
   await click(button("GPT-6-Sol"));
   await click(button("low"));
   await click(host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!);
-  await click(button("完成"));
-  expect(host.querySelector(".cfg")?.textContent).toContain("GPT-6-Sol low");
+  expect(host.querySelector(".compose-card .ctl.model")?.textContent).toContain("GPT-6-Sol · low");
   // Rebuild both the page and Remote, as a reload would; old sessions
   // still have Astra, so inheritance cannot make this pass by accident.
   act(() => root!.unmount());
@@ -693,14 +691,16 @@ it("keeps a project's model and effort after Done and a page reload", async () =
   const reloaded = demo();
   mount(page(reloaded));
   await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
-  expect(host.querySelector(".cfg")?.textContent).toContain("GPT-6-Sol low");
+  expect(host.querySelector(".compose-card .ctl.model")?.textContent).toContain("GPT-6-Sol · low");
   const real = reloaded.machineCommand.bind(reloaded);
   let sent: unknown;
   reloaded.machineCommand = async (machine, cmd) => {
     if (cmd?.case === "createSession") sent = cmd.value;
     return real(machine, cmd);
   };
-  await click(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!);
+  // An empty message is not sent; 只打开终端 starts without one.
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
+  await click(button("只打开终端 ›"));
   await act(async () => { await vi.waitFor(() => expect(loadProjectConfig(reloaded.account, project)).toBeUndefined()); });
   expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project });
 });
@@ -733,7 +733,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
-  await vi.waitFor(() => expect(host.querySelector(".newbox .cfg em")!.textContent).toContain("GPT-6.1-Sol low"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-model")!.textContent).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
@@ -867,12 +867,12 @@ describe("a new-session draft", () => {
     const r = demo();
     const sent = capture(r);
     mount(<WideHome remote={r} go={() => undefined} />);
-    await vi.waitFor(() => expect(host.textContent).toContain("要 Codex 做什么"));
-    const before = host.querySelector(".opts .chip")!.textContent;
+    await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
+    const before = host.querySelector(".wide-project-tools .chip")!.textContent;
     await type("加限流");
     // Another project becomes the latest meanwhile.
     bump(r, "s-plan");
-    expect(host.querySelector(".opts .chip")!.textContent).toBe(before);
+    expect(host.querySelector(".wide-project-tools .chip")!.textContent).toBe(before);
     await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
     await click(button("↑"));
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -886,7 +886,7 @@ describe("a new-session draft", () => {
     await type("加限流");
     // The project's Claude Code session becomes its latest meanwhile.
     bump(r, "s-claude");
-    expect(host.querySelector(".newbox .cfg em")!.textContent).not.toContain("Claude Code");
+    expect(host.querySelector(".newbox .cli-pick")!.textContent).not.toContain("Claude Code");
     await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
     await click(button("↑"));
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -899,7 +899,7 @@ describe("a new-session draft", () => {
     (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6-astra", defaultMode: ApprovalMode.FULL_ACCESS });
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
-    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg em")!.textContent).toContain("完全放行"), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-main")!.textContent).toContain("完全放行"), { timeout: 3000 });
     await type("加限流");
     await click(button("↑"));
     expect(host.textContent).toContain("切到完全放行？");
@@ -988,5 +988,43 @@ describe("the queue in full (v2)", () => {
     await click(button(/^排队 1/));
     await click(button("取消", host.querySelector(".queue-entry")!));
     await vi.waitFor(() => expect(host.querySelector(".queue-entry")!.textContent).toContain("取消未成功，消息仍在队列中"));
+  });
+});
+
+describe("switching a new session's CLI (v2)", () => {
+  it("keeps the draft, and asks again when the new CLI's default is full access", async () => {
+    const r = demo();
+    (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, {
+      approvalTimeoutSeconds: 600,
+      defaultModel: "gpt-6-astra",
+      defaultMode: ApprovalMode.AUTO,
+      claude: { model: "sonnet", effort: "high", mode: ApprovalMode.FULL_ACCESS },
+    });
+    const sent: { agent?: number; mode?: number; prompt?: string }[] = [];
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        sent.push({ agent: cmd.value.agent, mode: cmd.value.mode, prompt: cmd.value.prompt });
+        throw new CommandError("failed_precondition", "stop here");
+      }
+      void slot;
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(host.querySelector<HTMLButtonElement>(".cli-pick")!);
+    await click(button(/^Claude Code/));
+    expect(host.querySelector(".cli-pick")!.textContent).toContain("Claude Code");
+    expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
+    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-main")!.textContent).toContain("完全放行"), { timeout: 3000 });
+    await click(button("↑"));
+    expect(host.textContent).toContain("切到完全放行？");
+    expect(sent).toHaveLength(0);
+    await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.FULL_ACCESS, prompt: "加限流" });
   });
 });

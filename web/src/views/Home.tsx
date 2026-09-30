@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import {
-  agentName,
   agentOf,
   ago,
   askTitle,
@@ -395,7 +394,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
           <Empty remote={remote} go={go} onStart={() => setPicking("new")} />
         ) : (
           <>
-            <h3>要 {agentName(ns.cfg.agent)} 做什么？</h3>
+            <h3>开始一个任务</h3>
             <NewBox
               ns={ns}
               name={name}

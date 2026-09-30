@@ -446,6 +446,31 @@ export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map
   return { machineId, cwd, agent: agents.includes(agent) ? agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, from: latest };
 }
 
+/** The new session's configuration with another CLI: same machine and
+ * folder, and that CLI's defaults for the machine (client-v2: 切换后采用该
+ * CLI 的默认模型和有效模式). Nothing chosen for the other CLI carries over;
+ * above all not full access, which is confirmed per start and CLI. If the
+ * default is full access the start asks first; a mode the model cannot run
+ * in is refused at the start (newConfigIssue). */
+export function switchAgent(cfg: NewConfig, agent: Agent): NewConfig {
+  if (agent === cfg.agent) return cfg;
+  return { ...cfg, agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
+}
+
+/** The new session's configuration on another machine: its CLI if the
+ * machine has it, else one it has; the model and mode are that machine's
+ * defaults again. */
+export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
+  const agents = machineAgents(m);
+  return { ...cfg, machineId: m.id, agent: agents.includes(cfg.agent) ? cfg.agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
+}
+
+/** Why a new session cannot start with this CLI, model and mode, or "". */
+export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode): string {
+  if (agent === Agent.CLAUDE && mode === ApprovalMode.AUTO && /haiku/i.test(model)) return "Haiku 没有自动模式，换一种审批模式再开始";
+  return "";
+}
+
 // --- events ---
 
 export interface RunningTool {

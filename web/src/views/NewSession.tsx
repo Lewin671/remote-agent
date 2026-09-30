@@ -13,6 +13,9 @@ import {
   modelLabel,
   inheritConfig,
   machineAgents,
+  newConfigIssue,
+  switchAgent,
+  switchMachine,
   machineName,
   modeName,
   projectName,
@@ -32,6 +35,7 @@ type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "imag
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
+import { useAutoGrow } from "./Composer";
 
 export type Go = (route: string) => void;
 
@@ -71,18 +75,21 @@ export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) 
   return { models, settings, error, loading, retry: () => setAttempt((a) => a + 1) };
 }
 
-/** What the configuration line says: machine, CLI, model and effort, mode. */
-export function describe(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>): string {
+/** What the configuration says, part by part: the machine, the CLI, the
+ * model and effort, and the mode. */
+export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>) {
   const def = defaultsOf(info.settings, cfg.agent);
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
-  const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
-  const mode = modeName(cfg.mode || def.mode) || "默认审批";
-  const parts = [machineName(m)];
-  if (machineAgents(m).length > 1 || cfg.agent !== Agent.CODEX) parts.push(agentName(cfg.agent));
-  parts.push(modelText, mode);
-  return parts.join(" · ");
+  const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " · " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
+  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, mode: modeName(cfg.mode || def.mode) || "默认审批" };
+}
+
+/** The configuration in one line: machine, CLI, model and effort, mode. */
+export function describe(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>): string {
+  const p = describeParts(cfg, m, info);
+  return [p.machine, p.agent, p.model, p.mode].join(" · ");
 }
 
 function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig {
@@ -106,9 +113,11 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const [latched, setLatched] = useState<{ key: string; config: NewConfig }>();
   const held = latched?.key === key ? latched.config : undefined;
   const cfg = override ? { ...override, from: inherited?.from } : (held ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key)));
-  // Full access confirmed for this project during this visit, as when it
-  // was chosen in 这次的设置.
+  // Full access confirmed for this project, machine and CLI during this
+  // visit, as when it was chosen in 这次的设置. Another CLI or machine
+  // asks again: its default may be full access too.
   const [fullConfirmed, setFullConfirmed] = useState("");
+  const confirmKey = `${key}|${cfg.machineId}|${cfg.agent}`;
   const machine = remote.machines.get(cfg.machineId);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
@@ -148,7 +157,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     const pending = current.payload;
     return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
   };
-  const create = async (prompt: string, mode?: ApprovalMode) => {
+  const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
     if (changes(prompt, mode)) abandon();
@@ -163,6 +172,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
+      if (terminal) remote.termFirst.add(sid);
       remote.draftMachines.delete(key);
       // The new session now supplies the project's next launch settings.
       try { clearProjectConfig(remote.account, key); } catch { /* Keep the saved choice if storage is unavailable. */ }
@@ -203,8 +213,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     setCfg,
     latch,
     effectiveMode,
-    fullConfirmed: fullConfirmed === key,
-    confirmFull: () => setFullConfirmed(key),
+    fullConfirmed: fullConfirmed === confirmKey,
+    confirmFull: () => setFullConfirmed(confirmKey),
+    issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, effectiveMode ?? ApprovalMode.UNSPECIFIED),
+    parts: describeParts(cfg, machine, info),
     machine,
     info,
     line: describe(cfg, machine, info),
@@ -220,7 +232,9 @@ export type NewSession = ReturnType<typeof useNewSession>;
 
 /** The new-session box: at the bottom of a project page ("box"), at the
  * top of a wide project page ("prompt"), or the wide home ("start", with
- * the project chip leading the configuration line). */
+ * the project chip leading). The CLI is picked right on it; the machine
+ * and mode, and the model and effort, are written out; 更改 opens the
+ * rest. */
 export function NewBox({
   ns,
   name,
@@ -237,41 +251,48 @@ export function NewBox({
   onDraft?: () => void;
 }) {
   const [text, setText] = useState("");
-  const [askFull, setAskFull] = useState(false);
-  const [config, setConfig] = useState(false);
+  const [askFull, setAskFull] = useState<"" | "send" | "terminal">("");
+  const [config, setConfig] = useState<"" | "main" | Pick>("");
+  const [cli, setCli] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(input, text, variant === "box" ? 132 : 240);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   // The machine's default mode is still being read: nothing to confirm yet.
   const modePending = !ns.cfg.mode && ns.effectiveMode === undefined && ns.info.loading;
-  const submit = async (confirmed = false) => {
+  const [modeUnknown, setModeUnknown] = useState(false);
+  const cannot = ns.busy || !!ns.blocked || modePending || !!ns.issue;
+  const submit = async (confirmed = false, terminal = false) => {
+    const prompt = terminal ? "" : text;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request.
-    if (ns.busy || ns.blocked || modePending || (ns.expired && !ns.changes(text))) return;
+    if (cannot || (ns.expired && !ns.changes(prompt))) return;
     // Retrying an unknown start sends it as it was.
-    const retry = ns.frozen && !ns.changes(text);
+    const retry = ns.frozen && !ns.changes(prompt);
     if (!retry) {
       if (ns.effectiveMode === undefined) return setModeUnknown(true);
       // Full access, chosen or the machine's default, is confirmed for
       // each start; then it is sent as chosen, not left to the default.
-      if (ns.effectiveMode === ApprovalMode.FULL_ACCESS && !ns.fullConfirmed && !confirmed) return setAskFull(true);
+      if (ns.effectiveMode === ApprovalMode.FULL_ACCESS && !ns.fullConfirmed && !confirmed) return setAskFull(terminal ? "terminal" : "send");
     }
-    await ns.create(text.trim(), !retry && ns.effectiveMode === ApprovalMode.FULL_ACCESS ? ApprovalMode.FULL_ACCESS : undefined);
+    const ok = await ns.create(prompt.trim(), !retry && ns.effectiveMode === ApprovalMode.FULL_ACCESS ? ApprovalMode.FULL_ACCESS : undefined, terminal);
+    if (ok && !terminal) setText("");
   };
-  const [modeUnknown, setModeUnknown] = useState(false);
   const agent = agentName(ns.cfg.agent);
+  const p = ns.parts;
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
-    box: `在 ${name} 里要 ${agent} 做什么？`,
-    prompt: `在 ${name} 里开始新会话，⌘↵ 发送`,
-    start: "描述任务，⌘↵ 开始；也可以不写",
+    box: `在 ${name} 里开始一个任务…`,
+    prompt: `在 ${name} 里开始新会话…`,
+    start: "描述任务，⌘/Ctrl+Enter 开始",
   }[variant];
+  const disabled = cannot || (ns.expired && !ns.changes(text)) || !text.trim();
   const field = (
     <textarea
       ref={input}
-      className={"in" + (text ? " typed" : "")}
-      rows={variant === "box" ? 1 : 2}
+      className={variant === "box" ? "in" + (text ? " typed" : "") : "draft" + (text ? " typed" : "")}
+      rows={1}
       value={text}
       placeholder={placeholder}
       onChange={(e) => {
@@ -283,7 +304,7 @@ export function NewBox({
         setText(e.target.value);
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
           e.preventDefault();
           void submit();
         }
@@ -291,21 +312,12 @@ export function NewBox({
       aria-label="新会话的第一句话"
     />
   );
-  const go = (
-    <button className="go" disabled={ns.busy || !!ns.blocked || modePending || (ns.expired && !ns.changes(text))} onClick={() => void submit()} aria-label="开始新会话">
-      ↑
+  const cliPick = (
+    <button className="cli-pick" onClick={() => setCli(true)} aria-label={`CLI：${agent}`}>
+      {agent} ▾
     </button>
   );
-  const cfgLine = (
-    <div className="cfg">
-      {lead}
-      {!lead && <Dot tone={ns.machine?.online ? "idle" : "off"} />}
-      <em className={ns.blocked ? "warn-text" : ""}>{status || ns.blocked || ns.line}</em>
-      <button className="link" onClick={() => setConfig(true)}>
-        更改
-      </button>
-    </div>
-  );
+  const offline = !ns.machine?.online;
   const error =
     ns.error &&
     (ns.expired ? (
@@ -317,30 +329,17 @@ export function NewBox({
         {ns.frozen ? `不确定是否已经启动：${ns.error}。重试会发送同一个请求，不会重复启动` : `启动失败：${ns.error}`}
       </Banner>
     ));
-  return (
+  const notes = (
     <>
-      {variant === "box" ? (
-        <div className="newbox">
-          {error}
-          <div className="nh">＋ 新会话</div>
-          <div className="row2">
-            {field}
-            {go}
-          </div>
-          {cfgLine}
-        </div>
-      ) : (
-        <>
-          <div className="prompt">
-            {field}
-            <div className="pf">
-              {variant === "prompt" ? cfgLine : <span />}
-              {go}
-            </div>
-          </div>
-          {variant === "start" && <div className="opts">{cfgLine}</div>}
-          {error}
-        </>
+      {offline && ns.machine && (
+        <Banner kind="warn" action="换机器" onAction={() => setConfig("machine")}>
+          {machineName(ns.machine)} {text ? "已离线，任务尚未开始。草稿和配置保留，不会自动换机器或 CLI" : "不在线"}
+        </Banner>
+      )}
+      {ns.issue && (
+        <Banner kind="warn" action="改模式" onAction={() => setConfig("mode")}>
+          {ns.issue}
+        </Banner>
       )}
       {ns.configError && <Banner kind="warn">{ns.configError}</Banner>}
       {modeUnknown && ns.effectiveMode === undefined && (
@@ -348,27 +347,162 @@ export function NewBox({
           没能读取 {machineName(ns.machine)} 的默认审批模式，在「更改」里选一种再开始
         </Banner>
       )}
+    </>
+  );
+  const onlyTerm = !text && (
+    <button className="onlyterm" disabled={cannot} onClick={() => void submit(false, true)}>
+      只打开终端 ›
+    </button>
+  );
+  const go =
+    variant === "box" ? (
+      <button className="go" disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
+        ↑
+      </button>
+    ) : (
+      <button className={"go44" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
+        ↑
+      </button>
+    );
+  let body;
+  if (variant === "box")
+    body = (
+      <div className="newbox">
+        {error}
+        {notes}
+        <div className="nh">
+          <span>＋ 新会话</span>
+          {cliPick}
+        </div>
+        <div className="row2">
+          {field}
+          {go}
+        </div>
+        <div className="cfg">
+          <div className="cfg-main">
+            <Dot tone={ns.machine?.online ? "idle" : "off"} />
+            <span className={ns.blocked ? "warn-text" : ""}>{status || p.machine}</span>
+            <span>· {p.mode}</span>
+          </div>
+          <div className="cfg-model">{p.model}</div>
+          <button className="cfg-edit" onClick={() => setConfig("main")}>
+            更改
+          </button>
+        </div>
+        {onlyTerm}
+      </div>
+    );
+  else
+    body = (
+      <>
+        <div className="wide-project-tools">
+          {lead}
+          {cliPick}
+          <span className="small muted cfgsum">
+            <Dot tone={ns.machine?.online ? "idle" : "off"} /> {status || p.machine} · {p.mode}
+          </span>
+          {variant === "prompt" && (
+            <button className="link small" onClick={() => setConfig("main")}>
+              更改
+            </button>
+          )}
+        </div>
+        {error}
+        {notes}
+        <div className="compose-card newcard">
+          {field}
+          <div className="controls">
+            <button className={"ctl mode" + (p.mode === "完全放行" ? " danger" : "")} onClick={() => setConfig("mode")}>
+              {p.mode} ▾
+            </button>
+            <button className="ctl model" onClick={() => setConfig("model")}>
+              <em>{p.model} ▾</em>
+            </button>
+            {go}
+          </div>
+        </div>
+        {onlyTerm}
+        {variant === "start" && (
+          <div className="small muted startnote">
+            {ns.cfg.from ? `沿用 ${projectName(ns.cfg.cwd)} 最近一次的 ${agent} 设置` : `用 ${p.machine} 的默认设置`} ·{" "}
+            <button className="link small" onClick={() => setConfig("main")}>
+              更改机器与目录
+            </button>
+          </div>
+        )}
+      </>
+    );
+  return (
+    <>
+      {body}
       {askFull && (
         <FullAccessAlert
           forNew
-          onCancel={() => setAskFull(false)}
+          onCancel={() => setAskFull("")}
           onOk={() => {
-            setAskFull(false);
+            const terminal = askFull === "terminal";
+            setAskFull("");
             ns.confirmFull();
-            void submit(true);
+            void submit(true, terminal);
           }}
         />
       )}
-      {config && <ConfigSheet ns={ns} onClose={() => setConfig(false)} />}
+      {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
+      {cli && <CliSheet ns={ns} onClose={() => setCli(false)} onMachine={() => (setCli(false), setConfig("machine"))} />}
     </>
+  );
+}
+
+/** The CLI for the new session: those the machine has; the draft stays. */
+export function CliSheet({ ns, onClose, onMachine }: { ns: NewSession; onClose: () => void; onMachine: () => void }) {
+  const { remote, cfg, machine } = ns;
+  const have = machineAgents(machine);
+  const all = [Agent.CODEX, Agent.CLAUDE];
+  // Another online machine of the project that has a CLI this one lacks.
+  const missing = all.filter((a) => !have.includes(a));
+  const elsewhere = missing.flatMap((a) =>
+    [...remote.machines.values()].filter((m) => m.online && m.id !== cfg.machineId && machineAgents(m).includes(a)).slice(0, 1).map((m) => ({ a, m })),
+  );
+  return (
+    <Sheet onClose={onClose}>
+      <h4>新会话使用的 CLI</h4>
+      <div className="list">
+        {have.map((a) => {
+          const v = machine?.meta?.agents.find((x) => x.agent === a);
+          return (
+            <button key={a} className="mi" onClick={() => (ns.setCfg(switchAgent(cfg, a)), onClose())}>
+              <div className="mt">
+                <b>{agentName(a)}</b>
+                <div className="md">
+                  {machineName(machine)} 上已安装{v?.version ? ` · ${v.version}` : ""}
+                </div>
+              </div>
+              {a === cfg.agent && <span className="ck">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+      <div className="hint">切换后采用该 CLI 的默认模型和有效模式，草稿保留。{have.length === 1 ? `${machineName(machine)} 上只有 ${agentName(have[0])}。` : ""}</div>
+      {missing.map((a) => {
+        const other = elsewhere.find((x) => x.a === a)?.m;
+        return (
+          <Banner key={a} action={other ? "换机器" : undefined} onAction={onMachine}>
+            {machineName(machine)} 没有 {agentName(a)}
+            {other ? `，${machineName(other)} 上有` : ""}
+          </Banner>
+        );
+      })}
+    </Sheet>
   );
 }
 
 type Pick = "" | "machine" | "agent" | "dir" | "model" | "mode";
 
 /** 这次的设置: machine, CLI, folder, model and mode for this session. */
-export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => void }) {
-  const [pick, setPick] = useState<Pick>("");
+export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClose: () => void; start?: Pick }) {
+  const [pick, setPick] = useState<Pick>(start);
+  // Opened right at one setting: done with it is done with the sheet.
+  const back2 = () => (start ? onClose() : setPick(""));
   const [confirmFull, setConfirmFull] = useState(false);
   const { remote, cfg, p, machine, info } = ns;
   const set = (patch: Partial<NewConfig>) => ns.setCfg({ ...cfg, ...patch });
@@ -376,7 +510,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
   // Machines this project has used; a new project can use any.
   const choices: MachineView[] = (p ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   const back = (
-    <button className="back2" onClick={() => setPick("")} aria-label="返回">
+    <button className="back2" onClick={back2} aria-label="返回">
       ‹
     </button>
   );
@@ -389,7 +523,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
           setConfirmFull(false);
           set({ mode: ApprovalMode.FULL_ACCESS });
           ns.confirmFull();
-          setPick("");
+          back2();
         }}
       />
     );
@@ -409,7 +543,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
           label={(name) => `在 ${name} 里开始`}
           onPick={(path) => {
             set({ cwd: path });
-            setPick("");
+            back2();
           }}
         />
       </Sheet>
@@ -424,15 +558,22 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
             className={"mi" + (m.online ? "" : " dis")}
             disabled={!m.online}
             onClick={() => {
-              const agents = machineAgents(m);
-              ns.setCfg({ ...cfg, machineId: m.id, agent: agents.includes(cfg.agent) ? cfg.agent : agents[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
-              setPick("");
+              ns.setCfg(switchMachine(cfg, m));
+              back2();
             }}
           >
             <Dot tone={m.online ? "idle" : "off"} />
             <div className="mt">
-              {machineName(m)}
-              {!m.online && <div className="md">{m.lastSeenMs ? ago(m.lastSeenMs) + "在线，" : ""}现在不能新建</div>}
+              {m.id === cfg.machineId || !m.online ? machineName(m) : <b>改用 {machineName(m)}</b>}
+              {!m.online ? (
+                <div className="md">{m.lastSeenMs ? ago(m.lastSeenMs) + "在线，" : ""}现在不能新建</div>
+              ) : (
+                m.id !== cfg.machineId && (
+                  <div className="md">
+                    {machineAgents(m).includes(cfg.agent) ? `有 ${agentName(cfg.agent)}` : `只有 ${machineAgents(m).map(agentName).join("、")}`}；模型和模式会按这台机器重新选择
+                  </div>
+                )
+              )}
             </div>
             {m.id === cfg.machineId && <span className="ck">✓</span>}
           </button>
@@ -445,7 +586,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
         {machineAgents(machine).map((a) => {
           const v = machine?.meta?.agents.find((x) => x.agent === a);
           return (
-            <button key={a} className="mi" onClick={() => (ns.setCfg({ ...cfg, agent: a, model: "", effort: "" }), setPick(""))}>
+            <button key={a} className="mi" onClick={() => (ns.setCfg(switchAgent(cfg, a)), back2())}>
               <div className="mt">
                 {agentName(a)}
                 {v?.version && <small>{v.version}</small>}
@@ -514,7 +655,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
             onClick={() => {
               if (m.mode === ApprovalMode.FULL_ACCESS && cfg.mode !== m.mode) return setConfirmFull(true);
               set({ mode: m.mode });
-              setPick("");
+              back2();
             }}
           >
             <div className="mt">
