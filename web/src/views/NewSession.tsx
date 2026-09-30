@@ -106,6 +106,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const [latched, setLatched] = useState<{ key: string; config: NewConfig }>();
   const held = latched?.key === key ? latched.config : undefined;
   const cfg = override ? { ...override, from: inherited?.from } : (held ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key)));
+  // Full access confirmed for this project during this visit, as when it
+  // was chosen in 这次的设置.
+  const [fullConfirmed, setFullConfirmed] = useState("");
   const machine = remote.machines.get(cfg.machineId);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
@@ -134,23 +137,23 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others; the page's own view of the settings may
   // change as the started session's record arrives.
-  const payloadFor = (prompt: string): StartPayload => {
+  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
-    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
+    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent };
     return { machineId: c.machineId, req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent } };
   };
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
-  const changes = (prompt: string): boolean => {
+  const changes = (prompt: string, mode?: ApprovalMode): boolean => {
     const pending = current.payload;
-    return !!pending && JSON.stringify(payloadFor(prompt)) !== JSON.stringify(pending);
+    return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
   };
-  const create = async (prompt: string) => {
+  const create = async (prompt: string, mode?: ApprovalMode) => {
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
-    if (changes(prompt)) abandon();
+    if (changes(prompt, mode)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = current.next(payloadFor(prompt));
+    const { payload, slot } = current.next(payloadFor(prompt, mode));
     setBusy(true);
     setError("");
     try {
@@ -185,7 +188,32 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const latch = () => {
     if (!override && !held) setLatched({ key, config: cfg });
   };
-  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg, latch, machine, info, line: describe(cfg, machine, info), create, busy, error, configError, blocked };
+  // The mode the start will run in: the one chosen, else the machine's
+  // default for this CLI; undefined while that default is not known.
+  const def = defaultsOf(info.settings, cfg.agent);
+  const effectiveMode = cfg.mode || (info.settings ? def.mode : undefined);
+  return {
+    remote,
+    frozen: current.frozen,
+    expired: current.expired,
+    abandon,
+    changes,
+    p,
+    cfg,
+    setCfg,
+    latch,
+    effectiveMode,
+    fullConfirmed: fullConfirmed === key,
+    confirmFull: () => setFullConfirmed(key),
+    machine,
+    info,
+    line: describe(cfg, machine, info),
+    create,
+    busy,
+    error,
+    configError,
+    blocked,
+  };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -209,17 +237,29 @@ export function NewBox({
   onDraft?: () => void;
 }) {
   const [text, setText] = useState("");
+  const [askFull, setAskFull] = useState(false);
   const [config, setConfig] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
-  const submit = async () => {
+  // The machine's default mode is still being read: nothing to confirm yet.
+  const modePending = !ns.cfg.mode && ns.effectiveMode === undefined && ns.info.loading;
+  const submit = async (confirmed = false) => {
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request.
-    if (ns.busy || ns.blocked || (ns.expired && !ns.changes(text))) return;
-    await ns.create(text.trim());
+    if (ns.busy || ns.blocked || modePending || (ns.expired && !ns.changes(text))) return;
+    // Retrying an unknown start sends it as it was.
+    const retry = ns.frozen && !ns.changes(text);
+    if (!retry) {
+      if (ns.effectiveMode === undefined) return setModeUnknown(true);
+      // Full access, chosen or the machine's default, is confirmed for
+      // each start; then it is sent as chosen, not left to the default.
+      if (ns.effectiveMode === ApprovalMode.FULL_ACCESS && !ns.fullConfirmed && !confirmed) return setAskFull(true);
+    }
+    await ns.create(text.trim(), !retry && ns.effectiveMode === ApprovalMode.FULL_ACCESS ? ApprovalMode.FULL_ACCESS : undefined);
   };
+  const [modeUnknown, setModeUnknown] = useState(false);
   const agent = agentName(ns.cfg.agent);
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
@@ -252,7 +292,7 @@ export function NewBox({
     />
   );
   const go = (
-    <button className="go" disabled={ns.busy || !!ns.blocked || (ns.expired && !ns.changes(text))} onClick={() => void submit()} aria-label="开始新会话">
+    <button className="go" disabled={ns.busy || !!ns.blocked || modePending || (ns.expired && !ns.changes(text))} onClick={() => void submit()} aria-label="开始新会话">
       ↑
     </button>
   );
@@ -303,6 +343,22 @@ export function NewBox({
         </>
       )}
       {ns.configError && <Banner kind="warn">{ns.configError}</Banner>}
+      {modeUnknown && ns.effectiveMode === undefined && (
+        <Banner kind="warn" action="重试" onAction={() => (setModeUnknown(false), ns.info.retry())}>
+          没能读取 {machineName(ns.machine)} 的默认审批模式，在「更改」里选一种再开始
+        </Banner>
+      )}
+      {askFull && (
+        <FullAccessAlert
+          forNew
+          onCancel={() => setAskFull(false)}
+          onOk={() => {
+            setAskFull(false);
+            ns.confirmFull();
+            void submit(true);
+          }}
+        />
+      )}
       {config && <ConfigSheet ns={ns} onClose={() => setConfig(false)} />}
     </>
   );
@@ -332,6 +388,7 @@ export function ConfigSheet({ ns, onClose }: { ns: NewSession; onClose: () => vo
         onOk={() => {
           setConfirmFull(false);
           set({ mode: ApprovalMode.FULL_ACCESS });
+          ns.confirmFull();
           setPick("");
         }}
       />

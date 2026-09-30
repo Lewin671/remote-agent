@@ -890,5 +890,19 @@ describe("a new-session draft", () => {
     expect(sent[0].agent).toBe(Agent.CODEX);
   });
 
-
+  it("asks before starting in full access that is only the machine's default", async () => {
+    const r = demo();
+    const sent = capture(r);
+    (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6-astra", defaultMode: ApprovalMode.FULL_ACCESS });
+    r.draftMachines.set("/Users/me/Code/new", "mac");
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+    await vi.waitFor(() => expect(host.querySelector(".newbox .cfg em")!.textContent).toContain("完全放行"), { timeout: 3000 });
+    await type("加限流");
+    await click(button("↑"));
+    expect(host.textContent).toContain("切到完全放行？");
+    expect(sent).toHaveLength(0);
+    await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].mode).toBe(ApprovalMode.FULL_ACCESS);
+  });
 });
