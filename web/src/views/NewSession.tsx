@@ -159,7 +159,18 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     // The images are part of what is started: other images, another start.
     return {
       machineId: c.machineId,
-      req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent, imageIds: tray.imageIds(), confirmFullAccess: pending && !override ? pending.req.confirmFullAccess : confirmFullAccess },
+      req: {
+        cwd: c.cwd,
+        prompt: prompt.trim(),
+        model: c.model,
+        effort: c.effort,
+        mode: c.mode,
+        agent: c.agent,
+        imageIds: tray.imageIds(),
+        // Confirmation is not a setting the user changes: a retry of the
+        // pending start keeps it, override or not.
+        confirmFullAccess: pending ? pending.req.confirmFullAccess : confirmFullAccess,
+      },
     };
   };
   /** Whether sending prompt now would be a different start from the one

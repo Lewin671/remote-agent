@@ -1532,3 +1532,39 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   expect(host.textContent).toContain("暂未获取额度");
   expect(host.textContent).toContain("7 天未获取");
 });
+
+it("retries a confirmed start whose reply was lost as the same request, confirmed (review W1)", async () => {
+  const r = demo();
+  const sent: { id: string; confirm?: boolean }[] = [];
+  r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push({ id: slot!.requestId, confirm: cmd.value.confirmFullAccess });
+      if (!cmd.value.confirmFullAccess) throw new CommandError("failed_precondition", "codex starts in full access here by default; confirm it or choose another mode");
+      throw new CommandError("unknown", "连接超时");
+    }
+    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+  };
+  let ns: ReturnType<typeof useNewSession> | undefined;
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  // A launch override chosen by the user, mode left to the default.
+  await click(host.querySelector<HTMLButtonElement>(".cfg-edit")!);
+  await click(button(/^模型/));
+  await act(async () => { await r.listModels("mac", Agent.CODEX); });
+  await click(button("GPT-6-Sol"));
+  await click(host.querySelector<HTMLButtonElement>('.sheet .back2')!);
+  await click(button("完成"));
+  void ns;
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(button("↑"));
+  await vi.waitFor(() => expect(host.textContent).toContain("切到完全放行？"));
+  await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(sent).toHaveLength(3));
+  expect(sent[2]).toEqual(sent[1]);
+  expect(sent[2].confirm).toBe(true);
+});
