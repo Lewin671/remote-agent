@@ -37,6 +37,8 @@
 - **耗时**：App 在后台时，从 daemon 记下审批到通知出现约 3 秒；进程被杀掉后（`am kill`），系统为 FCM 广播新起进程，从审批记下到通知出现约 2 秒，其中 `onMessageReceived` 里读偏好、解密、发通知共 191 ms（进程在时 14 到 80 ms）。模拟器负载很高时，进程启动超过 10 秒会被判定为「failed to complete startup」的 ANR，这条推送随之丢失（系统日志 `broadcast intent callback: result=CANCELLED`）。推测真手机上不会这么慢，但 Application 的 `onCreate` 仍然只做最少的事
 - **`am force-stop` 之后收不到推送**：被强制停止的 App 处于 stopped 状态，系统不投递广播；测试「进程被回收」要用 `am kill`
 - **通知按钮**：`setAuthenticationRequired(true)` 的按钮在没有锁屏的模拟器上直接可点，点「允许」「拒绝」后由 WorkManager 转发，daemon 记下的是 allow / deny。锁屏时要先解锁未验证（模拟器没设锁屏）
+- **`VISIBILITY_PRIVATE` 挡不住锁屏**：用户在系统设置里允许锁屏显示敏感内容时，PRIVATE 的通知照样全文显示。`VISIBILITY_SECRET` 的通知在设了锁屏密码时整条不出现在锁屏上（模拟器 API 36，设了 PIN 后实测）
+- **锁屏时 FCM 拉起进程**：设了 PIN 并锁屏、`am kill` 之后，推送照样把进程拉起并显示通知；这时 `setUnlockedDeviceRequired` 的密钥不能用，只有单独包装、没设这一项的通知密钥能解密。解锁后点通知进 App，账户在前台读取成功
 - **系统猜的操作**：通知正文里有网址时（如 `curl https://…`），系统会自动加一个「Open link」按钮，位置就在「拒绝」「允许」上面，容易误点；要用 `setAllowSystemGeneratedContextualActions(false)` 关掉
 
 ## 5. 模拟器

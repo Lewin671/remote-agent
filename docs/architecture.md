@@ -376,8 +376,8 @@ App 在前台时保持主 WebSocket；进入后台就断开，改靠推送；回
 - **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。手机有 GMS，不做 UnifiedPush
 - **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
 - **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
-- **显示**：通知用 `VISIBILITY_PRIVATE`，锁屏上只显示通用文案。默认解锁后也只显示通用文案，点开直接进审批页；App 设置里打开「在通知里显示内容并直接审批」后，才显示会话标题、命令和按钮（scope 第 4 节）。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知
-- **按钮**：「允许 / 拒绝」设 `setAuthenticationRequired(true)`（API 31 起），先解锁手机才能点；每条通知用独立、不可变的 `PendingIntent`，只绑定自己那条审批；命令显示不全时，「允许」改为打开完整的审批页
+- **显示**：默认只显示通用文案，点开直接进审批页。App 设置里打开「在通知里显示内容并直接审批」后，手机解锁时才显示会话标题、命令和按钮，这样的通知用 `VISIBILITY_SECRET`，锁屏上整条不出现；锁着时收到的仍只发通用文案。`VISIBILITY_PRIVATE` 不够：用户允许锁屏显示敏感内容时它照样全文显示（scope 第 4 节，实测见 [android-notes §4](android-notes.md#4-fcm)）。账户只在前台读取，推送拉起的后台进程只用通知密钥。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知
+- **按钮**：「允许 / 拒绝」设 `setAuthenticationRequired(true)`，先解锁手机才能点；API 31 以下做不到这一点，就不给按钮，点通知进审批页；每条通知用独立、不可变的 `PendingIntent`，只绑定自己那条审批；命令显示不全时，「允许」改为打开完整的审批页
 - **执行**：点按钮时在广播里封好指令（请求 ID 和截止时间就此固定），交给 WorkManager 发 `Forward`；先显示「允许中…」，daemon 返回才算完成；结果未知时重试同一个信封，过了截止时间还不知道就如实显示
 - **daemon 的校验**：超时和回复都要先抢到审批的 `claimed` 标记，只有一方生效，过期的回复不会被放行。另在审批里存一个绝对截止时间，处理回复时一并检查，作为额外防护
 - **投递失败**：推送没送到不影响 daemon 的超时拒绝，审批仍可以打开 App 处理
