@@ -614,7 +614,7 @@ function Row({
         </details>
       );
     case "toolCall":
-      return <ToolRow t={k.value} short={short} decision={it.decision} />;
+      return <ToolRow t={k.value} short={short} decision={it.decision} by={it.approvalId && otherThanMe(d.by.get(it.approvalId), who) ? elsewhereLabel(d.by.get(it.approvalId), who.ctx) : undefined} />;
     case "turnEnded":
       return <div className="sysline">已中断{otherThanMe(e.origin, who) ? ` · ${originLabel(e.origin, who.ctx) || "另一客户端"}` : ""}</div>;
     case "planAnswered": {

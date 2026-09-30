@@ -116,7 +116,8 @@ export function ActiveTool({
   );
 }
 
-export function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?: ApprovalDecision }) {
+export function ToolRow({ t, short, decision, by }: { t: ToolCall; short: Short; decision?: ApprovalDecision; by?: string }) {
+  const decided = decision !== undefined ? decisionText(decision) + (by ? ` · ${by}` : "") : "";
   const [open, setOpen] = useState(false);
   const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
   const secs = Number(t.durationMs) / 1000;
@@ -134,10 +135,10 @@ export function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; dec
           // A failed call keeps its exit code, with the approval beside it.
           <span className="exit">
             退出码 {t.exitCode}
-            {decision !== undefined && <span className="muted"> · {decisionText(decision)}</span>}
+            {decided && <span className="muted"> · {decided}</span>}
           </span>
-        ) : decision !== undefined ? (
-          <span className="muted">{decisionText(decision)}</span>
+        ) : decided ? (
+          <span className="muted">{decided}</span>
         ) : secs >= 1 ? (
           <span className="muted">{Math.round(secs)}s</span>
         ) : null}

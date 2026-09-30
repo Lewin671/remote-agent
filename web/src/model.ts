@@ -904,7 +904,7 @@ export function inputFailure(reason: string, agent: Agent): string {
 
 export type Item =
   // decision: an approval's result shown on the tool call it was for.
-  | { kind: "event"; key: string; event: Event; decision?: ApprovalDecision }
+  | { kind: "event"; key: string; event: Event; decision?: ApprovalDecision; approvalId?: string }
   | { kind: "tools"; key: string; calls: ToolCall[] }
   | { kind: "turn"; key: string; ms: number }
   // A tool that started and has no result yet, and one the turn ended
@@ -982,7 +982,7 @@ export function timeline(events: Event[], d: Derived): Item[] {
     if (decision !== undefined) {
       // Shown on its own, so the decision is not folded away.
       flush();
-      out.push({ kind: "event", key: String(e.seq), event: e, decision });
+      out.push({ kind: "event", key: String(e.seq), event: e, decision, approvalId: merged.ids.get(e.seq) });
       return;
     }
     if (k.case === "toolCall" && toolOk(k.value)) {
@@ -1028,7 +1028,7 @@ export function timeline(events: Event[], d: Derived): Item[] {
  * resolved approval requested before it, and that approval matching no
  * other call. Parallel calls, repeated identical calls and events without
  * a digest (Codex, older daemons) keep the approval as a row of its own. */
-export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigint, ApprovalDecision>; approvals: Set<string> } {
+export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigint, ApprovalDecision>; approvals: Set<string>; ids: Map<bigint, string> } {
   const approvals = new Map<string, { id: string; seq: bigint }[]>();
   const calls = new Map<string, bigint[]>();
   for (const e of events) {
@@ -1045,12 +1045,13 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
       calls.set(key, [...(calls.get(key) ?? []), e.seq]);
     }
   }
-  const out = { calls: new Map<bigint, ApprovalDecision>(), approvals: new Set<string>() };
+  const out = { calls: new Map<bigint, ApprovalDecision>(), approvals: new Set<string>(), ids: new Map<bigint, string>() };
   for (const [key, as] of approvals) {
     const cs = calls.get(key) ?? [];
     if (as.length !== 1 || cs.length !== 1 || cs[0] < as[0].seq) continue;
     out.calls.set(cs[0], d.resolved.get(as[0].id)!.decision);
     out.approvals.add(as[0].id);
+    out.ids.set(cs[0], as[0].id);
   }
   return out;
 }
