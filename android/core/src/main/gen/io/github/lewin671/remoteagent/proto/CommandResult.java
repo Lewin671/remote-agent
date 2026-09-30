@@ -38,6 +38,7 @@ public  final class CommandResult extends
     ANSWER_PLAN(19),
     OPEN_TERMINAL(20),
     RESUME_SESSION(21),
+    RESUME_INPUT(22),
     CREATE_SESSION(30),
     LIST_MODELS(31),
     LIST_DIRECTORIES(32),
@@ -75,6 +76,7 @@ public  final class CommandResult extends
         case 19: return ANSWER_PLAN;
         case 20: return OPEN_TERMINAL;
         case 21: return RESUME_SESSION;
+        case 22: return RESUME_INPUT;
         case 30: return CREATE_SESSION;
         case 31: return LIST_MODELS;
         case 32: return LIST_DIRECTORIES;
@@ -846,6 +848,58 @@ public  final class CommandResult extends
    */
   private void clearResumeSession() {
     if (kindCase_ == 21) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int RESUME_INPUT_FIELD_NUMBER = 22;
+  /**
+   * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+   */
+  @java.lang.Override
+  public boolean hasResumeInput() {
+    return kindCase_ == 22;
+  }
+  /**
+   * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ResumeInputResponse getResumeInput() {
+    if (kindCase_ == 22) {
+       return (io.github.lewin671.remoteagent.proto.ResumeInputResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ResumeInputResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setResumeInput(io.github.lewin671.remoteagent.proto.ResumeInputResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeResumeInput(io.github.lewin671.remoteagent.proto.ResumeInputResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 22 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ResumeInputResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ResumeInputResponse.newBuilder((io.github.lewin671.remoteagent.proto.ResumeInputResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+   */
+  private void clearResumeInput() {
+    if (kindCase_ == 22) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2185,6 +2239,54 @@ public  final class CommandResult extends
     }
 
     /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    @java.lang.Override
+    public boolean hasResumeInput() {
+      return instance.hasResumeInput();
+    }
+    /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ResumeInputResponse getResumeInput() {
+      return instance.getResumeInput();
+    }
+    /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    public Builder setResumeInput(io.github.lewin671.remoteagent.proto.ResumeInputResponse value) {
+      copyOnWrite();
+      instance.setResumeInput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    public Builder setResumeInput(
+        io.github.lewin671.remoteagent.proto.ResumeInputResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setResumeInput(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    public Builder mergeResumeInput(io.github.lewin671.remoteagent.proto.ResumeInputResponse value) {
+      copyOnWrite();
+      instance.mergeResumeInput(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ResumeInputResponse resume_input = 22 [json_name = "resumeInput"];</code>
+     */
+    public Builder clearResumeInput() {
+      copyOnWrite();
+      instance.clearResumeInput();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.v1.CreateSessionResponse create_session = 30 [json_name = "createSession"];</code>
      */
     @java.lang.Override
@@ -2696,6 +2798,7 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.AnswerPlanResponse.class,
             io.github.lewin671.remoteagent.proto.OpenTerminalResponse.class,
             io.github.lewin671.remoteagent.proto.ResumeSessionResponse.class,
+            io.github.lewin671.remoteagent.proto.ResumeInputResponse.class,
             io.github.lewin671.remoteagent.proto.CreateSessionResponse.class,
             io.github.lewin671.remoteagent.proto.ListModelsResponse.class,
             io.github.lewin671.remoteagent.proto.ListDirectoriesResponse.class,
@@ -2708,10 +2811,10 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.AbortImageUploadResponse.class,
           };
           java.lang.String info =
-              "\u0000\u0018\u0001\u0000\u0001\'\u0018\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0019\u0001\u0000\u0001\'\u0019\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u001e<\u0000\u001f<\u0000" +
-              " <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000";
+              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u001e<\u0000" +
+              "\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

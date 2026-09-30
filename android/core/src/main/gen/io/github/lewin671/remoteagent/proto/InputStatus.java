@@ -42,7 +42,7 @@ public enum InputStatus
   INPUT_STATUS_UNCONFIRMED(3),
   /**
    * <pre>
-   * Removed from the queue before it was written.
+   * Withdrawn before the model received it.
    * </pre>
    *
    * <code>INPUT_STATUS_CANCELED = 4;</code>
@@ -68,6 +68,16 @@ public enum InputStatus
    * <code>INPUT_STATUS_NEEDS_TERMINAL = 6;</code>
    */
   INPUT_STATUS_NEEDS_TERMINAL(6),
+  /**
+   * <pre>
+   * Written, and the CLI holds it in its own queue until the current tool
+   * call ends (Claude Code during a turn). It can still be canceled; it
+   * turns SUBMITTED when the model receives it.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_HELD_BY_CLI = 7;</code>
+   */
+  INPUT_STATUS_HELD_BY_CLI(7),
   UNRECOGNIZED(-1),
   ;
 
@@ -102,7 +112,7 @@ public enum InputStatus
   public static final int INPUT_STATUS_UNCONFIRMED_VALUE = 3;
   /**
    * <pre>
-   * Removed from the queue before it was written.
+   * Withdrawn before the model received it.
    * </pre>
    *
    * <code>INPUT_STATUS_CANCELED = 4;</code>
@@ -128,6 +138,16 @@ public enum InputStatus
    * <code>INPUT_STATUS_NEEDS_TERMINAL = 6;</code>
    */
   public static final int INPUT_STATUS_NEEDS_TERMINAL_VALUE = 6;
+  /**
+   * <pre>
+   * Written, and the CLI holds it in its own queue until the current tool
+   * call ends (Claude Code during a turn). It can still be canceled; it
+   * turns SUBMITTED when the model receives it.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_HELD_BY_CLI = 7;</code>
+   */
+  public static final int INPUT_STATUS_HELD_BY_CLI_VALUE = 7;
 
 
   @java.lang.Override
@@ -158,6 +178,7 @@ public enum InputStatus
       case 4: return INPUT_STATUS_CANCELED;
       case 5: return INPUT_STATUS_FAILED;
       case 6: return INPUT_STATUS_NEEDS_TERMINAL;
+      case 7: return INPUT_STATUS_HELD_BY_CLI;
       default: return null;
     }
   }

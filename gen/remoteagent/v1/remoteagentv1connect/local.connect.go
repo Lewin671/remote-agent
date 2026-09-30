@@ -54,6 +54,9 @@ const (
 	// LocalServiceCancelInputProcedure is the fully-qualified name of the LocalService's CancelInput
 	// RPC.
 	LocalServiceCancelInputProcedure = "/remoteagent.v1.LocalService/CancelInput"
+	// LocalServiceResumeInputProcedure is the fully-qualified name of the LocalService's ResumeInput
+	// RPC.
+	LocalServiceResumeInputProcedure = "/remoteagent.v1.LocalService/ResumeInput"
 	// LocalServiceSetModelProcedure is the fully-qualified name of the LocalService's SetModel RPC.
 	LocalServiceSetModelProcedure = "/remoteagent.v1.LocalService/SetModel"
 	// LocalServiceListModelsProcedure is the fully-qualified name of the LocalService's ListModels RPC.
@@ -113,8 +116,13 @@ type LocalServiceClient interface {
 	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
-	// CancelInput removes a queued message that has not been written yet.
+	// CancelInput withdraws a message the model has not received: one still
+	// in the daemon's queue, or (Claude Code) one held in the CLI's own queue
+	// until the current tool call ends (InputStatus HELD_BY_CLI).
 	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
+	// ResumeInput sends a message that was paused when its turn was
+	// interrupted (InputState.paused), as a steer.
+	ResumeInput(context.Context, *connect.Request[v1.ResumeInputRequest]) (*connect.Response[v1.ResumeInputResponse], error)
 	// SetModel switches the model and effort for this session only.
 	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
@@ -202,6 +210,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceCancelInputProcedure,
 			connect.WithSchema(localServiceMethods.ByName("CancelInput")),
+			connect.WithClientOptions(opts...),
+		),
+		resumeInput: connect.NewClient[v1.ResumeInputRequest, v1.ResumeInputResponse](
+			httpClient,
+			baseURL+LocalServiceResumeInputProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ResumeInput")),
 			connect.WithClientOptions(opts...),
 		),
 		setModel: connect.NewClient[v1.SetModelRequest, v1.SetModelResponse](
@@ -319,6 +333,7 @@ type localServiceClient struct {
 	stopSession          *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
 	resumeSession        *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
 	cancelInput          *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
+	resumeInput          *connect.Client[v1.ResumeInputRequest, v1.ResumeInputResponse]
 	setModel             *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
 	listModels           *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
 	setApprovalMode      *connect.Client[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse]
@@ -376,6 +391,11 @@ func (c *localServiceClient) ResumeSession(ctx context.Context, req *connect.Req
 // CancelInput calls remoteagent.v1.LocalService.CancelInput.
 func (c *localServiceClient) CancelInput(ctx context.Context, req *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {
 	return c.cancelInput.CallUnary(ctx, req)
+}
+
+// ResumeInput calls remoteagent.v1.LocalService.ResumeInput.
+func (c *localServiceClient) ResumeInput(ctx context.Context, req *connect.Request[v1.ResumeInputRequest]) (*connect.Response[v1.ResumeInputResponse], error) {
+	return c.resumeInput.CallUnary(ctx, req)
 }
 
 // SetModel calls remoteagent.v1.LocalService.SetModel.
@@ -474,8 +494,13 @@ type LocalServiceHandler interface {
 	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
-	// CancelInput removes a queued message that has not been written yet.
+	// CancelInput withdraws a message the model has not received: one still
+	// in the daemon's queue, or (Claude Code) one held in the CLI's own queue
+	// until the current tool call ends (InputStatus HELD_BY_CLI).
 	CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error)
+	// ResumeInput sends a message that was paused when its turn was
+	// interrupted (InputState.paused), as a steer.
+	ResumeInput(context.Context, *connect.Request[v1.ResumeInputRequest]) (*connect.Response[v1.ResumeInputResponse], error)
 	// SetModel switches the model and effort for this session only.
 	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
@@ -559,6 +584,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceCancelInputProcedure,
 		svc.CancelInput,
 		connect.WithSchema(localServiceMethods.ByName("CancelInput")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceResumeInputHandler := connect.NewUnaryHandler(
+		LocalServiceResumeInputProcedure,
+		svc.ResumeInput,
+		connect.WithSchema(localServiceMethods.ByName("ResumeInput")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceSetModelHandler := connect.NewUnaryHandler(
@@ -681,6 +712,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceResumeSessionHandler.ServeHTTP(w, r)
 		case LocalServiceCancelInputProcedure:
 			localServiceCancelInputHandler.ServeHTTP(w, r)
+		case LocalServiceResumeInputProcedure:
+			localServiceResumeInputHandler.ServeHTTP(w, r)
 		case LocalServiceSetModelProcedure:
 			localServiceSetModelHandler.ServeHTTP(w, r)
 		case LocalServiceListModelsProcedure:
@@ -754,6 +787,10 @@ func (UnimplementedLocalServiceHandler) ResumeSession(context.Context, *connect.
 
 func (UnimplementedLocalServiceHandler) CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.CancelInput is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ResumeInput(context.Context, *connect.Request[v1.ResumeInputRequest]) (*connect.Response[v1.ResumeInputResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.ResumeInput is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error) {

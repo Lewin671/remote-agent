@@ -209,6 +209,59 @@ public  final class ResolveApprovalRequest extends
 
   }
 
+  public static final int ALWAYS_FIELD_NUMBER = 5;
+  private boolean always_;
+  /**
+   * <pre>
+   * With allow: also stop asking about requests like this one, as the
+   * second option of the CLI's own prompt does (Codex: commands with this
+   * prefix; Claude Code: this directory, or accept edits). The hook cannot
+   * say this, so the daemon answers that prompt itself; when the prompt
+   * has no such option it allows this request only, and ApprovalResolved
+   * tells which happened. Needs MachineCapabilities.approval_always.
+   * </pre>
+   *
+   * <code>bool always = 5 [json_name = "always"];</code>
+   * @return The always.
+   */
+  @java.lang.Override
+  public boolean getAlways() {
+    return always_;
+  }
+  /**
+   * <pre>
+   * With allow: also stop asking about requests like this one, as the
+   * second option of the CLI's own prompt does (Codex: commands with this
+   * prefix; Claude Code: this directory, or accept edits). The hook cannot
+   * say this, so the daemon answers that prompt itself; when the prompt
+   * has no such option it allows this request only, and ApprovalResolved
+   * tells which happened. Needs MachineCapabilities.approval_always.
+   * </pre>
+   *
+   * <code>bool always = 5 [json_name = "always"];</code>
+   * @param value The always to set.
+   */
+  private void setAlways(boolean value) {
+    
+    always_ = value;
+  }
+  /**
+   * <pre>
+   * With allow: also stop asking about requests like this one, as the
+   * second option of the CLI's own prompt does (Codex: commands with this
+   * prefix; Claude Code: this directory, or accept edits). The hook cannot
+   * say this, so the daemon answers that prompt itself; when the prompt
+   * has no such option it allows this request only, and ApprovalResolved
+   * tells which happened. Needs MachineCapabilities.approval_always.
+   * </pre>
+   *
+   * <code>bool always = 5 [json_name = "always"];</code>
+   */
+  private void clearAlways() {
+
+    always_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.ResolveApprovalRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -501,6 +554,61 @@ public  final class ResolveApprovalRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * With allow: also stop asking about requests like this one, as the
+     * second option of the CLI's own prompt does (Codex: commands with this
+     * prefix; Claude Code: this directory, or accept edits). The hook cannot
+     * say this, so the daemon answers that prompt itself; when the prompt
+     * has no such option it allows this request only, and ApprovalResolved
+     * tells which happened. Needs MachineCapabilities.approval_always.
+     * </pre>
+     *
+     * <code>bool always = 5 [json_name = "always"];</code>
+     * @return The always.
+     */
+    @java.lang.Override
+    public boolean getAlways() {
+      return instance.getAlways();
+    }
+    /**
+     * <pre>
+     * With allow: also stop asking about requests like this one, as the
+     * second option of the CLI's own prompt does (Codex: commands with this
+     * prefix; Claude Code: this directory, or accept edits). The hook cannot
+     * say this, so the daemon answers that prompt itself; when the prompt
+     * has no such option it allows this request only, and ApprovalResolved
+     * tells which happened. Needs MachineCapabilities.approval_always.
+     * </pre>
+     *
+     * <code>bool always = 5 [json_name = "always"];</code>
+     * @param value The always to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAlways(boolean value) {
+      copyOnWrite();
+      instance.setAlways(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With allow: also stop asking about requests like this one, as the
+     * second option of the CLI's own prompt does (Codex: commands with this
+     * prefix; Claude Code: this directory, or accept edits). The hook cannot
+     * say this, so the daemon answers that prompt itself; when the prompt
+     * has no such option it allows this request only, and ApprovalResolved
+     * tells which happened. Needs MachineCapabilities.approval_always.
+     * </pre>
+     *
+     * <code>bool always = 5 [json_name = "always"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAlways() {
+      copyOnWrite();
+      instance.clearAlways();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ResolveApprovalRequest)
   }
   @java.lang.Override
@@ -521,10 +629,11 @@ public  final class ResolveApprovalRequest extends
             "approvalId_",
             "allow_",
             "message_",
+            "always_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0208";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

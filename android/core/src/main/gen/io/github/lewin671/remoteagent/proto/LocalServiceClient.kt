@@ -108,7 +108,9 @@ public class LocalServiceClient(
 
 
   /**
-   *  CancelInput removes a queued message that has not been written yet.
+   *  CancelInput withdraws a message the model has not received: one still
+   *  in the daemon's queue, or (Claude Code) one held in the CLI's own queue
+   *  until the current tool call ends (InputStatus HELD_BY_CLI).
    */
   override suspend fun cancelInput(request: CancelInputRequest, headers: Headers): ResponseMessage<CancelInputResponse> = client.unary(
     request,
@@ -117,6 +119,22 @@ public class LocalServiceClient(
     "remoteagent.v1.LocalService/CancelInput",
       io.github.lewin671.remoteagent.proto.CancelInputRequest::class,
       io.github.lewin671.remoteagent.proto.CancelInputResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  ResumeInput sends a message that was paused when its turn was
+   *  interrupted (InputState.paused), as a steer.
+   */
+  override suspend fun resumeInput(request: ResumeInputRequest, headers: Headers): ResponseMessage<ResumeInputResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/ResumeInput",
+      io.github.lewin671.remoteagent.proto.ResumeInputRequest::class,
+      io.github.lewin671.remoteagent.proto.ResumeInputResponse::class,
       StreamType.UNARY,
     ),
   )

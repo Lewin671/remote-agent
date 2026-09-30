@@ -143,6 +143,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.ResumeSessionRequest getResumeSession();
 
   /**
+   * <code>.remoteagent.v1.ResumeInputRequest resume_input = 13 [json_name = "resumeInput"];</code>
+   * @return Whether the resumeInput field is set.
+   */
+  boolean hasResumeInput();
+  /**
+   * <code>.remoteagent.v1.ResumeInputRequest resume_input = 13 [json_name = "resumeInput"];</code>
+   * @return The resumeInput.
+   */
+  io.github.lewin671.remoteagent.proto.ResumeInputRequest getResumeInput();
+
+  /**
    * <pre>
    * Commands for the machine rather than a session; their envelope
    * header names no session.

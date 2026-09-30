@@ -121,4 +121,25 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The imageStorage.
    */
   boolean getImageStorage();
+
+  /**
+   * <pre>
+   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+   * message held by the CLI (InputStatus HELD_BY_CLI).
+   * </pre>
+   *
+   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+   * @return The sendModes.
+   */
+  boolean getSendModes();
+
+  /**
+   * <pre>
+   * ResolveApprovalRequest.always.
+   * </pre>
+   *
+   * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+   * @return The approvalAlways.
+   */
+  boolean getApprovalAlways();
 }

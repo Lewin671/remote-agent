@@ -18,8 +18,13 @@ service LocalService {
   // ResumeSession starts the CLI again for an exited session, continuing its
   // conversation.
   rpc ResumeSession(ResumeSessionRequest) returns (ResumeSessionResponse);
-  // CancelInput removes a queued message that has not been written yet.
+  // CancelInput withdraws a message the model has not received: one still
+  // in the daemon's queue, or (Claude Code) one held in the CLI's own queue
+  // until the current tool call ends (InputStatus HELD_BY_CLI).
   rpc CancelInput(CancelInputRequest) returns (CancelInputResponse);
+  // ResumeInput sends a message that was paused when its turn was
+  // interrupted (InputState.paused), as a steer.
+  rpc ResumeInput(ResumeInputRequest) returns (ResumeInputResponse);
   // SetModel switches the model and effort for this session only.
   rpc SetModel(SetModelRequest) returns (SetModelResponse);
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
@@ -119,10 +124,11 @@ message CreateSessionRequest {
   // Images for the first message, IDs from CompleteImageUpload (at most
   // 6). The prompt may be empty when there are images.
   repeated string image_ids = 9;
-  // The user confirmed starting in full access. Without it, a session
-  // whose mode is left unspecified is refused ("failed_precondition")
-  // when the default it would get in this folder is FULL_ACCESS
-  // (AgentInfo.default_mode, project settings included).
+  // Ignored. Older daemons refused to start a session whose default mode
+  // would be FULL_ACCESS without it; a default the user chose (project
+  // settings, daemon settings or the CLI's own configuration) no longer
+  // needs a second confirmation (architecture §7). Clients still set it
+  // for those daemons.
   bool confirm_full_access = 10;
 }
 
@@ -159,6 +165,10 @@ message SendRequest {
   // Enter are written; if one does not, nothing is submitted (the message
   // ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
   repeated string image_ids = 4;
+  // When a turn is running: steer (the default) writes the message as soon
+  // as the input box is free, into the current turn; queue holds it until
+  // the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
+  SendMode mode = 5;
 }
 
 message SendResponse {
@@ -188,12 +198,26 @@ message CancelInputRequest {
 
 message CancelInputResponse {}
 
+message ResumeInputRequest {
+  string session_id = 1;
+  string request_id = 2;
+}
+
+message ResumeInputResponse {}
+
 message ResolveApprovalRequest {
   string session_id = 1;
   string approval_id = 2;
   bool allow = 3;
   // Optional reason shown to the model on deny.
   string message = 4;
+  // With allow: also stop asking about requests like this one, as the
+  // second option of the CLI's own prompt does (Codex: commands with this
+  // prefix; Claude Code: this directory, or accept edits). The hook cannot
+  // say this, so the daemon answers that prompt itself; when the prompt
+  // has no such option it allows this request only, and ApprovalResolved
+  // tells which happened. Needs MachineCapabilities.approval_always.
+  bool always = 5;
 }
 
 message ResolveApprovalResponse {}

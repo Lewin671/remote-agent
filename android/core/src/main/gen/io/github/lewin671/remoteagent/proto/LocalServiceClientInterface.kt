@@ -33,9 +33,17 @@ public interface LocalServiceClientInterface {
   public suspend fun resumeSession(request: ResumeSessionRequest, headers: Headers = emptyMap()): ResponseMessage<ResumeSessionResponse>
 
   /**
-   *  CancelInput removes a queued message that has not been written yet.
+   *  CancelInput withdraws a message the model has not received: one still
+   *  in the daemon's queue, or (Claude Code) one held in the CLI's own queue
+   *  until the current tool call ends (InputStatus HELD_BY_CLI).
    */
   public suspend fun cancelInput(request: CancelInputRequest, headers: Headers = emptyMap()): ResponseMessage<CancelInputResponse>
+
+  /**
+   *  ResumeInput sends a message that was paused when its turn was
+   *  interrupted (InputState.paused), as a steer.
+   */
+  public suspend fun resumeInput(request: ResumeInputRequest, headers: Headers = emptyMap()): ResponseMessage<ResumeInputResponse>
 
   /**
    *  SetModel switches the model and effort for this session only.

@@ -386,6 +386,9 @@ enum ApprovalDecision {
   // own prompt while the hook waits); what was chosen shows in the tool
   // call that follows.
   APPROVAL_DECISION_TERMINAL = 5;
+  // Allowed, and the CLI will not ask about requests like it again;
+  // ApprovalResolved.message is the CLI's own wording of that option.
+  APPROVAL_DECISION_ALLOW_ALWAYS = 6;
 }
 
 message ApprovalResolved {
@@ -456,7 +459,7 @@ enum InputStatus {
   // The keys were delivered but Codex did not record the message in time.
   // It is not sent again, to avoid submitting it twice.
   INPUT_STATUS_UNCONFIRMED = 3;
-  // Removed from the queue before it was written.
+  // Withdrawn before the model received it.
   INPUT_STATUS_CANCELED = 4;
   // Not submitted: something failed before Enter (e.g. the CLI did not
   // turn an image into "[Image #N]"), and the input box was verified to be
@@ -466,6 +469,20 @@ enum InputStatus {
   // back to what it was: part of the message may still be in it. It is
   // neither submitted nor retried; the user sorts it out in the terminal.
   INPUT_STATUS_NEEDS_TERMINAL = 6;
+  // Written, and the CLI holds it in its own queue until the current tool
+  // call ends (Claude Code during a turn). It can still be canceled; it
+  // turns SUBMITTED when the model receives it.
+  INPUT_STATUS_HELD_BY_CLI = 7;
+}
+
+// SendMode is how a message sent during a turn is delivered.
+enum SendMode {
+  // Steer; also what older clients get.
+  SEND_MODE_UNSPECIFIED = 0;
+  // Into the current turn as soon as the input box is free.
+  SEND_MODE_STEER = 1;
+  // After the current turn ends, in order.
+  SEND_MODE_QUEUE = 2;
 }
 
 // InputStage is how far a queued message has got while it is written to
@@ -500,4 +517,10 @@ message InputState {
   // client can show the shared queue. image_ids are the upload IDs.
   string text = 5;
   repeated string image_ids = 6;
+  // Set with the first QUEUED state.
+  SendMode mode = 7;
+  // With QUEUED: the turn was interrupted before this message was written,
+  // so it waits for the user to send it (ResumeInput) or cancel it. Every
+  // update of a paused message repeats it; a resumed one clears it.
+  bool paused = 8;
 }

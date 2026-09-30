@@ -155,9 +155,8 @@ public  final class AgentInfo extends
    * permissions.defaultMode in managed and user settings; Codex:
    * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
    * with the selected profile). UNSPECIFIED with a known source is a mode
-   * outside the four, such as Claude Code's accept edits. A client asks
-   * for confirmation before starting a session in FULL_ACCESS, and also
-   * when the source is unknown.
+   * outside the four, such as Claude Code's accept edits. Clients show it
+   * (full access in red); it needs no confirmation.
    * </pre>
    *
    * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -175,9 +174,8 @@ public  final class AgentInfo extends
    * permissions.defaultMode in managed and user settings; Codex:
    * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
    * with the selected profile). UNSPECIFIED with a known source is a mode
-   * outside the four, such as Claude Code's accept edits. A client asks
-   * for confirmation before starting a session in FULL_ACCESS, and also
-   * when the source is unknown.
+   * outside the four, such as Claude Code's accept edits. Clients show it
+   * (full access in red); it needs no confirmation.
    * </pre>
    *
    * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -196,9 +194,8 @@ public  final class AgentInfo extends
    * permissions.defaultMode in managed and user settings; Codex:
    * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
    * with the selected profile). UNSPECIFIED with a known source is a mode
-   * outside the four, such as Claude Code's accept edits. A client asks
-   * for confirmation before starting a session in FULL_ACCESS, and also
-   * when the source is unknown.
+   * outside the four, such as Claude Code's accept edits. Clients show it
+   * (full access in red); it needs no confirmation.
    * </pre>
    *
    * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -215,9 +212,8 @@ public  final class AgentInfo extends
    * permissions.defaultMode in managed and user settings; Codex:
    * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
    * with the selected profile). UNSPECIFIED with a known source is a mode
-   * outside the four, such as Claude Code's accept edits. A client asks
-   * for confirmation before starting a session in FULL_ACCESS, and also
-   * when the source is unknown.
+   * outside the four, such as Claude Code's accept edits. Clients show it
+   * (full access in red); it needs no confirmation.
    * </pre>
    *
    * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -235,9 +231,8 @@ public  final class AgentInfo extends
    * permissions.defaultMode in managed and user settings; Codex:
    * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
    * with the selected profile). UNSPECIFIED with a known source is a mode
-   * outside the four, such as Claude Code's accept edits. A client asks
-   * for confirmation before starting a session in FULL_ACCESS, and also
-   * when the source is unknown.
+   * outside the four, such as Claude Code's accept edits. Clients show it
+   * (full access in red); it needs no confirmation.
    * </pre>
    *
    * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -294,9 +289,7 @@ public  final class AgentInfo extends
   /**
    * <pre>
    * Project settings in the session's folder may give another default
-   * (Claude Code's .claude/settings.json and settings.local.json). The
-   * daemon checks the folder when the session is created; see
-   * CreateSessionRequest.confirm_full_access.
+   * (Claude Code's .claude/settings.json and settings.local.json).
    * </pre>
    *
    * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
@@ -309,9 +302,7 @@ public  final class AgentInfo extends
   /**
    * <pre>
    * Project settings in the session's folder may give another default
-   * (Claude Code's .claude/settings.json and settings.local.json). The
-   * daemon checks the folder when the session is created; see
-   * CreateSessionRequest.confirm_full_access.
+   * (Claude Code's .claude/settings.json and settings.local.json).
    * </pre>
    *
    * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
@@ -324,9 +315,7 @@ public  final class AgentInfo extends
   /**
    * <pre>
    * Project settings in the session's folder may give another default
-   * (Claude Code's .claude/settings.json and settings.local.json). The
-   * daemon checks the folder when the session is created; see
-   * CreateSessionRequest.confirm_full_access.
+   * (Claude Code's .claude/settings.json and settings.local.json).
    * </pre>
    *
    * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
@@ -576,9 +565,8 @@ public  final class AgentInfo extends
      * permissions.defaultMode in managed and user settings; Codex:
      * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
      * with the selected profile). UNSPECIFIED with a known source is a mode
-     * outside the four, such as Claude Code's accept edits. A client asks
-     * for confirmation before starting a session in FULL_ACCESS, and also
-     * when the source is unknown.
+     * outside the four, such as Claude Code's accept edits. Clients show it
+     * (full access in red); it needs no confirmation.
      * </pre>
      *
      * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -596,9 +584,8 @@ public  final class AgentInfo extends
      * permissions.defaultMode in managed and user settings; Codex:
      * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
      * with the selected profile). UNSPECIFIED with a known source is a mode
-     * outside the four, such as Claude Code's accept edits. A client asks
-     * for confirmation before starting a session in FULL_ACCESS, and also
-     * when the source is unknown.
+     * outside the four, such as Claude Code's accept edits. Clients show it
+     * (full access in red); it needs no confirmation.
      * </pre>
      *
      * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -618,9 +605,8 @@ public  final class AgentInfo extends
      * permissions.defaultMode in managed and user settings; Codex:
      * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
      * with the selected profile). UNSPECIFIED with a known source is a mode
-     * outside the four, such as Claude Code's accept edits. A client asks
-     * for confirmation before starting a session in FULL_ACCESS, and also
-     * when the source is unknown.
+     * outside the four, such as Claude Code's accept edits. Clients show it
+     * (full access in red); it needs no confirmation.
      * </pre>
      *
      * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -638,9 +624,8 @@ public  final class AgentInfo extends
      * permissions.defaultMode in managed and user settings; Codex:
      * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
      * with the selected profile). UNSPECIFIED with a known source is a mode
-     * outside the four, such as Claude Code's accept edits. A client asks
-     * for confirmation before starting a session in FULL_ACCESS, and also
-     * when the source is unknown.
+     * outside the four, such as Claude Code's accept edits. Clients show it
+     * (full access in red); it needs no confirmation.
      * </pre>
      *
      * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -660,9 +645,8 @@ public  final class AgentInfo extends
      * permissions.defaultMode in managed and user settings; Codex:
      * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
      * with the selected profile). UNSPECIFIED with a known source is a mode
-     * outside the four, such as Claude Code's accept edits. A client asks
-     * for confirmation before starting a session in FULL_ACCESS, and also
-     * when the source is unknown.
+     * outside the four, such as Claude Code's accept edits. Clients show it
+     * (full access in red); it needs no confirmation.
      * </pre>
      *
      * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
@@ -723,9 +707,7 @@ public  final class AgentInfo extends
     /**
      * <pre>
      * Project settings in the session's folder may give another default
-     * (Claude Code's .claude/settings.json and settings.local.json). The
-     * daemon checks the folder when the session is created; see
-     * CreateSessionRequest.confirm_full_access.
+     * (Claude Code's .claude/settings.json and settings.local.json).
      * </pre>
      *
      * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
@@ -738,9 +720,7 @@ public  final class AgentInfo extends
     /**
      * <pre>
      * Project settings in the session's folder may give another default
-     * (Claude Code's .claude/settings.json and settings.local.json). The
-     * daemon checks the folder when the session is created; see
-     * CreateSessionRequest.confirm_full_access.
+     * (Claude Code's .claude/settings.json and settings.local.json).
      * </pre>
      *
      * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
@@ -755,9 +735,7 @@ public  final class AgentInfo extends
     /**
      * <pre>
      * Project settings in the session's folder may give another default
-     * (Claude Code's .claude/settings.json and settings.local.json). The
-     * daemon checks the folder when the session is created; see
-     * CreateSessionRequest.confirm_full_access.
+     * (Claude Code's .claude/settings.json and settings.local.json).
      * </pre>
      *
      * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>

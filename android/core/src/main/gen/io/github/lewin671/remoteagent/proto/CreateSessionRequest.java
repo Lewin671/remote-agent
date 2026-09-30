@@ -753,10 +753,11 @@ java.lang.String defaultValue) {
   private boolean confirmFullAccess_;
   /**
    * <pre>
-   * The user confirmed starting in full access. Without it, a session
-   * whose mode is left unspecified is refused ("failed_precondition")
-   * when the default it would get in this folder is FULL_ACCESS
-   * (AgentInfo.default_mode, project settings included).
+   * Ignored. Older daemons refused to start a session whose default mode
+   * would be FULL_ACCESS without it; a default the user chose (project
+   * settings, daemon settings or the CLI's own configuration) no longer
+   * needs a second confirmation (architecture §7). Clients still set it
+   * for those daemons.
    * </pre>
    *
    * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
@@ -768,10 +769,11 @@ java.lang.String defaultValue) {
   }
   /**
    * <pre>
-   * The user confirmed starting in full access. Without it, a session
-   * whose mode is left unspecified is refused ("failed_precondition")
-   * when the default it would get in this folder is FULL_ACCESS
-   * (AgentInfo.default_mode, project settings included).
+   * Ignored. Older daemons refused to start a session whose default mode
+   * would be FULL_ACCESS without it; a default the user chose (project
+   * settings, daemon settings or the CLI's own configuration) no longer
+   * needs a second confirmation (architecture §7). Clients still set it
+   * for those daemons.
    * </pre>
    *
    * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
@@ -783,10 +785,11 @@ java.lang.String defaultValue) {
   }
   /**
    * <pre>
-   * The user confirmed starting in full access. Without it, a session
-   * whose mode is left unspecified is refused ("failed_precondition")
-   * when the default it would get in this folder is FULL_ACCESS
-   * (AgentInfo.default_mode, project settings included).
+   * Ignored. Older daemons refused to start a session whose default mode
+   * would be FULL_ACCESS without it; a default the user chose (project
+   * settings, daemon settings or the CLI's own configuration) no longer
+   * needs a second confirmation (architecture §7). Clients still set it
+   * for those daemons.
    * </pre>
    *
    * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
@@ -1641,10 +1644,11 @@ java.lang.String defaultValue) {
 
     /**
      * <pre>
-     * The user confirmed starting in full access. Without it, a session
-     * whose mode is left unspecified is refused ("failed_precondition")
-     * when the default it would get in this folder is FULL_ACCESS
-     * (AgentInfo.default_mode, project settings included).
+     * Ignored. Older daemons refused to start a session whose default mode
+     * would be FULL_ACCESS without it; a default the user chose (project
+     * settings, daemon settings or the CLI's own configuration) no longer
+     * needs a second confirmation (architecture §7). Clients still set it
+     * for those daemons.
      * </pre>
      *
      * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
@@ -1656,10 +1660,11 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * The user confirmed starting in full access. Without it, a session
-     * whose mode is left unspecified is refused ("failed_precondition")
-     * when the default it would get in this folder is FULL_ACCESS
-     * (AgentInfo.default_mode, project settings included).
+     * Ignored. Older daemons refused to start a session whose default mode
+     * would be FULL_ACCESS without it; a default the user chose (project
+     * settings, daemon settings or the CLI's own configuration) no longer
+     * needs a second confirmation (architecture §7). Clients still set it
+     * for those daemons.
      * </pre>
      *
      * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
@@ -1673,10 +1678,11 @@ java.lang.String defaultValue) {
     }
     /**
      * <pre>
-     * The user confirmed starting in full access. Without it, a session
-     * whose mode is left unspecified is refused ("failed_precondition")
-     * when the default it would get in this folder is FULL_ACCESS
-     * (AgentInfo.default_mode, project settings included).
+     * Ignored. Older daemons refused to start a session whose default mode
+     * would be FULL_ACCESS without it; a default the user chose (project
+     * settings, daemon settings or the CLI's own configuration) no longer
+     * needs a second confirmation (architecture §7). Clients still set it
+     * for those daemons.
      * </pre>
      *
      * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>

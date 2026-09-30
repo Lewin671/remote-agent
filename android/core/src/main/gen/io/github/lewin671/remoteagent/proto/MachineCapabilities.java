@@ -443,6 +443,85 @@ public  final class MachineCapabilities extends
     imageStorage_ = false;
   }
 
+  public static final int SEND_MODES_FIELD_NUMBER = 9;
+  private boolean sendModes_;
+  /**
+   * <pre>
+   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+   * message held by the CLI (InputStatus HELD_BY_CLI).
+   * </pre>
+   *
+   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+   * @return The sendModes.
+   */
+  @java.lang.Override
+  public boolean getSendModes() {
+    return sendModes_;
+  }
+  /**
+   * <pre>
+   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+   * message held by the CLI (InputStatus HELD_BY_CLI).
+   * </pre>
+   *
+   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+   * @param value The sendModes to set.
+   */
+  private void setSendModes(boolean value) {
+    
+    sendModes_ = value;
+  }
+  /**
+   * <pre>
+   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+   * message held by the CLI (InputStatus HELD_BY_CLI).
+   * </pre>
+   *
+   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+   */
+  private void clearSendModes() {
+
+    sendModes_ = false;
+  }
+
+  public static final int APPROVAL_ALWAYS_FIELD_NUMBER = 10;
+  private boolean approvalAlways_;
+  /**
+   * <pre>
+   * ResolveApprovalRequest.always.
+   * </pre>
+   *
+   * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+   * @return The approvalAlways.
+   */
+  @java.lang.Override
+  public boolean getApprovalAlways() {
+    return approvalAlways_;
+  }
+  /**
+   * <pre>
+   * ResolveApprovalRequest.always.
+   * </pre>
+   *
+   * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+   * @param value The approvalAlways to set.
+   */
+  private void setApprovalAlways(boolean value) {
+    
+    approvalAlways_ = value;
+  }
+  /**
+   * <pre>
+   * ResolveApprovalRequest.always.
+   * </pre>
+   *
+   * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+   */
+  private void clearApprovalAlways() {
+
+    approvalAlways_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -966,6 +1045,89 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <pre>
+     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+     * message held by the CLI (InputStatus HELD_BY_CLI).
+     * </pre>
+     *
+     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+     * @return The sendModes.
+     */
+    @java.lang.Override
+    public boolean getSendModes() {
+      return instance.getSendModes();
+    }
+    /**
+     * <pre>
+     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+     * message held by the CLI (InputStatus HELD_BY_CLI).
+     * </pre>
+     *
+     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+     * @param value The sendModes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSendModes(boolean value) {
+      copyOnWrite();
+      instance.setSendModes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
+     * message held by the CLI (InputStatus HELD_BY_CLI).
+     * </pre>
+     *
+     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSendModes() {
+      copyOnWrite();
+      instance.clearSendModes();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * ResolveApprovalRequest.always.
+     * </pre>
+     *
+     * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+     * @return The approvalAlways.
+     */
+    @java.lang.Override
+    public boolean getApprovalAlways() {
+      return instance.getApprovalAlways();
+    }
+    /**
+     * <pre>
+     * ResolveApprovalRequest.always.
+     * </pre>
+     *
+     * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+     * @param value The approvalAlways to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApprovalAlways(boolean value) {
+      copyOnWrite();
+      instance.setApprovalAlways(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * ResolveApprovalRequest.always.
+     * </pre>
+     *
+     * <code>bool approval_always = 10 [json_name = "approvalAlways"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApprovalAlways() {
+      copyOnWrite();
+      instance.clearApprovalAlways();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -990,10 +1152,12 @@ public  final class MachineCapabilities extends
             "uploadFormats_",
             "commandSignatures_",
             "imageStorage_",
+            "sendModes_",
+            "approvalAlways_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0004" +
-              "\u0004\u0002\u0005\u0004\u0006,\u0007\u0007\b\u0007";
+              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0004" +
+              "\u0004\u0002\u0005\u0004\u0006,\u0007\u0007\b\u0007\t\u0007\n\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

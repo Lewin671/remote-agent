@@ -433,6 +433,112 @@ public  final class InputState extends
     imageIds_.add(value.toStringUtf8());
   }
 
+  public static final int MODE_FIELD_NUMBER = 7;
+  private int mode_;
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @return The enum numeric value on the wire for mode.
+   */
+  @java.lang.Override
+  public int getModeValue() {
+    return mode_;
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @return The mode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SendMode getMode() {
+    io.github.lewin671.remoteagent.proto.SendMode result = io.github.lewin671.remoteagent.proto.SendMode.forNumber(mode_);
+    return result == null ? io.github.lewin671.remoteagent.proto.SendMode.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @param value The enum numeric value on the wire for mode to set.
+   */
+  private void setModeValue(int value) {
+      mode_ = value;
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @param value The mode to set.
+   */
+  private void setMode(io.github.lewin671.remoteagent.proto.SendMode value) {
+    mode_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   */
+  private void clearMode() {
+
+    mode_ = 0;
+  }
+
+  public static final int PAUSED_FIELD_NUMBER = 8;
+  private boolean paused_;
+  /**
+   * <pre>
+   * With QUEUED: the turn was interrupted before this message was written,
+   * so it waits for the user to send it (ResumeInput) or cancel it. Every
+   * update of a paused message repeats it; a resumed one clears it.
+   * </pre>
+   *
+   * <code>bool paused = 8 [json_name = "paused"];</code>
+   * @return The paused.
+   */
+  @java.lang.Override
+  public boolean getPaused() {
+    return paused_;
+  }
+  /**
+   * <pre>
+   * With QUEUED: the turn was interrupted before this message was written,
+   * so it waits for the user to send it (ResumeInput) or cancel it. Every
+   * update of a paused message repeats it; a resumed one clears it.
+   * </pre>
+   *
+   * <code>bool paused = 8 [json_name = "paused"];</code>
+   * @param value The paused to set.
+   */
+  private void setPaused(boolean value) {
+    
+    paused_ = value;
+  }
+  /**
+   * <pre>
+   * With QUEUED: the turn was interrupted before this message was written,
+   * so it waits for the user to send it (ResumeInput) or cancel it. Every
+   * update of a paused message repeats it; a resumed one clears it.
+   * </pre>
+   *
+   * <code>bool paused = 8 [json_name = "paused"];</code>
+   */
+  private void clearPaused() {
+
+    paused_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.InputState parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -951,6 +1057,118 @@ public  final class InputState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set with the first QUEUED state.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+     * @return The enum numeric value on the wire for mode.
+     */
+    @java.lang.Override
+    public int getModeValue() {
+      return instance.getModeValue();
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+     * @param value The mode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setModeValue(int value) {
+      copyOnWrite();
+      instance.setModeValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+     * @return The mode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SendMode getMode() {
+      return instance.getMode();
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+     * @param value The enum numeric value on the wire for mode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMode(io.github.lewin671.remoteagent.proto.SendMode value) {
+      copyOnWrite();
+      instance.setMode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMode() {
+      copyOnWrite();
+      instance.clearMode();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * With QUEUED: the turn was interrupted before this message was written,
+     * so it waits for the user to send it (ResumeInput) or cancel it. Every
+     * update of a paused message repeats it; a resumed one clears it.
+     * </pre>
+     *
+     * <code>bool paused = 8 [json_name = "paused"];</code>
+     * @return The paused.
+     */
+    @java.lang.Override
+    public boolean getPaused() {
+      return instance.getPaused();
+    }
+    /**
+     * <pre>
+     * With QUEUED: the turn was interrupted before this message was written,
+     * so it waits for the user to send it (ResumeInput) or cancel it. Every
+     * update of a paused message repeats it; a resumed one clears it.
+     * </pre>
+     *
+     * <code>bool paused = 8 [json_name = "paused"];</code>
+     * @param value The paused to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPaused(boolean value) {
+      copyOnWrite();
+      instance.setPaused(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With QUEUED: the turn was interrupted before this message was written,
+     * so it waits for the user to send it (ResumeInput) or cancel it. Every
+     * update of a paused message repeats it; a resumed one clears it.
+     * </pre>
+     *
+     * <code>bool paused = 8 [json_name = "paused"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPaused() {
+      copyOnWrite();
+      instance.clearPaused();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.InputState)
   }
   @java.lang.Override
@@ -973,10 +1191,12 @@ public  final class InputState extends
             "stage_",
             "text_",
             "imageIds_",
+            "mode_",
+            "paused_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0208\u0004\f\u0005\u0208\u0006\u021a";
+              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003\u0208" +
+              "\u0004\f\u0005\u0208\u0006\u021a\u0007\f\b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

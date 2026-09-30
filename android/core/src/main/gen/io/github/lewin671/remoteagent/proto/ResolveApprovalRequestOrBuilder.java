@@ -59,4 +59,19 @@ public interface ResolveApprovalRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMessageBytes();
+
+  /**
+   * <pre>
+   * With allow: also stop asking about requests like this one, as the
+   * second option of the CLI's own prompt does (Codex: commands with this
+   * prefix; Claude Code: this directory, or accept edits). The hook cannot
+   * say this, so the daemon answers that prompt itself; when the prompt
+   * has no such option it allows this request only, and ApprovalResolved
+   * tells which happened. Needs MachineCapabilities.approval_always.
+   * </pre>
+   *
+   * <code>bool always = 5 [json_name = "always"];</code>
+   * @return The always.
+   */
+  boolean getAlways();
 }

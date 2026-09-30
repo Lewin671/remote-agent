@@ -118,4 +118,27 @@ public interface SendRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getImageIdsBytes(int index);
+
+  /**
+   * <pre>
+   * When a turn is running: steer (the default) writes the message as soon
+   * as the input box is free, into the current turn; queue holds it until
+   * the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 5 [json_name = "mode"];</code>
+   * @return The enum numeric value on the wire for mode.
+   */
+  int getModeValue();
+  /**
+   * <pre>
+   * When a turn is running: steer (the default) writes the message as soon
+   * as the input box is free, into the current turn; queue holds it until
+   * the turn ends. The same while idle. Needs MachineCapabilities.send_modes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 5 [json_name = "mode"];</code>
+   * @return The mode.
+   */
+  io.github.lewin671.remoteagent.proto.SendMode getMode();
 }

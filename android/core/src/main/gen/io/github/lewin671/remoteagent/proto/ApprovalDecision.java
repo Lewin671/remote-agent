@@ -49,6 +49,15 @@ public enum ApprovalDecision
    * <code>APPROVAL_DECISION_TERMINAL = 5;</code>
    */
   APPROVAL_DECISION_TERMINAL(5),
+  /**
+   * <pre>
+   * Allowed, and the CLI will not ask about requests like it again;
+   * ApprovalResolved.message is the CLI's own wording of that option.
+   * </pre>
+   *
+   * <code>APPROVAL_DECISION_ALLOW_ALWAYS = 6;</code>
+   */
+  APPROVAL_DECISION_ALLOW_ALWAYS(6),
   UNRECOGNIZED(-1),
   ;
 
@@ -90,6 +99,15 @@ public enum ApprovalDecision
    * <code>APPROVAL_DECISION_TERMINAL = 5;</code>
    */
   public static final int APPROVAL_DECISION_TERMINAL_VALUE = 5;
+  /**
+   * <pre>
+   * Allowed, and the CLI will not ask about requests like it again;
+   * ApprovalResolved.message is the CLI's own wording of that option.
+   * </pre>
+   *
+   * <code>APPROVAL_DECISION_ALLOW_ALWAYS = 6;</code>
+   */
+  public static final int APPROVAL_DECISION_ALLOW_ALWAYS_VALUE = 6;
 
 
   @java.lang.Override
@@ -119,6 +137,7 @@ public enum ApprovalDecision
       case 3: return APPROVAL_DECISION_TIMEOUT;
       case 4: return APPROVAL_DECISION_CANCELED;
       case 5: return APPROVAL_DECISION_TERMINAL;
+      case 6: return APPROVAL_DECISION_ALLOW_ALWAYS;
       default: return null;
     }
   }

@@ -126,4 +126,35 @@ public interface InputStateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getImageIdsBytes(int index);
+
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @return The enum numeric value on the wire for mode.
+   */
+  int getModeValue();
+  /**
+   * <pre>
+   * Set with the first QUEUED state.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SendMode mode = 7 [json_name = "mode"];</code>
+   * @return The mode.
+   */
+  io.github.lewin671.remoteagent.proto.SendMode getMode();
+
+  /**
+   * <pre>
+   * With QUEUED: the turn was interrupted before this message was written,
+   * so it waits for the user to send it (ResumeInput) or cancel it. Every
+   * update of a paused message repeats it; a resumed one clears it.
+   * </pre>
+   *
+   * <code>bool paused = 8 [json_name = "paused"];</code>
+   * @return The paused.
+   */
+  boolean getPaused();
 }
