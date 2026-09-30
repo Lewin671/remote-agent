@@ -508,13 +508,13 @@
   .ctl.off, .go44.off { opacity:.4; }
   .compose-status { flex:none; display:flex; align-items:center; gap:6px; padding:0 12px; min-height:44px; font-size:12px; color:var(--muted); }
   .compose-status .queue-link { color:var(--blue); min-height:44px; display:flex; align-items:center; padding:0 4px; white-space:nowrap; }
-  /* 运行中：输入框里多一个中断按钮，固定在发送左边 */
-  .compose-card.running { grid-template-columns:44px minmax(0,1fr) 44px 44px; }
-  .compose-card.running .go44 { grid-column:4; }
-  .compose-card .stop44 { grid-column:3; grid-row:1; align-self:end; width:44px; height:44px; display:flex; align-items:center; justify-content:center; }
-  .compose-card .stop44 i { width:32px; height:32px; border-radius:50%; background:var(--chip); display:flex; align-items:center; justify-content:center; }
-  .compose-card .stop44 i::before { content:""; width:10px; height:10px; border-radius:2px; background:var(--red); }
-  .compose-card:has(.att-tray) .stop44 { grid-row:3; }
+  /* 运行中：输入框空着时发送位是中断，打字后变回发送（插入这一轮），长按选这一轮结束后再发 */
+  .compose-card .go44.stop { background:var(--chip); opacity:1 !important; }
+  .compose-card .go44.stop::before { content:""; width:10px; height:10px; border-radius:2px; background:var(--red); }
+  .send-pop { position:absolute; right:6px; bottom:calc(100% + 8px); z-index:10; background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); box-shadow:0 4px 16px rgba(0,0,0,.1); padding:4px 12px; font-size:13px; min-width:190px; }
+  .send-pop > div { min-height:44px; display:flex; flex-direction:column; justify-content:center; }
+  .send-pop > div + div { border-top:1px solid var(--line); }
+  .send-pop small { color:var(--muted); font-size:12px; }
   /* 排队的消息：对话末尾的待发气泡 */
   .me.pending > div { background:var(--card); color:var(--fg2); box-shadow:inset 0 0 0 1px var(--line); }
   .me.pending.canceling > div { opacity:.5; }
@@ -787,7 +787,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，摘要和输入框用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行：中断按钮放进输入框、发送左边；排队的消息作为待发气泡留在对话末尾，就地取消，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，摘要和输入框用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -996,10 +996,10 @@
         </div>
         <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +18 −7</code></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
-      <div class="me pending"><div>顺便看下 lint 有没有报错</div><small>排队中 · 本轮结束后发送<b>取消</b></small></div></div>
-      <div class="compose-card running"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div><div>上下文：11%</div></div></details><span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span></div></div>
+      <div class="me pending"><div>顺便看下 lint 有没有报错</div><small>排队 · 这一轮结束后发<b>取消</b></small></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div><div>上下文：11%</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
     </div>
-    <div class="cap">运行中：导航栏第二行写状态、项目和机器；连续完成的工具调用折成一行；中断按钮在输入框里、发送左边，打字时也在；排队的消息留在对话末尾</div>
+    <div class="cap">运行中：导航栏第二行写状态、项目和机器；连续完成的工具调用折成一行；输入框空着时发送位是 ■ 中断；排队的消息留在对话末尾</div>
   </div>
 
   <div>
@@ -1068,7 +1068,7 @@ git status --short gen/</pre>
         <div class="me"><div>把依赖都升级到最新的版本</div></div>
         <div class="tool"><span class="ok">✓</span><code>go list -m -u all</code></div>
         <div class="ai">有 12 个依赖可以升级，其中 <code>pgx</code> 是 v4 → v5 的大版本。</div>
-        <div class="me pending"><div>升级完跑一遍全部测试</div><small>排队中 · 回答后发送<b>取消</b></small></div>
+        <div class="me pending"><div>升级完跑一遍全部测试</div><small>等你回答后插入<b>取消</b></small></div>
       </div>
       <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
         <div class="q">大版本也一起升吗？</div>
@@ -1108,7 +1108,7 @@ git status --short gen/</pre>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端<span class="n">●</span></div></div></div>
       <div class="body chat">
         <div class="sep">11:25 · ~/Code/billing</div>
-        <div class="me pending"><div>先读一下 README</div><small>排队中 · 弹窗处理后发送<b>取消</b></small></div>
+        <div class="me pending"><div>先读一下 README</div><small>等弹窗处理后发送<b>取消</b></small></div>
       </div>
       <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
         <div class="q" style="font-weight:500">Trust this folder?</div>
@@ -1175,7 +1175,7 @@ git status --short gen/</pre>
   </div>
 </div>
 
-<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。读数只在菜单里显示，高占用在「＋」旁显示橙点。退出设置或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>空闲 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
+<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送（运行中是插入这一轮），Alt+Enter 在运行中排到这一轮结束后发，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。读数只在菜单里显示，高占用在「＋」旁显示橙点。退出设置或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>空闲 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
 先给我一个方案。</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1219,9 +1219,9 @@ GPT-6-Astra · medium ▾
 <span class="ok">✓</span>
 <code>读取 auth/login.go</code>
 </div>
-<div class="ai">正在补充限流测试。</div><div class="me pending"><div>补一个限流的集成测试</div><small>排队中 · 第 1 条<b>取消</b></small></div><div class="me pending"><div>最后汇总改动，不要提交</div><small>排队中 · 第 2 条<b>取消</b></small></div>
+<div class="ai">正在补充限流测试。</div><div class="me pending"><div>补一个限流的集成测试</div><small>排队 · 这一轮结束后发 · 第 1 条<b>取消</b></small></div><div class="me pending"><div>最后汇总改动，不要提交</div><small>排队 · 这一轮结束后发 · 第 2 条<b>取消</b></small></div>
 </div>
-<div class="compose-card running">
+<div class="compose-card">
 <div class="draft typed">顺便检查 Redis 连接池</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：
@@ -1229,11 +1229,11 @@ GPT-6-Astra · medium ▾
 </div><div>上下文：23%</div></div></details>
 
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44">↑</span>
 </div>
 </div>
 </div>
-<div class="cap">Codex 运行中：发送会排队，待发气泡按顺序留在对话末尾；中断按钮固定在发送左边，有没有草稿都在</div>
+<div class="cap">Codex 运行中：打字后按钮变回 ↑，点一下插入这一轮（steer），长按选「这一轮结束后再发」（queue）；排队的气泡按顺序留在对话末尾。有草稿时中断从 ⋯ 菜单</div>
 </div>
 <div>
 <div class="phone">
@@ -1265,9 +1265,9 @@ GPT-6-Astra · medium ▾
 <span class="ok">✓</span>
 <code>读取 orders/inventory.go</code>
 </div>
-<div class="ai">我在拆分库存接口。</div><div class="me pending"><div>并发扣减也要覆盖</div><small>已送达 · 会并入这一轮</small></div>
+<div class="ai">我在拆分库存接口。</div><div class="me pending"><div>并发扣减也要覆盖</div><small>插入这一轮 · 等当前工具结束后并入</small></div>
 </div>
-<div class="compose-card running">
+<div class="compose-card">
 <div class="draft typed">库存回滚也保留测试</div>
 <div class="controls">
 <details class="compose-menu"><summary class="context-high" aria-label="附件与会话设置，上下文占用较高">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1275,11 +1275,11 @@ Sonnet · high ▾
 </div><div>上下文：86%</div></div></details>
 
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44">↑</span>
 </div>
 </div>
 </div>
-<div class="cap">Claude Code：运行中发的消息会并入当前这一轮，气泡写「会并入这一轮」；仍在排队时按电脑返回的实际状态显示。上下文过高用橙色</div>
+<div class="cap">Claude Code：插入的消息要等当前工具结束才并入这一轮，气泡写明在等什么；仍在排队时按电脑返回的实际状态显示。上下文过高用橙色</div>
 </div>
 <div>
 <div class="phone">
@@ -1313,14 +1313,14 @@ Sonnet · high ▾
 </div>
 <div class="ai">正在运行测试。</div>
 </div>
-<div class="compose-card running slim">
+<div class="compose-card slim">
 <div class="draft typed">也检查下并发扣减</div>
 <div class="access-warning">完全放行</div><div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：完全放行 ▾</div><div>模型：
 设置…
 </div></div></details>
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44">↑</span>
 </div>
 </div>
 <div class="kbd">
@@ -1384,7 +1384,7 @@ Sonnet · high ▾
 </div>
 </div>
 </div>
-<div class="cap">键盘弹出：输入区保持单行起步，仍显示完全放行；中断不消失，展开详情后草稿保留</div>
+<div class="cap">键盘弹出：输入区保持单行起步，仍显示完全放行；有草稿时发送位是 ↑，中断从 ⋯ 菜单，展开详情后草稿保留</div>
 </div>
 <div>
 <div class="phone">
@@ -1401,7 +1401,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>运行中 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div>检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</div><small>排队中 · 第 1 条<b>取消</b></small></div><div class="me pending canceling"><div>更新 README 的配置说明。</div><small>正在取消…</small></div><div class="me pending fail"><div>最后汇总改动，不要提交。</div><small>取消没成功，仍在排队<b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card running"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span></div></div></div><div class="cap">排队的消息：按发送顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
+<span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>运行中 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div>检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</div><small>排队 · 这一轮结束后发 · 第 1 条<b>取消</b></small></div><div class="me pending canceling"><div>更新 README 的配置说明。</div><small>正在取消…</small></div><div class="me pending fail"><div>最后汇总改动，不要提交。</div><small>取消没成功，仍在排队<b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">排队的消息（长按发送选的「这一轮结束后再发」）：按顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
 </div>
 <div>
 <div class="phone">
@@ -1596,8 +1596,21 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">队列 · 在对话里</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><div>补一个回归测试</div><small>排队中 · 第 1 条<b>取消</b></small></div><div class="me pending"><div>最后汇总改动</div><small>排队中 · 第 2 条<b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div>补一个回归测试</div><small>排队 · 这一轮结束后发 · 第 1 条<b>取消</b></small></div><div class="me pending"><div>最后汇总改动</div><small>排队 · 这一轮结束后发 · 第 2 条<b>取消</b></small></div></div>
     <div class="st-c">排队的消息按顺序留在对话末尾，显示全文；来源不是本客户端时写明来源。取消中、取消失败和已送入终端见「输入区与消息队列」</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">运行中 · 长按发送</div>
+    <div class="compose-card" style="margin:120px 0 0"><div class="draft typed">改完顺便跑一下 lint</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary></details><span class="go44">↑</span></div><div class="send-pop"><div><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></div><div><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></div></div></div>
+    <div class="st-c">运行中点 ↑ 是 steer：Codex 马上收到，Claude Code 等当前工具结束后并入。长按 ↑（网页 Alt+Enter）选 queue：daemon 留到这一轮结束再发。空闲时两者一样，不弹菜单</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">中断后 · 排队的消息</div>
+    <div class="sysline">已中断本轮</div>
+    <div class="body chat" style="padding:0"><div class="me pending"><div>测试过了就提交</div><small>已暂停 · 中断前排着的<b>发送</b><b>取消</b></small></div></div>
+    <div class="st-c">中断后排着的消息不自动发出，等你决定发送或取消；插入这一轮但还没被 CLI 收下的，同样暂停</div>
   </div>
 
   <div class="st">
@@ -1830,14 +1843,14 @@ GPT-6-Astra · medium ▾
 <span>去终端 ›</span>
 </div>
 </div></details>
-<div class="me pending"><div>测试过了就提交</div><small>排队中 · 本轮结束后发送<b>取消</b></small></div></div>
+<div class="me pending"><div>测试过了就提交</div><small>排队 · 这一轮结束后发<b>取消</b></small></div></div>
 <div class="compose-status">
 <span class="tool-peek">
 <em>Bash · 2:12</em> ›</span>
 
 
 </div>
-<div class="compose-card running">
+<div class="compose-card">
 <div class="draft">消息…</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1845,11 +1858,11 @@ Sonnet · high ▾
 </div><div>上下文：42%</div></div></details>
 
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44 stop" aria-label="中断这一轮"></span>
 </div>
 </div>
 </div>
-<div class="cap">工具开始即展示：命令全文可查看、计时持续更新；工具摘要留在对话中；导航栏保留运行状态，输入上方只留工具摘要，中断在输入框里</div>
+<div class="cap">工具开始即展示：命令全文可查看、计时持续更新；工具摘要留在对话中；导航栏保留运行状态，输入上方只留工具摘要，输入框空着时发送位是中断</div>
 </div>
 <div>
 <div class="phone">
@@ -1902,7 +1915,7 @@ Sonnet · high ▾
 <em>1 项处理中 · 3:08</em> ›</span>
 
 </div>
-<div class="compose-card running">
+<div class="compose-card">
 <div class="draft">消息…</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1910,7 +1923,7 @@ Sonnet · high ▾
 </div><div>上下文：42%</div></div></details>
 
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44 stop" aria-label="中断这一轮"></span>
 </div>
 </div>
 </div>
@@ -2036,7 +2049,7 @@ Sonnet · high ▾
 <span class="more">⋯</span>
 </div>
 <div class="body chat">
-<div class="sysline">已中断本轮</div>
+<div class="sysline">已中断本轮</div><div class="me pending"><div>测试过了就提交</div><small>已暂停 · 中断前排着的<b>发送</b><b>取消</b></small></div>
 <details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">工具已转到后台；本轮结束不表示后台进程结束。请到终端确认。</div>
@@ -2198,7 +2211,7 @@ GPT-6-Astra · medium ▾
         <div class="tool"><span class="ok">✓</span><code>读取 web/src/Layout.tsx</code></div>
         <div class="ai">两个页面的按钮都被底部导航盖住了，我给内容区加上导航栏的高度。</div>
       </div>
-      <div class="compose-card running"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 · medium ▾</div><div>上下文：32%</div></div></details><span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 · medium ▾</div><div>上下文：32%</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
     </div>
     <div class="cap">发出后和电脑上粘贴的图一样显示。角上的编号和终端里的 <code>[Image #N]</code> 一致；正文开头的占位不再重复写出，夹在正文中间的写成「图 N」</div>
   </div>
@@ -2269,7 +2282,7 @@ GPT-6-Astra · medium ▾
   </div>
   <div class="st">
     <div class="st-h">发图 · 排队</div>
-    <div class="body chat" style="padding:0"><div class="me pending"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div>按截图把设置页重做一遍</div><small>排队中 · 本轮结束后发送<b>取消</b></small></div></div>
+    <div class="body chat" style="padding:0"><div class="me pending"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div>按截图把设置页重做一遍</div><small>排队 · 这一轮结束后发<b>取消</b></small></div></div>
     <div class="st-c">带图的消息和文字消息一样排队；图已经在电脑上，排队期间不重传。待发气泡里显示缩略图</div>
   </div>
   <div class="st">
@@ -3285,7 +3298,7 @@ Sonnet · high ▾
 </div>
 <div class="me">
 <div>先整理一下实现方案</div>
-<small>VPS-dev 本地终端</small></div><div class="me pending"><div>补充库存回滚测试</div><small>排队中 · 本客户端<b>取消</b></small></div><div class="me pending"><div>最后检查 README</div><small>排队中 · Android · b71c<b>取消</b></small></div>
+<small>VPS-dev 本地终端</small></div><div class="me pending"><div>补充库存回滚测试</div><small>排队 · 本客户端<b>取消</b></small></div><div class="me pending"><div>最后检查 README</div><small>排队 · Android · b71c<b>取消</b></small></div>
 <div class="sysline">另一客户端将模式切到 <b>计划</b>
 </div>
 <div class="record">
@@ -3294,7 +3307,7 @@ Sonnet · high ▾
 <span>已处理 · 另一端</span>
 </div>
 </div>
-<div class="compose-card running">
+<div class="compose-card">
 <div class="draft typed">本机草稿不会被另一端覆盖</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：计划 ▾</div><div>模型：
@@ -3302,7 +3315,7 @@ Sonnet · high ▾
 </div><div>上下文：23%</div></div></details>
 
 
-<span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span>
+<span class="go44">↑</span>
 </div>
 </div>
 </div>
@@ -3323,7 +3336,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span><span class="agent-id">Claude Code</span></b><span>运行中 · shop · VPS-dev</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div>补充库存回滚测试。</div><small>排队中 · 本客户端<b>取消</b></small></div><div class="me pending"><div>最后检查 README。</div><small>排队中 · Android · b71c<b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card running"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="stop44" aria-label="中断这一轮"><i></i></span><span class="go44">↑</span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
+<span class="tname">重构订单模块</span><span class="agent-id">Claude Code</span></b><span>运行中 · shop · VPS-dev</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div>补充库存回滚测试。</div><small>排队 · 本客户端<b>取消</b></small></div><div class="me pending"><div>最后检查 README。</div><small>排队 · Android · b71c<b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
 </div>
 <div>
 <div class="phone">
