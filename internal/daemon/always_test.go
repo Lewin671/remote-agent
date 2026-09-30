@@ -97,3 +97,29 @@ func TestAllowAlwaysFallsBackToYes(t *testing.T) {
 		t.Fatalf("writes %q", w)
 	}
 }
+
+// Codex 0.159.2 may end a turn while an escalated command still waits for
+// approval in the background; the request stays open for the client.
+func TestCodexApprovalOutlivesTurn(t *testing.T) {
+	h := newHarness(t, Config{ApprovalTimeout: time.Minute})
+	h.writeRollout(turnContextLine("user"), taskStarted)
+	h.s.bindRollout("codex-1", h.dir+"/rollout.jsonl")
+	go h.s.hook(context.Background(), permissionPayload(h))
+	var id string
+	eventually(t, "approval request", func() bool {
+		h.s.mu.Lock()
+		defer h.s.mu.Unlock()
+		for k := range h.s.approvals {
+			id = k
+		}
+		return id != ""
+	})
+	h.writeRollout(taskComplete)
+	h.s.readRollout()
+	if r := resolvedOf(h, id); r != nil {
+		t.Fatalf("approval settled at the end of the turn: %v", r)
+	}
+	if err := h.s.resolve(id, true, ""); err != nil {
+		t.Fatalf("resolve after the turn: %v", err)
+	}
+}

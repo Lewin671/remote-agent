@@ -409,9 +409,14 @@ func (s *session) readRollout() {
 				}
 			}
 			if e.GetTurnEnded() != nil {
-				// A request still waiting was answered in the terminal
-				// (or interrupted there) since the turn is over.
-				s.retractApprovals()
+				// Claude Code: a request still waiting was answered in
+				// the terminal (or interrupted there) since the turn is
+				// over. Codex (0.159.2) may end a turn while an escalated
+				// command still waits for approval in the background; its
+				// hook is still waiting too, and settles the request.
+				if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+					s.retractApprovals()
+				}
 				s.afterTurn()
 			}
 			if c := e.GetToolCall(); c != nil {

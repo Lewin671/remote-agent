@@ -271,6 +271,7 @@ v8 网页实现位于 `wt/v8-web`：项目设置保存进加密账户偏好，�
 
 **范围和产品**
 
+- 待实测：Codex 0.159.2 把执行命令记成通用的 `ToolCall`（结果是 `Script completed … Output:`），没有退出码，失败的命令在客户端显示成 ✓；需要按新格式解析退出码或失败，再把 0.159.2 列为已验证版本
 - 待实测：Codex 没开 `auto_review` 时 hook 不表态、正常退出，是否立即弹出原生审批框（现有依据只有 hook 超时后会弹）；Claude Code 的 `PermissionRequest` hook 能否直接返回「以后不再问」的规则（`updatedPermissions`），能的话就不用按键
 - 客户端切换 fast 模式是否要做（优先级低）
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[architecture §17](architecture.md#17-会话里的图片)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
