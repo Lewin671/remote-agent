@@ -66,11 +66,22 @@ private fun CameraPreview(onResult: (String) -> Unit) {
     val owner = LocalLifecycleOwner.current
     val done = remember { AtomicBoolean(false) }
     val executor = remember { Executors.newSingleThreadExecutor() }
-    DisposableEffect(Unit) { onDispose { executor.shutdown() } }
+    val disposed = remember { AtomicBoolean(false) }
+    val bound = remember { java.util.concurrent.atomic.AtomicReference<ProcessCameraProvider?>(null) }
+    // Leaving the scanner releases the camera: the activity stays started,
+    // so the use cases would otherwise stay bound to it.
+    DisposableEffect(Unit) {
+        onDispose {
+            disposed.set(true)
+            bound.getAndSet(null)?.unbindAll()
+            executor.shutdown()
+        }
+    }
     AndroidView(factory = { c ->
         val view = PreviewView(c)
         val future = ProcessCameraProvider.getInstance(c)
         future.addListener({
+            if (disposed.get()) return@addListener
             val provider = future.get()
             val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
             val reader = MultiFormatReader().apply { setHints(mapOf(DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE))) }
@@ -94,6 +105,7 @@ private fun CameraPreview(onResult: (String) -> Unit) {
             }
             provider.unbindAll()
             provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            bound.set(provider)
         }, ContextCompat.getMainExecutor(c))
         view
     }, modifier = Modifier.fillMaxSize())
