@@ -416,6 +416,9 @@ func TestCommandsRunOnce(t *testing.T) {
 
 	// The same request ID is remembered across a daemon restart.
 	e.stopRelay()
+	// The server observes closure asynchronously. Do not let the old online
+	// state satisfy the readiness check for the replacement connection.
+	e.online(t, false)
 	e.startRelay()
 	e.online(t, true)
 	if res, err := e.client.Forward(ctx, s.MachineID, cmd); err != nil || res.GetSend().QueuePosition != 1 {
