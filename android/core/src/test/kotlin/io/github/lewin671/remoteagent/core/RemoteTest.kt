@@ -18,6 +18,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -335,10 +336,66 @@ class RemoteTest {
         assertEquals((1L..43L).toList(), ev.events.map { it.seq })
     }
 
+    @Test
+    fun fetchesAnImageAndCachesOnlyItsEnvelope() = runBlocking<Unit> {
+        val cache = MemoryCache()
+        val r = client(cache)
+        r.start()
+        r.awaitState("session") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
+        val png = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10, 1, 2, 3)
+        daemon.putImage("s1", "00000000000000000000000000000001", io.github.lewin671.remoteagent.proto.ImagePayload.newBuilder().setFormat(io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG)
+            .setWidth(1).setHeight(1).setData(com.google.protobuf.ByteString.copyFrom(png)).build())
+        val got = r.image("s1", "00000000000000000000000000000001")
+        assertTrue(got is Remote.ImageResult.Loaded)
+        assertTrue((got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png))
+        // What the cache holds is the sealed envelope, not the picture.
+        val stored = cache.images.getValue("s1/00000000000000000000000000000001")
+        assertFalse(String(stored, Charsets.ISO_8859_1).contains(String(png, Charsets.ISO_8859_1)))
+        assertEquals(Remote.ImageResult.Missing, r.image("s1", "ffffffffffffffffffffffffffffffff"))
+        // A format that does not match its bytes is refused.
+        daemon.putImage("s1", "00000000000000000000000000000002", io.github.lewin671.remoteagent.proto.ImagePayload.newBuilder().setFormat(io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_JPEG)
+            .setData(com.google.protobuf.ByteString.copyFrom(png)).build())
+        assertTrue(r.image("s1", "00000000000000000000000000000002") is Remote.ImageResult.Corrupt)
+    }
+
+    @Test
+    fun twoClientsChangingProjectsKeepBothChanges() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        a.start()
+        b.start()
+        a.awaitState("a prefs") { it.conn == ConnState.ONLINE && it.prefs != null }
+        b.awaitState("b prefs") { it.conn == ConnState.ONLINE && it.prefs != null }
+        a.changePrefs(PrefsOp.Pin("/Users/me/Code/foo"))
+        // b has not seen a's write yet when it writes: the server refuses, b redoes its change on a's.
+        b.changePrefs(PrefsOp.Hide("/Users/me/Code/billing"))
+        val sa = a.awaitState("a sees both") { it.prefs?.hidden?.contains("/Users/me/Code/billing") == true }
+        assertEquals(listOf("/Users/me/Code/foo"), sa.prefs!!.pinned)
+        assertEquals(2L, sa.prefs!!.revision)
+    }
+
+    @Test
+    fun aClientsNameReachesTheOtherClients() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        a.start()
+        b.start()
+        a.awaitState("a devices") { it.conn == ConnState.ONLINE && it.devices.containsKey(a.account.deviceId) }
+        b.awaitState("b sees a") { it.devices.containsKey(a.account.deviceId) }
+        a.renameDevice(a.account.deviceId, "我的手机", "android", "Android 16")
+        val sb = b.awaitState("b sees the name") { it.devices[a.account.deviceId]?.meta?.name == "我的手机" }
+        assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId))
+    }
 }
 
 /** A CipherCache in memory, as the Room one behaves. */
 class MemoryCache : CipherCache {
+    val images = ConcurrentHashMap<String, ByteArray>()
+    override suspend fun image(key: String) = images[key]
+    override suspend fun putImage(key: String, envelope: ByteArray) {
+        images[key] = envelope
+    }
+
     private val machines = ConcurrentHashMap<String, Machine>()
     private val sessions = ConcurrentHashMap<String, RemoteSession>()
     private val events = ConcurrentHashMap<String, java.util.TreeMap<Long, StoredEvent>>()
@@ -368,4 +425,5 @@ class MemoryCache : CipherCache {
         sessions.remove(id)
         events.remove(id)
     }
+
 }

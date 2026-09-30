@@ -124,6 +124,10 @@ interface CipherCache {
     suspend fun removeMachine(id: String)
     suspend fun removeSession(id: String)
 
+    /** An image's display copy as fetched: its sealed envelope, never decrypted bytes. */
+    suspend fun image(key: String): ByteArray? = null
+    suspend fun putImage(key: String, envelope: ByteArray) {}
+
     /** Other sealed objects by name, such as the account's project preferences. */
     suspend fun blob(name: String): ByteArray? = null
     suspend fun putBlob(name: String, data: ByteArray) {}
@@ -909,6 +913,85 @@ class Remote(
     suspend fun currentToken(): String {
         if (token.isEmpty()) token = login(api, account)
         return token
+    }
+
+    // --- images ---
+
+    /** A display copy fetched for viewing: its pixels, or why there are none. */
+    sealed interface ImageResult {
+        class Loaded(val payload: io.github.lewin671.remoteagent.proto.ImagePayload) : ImageResult
+        /** Kept past its retention: only the preview in the event is left. */
+        data object Expired : ImageResult
+        /** The server never had it. */
+        data object Missing : ImageResult
+        /** The bytes are not the image they claim to be, or do not open. */
+        data class Corrupt(val why: String) : ImageResult
+    }
+
+    /**
+     * An image's display copy, from the cache of envelopes or the server.
+     * Only the envelope is cached; it is opened and checked in memory each
+     * time: bound to this machine, session and image, and data that starts
+     * with its format's signature.
+     */
+    suspend fun image(sid: String, imageId: String): ImageResult {
+        val s = withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+        val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
+        val cacheKey = "$sid/$imageId"
+        var env = try {
+            cache?.image(cacheKey)?.let { Envelope.parseFrom(it) }
+        } catch (e: Exception) {
+            null
+        }
+        if (env == null) {
+            val r = try {
+                api.client.getImage(io.github.lewin671.remoteagent.proto.GetImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).build(), Api.headers(currentToken())).value()
+            } catch (e: ConnectException) {
+                if (e.code == Code.NOT_FOUND) return ImageResult.Missing
+                throw e
+            }
+            if (r.expired || !r.hasImage()) return ImageResult.Expired
+            env = r.image
+        }
+        val payload = try {
+            Envelopes.openMessage(
+                key, env,
+                Place(PayloadKind.PAYLOAD_KIND_IMAGE, machineId = s.machineId, sessionId = sid, requestId = imageId),
+                io.github.lewin671.remoteagent.proto.ImagePayload::parseFrom,
+            ).second
+        } catch (e: OpenException) {
+            return ImageResult.Corrupt(e.message ?: "打不开")
+        }
+        if (detectFormat(payload.data.toByteArray()) != payload.format) return ImageResult.Corrupt("图片内容和格式对不上")
+        try {
+            cache?.putImage(cacheKey, env.toByteArray())
+        } catch (e: Exception) {
+            report(e)
+        }
+        return ImageResult.Loaded(payload)
+    }
+
+    /** The image upload commands on one machine. */
+    fun uploadChannel(machineId: String): UploadChannel = object : UploadChannel {
+        private suspend fun run(b: Command.Builder.() -> Unit): CommandResult = machineCommand(machineId, Command.newBuilder().apply(b).build())
+
+        override suspend fun begin(transferId: String, format: io.github.lewin671.remoteagent.proto.ImageFormat, total: Long, sha256: ByteArray) =
+            run {
+                beginImageUpload = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder().setTransferId(transferId).setFormat(format)
+                    .setTotalBytes(total).setSha256(com.google.protobuf.ByteString.copyFrom(sha256)).build()
+            }.beginImageUpload.status
+
+        override suspend fun put(transferId: String, offset: Long, data: ByteArray) =
+            run {
+                putImageChunk = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder().setTransferId(transferId).setOffset(offset)
+                    .setData(com.google.protobuf.ByteString.copyFrom(data)).build()
+            }.putImageChunk.status
+
+        override suspend fun status(transferId: String) =
+            run { getImageUploadStatus = io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder().setTransferId(transferId).build() }.getImageUploadStatus.status
+
+        override suspend fun complete(transferId: String) =
+            run { completeImageUpload = io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder().setTransferId(transferId).build() }.completeImageUpload.status
     }
 
     // --- terminal ---

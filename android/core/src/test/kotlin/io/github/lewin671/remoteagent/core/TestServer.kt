@@ -144,6 +144,12 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         api.putSession(PutSessionRequest.newBuilder().setSessionId(sid).setKey(keyEnv).setMeta(meta).build(), Api.headers(token)).value()
     }
 
+    /** Stores an image's display copy for a session, as the daemon does before the event that refers to it. */
+    suspend fun putImage(sid: String, imageId: String, payload: io.github.lewin671.remoteagent.proto.ImagePayload) {
+        val env = Envelopes.seal(sessionKeys.getValue(sid), header(PayloadKind.PAYLOAD_KIND_IMAGE).setSessionId(sid).setRequestId(imageId).build(), payload)
+        api.putImage(io.github.lewin671.remoteagent.proto.PutImageRequest.newBuilder().setSessionId(sid).setImageId(imageId).setImage(env).build(), Api.headers(token)).value()
+    }
+
     /** Appends events to a session, numbering them. */
     suspend fun upload(sid: String, vararg events: Event.Builder) {
         val key = sessionKeys.getValue(sid)
