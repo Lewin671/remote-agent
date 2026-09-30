@@ -143,4 +143,16 @@ class ModelTest {
         assertEquals("", popupHint(Agent.AGENT_UNSPECIFIED, "trust folder"))
         assertEquals("", popupHint(Agent.AGENT_CLAUDE, "hooks review"))
     }
+
+    @Test
+    fun readsTheDaemonsDefaultModePerCli() {
+        val s = io.github.lewin671.remoteagent.proto.DaemonSettings.newBuilder()
+            .setDefaultMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_FULL_ACCESS)
+            .setClaude(io.github.lewin671.remoteagent.proto.AgentDefaults.newBuilder().setMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO))
+            .build()
+        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_CODEX))
+        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_UNSPECIFIED))
+        assertEquals(Mode.AUTO, defaultMode(s, Agent.AGENT_CLAUDE))
+        assertEquals(null, defaultMode(io.github.lewin671.remoteagent.proto.DaemonSettings.getDefaultInstance(), Agent.AGENT_CODEX))
+    }
 }

@@ -53,6 +53,7 @@ import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
+import io.github.lewin671.remoteagent.core.defaultMode
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.exited
 import io.github.lewin671.remoteagent.core.machineAgents
@@ -64,6 +65,8 @@ import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.CreateSessionRequest
+import io.github.lewin671.remoteagent.proto.DaemonSettings
+import io.github.lewin671.remoteagent.proto.GetSettingsRequest
 import io.github.lewin671.remoteagent.proto.ListDirectoriesRequest
 import io.github.lewin671.remoteagent.proto.ListDirectoriesResponse
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
@@ -101,12 +104,44 @@ fun projectConfig(state: RemoteState, key: String): NewConfig? {
     return NewConfig(other, key, last.agent().takeIf { it in machineAgents(state.machines[other]) } ?: Agent.AGENT_CODEX)
 }
 
-fun configLine(state: RemoteState, c: NewConfig): String = listOf(
+fun configLine(state: RemoteState, c: NewConfig, settings: DaemonSettings?): String = listOf(
     machineLabel(state, c.machineId),
     agentName(c.agent),
     listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "默认模型" },
-    c.mode?.text ?: "默认模式",
+    modeLabel(c.mode, settings, c.agent),
 ).joinToString(" · ")
+
+/** The mode a start uses: chosen, or the machine's default for that CLI once it is known. */
+fun modeLabel(chosen: Mode?, settings: DaemonSettings?, agent: Agent): String = when {
+    chosen != null -> chosen.text
+    settings == null -> "默认模式"
+    else -> defaultMode(settings, agent)?.let { "默认：${it.text}" } ?: "默认模式（${agentName(agent)} 自己的配置）"
+}
+
+/** What pressing send does about the approval mode. */
+sealed interface LaunchMode {
+    /** Start in this mode, named explicitly so the session runs in what was shown. */
+    data class Send(val mode: ApprovalMode) : LaunchMode
+
+    /** The mode is full access: start only after the user confirms it (architecture §7). */
+    data object ConfirmFull : LaunchMode
+
+    /** The machine's default is not known yet, so neither is the mode. */
+    data object Unknown : LaunchMode
+}
+
+/**
+ * Resolves the mode of a start. No choice means the daemon's default for the
+ * CLI (architecture §13); without one the CLI's own configuration decides.
+ */
+fun launchMode(chosen: Mode?, settings: DaemonSettings?, agent: Agent): LaunchMode {
+    val mode = chosen ?: (settings ?: return LaunchMode.Unknown).let { defaultMode(it, agent) }
+    return when (mode) {
+        null -> LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
+        Mode.FULL -> LaunchMode.ConfirmFull
+        else -> LaunchMode.Send(mode.proto)
+    }
+}
 
 @Composable
 fun ProjectScreen(key: String, focus: Boolean) {
@@ -163,6 +198,51 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val fr = remember { FocusRequester() }
     val key = initial?.cwd ?: name
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
+    // The machine's defaults, to show and confirm the mode a start will use.
+    var settings by remember { mutableStateOf<DaemonSettings?>(null) }
+    var settingsError by remember { mutableStateOf("") }
+    val machine = config?.machineId
+    val machineOnline = machine != null && state.conn == ConnState.ONLINE && state.machines[machine]?.online == true
+    LaunchedEffect(machine, machineOnline) {
+        settings = null
+        settingsError = ""
+        if (machine == null || !machineOnline) return@LaunchedEffect
+        try {
+            settings = remote.machineCommand(machine, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            settingsError = errorText(e)
+        }
+    }
+    var confirmFull by remember { mutableStateOf<NewConfig?>(null) }
+    fun launch(cfg: NewConfig, mode: ApprovalMode) {
+        // While an earlier start's outcome is unknown, only it is sent
+        // again, as it was: the daemon then answers from its log instead
+        // of starting a second session.
+        val start = Starts.of(key)
+        act.run({
+            try {
+                val retry = start.attempt.frozen
+                val prepared = start.attempt.next {
+                    start.prompt = text.trim()
+                    remote.prepare(cfg.machineId, "", remote.cmd {
+                        createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).build()
+                    })
+                }
+                remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
+            } catch (e: Exception) {
+                throw start.attempt.settle(e) ?: e
+            }
+        }) { r ->
+            r?.createSession?.session?.id?.let {
+                Outbox.rememberPrompt(it, start.prompt)
+                nav.session(it)
+            }
+            text = ""
+        }
+    }
     Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp)) {
         Text("＋ 新会话", style = MaterialTheme.typography.titleSmall, color = p.fg2)
         val c = config
@@ -176,44 +256,31 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             FilledIconButton(
                 onClick = {
                     val cfg = config ?: return@FilledIconButton
-                    // While an earlier start's outcome is unknown, only it is
-                    // sent again, as it was: the daemon then answers from its
-                    // log instead of starting a second session.
                     val start = Starts.of(key)
                     // Other content is a new start; the unknown one is given up.
                     if (start.attempt.frozen && text.trim() != start.prompt) start.attempt.abandon()
-                    act.run({
-                        try {
-                            val retry = start.attempt.frozen
-                            val prepared = start.attempt.next {
-                                start.prompt = text.trim()
-                                remote.prepare(cfg.machineId, "", remote.cmd {
-                                    createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
-                                        .setModel(cfg.model).setEffort(cfg.effort).setMode(cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).build()
-                                })
-                            }
-                            remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
-                        } catch (e: Exception) {
-                            throw start.attempt.settle(e) ?: e
-                        }
-                    }) { r ->
-                        r?.createSession?.session?.id?.let {
-                            Outbox.rememberPrompt(it, start.prompt)
-                            nav.session(it)
-                        }
-                        text = ""
+                    // An unknown start is resent as prepared, with the mode it had.
+                    if (start.attempt.frozen) return@FilledIconButton launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
+                    when (val m = launchMode(cfg.mode, settings, cfg.agent)) {
+                        is LaunchMode.Send -> launch(cfg, m.mode)
+                        LaunchMode.ConfirmFull -> confirmFull = cfg
+                        LaunchMode.Unknown -> {}
                     }
                 },
-                enabled = c != null && !act.running && state.conn == ConnState.ONLINE && state.machines[c.machineId]?.online == true,
+                enabled = c != null && !act.running && machineOnline &&
+                    (Starts.of(key).attempt.frozen || launchMode(c.mode, settings, c.agent) != LaunchMode.Unknown),
                 modifier = Modifier.size(48.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg),
             ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
         }
         if (c != null) Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(configLine(state, c), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f), maxLines = 2)
+            Text(configLine(state, c, settings), style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f), maxLines = 2)
             TextButton(onClick = { change = true }) { Text("更改") }
         }
         if (c != null && state.machines[c.machineId]?.online != true) Text("${machineLabel(state, c.machineId)} 不在线，现在不能新建", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
+        if (c != null && c.mode == null && settingsError.isNotEmpty()) {
+            Text("没能读取 ${machineLabel(state, c.machineId)} 的默认审批模式：$settingsError。可以在「更改」里选一个模式再开始", color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
+        }
         if (act.running) Text("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…", color = p.muted, style = MaterialTheme.typography.bodySmall)
         val frozen = Starts.of(key)
         // An unknown start has its own notice below.
@@ -229,6 +296,14 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         }
     }
     val c = config
+    confirmFull?.let { cfg ->
+        Confirm(
+            "以完全放行启动？",
+            "${machineLabel(state, cfg.machineId)} 上 ${agentName(cfg.agent)} 的默认审批模式是完全放行：这个会话里执行命令、改文件都不会再问你。",
+            "完全放行启动", danger = true,
+            onDismiss = { confirmFull = null },
+        ) { launch(cfg, ApprovalMode.APPROVAL_MODE_FULL_ACCESS) }
+    }
     if (change && c != null) ConfigSheet(state, c, onDone = { config = it; change = false }, onClose = { change = false })
 }
 

@@ -242,6 +242,14 @@ fun <M> findModel(models: List<M>, id: String, slug: (M) -> String): M? {
     return models.firstOrNull { slug(it).lowercase() in words }
 }
 
+/**
+ * The approval mode a new session gets when none is chosen: the daemon's
+ * default for that CLI (architecture §13), or null when the daemon has none
+ * and the CLI's own configuration decides.
+ */
+fun defaultMode(settings: io.github.lewin671.remoteagent.proto.DaemonSettings, agent: Agent): Mode? =
+    modeOf(if (effectiveAgent(agent) == Agent.AGENT_CLAUDE) settings.claude.mode else settings.defaultMode)
+
 /** Context window use in percent, or null when unknown. */
 fun contextPercent(s: SessionView): Int? {
     val i = s.info ?: return null
