@@ -13,7 +13,7 @@ import { Banner } from "../ui";
 export function useTray(remote: Remote, key: string, machineId: string, max: number): Tray {
   let t = remote.trays.get(key);
   if (!t) {
-    t = new Tray(remote.prepareImage, (m, p, progress) => remote.uploadImage(m, p, progress), () => remote.touch(), max);
+    t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => remote.touch(), max);
     t.machineId = machineId;
     remote.trays.set(key, t);
   }

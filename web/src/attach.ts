@@ -15,7 +15,7 @@ export interface Prepared {
 /** Prepares a chosen file: compressed, or the original when asked. */
 export type Prepare = (file: Blob, original: boolean) => Promise<Prepared>;
 /** Uploads prepared bytes to a machine; resolves the image ID to send. */
-export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void) => Promise<string>;
+export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void, started?: (abort: () => void) => void) => Promise<string>;
 
 export interface TrayItem {
   key: string;
@@ -28,6 +28,8 @@ export interface TrayItem {
   machineId?: string; // where imageId is
   error?: string;
   bytes?: number;
+  // Tells the machine to drop this image's transfer, once one began.
+  abort?: () => void;
 }
 
 let keys = 0;
@@ -63,6 +65,7 @@ export class Tray {
   }
 
   remove(key: string) {
+    this.items.find((i) => i.key === key)?.abort?.();
     this.items = this.items.filter((i) => i.key !== key);
     this.gen.delete(key);
     this.note = "";
@@ -90,6 +93,7 @@ export class Tray {
     if (i) void this.run(i, !i.prepared);
   }
 
+  /** After sending: the images are the message's now, nothing to drop. */
   clear() {
     this.items = [];
     this.gen.clear();
@@ -134,6 +138,9 @@ export class Tray {
       this.onChange();
     };
     const machineId = this.machineId;
+    // What an earlier generation left on a machine is not needed now.
+    item.abort?.();
+    item.abort = undefined;
     try {
       if (prepare || !item.prepared) {
         set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
@@ -142,7 +149,16 @@ export class Tray {
         set({ prepared: p, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
       set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
-      const id = await this.upload(machineId, item.prepared!, (done, total) => set({ progress: total ? done / total : 0 }));
+      const id = await this.upload(
+        machineId,
+        item.prepared!,
+        (done, total) => set({ progress: total ? done / total : 0 }),
+        (abort) => {
+          // A superseded generation drops its transfer at once.
+          if (current()) item.abort = abort;
+          else abort();
+        },
+      );
       set({ state: "done", progress: 1, imageId: id, machineId });
     } catch (e) {
       set({ state: "failed", error: e instanceof Error ? e.message : String(e) });

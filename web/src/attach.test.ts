@@ -74,3 +74,28 @@ describe("images waiting to be sent", () => {
     expect(tray.imageIds().length).toBe(1);
   });
 });
+
+it("tells the machine to drop an image that was removed or replaced", async () => {
+  const aborted: string[] = [];
+  let n = 0;
+  const tray = new Tray(
+    async () => png(),
+    async (m, _p, _progress, started) => {
+      const id = `${m}-${++n}`;
+      started?.(() => aborted.push(id));
+      return id;
+    },
+    () => undefined,
+  );
+  tray.machineId = "mac";
+  tray.add([file("a"), file("b")]);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  tray.remove(tray.items[0].key);
+  expect(aborted).toEqual(["mac-1"]);
+  tray.retarget("vps");
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(aborted).toEqual(["mac-1", "mac-2"]);
+  // Sent: the images belong to the message, nothing is dropped.
+  tray.clear();
+  expect(aborted).toEqual(["mac-1", "mac-2"]);
+});

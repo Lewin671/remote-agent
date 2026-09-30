@@ -1049,7 +1049,7 @@ export class Remote {
    * one command, and returns the image ID to send with it. After a reply
    * that was lost, it asks the machine how far it got and goes on from
    * there; the machine checks the length and hash at the end. */
-  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined): Promise<string> {
+  async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined, started: (abort: () => void) => void = () => undefined): Promise<string> {
     const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
     const transferId = newRequestID();
     const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
@@ -1076,6 +1076,9 @@ export class Remote {
       }
     };
     let st = await step({ case: "beginImageUpload", value: { transferId, format, totalBytes: BigInt(total), sha256 } });
+    // Dropped later (removed, 原图 switched, another machine): the machine
+    // is told so rather than keeping it until it expires.
+    started(() => void this.machineCommand(machineId, { case: "abortImageUpload", value: { transferId } }).catch(() => undefined));
     const chunk = Math.min(UPLOAD_CHUNK, st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK);
     for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
       if (guard > total / chunk + 10) throw new Error("上传没有进展");
