@@ -384,6 +384,8 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
     // answer, however given, not a mode switch made in the terminal.
     var planned = false
     val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
+    // Starts a turn ended without a result, by call ID, for a result that comes later.
+    val unfinishedById = HashMap<String, RunningTool>()
     for (e in events) {
         when (e.kindCase) {
             Event.KindCase.APPROVAL_REQUESTED -> d.approvals[e.approvalRequested.approvalId] = e.approvalRequested
@@ -407,12 +409,12 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 // Still running when an interrupted turn ended: whether it
                 // ever ends is not known (an interrupt does not stop
                 // background commands). A turn that completed without a
-                // tool's result only says no result came: Codex records
-                // some starts it never completes.
+                // tool's result only says no result came.
                 val aborted = e.turnEnded.outcome == io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED
                 for (t in d.tools) {
                     if (aborted) d.background += BackgroundTool(t, returned = false) else d.noResult += t.seq
                     d.unfinished += t.seq
+                    if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
                 }
                 d.tools.clear()
             }
@@ -456,8 +458,10 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType, e.seq, it.input, it.inputDigest)
             }
             Event.KindCase.TOOL_CALL -> {
-                // Claude Code runs tools in parallel and pairs them by ID;
-                // Codex gives no ID and they pair in order.
+                // Starts and calls pair by call ID (Claude Code; Codex from
+                // v2 daemons, whose later entries of one call carry
+                // "<id>#2" and have no start); an older daemon gave Codex
+                // starts no ID and they pair in order.
                 val id = e.toolCall.callId
                 val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
                 val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
@@ -465,6 +469,17 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                     val t = d.tools.removeAt(j)
                     d.completedAt[t.seq] = e.seq
                     if (t.toBackground || wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                } else if (id.isNotEmpty()) {
+                    // A call reported after its turn ended (a Codex exec still
+                    // running): it belongs to that start, not to a new row.
+                    val t = unfinishedById[id]
+                    if (t != null && t.seq !in d.completedAt) {
+                        d.completedAt[t.seq] = e.seq
+                        d.unfinished -= t.seq
+                        d.noResult -= t.seq
+                        d.background.removeAll { it.tool.seq == t.seq }
+                        if (wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
+                    }
                 }
             }
             Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage

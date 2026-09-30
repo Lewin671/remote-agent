@@ -108,3 +108,34 @@ class ToolsTest {
         assertEquals("命令", toolLabel(ToolKind.TOOL_KIND_COMMAND, "CommandExecution", Agent.AGENT_CODEX))
     }
 }
+
+class ToolIdsTest {
+    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
+    private fun start(seq: Long, id: String, title: String) = ev(seq, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId(id).setTitle(title).setKind(ToolKind.TOOL_KIND_COMMAND)))
+    private fun call(seq: Long, id: String, bg: io.github.lewin671.remoteagent.proto.ToolBackground = io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_UNSPECIFIED, status: String = "completed") =
+        ev(seq, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId(id).setKind(ToolKind.TOOL_KIND_COMMAND).setStatus(status).setBackground(bg)))
+    private val turn = ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance()))
+
+    @Test
+    fun aSecondEntryOfACodexCallDoesNotEndAnotherStart() {
+        // Codex 0.159 via a v2 daemon: call c1 has two entries; c2 still runs.
+        val d = derive(listOf(turn, start(2, "c1", "sleep 1; ls"), start(3, "c2", "go test"), call(4, "c1"), call(5, "c1#2")), Agent.AGENT_CODEX)
+        assertEquals(listOf("c2"), d.tools.map { it.callId })
+        assertEquals(4L, d.completedAt[2])
+    }
+
+    @Test
+    fun aStillRunningExecAfterTheTurnIsItsStartNotANewTool() {
+        val d = derive(
+            listOf(
+                turn, start(2, "c1", "sleep 100"),
+                ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED))),
+                call(4, "c1", io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING, status = "running"),
+            ),
+            Agent.AGENT_CODEX,
+        )
+        assertEquals(4L, d.completedAt[2])
+        assertFalse(2L in d.unfinished)
+        assertFalse(2L in d.noResult)
+    }
+}
