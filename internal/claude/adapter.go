@@ -6,6 +6,8 @@ package claude
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -334,17 +336,85 @@ func (a *Adapter) defaultMode() string {
 // the folder is trusted; PermissionRequest forwards approvals; PreToolUse
 // reports questions and plans, which Claude Code may write to the
 // transcript only once they are answered.
-func settings() []byte {
+//
+// It also sets the status line to remote-agent's command, which hands
+// the account's usage limits in the status line's input to the daemon and
+// then runs the user's own status line command, if any (saved as
+// StatusLineFile), with the same input, so the terminal shows what it
+// did. A flag-level status line replaces the user's, so padding and
+// refresh interval are carried over too.
+func settings(user *statusLine) []byte {
 	hook := func(timeout int) []map[string]any {
 		return []map[string]any{{"type": "command", "command": hookCommand, "timeout": timeout}}
 	}
-	s := map[string]any{"hooks": map[string]any{
-		"SessionStart":      []map[string]any{{"hooks": hook(30)}},
-		"PermissionRequest": []map[string]any{{"matcher": "*", "hooks": hook(agent.HookTimeoutSeconds)}},
-		"PreToolUse":        []map[string]any{{"matcher": "AskUserQuestion|ExitPlanMode", "hooks": hook(30)}},
-	}}
+	sl := map[string]any{"type": "command", "command": statusLineCommand}
+	if user != nil {
+		if user.Padding != nil {
+			sl["padding"] = *user.Padding
+		}
+		if user.RefreshInterval != nil {
+			sl["refreshInterval"] = *user.RefreshInterval
+		}
+	}
+	s := map[string]any{
+		"hooks": map[string]any{
+			"SessionStart":      []map[string]any{{"hooks": hook(30)}},
+			"PermissionRequest": []map[string]any{{"matcher": "*", "hooks": hook(agent.HookTimeoutSeconds)}},
+			"PreToolUse":        []map[string]any{{"matcher": "AskUserQuestion|ExitPlanMode", "hooks": hook(30)}},
+		},
+		"statusLine": sl,
+	}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return b
+}
+
+// statusLineCommand is the status line remote-agent sets; like the hooks
+// it names no binary path.
+const statusLineCommand = `"$RA_EXE" statusline claude`
+
+// StatusLineFile holds, in the session's directory, the user's own status
+// line that remote-agent's runs after it.
+const StatusLineFile = "statusline.json"
+
+// statusLine is a statusLine setting.
+type statusLine struct {
+	Type            string   `json:"type"`
+	Command         string   `json:"command"`
+	Padding         *float64 `json:"padding,omitempty"`
+	RefreshInterval *float64 `json:"refreshInterval,omitempty"`
+}
+
+// userStatusLine is the status line the user's settings give a session in
+// cwd, by Claude Code's precedence below the command line: managed
+// settings, the project's local and shared settings, the user's. managed
+// reports that managed settings set it, which then override remote-agent's
+// too.
+func (a *Adapter) userStatusLine(cwd string) (sl *statusLine, managed bool) {
+	files := []string{managedSettings}
+	if cwd != "" {
+		files = append(files, filepath.Join(cwd, ".claude", "settings.local.json"), filepath.Join(cwd, ".claude", "settings.json"))
+	}
+	files = append(files, filepath.Join(a.home, "settings.json"))
+	for i, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var st struct {
+			StatusLine *statusLine `json:"statusLine"`
+		}
+		if json.Unmarshal(b, &st) == nil && st.StatusLine != nil {
+			return st.StatusLine, i == 0
+		}
+	}
+	return nil, false
+}
+
+// ManagedStatusLine reports whether managed settings set the status line,
+// which keeps remote-agent from reading the account's limits.
+func (a *Adapter) ManagedStatusLine(cwd string) bool {
+	_, managed := a.userStatusLine(cwd)
+	return managed
 }
 
 // Argv starts Claude Code with remote-agent's hooks and a session ID
@@ -352,8 +422,16 @@ func settings() []byte {
 // with the original options minus positional arguments such as a first
 // prompt, then the model, effort and permission mode it last ran with.
 func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
+	user, _ := a.userStatusLine(l.Cwd)
+	own := []byte("{}")
+	if user != nil && user.Type == "command" && user.Command != "" {
+		own, _ = json.Marshal(user)
+	}
+	if err := os.WriteFile(filepath.Join(l.Dir, StatusLineFile), own, 0o600); err != nil {
+		return nil, err
+	}
 	path := filepath.Join(l.Dir, SettingsFile)
-	if err := os.WriteFile(path, settings(), 0o600); err != nil {
+	if err := os.WriteFile(path, settings(user), 0o600); err != nil {
 		return nil, err
 	}
 	if l.SessionID == "" {
@@ -545,4 +623,31 @@ func (a *Adapter) StartupKeys(popup string) []string {
 		return []string{"Down", "Enter"}
 	}
 	return nil
+}
+
+// Account describes the login Claude Code keeps in .claude.json: a short
+// fingerprint of the account and organization (never the IDs or the
+// address themselves), the organization type as the plan, and whether it
+// is a subscription (OAuth) login. Unknown parts are empty.
+func (a *Adapter) Account() (fingerprint, plan string, subscription bool) {
+	path := filepath.Join(a.home, ".claude.json")
+	if filepath.Base(a.home) == ".claude" {
+		path = filepath.Join(filepath.Dir(a.home), ".claude.json")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", false
+	}
+	var st struct {
+		OAuth *struct {
+			AccountUUID      string `json:"accountUuid"`
+			OrganizationUUID string `json:"organizationUuid"`
+			OrganizationType string `json:"organizationType"`
+		} `json:"oauthAccount"`
+	}
+	if json.Unmarshal(b, &st) != nil || st.OAuth == nil || st.OAuth.AccountUUID == "" {
+		return "", "", false
+	}
+	sum := sha256.Sum256([]byte("remote-agent/quota-account\x00" + st.OAuth.AccountUUID + "\x00" + st.OAuth.OrganizationUUID))
+	return hex.EncodeToString(sum[:6]), st.OAuth.OrganizationType, true
 }

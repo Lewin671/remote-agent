@@ -81,6 +81,8 @@ type Launcher interface {
 type Launch struct {
 	// Dir is the session's private state directory.
 	Dir string
+	// Cwd is the folder the session runs in.
+	Cwd string
 	// Args are the arguments kept for the session.
 	Args []string
 	// SessionID is the CLI's own session ID, if known.
@@ -249,6 +251,9 @@ type Hook struct {
 	ToolName       string          `json:"tool_name"`
 	ToolInput      json.RawMessage `json:"tool_input"`
 	ToolUseID      string          `json:"tool_use_id"`
+	// Status is the status line input remote-agent's status line command
+	// passes on (Claude Code), with HookEventName "StatusLine".
+	Status json.RawMessage `json:"status"`
 }
 
 // InputDigest identifies a Claude Code tool call by its complete input:

@@ -178,4 +178,42 @@ public interface MachineMetaOrBuilder extends
    * @return The capabilities.
    */
   io.github.lewin671.remoteagent.proto.MachineCapabilities getCapabilities();
+
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.AgentQuota> 
+      getQuotasList();
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.AgentQuota getQuotas(int index);
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  int getQuotasCount();
 }

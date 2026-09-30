@@ -95,6 +95,8 @@ func main() {
 		err = runAccount(args)
 	case "hook":
 		os.Exit(runHook(args))
+	case "statusline":
+		os.Exit(runStatusLine(args))
 	case "pty-host":
 		os.Exit(runPTYHost(args))
 	case "help", "-h", "--help":

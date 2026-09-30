@@ -202,7 +202,7 @@ Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程�
 
 C1–C3 已完成。C3 的验收在本机用真实的 Claude Code 2.1.284（haiku）手动走了一遍，全部通过（2026-09-29）：send 和本地草稿时排队、`events --follow` 按顺序输出一轮、approve / deny 附理由 / 超时拒绝、终端里先答时收回卡片、interrupt、单问 / 两问 / 多选提问的远程回答和本地先答、计划的远程批准、切换模型和审批模式（不可用的模式报错并回到原模式）、压缩、stop 后 resume 接着同一段对话、重启 daemon 后序号接着走；`remote-agent doctor claude` 全部通过。Codex 这边 `scripts/acceptance.sh` 照常通过。还没有 Claude Code 版的 `scripts/acceptance.sh`。
 
-C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`full_access_unavailable`；`Question.multi_select` 和 `AnswerQuestionRequest.options`；`APPROVAL_DECISION_TERMINAL`；`TurnContext.permission_mode`；`MachineMeta.agents`；`ListModelsRequest.agent`；`DaemonSettings.claude`。Claude Code 不支持计划的「清空上下文再执行」，当前还未采集账户额度（v2 设计见 [账户额度](architecture.md#账户额度)），haiku 没有推理强度，也没有 auto 模式。
+C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`full_access_unavailable`；`Question.multi_select` 和 `AnswerQuestionRequest.options`；`APPROVAL_DECISION_TERMINAL`；`TurnContext.permission_mode`；`MachineMeta.agents`；`ListModelsRequest.agent`；`DaemonSettings.claude`。Claude Code 不支持计划的「清空上下文再执行」，账户额度从状态栏输入采集（[账户额度](architecture.md#账户额度)），haiku 没有推理强度，也没有 auto 模式。
 
 ## W 网页按 v1 改版
 
@@ -271,7 +271,6 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 **Claude Code 待实测**
 
-- 额度采集：验证按会话注入 statusLine 或包装已有命令的可行性、保留原输出与退出行为、全局配置不被修改、不会影响 tmux 输入判定；在当前版本核对 5 小时 / 7 天字段、首次响应前与重置后的缺失、套餐和 API 登录方式的识别、账户变更与多会话归属、来源更新时间、失败反馈和本机重读。未验证前不能把官方 schema 当成已实现能力。
 
 - auto 模式下被分类器拦下的请求会不会弹权限框、触发 `PermissionRequest`（分类器放行的不触发，已实测；拦下的情况没能复现）
 - 以 bypass 启动时的风险确认弹窗（本机设置跳过了它）

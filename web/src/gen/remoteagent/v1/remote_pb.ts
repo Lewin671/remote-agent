@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/remote.proto.
  */
 export const file_remoteagent_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIscCCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCRIVCg1jb2RleF92ZXJzaW9uGAcgASgJEhYKDmNvZGV4X3ZlcmlmaWVkGAggASgIEikKBmFnZW50cxgJIAMoCzIZLnJlbW90ZWFnZW50LnYxLkFnZW50SW5mbxI5CgxjYXBhYmlsaXRpZXMYCiABKAsyIy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lQ2FwYWJpbGl0aWVzIucBChNNYWNoaW5lQ2FwYWJpbGl0aWVzEhYKDnNlc3Npb25faW1hZ2VzGAEgASgIEhQKDGltYWdlX3VwbG9hZBgCIAEoCBIeChZtYXhfaW1hZ2VzX3Blcl9tZXNzYWdlGAMgASgFEhgKEG1heF91cGxvYWRfYnl0ZXMYBCABKAMSFwoPbWF4X2NodW5rX2J5dGVzGAUgASgFEjMKDnVwbG9hZF9mb3JtYXRzGAYgAygOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSGgoSY29tbWFuZF9zaWduYXR1cmVzGAcgASgIIuUBCglBZ2VudEluZm8SJAoFYWdlbnQYASABKA4yFS5yZW1vdGVhZ2VudC52MS5BZ2VudBIPCgd2ZXJzaW9uGAIgASgJEhAKCHZlcmlmaWVkGAMgASgIEjIKDGRlZmF1bHRfbW9kZRgEIAEoDjIcLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsTW9kZRI+ChNkZWZhdWx0X21vZGVfc291cmNlGAUgASgOMiEucmVtb3RlYWdlbnQudjEuRGVmYXVsdE1vZGVTb3VyY2USGwoTZGVmYXVsdF9tb2RlX3ZhcmllcxgGIAEoCCKBCwoHQ29tbWFuZBIrCgRzZW5kGAEgASgLMhsucmVtb3RlYWdlbnQudjEuU2VuZFJlcXVlc3RIABI1CglpbnRlcnJ1cHQYAiABKAsyIC5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXF1ZXN0SAASQgoQcmVzb2x2ZV9hcHByb3ZhbBgDIAEoCzImLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlcXVlc3RIABJACg9hbnN3ZXJfcXVlc3Rpb24YBCABKAsyJS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlcXVlc3RIABI6CgxzdG9wX3Nlc3Npb24YBSABKAsyIi5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlcXVlc3RIABI6CgxjYW5jZWxfaW5wdXQYBiABKAsyIi5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlcXVlc3RIABI0CglzZXRfbW9kZWwYByABKAsyHy5yZW1vdGVhZ2VudC52MS5TZXRNb2RlbFJlcXVlc3RIABJDChFzZXRfYXBwcm92YWxfbW9kZRgIIAEoCzImLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlcXVlc3RIABIxCgdjb21wYWN0GAkgASgLMh4ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlcXVlc3RIABI4CgthbnN3ZXJfcGxhbhgKIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFuc3dlclBsYW5SZXF1ZXN0SAASPAoNb3Blbl90ZXJtaW5hbBgLIAEoCzIjLnJlbW90ZWFnZW50LnYxLk9wZW5UZXJtaW5hbFJlcXVlc3RIABI+Cg5yZXN1bWVfc2Vzc2lvbhgMIAEoCzIkLnJlbW90ZWFnZW50LnYxLlJlc3VtZVNlc3Npb25SZXF1ZXN0SAASPgoOY3JlYXRlX3Nlc3Npb24YFCABKAsyJC5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVxdWVzdEgAEjgKC2xpc3RfbW9kZWxzGBUgASgLMiEucmVtb3RlYWdlbnQudjEuTGlzdE1vZGVsc1JlcXVlc3RIABJCChBsaXN0X2RpcmVjdG9yaWVzGBYgASgLMiYucmVtb3RlYWdlbnQudjEuTGlzdERpcmVjdG9yaWVzUmVxdWVzdEgAEjoKDGdldF9zZXR0aW5ncxgXIAEoCzIiLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVxdWVzdEgAEkAKD3VwZGF0ZV9zZXR0aW5ncxgYIAEoCzIlLnJlbW90ZWFnZW50LnYxLlVwZGF0ZVNldHRpbmdzUmVxdWVzdEgAEkUKEmJlZ2luX2ltYWdlX3VwbG9hZBgZIAEoCzInLnJlbW90ZWFnZW50LnYxLkJlZ2luSW1hZ2VVcGxvYWRSZXF1ZXN0SAASPwoPcHV0X2ltYWdlX2NodW5rGBogASgLMiQucmVtb3RlYWdlbnQudjEuUHV0SW1hZ2VDaHVua1JlcXVlc3RIABJOChdnZXRfaW1hZ2VfdXBsb2FkX3N0YXR1cxgbIAEoCzIrLnJlbW90ZWFnZW50LnYxLkdldEltYWdlVXBsb2FkU3RhdHVzUmVxdWVzdEgAEksKFWNvbXBsZXRlX2ltYWdlX3VwbG9hZBgcIAEoCzIqLnJlbW90ZWFnZW50LnYxLkNvbXBsZXRlSW1hZ2VVcGxvYWRSZXF1ZXN0SAASRQoSYWJvcnRfaW1hZ2VfdXBsb2FkGB0gASgLMicucmVtb3RlYWdlbnQudjEuQWJvcnRJbWFnZVVwbG9hZFJlcXVlc3RIAEIGCgRraW5kIsgLCg1Db21tYW5kUmVzdWx0EhIKCmVycm9yX2NvZGUYASABKAkSFQoNZXJyb3JfbWVzc2FnZRgCIAEoCRIsCgRzZW5kGAogASgLMhwucmVtb3RlYWdlbnQudjEuU2VuZFJlc3BvbnNlSAASNgoJaW50ZXJydXB0GAsgASgLMiEucmVtb3RlYWdlbnQudjEuSW50ZXJydXB0UmVzcG9uc2VIABJDChByZXNvbHZlX2FwcHJvdmFsGAwgASgLMicucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVzcG9uc2VIABJBCg9hbnN3ZXJfcXVlc3Rpb24YDSABKAsyJi5yZW1vdGVhZ2VudC52MS5BbnN3ZXJRdWVzdGlvblJlc3BvbnNlSAASOwoMc3RvcF9zZXNzaW9uGA4gASgLMiMucmVtb3RlYWdlbnQudjEuU3RvcFNlc3Npb25SZXNwb25zZUgAEjsKDGNhbmNlbF9pbnB1dBgPIAEoCzIjLnJlbW90ZWFnZW50LnYxLkNhbmNlbElucHV0UmVzcG9uc2VIABI1CglzZXRfbW9kZWwYECABKAsyIC5yZW1vdGVhZ2VudC52MS5TZXRNb2RlbFJlc3BvbnNlSAASRAoRc2V0X2FwcHJvdmFsX21vZGUYESABKAsyJy5yZW1vdGVhZ2VudC52MS5TZXRBcHByb3ZhbE1vZGVSZXNwb25zZUgAEjIKB2NvbXBhY3QYEiABKAsyHy5yZW1vdGVhZ2VudC52MS5Db21wYWN0UmVzcG9uc2VIABI5CgthbnN3ZXJfcGxhbhgTIAEoCzIiLnJlbW90ZWFnZW50LnYxLkFuc3dlclBsYW5SZXNwb25zZUgAEj0KDW9wZW5fdGVybWluYWwYFCABKAsyJC5yZW1vdGVhZ2VudC52MS5PcGVuVGVybWluYWxSZXNwb25zZUgAEj8KDnJlc3VtZV9zZXNzaW9uGBUgASgLMiUucmVtb3RlYWdlbnQudjEuUmVzdW1lU2Vzc2lvblJlc3BvbnNlSAASPwoOY3JlYXRlX3Nlc3Npb24YHiABKAsyJS5yZW1vdGVhZ2VudC52MS5DcmVhdGVTZXNzaW9uUmVzcG9uc2VIABI5CgtsaXN0X21vZGVscxgfIAEoCzIiLnJlbW90ZWFnZW50LnYxLkxpc3RNb2RlbHNSZXNwb25zZUgAEkMKEGxpc3RfZGlyZWN0b3JpZXMYICABKAsyJy5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXNwb25zZUgAEjsKDGdldF9zZXR0aW5ncxghIAEoCzIjLnJlbW90ZWFnZW50LnYxLkdldFNldHRpbmdzUmVzcG9uc2VIABJBCg91cGRhdGVfc2V0dGluZ3MYIiABKAsyJi5yZW1vdGVhZ2VudC52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlSAASRgoSYmVnaW5faW1hZ2VfdXBsb2FkGCMgASgLMigucmVtb3RlYWdlbnQudjEuQmVnaW5JbWFnZVVwbG9hZFJlc3BvbnNlSAASQAoPcHV0X2ltYWdlX2NodW5rGCQgASgLMiUucmVtb3RlYWdlbnQudjEuUHV0SW1hZ2VDaHVua1Jlc3BvbnNlSAASTwoXZ2V0X2ltYWdlX3VwbG9hZF9zdGF0dXMYJSABKAsyLC5yZW1vdGVhZ2VudC52MS5HZXRJbWFnZVVwbG9hZFN0YXR1c1Jlc3BvbnNlSAASTAoVY29tcGxldGVfaW1hZ2VfdXBsb2FkGCYgASgLMisucmVtb3RlYWdlbnQudjEuQ29tcGxldGVJbWFnZVVwbG9hZFJlc3BvbnNlSAASRgoSYWJvcnRfaW1hZ2VfdXBsb2FkGCcgASgLMigucmVtb3RlYWdlbnQudjEuQWJvcnRJbWFnZVVwbG9hZFJlc3BvbnNlSABCBgoEa2luZCI8ChNPcGVuVGVybWluYWxSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEQoJc3RyZWFtX2lkGAIgASgJIhYKFE9wZW5UZXJtaW5hbFJlc3BvbnNlIrQBCg1UZXJtaW5hbEZyYW1lEjQKCHNuYXBzaG90GAEgASgLMiAucmVtb3RlYWdlbnQudjEuVGVybWluYWxTbmFwc2hvdEgAEhAKBm91dHB1dBgCIAEoDEgAEhAKBmNsb3NlZBgDIAEoCUgAEg8KBWlucHV0GAogASgMSAASMAoGcmVzaXplGAsgASgLMh4ucmVtb3RlYWdlbnQudjEuVGVybWluYWxSZXNpemVIAEIGCgRraW5kIjwKEFRlcm1pbmFsU25hcHNob3QSDAoEZGF0YRgBIAEoDBIMCgRjb2xzGAIgASgFEgwKBHJvd3MYAyABKAUiOQoOVGVybWluYWxSZXNpemUSDAoEY29scxgBIAEoBRIMCgRyb3dzGAIgASgFEgsKA2ZpdBgDIAEoCCIuCg5QYWlyaW5nUGF5bG9hZBIMCgRyb290GAEgASgMEg4KBnNlcnZlchgCIAEoCSKwAQoNTm90aWZ5Q29udGVudBISCgptYWNoaW5lX2lkGAEgASgJEhIKCnNlc3Npb25faWQYAiABKAkSKAoEa2luZBgDIAEoDjIaLnJlbW90ZWFnZW50LnYxLk5vdGlmeUtpbmQSDQoFdGl0bGUYBCABKAkSDAoEdGV4dBgFIAEoCRIwCghhcHByb3ZhbBgGIAEoCzIeLnJlbW90ZWFnZW50LnYxLk5vdGlmeUFwcHJvdmFsIpoBCg5Ob3RpZnlBcHByb3ZhbBITCgthcHByb3ZhbF9pZBgBIAEoCRIRCgl0b29sX25hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHY29tbWFuZBgEIAEoCRIRCgl0cnVuY2F0ZWQYBSABKAgSEwoLZGVhZGxpbmVfbXMYBiABKAMSEgoKdG9vbF9pbnB1dBgHIAEoCSJoCgxJbWFnZVBheWxvYWQSKwoGZm9ybWF0GAEgASgOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSDQoFd2lkdGgYAiABKAUSDgoGaGVpZ2h0GAMgASgFEgwKBGRhdGEYBCABKAwiQQoKRGV2aWNlTWV0YRIMCgRuYW1lGAEgASgJEhAKCHBsYXRmb3JtGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIowBCgxQcm9qZWN0UHJlZnMSDgoGc2NoZW1hGAEgASgFEisKBnBpbm5lZBgCIAMoCzIbLnJlbW90ZWFnZW50LnYxLlByb2plY3RQcmVmEisKBmhpZGRlbhgDIAMoCzIbLnJlbW90ZWFnZW50LnYxLlByb2plY3RQcmVmEhIKCnJlY2VudF9vcHMYBCADKAkiLQoLUHJvamVjdFByZWYSDAoEcGF0aBgBIAEoCRIQCghzaW5jZV9tcxgCIAEoAyqFAQoRRGVmYXVsdE1vZGVTb3VyY2USIwofREVGQVVMVF9NT0RFX1NPVVJDRV9VTlNQRUNJRklFRBAAEicKI0RFRkFVTFRfTU9ERV9TT1VSQ0VfREFFTU9OX1NFVFRJTkdTEAESIgoeREVGQVVMVF9NT0RFX1NPVVJDRV9DTElfQ09ORklHEAJiBnByb3RvMw", [file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay]);
+  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIvMCCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCRIVCg1jb2RleF92ZXJzaW9uGAcgASgJEhYKDmNvZGV4X3ZlcmlmaWVkGAggASgIEikKBmFnZW50cxgJIAMoCzIZLnJlbW90ZWFnZW50LnYxLkFnZW50SW5mbxI5CgxjYXBhYmlsaXRpZXMYCiABKAsyIy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lQ2FwYWJpbGl0aWVzEioKBnF1b3RhcxgLIAMoCzIaLnJlbW90ZWFnZW50LnYxLkFnZW50UXVvdGEilQIKCkFnZW50UXVvdGESJAoFYWdlbnQYASABKA4yFS5yZW1vdGVhZ2VudC52MS5BZ2VudBIpCgVzdGF0ZRgCIAEoDjIaLnJlbW90ZWFnZW50LnYxLlF1b3RhU3RhdGUSLAoHd2luZG93cxgDIAMoCzIbLnJlbW90ZWFnZW50LnYxLlF1b3RhV2luZG93EgwKBHBsYW4YBCABKAkSKQoFbG9naW4YBSABKA4yGi5yZW1vdGVhZ2VudC52MS5RdW90YUxvZ2luEhMKC29ic2VydmVkX21zGAYgASgDEg8KB2FjY291bnQYByABKAkSGQoRc291cmNlX3Nlc3Npb25faWQYCCABKAkSDgoGZGV0YWlsGAkgASgJInUKC1F1b3RhV2luZG93EgwKBG5hbWUYASABKAkSGQoMdXNlZF9wZXJjZW50GAIgASgBSACIAQESFAoMcmVzZXRzX2F0X21zGAMgASgDEhYKDndpbmRvd19taW51dGVzGAQgASgDQg8KDV91c2VkX3BlcmNlbnQi5wEKE01hY2hpbmVDYXBhYmlsaXRpZXMSFgoOc2Vzc2lvbl9pbWFnZXMYASABKAgSFAoMaW1hZ2VfdXBsb2FkGAIgASgIEh4KFm1heF9pbWFnZXNfcGVyX21lc3NhZ2UYAyABKAUSGAoQbWF4X3VwbG9hZF9ieXRlcxgEIAEoAxIXCg9tYXhfY2h1bmtfYnl0ZXMYBSABKAUSMwoOdXBsb2FkX2Zvcm1hdHMYBiADKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBIaChJjb21tYW5kX3NpZ25hdHVyZXMYByABKAgi5QEKCUFnZW50SW5mbxIkCgVhZ2VudBgBIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50Eg8KB3ZlcnNpb24YAiABKAkSEAoIdmVyaWZpZWQYAyABKAgSMgoMZGVmYXVsdF9tb2RlGAQgASgOMhwucmVtb3RlYWdlbnQudjEuQXBwcm92YWxNb2RlEj4KE2RlZmF1bHRfbW9kZV9zb3VyY2UYBSABKA4yIS5yZW1vdGVhZ2VudC52MS5EZWZhdWx0TW9kZVNvdXJjZRIbChNkZWZhdWx0X21vZGVfdmFyaWVzGAYgASgIIoELCgdDb21tYW5kEisKBHNlbmQYASABKAsyGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdEgAEjUKCWludGVycnVwdBgCIAEoCzIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3RIABJCChByZXNvbHZlX2FwcHJvdmFsGAMgASgLMiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdEgAEkAKD2Fuc3dlcl9xdWVzdGlvbhgEIAEoCzIlLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVxdWVzdEgAEjoKDHN0b3Bfc2Vzc2lvbhgFIAEoCzIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdEgAEjoKDGNhbmNlbF9pbnB1dBgGIAEoCzIiLnJlbW90ZWFnZW50LnYxLkNhbmNlbElucHV0UmVxdWVzdEgAEjQKCXNldF9tb2RlbBgHIAEoCzIfLnJlbW90ZWFnZW50LnYxLlNldE1vZGVsUmVxdWVzdEgAEkMKEXNldF9hcHByb3ZhbF9tb2RlGAggASgLMiYucmVtb3RlYWdlbnQudjEuU2V0QXBwcm92YWxNb2RlUmVxdWVzdEgAEjEKB2NvbXBhY3QYCSABKAsyHi5yZW1vdGVhZ2VudC52MS5Db21wYWN0UmVxdWVzdEgAEjgKC2Fuc3dlcl9wbGFuGAogASgLMiEucmVtb3RlYWdlbnQudjEuQW5zd2VyUGxhblJlcXVlc3RIABI8Cg1vcGVuX3Rlcm1pbmFsGAsgASgLMiMucmVtb3RlYWdlbnQudjEuT3BlblRlcm1pbmFsUmVxdWVzdEgAEj4KDnJlc3VtZV9zZXNzaW9uGAwgASgLMiQucmVtb3RlYWdlbnQudjEuUmVzdW1lU2Vzc2lvblJlcXVlc3RIABI+Cg5jcmVhdGVfc2Vzc2lvbhgUIAEoCzIkLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0SAASOAoLbGlzdF9tb2RlbHMYFSABKAsyIS5yZW1vdGVhZ2VudC52MS5MaXN0TW9kZWxzUmVxdWVzdEgAEkIKEGxpc3RfZGlyZWN0b3JpZXMYFiABKAsyJi5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXF1ZXN0SAASOgoMZ2V0X3NldHRpbmdzGBcgASgLMiIucmVtb3RlYWdlbnQudjEuR2V0U2V0dGluZ3NSZXF1ZXN0SAASQAoPdXBkYXRlX3NldHRpbmdzGBggASgLMiUucmVtb3RlYWdlbnQudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0SAASRQoSYmVnaW5faW1hZ2VfdXBsb2FkGBkgASgLMicucmVtb3RlYWdlbnQudjEuQmVnaW5JbWFnZVVwbG9hZFJlcXVlc3RIABI/Cg9wdXRfaW1hZ2VfY2h1bmsYGiABKAsyJC5yZW1vdGVhZ2VudC52MS5QdXRJbWFnZUNodW5rUmVxdWVzdEgAEk4KF2dldF9pbWFnZV91cGxvYWRfc3RhdHVzGBsgASgLMisucmVtb3RlYWdlbnQudjEuR2V0SW1hZ2VVcGxvYWRTdGF0dXNSZXF1ZXN0SAASSwoVY29tcGxldGVfaW1hZ2VfdXBsb2FkGBwgASgLMioucmVtb3RlYWdlbnQudjEuQ29tcGxldGVJbWFnZVVwbG9hZFJlcXVlc3RIABJFChJhYm9ydF9pbWFnZV91cGxvYWQYHSABKAsyJy5yZW1vdGVhZ2VudC52MS5BYm9ydEltYWdlVXBsb2FkUmVxdWVzdEgAQgYKBGtpbmQiyAsKDUNvbW1hbmRSZXN1bHQSEgoKZXJyb3JfY29kZRgBIAEoCRIVCg1lcnJvcl9tZXNzYWdlGAIgASgJEiwKBHNlbmQYCiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZW5kUmVzcG9uc2VIABI2CglpbnRlcnJ1cHQYCyABKAsyIS5yZW1vdGVhZ2VudC52MS5JbnRlcnJ1cHRSZXNwb25zZUgAEkMKEHJlc29sdmVfYXBwcm92YWwYDCABKAsyJy5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXNwb25zZUgAEkEKD2Fuc3dlcl9xdWVzdGlvbhgNIAEoCzImLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVzcG9uc2VIABI7CgxzdG9wX3Nlc3Npb24YDiABKAsyIy5yZW1vdGVhZ2VudC52MS5TdG9wU2Vzc2lvblJlc3BvbnNlSAASOwoMY2FuY2VsX2lucHV0GA8gASgLMiMucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXNwb25zZUgAEjUKCXNldF9tb2RlbBgQIAEoCzIgLnJlbW90ZWFnZW50LnYxLlNldE1vZGVsUmVzcG9uc2VIABJEChFzZXRfYXBwcm92YWxfbW9kZRgRIAEoCzInLnJlbW90ZWFnZW50LnYxLlNldEFwcHJvdmFsTW9kZVJlc3BvbnNlSAASMgoHY29tcGFjdBgSIAEoCzIfLnJlbW90ZWFnZW50LnYxLkNvbXBhY3RSZXNwb25zZUgAEjkKC2Fuc3dlcl9wbGFuGBMgASgLMiIucmVtb3RlYWdlbnQudjEuQW5zd2VyUGxhblJlc3BvbnNlSAASPQoNb3Blbl90ZXJtaW5hbBgUIAEoCzIkLnJlbW90ZWFnZW50LnYxLk9wZW5UZXJtaW5hbFJlc3BvbnNlSAASPwoOcmVzdW1lX3Nlc3Npb24YFSABKAsyJS5yZW1vdGVhZ2VudC52MS5SZXN1bWVTZXNzaW9uUmVzcG9uc2VIABI/Cg5jcmVhdGVfc2Vzc2lvbhgeIAEoCzIlLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXNwb25zZUgAEjkKC2xpc3RfbW9kZWxzGB8gASgLMiIucmVtb3RlYWdlbnQudjEuTGlzdE1vZGVsc1Jlc3BvbnNlSAASQwoQbGlzdF9kaXJlY3RvcmllcxggIAEoCzInLnJlbW90ZWFnZW50LnYxLkxpc3REaXJlY3Rvcmllc1Jlc3BvbnNlSAASOwoMZ2V0X3NldHRpbmdzGCEgASgLMiMucmVtb3RlYWdlbnQudjEuR2V0U2V0dGluZ3NSZXNwb25zZUgAEkEKD3VwZGF0ZV9zZXR0aW5ncxgiIAEoCzImLnJlbW90ZWFnZW50LnYxLlVwZGF0ZVNldHRpbmdzUmVzcG9uc2VIABJGChJiZWdpbl9pbWFnZV91cGxvYWQYIyABKAsyKC5yZW1vdGVhZ2VudC52MS5CZWdpbkltYWdlVXBsb2FkUmVzcG9uc2VIABJACg9wdXRfaW1hZ2VfY2h1bmsYJCABKAsyJS5yZW1vdGVhZ2VudC52MS5QdXRJbWFnZUNodW5rUmVzcG9uc2VIABJPChdnZXRfaW1hZ2VfdXBsb2FkX3N0YXR1cxglIAEoCzIsLnJlbW90ZWFnZW50LnYxLkdldEltYWdlVXBsb2FkU3RhdHVzUmVzcG9uc2VIABJMChVjb21wbGV0ZV9pbWFnZV91cGxvYWQYJiABKAsyKy5yZW1vdGVhZ2VudC52MS5Db21wbGV0ZUltYWdlVXBsb2FkUmVzcG9uc2VIABJGChJhYm9ydF9pbWFnZV91cGxvYWQYJyABKAsyKC5yZW1vdGVhZ2VudC52MS5BYm9ydEltYWdlVXBsb2FkUmVzcG9uc2VIAEIGCgRraW5kIjwKE09wZW5UZXJtaW5hbFJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglzdHJlYW1faWQYAiABKAkiFgoUT3BlblRlcm1pbmFsUmVzcG9uc2UitAEKDVRlcm1pbmFsRnJhbWUSNAoIc25hcHNob3QYASABKAsyIC5yZW1vdGVhZ2VudC52MS5UZXJtaW5hbFNuYXBzaG90SAASEAoGb3V0cHV0GAIgASgMSAASEAoGY2xvc2VkGAMgASgJSAASDwoFaW5wdXQYCiABKAxIABIwCgZyZXNpemUYCyABKAsyHi5yZW1vdGVhZ2VudC52MS5UZXJtaW5hbFJlc2l6ZUgAQgYKBGtpbmQiPAoQVGVybWluYWxTbmFwc2hvdBIMCgRkYXRhGAEgASgMEgwKBGNvbHMYAiABKAUSDAoEcm93cxgDIAEoBSI5Cg5UZXJtaW5hbFJlc2l6ZRIMCgRjb2xzGAEgASgFEgwKBHJvd3MYAiABKAUSCwoDZml0GAMgASgIIi4KDlBhaXJpbmdQYXlsb2FkEgwKBHJvb3QYASABKAwSDgoGc2VydmVyGAIgASgJIrABCg1Ob3RpZnlDb250ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIoCgRraW5kGAMgASgOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZBINCgV0aXRsZRgEIAEoCRIMCgR0ZXh0GAUgASgJEjAKCGFwcHJvdmFsGAYgASgLMh4ucmVtb3RlYWdlbnQudjEuTm90aWZ5QXBwcm92YWwimgEKDk5vdGlmeUFwcHJvdmFsEhMKC2FwcHJvdmFsX2lkGAEgASgJEhEKCXRvb2xfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIPCgdjb21tYW5kGAQgASgJEhEKCXRydW5jYXRlZBgFIAEoCBITCgtkZWFkbGluZV9tcxgGIAEoAxISCgp0b29sX2lucHV0GAcgASgJImgKDEltYWdlUGF5bG9hZBIrCgZmb3JtYXQYASABKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBINCgV3aWR0aBgCIAEoBRIOCgZoZWlnaHQYAyABKAUSDAoEZGF0YRgEIAEoDCJBCgpEZXZpY2VNZXRhEgwKBG5hbWUYASABKAkSEAoIcGxhdGZvcm0YAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkijAEKDFByb2plY3RQcmVmcxIOCgZzY2hlbWEYASABKAUSKwoGcGlubmVkGAIgAygLMhsucmVtb3RlYWdlbnQudjEuUHJvamVjdFByZWYSKwoGaGlkZGVuGAMgAygLMhsucmVtb3RlYWdlbnQudjEuUHJvamVjdFByZWYSEgoKcmVjZW50X29wcxgEIAMoCSItCgtQcm9qZWN0UHJlZhIMCgRwYXRoGAEgASgJEhAKCHNpbmNlX21zGAIgASgDKosBCgpRdW90YVN0YXRlEhsKF1FVT1RBX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTUVVPVEFfU1RBVEVfV0FJVElORxABEhIKDlFVT1RBX1NUQVRFX09LEAISFgoSUVVPVEFfU1RBVEVfRkFJTEVEEAMSGwoXUVVPVEFfU1RBVEVfVU5TVVBQT1JURUQQBCpHCgpRdW90YUxvZ2luEhsKF1FVT1RBX0xPR0lOX1VOU1BFQ0lGSUVEEAASHAoYUVVPVEFfTE9HSU5fU1VCU0NSSVBUSU9OEAEqhQEKEURlZmF1bHRNb2RlU291cmNlEiMKH0RFRkFVTFRfTU9ERV9TT1VSQ0VfVU5TUEVDSUZJRUQQABInCiNERUZBVUxUX01PREVfU09VUkNFX0RBRU1PTl9TRVRUSU5HUxABEiIKHkRFRkFVTFRfTU9ERV9TT1VSQ0VfQ0xJX0NPTkZJRxACYgZwcm90bzM", [file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay]);
 
 /**
  * MachineMeta describes a computer running a daemon.
@@ -88,6 +88,17 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
    * @generated from field: remoteagent.v1.MachineCapabilities capabilities = 10;
    */
   capabilities?: MachineCapabilities | undefined;
+
+  /**
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   *
+   * @generated from field: repeated remoteagent.v1.AgentQuota quotas = 11;
+   */
+  quotas: AgentQuota[];
 };
 
 /**
@@ -96,6 +107,117 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
  */
 export const MachineMetaSchema: GenMessage<MachineMeta> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_remote, 0);
+
+/**
+ * @generated from message remoteagent.v1.AgentQuota
+ */
+export type AgentQuota = Message<"remoteagent.v1.AgentQuota"> & {
+  /**
+   * @generated from field: remoteagent.v1.Agent agent = 1;
+   */
+  agent: Agent;
+
+  /**
+   * @generated from field: remoteagent.v1.QuotaState state = 2;
+   */
+  state: QuotaState;
+
+  /**
+   * @generated from field: repeated remoteagent.v1.QuotaWindow windows = 3;
+   */
+  windows: QuotaWindow[];
+
+  /**
+   * The plan as the CLI names it (Codex's plan_type, Claude Code's
+   * organization type such as "claude_max"), empty when unknown.
+   *
+   * @generated from field: string plan = 4;
+   */
+  plan: string;
+
+  /**
+   * @generated from field: remoteagent.v1.QuotaLogin login = 5;
+   */
+  login: QuotaLogin;
+
+  /**
+   * Unix milliseconds when the CLI last reported these limits; a client
+   * shows the age and treats old or past-reset data as a last record.
+   *
+   * @generated from field: int64 observed_ms = 6;
+   */
+  observedMs: bigint;
+
+  /**
+   * A short opaque fingerprint of the CLI's login account, to tell
+   * accounts apart; empty when unknown, and then source_session_id names
+   * the session the numbers came from.
+   *
+   * @generated from field: string account = 7;
+   */
+  account: string;
+
+  /**
+   * @generated from field: string source_session_id = 8;
+   */
+  sourceSessionId: string;
+
+  /**
+   * Why FAILED or UNSUPPORTED, in plain words without content.
+   *
+   * @generated from field: string detail = 9;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.AgentQuota.
+ * Use `create(AgentQuotaSchema)` to create a new message.
+ */
+export const AgentQuotaSchema: GenMessage<AgentQuota> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 1);
+
+/**
+ * QuotaWindow is one usage window. A window the CLI did not report is
+ * absent; one without used_percent has an unknown usage (not 0%).
+ *
+ * @generated from message remoteagent.v1.QuotaWindow
+ */
+export type QuotaWindow = Message<"remoteagent.v1.QuotaWindow"> & {
+  /**
+   * "five_hour" and "seven_day" (Claude Code), "primary" and "secondary"
+   * (Codex).
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: optional double used_percent = 2;
+   */
+  usedPercent?: number | undefined;
+
+  /**
+   * Unix milliseconds when the window resets, 0 when unknown.
+   *
+   * @generated from field: int64 resets_at_ms = 3;
+   */
+  resetsAtMs: bigint;
+
+  /**
+   * Length of the window, 0 when unknown.
+   *
+   * @generated from field: int64 window_minutes = 4;
+   */
+  windowMinutes: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.QuotaWindow.
+ * Use `create(QuotaWindowSchema)` to create a new message.
+ */
+export const QuotaWindowSchema: GenMessage<QuotaWindow> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 2);
 
 /**
  * @generated from message remoteagent.v1.MachineCapabilities
@@ -155,7 +277,7 @@ export type MachineCapabilities = Message<"remoteagent.v1.MachineCapabilities"> 
  * Use `create(MachineCapabilitiesSchema)` to create a new message.
  */
 export const MachineCapabilitiesSchema: GenMessage<MachineCapabilities> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 1);
+  messageDesc(file_remoteagent_v1_remote, 3);
 
 /**
  * @generated from message remoteagent.v1.AgentInfo
@@ -214,7 +336,7 @@ export type AgentInfo = Message<"remoteagent.v1.AgentInfo"> & {
  * Use `create(AgentInfoSchema)` to create a new message.
  */
 export const AgentInfoSchema: GenMessage<AgentInfo> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 2);
+  messageDesc(file_remoteagent_v1_remote, 4);
 
 /**
  * Command is what a client asks a daemon to do. The session operations
@@ -370,7 +492,7 @@ export type Command = Message<"remoteagent.v1.Command"> & {
  * Use `create(CommandSchema)` to create a new message.
  */
 export const CommandSchema: GenMessage<Command> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 3);
+  messageDesc(file_remoteagent_v1_remote, 5);
 
 /**
  * CommandResult is the daemon's reply to a Command. A retried request ID
@@ -535,7 +657,7 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
  * Use `create(CommandResultSchema)` to create a new message.
  */
 export const CommandResultSchema: GenMessage<CommandResult> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 4);
+  messageDesc(file_remoteagent_v1_remote, 6);
 
 /**
  * OpenTerminalRequest asks the daemon to stream a session's terminal. The
@@ -563,7 +685,7 @@ export type OpenTerminalRequest = Message<"remoteagent.v1.OpenTerminalRequest"> 
  * Use `create(OpenTerminalRequestSchema)` to create a new message.
  */
 export const OpenTerminalRequestSchema: GenMessage<OpenTerminalRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 5);
+  messageDesc(file_remoteagent_v1_remote, 7);
 
 /**
  * @generated from message remoteagent.v1.OpenTerminalResponse
@@ -576,7 +698,7 @@ export type OpenTerminalResponse = Message<"remoteagent.v1.OpenTerminalResponse"
  * Use `create(OpenTerminalResponseSchema)` to create a new message.
  */
 export const OpenTerminalResponseSchema: GenMessage<OpenTerminalResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 6);
+  messageDesc(file_remoteagent_v1_remote, 8);
 
 /**
  * TerminalFrame is the content of a TERMINAL_OUTPUT or TERMINAL_INPUT
@@ -632,7 +754,7 @@ export type TerminalFrame = Message<"remoteagent.v1.TerminalFrame"> & {
  * Use `create(TerminalFrameSchema)` to create a new message.
  */
 export const TerminalFrameSchema: GenMessage<TerminalFrame> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 7);
+  messageDesc(file_remoteagent_v1_remote, 9);
 
 /**
  * TerminalSnapshot is the screen as it is now; output continues from it.
@@ -661,7 +783,7 @@ export type TerminalSnapshot = Message<"remoteagent.v1.TerminalSnapshot"> & {
  * Use `create(TerminalSnapshotSchema)` to create a new message.
  */
 export const TerminalSnapshotSchema: GenMessage<TerminalSnapshot> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 8);
+  messageDesc(file_remoteagent_v1_remote, 10);
 
 /**
  * TerminalResize with fit set resizes the tmux window to the client's
@@ -691,7 +813,7 @@ export type TerminalResize = Message<"remoteagent.v1.TerminalResize"> & {
  * Use `create(TerminalResizeSchema)` to create a new message.
  */
 export const TerminalResizeSchema: GenMessage<TerminalResize> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 9);
+  messageDesc(file_remoteagent_v1_remote, 11);
 
 /**
  * PairingPayload is what an existing device hands a new one.
@@ -715,7 +837,7 @@ export type PairingPayload = Message<"remoteagent.v1.PairingPayload"> & {
  * Use `create(PairingPayloadSchema)` to create a new message.
  */
 export const PairingPayloadSchema: GenMessage<PairingPayload> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 10);
+  messageDesc(file_remoteagent_v1_remote, 12);
 
 /**
  * NotifyContent is what a daemon tells the Android app in a push, sealed
@@ -767,7 +889,7 @@ export type NotifyContent = Message<"remoteagent.v1.NotifyContent"> & {
  * Use `create(NotifyContentSchema)` to create a new message.
  */
 export const NotifyContentSchema: GenMessage<NotifyContent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 11);
+  messageDesc(file_remoteagent_v1_remote, 13);
 
 /**
  * @generated from message remoteagent.v1.NotifyApproval
@@ -822,7 +944,7 @@ export type NotifyApproval = Message<"remoteagent.v1.NotifyApproval"> & {
  * Use `create(NotifyApprovalSchema)` to create a new message.
  */
 export const NotifyApprovalSchema: GenMessage<NotifyApproval> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 12);
+  messageDesc(file_remoteagent_v1_remote, 14);
 
 /**
  * ImagePayload is the content of an IMAGE envelope: the display copy of an
@@ -859,7 +981,7 @@ export type ImagePayload = Message<"remoteagent.v1.ImagePayload"> & {
  * Use `create(ImagePayloadSchema)` to create a new message.
  */
 export const ImagePayloadSchema: GenMessage<ImagePayload> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 13);
+  messageDesc(file_remoteagent_v1_remote, 15);
 
 /**
  * DeviceMeta is the content of a DEVICE_META envelope: what the account's
@@ -896,7 +1018,7 @@ export type DeviceMeta = Message<"remoteagent.v1.DeviceMeta"> & {
  * Use `create(DeviceMetaSchema)` to create a new message.
  */
 export const DeviceMetaSchema: GenMessage<DeviceMeta> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 14);
+  messageDesc(file_remoteagent_v1_remote, 16);
 
 /**
  * ProjectPrefs is the content of the ACCOUNT_PREFS object "project-prefs":
@@ -942,7 +1064,7 @@ export type ProjectPrefs = Message<"remoteagent.v1.ProjectPrefs"> & {
  * Use `create(ProjectPrefsSchema)` to create a new message.
  */
 export const ProjectPrefsSchema: GenMessage<ProjectPrefs> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 15);
+  messageDesc(file_remoteagent_v1_remote, 17);
 
 /**
  * @generated from message remoteagent.v1.ProjectPref
@@ -966,7 +1088,77 @@ export type ProjectPref = Message<"remoteagent.v1.ProjectPref"> & {
  * Use `create(ProjectPrefSchema)` to create a new message.
  */
 export const ProjectPrefSchema: GenMessage<ProjectPref> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 16);
+  messageDesc(file_remoteagent_v1_remote, 18);
+
+/**
+ * @generated from enum remoteagent.v1.QuotaState
+ */
+export enum QuotaState {
+  /**
+   * @generated from enum value: QUOTA_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Collection works, but the CLI has not told any limits yet (Claude
+   * Code only does after its first reply in a session).
+   *
+   * @generated from enum value: QUOTA_STATE_WAITING = 1;
+   */
+  WAITING = 1,
+
+  /**
+   * windows hold what the CLI last told, at observed_ms.
+   *
+   * @generated from enum value: QUOTA_STATE_OK = 2;
+   */
+  OK = 2,
+
+  /**
+   * Reading failed; windows, if any, are the last good record.
+   *
+   * @generated from enum value: QUOTA_STATE_FAILED = 3;
+   */
+  FAILED = 3,
+
+  /**
+   * This CLI's limits cannot be read here (detail says why).
+   *
+   * @generated from enum value: QUOTA_STATE_UNSUPPORTED = 4;
+   */
+  UNSUPPORTED = 4,
+}
+
+/**
+ * Describes the enum remoteagent.v1.QuotaState.
+ */
+export const QuotaStateSchema: GenEnum<QuotaState> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_remote, 0);
+
+/**
+ * @generated from enum remoteagent.v1.QuotaLogin
+ */
+export enum QuotaLogin {
+  /**
+   * Not known: never inferred from limits being absent.
+   *
+   * @generated from enum value: QUOTA_LOGIN_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A subscription login (Claude Code: an OAuth account).
+   *
+   * @generated from enum value: QUOTA_LOGIN_SUBSCRIPTION = 1;
+   */
+  SUBSCRIPTION = 1,
+}
+
+/**
+ * Describes the enum remoteagent.v1.QuotaLogin.
+ */
+export const QuotaLoginSchema: GenEnum<QuotaLogin> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_remote, 1);
 
 /**
  * @generated from enum remoteagent.v1.DefaultModeSource
@@ -994,5 +1186,5 @@ export enum DefaultModeSource {
  * Describes the enum remoteagent.v1.DefaultModeSource.
  */
 export const DefaultModeSourceSchema: GenEnum<DefaultModeSource> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_remote, 0);
+  enumDesc(file_remoteagent_v1_remote, 2);
 

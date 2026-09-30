@@ -174,7 +174,11 @@ func (s *session) observe(e *pb.Event) {
 		s.context = k.TurnContext
 	case *pb.Event_TokenUsage:
 		s.usage = k.TokenUsage
-		s.d.noteLimits(k.TokenUsage)
+		at := time.Now()
+		if e.Time != nil {
+			at = e.Time.AsTime()
+		}
+		s.d.noteLimits(k.TokenUsage, at)
 	case *pb.Event_SettingsChanged:
 		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
 	case *pb.Event_UserMessage:
@@ -864,6 +868,9 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	case "PermissionRequest":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
+	case "StatusLine":
+		s.d.statusLine(s.meta.ID, p.Status, time.Now())
+		return nil, nil
 	}
 	if evs := s.ag.HookEvents(p); len(evs) > 0 {
 		s.bindRollout(p.SessionID, p.TranscriptPath)

@@ -460,7 +460,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v2 · 账户额度](design/client-v2.html#quota)。
 
-Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度；拟用本地 statusLine 输入里的 `rate_limits`，官方字段与缺失条件见 [claude-code-notes §2](claude-code-notes.md#2-transcript)。采集方式、现有状态栏兼容和版本差异待实测，见 [plan.md](plan.md#待确认)。采集只读取 CLI 已有数据，不主动给模型发消息，不把登录凭据交给 server，不调用未公开的账户接口。额度元数据端到端加密同步，server 只收密文，日志不记录额度或账户内容。
+Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。daemon 在会话的 `--settings` 里把状态栏设成 `"$RA_EXE" statusline claude`（不改用户的设置文件）：它把输入转给 daemon（500 毫秒超时，失败也不影响状态栏），再用同样的输入运行用户原来的状态栏命令（启动会话时按 Claude Code 的优先级读出、存在会话目录里），输出和退出码原样交回，`padding`、`refreshInterval` 也照搬，所以终端里看到的状态栏不变。托管设置里定了状态栏时它会盖过 daemon 的，额度就读不到，报「不支持」。账户用 `~/.claude.json` 里 `oauthAccount` 的账户和组织 ID 算一个短指纹来区分（ID 本身不离开电脑），套餐取 `organizationType`，有 `oauthAccount` 才标为订阅登录；读不出账户时不合并，按来源会话分开。额度按账户存在 `~/.remote-agent/quota.json`，重启后只沿用当前登录账户的记录，看到新账户的数字就清掉旧账户的。数字不变时一分钟内不刷新记录时间，免得机器元数据频繁变化。结果放在 `MachineMeta.quotas`，每个 CLI 一项或几项，状态分等待（还没收到额度）、正常、失败和不支持。采集只读取 CLI 已有数据，不主动给模型发消息，不把登录凭据交给 server，不调用未公开的账户接口。额度元数据端到端加密同步，server 只收密文，日志不记录额度或账户内容。
 
 客户端按来源提供的窗口显示已用百分比、重置时间和最近收到时间。Claude Code 的 5 小时、7 天分别可缺失；只有真实收到其他限额窗口时才显示该窗口，不承诺按模型额度或额外用量。套餐名未知就省略；API 计费须由可靠的登录方式信息确认，不能从 `rate_limits` 缺失推断。API 用量和账单到服务商控制台查看，不把会话估算费用当成账户余额。
 

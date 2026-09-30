@@ -1,6 +1,10 @@
 package claude
 
 import (
+	"encoding/json"
+	"github.com/Lewin671/remote-agent/internal/agent"
+	"os"
+	"path/filepath"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -60,5 +64,29 @@ func TestBackgroundCalls(t *testing.T) {
 		if tc.Background != c.want || tc.BackgroundId != c.id {
 			t.Fatalf("%s: %v %q", c.result, tc.Background, tc.BackgroundId)
 		}
+	}
+}
+
+// The session's settings put remote-agent's status line in, and keep the
+// user's own to run after it, with its padding and refresh interval.
+func TestStatusLineWrapsTheUsers(t *testing.T) {
+	home, dir := t.TempDir(), t.TempDir()
+	os.WriteFile(filepath.Join(home, "settings.json"), []byte(`{"statusLine":{"type":"command","command":"bash ~/sl.sh","padding":1,"refreshInterval":10}}`), 0o600)
+	a := New("/bin/true", home)
+	if _, err := a.Argv(&agent.Launch{Dir: dir, Cwd: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	var st struct {
+		StatusLine map[string]any `json:"statusLine"`
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, SettingsFile))
+	json.Unmarshal(b, &st)
+	if st.StatusLine["command"] != statusLineCommand || st.StatusLine["padding"] != 1.0 || st.StatusLine["refreshInterval"] != 10.0 {
+		t.Fatalf("settings %v", st.StatusLine)
+	}
+	own, _ := os.ReadFile(filepath.Join(dir, StatusLineFile))
+	var sl statusLine
+	if json.Unmarshal(own, &sl) != nil || sl.Command != "bash ~/sl.sh" {
+		t.Fatalf("own %s", own)
 	}
 }

@@ -31,6 +31,65 @@ message MachineMeta {
   // daemons older than v2: a client then offers none of it and says the
   // computer needs updating.
   MachineCapabilities capabilities = 10;
+  // The account usage limits of each installed CLI, as far as the CLI
+  // tells them (Codex: its rollouts; Claude Code: the input of its status
+  // line). A CLI without an entry is not supported by this daemon.
+  // Several entries for one CLI are accounts (or, with account empty,
+  // sessions) that could not be told to be the same.
+  repeated AgentQuota quotas = 11;
+}
+
+enum QuotaState {
+  QUOTA_STATE_UNSPECIFIED = 0;
+  // Collection works, but the CLI has not told any limits yet (Claude
+  // Code only does after its first reply in a session).
+  QUOTA_STATE_WAITING = 1;
+  // windows hold what the CLI last told, at observed_ms.
+  QUOTA_STATE_OK = 2;
+  // Reading failed; windows, if any, are the last good record.
+  QUOTA_STATE_FAILED = 3;
+  // This CLI's limits cannot be read here (detail says why).
+  QUOTA_STATE_UNSUPPORTED = 4;
+}
+
+enum QuotaLogin {
+  // Not known: never inferred from limits being absent.
+  QUOTA_LOGIN_UNSPECIFIED = 0;
+  // A subscription login (Claude Code: an OAuth account).
+  QUOTA_LOGIN_SUBSCRIPTION = 1;
+}
+
+message AgentQuota {
+  Agent agent = 1;
+  QuotaState state = 2;
+  repeated QuotaWindow windows = 3;
+  // The plan as the CLI names it (Codex's plan_type, Claude Code's
+  // organization type such as "claude_max"), empty when unknown.
+  string plan = 4;
+  QuotaLogin login = 5;
+  // Unix milliseconds when the CLI last reported these limits; a client
+  // shows the age and treats old or past-reset data as a last record.
+  int64 observed_ms = 6;
+  // A short opaque fingerprint of the CLI's login account, to tell
+  // accounts apart; empty when unknown, and then source_session_id names
+  // the session the numbers came from.
+  string account = 7;
+  string source_session_id = 8;
+  // Why FAILED or UNSUPPORTED, in plain words without content.
+  string detail = 9;
+}
+
+// QuotaWindow is one usage window. A window the CLI did not report is
+// absent; one without used_percent has an unknown usage (not 0%).
+message QuotaWindow {
+  // "five_hour" and "seven_day" (Claude Code), "primary" and "secondary"
+  // (Codex).
+  string name = 1;
+  optional double used_percent = 2;
+  // Unix milliseconds when the window resets, 0 when unknown.
+  int64 resets_at_ms = 3;
+  // Length of the window, 0 when unknown.
+  int64 window_minutes = 4;
 }
 
 message MachineCapabilities {

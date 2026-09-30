@@ -25,6 +25,7 @@ public  final class MachineMeta extends
     home_ = "";
     codexVersion_ = "";
     agents_ = emptyProtobufList();
+    quotas_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int HOSTNAME_FIELD_NUMBER = 1;
@@ -693,6 +694,191 @@ public  final class MachineMeta extends
   private void clearCapabilities() {
     capabilities_ = null;
     bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int QUOTAS_FIELD_NUMBER = 11;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.AgentQuota> quotas_;
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.AgentQuota> getQuotasList() {
+    return quotas_;
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.AgentQuotaOrBuilder> 
+      getQuotasOrBuilderList() {
+    return quotas_;
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.Override
+  public int getQuotasCount() {
+    return quotas_.size();
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AgentQuota getQuotas(int index) {
+    return quotas_.get(index);
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.AgentQuotaOrBuilder getQuotasOrBuilder(
+      int index) {
+    return quotas_.get(index);
+  }
+  private void ensureQuotasIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.AgentQuota> tmp = quotas_;
+    if (!tmp.isModifiable()) {
+      quotas_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setQuotas(
+      int index, io.github.lewin671.remoteagent.proto.AgentQuota value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotasIsMutable();
+    quotas_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addQuotas(io.github.lewin671.remoteagent.proto.AgentQuota value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotasIsMutable();
+    quotas_.add(value);
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addQuotas(
+      int index, io.github.lewin671.remoteagent.proto.AgentQuota value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotasIsMutable();
+    quotas_.add(index, value);
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  private void addAllQuotas(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.AgentQuota> values) {
+    ensureQuotasIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, quotas_);
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  private void clearQuotas() {
+    quotas_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The account usage limits of each installed CLI, as far as the CLI
+   * tells them (Codex: its rollouts; Claude Code: the input of its status
+   * line). A CLI without an entry is not supported by this daemon.
+   * Several entries for one CLI are accounts (or, with account empty,
+   * sessions) that could not be told to be the same.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+   */
+  private void removeQuotas(int index) {
+    ensureQuotasIsMutable();
+    quotas_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
@@ -1489,6 +1675,204 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.AgentQuota> getQuotasList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getQuotasList());
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    @java.lang.Override
+    public int getQuotasCount() {
+      return instance.getQuotasCount();
+    }/**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AgentQuota getQuotas(int index) {
+      return instance.getQuotas(index);
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder setQuotas(
+        int index, io.github.lewin671.remoteagent.proto.AgentQuota value) {
+      copyOnWrite();
+      instance.setQuotas(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder setQuotas(
+        int index, io.github.lewin671.remoteagent.proto.AgentQuota.Builder builderForValue) {
+      copyOnWrite();
+      instance.setQuotas(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder addQuotas(io.github.lewin671.remoteagent.proto.AgentQuota value) {
+      copyOnWrite();
+      instance.addQuotas(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder addQuotas(
+        int index, io.github.lewin671.remoteagent.proto.AgentQuota value) {
+      copyOnWrite();
+      instance.addQuotas(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder addQuotas(
+        io.github.lewin671.remoteagent.proto.AgentQuota.Builder builderForValue) {
+      copyOnWrite();
+      instance.addQuotas(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder addQuotas(
+        int index, io.github.lewin671.remoteagent.proto.AgentQuota.Builder builderForValue) {
+      copyOnWrite();
+      instance.addQuotas(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder addAllQuotas(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.AgentQuota> values) {
+      copyOnWrite();
+      instance.addAllQuotas(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder clearQuotas() {
+      copyOnWrite();
+      instance.clearQuotas();
+      return this;
+    }
+    /**
+     * <pre>
+     * The account usage limits of each installed CLI, as far as the CLI
+     * tells them (Codex: its rollouts; Claude Code: the input of its status
+     * line). A CLI without an entry is not supported by this daemon.
+     * Several entries for one CLI are accounts (or, with account empty,
+     * sessions) that could not be told to be the same.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
+     */
+    public Builder removeQuotas(int index) {
+      copyOnWrite();
+      instance.removeQuotas(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -1517,11 +1901,13 @@ public  final class MachineMeta extends
             "agents_",
             io.github.lewin671.remoteagent.proto.AgentInfo.class,
             "capabilities_",
+            "quotas_",
+            io.github.lewin671.remoteagent.proto.AgentQuota.class,
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
-              "\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009" +
-              "\u0002";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u0208\u0007\u0208\b\u0007" +
+              "\t\u001b\n\u1009\u0002\u000b\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

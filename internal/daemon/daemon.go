@@ -97,6 +97,8 @@ type Daemon struct {
 	mu       sync.Mutex
 	sessions map[string]*session
 	limits   *pb.TokenUsage // latest usage limits seen in any session
+	limitsAt time.Time      // when Codex reported them
+	quotas   claudeQuotas   // Claude Code's account limits
 
 	settingsMu sync.Mutex
 	cached     *pb.DaemonSettings
@@ -153,6 +155,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 
 	d.ctx = ctx
+	d.loadQuotas()
 	d.uploads.reconcile()
 	if err := d.restore(); err != nil {
 		return err
@@ -369,7 +372,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}
-	launch := &agent.Launch{Dir: dir, Args: args}
+	launch := &agent.Launch{Dir: dir, Args: args, Cwd: cwd}
 	cliArgs, err := ag.Argv(launch)
 	if err != nil {
 		return nil, err
@@ -449,12 +452,14 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 }
 
 // noteLimits keeps the newest usage limits Codex reported.
-func (d *Daemon) noteLimits(u *pb.TokenUsage) {
+func (d *Daemon) noteLimits(u *pb.TokenUsage, at time.Time) {
 	if u.PrimaryLimit == nil && u.SecondaryLimit == nil {
 		return
 	}
 	d.mu.Lock()
-	d.limits = u
+	if at.After(d.limitsAt) || d.limits == nil {
+		d.limits, d.limitsAt = u, at
+	}
 	d.mu.Unlock()
 }
 
@@ -470,6 +475,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	if u := d.limits; u != nil {
 		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
 	}
+	m.Quotas = d.quotaEntriesLocked()
 	d.mu.Unlock()
 	return m
 }
@@ -632,7 +638,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
 	cliArgs, err := s.ag.Argv(&agent.Launch{
-		Dir: s.dir, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess,
+		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess,
 	})
 	if err != nil {
 		return nil, err
