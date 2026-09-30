@@ -14,7 +14,7 @@ mkdir -p "$(dirname "$BIN")"
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 tmp=$BIN.new.$$
 trap 'rm -f "$tmp"' EXIT
-(cd "$ROOT" && go build -o "$tmp" ./cmd/remote-agent)
+"$ROOT/scripts/build-go.sh" "$tmp" ./cmd/remote-agent
 mv -f "$tmp" "$BIN"
 echo "installed $BIN"
 

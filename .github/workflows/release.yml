@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to retry (for example v0.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RA_OFFICIAL_RELEASE: 'true'
+    steps:
+      - name: Validate tag input
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+      - name: Validate shared version and skip published releases
+        id: plan
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          python3 scripts/release.py validate "$RELEASE_TAG"
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/is-draft"; then
+            if [ "$(cat "$RUNNER_TEMP/is-draft")" = false ]; then
+              echo 'skip=true' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # A failed lookup must really be a missing release, not auth/network failure.
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > /dev/null
+          fi
+      - uses: actions/setup-go@v6
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v6
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          node-version: '24'
+      - name: Install pnpm
+        if: steps.plan.outputs.skip != 'true'
+        run: npm install --global pnpm@10.19.0
+      - uses: actions/setup-java@v5
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle.kts
+            android/gradle/libs.versions.toml
+            android/gradle/wrapper/gradle-wrapper.properties
+      - uses: android-actions/setup-android@v3
+        if: steps.plan.outputs.skip != 'true'
+      - name: Restore APK configuration
+        if: steps.plan.outputs.skip != 'true'
+        env:
+          ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
+          ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
+        run: python3 scripts/android-ci.py
+      - name: Release policy tests
+        if: steps.plan.outputs.skip != 'true'
+        run: python3 -m unittest discover -s scripts -p '*_test.py'
+      - name: Go tests
+        if: steps.plan.outputs.skip != 'true'
+        run: go test ./...
+      - name: Web tests and build
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: web
+        env:
+          VITE_DEFAULT_SERVER: https://ra.remote-agent.top
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
+      - name: Android tests and signed APK
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: android
+        run: ./gradlew --no-daemon --no-configuration-cache :core:test :app:testDebugUnitTest :app:assembleRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+      - name: Package immutable release assets
+        if: steps.plan.outputs.skip != 'true'
+        run: |
+          scripts/package-release.sh "$RELEASE_TAG"
+          python3 scripts/release.py notes "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
+      - name: Publish only after every component passes
+        if: steps.plan.outputs.skip != 'true'
+        run: |
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          # Retrying an older tag must not replace a newer release as "latest".
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/releases.json"
+          latest=$(python3 - <<'PYTHON'
+          import json, os, re
+          from pathlib import Path
+          current = tuple(map(int, os.environ['RELEASE_TAG'][1:].split('.')))
+          releases = json.loads((Path(os.environ['RUNNER_TEMP'])/'releases.json').read_text())
+          newer = any(not r['draft'] and re.fullmatch(r'v\d+\.\d+\.\d+', r['tag_name']) and tuple(map(int, r['tag_name'][1:].split('.'))) > current for r in releases)
+          print('false' if newer else 'true')
+          PYTHON
+          )
+          gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json

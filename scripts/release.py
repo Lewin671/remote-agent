@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Prepare a task-completion release, or validate a tag in CI. No scheduled releases."""
+import argparse
+import json
+import re
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+VERSION = ROOT / "version.properties"
+SEMVER = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
+PRODUCT_PATHS = ("cmd/", "internal/", "gen/", "proto/", "android/", "web/", "scripts/", "deploy/", ".github/")
+PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml"}
+
+
+def git(*args):
+    return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
+
+
+def read_version(text=None):
+    values = dict(line.split("=", 1) for line in (VERSION.read_text() if text is None else text).splitlines() if "=" in line)
+    version, code = values["version"], int(values["androidVersionCode"])
+    if not SEMVER.fullmatch("v" + version) or not 0 < code <= 2100000000:
+        raise ValueError("Invalid product version or Android version code")
+    return version, code
+
+
+def release_tags():
+    return sorted((t for t in git("tag", "--merged", "HEAD").splitlines() if SEMVER.fullmatch(t)),
+                  key=lambda t: tuple(map(int, t[1:].split("."))))
+
+
+def product_change(path):
+    tests = path.endswith(("_test.go", "_test.py", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")) or any(part in path for part in ("/src/test/", "/src/androidTest/", "/tests/", "/testdata/"))
+    return not tests and not path.endswith(".md") and (path in PRODUCT_FILES or path.startswith(PRODUCT_PATHS))
+
+
+def changed_since(tag):
+    paths = git("diff", "--name-only", tag, "HEAD").splitlines() if tag else git("ls-files").splitlines()
+    return any(product_change(p) for p in paths)
+
+
+def prepare(kind):
+    if git("status", "--porcelain"):
+        raise ValueError("Commit task changes before preparing a release")
+    tags = release_tags()
+    previous = tags[-1] if tags else None
+    if not changed_since(previous):
+        return {"eligible": False, "reason": "No product changes since the last tag"}
+    version, code = read_version()
+    if previous and previous != "v" + version:
+        raise ValueError("main version must match the latest release tag before bumping")
+    major, minor, patch = map(int, version.split("."))
+    if kind == "major":
+        major, minor, patch = major + 1, 0, 0
+    elif kind == "minor":
+        minor, patch = minor + 1, 0
+    else:
+        patch += 1
+    version = f"{major}.{minor}.{patch}"
+    if git("tag", "--list", "v" + version):
+        raise ValueError("The next version tag already exists; do not move or replace it")
+    read_version(f"version={version}\nandroidVersionCode={code + 1}\n")
+    VERSION.write_text(f"version={version}\nandroidVersionCode={code + 1}\n")
+    return {"eligible": True, "version": version, "tag": "v" + version, "androidVersionCode": code + 1}
+
+
+def validate(tag):
+    version, code = read_version()
+    if not SEMVER.fullmatch(tag) or tag != "v" + version:
+        raise ValueError("Release tag must match version.properties exactly")
+    if git("rev-list", "-n", "1", tag) != git("rev-parse", "HEAD"):
+        raise ValueError("Build must use the tagged source commit")
+    previous = [t for t in release_tags() if t != tag]
+    if previous:
+        last = previous[-1]
+        if tuple(map(int, tag[1:].split("."))) <= tuple(map(int, last[1:].split("."))):
+            raise ValueError("Product version must increase")
+        _, old_code = read_version(git("show", last + ":version.properties"))
+        if code <= old_code:
+            raise ValueError("Android versionCode must increase")
+    return {"version": version, "tag": tag, "androidVersionCode": code, "commit": git("rev-parse", "HEAD")}
+
+
+def notes(tag):
+    metadata = validate(tag)
+    previous = [t for t in release_tags() if t != tag]
+    print(f"Source: `{metadata['commit']}`\n\nAndroid versionCode: `{metadata['androidVersionCode']}`\n")
+    print("APK, daemon, server and web assets are built from this tag. Publishing does not deploy live services.\n")
+    print("## Release and upgrade notes\n")
+    print(git("tag", "--list", tag, "--format=%(contents)"))
+    print("\n## Changes\n")
+    rev = previous[-1] + "..HEAD" if previous else "HEAD"
+    print(git("log", "--format=- %s (%h)", rev))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("prepare")
+    p.add_argument("kind", choices=["patch", "minor", "major"])
+    for command in ("validate", "notes"):
+        sub.add_parser(command).add_argument("tag")
+    args = parser.parse_args()
+    if args.command == "notes":
+        notes(args.tag)
+    else:
+        print(json.dumps(prepare(args.kind) if args.command == "prepare" else validate(args.tag)))
+
+
+if __name__ == "__main__":
+    main()

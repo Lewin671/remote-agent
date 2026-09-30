@@ -9,13 +9,17 @@ plugins {
 
 // Firebase is configured from a file kept outside the repository. Without
 // it the app builds and runs with push notifications turned off.
+val product = Properties().apply { rootProject.file("../version.properties").inputStream().use { load(it) } }
+val devBuild = providers.gradleProperty("devBuild").orNull == "true"
+val officialRelease = providers.gradleProperty("officialRelease").orNull == "true"
+val buildCommit = providers.gradleProperty("buildCommit").getOrElse("unknown")
 val configDir = File(System.getProperty("user.home"), ".config/remote-agent")
 val googleServices = File(configDir, "google-services.json")
 // -PappIdSuffix=.v2dev builds a copy that installs next to the real app,
 // e.g. to test against a local server without touching its account. The
 // Firebase config names the real package only, so the copy has no push.
-val appIdSuffix = (findProperty("appIdSuffix") as String?).orEmpty()
-val pushEnabled = googleServices.exists() && appIdSuffix.isEmpty()
+val appIdSuffix = providers.gradleProperty("appIdSuffix").getOrElse(if (devBuild) ".dev" else "")
+val pushEnabled = googleServices.exists() && !devBuild && appIdSuffix.isEmpty()
 if (pushEnabled) {
     googleServices.copyTo(file("google-services.json"), overwrite = true)
     apply(plugin = "com.google.gms.google-services")
@@ -28,6 +32,13 @@ if (pushEnabled) {
 val signingFile = File(configDir, "signing.properties")
 val signing = Properties().apply { if (signingFile.exists()) signingFile.inputStream().use { load(it) } }
 
+if (officialRelease || providers.gradleProperty("requireSigning").orNull == "true") {
+    require(signingFile.exists()) { "CI APK builds require fixed signing.properties" }
+}
+if (officialRelease) {
+    require(pushEnabled) { "Official releases require Firebase client configuration" }
+}
+
 android {
     namespace = "io.github.lewin671.remoteagent"
     compileSdk = 36
@@ -36,8 +47,9 @@ android {
         applicationId = "io.github.lewin671.remoteagent"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = product.getProperty("androidVersionCode").toInt()
+        versionName = product.getProperty("version") + if (devBuild) "-dev.${buildCommit.take(7)}" else ""
+        buildConfigField("String", "BUILD_COMMIT", "\"$buildCommit\"")
         buildConfigField("boolean", "PUSH_ENABLED", pushEnabled.toString())
         resValue("string", "app_name", if (appIdSuffix.isEmpty()) "remote-agent" else "remote-agent $appIdSuffix")
         if (appIdSuffix.isNotEmpty()) applicationIdSuffix = appIdSuffix
@@ -55,6 +67,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // A fresh runner's debug key would prevent updating the previous
+            // development APK. CI copies use the fixed key, with a separate ID.
+            if (devBuild && signingFile.exists()) signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

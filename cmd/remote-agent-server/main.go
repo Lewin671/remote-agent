@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Lewin671/remote-agent/internal/buildinfo"
 	"github.com/Lewin671/remote-agent/internal/server"
 
 	// The server runs in a scratch image, which has no CA certificates.
@@ -24,6 +25,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Println("remote-agent-server", buildinfo.String())
+		return
+	}
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	db := flag.String("db", "remote-agent.db", "SQLite database file")
 	origins := flag.String("allowed-origins", "", "comma-separated web origins allowed to use the API, e.g. http://localhost:5173")
@@ -62,7 +67,7 @@ func main() {
 		defer cancel()
 		_ = hs.Shutdown(sctx)
 	}()
-	slog.Info("listening", "addr", *listen, "allowed_origins", allowed)
+	slog.Info("listening", "version", buildinfo.Version, "commit", buildinfo.Commit, "addr", *listen, "allowed_origins", allowed)
 	if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)
 		os.Exit(1)

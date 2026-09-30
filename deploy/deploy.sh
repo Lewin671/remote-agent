@@ -15,7 +15,7 @@ HOST=$1
 DIR=${2:-/opt/remote-agent}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
-(cd "$ROOT" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags=-s -o deploy/remote-agent-server ./cmd/remote-agent-server)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$ROOT/scripts/build-go.sh" "$ROOT/deploy/remote-agent-server" ./cmd/remote-agent-server
 ssh "$HOST" "mkdir -p $DIR/data && chown 65534:65534 $DIR/data && chmod 700 $DIR/data"
 scp -q "$ROOT/deploy/Dockerfile" "$ROOT/deploy/compose.yaml" "$ROOT/deploy/remote-agent-server" "$HOST:$DIR/"
 rm -f "$ROOT/deploy/remote-agent-server"

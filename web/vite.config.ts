@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
@@ -52,7 +54,15 @@ const proxy = target
     }
   : undefined;
 
+const productVersion = readFileSync(new URL("../version.properties", import.meta.url), "utf8").match(/^version=(.+)$/m)![1];
+const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const version = process.env.RA_OFFICIAL_RELEASE === "true" ? productVersion : `${productVersion}-dev.${commit.slice(0, 7)}`;
+
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_PRODUCT_VERSION": JSON.stringify(version),
+    "import.meta.env.VITE_BUILD_COMMIT": JSON.stringify(commit),
+  },
   plugins: [react(), csp()],
   server: { port: 5173, strictPort: true, proxy },
   preview: { port: 4173, strictPort: true, proxy },

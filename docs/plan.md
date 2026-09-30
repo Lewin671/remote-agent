@@ -238,6 +238,11 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[architecture §17](architecture.md#17-会话里的图片)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
 - 图片过期后要不要支持从电脑重新取（daemon 从 rollout 或 transcript 里重新编码上传）；需要机器在线，也要一个新的指令
 
+**发布**
+
+- 自动发布的设计与规则见 [architecture.md](architecture.md#产品版本与发布)。首次正式发布前需配置 `ANDROID_SIGNING` 和 `ANDROID_GOOGLE_SERVICES`；创建固定签名密钥并上传 GitHub Secrets 的动作被自动审批拒绝，等待用户针对凭据配置明确批准
+- 待验证：GitHub Linux runner 上完整 Release 流水线、正式签名 APK 和 Release 附件。普通 Go、网页及本地 Android 检查不等于正式发布成功
+
 **Android App**
 
 - 以后做不做原生 iOS：做的话，再比较把 `:core` 迁到 KMP 和改用 gomobile 复用 Go

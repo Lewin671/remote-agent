@@ -78,6 +78,10 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           <ThemePicker />
         </div>
       </div>
+      <div className="glabel">版本</div>
+      <div className="grp">
+        <div className="row">remote-agent<span className="v">{import.meta.env.VITE_PRODUCT_VERSION} · {import.meta.env.VITE_BUILD_COMMIT?.slice(0, 7)}</span></div>
+      </div>
       <div className="glabel">账户</div>
       <div className="grp">
         <div className="row">

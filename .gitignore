@@ -21,3 +21,6 @@ node_modules/
 deploy/remote-agent-server
 web/dist/
 *.tsbuildinfo
+
+# Python release tooling
+__pycache__/

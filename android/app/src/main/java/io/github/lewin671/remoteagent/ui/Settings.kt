@@ -174,6 +174,13 @@ fun SettingsScreen() {
                 SegmentedButton(settings.theme == mode, { scope.launch { app.prefs.update { it.copy(theme = mode) } } }, SegmentedButtonDefaults.itemShape(i, opts.size), icon = {}) { Text(label) }
             }
         }
+        SectionHeader("版本")
+        Card(Modifier.padding(horizontal = 12.dp)) {
+            Row44 {
+                Text("remote-agent", Modifier.weight(1f))
+                Text("${io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME} · ${io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7)}", color = p.muted)
+            }
+        }
         SectionHeader("账户")
         Card(Modifier.padding(horizontal = 12.dp)) {
             Column {

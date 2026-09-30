@@ -6,11 +6,13 @@ import (
 	"os"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/buildinfo"
 )
 
 const usage = `remote-agent: operate native AI coding CLIs running in tmux
 
 Usage:
+  remote-agent --version                  show product version and source revision
   remote-agent daemon [flags]              run the daemon in the foreground
   remote-agent codex [codex args]          start a Codex session here and attach to it
   remote-agent claude [claude args]        start a Claude Code session here and attach to it
@@ -40,6 +42,10 @@ Session IDs may be abbreviated to any unique prefix.
 `
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Println("remote-agent", buildinfo.String())
+		return
+	}
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)

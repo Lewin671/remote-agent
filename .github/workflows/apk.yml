@@ -1,0 +1,48 @@
+name: Build development APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: development-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle.kts
+            android/gradle/libs.versions.toml
+            android/gradle/wrapper/gradle-wrapper.properties
+      - uses: android-actions/setup-android@v3
+      - name: Restore fixed APK signing configuration
+        env:
+          ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
+          ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
+        run: python3 scripts/android-ci.py
+      - name: Test and build development APK (push disabled)
+        working-directory: android
+        run: ./gradlew --no-daemon --no-configuration-cache :core:test :app:testDebugUnitTest :app:assembleDebug -PdevBuild=true -PrequireSigning=true -PbuildCommit="$(git rev-parse HEAD)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remote-agent-dev-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+          if-no-files-found: error
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
