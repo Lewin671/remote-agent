@@ -33,12 +33,21 @@ var (
 // alwaysOption returns the text of the prompt's "don't ask again" option,
 // if it has one, and whether the prompt offers a plain yes.
 func alwaysOption(plain string) (always string, yes bool) {
-	for _, line := range strings.Split(plain, "\n") {
+	lines := strings.Split(plain, "\n")
+	for i, line := range lines {
 		m := optionLine.FindStringSubmatch(line)
 		if m == nil {
 			continue
 		}
 		text := strings.TrimSpace(m[2])
+		// A long option wraps: its next lines, up to the next option or a
+		// blank line, belong to it.
+		for _, next := range lines[i+1:] {
+			if strings.TrimSpace(next) == "" || optionLine.MatchString(next) || !strings.HasPrefix(next, " ") {
+				break
+			}
+			text += " " + strings.TrimSpace(next)
+		}
 		// Codex adds the key: "Yes, proceed (y)".
 		text = strings.TrimSpace(optionKey.ReplaceAllString(text, ""))
 		lower := strings.ToLower(text)

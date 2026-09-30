@@ -19,9 +19,11 @@ Usage:
   remote-agent new [--agent claude] [args] start a session here without attaching
   remote-agent ls [-a]                     list sessions
   remote-agent attach <id>                 attach to a session
-  remote-agent send <id> <text>            send a message ("-" reads stdin)
+  remote-agent send [--queue] <id> <text>  send a message ("-" reads stdin); --queue waits for the turn to end
+  remote-agent cancel <id> <request-id>    withdraw a message the model has not received
+  remote-agent resume-input <id> <req-id>  send a message paused by an interrupted turn
   remote-agent events <id> [-f] [--json]   show the session's events
-  remote-agent approve <id> <approval-id>  allow a permission request
+  remote-agent approve <id> <approval-id>  allow a permission request (--always: don't ask again)
   remote-agent deny <id> <approval-id> [-m reason]
   remote-agent answer <id> <question-id> <option>[,<option>...]
   remote-agent interrupt <id>              interrupt the running turn
@@ -65,6 +67,10 @@ func main() {
 		err = runList(args)
 	case "attach":
 		err = runAttach(args)
+	case "cancel":
+		err = runCancel(args)
+	case "resume-input":
+		err = runResumeInput(args)
 	case "send":
 		err = runSend(args)
 	case "events":

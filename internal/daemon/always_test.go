@@ -21,6 +21,8 @@ func TestAlwaysOption(t *testing.T) {
 		{codexApproval, "Yes, and don't ask again for commands that start with `touch`"},
 		{ccPrompt, "Yes, and always allow access to /w from this project"},
 		{"  1. Yes\n  2. No\n", ""},
+		// Wrapped at the terminal's width.
+		{" ❯ 1. Yes\n   2. Yes, and always allow access to /very/long/path/e2e-cc\n   from this project\n   3. No\n", "Yes, and always allow access to /very/long/path/e2e-cc from this project"},
 	} {
 		got, yes := alwaysOption(agent.StripANSI(c.screen))
 		if got != c.want || !yes {

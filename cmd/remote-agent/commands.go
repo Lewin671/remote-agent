@@ -312,7 +312,17 @@ func runAttach(args []string) error {
 }
 
 func runSend(args []string) error {
-	if err := needArgs(args, 2, "send <id> <text>"); err != nil {
+	mode := pb.SendMode_SEND_MODE_STEER
+	var rest []string
+	for _, a := range args {
+		if a == "--queue" && len(rest) < 2 {
+			mode = pb.SendMode_SEND_MODE_QUEUE
+			continue
+		}
+		rest = append(rest, a)
+	}
+	args = rest
+	if err := needArgs(args, 2, "send [--queue] <id> <text>"); err != nil {
 		return err
 	}
 	text := strings.Join(args[1:], " ")
@@ -323,16 +333,35 @@ func runSend(args []string) error {
 		}
 		text = strings.TrimRight(string(b), "\n")
 	}
+	id := randomID()
 	resp, err := dial().Send(context.Background(), connect.NewRequest(&pb.SendRequest{
-		SessionId: args[0], Text: text, RequestId: randomID(),
+		SessionId: args[0], Text: text, RequestId: id, Mode: mode,
 	}))
 	if err != nil {
 		return explain(err)
 	}
-	if resp.Msg.QueuePosition > 1 {
-		fmt.Printf("queued at position %d\n", resp.Msg.QueuePosition)
+	if resp.Msg.QueuePosition > 1 || mode == pb.SendMode_SEND_MODE_QUEUE {
+		fmt.Printf("queued at position %d (request %s)\n", resp.Msg.QueuePosition, id)
 	}
 	return nil
+}
+
+// runCancel withdraws a message the model has not received.
+func runCancel(args []string) error {
+	if err := needArgs(args, 2, "cancel <id> <request-id>"); err != nil {
+		return err
+	}
+	_, err := dial().CancelInput(context.Background(), connect.NewRequest(&pb.CancelInputRequest{SessionId: args[0], RequestId: args[1]}))
+	return explain(err)
+}
+
+// runResumeInput sends a message paused by an interrupted turn.
+func runResumeInput(args []string) error {
+	if err := needArgs(args, 2, "resume-input <id> <request-id>"); err != nil {
+		return err
+	}
+	_, err := dial().ResumeInput(context.Background(), connect.NewRequest(&pb.ResumeInputRequest{SessionId: args[0], RequestId: args[1]}))
+	return explain(err)
 }
 
 func randomID() string {
@@ -393,6 +422,7 @@ func splitID(args []string) (string, []string) {
 func runResolve(args []string, allow bool) error {
 	fs := flag.NewFlagSet("deny", flag.ExitOnError)
 	msg := fs.String("m", "", "reason shown to the model")
+	always := fs.Bool("always", false, "with approve: also stop asking about requests like it")
 	var pos []string
 	for len(args) > 0 {
 		if strings.HasPrefix(args[0], "-") {
@@ -411,7 +441,7 @@ func runResolve(args []string, allow bool) error {
 		return err
 	}
 	_, err := dial().ResolveApproval(context.Background(), connect.NewRequest(&pb.ResolveApprovalRequest{
-		SessionId: pos[0], ApprovalId: pos[1], Allow: allow, Message: *msg,
+		SessionId: pos[0], ApprovalId: pos[1], Allow: allow, Message: *msg, Always: allow && *always,
 	}))
 	return explain(err)
 }
