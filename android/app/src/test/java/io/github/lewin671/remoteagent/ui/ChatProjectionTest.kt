@@ -32,4 +32,28 @@ class ChatProjectionTest {
         val result = p.update(listOf(first, next), derive(listOf(first, next)), "M")
         assertSame(old[0], result[0]); assertEquals(1, old.size); assertEquals(2, result.size)
     }
+    @Test fun cliMetadataChangeAndMessageAppendReclassifyExistingInput() {
+        val user = Event.newBuilder().setSeq(1).setUserMessage(UserMessage.newBuilder().setText("hello")).build()
+        val submitted = Event.newBuilder().setSeq(2).setInputState(InputState.newBuilder().setRequestId("i").setStatus(InputStatus.INPUT_STATUS_SUBMITTED)).build()
+        val reply = Event.newBuilder().setSeq(3).setAgentMessage(AgentMessage.newBuilder().setText("reply")).build()
+        val before = listOf(user, submitted)
+        val after = before + reply
+        val p = ChatProjection()
+        assertTrue((p.update(before, derive(before, Agent.AGENT_CODEX), "M", agent = Agent.AGENT_CODEX).first() as ChatItem.User).local)
+        val d = derive(after, Agent.AGENT_CLAUDE)
+        assertFalse((buildChat(after, d, "M").first() as ChatItem.User).local)
+        assertEquals(buildChat(after, d, "M"), p.update(after, d, "M", agent = Agent.AGENT_CLAUDE))
+    }
+
+    @Test fun renderingContextChangeRebuildsOldNotesDuringAppend() {
+        val first = Event.newBuilder().setSeq(1).setTurnContext(TurnContext.newBuilder().setModel("old")).build()
+        val changed = Event.newBuilder().setSeq(2).setTurnContext(TurnContext.newBuilder().setModel("new")).build()
+        val reply = Event.newBuilder().setSeq(3).setAgentMessage(AgentMessage.newBuilder().setText("reply")).build()
+        val before = listOf(first, changed)
+        val after = before + reply
+        val p = ChatProjection()
+        p.update(before, derive(before), "Old machine")
+        assertEquals(buildChat(after, derive(after), "New machine"), p.update(after, derive(after), "New machine"))
+    }
+
 }

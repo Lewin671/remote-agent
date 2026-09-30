@@ -560,8 +560,10 @@ private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: Stri
 class ChatProjection {
     private var previous: List<Event> = emptyList()
     private var items: List<ChatItem> = emptyList()
-    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null }): List<ChatItem> {
-        val append = previous.isNotEmpty() && events.size > previous.size && previous.indices.all { events[it] === previous[it] }
+    private var context: List<Any>? = null
+    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: io.github.lewin671.remoteagent.proto.Agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null }): List<ChatItem> {
+        val nextContext = listOf(machine, cwd, home, agent)
+        val append = context == nextContext && previous.isNotEmpty() && events.size > previous.size && previous.indices.all { events[it] === previous[it] }
         val tail = if (append) events.subList(previous.size, events.size) else emptyList()
         val messages = append && tail.all { it.kindCase == Event.KindCase.USER_MESSAGE || it.kindCase == Event.KindCase.AGENT_MESSAGE || it.kindCase == Event.KindCase.REASONING }
         items = if (messages) {
@@ -577,6 +579,7 @@ class ChatProjection {
             if (added.isEmpty()) items else items + added
         } else buildChat(events, d, machine, cwd, home, textOf, who)
         previous = events
+        context = nextContext
         return items
     }
 }
