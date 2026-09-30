@@ -433,7 +433,7 @@
   .side { background: var(--soft); border-right: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; }
   .side .sh { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 2px; flex: none; }
   .side .sh b { font-size: 17px; }
-  .side .sh .nb { font-size: 13px; color: var(--blue); background: var(--blue-soft); border-radius: 9px; padding: 6px 11px; font-weight: 600; }
+  .side .sh .nb { color: var(--blue); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; margin-right: -8px; }
   .side .scroll { flex: 1; overflow: hidden; }
   .side .label { padding: 12px 14px 4px; font-size: 12px; }
   .side .sess { padding: 6px 14px; gap: 9px; }
@@ -443,7 +443,7 @@
   .side .ph { display: flex; align-items: center; gap: 8px; padding: 0 14px 0 6px; min-height: 36px; font-size: 13px; font-weight: 600; }
   .side .ph .arr { font-style: normal; color: var(--muted); width: 24px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex: none; }
   .side .ph span { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .side .ph span.live { color: var(--blue); font-weight: 600; }
+  .side .ph span.live { color: var(--muted); }
   .side .sub-sess { padding: 5px 14px 5px 60px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
   .side .sub-sess span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .side .sub-sess span:last-child { font-size: 12px; flex: none; }
@@ -461,8 +461,14 @@
   .ccol .chat { flex: 1; overflow: hidden; padding: 8px 18px; }
   .ccol .comp { padding-bottom: 12px; }
   .tcol { display: flex; flex-direction: column; min-width: 0; }
-  .start { max-width: 560px; margin: 56px auto 0; width: 100%; padding: 0 24px; }
-  .start h3 { font-size: 22px; margin: 0 0 14px; letter-spacing: -.3px; }
+  .start { max-width: 640px; margin: auto; width: 100%; padding: 0 24px 48px; }
+  .start .compose-card { margin: 0; }
+  .start .proj-cfg { margin: 6px 12px 0; }
+  .proj-pick { display: inline-flex; align-items: center; gap: 5px; padding: 0 4px; margin: 0 1px; border-radius: var(--r-sm); color: var(--fg); cursor: pointer; vertical-align: bottom; line-height: inherit; }
+  .proj-pick:hover { background: var(--chip); }
+  .proj-pick .av { width: 22px; height: 22px; font-size: 12px; }
+  .proj-pick i { font-style: normal; color: var(--muted); font-size: 13px; }
+  .start h3 { font-size: 22px; margin: 0 0 16px 4px; letter-spacing: -.3px; font-weight: 600; }
   .start .prompt .ph { height: 64px; }
   .start .opts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .start .todo { margin: 0 0 8px; }
@@ -695,7 +701,12 @@
   /* v7: conversation first, details on demand, one-row composer. */
   .me > div { background:var(--soft); color:var(--fg); }
   .tool .ok, .record > span:first-child { color:var(--muted) !important; }
-  .tool .sp { color:var(--muted); }
+  .tool .sp { color:var(--blue); }
+  .tool > span:first-child { flex:none; width:14px; text-align:center; font-size:14px; }
+  .tool.grp { margin:0; background:none; border-radius:0; overflow:visible; }
+  .tool span.sp { font-size:0; display:flex; align-items:center; justify-content:center; height:14px; }
+  .tool span.sp::before { content:""; width:9px; height:9px; border:1.5px solid var(--blue); border-right-color:transparent; border-radius:50%; }
+  .tool span.sp[style*="animation:none"]::before { border-color:var(--faint); border-right-color:transparent; }
   .toolout { background:var(--soft); color:var(--fg2); border-radius:var(--r-xs); border-left:1px solid var(--line); }
   .dock { background:var(--card); border-radius:0; box-shadow:none; border-top:1px solid var(--line); margin:0 14px; padding:0; }
   .dock summary { display:flex; align-items:center; gap:6px; min-height:44px; cursor:pointer; list-style:none; font-size:13px; }
@@ -805,13 +816,13 @@
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
-<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
+<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行、CLI 名移到第二行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>工具只用一行表示：运行中写计时，失败写退出码，完成的折成一行；去掉工具详情页、输出、输入框上方的工具摘要和跳转终端的入口。</li><li>宽屏主页的主区域只放新建任务并居中：项目选择并入标题，设置摘要在输入框下方；需要处理只留在侧栏。侧栏的「新会话」改成和手机一样的新建图标，项目行的进行中数量改为灰字。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行、CLI 名移到第二行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1739,8 +1750,6 @@ GPT-6-Astra · medium ▾
       <div class="scrollhint">← 可横向滑动 →</div>
     </div>
     <div class="tool"><span class="x">✕</span><code>go build ./...</code><span class="exit">退出码 1</span></div>
-    <div class="toolout">./auth/login.go:58:9: undefined: pool
-<span class="more">… 还有 12 行，展开</span></div>
   </div>
 
   <div class="st">
@@ -1868,279 +1877,55 @@ GPT-6-Astra · medium ▾
   </div>
 </div>
 
-<h2 id="tools">耗时工具与执行反馈</h2>
-<div class="note" style="margin:0 0 20px">工具开始事件到达后立即展示，尚未完成的工具不折进“已执行 N 条”。计时取 daemon 事件时间，各端按同一起点显示；未知时间写处理中。审批等待单独写“等待审批”，不能当作命令正在执行。滚动查看历史时不强行跳到底部，导航栏保留运行状态，工具详情从对话摘要打开；批准卡片和模型提问保持自己的停靠位置。</div>
+<h2 id="tools">工具执行</h2>
+<div class="note" style="margin:0 0 20px">过程不重要，工具只用一行表示：运行中「◌ 命令 · 计时」，失败「✕ 命令 · 退出码」，连续完成的折成「✓ 运行了 N 条命令」，点开只列出每条命令。不做工具详情页、不显示输出和实时画面，也不提供跳转终端的入口；想看过程时自己切到「终端」标签。计时取 daemon 的事件时间，各端一致；断线时停住并写「等待同步」。</div>
 <div class="screens">
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back">‹</span>
-<span class="title">
-<b>
-<span class="tname">验证库存回滚</span>
-<span class="agent-id">Claude Code</span>
-</b>
-<span>运行中 · shop · VPS-dev</span>
-</span>
-<span class="more">⋯</span>
-</div>
-<div class="body chat">
-<div class="me">
-<div>跑一遍库存集成测试</div>
-</div>
-<div class="ai">测试需要启动数据库，可能要等一会儿。</div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 2 分 12 秒</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
-<pre>go test ./internal/inventory/... -count=1</pre>
-<div class="td">尚未收到结果 · 可去终端查看</div>
-<div class="ta">
-<span>查看详情 ›</span>
-<span>去终端 ›</span>
-</div>
-</div></details>
-<div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">排队 · 这一轮结束后发</span><b>取消</b></small></div></div>
-<div class="compose-status">
-<span class="tool-peek">
-<em>Bash · 2:12</em> ›</span>
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span><span class="agent-id">Claude Code</span></b><span><span class="dot run"></span>运行中 · shop · VPS-dev</span></span><span class="more">⋯</span></div>
+      <div class="body chat">
+        <div class="me"><div>跑一遍库存集成测试</div></div>
+        <div class="ai">测试需要启动数据库，可能要等一会儿。</div>
+        <div class="tool"><span class="sp">◌</span><code>go test ./internal/inventory/... -count=1</code><span class="muted">2:12</span></div>
+        <div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">排队 · 这一轮结束后发</span><b>取消</b></small></div>
+      </div>
+      <div class="compose-card"><div class="draft">消息…</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div><div>上下文：42%</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
+    </div>
+    <div class="cap">运行中：一行命令加计时，命令太长就省略；输入框上方不再放工具摘要</div>
+  </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span><span class="agent-id">Claude Code</span></b><span><span class="dot run"></span>运行中 · shop · VPS-dev</span></span><span class="more">⋯</span></div>
+      <div class="body chat">
+        <div class="me"><div>并行检查测试和构建</div></div>
+        <div class="tool grp"><span class="ok">✓</span><b>运行了 3 条命令</b><span class="muted"><i class="exp">›</i></span></div>
+        <div class="tool"><span class="x">✕</span><code>pnpm lint</code><span class="exit">退出码 1</span></div>
+        <div class="tool"><span class="sp">◌</span><code>go test ./...</code><span class="muted">3:08</span></div>
+      </div>
+      <div class="compose-card"><div class="draft">消息…</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div><div>上下文：42%</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div>
+    </div>
+    <div class="cap">多条并行：完成的折成一行，失败的单独一行写退出码，运行中的写计时。失败原因由 Agent 在回复里说，不在这里贴输出</div>
+  </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span><span class="agent-id">Claude Code</span></b><span>空闲 · shop · VPS-dev</span></span><span class="more">⋯</span></div>
+      <div class="connbar">连接断了，正在重连</div>
+      <div class="body chat">
+        <div class="tool"><span class="sp" style="animation:none">◌</span><code>go test ./...</code><span class="muted">等待同步</span></div>
+        <div class="tool"><span class="sp" style="animation:none">◌</span><code>npm run dev</code><span class="muted">后台运行</span></div>
+        <div class="ai">开发服务器已经在后台启动。</div>
+      </div>
+      <div class="compose-card"><div class="draft typed">这条草稿保留，重连后再发</div><div class="controls"><details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div><div>上下文：42%</div></div></details><span class="go44 off">↑</span></div></div>
+    </div>
+    <div class="cap">断线时计时停住写「等待同步」，重连后按事件更新；转到后台的命令写「后台运行」，之后不再追踪它是否结束</div>
+  </div>
 </div>
-<div class="compose-card">
-<div class="draft">消息…</div>
-<div class="controls">
-<details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
-Sonnet · high ▾
-</div><div>上下文：42%</div></div></details>
 
-
-<span class="go44 stop" aria-label="中断这一轮"></span>
-</div>
-</div>
-</div>
-<div class="cap">工具开始即展示：命令全文可查看、计时持续更新；工具摘要留在对话中；导航栏保留运行状态，输入上方只留工具摘要，输入框空着时发送位是中断</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back">‹</span>
-<span class="title">
-<b>
-<span class="tname">验证库存回滚</span>
-<span class="agent-id">Claude Code</span>
-</b>
-<span>运行中 · shop · VPS-dev</span>
-</span>
-<span class="more">⋯</span>
-</div>
-<div class="body chat">
-<div class="me">
-<div>并行检查测试和构建</div>
-</div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 3 分 08 秒</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
-<pre>go test ./...</pre>
-<div class="td">尚未收到结果 · 可去终端查看</div>
-<div class="ta">
-<span>查看详情 ›</span>
-<span>去终端 ›</span>
-</div>
-</div></details>
-<div class="tool">
-<span class="ok">✓</span>
-<code>go build ./...</code>
-<span>完成</span>
-</div>
-<div class="tool">
-<span class="x">✕</span>
-<code>pnpm lint</code>
-<span class="exit">退出码 1</span>
-</div>
-<div class="toolout">src/session.ts:18 unused variable</div>
-</div>
-<div class="compose-status">
-<span class="tool-peek">
-<em>1 项处理中 · 3:08</em> ›</span>
-
-</div>
-<div class="compose-card">
-<div class="draft">消息…</div>
-<div class="controls">
-<details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
-Sonnet · high ▾
-</div><div>上下文：42%</div></div></details>
-
-
-<span class="go44 stop" aria-label="中断这一轮"></span>
-</div>
-</div>
-</div>
-<div class="cap">并行调用按各自状态展示；完成后更新同一条记录，失败立即可见，不收进成功调用分组</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back">‹</span>
-<span class="title">
-<b>
-<span class="tname">工具详情</span>
-<span class="agent-id">Claude Code</span>
-</b>
-<span>验证库存回滚 · VPS-dev</span>
-</span>
-<span class="more">⋯</span>
-</div>
-<div class="body pad">
-<div class="label">Bash · 处理中 <span>调用耗时 2 分 12 秒</span>
-</div>
-<div class="crumb">~/Code/shop</div>
-<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
-<pre>go test ./internal/inventory/... -count=1</pre>
-<div class="td">尚未收到工具结果。实时输出请去终端查看。</div>
-
-</div></details>
-<div class="hint">耗时不代表进度；没有输出也可能仍在运行。</div>
-</div>
-<div class="dock">
-<div class="btns">
-<div class="btn">去终端看实时画面</div>
-</div>
-<div class="foot">
-<span>需要停止这一轮？</span>
-<b class="danger">中断本轮</b>
-</div>
-<div class="draft-note">中断不保证结束后台进程；后台命令在终端里处理。</div>
-</div>
-</div>
-<div class="cap">详情页：只展示确实收到的数据；不虚构 stdout 流、百分比或卡住判断，也不加没有后端支持的单工具终止按钮</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back">‹</span>
-<span class="title">
-<b>
-<span class="tname">验证库存回滚</span>
-<span class="agent-id">Claude Code</span>
-</b>
-<span>上次状态：运行中 · VPS-dev</span>
-</span>
-<span class="more">⋯</span>
-</div>
-<div class="connbar">连接断了，工具状态可能已变化</div>
-<div class="body chat">
-<details class="active-tool"><summary><span>◌ Bash · 等待同步 上次 2:12</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
-<pre>go test ./...</pre>
-<div class="td">未连接到服务器，暂时无法确认是否还在运行。</div>
-<div class="ta">
-<span>查看详情 ›</span>
-<span style="color:var(--muted)">终端不可用</span>
-</div>
-</div></details>
-</div>
-<div class="compose-status">
-<span class="tool-peek off">
-<em>等待同步 · 上次 2:12</em> ›</span>
-</div>
-<div class="compose-card">
-<div class="draft typed">这条草稿保留，重连后再发</div>
-<div class="controls">
-<details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
-Sonnet · high ▾
-</div><div>上下文：42%</div></div></details>
-
-
-<span class="go44 off">↑</span>
-</div>
-</div>
-</div>
-<div class="cap">断线后冻结计时并标等待同步，不能继续增长制造仍在运行的错觉；重连按完整事件更新</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back">‹</span>
-<span class="title">
-<b>
-<span class="tname">验证库存回滚</span>
-<span class="agent-id">Codex</span>
-</b>
-<span>本轮已中断 · shop · VPS-dev</span>
-</span>
-<span class="more">⋯</span>
-</div>
-<div class="body chat">
-<div class="sysline">已中断本轮</div><div class="me pending"><div><span class="clamp">测试过了就提交</span></div><small><span class="pt">已暂停 · 中断前排着的</span><b>发送</b><b>取消</b></small></div>
-<details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted"><span class="when-closed">详情 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="tool-details">
-<pre>go test ./...</pre>
-<div class="td">工具已转到后台；本轮结束不表示后台进程结束。请到终端确认。</div>
-<div class="ta">
-<span>查看详情 ›</span>
-<span>去终端 ›</span>
-</div>
-</div></details>
-</div>
-<div class="compose-status">
-<span class="tool-peek">
-<em>后台工作 · 去终端确认</em> ›</span>
-</div>
-<div class="compose-card">
-<div class="draft">给 Codex 发下一条消息…</div>
-<div class="controls">
-<details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
-GPT-6-Astra · medium ▾
-</div><div>上下文：42%</div></div></details>
-
-
-<span class="go44">↑</span>
-</div>
-</div>
-</div>
-<div class="cap">后台任务：调用已返回、进程是否结束分开显示；没有可靠完成事件时保留待确认，不显示绿色成功</div>
-</div>
-</div>
 <!-- ============================= -->
 <h2 id="images">会话里的图片</h2>
 <div class="note" style="margin:0 0 20px">显示会话里已经出现过的图片：在电脑上粘贴的、Agent 查看的（Claude Code 读取图片文件，Codex 查看图片、浏览器截图）、Codex 生成的，以及从客户端发出的。预览和消息一起到达，按原始比例占位，不会加载完再把内容顶开；点开才下载大图。终端视图不变，Claude Code 在终端里仍显示 <code>[Image #1]</code>。</div>
@@ -2947,7 +2732,7 @@ Sonnet · high ▾
           <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">未获取</span></div><div class="hint">没有收到这项额度数据</div></div>
         </div>
         <div class="pad"><div class="banner warn">5 小时额度即将用尽</div><div class="hint">只有 5 小时用量可用；7 天额度暂时未知。</div></div>
-        <div class="grp"><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        
       </div>
     </div>
     <div class="cap">部分缺失：缺哪项就标哪项；80% 起用橙色，100% 标「已用尽」，不自动切换 CLI、模型或阻止发送</div>
@@ -2976,7 +2761,7 @@ Sonnet · high ▾
         <div class="pad"><div class="banner err">没能读取 Claude Code 额度</div></div>
         <div class="glabel">Claude Code · 上次记录</div>
         <div class="grp"><div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">上次已用 28%</span></div><div class="bar"><i style="width:28%;background:var(--gray)"></i></div><div class="hint">最近成功收到 9:20</div></div></div>
-        <div class="grp"><div class="row act">重新读取</div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        <div class="grp"><div class="row act">重新读取</div></div>
         <div class="pad small muted">重新读取电脑上已有的额度记录，不会发消息消耗额度。</div>
       </div>
     </div>
@@ -2988,7 +2773,7 @@ Sonnet · high ▾
       <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度 · 状态示例</b><span>Claude Code</span></span></div>
       <div class="body">
         <div class="glabel">尚未收到数据</div>
-        <div class="grp"><div class="row col"><b>暂未获取额度</b><div class="hint">等待 Claude Code 返回额度数据</div></div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        <div class="grp"><div class="row col"><b>暂未获取额度</b><div class="hint">等待 Claude Code 返回额度数据</div></div></div>
         <div class="glabel">已确认 API 计费</div>
         <div class="grp"><div class="row col"><b>API 计费</b><div class="hint">此处不提供订阅额度，请到服务商控制台查看用量和账单。</div></div></div>
         <div class="glabel">当前版本或来源不支持</div>
@@ -3658,7 +3443,7 @@ Sonnet · high ▾
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>主页</span></div>
   <div class="dg">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb">新会话</span></div>
+      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
       <div class="scroll">
         <div class="label">需要处理</div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · foo · VPS-dev</div></div></div>
@@ -3667,8 +3452,8 @@ Sonnet · high ▾
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 进行中</span></div>
-        <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c2">b</div>bar<span class="live">1 进行中</span></div>
+        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 个进行中</span></div>
+        <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c2">b</div>bar<span class="live">1 个进行中</span></div>
         <div class="ph"><i class="arr">▾</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
         <div class="sub-sess"><span>发布秋季文章</span><span>2 小时前</span></div>
         <div class="sub-sess"><span>修复 RSS 日期格式</span><span>昨天</span></div>
@@ -3679,28 +3464,20 @@ Sonnet · high ▾
     </div>
     <div class="dm">
       <div class="start">
-        <h3>开始一个任务</h3><div class="wide-project-tools"><span class="chip"><div class="av xs c1">f</div>foo ▾</span><a class="proj-cfg" href="#project-settings" style="margin:0"><em>Codex · 询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+        <h3>在 <span class="proj-pick"><span class="av xs c1">f</span>foo<i>▾</i></span> 里开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><details class="compose-menu"><summary aria-label="添加图片">＋</summary></details><span class="go44">↑</span></div></div>
-
-        <div class="label">需要处理</div>
-        <div class="todo">
-          <div class="k"><span>● 请求执行</span><span>剩 8 分钟，超时拒绝</span></div>
-          <div class="t"><span>重构 API 层</span><a>查看会话 ›</a></div>
-          <div class="m">foo · VPS-dev · 跑一遍全部测试，确认拆包没有破坏行为</div>
-          <pre>go test ./... -count=1</pre>
-          <div style="display:flex;align-items:center;gap:8px"><span class="muted" style="font-size:12px;flex:1"><b style="color:var(--blue)">附理由拒绝 ›</b></span><div class="btns" style="width:260px"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div></div>
-        </div>
+        <a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · MacBook · GPT-6-Astra · medium</em></a>
       </div>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏三段，项目区列出全部项目，点名字进项目页、点箭头展开最近结束的；主区域直接是新建会话：默认最近用的项目，项目旁写这个项目的新会话设置，点开是项目设置；输入区只保留添加图片、正文和发送；下面列出要处理的</div>
+<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏分需要处理、进行中和项目三段，点项目名进项目页、点箭头展开最近结束的；右上的新建图标回到这里。主区域只做一件事：新建任务。标题里的项目名就是项目选择，默认最近用的项目；输入框下一行是这个项目的新会话设置，点开是项目设置。需要处理只在侧栏，点进会话在停靠区处理</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 并排</span></div>
   <div class="dg">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb">新会话</span></div>
+      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
       <div class="scroll">
         <div class="label">需要处理</div>
         <div class="sess wait sel"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · foo · VPS-dev</div></div></div>
@@ -3708,7 +3485,7 @@ Sonnet · high ▾
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 进行中</span></div>
+        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 个进行中</span></div>
         <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
         <div class="ph"><i class="arr">▸</i><div class="av sm c4">n</div>notes<span>昨天</span></div>
       </div>
@@ -3758,12 +3535,12 @@ Sonnet · high ▾
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目页</span></div>
   <div class="dg" style="height:460px">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb">新会话</span></div>
+      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
       <div class="scroll">
         <div class="label">进行中</div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
         <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph" style="background:var(--blue-soft)"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">1 进行中</span></div>
+        <div class="ph" style="background:var(--blue-soft)"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">1 个进行中</span></div>
         <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
       </div>
       <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
@@ -3789,7 +3566,7 @@ Sonnet · high ▾
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目管理</span></div>
 <div class="dg" style="height:520px">
-  <div class="side"><div class="sh"><b>会话</b><span class="nb">新会话</span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c3">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span><span class="dot idle"></span> 已连接</span></div></div>
+  <div class="side"><div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c3">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span><span class="dot idle"></span> 已连接</span></div></div>
   <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><p class="muted small">常用和已移除项目跨客户端同步；移除只隐藏入口，保留会话、历史和提醒。</p><div class="label" style="padding-left:0">常用项目</div><table class="manage-table"><tbody><tr><td><b>remote-agent</b><span class="path">~/Code/ai-bot/remote-agent</span></td><td>取消常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/Code/blog</span></td><td>取消常用 · ⋯</td></tr></tbody></table><div class="label" style="padding-left:0">其他项目</div><table class="manage-table"><tbody><tr><td><b>billing</b><span class="path">~/Code/billing</span></td><td>设为常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/work/blog</span></td><td>设为常用 · ⋯</td></tr></tbody></table><div class="wide-project-tools"><span class="chip" style="color:var(--blue)">已移除 3 个 · 查看与恢复 ›</span></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，在主区域管理常用、移除与恢复；移除后仍能从进行中和通知进入原会话。</div>
