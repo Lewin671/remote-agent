@@ -445,7 +445,7 @@ func TestCommandsRejected(t *testing.T) {
 	stranger, _ := e2e.Derive(e2e.NewKey())
 	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: s.MachineID, SessionId: s.ID,
-		RequestId: remoteclient.NewRequestID(), DeadlineMs: time.Now().Add(time.Minute).UnixMilli(),
+		RequestId: remoteclient.NewRequestID(), DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: e.client.DeviceID,
 	}, send)
 	if _, err := e.client.Forward(ctx, s.MachineID, forged); connect.CodeOf(err) != connect.CodeAborted {
 		t.Fatalf("forged: %v", err)

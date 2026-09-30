@@ -32,6 +32,10 @@ type Client struct {
 	api      remoteagentv1connect.ClientServiceClient
 	// CommandTTL is how long a command stays valid.
 	CommandTTL time.Duration
+	// Unsigned leaves commands without a device signature, as clients
+	// older than v2 send them.
+	Unsigned bool
+	device   ed25519.PrivateKey
 }
 
 // Register creates a client device for the account in secret and logs in.
@@ -66,7 +70,7 @@ func Register(ctx context.Context, secret e2e.Secret) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("login: %w", err)
 	}
-	c := &Client{Server: secret.Server, DeviceID: id, keys: keys, token: lr.Msg.Token, CommandTTL: time.Minute}
+	c := &Client{Server: secret.Server, DeviceID: id, keys: keys, token: lr.Msg.Token, CommandTTL: time.Minute, device: priv}
 	c.api = remoteagentv1connect.NewClientServiceClient(hc, secret.Server, connect.WithInterceptors(connect.UnaryInterceptorFunc(
 		func(next connect.UnaryFunc) connect.UnaryFunc {
 			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
@@ -215,11 +219,18 @@ func (e *CommandError) Error() string { return e.Code + ": " + e.Message }
 
 // Seal builds a sealed command for the given request ID and deadline.
 func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time, cmd *pb.Command) (*pb.Envelope, error) {
-	return e2e.SealMessage(c.keys.Command, &pb.Header{
+	env, err := e2e.SealMessage(c.keys.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: machineID, SessionId: sessionID,
 		RequestId: requestID, DeadlineMs: deadline.UnixMilli(), Sender: c.DeviceID,
 	}, cmd)
+	if err == nil && !c.Unsigned {
+		e2e.SignEnvelope(c.device, env)
+	}
+	return env, err
 }
+
+// Keys are the account's derived keys.
+func (c *Client) Keys() *e2e.Keys { return c.keys }
 
 // Do sends cmd to the session's machine and returns the opened result.
 func (c *Client) Do(ctx context.Context, s Session, cmd *pb.Command) (*pb.CommandResult, error) {

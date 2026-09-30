@@ -134,6 +134,16 @@ func (s *store) device(ctx context.Context, id string) (*device, error) {
 	return d, nil
 }
 
+type registration struct{ raw, sig []byte }
+
+// registration returns a device's registration and the account's
+// signature over it, as stored when it registered.
+func (s *store) registration(ctx context.Context, id string) (registration, error) {
+	var r registration
+	err := s.db.QueryRowContext(ctx, `SELECT registration, signature FROM devices WHERE id = ?`, id).Scan(&r.raw, &r.sig)
+	return r, err
+}
+
 func (s *store) addToken(ctx context.Context, hash []byte, deviceID string, expires int64) error {
 	_, err := s.db.ExecContext(ctx, `INSERT INTO tokens (hash, device_id, expires_ms) VALUES (?, ?, ?)`, hash, deviceID, expires)
 	if err != nil {

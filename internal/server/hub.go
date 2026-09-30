@@ -277,7 +277,7 @@ func errUnknown(why string) error {
 }
 
 // forward sends a sealed command to a machine and waits for the result.
-func (h *hub) forward(ctx context.Context, machineID string, cmd *pb.Envelope) (*pb.Envelope, error) {
+func (h *hub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.Envelope, error) {
 	h.mu.Lock()
 	p := h.machines[machineID]
 	if p == nil {
@@ -294,7 +294,9 @@ func (h *hub) forward(ctx context.Context, machineID string, cmd *pb.Envelope) (
 		delete(h.calls, id)
 		h.mu.Unlock()
 	}()
-	if !h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: id, Command: cmd}}}) {
+	fc = proto.CloneOf(fc)
+	fc.CallId = id
+	if !h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: fc}}) {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("machine is not keeping up"))
 	}
 	timer := time.NewTimer(h.s.cfg.ForwardTimeout)

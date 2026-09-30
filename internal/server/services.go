@@ -177,12 +177,25 @@ func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.G
 }
 
 func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
+	dev := deviceFrom(ctx)
+	// The sender in the sealed header must be the device that is logged
+	// in. The daemon checks the device's signature itself; this catches a
+	// client that claims to be another device early.
 	if _, err := checkEnvelope(req.Msg.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: req.Msg.MachineId,
 	}); err != nil {
 		return nil, err
 	}
-	res, err := c.s.hub.forward(ctx, req.Msg.MachineId, req.Msg.Command)
+	if h := headerOf(req.Msg.Command); h.Sender != dev.id {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the command's sender is not the logged-in device"))
+	}
+	reg, err := c.s.store.registration(ctx, dev.id)
+	if err != nil {
+		return nil, internal(err)
+	}
+	res, err := c.s.hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{
+		Command: req.Msg.Command, SenderDeviceId: dev.id, SenderRegistration: reg.raw, SenderRegistrationSignature: reg.sig,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +321,14 @@ func (m *machineService) ListSessionHeads(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: heads}), nil
+}
+
+// headerOf decodes an envelope's plaintext header; checkEnvelope has
+// accepted it before.
+func headerOf(env *pb.Envelope) *pb.Header {
+	h := &pb.Header{}
+	_ = proto.Unmarshal(env.GetHeader(), h)
+	return h
 }
 
 // validDeviceID reports whether id looks like e2e.DeviceID's output.
