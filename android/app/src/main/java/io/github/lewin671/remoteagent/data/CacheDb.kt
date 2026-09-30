@@ -27,8 +27,14 @@ class SessionRow(val id: String, val machineId: String, val data: ByteArray)
 @Entity(tableName = "events", primaryKeys = ["sessionId", "seq"])
 class EventRow(val sessionId: String, val seq: Long, val data: ByteArray)
 
+/** A sealed object kept by name, e.g. the account's project preferences as the server sent them. */
+@Entity(tableName = "blobs", primaryKeys = ["name"])
+class BlobRow(val name: String, val data: ByteArray)
+
 @Dao
 interface CacheDao {
+    @Query("SELECT * FROM blobs WHERE name = :name") suspend fun blob(name: String): BlobRow?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(b: BlobRow)
     @Query("SELECT * FROM machines") suspend fun machines(): List<MachineRow>
     @Query("SELECT * FROM sessions") suspend fun sessions(): List<SessionRow>
     @Query("SELECT * FROM events WHERE sessionId = :sid ORDER BY seq") suspend fun events(sid: String): List<EventRow>
@@ -56,7 +62,7 @@ interface CacheDao {
     }
 }
 
-@Database(entities = [MachineRow::class, SessionRow::class, EventRow::class], version = 1)
+@Database(entities = [MachineRow::class, SessionRow::class, EventRow::class, BlobRow::class], version = 2)
 abstract class CacheDb : RoomDatabase() {
     abstract fun dao(): CacheDao
 
@@ -79,4 +85,6 @@ class RoomCache(private val dao: CacheDao) : CipherCache {
         dao.put(events.map { EventRow(sessionId, it.seq, it.toByteArray()) })
     override suspend fun removeMachine(id: String) = dao.removeMachine(id)
     override suspend fun removeSession(id: String) = dao.removeSession(id)
+    override suspend fun blob(name: String) = dao.blob(name)?.data
+    override suspend fun putBlob(name: String, data: ByteArray) = dao.put(BlobRow(name, data))
 }

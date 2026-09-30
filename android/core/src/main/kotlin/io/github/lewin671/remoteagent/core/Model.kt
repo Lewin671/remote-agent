@@ -69,6 +69,32 @@ fun projects(state: RemoteState): List<Project> {
     }.sortedByDescending { it.updatedMs }
 }
 
+/**
+ * The project list as the account arranges it (architecture §8): pinned
+ * projects first in the order they were pinned, the others by latest
+ * activity; hidden ones apart. Hiding only takes a project off these lists:
+ * its sessions, pending items and notifications are not filtered here.
+ */
+data class ProjectGroups(val pinned: List<Project>, val others: List<Project>, val hidden: List<Project>)
+
+fun projectGroups(state: RemoteState): ProjectGroups {
+    val all = projects(state)
+    val prefs = state.prefs ?: PrefsObject.EMPTY
+    val hidden = prefs.hidden
+    val byKey = all.associateBy { it.key }
+    val pinned = prefs.pinned.filter { it !in hidden }.mapNotNull { byKey[it] }
+    val pinnedKeys = pinned.map { it.key }.toSet()
+    return ProjectGroups(
+        pinned = pinned,
+        others = all.filter { it.key !in pinnedKeys && it.key !in hidden },
+        hidden = all.filter { it.key in hidden },
+    )
+}
+
+fun isHidden(state: RemoteState, key: String): Boolean = state.prefs?.hidden?.contains(key) == true
+
+fun isPinned(state: RemoteState, key: String): Boolean = state.prefs?.let { key in it.pinned && key !in it.hidden } == true
+
 fun machineName(m: MachineView?, id: String = ""): String =
     m?.meta?.hostname?.removeSuffix(".local")?.takeIf { it.isNotEmpty() } ?: m?.id?.take(8) ?: id.take(8).ifEmpty { "未知电脑" }
 

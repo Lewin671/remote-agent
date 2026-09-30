@@ -87,6 +87,22 @@ data class RemoteState(
     val loaded: Boolean = false,
     /** When the connection was last lost; 0 while online. Timers stop here: what happened since is not known. */
     val offlineSinceMs: Long = 0,
+    /** The account's project preferences; null until read (from the server or the cache). */
+    val prefs: PrefsObject? = null,
+    /** The server keeps account preferences; false for a server older than v2. */
+    val prefsSupported: Boolean = true,
+    /** The account's devices, machines and clients (ListDevices); empty for a server older than v2. */
+    val devices: Map<String, DeviceView> = emptyMap(),
+    val devicesSupported: Boolean = true,
+)
+
+/** A device of the account; a client's name is in its sealed metadata. */
+data class DeviceView(
+    val id: String,
+    val kind: io.github.lewin671.remoteagent.proto.DeviceKind,
+    val createdMs: Long,
+    val meta: io.github.lewin671.remoteagent.proto.DeviceMeta? = null,
+    val metaRev: Long = 0,
 )
 
 /** A session's events, contiguous from seq 1. */
@@ -107,6 +123,10 @@ interface CipherCache {
     suspend fun putEvents(sessionId: String, events: List<StoredEvent>)
     suspend fun removeMachine(id: String)
     suspend fun removeSession(id: String)
+
+    /** Other sealed objects by name, such as the account's project preferences. */
+    suspend fun blob(name: String): ByteArray? = null
+    suspend fun putBlob(name: String, data: ByteArray) {}
 }
 
 /** A sealed command ready to send; resending it reuses its request ID and deadline. */
@@ -168,6 +188,10 @@ class Remote(
     private var error = ""
     private var loaded = false
     private var offlineSince = 0L
+    private var prefs: PrefsObject? = null
+    private var prefsSupported = true
+    private val devices = HashMap<String, DeviceView>()
+    private var devicesSupported = true
 
     // Pushes seen per machine, session and machine removal, so that a list
     // fetched before a push cannot undo it.
@@ -242,7 +266,7 @@ class Remote(
 
     private fun publish() {
         if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
-        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince)
+        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, prefsSupported, devices.toMap(), devicesSupported)
     }
 
     private suspend fun readCache() {
@@ -251,6 +275,7 @@ class Remote(
         try {
             for (m in cache.machines()) putMachine(m.toBuilder().setOnline(false).build(), save = false)
             for (s in cache.sessions()) putSession(s, save = false)
+            cache.blob(PROJECT_PREFS)?.let { putPrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject.parseFrom(it), save = false) }
             if (machines.isNotEmpty() || sessions.isNotEmpty()) loaded = true
         } catch (e: Exception) {
             report(e)
@@ -346,6 +371,19 @@ class Remote(
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
                 for (sid in buffers.keys.toList()) scope.launch { fetchEvents(sid) }
+                scope.launch { loadPrefs() }
+                scope.launch { loadDevices() }
+            }
+            ServerFrame.KindCase.ACCOUNT_PREFS_UPDATED -> {
+                if (f.accountPrefsUpdated.`object`.objectId == PROJECT_PREFS) putPrefs(f.accountPrefsUpdated.`object`)
+            }
+            ServerFrame.KindCase.DEVICE_UPDATED -> {
+                putDevice(f.deviceUpdated.device)
+                publish()
+            }
+            ServerFrame.KindCase.DEVICE_REMOVED -> {
+                devices.remove(f.deviceRemoved.deviceId)
+                publish()
             }
             ServerFrame.KindCase.MACHINE_REMOVED -> {
                 val id = f.machineRemoved.machineId
@@ -490,6 +528,141 @@ class Remote(
             report(e)
         }
         publish()
+    }
+
+    // --- account preferences and devices ---
+
+    private val prefsCodec = PrefsCodec(keys.prefs, account.deviceId)
+
+    private fun unimplemented(e: Throwable) = e is ConnectException && e.code == Code.UNIMPLEMENTED
+
+    private suspend fun loadPrefs() {
+        try {
+            val o = api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(token)).value()
+            prefsSupported = true
+            putPrefs(o.`object`)
+        } catch (e: Exception) {
+            if (unimplemented(e)) {
+                prefsSupported = false
+                publish()
+            } else report(e)
+        }
+    }
+
+    /** Takes an object from the server when it is not older than what is known here. */
+    private suspend fun putPrefs(o: io.github.lewin671.remoteagent.proto.AccountPrefsObject, save: Boolean = true) {
+        val opened = try {
+            prefsCodec.open(o)
+        } catch (e: Exception) {
+            report(e)
+            return
+        }
+        val before = prefs
+        prefs = newerPrefs(before, opened)
+        if (save && prefs === opened && o.revision > 0) {
+            try {
+                cache?.putBlob(PROJECT_PREFS, o.toByteArray())
+            } catch (e: Exception) {
+                report(e)
+            }
+        }
+        publish()
+    }
+
+    /**
+     * Pins, unpins, hides or restores a project for the whole account.
+     * Returns once the server has it; a conflict is redone on the newer
+     * object. Needs the connection: offline, changes wait.
+     */
+    suspend fun changePrefs(op: PrefsOp) {
+        val base = withContext(dispatcher) {
+            if (conn != ConnState.ONLINE) throw CommandException(CommandException.UNAVAILABLE, "没有连上服务器，连上后才能修改")
+            prefs ?: PrefsObject.EMPTY
+        }
+        var stored: io.github.lewin671.remoteagent.proto.AccountPrefsObject? = null
+        val result = writePrefsOp(
+            prefsCodec, base, op, newRequestId(), clock(),
+            put = { expected, env ->
+                val r = api.client.putAccountPrefs(
+                    io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).setExpectedRevision(expected).setEnvelope(env).build(),
+                    Api.headers(currentToken()),
+                ).value()
+                if (r.applied) stored = r.`object`.takeIf { it.hasEnvelope() } ?: io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder().setObjectId(PROJECT_PREFS).setRevision(expected + 1).setEnvelope(env).build()
+                PutResult(r.applied, r.`object`)
+            },
+            get = {
+                api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(currentToken())).value().`object`.also { stored = it }
+            },
+        )
+        withContext(dispatcher) {
+            val o = stored
+            if (o != null && o.revision == result.revision) putPrefs(o) else {
+                prefs = newerPrefs(prefs, result)
+                publish()
+            }
+        }
+    }
+
+    private suspend fun loadDevices() {
+        try {
+            val r = api.client.listDevices(io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(), Api.headers(token)).value()
+            devicesSupported = true
+            val ids = r.devicesList.map { it.id }.toSet()
+            devices.keys.retainAll(ids)
+            for (d in r.devicesList) putDevice(d)
+        } catch (e: Exception) {
+            if (unimplemented(e)) devicesSupported = false else report(e)
+        }
+        publish()
+    }
+
+    private fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
+        val old = devices[d.id]
+        var view = DeviceView(d.id, d.kind, d.createdMs, old?.meta, old?.metaRev ?: 0)
+        if (d.hasMeta() && ucmp(d.metaRevision, view.metaRev) >= 0) {
+            try {
+                val (_, meta) = Envelopes.openMessage(
+                    keys.deviceMeta, d.meta,
+                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = d.id, seq = d.metaRevision),
+                    io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
+                )
+                view = view.copy(meta = meta, metaRev = d.metaRevision)
+            } catch (e: Exception) {
+                report(e)
+            }
+        }
+        devices[d.id] = view
+    }
+
+    /**
+     * Names a client device for the whole account, keeping what else its
+     * metadata says; a conflict is redone on the stored metadata.
+     */
+    suspend fun renameDevice(id: String, name: String, platform: String = "", description: String = "") {
+        var base = withContext(dispatcher) { devices[id] } ?: throw CommandException("not_found", "没有这台设备")
+        repeat(5) {
+            val meta = (base.meta?.toBuilder() ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder()).setName(name).apply {
+                if (platform.isNotEmpty() && this.platform.isEmpty()) this.platform = platform
+                if (description.isNotEmpty()) this.description = description
+            }.build()
+            val env = Envelopes.seal(
+                keys.deviceMeta,
+                Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_DEVICE_META).setRequestId(id).setSeq(base.metaRev + 1).setSender(account.deviceId).build(),
+                meta,
+            )
+            val r = api.client.putDeviceMeta(
+                io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest.newBuilder().setDeviceId(id).setExpectedRevision(base.metaRev).setMeta(env).build(),
+                Api.headers(currentToken()),
+            ).value()
+            withContext(dispatcher) {
+                if (r.hasDevice()) putDevice(r.device)
+                if (r.applied && (!r.hasDevice() || !r.device.hasMeta())) devices[id] = base.copy(meta = meta, metaRev = base.metaRev + 1)
+                publish()
+            }
+            if (r.applied) return
+            base = withContext(dispatcher) { devices[id] } ?: throw CommandException("not_found", "没有这台设备")
+        }
+        throw CommandException("aborted", "设备名称一直在被其他客户端修改，没能保存")
     }
 
     // --- events ---
