@@ -38,7 +38,7 @@ import { useDerived } from "./actions";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { ComposeStatus, Composer } from "./Composer";
+import { ComposeStatus, Composer, promptIdOf } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { QueuePage } from "./Queue";
 import { TerminalView } from "./Terminal";
@@ -421,7 +421,7 @@ function ChatBody({
     many: [...remote.devices.values()].filter((x) => x.kind === DeviceKind.CLIENT).length > 1,
     self: platformLabel(remote.devices.get(remote.account.deviceId)?.meta),
   };
-  const promptId = prompt ? [...d.inputs.keys()].find((id) => !textOf.has(id)) : undefined;
+  const promptId = promptIdOf(remote, sid, d);
   if (promptId && prompt) textOf.set(promptId, prompt);
 
   const count = items.length + outbox.length;

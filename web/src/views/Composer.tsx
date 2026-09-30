@@ -24,11 +24,12 @@ export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: st
 }
 
 /** The request ID of the first message of a session started here: the
- * one input this page did not send through its outbox. */
+ * daemon queues it before anything else can reach the session, so it is
+ * the session's first input, whatever other clients or this page sent
+ * after it. */
 export function promptIdOf(remote: Remote, sid: string, d: Derived): string | undefined {
   if (!remote.prompts.has(sid)) return undefined;
-  const mine = new Set(remote.outbox(sid).map((o) => o.sendId));
-  return [...d.inputs.keys()].find((id) => !mine.has(id));
+  return d.inputs.keys().next().value;
 }
 
 /** The line above the input: what runs and for how long, the queue and

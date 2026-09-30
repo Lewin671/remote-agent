@@ -1300,3 +1300,28 @@ it("sends a failed message again only once, however often retry is pressed", asy
   // Once replaced, the failed row offers no second retry.
   expect(retry()?.disabled ?? true).toBe(true);
 });
+
+describe("the first message of a session started here (review B5, B9)", () => {
+  function setup() {
+    const r = demo();
+    const s = r.sessions.get("s-fresh")!;
+    r.prompts.set("s-fresh", "给登录接口加限流");
+    const push = (kind: object) =>
+      act(() => {
+        r.events("s-fresh").push(create(EventSchema, { seq: BigInt(r.events("s-fresh").length + 1), kind: kind as never }));
+        r.touch();
+      });
+    push({ case: "inputState", value: { requestId: "p1", status: InputStatus.QUEUED, text: "给登录接口加限流" } });
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    return { r, push };
+  }
+
+  it("shows its real state, not 已送达 after another client canceled it", () => {
+    const { push } = setup();
+    expect(host.textContent).toContain("已送达电脑，等 Codex 就绪后发出");
+    push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
+    expect(host.textContent).not.toContain("已送达电脑");
+    expect(host.textContent).toContain("取消了一条排队的消息");
+  });
+
+});
