@@ -474,3 +474,50 @@ describe("oversized images (review B3)", () => {
     expect(f.calls.filter((c) => c.op === "decode")).toEqual([]);
   });
 });
+
+describe("metadata after the first scan (self-check against the daemon/Android bug)", () => {
+  const gps = "GPS 31.2304N 121.4737E";
+  /** jpeg with segs inserted just before EOI, after all the image data. */
+  function beforeEoi(jpeg: Uint8Array, ...segs: Uint8Array[]): Uint8Array {
+    const end = jpeg.length - 2;
+    expect([jpeg[end], jpeg[end + 1]]).toEqual([0xff, 0xd9]);
+    return concat(jpeg.subarray(0, end), ...segs, jpeg.subarray(end));
+  }
+  /** jpeg with segs inserted before its second SOS (between scans). */
+  function betweenScans(jpeg: Uint8Array, ...segs: Uint8Array[]): Uint8Array {
+    const soss = [...jpegSegments(jpeg)].filter((s) => s.marker === 0xda);
+    expect(soss.length).toBeGreaterThan(1);
+    const at = soss[1].start;
+    return concat(jpeg.subarray(0, at), ...segs, jpeg.subarray(at));
+  }
+  const has = (b: Uint8Array, text: string) => new TextDecoder("latin1").decode(b).includes(text);
+  const exifWithGps = concat(new TextEncoder().encode("Exif\0\0"), new TextEncoder().encode(gps));
+
+  it("drops a comment with a location right before EOI", () => {
+    const b = beforeEoi(fixture(s420), segment(0xfe, gps));
+    expect(has(b, gps)).toBe(true);
+    const out = stripMetadata(b, "jpeg");
+    expect(has(out, gps)).toBe(false);
+    expect(sniffFormat(out)).toBe("jpeg");
+  });
+
+  it("drops an APP1 after the scan", () => {
+    const out = stripMetadata(beforeEoi(fixture(s420), segment(0xe1, exifWithGps)), "jpeg");
+    expect(has(out, gps)).toBe(false);
+  });
+
+  it("drops metadata between the scans of a progressive JPEG and keeps every scan", () => {
+    const src = betweenScans(fixture(prog), segment(0xfe, gps), segment(0xe1, exifWithGps));
+    const out = stripMetadata(src, "jpeg");
+    expect(has(out, gps)).toBe(false);
+    expect([...jpegSegments(out)].filter((s) => s.marker === 0xda).length).toBe([...jpegSegments(fixture(prog))].filter((s) => s.marker === 0xda).length);
+  });
+
+  it("carries no metadata after the scan into a losslessly rotated original", async () => {
+    const photo = beforeEoi(withSegments(fixture(s420), segment(0xe1, exifOrientation(6))), segment(0xfe, gps), segment(0xe1, exifWithGps));
+    const out = await prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), fakeBackend(1, 1).backend);
+    expect(out.reencoded).toBe(false);
+    expect(has(out.bytes, gps)).toBe(false);
+    expect(has(rotateJpegLossless(photo, 6)!, gps)).toBe(false);
+  });
+});
