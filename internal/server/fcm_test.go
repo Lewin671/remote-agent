@@ -10,6 +10,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,13 +30,15 @@ import (
 
 // fakeFCM stands in for Google's token endpoint and the FCM send API.
 type fakeFCM struct {
-	t       *testing.T
-	key     *rsa.PublicKey
-	srv     *httptest.Server
-	mu      sync.Mutex
-	sent    []map[string]string
-	gone    bool
-	tokens  int
+	t      *testing.T
+	key    *rsa.PublicKey
+	srv    *httptest.Server
+	mu     sync.Mutex
+	sent   []map[string]string
+	gone   bool
+	tokens int
+	// Statuses to answer the next sends with, before succeeding.
+	fail    []int
 	account string
 }
 
@@ -73,9 +77,15 @@ func (f *fakeFCM) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.tokens++
-		json.NewEncoder(w).Encode(map[string]any{"access_token": "access-1", "expires_in": 3600})
+		json.NewEncoder(w).Encode(map[string]any{"access_token": fmt.Sprintf("access-%d", f.tokens), "expires_in": 3600})
 	case "/send":
-		if r.Header.Get("Authorization") != "Bearer access-1" {
+		if len(f.fail) > 0 {
+			code := f.fail[0]
+			f.fail = f.fail[1:]
+			w.WriteHeader(code)
+			return
+		}
+		if r.Header.Get("Authorization") != fmt.Sprintf("Bearer access-%d", f.tokens) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -228,5 +238,42 @@ func TestFCMOff(t *testing.T) {
 	}
 	if _, err := New(Config{DBPath: filepath.Join(t.TempDir(), "x.db"), FCMServiceAccount: filepath.Join(t.TempDir(), "missing.json")}); err == nil {
 		t.Fatal("a missing service account file should fail")
+	}
+}
+
+func TestFCMRetriesTransientFailures(t *testing.T) {
+	fake := newFakeFCM(t)
+	f, err := loadFCM(fake.account)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.sendURL = fake.srv.URL + "/send"
+	f.retryBase = 5 * time.Millisecond
+	ctx := context.Background()
+
+	// Overloaded, then an access token FCM no longer accepts: both are
+	// retried, the second with a fresh token.
+	fake.fail = []int{http.StatusServiceUnavailable, http.StatusUnauthorized}
+	if err := f.sendRetrying(ctx, "tok", map[string]string{"session": "s"}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if fake.count() != 1 || fake.tokens != 2 {
+		t.Fatalf("sent %d with %d access tokens", fake.count(), fake.tokens)
+	}
+
+	// A lasting failure gives up after a few attempts.
+	fake.fail = []int{500, 500, 500, 500, 500}
+	if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); err == nil {
+		t.Fatal("expected an error")
+	}
+	if len(fake.fail) != 1 {
+		t.Fatalf("%d attempts, want %d", 5-len(fake.fail), fcmAttempts)
+	}
+
+	// A token FCM does not know is not retried.
+	fake.fail = nil
+	fake.gone = true
+	if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); !errors.Is(err, errFCMToken) {
+		t.Fatalf("err = %v", err)
 	}
 }

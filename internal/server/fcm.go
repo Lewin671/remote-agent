@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,23 @@ const fcmScope = "https://www.googleapis.com/auth/firebase.messaging"
 // errFCMToken means FCM no longer knows the registration token.
 var errFCMToken = errors.New("fcm: token not registered")
 
+// fcmTransient is a failure worth retrying: the network, FCM overloaded
+// (429, 5xx) or an access token that expired early (401). after is FCM's
+// Retry-After, zero when it gave none.
+type fcmTransient struct {
+	after time.Duration
+	err   error
+}
+
+func (e *fcmTransient) Error() string { return e.err.Error() }
+func (e *fcmTransient) Unwrap() error { return e.err }
+
+// fcmAttempts bounds retries of one message; fcmMaxWait caps a wait.
+const (
+	fcmAttempts = 4
+	fcmMaxWait  = 30 * time.Second
+)
+
 type fcm struct {
 	projectID string
 	email     string
@@ -42,6 +60,7 @@ type fcm struct {
 	tokenURI  string
 	sendURL   string // overridable in tests
 	client    *http.Client
+	retryBase time.Duration // first backoff; doubles per attempt
 
 	mu      sync.Mutex
 	access  string
@@ -86,6 +105,7 @@ func loadFCM(path string) (*fcm, error) {
 		tokenURI:  sa.TokenURI,
 		sendURL:   "https://fcm.googleapis.com/v1/projects/" + url.PathEscape(sa.ProjectID) + "/messages:send",
 		client:    &http.Client{Timeout: 20 * time.Second},
+		retryBase: time.Second,
 	}, nil
 }
 
@@ -137,7 +157,7 @@ func (f *fcm) accessToken(ctx context.Context) (string, error) {
 func (f *fcm) send(ctx context.Context, token string, data map[string]string, ttl time.Duration) error {
 	access, err := f.accessToken(ctx)
 	if err != nil {
-		return err
+		return &fcmTransient{err: err}
 	}
 	body, _ := json.Marshal(map[string]any{"message": map[string]any{
 		"token": token,
@@ -155,7 +175,7 @@ func (f *fcm) send(ctx context.Context, token string, data map[string]string, tt
 	req.Header.Set("Content-Type", "application/json")
 	res, err := f.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("fcm send: %w", err)
+		return &fcmTransient{err: fmt.Errorf("fcm send: %w", err)}
 	}
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusOK {
@@ -168,10 +188,45 @@ func (f *fcm) send(ctx context.Context, token string, data map[string]string, tt
 		(res.StatusCode == http.StatusBadRequest && bytes.Contains(b, []byte("registration token"))) {
 		return errFCMToken
 	}
-	if res.StatusCode == http.StatusUnauthorized {
+	err = fmt.Errorf("fcm send: status %d", res.StatusCode)
+	switch {
+	case res.StatusCode == http.StatusUnauthorized:
+		// The access token went stale early: fetch a new one and try again.
 		f.mu.Lock()
 		f.access = ""
 		f.mu.Unlock()
+		return &fcmTransient{err: err}
+	case res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500:
+		t := &fcmTransient{err: err}
+		if secs, e := strconv.Atoi(res.Header.Get("Retry-After")); e == nil && secs > 0 {
+			t.after = time.Duration(secs) * time.Second
+		}
+		return t
 	}
-	return fmt.Errorf("fcm send: status %d", res.StatusCode)
+	return err
+}
+
+// sendRetrying sends a message, retrying transient failures with backoff
+// and FCM's Retry-After, a few times at most: by then Notify has returned
+// and the dedupe key is taken, so nobody else would send it again.
+func (f *fcm) sendRetrying(ctx context.Context, token string, data map[string]string, ttl time.Duration) error {
+	var err error
+	for attempt := 0; attempt < fcmAttempts; attempt++ {
+		err = f.send(ctx, token, data, ttl)
+		var t *fcmTransient
+		if !errors.As(err, &t) || attempt == fcmAttempts-1 {
+			return err
+		}
+		wait := t.after
+		if wait == 0 {
+			wait = f.retryBase << attempt
+		}
+		wait = min(wait, fcmMaxWait)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(wait):
+		}
+	}
+	return err
 }

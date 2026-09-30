@@ -234,9 +234,9 @@ func (p *pusher) notifyFCM(sessionID string, kind pb.NotifyKind, content []byte)
 	}
 	for _, t := range targets {
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			err := p.fcm.send(ctx, t.token, data, 10*time.Minute)
+			err := p.fcm.sendRetrying(ctx, t.token, data, 10*time.Minute)
 			switch {
 			case errors.Is(err, errFCMToken):
 				_, _ = p.s.store.db.Exec(`DELETE FROM fcm_targets WHERE device_id = ? AND token = ?`, t.device, t.token)
