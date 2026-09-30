@@ -138,9 +138,6 @@ func compactLine(path string, start, end int64) ([]byte, error) {
 	if err := c.run(); err != nil {
 		return nil, err
 	}
-	if len(c.out) > MaxLine {
-		return nil, fmt.Errorf("line at %d stays too long after compaction", start)
-	}
 	return c.out, nil
 }
 
@@ -159,8 +156,14 @@ func (c *compactor) readByte() (byte, error) {
 	return b, err
 }
 
+// errTooLong stops compaction of a line that stays over MaxLine.
+var errTooLong = errors.New("line stays too long after compaction")
+
 func (c *compactor) run() error {
 	for {
+		if len(c.out) > MaxLine {
+			return errTooLong
+		}
 		b, err := c.readByte()
 		if errors.Is(err, io.EOF) {
 			return nil

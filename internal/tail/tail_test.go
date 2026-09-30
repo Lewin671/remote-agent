@@ -1,6 +1,7 @@
 package tail
 
 import (
+	"bufio"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -89,5 +90,22 @@ func TestLongLinesAreCompacted(t *testing.T) {
 	}
 	if string(lines[1].Data) != `{"b":2}` {
 		t.Fatalf("next line %q", lines[1].Data)
+	}
+}
+
+// G12: compacting a huge line that has nothing long to replace stops as
+// soon as the output passes the limit, instead of building all of it.
+func TestCompactionStopsAtTheLimit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f.jsonl")
+	line := "[" + strings.Repeat(`"ab",`, (3*MaxLine)/5) + `"ab"]`
+	os.WriteFile(path, []byte(line+"\n"), 0o600)
+	f, _ := os.Open(path)
+	defer f.Close()
+	c := &compactor{r: bufio.NewReader(f)}
+	if err := c.run(); err == nil {
+		t.Fatal("no error for a line that stays too long")
+	}
+	if len(c.out) > MaxLine+ElideAbove+16 {
+		t.Fatalf("built %d bytes", len(c.out))
 	}
 }
