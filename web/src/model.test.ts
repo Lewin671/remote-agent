@@ -24,6 +24,7 @@ import {
   previewOf,
   projects,
   queueReason,
+  shortenPaths,
   stateOf,
   statePriority,
   tailPath,
@@ -317,6 +318,33 @@ describe("models", () => {
     expect(findModel(list, "gpt-6-astra")?.slug).toBe("gpt-6-astra");
     expect(findModel(list, "gpt-6-sol")).toBeUndefined();
     expect(findModel(list, "")).toBeUndefined();
+  });
+});
+
+describe("paths in tool titles", () => {
+  // [title, cwd, home, shown]. The same cases are the reference for the
+  // Android client.
+  const cases: [string, string, string, string][] = [
+    ["/Users/me/Code/foo/auth/login.go", "/Users/me/Code/foo", "/Users/me", "auth/login.go"],
+    ["/private/tmp/ra/proj/a.txt", "/tmp/ra/proj", "/Users/me", "a.txt"],
+    ["/tmp/ra/proj/a.txt", "/private/tmp/ra/proj", "/Users/me", "a.txt"],
+    ["cd /Users/me/Code/foo && ls", "/Users/me/Code/foo", "/Users/me", "cd . && ls"],
+    ["cat /Users/me/.zshrc", "/Users/me/Code/foo", "/Users/me", "cat ~/.zshrc"],
+    ["ls /Users/me/Code/foo-bar/x", "/Users/me/Code/foo", "/Users/me", "ls ~/Code/foo-bar/x"],
+    ["go build -o=/Users/me/Code/foo/bin/app ./cmd", "/Users/me/Code/foo/", "/Users/me", "go build -o=bin/app ./cmd"],
+    ["diff /Users/me/Code/foo/a.go /Users/me/Code/bar/a.go", "/Users/me/Code/foo", "/Users/me", "diff a.go ~/Code/bar/a.go"],
+    ['sed -n 1,5p "/Users/me/Code/foo/main.go"', "/Users/me/Code/foo", "/Users/me", 'sed -n 1,5p "main.go"'],
+    ["Read /Users/me/Code/foo/auth/login.go:58", "/Users/me/Code/foo", "/Users/me", "Read auth/login.go:58"],
+    ["cat /etc/hosts /private/etc/hosts", "/Users/me/Code/foo", "/Users/me", "cat /etc/hosts /private/etc/hosts"],
+    ["curl https://example.com/Users/me/x", "/Users/me/Code/foo", "/Users/me", "curl https://example.com/Users/me/x"],
+    ["grep -rn 'a/b' src/Users/me", "/Users/me/Code/foo", "/Users/me", "grep -rn 'a/b' src/Users/me"],
+    ["tail /home/me/app/log.txt", "/srv/app", "/home/me", "tail ~/app/log.txt"],
+    ["tail /home/me/app/log.txt", "/srv/app", "", "tail ~/app/log.txt"],
+    ["cat /Users/me/notes.md", "", "/Users/me", "cat ~/notes.md"],
+    ["/Users/me", "/Users/me/Code/foo", "/Users/me", "~"],
+  ];
+  it.each(cases)("shows %s in %s as expected", (title, cwd, home, shown) => {
+    expect(shortenPaths(title, cwd, home)).toBe(shown);
   });
 });
 

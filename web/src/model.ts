@@ -241,6 +241,36 @@ export function shortPath(p: string): string {
   return p.replace(/^\/Users\/[^/]+/, "~").replace(/^\/home\/[^/]+/, "~");
 }
 
+/** macOS reaches /tmp, /var and /etc through /private; either spelling
+ * names the same folder. */
+function samePlace(p: string): string {
+  return p.replace(/^\/private(?=\/(?:tmp|var|etc)(?:\/|$))/, "");
+}
+
+/** Absolute paths in a tool title, shortened for display. Only whole path
+ * words change (a word starting with / after the start, a space, a quote,
+ * =, :, (, [, { or a comma), so other text stays as it is:
+ * - under the session folder (cwd): relative to it, the folder itself "."
+ * - else under the home folder: ~/…; without home, /Users/<name> and
+ *   /home/<name> count as home
+ * - anything else unchanged, as written
+ * The expanded details keep the original text. */
+export function shortenPaths(text: string, cwd: string, home = ""): string {
+  const base = samePlace(cwd).replace(/\/+$/, "");
+  const h = samePlace(home).replace(/\/+$/, "");
+  return text.replace(/(^|[\s'"=:([{,])(\/[^\s'"`()[\]{}<>|;&,]*)/g, (all, before: string, path: string) => {
+    const p = samePlace(path);
+    if (base && p === base) return before + ".";
+    if (base && p.startsWith(base + "/")) return before + p.slice(base.length + 1);
+    if (h && (p === h || p.startsWith(h + "/"))) return before + "~" + p.slice(h.length);
+    if (!h) {
+      const m = /^\/(?:Users|home)\/[^/]+(?=\/|$)/.exec(p);
+      if (m) return before + "~" + p.slice(m[0].length);
+    }
+    return all;
+  });
+}
+
 /** A path that does not fit keeps its end: …/ai-bot/remote-agent. */
 export function tailPath(p: string, max = 28): string {
   const s = shortPath(p);

@@ -19,6 +19,7 @@ import {
   projectName,
   queueReason,
   shortPath,
+  shortenPaths,
   stateOf,
   timeline,
   titleOf,
@@ -295,6 +296,8 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
   const outbox = remote.outbox(sid);
   const prompt = remote.prompts.get(sid);
   const cwd = session.info?.cwd ?? "";
+  const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
+  const short: Short = (title) => shortenPaths(title, cwd, home);
 
   // Text of a message this page knows, by request ID.
   const textOf = new Map(outbox.map((o) => [o.sendId, o.text]));
@@ -338,7 +341,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} cwd={cwd} machine={machine} agent={agent} textOf={textOf} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -357,7 +360,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
             正在 {machine} 上启动 {agentName(agent)}…
           </div>
         )}
-        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={t.title} since={t.since} />)}
+        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={short(t.title)} since={t.since} />)}
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
         ))}
@@ -400,33 +403,30 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
   );
 }
 
-/** path relative to the session directory; macOS reports /tmp as /private/tmp. */
-function relativePath(path: string, cwd: string): string {
-  const norm = (p: string) => p.replace(/^\/private\//, "/");
-  const p = norm(path);
-  const base = norm(cwd).replace(/\/$/, "") + "/";
-  return p.startsWith(base) ? p.slice(base.length) : shortPath(path);
+/** Shortens the absolute paths in a tool title (see shortenPaths). */
+type Short = (title: string) => string;
+
+function toolTitle(t: ToolCall, short: Short): string {
+  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short(t.title) : short(t.title || t.itemType);
 }
 
-function toolTitle(t: ToolCall, cwd: string): string {
-  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + relativePath(t.title, cwd) : t.title || t.itemType;
-}
-
-function ToolRow({ t, cwd }: { t: ToolCall; cwd: string }) {
+function ToolRow({ t, short }: { t: ToolCall; short: Short }) {
   const [open, setOpen] = useState(false);
   const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
   const secs = Number(t.durationMs) / 1000;
   const out = t.output.replace(/\n+$/, "");
   const lines = out ? out.split("\n") : [];
-  const hasMore = !!t.input && t.input !== t.title;
+  // The details keep the original: the tool's input, or else the title as
+  // the CLI wrote it when paths were shortened for the row.
+  const raw = t.input && t.input !== t.title ? t.input : toolTitle(t, (x) => x) !== toolTitle(t, short) ? t.title || t.itemType : "";
   return (
     <>
       <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span>
-        <code>{toolTitle(t, cwd)}</code>
+        <code>{toolTitle(t, short)}</code>
         {!ok && t.exitCode !== undefined ? <span className="exit">退出码 {t.exitCode}</span> : secs >= 1 ? <span className="muted">{Math.round(secs)}s</span> : null}
       </button>
-      {open && hasMore && <div className="toolout">{t.input}</div>}
+      {open && raw && <div className="toolout">{raw}</div>}
       {(open || !ok) && lines.length > 0 && (
         <div className="toolout">
           {open ? out : lines[0]}
@@ -442,7 +442,7 @@ function ToolRow({ t, cwd }: { t: ToolCall; cwd: string }) {
   );
 }
 
-function ToolGroup({ calls, cwd }: { calls: ToolCall[]; cwd: string }) {
+function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -454,7 +454,7 @@ function ToolGroup({ calls, cwd }: { calls: ToolCall[]; cwd: string }) {
       {open && (
         <div className="grpbody">
           {calls.map((t, i) => (
-            <ToolRow key={i} t={t} cwd={cwd} />
+            <ToolRow key={i} t={t} short={short} />
           ))}
         </div>
       )}
@@ -462,8 +462,8 @@ function ToolGroup({ calls, cwd }: { calls: ToolCall[]; cwd: string }) {
   );
 }
 
-function Row({ it, d, cwd, machine, agent, textOf }: { it: Item; d: Derived; cwd: string; machine: string; agent: Agent; textOf: Map<string, string> }) {
-  if (it.kind === "tools") return <ToolGroup calls={it.calls} cwd={cwd} />;
+function Row({ it, d, short, machine, agent, textOf }: { it: Item; d: Derived; short: Short; machine: string; agent: Agent; textOf: Map<string, string> }) {
+  if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
   const e = it.event;
   const k = e.kind;
@@ -489,7 +489,7 @@ function Row({ it, d, cwd, machine, agent, textOf }: { it: Item; d: Derived; cwd
         </details>
       );
     case "toolCall":
-      return <ToolRow t={k.value} cwd={cwd} />;
+      return <ToolRow t={k.value} short={short} />;
     case "turnEnded":
       return <div className="sysline">已中断</div>;
     case "approvalRequested": {

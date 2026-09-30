@@ -7,7 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
-import { Agent, PlanProposedSchema } from "../gen/remoteagent/v1/event_pb";
+import { Agent, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
 import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
@@ -16,6 +16,7 @@ import { Dock, PlanPage, QuestionPage } from "./Dock";
 import { Home } from "./Home";
 import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
+import { SessionPage } from "./Session";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -394,4 +395,21 @@ it("keeps a question's progress between its page and the dock", async () => {
   // The one-line form names the question now being asked.
   act(() => root!.render(<AskDock r={r} collapsed />));
   expect(host.querySelector(".dock.mini")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
+});
+
+it("shortens paths in tool titles and keeps the original in the details", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-run")!;
+  s.info = { ...s.info!, cwd: "/Users/me/Code/foo" };
+  r.events("s-run").push(
+    create(EventSchema, {
+      seq: BigInt(r.events("s-run").length + 1),
+      kind: { case: "toolCall", value: { title: "cat /Users/me/Code/foo/go.mod /Users/me/.zshrc", kind: ToolKind.COMMAND, status: "failed", exitCode: 1 } },
+    }),
+  );
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const row = [...host.querySelectorAll(".tool code")].find((c) => c.textContent?.startsWith("cat "))!;
+  expect(row.textContent).toBe("cat go.mod ~/.zshrc");
+  await click(row.closest("button")!);
+  expect(host.textContent).toContain("cat /Users/me/Code/foo/go.mod /Users/me/.zshrc");
 });
