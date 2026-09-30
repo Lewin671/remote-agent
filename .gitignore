@@ -24,3 +24,9 @@ web/dist/
 
 # Python release tooling
 __pycache__/
+
+# Release signing and server credentials must never enter Git history
+*.jks
+*.keystore
+signing.properties
+fcm-service-account.json

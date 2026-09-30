@@ -240,7 +240,6 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 **发布**
 
-- 自动发布的设计与规则见 [architecture.md](architecture.md#产品版本与发布)。首次正式发布前需配置 `ANDROID_SIGNING` 和 `ANDROID_GOOGLE_SERVICES`；创建固定签名密钥并上传 GitHub Secrets 的动作被自动审批拒绝，等待用户针对凭据配置明确批准
 - 待验证：GitHub Linux runner 上完整 Release 流水线、正式签名 APK 和 Release 附件。普通 Go、网页及本地 Android 检查不等于正式发布成功
 
 **Android App**

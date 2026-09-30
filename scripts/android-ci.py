@@ -9,6 +9,14 @@ config = Path.home() / ".config/remote-agent"
 config.mkdir(parents=True, exist_ok=True, mode=0o700)
 try:
     signing = json.loads(os.environ["ANDROID_SIGNING"])
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # GitHub masks the JSON secret as a whole; also mask derived fields
+        # before Gradle or other tools can use them.
+        for name in ("storePassword", "keyPassword", "keystoreBase64"):
+            value = signing[name]
+            if not isinstance(value, str) or any(c in value for c in "\r\n"):
+                raise ValueError()
+            print("::add-mask::" + value, flush=True)
     key = base64.b64decode(signing["keystoreBase64"], validate=True)
     values = {"storeFile": "release.jks", **{k: signing[k] for k in ("storePassword", "keyAlias", "keyPassword")}}
     # Values are generated as simple ASCII. Reject Java-properties delimiters
