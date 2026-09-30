@@ -389,10 +389,16 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                 Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp),
                 style = MaterialTheme.typography.bodyMedium, color = p.muted,
             )
-            if (open) Column(Modifier.padding(start = 12.dp)) { item.calls.forEach { ToolRow(it, cwd, home) } }
+            val chat = LocalChat.current
+            if (open) Column(Modifier.padding(start = 12.dp)) {
+                item.calls.forEachIndexed { ci, c ->
+                    ToolRow(c, cwd, home)
+                    // Each call's images stay under it when the group is open.
+                    if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(bottom = 4.dp))
+                }
+            }
             else {
                 // Screenshots stay in sight with the group closed.
-                val chat = LocalChat.current
                 val imgs = item.calls.flatMap { c -> c.imagesList }
                 if (imgs.isNotEmpty()) ImageRow(imgs, { i ->
                     var n = i
