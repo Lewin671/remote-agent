@@ -26,13 +26,21 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Sealed files by folder and name: the pending-image store, or memory in tests. */
+interface SealedFiles {
+    fun put(folder: String, name: String, data: ByteArray)
+    fun get(folder: String, name: String): ByteArray?
+    fun remove(folder: String, name: String)
+    fun clearFolder(folder: String)
+}
+
 /**
  * One image picked for a message. It is processed on the phone, then sent
  * to the machine the message goes to; changing machines sends it again.
- * The processed bytes stay (encrypted on disk) until the message is sent,
- * so nothing has to be picked again.
+ * The processed bytes stay (encrypted on disk) until the CLI has the
+ * message, so nothing has to be picked again.
  */
-class PendingImage(val id: String, val uri: Uri?) {
+class PendingImage(val id: String, val uri: String?) {
     sealed interface State {
         data object Processing : State
         data class Uploading(val progress: Float) : State
@@ -44,14 +52,30 @@ class PendingImage(val id: String, val uri: Uri?) {
     var thumb by mutableStateOf<ImageBitmap?>(null)
     var state by mutableStateOf<State>(State.Processing)
 
-    /** The machine it was sent to and the image ID the daemon gave it there. */
+    /** The machine it goes to (the latest asked for) and the image ID the daemon gave it there. */
     var machineId: String? = null
     var imageId: String? = null
     var transferId: String = newRequestId()
     internal var job: Job? = null
 
     fun readyFor(machine: String) = state == State.Ready && machineId == machine && imageId != null
+
+    /** Lets go of the bytes, the thumbnail and the picker's grant. */
+    fun release() {
+        job?.cancel()
+        processed = null
+        thumb = null
+        uri?.let { u -> runCatching { RaApp.instance.contentResolver.releasePersistableUriPermission(Uri.parse(u), Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
+    }
 }
+
+/**
+ * Whether [img] must (again) be sent to [machineId]: not when it is there
+ * or already on its way there. An upload to another machine does not
+ * count: the latest target wins and the old upload is dropped.
+ */
+fun needsUpload(img: PendingImage, machineId: String): Boolean =
+    img.processed != null && !img.readyFor(machineId) && !(img.state is PendingImage.State.Uploading && img.machineId == machineId)
 
 /** Whether a machine takes images, and if not, why, in words. */
 fun uploadBlocked(m: MachineView?, online: Boolean, name: String): String? {
@@ -67,16 +91,50 @@ fun uploadBlocked(m: MachineView?, online: Boolean, name: String): String? {
 /** The most images a message may carry to this machine: six, or fewer if the daemon says so. */
 fun maxImages(m: MachineView?): Int = capabilities(m)?.maxImagesPerMessage?.takeIf { it in 1 until MAX_IMAGES } ?: MAX_IMAGES
 
+private const val ORDER = "order"
+
+/** Writes images and their order under [folder]; the order file lists them as picked, so a restore keeps it. */
+internal fun saveImages(files: SealedFiles, folder: String, images: List<PendingImage>, original: Boolean) {
+    for (img in images) {
+        val p = img.processed ?: continue
+        files.put(folder, img.id + ".img", p.bytes)
+        val meta = listOf(p.format.number, p.width, p.height, if (original) 1 else 0, img.uri.orEmpty(), p.note).joinToString("\n")
+        files.put(folder, img.id + ".meta", meta.toByteArray())
+    }
+    saveOrder(files, folder, images, original)
+}
+
+internal fun saveOrder(files: SealedFiles, folder: String, images: List<PendingImage>, original: Boolean) {
+    files.put(folder, ORDER, (listOf(if (original) "1" else "0") + images.map { it.id }).joinToString("\n").toByteArray())
+}
+
+/** Images kept under [folder], in the order they were picked, and whether they were originals. */
+internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -> ImageBitmap? = { null }): Pair<List<PendingImage>, Boolean> {
+    val order = files.get(folder, ORDER)?.toString(Charsets.UTF_8)?.split("\n") ?: return emptyList<PendingImage>() to false
+    val original = order.firstOrNull() == "1"
+    val out = mutableListOf<PendingImage>()
+    for (id in order.drop(1).filter { it.isNotEmpty() }) {
+        val meta = files.get(folder, "$id.meta")?.toString(Charsets.UTF_8)?.split("\n") ?: continue
+        val bytes = files.get(folder, "$id.img") ?: continue
+        if (meta.size < 6) continue
+        val img = PendingImage(id, meta[4].takeIf { it.isNotEmpty() })
+        img.processed = Processed(bytes, ImageFormat.forNumber(meta[0].toInt()) ?: ImageFormat.IMAGE_FORMAT_JPEG, meta[1].toInt(), meta[2].toInt(), meta[5])
+        img.thumb = thumb(bytes)
+        // Uploads are the daemon's for a while only: send them again.
+        img.state = PendingImage.State.Failed("需要重新传到电脑")
+        out += img
+    }
+    return out to original
+}
+
 /** The images of one draft (a session's message box or a project's new-session card). */
-class ImageDraft(val key: String) {
+class ImageDraft(val key: String, private val files: SealedFiles = RaApp.instance.pendingStore) {
     val images = mutableStateListOf<PendingImage>()
     var original by mutableStateOf(false)
         private set
 
-    /** Said once after a pick: how many did not fit. */
+    /** Said once after a pick or a put back: how many did not fit. */
     var notice by mutableStateOf("")
-
-    private val store get() = RaApp.instance.pendingStore
 
     fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
         val (taken, left) = takePicked(images.size, picked, max)
@@ -84,11 +142,14 @@ class ImageDraft(val key: String) {
         for (uri in taken) {
             // Kept readable for "原图" later; the picker grant may not last.
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            val img = PendingImage(newRequestId(), uri)
+            val img = PendingImage(newRequestId(), uri.toString())
             images += img
             process(context, img, remote, machine)
         }
+        persistOrder()
     }
+
+    private fun persistOrder() = runCatching { saveOrder(files, key, images, original) }
 
     private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
         img.job?.cancel()
@@ -98,11 +159,14 @@ class ImageDraft(val key: String) {
         img.transferId = newRequestId()
         img.job = RaApp.instance.scope.launch {
             try {
-                val p = withContext(Dispatchers.Default) { processImage(context, img.uri!!, original) }
+                val p = withContext(Dispatchers.Default) { processImage(context, Uri.parse(img.uri!!), original) }
                 img.processed = p
                 img.thumb = withContext(Dispatchers.Default) { thumbnail(p.bytes) }
                 // Kept for a reclaimed process; sending does not depend on it.
-                withContext(Dispatchers.IO) { runCatching { save(img, p) }.onFailure { android.util.Log.w("remote-agent", "pending image not kept: ${it.javaClass.simpleName}") } }
+                withContext(Dispatchers.IO) {
+                    runCatching { saveImages(files, key, images.filter { it.processed != null && it in images }, original) }
+                        .onFailure { android.util.Log.w("remote-agent", "pending image not kept: ${it.javaClass.simpleName}") }
+                }
                 machine()?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
@@ -112,10 +176,14 @@ class ImageDraft(val key: String) {
         }
     }
 
-    /** Sends the image to [machineId] unless it is there already. */
+    /**
+     * Sends the image to [machineId] unless it is there or on its way there.
+     * An upload to another machine is dropped: the latest target wins.
+     */
     fun upload(remote: Remote, img: PendingImage, machineId: String) {
         val p = img.processed ?: return
-        if (img.readyFor(machineId) || img.state is PendingImage.State.Uploading) return
+        if (!needsUpload(img, machineId)) return
+        img.job?.cancel()
         if (img.machineId != machineId) {
             img.transferId = newRequestId()
             img.imageId = null
@@ -126,7 +194,7 @@ class ImageDraft(val key: String) {
             try {
                 val id = try {
                     uploadImage(remote.uploadChannel(machineId), img.transferId, p.bytes) { done, total ->
-                        img.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 0f)
+                        if (img.machineId == machineId) img.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 0f)
                     }
                 } catch (e: CommandException) {
                     // The transfer expired on the daemon: start a new one.
@@ -141,7 +209,7 @@ class ImageDraft(val key: String) {
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                img.state = PendingImage.State.Failed(errorText(e))
+                if (img.machineId == machineId) img.state = PendingImage.State.Failed(errorText(e))
             }
         }
     }
@@ -156,59 +224,84 @@ class ImageDraft(val key: String) {
         else machine()?.let { upload(remote, img, it) }
     }
 
-    /** Originals or compressed, for the whole message: every image is prepared again from what was picked. */
+    /** Originals or compressed, for this message: every image is prepared again from what was picked. */
     fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) {
         if (v == original) return
         original = v
         for (img in images) if (img.uri != null) process(context, img, remote, machine)
+        persistOrder()
     }
 
     fun remove(img: PendingImage) {
-        img.job?.cancel()
         images.remove(img)
-        store.remove(key, img.id + ".img")
-        store.remove(key, img.id + ".meta")
-        img.uri?.let { u -> runCatching { RaApp.instance.contentResolver.releasePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
+        forget(img)
+        img.release()
+        persistOrder()
     }
 
-    fun ready(machineId: String?) = machineId != null && images.all { it.readyFor(machineId) }
+    private fun forget(img: PendingImage) {
+        runCatching {
+            files.remove(key, img.id + ".img")
+            files.remove(key, img.id + ".meta")
+        }
+    }
+
+    fun ready(machineId: String?) = machineId != null && images.isNotEmpty() && images.all { it.readyFor(machineId) }
 
     fun ids(machineId: String): List<String> = images.mapNotNull { if (it.readyFor(machineId)) it.imageId else null }
 
     val totalBytes: Long get() = images.sumOf { it.processed?.bytes?.size?.toLong() ?: 0L }
 
-    /** Forgets the images once their message was accepted. */
+    /**
+     * Takes [taken] out of the draft once a message carries them; images
+     * picked since stay. 原图 goes back to unticked: it is for one message.
+     * The caller keeps the images (see [Outbox]) until the CLI has them.
+     */
+    fun detach(taken: List<PendingImage>) {
+        images.removeAll(taken.toSet())
+        for (img in taken) forget(img)
+        if (images.isEmpty()) original = false
+        persistOrder()
+    }
+
+    /**
+     * Puts images back, e.g. from a message that was not submitted. Nothing
+     * is dropped: when they do not fit with what is here already, nothing
+     * is put back and [notice] says why. Returns whether they went in.
+     */
+    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original): Boolean {
+        if (images.size + back.size > max) {
+            notice = "输入框里已有 ${images.size} 张图，放回这 ${back.size} 张会超过 $max 张。先移除一些再放回"
+            return false
+        }
+        if (images.isEmpty()) original = wereOriginal
+        for (img in back) {
+            img.imageId = null
+            img.machineId = null
+            img.state = PendingImage.State.Failed("需要重新传到电脑")
+            images += img
+        }
+        runCatching { saveImages(files, key, images, original) }
+        return true
+    }
+
+    /** Forgets every image, e.g. when the draft is dropped. */
     fun clear() {
         for (img in images.toList()) remove(img)
         notice = ""
         original = false
-        store.clearDraft(key)
+        runCatching { files.clearFolder(key) }
     }
 
-    private fun save(img: PendingImage, p: Processed) {
-        store.put(key, img.id + ".img", p.bytes)
-        val meta = listOf(p.format.number, p.width, p.height, if (original) 1 else 0, img.uri?.toString().orEmpty(), p.note).joinToString("\n")
-        store.put(key, img.id + ".meta", meta.toByteArray())
-    }
-
-    /** Images kept from before the process was reclaimed; they go to the machine again. */
-    internal fun restore() {
-        val ids = store.names(key).filter { it.endsWith(".meta") }.map { it.removeSuffix(".meta") }
-        for (id in ids) {
-            val meta = store.get(key, "$id.meta")?.toString(Charsets.UTF_8)?.split("\n") ?: continue
-            val bytes = store.get(key, "$id.img") ?: continue
-            if (meta.size < 6) continue
-            val img = PendingImage(id, meta[4].takeIf { it.isNotEmpty() }?.let(Uri::parse))
-            img.processed = Processed(bytes, ImageFormat.forNumber(meta[0].toInt()) ?: ImageFormat.IMAGE_FORMAT_JPEG, meta[1].toInt(), meta[2].toInt(), meta[5])
-            img.thumb = thumbnail(bytes)
-            img.state = PendingImage.State.Failed("需要重新传到电脑")
-            if (meta[3] == "1") original = true
-            images += img
-        }
+    /** Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again. */
+    internal fun restore(thumb: (ByteArray) -> ImageBitmap? = ::thumbnail) {
+        val (list, orig) = loadImages(files, key, thumb)
+        original = orig
+        images += list
     }
 }
 
-private fun thumbnail(bytes: ByteArray): ImageBitmap? {
+internal fun thumbnail(bytes: ByteArray): ImageBitmap? {
     val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, b)
     var s = 1

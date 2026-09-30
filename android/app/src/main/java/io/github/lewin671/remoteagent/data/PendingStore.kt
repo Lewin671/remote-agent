@@ -21,14 +21,19 @@ import javax.crypto.spec.SecretKeySpec
  * for the Keystore to handle quickly); the Keystore wraps that key. Nothing
  * here goes into backups, and logging out deletes it all.
  */
-class PendingStore(context: Context) {
+class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
     private val dir = File(context.noBackupFilesDir, "pending-images").apply { mkdirs() }
     private val keyFile = File(dir, "key.bin")
-    private val key: ByteArray by lazy { loadKey() }
+    // Read or made at first use; forgotten with everything else on logout,
+    // so the next account's images are sealed under a key that is kept.
+    @Volatile private var cachedKey: ByteArray? = null
+    private val key: ByteArray
+        get() = cachedKey ?: synchronized(this) { cachedKey ?: loadKey().also { cachedKey = it } }
 
     private fun folder(draft: String) = File(dir, sha256(draft.toByteArray()).hex().take(32)).apply { mkdirs() }
 
-    fun put(draft: String, name: String, data: ByteArray) {
+    override fun put(folder: String, name: String, data: ByteArray) {
+        val draft = folder
         // Sealed first: the first use of the key may clear what it cannot open.
         val sealed = seal(data)
         val f = File(folder(draft), name)
@@ -37,19 +42,18 @@ class PendingStore(context: Context) {
         tmp.renameTo(f)
     }
 
-    fun get(draft: String, name: String): ByteArray? = File(folder(draft), name).takeIf { it.exists() }?.let { runCatching { open(it.readBytes()) }.getOrNull() }
+    override fun get(folder: String, name: String): ByteArray? = folder.let { draft -> File(folder(draft), name).takeIf { it.exists() }?.let { runCatching { open(it.readBytes()) }.getOrNull() } }
 
-    fun remove(draft: String, name: String) {
-        File(folder(draft), name).delete()
+    override fun remove(folder: String, name: String) {
+        File(folder(folder), name).delete()
     }
 
-    fun names(draft: String): List<String> = key.let { _ -> folder(draft).list()?.filter { !it.endsWith(".tmp") }.orEmpty() }
-
-    fun clearDraft(draft: String) {
-        folder(draft).deleteRecursively()
+    override fun clearFolder(folder: String) {
+        folder(folder).deleteRecursively()
     }
 
     fun clearAll() {
+        cachedKey = null
         dir.listFiles()?.forEach { if (it != keyFile) it.deleteRecursively() }
         keyFile.delete()
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

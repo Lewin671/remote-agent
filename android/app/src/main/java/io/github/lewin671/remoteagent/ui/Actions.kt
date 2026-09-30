@@ -64,6 +64,8 @@ class Outgoing(
     val imageIds: List<String> = emptyList(),
     /** The picked images, for their thumbnails while sending and to put them back. */
     val images: List<PendingImage> = emptyList(),
+    /** They were sent as originals. */
+    val original: Boolean = false,
 ) {
     enum class State { SENDING, SENT, FAILED, UNKNOWN }
 
@@ -127,15 +129,68 @@ object AccountMemory {
     }
 }
 
-/** Messages sent from this device, per session, for this run of the app. */
+/**
+ * Messages with images kept on disk, sealed, from send until the CLI has
+ * them (architecture §17): a reclaimed process can then still retry the
+ * same request or put the message back. An index lists them by session.
+ */
+class OutgoingRecords(private val files: SealedFiles) {
+    private fun folder(sid: String, requestId: String) = "out:$sid:$requestId"
+
+    private fun index(): MutableList<String> =
+        files.get("outbox", "index")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }?.toMutableList() ?: mutableListOf()
+
+    private fun writeIndex(lines: List<String>) = files.put("outbox", "index", lines.joinToString("\n").toByteArray())
+
+    fun save(sid: String, o: Outgoing, original: Boolean) {
+        val f = folder(sid, o.requestId)
+        saveImages(files, f, o.images, original)
+        files.put(f, "text", o.text.toByteArray())
+        files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
+        val line = "$sid\t${o.requestId}"
+        val idx = index()
+        if (line !in idx) writeIndex(idx + line)
+    }
+
+    fun load(sid: String, thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = { null }): List<Outgoing> =
+        index().mapNotNull { line ->
+            val (s, req) = line.split("\t").takeIf { it.size == 2 } ?: return@mapNotNull null
+            if (s != sid) return@mapNotNull null
+            val f = folder(sid, req)
+            val text = files.get(f, "text")?.toString(Charsets.UTF_8) ?: return@mapNotNull null
+            val ids = files.get(f, "ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
+            val (images, original) = loadImages(files, f, thumb)
+            Outgoing(req, text, ids, images, original).apply {
+                // From a run that ended: whether it reached the computer is not known.
+                state = Outgoing.State.UNKNOWN
+                error = "App 重启过，不确定这条有没有送到"
+            }
+        }
+
+    fun remove(sid: String, requestId: String) {
+        files.clearFolder(folder(sid, requestId))
+        writeIndex(index().filter { it != "$sid\t$requestId" })
+    }
+}
+
+/** The messages the CLI has recorded: the ones to let go of. */
+fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>): List<Outgoing> =
+    list.filter { inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED }
+
+/** Messages sent from this device, per session, for this run of the app (and those with images, from before it). */
 object Outbox {
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
+    private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore)
 
-    fun of(sid: String) = bySession.getOrPut(sid) { mutableStateListOf() }
+    fun of(sid: String) = bySession.getOrPut(sid) {
+        mutableStateListOf<Outgoing>().also { list -> runCatching { list += records.load(sid, ::thumbnail) } }
+    }
 
-    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, imageIds: List<String> = emptyList(), images: List<PendingImage> = emptyList()) {
-        val o = Outgoing(newRequestId(), text, imageIds, images)
+    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, imageIds: List<String> = emptyList(), images: List<PendingImage> = emptyList(), original: Boolean = false) {
+        val o = Outgoing(newRequestId(), text, imageIds, images, original)
         of(sid) += o
+        // Kept until the CLI has it; only then do the images go.
+        if (images.isNotEmpty()) runCatching { records.save(sid, o, original) }
         deliver(scope, remote, sid, o)
     }
 
@@ -153,9 +208,31 @@ object Outbox {
         }
     }
 
+    /** Drops a message from here for good: its kept images and their bytes go too. */
     fun remove(sid: String, o: Outgoing) {
         of(sid).remove(o)
+        if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
     }
+
+    /** Takes a message back for the message box: its record goes, its images live on in the draft. */
+    fun takeBack(sid: String, o: Outgoing) {
+        of(sid).remove(o)
+        if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
+    }
+
+    /**
+     * Lets go of messages the CLI has recorded: their images' bytes,
+     * thumbnails and picker grants, and the copies on disk. The chat shows
+     * the images from the session's events from then on.
+     */
+    fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>) {
+        for (o in recorded(of(sid), inputs)) {
+            remove(sid, o)
+            o.images.forEach { it.release() }
+        }
+    }
+
+    fun find(sid: String, requestId: String): Outgoing? = of(sid).firstOrNull { it.requestId == requestId }
 
     private val prompts = HashMap<String, String>()
     private val drafts = HashMap<String, androidx.compose.runtime.MutableState<String>>()

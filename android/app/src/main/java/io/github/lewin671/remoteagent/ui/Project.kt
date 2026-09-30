@@ -309,7 +309,9 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                 val retry = start.attempt.frozen
                 val prepared = start.attempt.next {
                     start.prompt = if (terminalOnly) "" else text.trim()
-                    val ids = if (terminalOnly) emptyList() else images.ids(cfg.machineId)
+                    // The images this request carries; any picked after it stay in the draft.
+                    start.taken = if (terminalOnly) emptyList() else images.images.filter { it.readyFor(cfg.machineId) }
+                    val ids = start.taken.mapNotNull { it.imageId }
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
                             .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).build()
@@ -325,9 +327,12 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                 if (terminalOnly) nav.sessionTerminal(it) else nav.session(it)
             }
             if (!terminalOnly) {
-                text = ""
-                images.clear()
+                if (text.trim() == start.prompt) text = ""
+                val taken = start.taken
+                images.detach(taken)
+                taken.forEach { it.release() }
             }
+            start.taken = emptyList()
         }
     }
     fun start(terminalOnly: Boolean) {
@@ -677,6 +682,8 @@ object Starts {
     class Start {
         val attempt = io.github.lewin671.remoteagent.core.Attempt()
         var prompt = ""
+        /** The images the prepared request names, kept for a retry of the same request. */
+        var taken: List<PendingImage> = emptyList()
     }
 
     private val byProject = HashMap<String, Start>()

@@ -356,7 +356,7 @@ fun duration(ms: Long): String {
 }
 
 @Composable
-fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((String) -> Unit)? = null) {
+fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
     val p = pal
     when (item) {
         is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
@@ -441,7 +441,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("会话结束，没有发出", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
                 if (item.text != null && onPutBack != null) {
-                    androidx.compose.material3.TextButton(onClick = { onPutBack(item.text) }) { Text("放回输入框") }
+                    androidx.compose.material3.TextButton(onClick = { onPutBack(item.requestId, item.text) }) { Text("放回输入框") }
                 }
             }
         }

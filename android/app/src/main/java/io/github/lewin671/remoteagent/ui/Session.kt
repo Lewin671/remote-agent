@@ -224,6 +224,8 @@ private fun ChatPane(
     val cwd = s.info?.cwd.orEmpty()
     val home = state.machines[s.machineId]?.meta?.home.orEmpty()
     val outbox = Outbox.of(s.id)
+    // Messages the CLI has recorded let go of their images.
+    LaunchedEffect(d.inputs.size, events.size) { Outbox.settle(s.id, d.inputs) }
     val devices = state.devices
     val items = remember(events, d, cwd, home, outbox.size, devices) {
         buildChat(events, d, machine, cwd, home, { Outbox.text(s.id, it) }) { o ->
@@ -264,7 +266,13 @@ private fun ChatPane(
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
                 if (!loaded && events.isEmpty()) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
-                items(items, key = { it.key }) { ChatItemView(it, agentName(s.agent()), cwd, home) { text -> Outbox.draft(s.id).value = text } }
+                items(items, key = { it.key }) {
+                    ChatItemView(it, agentName(s.agent()), cwd, home) { requestId, text ->
+                        // A message the session ended before writing: text and images back.
+                        val o = Outbox.find(s.id, requestId)
+                        if (o != null) putBack(remote, s.id, o) else Outbox.draft(s.id).value = text
+                    }
+                }
                 if (error != null) item {
                     Card(Modifier.padding(12.dp)) {
                         Column(Modifier.padding(14.dp)) {
@@ -320,7 +328,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
             input == InputStatus.INPUT_STATUS_FAILED -> {
                 Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框已恢复原样", style = MaterialTheme.typography.bodySmall, color = p.red)
                 Row {
-                    TextButton(onClick = { Outbox.remove(sid, o); putBack(remote, sid, o) }) { Text("放回输入框") }
+                    TextButton(onClick = { putBack(remote, sid, o) }) { Text("放回输入框") }
                 }
             }
             // Not submitted, and part of it may still be in the input box.
@@ -328,7 +336,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
                 Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框里可能还留着一部分，请去终端处理，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.red)
                 Row {
                     TextButton(onClick = onTerminal) { Text("去终端 ›") }
-                    TextButton(onClick = { Outbox.remove(sid, o); putBack(remote, sid, o) }) { Text("放回输入框") }
+                    TextButton(onClick = { putBack(remote, sid, o) }) { Text("放回输入框") }
                 }
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
@@ -341,7 +349,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
                 )
                 Row {
                     TextButton(onClick = { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }) { Text("重试") }
-                    TextButton(onClick = { Outbox.remove(sid, o) }) { Text("移除此提示", color = p.muted) }
+                    TextButton(onClick = { Outbox.remove(sid, o); o.images.forEach { it.release() } }) { Text("移除此提示", color = p.muted) }
                 }
             }
         }
@@ -572,9 +580,9 @@ private fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.r
                     if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
                     text = ""
                     val picked = images.images.toList()
-                    Outbox.send(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked)
-                    images.images.clear()
-                    RaApp.instance.pendingStore.clearDraft(images.key)
+                    // Kept on disk with the message until the CLI has it (Outbox).
+                    Outbox.send(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original)
+                    images.detach(picked)
                 },
                 enabled = online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
                 modifier = Modifier.size(44.dp),
@@ -613,16 +621,18 @@ object OpenTerminal {
 /**
  * A message that was not submitted goes back into the box, text and
  * images, for the user to send again as a new message. Its images go to
- * the computer again: the daemon may have used up the old uploads.
+ * the computer again: the daemon may have used up the old uploads. When
+ * they do not fit next to images already in the box nothing moves, and
+ * the box says why.
  */
-private fun putBack(remote: io.github.lewin671.remoteagent.core.Remote, sid: String, o: Outgoing) {
-    Outbox.draft(sid).value = o.text
+internal fun putBack(remote: io.github.lewin671.remoteagent.core.Remote, sid: String, o: Outgoing): Boolean {
     val d = ImageDrafts.forSession(sid)
-    for (img in o.images) {
-        img.imageId = null
-        img.machineId = null
-        img.state = PendingImage.State.Failed("需要重新传到电脑")
-        d.images += img
-    }
-    remote.state.value.sessions[sid]?.let { d.sendAllTo(remote, it.machineId) }
+    val s = remote.state.value.sessions[sid]
+    val max = maxImages(s?.let { remote.state.value.machines[it.machineId] })
+    if (o.images.isNotEmpty() && !d.attach(o.images, max, o.original)) return false
+    val cur = Outbox.draft(sid).value
+    Outbox.draft(sid).value = if (cur.isBlank()) o.text else cur.trimEnd() + "\n" + o.text
+    Outbox.takeBack(sid, o)
+    s?.let { d.sendAllTo(remote, it.machineId) }
+    return true
 }
