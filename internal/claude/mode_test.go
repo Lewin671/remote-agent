@@ -11,7 +11,7 @@ import (
 // Current evidence that auto is not on offer wins over having seen it
 // with another model (review verify3 P2).
 func TestAutoSeenWithAnotherModel(t *testing.T) {
-	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-haiku-4-5-20251001"}, ""); o["auto"] {
+	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-haiku-4-5-20251001"}); o["auto"] {
 		t.Fatal("haiku now, auto seen before")
 	}
 	a := New("claude", "")

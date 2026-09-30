@@ -248,22 +248,3 @@ func busy(lines []line, top int) bool {
 	}
 	return false
 }
-
-// StatusArea is the plain text under the input box: the status line, the
-// mode line and the notes beside them, which describe the session now,
-// unlike the conversation above. Empty if the input box is not showing.
-func StatusArea(styled string) string {
-	var lines []line
-	for _, l := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
-		lines = append(lines, line{styled: l, plain: strings.ReplaceAll(agent.StripANSI(l), " ", " ")})
-	}
-	_, bottom := composer(lines)
-	if bottom < 0 {
-		return ""
-	}
-	var out []string
-	for _, l := range lines[bottom+1:] {
-		out = append(out, l.plain)
-	}
-	return strings.Join(out, "\n")
-}

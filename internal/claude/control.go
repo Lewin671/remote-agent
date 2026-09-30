@@ -322,18 +322,17 @@ func crosses(from, to string, limit int, offer map[string]bool) bool {
 
 // offered is which of the modes not always on offer, bypass and auto, the
 // session offers, as far as known: bypass from the session's launch-time
-// capability, auto from the screen (it has shown auto, or its status area
-// says "auto mode unavailable for this model") or else the model (haiku
-// has none, claude-code-notes §5). A mode missing from the map is not
-// known. status is the status area under the input box, not the whole
-// screen, whose conversation may quote anything.
-func offered(facts agent.ModeFacts, plain string) map[string]bool {
+// capability; auto from the model (haiku has none, claude-code-notes §5)
+// or from having shown auto on the screen with this model. The status
+// area's "auto mode unavailable for this model" is not used: Claude Code
+// shows it for a while after Shift+Tab skipped auto, and it stays after a
+// switch to a model that has auto. A mode missing from the map is not
+// known.
+func offered(facts agent.ModeFacts) map[string]bool {
 	offer := map[string]bool{"default": true, "acceptEdits": true, "plan": true, "bypassPermissions": facts.FullAccess}
 	model := strings.ToLower(facts.Model)
-	// What says auto is not on offer now wins over having seen it, which
-	// the daemon counts per model.
 	switch {
-	case strings.Contains(plain, "auto mode unavailable for this model"), strings.Contains(model, "haiku"):
+	case strings.Contains(model, "haiku"):
 		offer["auto"] = false
 	case slices.Contains(facts.Seen, "auto"):
 		offer["auto"] = true
@@ -372,7 +371,7 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	if err != nil {
 		return err
 	}
-	offer := offered(facts, StatusArea(styled))
+	offer := offered(facts)
 	if on, known := offer[want]; known && !on {
 		if mode == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
 			return fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported)

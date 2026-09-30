@@ -554,11 +554,11 @@ func TestSetModeIdleBurst(t *testing.T) {
 	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, true, factsSonnet); err != nil || cycle[f.mode] != "plan" {
 		t.Fatalf("safe way: %v %s", err, cycle[f.mode])
 	}
-	// The screen's note settles auto even with no model known.
-	if o := offered(factsUnknown, "   Haiku 4.5  │  w   auto mode unavailable for this model"); o["auto"] {
-		t.Fatal("the note was not read")
+	// With no model known, auto is not known either.
+	if _, known := offered(factsUnknown)["auto"]; known {
+		t.Fatal("auto known without a model")
 	}
-	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-sonnet-5-5"}, ""); !o["auto"] {
+	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "claude-sonnet-5-5"}); !o["auto"] {
 		t.Fatal("a mode seen on the screen is on offer")
 	}
 }
@@ -577,19 +577,18 @@ func TestBackgroundWork(t *testing.T) {
 	}
 }
 
-// The "auto mode unavailable" note counts only in the live status area:
-// quoted in the conversation it says nothing, and a running Plan → ask
-// would pass auto (review verify3 P1).
-func TestAutoNoteOnlyInStatusArea(t *testing.T) {
+// The "auto mode unavailable" note says nothing: quoted in the
+// conversation, or left in the status area from a model without auto
+// (Claude Code shows it for a while after Shift+Tab skipped auto), it must
+// not make a running Plan → ask look safe when that passes auto.
+func TestAutoNoteIgnored(t *testing.T) {
 	a := New("claude", "")
 	facts := agent.ModeFacts{Model: "claude-sonnet-5-5"} // no bypass; auto on offer
-	f := &fakeClaude{noBypass: true, note: "⏺ The CLI said: auto mode unavailable for this model"}
-	f.mode = index("plan")
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, facts); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
-		t.Fatalf("running plan → ask via auto: %v %q", err, f.writes)
-	}
-	styled := rule + "\n\x1b[39m❯ \x1b[7m \x1b[0m\n" + rule + "\n   Sonnet 5.5  │  w     auto mode unavailable for this model\n  ⏸ plan mode on\n"
-	if StatusArea(styled) == "" || offered(facts, StatusArea(styled))["auto"] {
-		t.Fatal("the note in the status area was not read")
+	for _, note := range []string{"⏺ The CLI said: auto mode unavailable for this model", ""} {
+		f := &fakeClaude{noBypass: true, note: note, background: map[bool]string{true: "  auto mode unavailable for this model", false: ""}[note == ""]}
+		f.mode = index("plan")
+		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, facts); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
+			t.Fatalf("running plan → ask via auto, note %q: %v %q", note, err, f.writes)
+		}
 	}
 }
