@@ -39,4 +39,26 @@ class ProjectTest {
         // No daemon default: the CLI's own configuration decides.
         assertEquals(LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED), launchMode(null, DaemonSettings.getDefaultInstance(), Agent.AGENT_CODEX))
     }
+
+    @Test
+    fun aDraftKeepsItsConfigurationWhenTheProjectChanges() {
+        val first = NewConfig("m1", "/work/app", Agent.AGENT_CODEX, "gpt-a")
+        val moved = NewConfig("m2", "/work/app", Agent.AGENT_CLAUDE)
+        val d = DraftConfig(first)
+        // Nothing written yet: it follows the project.
+        d.follow(moved, drafting = false)
+        assertEquals(moved, d.value)
+        d.follow(first, drafting = false)
+        // Once a draft is begun, an update does not retarget it.
+        d.follow(moved, drafting = true)
+        assertEquals(first, d.value)
+        // Sent and cleared, it follows again.
+        d.follow(moved, drafting = false)
+        assertEquals(moved, d.value)
+        // A choice stays even with nothing written.
+        val mine = NewConfig("m1", "/work/app", Agent.AGENT_CODEX, mode = Mode.ASK)
+        d.choose(mine)
+        d.follow(first, drafting = false)
+        assertEquals(mine, d.value)
+    }
 }

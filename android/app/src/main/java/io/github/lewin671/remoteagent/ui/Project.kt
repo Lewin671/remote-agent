@@ -118,6 +118,28 @@ fun modeLabel(chosen: Mode?, settings: DaemonSettings?, agent: Agent): String = 
     else -> defaultMode(settings, agent)?.let { "默认：${it.text}" } ?: "默认模式（${agentName(agent)} 自己的配置）"
 }
 
+/**
+ * A new session's configuration (architecture §8): it follows the project,
+ * whose latest session or machines may change, until a draft is begun or the
+ * user changes it, then it stays, so an update never retargets a draft.
+ */
+class DraftConfig(initial: NewConfig?) {
+    var value by mutableStateOf(initial)
+        private set
+    private var chosen = false
+
+    /** A new suggestion from the project; taken only while nothing is written or chosen. */
+    fun follow(initial: NewConfig?, drafting: Boolean) {
+        if (value == null || (!chosen && !drafting)) value = initial
+    }
+
+    /** The user's own choice, kept from now on. */
+    fun choose(c: NewConfig) {
+        value = c
+        chosen = true
+    }
+}
+
 /** What pressing send does about the approval mode. */
 sealed interface LaunchMode {
     /** Start in this mode, named explicitly so the session runs in what was shown. */
@@ -191,12 +213,14 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    var config by remember(initial) { mutableStateOf(initial) }
+    val key = initial?.cwd ?: name
+    val draft = remember(key) { DraftConfig(initial) }
+    val config = draft.value
     var text by rememberSaveable { mutableStateOf("") }
     var change by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
-    val key = initial?.cwd ?: name
+    LaunchedEffect(initial, text.isNotBlank()) { draft.follow(initial, text.isNotBlank()) }
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
     // The machine's defaults, to show and confirm the mode a start will use.
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
@@ -304,7 +328,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
             onDismiss = { confirmFull = null },
         ) { launch(cfg, ApprovalMode.APPROVAL_MODE_FULL_ACCESS) }
     }
-    if (change && c != null) ConfigSheet(state, c, onDone = { config = it; change = false }, onClose = { change = false })
+    if (change && c != null) ConfigSheet(state, c, onDone = { draft.choose(it); change = false }, onClose = { change = false })
 }
 
 /** 这次的设置: machine (those the project used), folder, CLI, model, effort and mode. */
