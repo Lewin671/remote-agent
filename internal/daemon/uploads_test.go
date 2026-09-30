@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 const tid = "0123456789abcdef0123456789abcdef"
@@ -189,5 +190,232 @@ func TestImageMovesAreRecoverable(t *testing.T) {
 	}
 	if imgs, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil || len(imgs) != 1 {
 		t.Fatalf("take after recovery: %v", err)
+	}
+}
+
+func TestUploadExpiryWithoutGC(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
+	beginUpload(t, u, data, "d")
+	tr, err := u.load(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr.UpdatedMs = time.Now().Add(-partialTTL).UnixMilli()
+	if err := u.save(tr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "d"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("expired transfer revived: %v", err)
+	}
+	st := completeUpload(t, u, "d")
+	tr, err = u.load(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr.CompletedMs = time.Now().Add(-unusedTTL).UnixMilli()
+	if err := u.save(tr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.take([]string{st.ImageId}, "d", "s1"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("expired image accepted: %v", err)
+	}
+	if _, err := os.Stat(u.pending(st.ImageId + ".png")); !os.IsNotExist(err) {
+		t.Fatalf("expired image bytes remain: %v", err)
+	}
+}
+
+func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	st := completeUpload(t, u, "d")
+	imgs, err := u.take([]string{st.ImageId}, "d", "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := paths.SessionDir("s1")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	m := &meta{ID: "s1"}
+	if err := m.save(dir); err != nil {
+		t.Fatal(err)
+	}
+	u.gc(time.Now().Add(48 * time.Hour))
+	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+		t.Fatalf("used image ownership expired: %v", err)
+	}
+	if _, err := u.take([]string{st.ImageId}, "other", "s1"); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("used ownership lost: %v", err)
+	}
+	// Simulate a crash after saving Exited, before deleting uploads.
+	m.Exited = true
+	if err := m.save(dir); err != nil {
+		t.Fatal(err)
+	}
+	u = newUploads()
+	u.gc(time.Now())
+	for _, path := range []string{imgs[0].Path, u.partial(tid) + ".json"} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("exited upload remains: %s: %v", path, err)
+		}
+	}
+}
+
+func TestUploadGCSweepsOrphans(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	st := completeUpload(t, u, "d")
+	stale := time.Now().Add(-25 * time.Hour)
+	orphans := []string{u.pending("orphan.png"), u.pending("orphan.png.tmp"), u.partial("orphan.part"), u.partial("orphan.json.tmp"), u.partial("broken.json")}
+	for _, path := range orphans {
+		if err := os.WriteFile(path, []byte("broken"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, stale, stale); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fresh := u.pending("fresh.png")
+	if err := os.WriteFile(fresh, []byte("fresh"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// A crash after saving complete can leave the original partial copy.
+	if err := os.WriteFile(u.partial(tid)+".part", []byte("redundant"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	u.gc(time.Now())
+	for _, path := range append(orphans, u.partial(tid)+".part") {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("orphan remains: %s: %v", path, err)
+		}
+	}
+	for _, path := range []string{fresh, u.pending(st.ImageId + ".png")} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("fresh or referenced file removed: %v", err)
+		}
+	}
+}
+
+func TestCompleteSaveFailureLeavesNoOrphan(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
+	beginUpload(t, u, data, "d")
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "d"); err != nil {
+		t.Fatal(err)
+	}
+	// Force the atomic record write to fail after the image write succeeds.
+	if err := os.Mkdir(u.partial(tid)+".json.tmp", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.complete(tid, "d"); err == nil {
+		t.Fatal("record write succeeded unexpectedly")
+	}
+	entries, err := os.ReadDir(filepath.Join(u.dir, "pending"))
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("untracked image left: %v %v", entries, err)
+	}
+	if _, err := u.complete(tid, "d"); err != nil {
+		t.Fatalf("cannot retry complete: %v", err)
+	}
+}
+
+func TestUploadCreatesMissingFoldersAndRetriesDoNotExtendExpiry(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "missing", "home")
+	t.Setenv("REMOTE_AGENT_HOME", home)
+	u := newUploads()
+	u.reconcile()
+	u.gc(time.Now()) // first run: none of the folders exists yet
+	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
+	beginUpload(t, u, data, "d")
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "d"); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := u.load(tid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr.UpdatedMs = time.Now().Add(-30 * time.Minute).UnixMilli()
+	if err := u.save(tr); err != nil {
+		t.Fatal(err)
+	}
+	st, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "d")
+	if err != nil || st.ExpiresMs != tr.expiresMs() {
+		t.Fatalf("duplicate extended expiry: %v %v", st, err)
+	}
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid}, "d"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("empty chunk accepted: %v", err)
+	}
+	st, err = u.complete(tid, "d")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUploadQuotaReservesIncomingBytesAndRecovers(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	u.quota = 1 << 20
+	req := &pb.BeginImageUploadRequest{TransferId: tid, Format: pb.ImageFormat_IMAGE_FORMAT_PNG, TotalBytes: 768 << 10, Sha256: make([]byte, 32)}
+	if _, err := u.begin(req, "d"); err != nil {
+		t.Fatal(err)
+	}
+	// Nothing has arrived yet, but its declared bytes are reserved.
+	req.TransferId = "1123456789abcdef0123456789abcdef"
+	if _, err := u.begin(req, "d"); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("unbounded reservation: %v", err)
+	}
+	if err := u.abort(tid, "d"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.begin(req, "d"); err != nil {
+		t.Fatalf("abort did not free quota: %v", err)
+	}
+	if err := u.abort(req.TransferId, "d"); err != nil {
+		t.Fatal(err)
+	}
+	// Legacy session originals still count even if they have no transfer record.
+	sdir := u.sessionDir("legacy")
+	if err := os.MkdirAll(sdir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sdir, "image.png"), make([]byte, 768<<10), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.begin(req, "d"); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("legacy original ignored: %v", err)
+	}
+	u.dropSession("legacy")
+	if _, err := u.begin(req, "d"); err != nil {
+		t.Fatalf("session cleanup did not free quota: %v", err)
+	}
+}
+
+func TestExitedUploadRecordCleanedWithoutImageFolder(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	st := completeUpload(t, u, "d")
+	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+		t.Fatal(err)
+	}
+	dir := paths.SessionDir("s1")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&meta{ID: "s1", Exited: true}).save(dir); err != nil {
+		t.Fatal(err)
+	}
+	// Crash after the folder is gone but before the transfer record unlink.
+	if err := os.RemoveAll(u.sessionDir("s1")); err != nil {
+		t.Fatal(err)
+	}
+	u.gc(time.Now())
+	if _, err := u.status(tid, "d"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("exited record left: %v", err)
 	}
 }

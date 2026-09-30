@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ const (
 	maxMessageImages = 6
 	partialTTL       = time.Hour
 	unusedTTL        = 24 * time.Hour
+	maxUploadStorage = int64(1 << 30)
 )
 
 var uploadFormats = []pb.ImageFormat{
@@ -94,10 +96,13 @@ func (t *transfer) status() *pb.ImageUploadStatus {
 type uploads struct {
 	dir string
 
-	mu sync.Mutex
+	mu    sync.Mutex
+	quota int64
 }
 
-func newUploads() *uploads { return &uploads{dir: filepath.Join(paths.Dir(), "uploads")} }
+func newUploads() *uploads {
+	return &uploads{dir: filepath.Join(paths.Dir(), "uploads"), quota: maxUploadStorage}
+}
 
 func (u *uploads) partial(id string) string   { return filepath.Join(u.dir, "partial", id) }
 func (u *uploads) pending(name string) string { return filepath.Join(u.dir, "pending", name) }
@@ -126,7 +131,19 @@ func (u *uploads) load(id string) (*transfer, error) {
 	if err := json.Unmarshal(b, t); err != nil {
 		return nil, err
 	}
+	// Enforce the advertised expiry even between periodic GC passes.
+	if t.Session == "" && time.Now().UnixMilli() >= t.expiresMs() {
+		u.remove(t.ID)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer expired; upload it again"))
+	}
 	return t, nil
+}
+
+func (t *transfer) expiresMs() int64 {
+	if t.ImageID == "" {
+		return t.UpdatedMs + partialTTL.Milliseconds()
+	}
+	return t.CompletedMs + unusedTTL.Milliseconds()
 }
 
 func (u *uploads) save(t *transfer) error {
@@ -193,6 +210,10 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 	} else if connect.CodeOf(err) != connect.CodeNotFound {
 		return nil, err
 	}
+	u.gcLocked(time.Now())
+	if err := u.room(req.TotalBytes + 1024); err != nil {
+		return nil, err
+	}
 	for _, d := range []string{filepath.Join(u.dir, "partial"), filepath.Join(u.dir, "pending")} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return nil, err
@@ -227,6 +248,8 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 			return t.status(), nil // a late retry of a chunk of a finished upload
 		}
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the transfer is complete"))
+	case n == 0:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a chunk must not be empty"))
 	case n > maxUploadChunk:
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a chunk carries at most %d bytes", maxUploadChunk))
 	case req.Offset < 0 || req.Offset > t.Persisted:
@@ -257,8 +280,8 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 			return nil, err
 		}
 		t.Persisted = req.Offset + n
+		t.UpdatedMs = time.Now().UnixMilli()
 	}
-	t.UpdatedMs = time.Now().UnixMilli()
 	if err := u.save(t); err != nil {
 		return nil, err
 	}
@@ -321,6 +344,14 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	if err != nil {
 		return nil, bad("the image's metadata cannot be read")
 	}
+	if len(clean) > maxUploadBytes {
+		return nil, bad("the cleaned image exceeds the image size limit")
+	}
+	// The original .part goes away after commit; allow only this one
+	// bounded extra copy while the cleaned file and its record are saved.
+	if err := u.room(int64(len(clean)-len(data)) + 1024); err != nil {
+		return nil, err
+	}
 	format := imageproc.Sniff(clean)
 	imageID := newID(16)
 	if err := writeFileSync(u.pending(imageID+"."+imageproc.Ext(format)), clean); err != nil {
@@ -329,6 +360,7 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	b := img.Bounds()
 	t.ImageID, t.Width, t.Height, t.CompletedMs, t.Format = imageID, int32(b.Dx()), int32(b.Dy()), time.Now().UnixMilli(), format
 	if err := u.save(t); err != nil {
+		_ = os.Remove(u.pending(imageID + "." + imageproc.Ext(format)))
 		return nil, err
 	}
 	_ = os.Remove(u.partial(t.ID) + ".part")
@@ -361,7 +393,10 @@ func (u *uploads) remove(id string) {
 	if err == nil {
 		t := &transfer{}
 		if json.Unmarshal(b, t) == nil && t.ImageID != "" && t.Session == "" {
-			_ = os.Remove(u.pending(t.ImageID + "." + imageproc.Ext(t.Format)))
+			if err := os.Remove(u.pending(t.ImageID + "." + imageproc.Ext(t.Format))); err != nil && !os.IsNotExist(err) {
+				slog.Error("remove unused image", "image", t.ImageID, "err", errClass(err))
+				return // keep its record so GC can retry
+			}
 		}
 	}
 	_ = os.Remove(u.partial(id) + ".part")
@@ -542,24 +577,54 @@ func (u *uploads) untake(imgs []queuedImage, sessionID string) {
 	}
 }
 
-// dropSession deletes the images a session was sent, once it has ended.
+// dropSession deletes files and ownership records together. Failed deletes
+// retain the records, and periodic GC retries using the exited session's meta.
 func (u *uploads) dropSession(sessionID string) {
-	if sessionID == "" || strings.ContainsAny(sessionID, "/.") {
-		return
-	}
-	_ = os.RemoveAll(u.sessionDir(sessionID))
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.dropSessionLocked(sessionID)
 }
 
-// gc deletes unfinished transfers and unused images past their time, and
-// the records of used ones after a day.
+func (u *uploads) dropSessionLocked(sessionID string) {
+	if sessionID == "" || sessionID == "partial" || sessionID == "pending" || strings.ContainsAny(sessionID, "/.\\") {
+		return
+	}
+	if err := os.RemoveAll(u.sessionDir(sessionID)); err != nil {
+		slog.Error("remove session images", "session", sessionID, "err", errClass(err))
+		return
+	}
+	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".json") {
+			t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
+			if err == nil && t.Session == sessionID {
+				u.remove(t.ID)
+			}
+		}
+	}
+}
+
+// gc keeps used records while the session runs (including retries after a
+// day), expires unused uploads, and sweeps files left by interrupted writes.
 func (u *uploads) gc(now time.Time) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	u.gcLocked(now)
+}
+
+func (u *uploads) gcLocked(now time.Time) {
+	entries, err := os.ReadDir(filepath.Join(u.dir, "partial"))
+	if err != nil && !os.IsNotExist(err) {
+		slog.Error("scan uploads", "err", errClass(err))
+		return
+	}
+	referenced := map[string]bool{}
 	for _, e := range entries {
 		name := e.Name()
 		if !strings.HasSuffix(name, ".json") {
-			if strings.HasSuffix(name, ".part") {
+			if strings.HasSuffix(name, ".tmp") {
+				_ = os.Remove(u.partial(name))
+			} else if strings.HasSuffix(name, ".part") {
 				if _, err := os.Stat(u.partial(strings.TrimSuffix(name, ".part")) + ".json"); os.IsNotExist(err) {
 					_ = os.Remove(u.partial(name))
 				}
@@ -568,19 +633,109 @@ func (u *uploads) gc(now time.Time) {
 		}
 		t, err := u.load(strings.TrimSuffix(name, ".json"))
 		if err != nil {
+			// Corrupt records cannot protect bytes indefinitely. Leave a
+			// day to recover them manually before treating them as orphaned.
+			if fi, e := e.Info(); e == nil && now.Sub(fi.ModTime()) >= unusedTTL {
+				u.remove(strings.TrimSuffix(name, ".json"))
+			}
 			continue
 		}
-		var at int64
-		switch t.state() {
-		case pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING:
-			at = t.UpdatedMs + partialTTL.Milliseconds()
-		default:
-			at = t.CompletedMs + unusedTTL.Milliseconds()
+		if t.Session != "" {
+			if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
+				// Retry record deletion even if the image directory was
+				// already deleted before a crash or a failed unlink.
+				u.dropSessionLocked(t.Session)
+				continue
+			}
 		}
-		if now.UnixMilli() >= at {
+		if t.Session == "" && now.UnixMilli() >= t.expiresMs() {
 			u.remove(t.ID)
+			continue
+		}
+		if t.ImageID != "" {
+			referenced[t.ImageID+"."+imageproc.Ext(t.Format)] = true
+			// Complete uploads no longer need the received original.
+			_ = os.Remove(u.partial(t.ID) + ".part")
 		}
 	}
+	pending, _ := os.ReadDir(filepath.Join(u.dir, "pending"))
+	for _, e := range pending {
+		if e.IsDir() || referenced[e.Name()] {
+			continue
+		}
+		fi, err := e.Info()
+		if err == nil && (strings.HasSuffix(e.Name(), ".tmp") || now.Sub(fi.ModTime()) >= unusedTTL) {
+			if err := os.Remove(u.pending(e.Name())); err != nil {
+				slog.Error("remove orphan image", "err", errClass(err))
+			}
+		}
+	}
+	// Covers a crash after Exited was saved but before dropSession, and
+	// legacy session folders whose transfer records were aged out.
+	folders, _ := os.ReadDir(u.dir)
+	for _, e := range folders {
+		if !e.IsDir() || e.Name() == "partial" || e.Name() == "pending" {
+			continue
+		}
+		m, err := loadMeta(paths.SessionDir(e.Name()))
+		if err == nil && m.Exited {
+			u.dropSessionLocked(e.Name())
+		} else if os.IsNotExist(err) {
+			// A failed session creation may have returned files to pending
+			// and removed its meta, leaving an empty/orphan directory.
+			if fi, err := e.Info(); err == nil && now.Sub(fi.ModTime()) >= unusedTTL {
+				u.dropSessionLocked(e.Name())
+			}
+		}
+	}
+}
+
+// room counts disk bytes plus the yet-to-arrive bytes reserved by partial
+// uploads. Never evict a live session's originals: Codex may read them again.
+// Callers hold u.mu. Counting reservations prevents concurrent uploads from
+// all passing a free-space check before their chunks arrive.
+func (u *uploads) room(add int64) error {
+	var used int64
+	err := filepath.WalkDir(u.dir, func(path string, e fs.DirEntry, err error) error {
+		if os.IsNotExist(err) && path == u.dir {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !e.Type().IsRegular() {
+			return nil
+		}
+		fi, err := e.Info()
+		if err != nil {
+			return err
+		}
+		used += fi.Size()
+		if filepath.Dir(path) == filepath.Join(u.dir, "partial") && strings.HasSuffix(e.Name(), ".json") {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			var t transfer
+			if json.Unmarshal(b, &t) == nil && t.ImageID == "" && validHexID(t.ID) {
+				var received int64
+				if fi, err := os.Stat(u.partial(t.ID) + ".part"); err == nil {
+					received = fi.Size()
+				} else if !os.IsNotExist(err) {
+					return err
+				}
+				used += max(int64(0), t.Total-received)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if used+add > u.quota {
+		return connect.NewError(connect.CodeResourceExhausted, errors.New("this machine's image upload storage is full; end unused sessions or wait for unused images to expire"))
+	}
+	return nil
 }
 
 // gcLoop runs gc every ten minutes until stop is closed.

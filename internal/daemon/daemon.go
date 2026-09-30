@@ -153,6 +153,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 
 	d.ctx = ctx
+	d.uploads.reconcile()
 	if err := d.restore(); err != nil {
 		return err
 	}
@@ -164,7 +165,6 @@ func (d *Daemon) Run(ctx context.Context) error {
 			slog.Warn("this CLI version has not been checked with remote-agent; run `remote-agent doctor`", "agent", a.Name(), "version", v)
 		}
 	}
-	d.uploads.reconcile()
 	go d.uploads.gcLoop(ctx.Done())
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
