@@ -36,6 +36,7 @@
 | 记录 | 含义 |
 |---|---|
 | `type: "user"`，`message.content` 是字符串，带 `origin: {kind: "human"}`、`promptSource: "typed"`、`promptId`、`permissionMode` | 用户发的一条消息，也就是**一轮的开始**。远程用 bracketed paste 注入的消息同样记为 `typed`；多行正文原样保留 |
+| `type: "user"`，`origin: {kind: "task-notification"}`，`promptSource: "system"` | 后台工作结束的通知，Claude Code 自己开的一轮（§10） |
 | `type: "user"`，带 `isMeta: true` | Claude Code 自己加的提示（如 `[Your previous response had no visible output…]`、`<local-command-caveat>`），不是用户说的 |
 | `type: "user"`，正文是 `<command-name>/model</command-name>…`、`<local-command-stdout>…</local-command-stdout>` | 斜杠命令和它的输出，没有 `origin`。`/model` 的输出如 `Set model to Sonnet 5.5 for this session only with low effort` |
 | `type: "user"`，`isCompactSummary: true` | 压缩后的摘要 |
@@ -171,6 +172,13 @@
 | Enter | 输入框里的消息**排队**：transcript 记 `queue-operation` `enqueue`，输入框上方显示这条消息，占位提示变成 `Press up to edit queued messages`。工具结束时它被并入当前这一轮（`queue-operation` `remove`，`reason: absorbed_mid_turn`，再有一条 `queued_command` 附件），模型在同一轮里回应 | 发送 |
 
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
+
+后台工作（haiku 实测）：
+
+- Bash 的 `run_in_background`：工具结果显示 `Running in the background (↓ to manage)`；这一轮的结束行变成 `✻ Worked for 5s · done 4:54 PM · 1 shell still running`，这一行在命令结束后仍留在屏幕上；**模式行**多出 `· 1 shell`（如 `⏵⏵ accept edits on · 1 shell · ← for agents`），命令结束后消失
+- 后台子代理（Agent 工具的 `run_in_background`）：输入框上方显示 `✻ Waiting for 1 background agent to finish`，模式行下面列出 `⏺ main` 和每个子代理（`◯ general-purpose  <说明>  6s · ↓ 12.9k tokens`）。结束后列表消失，模式行里剩 `/tasks to see subagents`。启动它的那一轮照常以 `turn_duration` 结束，记录里带 `pendingBackgroundAgentCount: 1`
+- 后台工作结束时，Claude Code 自己发起新的一轮：transcript 先有 `queue-operation`，再有一条正文为 `<task-notification>…` 的用户记录，`origin.kind` 为 `task-notification`、`promptSource` 为 `system`，然后模型回复，以 `turn_duration` 结束
+- Shift+Tab 一次连续写入多个（`tmux send-keys -H` 一次发三个 `\e[Z`）：全部生效，模式行直接显示走完三步后的模式
 
 ## 11. 压缩和恢复
 
