@@ -291,3 +291,20 @@ func TestStripJPEGAfterScans(t *testing.T) {
 		t.Fatal("clean JPEG changed")
 	}
 }
+
+// V4: a restart marker after fill bytes (FF FF D0) is part of the scan.
+func TestStripJPEGFilledRestart(t *testing.T) {
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, noise(16, 16, false), &jpeg.Options{Quality: 80})
+	b := buf.Bytes()
+	eoi := len(b) - 2
+	scan := append(seg(0xDA, []byte{1, 1, 0x11, 1, 63, 0x10}), 0x12, 0xFF, 0xFF, 0xD0, 0x56, 0xFF, 0x00, 0x78)
+	in := append(append(append([]byte(nil), b[:eoi]...), scan...), 0xFF, 0xD9)
+	clean, err := StripMetadata(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(clean, in) {
+		t.Fatal("scan changed")
+	}
+}

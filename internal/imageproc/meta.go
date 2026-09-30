@@ -195,15 +195,28 @@ func stripJPEG(b []byte) ([]byte, error) {
 		}
 		// Entropy-coded data follows a scan header, up to the next marker
 		// that is neither a stuffed 0xFF nor a restart marker.
+		// Fill bytes (more 0xFF) may come before a restart marker too.
 		j := i
 		for {
 			if j+1 >= len(b) {
 				return nil, errCorrupt
 			}
-			if b[j] == 0xFF && b[j+1] != 0x00 && !(b[j+1] >= 0xD0 && b[j+1] <= 0xD7) {
-				break
+			if b[j] != 0xFF {
+				j++
+				continue
 			}
-			j++
+			k := j
+			for k+1 < len(b) && b[k+1] == 0xFF {
+				k++
+			}
+			if k+1 >= len(b) {
+				return nil, errCorrupt
+			}
+			if next := b[k+1]; next == 0x00 || next >= 0xD0 && next <= 0xD7 {
+				j = k + 2
+				continue
+			}
+			break
 		}
 		out = append(out, b[i:j]...)
 		i = j
