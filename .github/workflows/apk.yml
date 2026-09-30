@@ -29,6 +29,10 @@ jobs:
             android/gradle/libs.versions.toml
             android/gradle/wrapper/gradle-wrapper.properties
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          # Google no longer publishes the legacy "tools" package.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
       - name: Restore fixed APK signing configuration
         env:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
