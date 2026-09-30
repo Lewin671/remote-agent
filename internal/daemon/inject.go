@@ -125,6 +125,14 @@ const (
 // accepted message survives a daemon restart. It returns the queue
 // position; a retried request ID is accepted once (position 0).
 func (s *session) enqueue(text, requestID string, images []queuedImage, origin *pb.Origin) (int, error) {
+	return s.enqueueMode(text, requestID, images, origin, pb.SendMode_SEND_MODE_STEER)
+}
+
+// enqueueMode is enqueue with a delivery mode.
+func (s *session) enqueueMode(text, requestID string, images []queuedImage, origin *pb.Origin, mode pb.SendMode) (int, error) {
+	if mode == pb.SendMode_SEND_MODE_UNSPECIFIED {
+		mode = pb.SendMode_SEND_MODE_STEER
+	}
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
@@ -137,8 +145,8 @@ func (s *session) enqueue(text, requestID string, images []queuedImage, origin *
 		return 0, nil
 	}
 	prevQueue, prevSeen := s.queue.Queue, s.queue.Seen
-	s.queue.Queue = append(s.queue.Queue[:len(s.queue.Queue):len(s.queue.Queue)], input{
-		Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING,
+	pos := s.queue.insert(input{
+		Text: text, RequestID: requestID, Images: images, Origin: storeOrigin(origin), Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: mode,
 	})
 	s.queue.remember(requestID)
 	if err := s.queue.save(s.dir); err != nil {
@@ -146,9 +154,8 @@ func (s *session) enqueue(text, requestID string, images []queuedImage, origin *
 		s.mu.Unlock()
 		return 0, fmt.Errorf("save input queue: %w", err)
 	}
-	pos := len(s.queue.Queue)
 	s.mu.Unlock()
-	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text}
+	st := &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Text: text, Mode: mode}
 	for _, im := range images {
 		st.ImageIds = append(st.ImageIds, im.ID)
 	}
@@ -177,10 +184,19 @@ func (s *session) injectLoop(ctx context.Context) {
 		s.mu.Lock()
 		var next input
 		ok := len(s.queue.Queue) > 0 && !s.meta.Exited
+		held := false
 		if ok {
 			next = s.queue.Queue[0]
+			held = s.holdsLocked(next)
 		}
 		s.mu.Unlock()
+		if held {
+			// A queue message waits for the turn to end; a paused one
+			// for the user. Check again now and then: the fallback of
+			// holdsLocked needs time to pass.
+			retry.Reset(time.Second)
+			goto wait
+		}
 		if ok {
 			outcome := written
 			var err error
@@ -492,7 +508,9 @@ func (s *session) recoverPaste(in input) (inputOutcome, error) {
 // setStage saves how far the head message has got and reports it.
 func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int32) error {
 	s.mu.Lock()
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+	// The head may have been paused, or be a queue message whose turn
+	// started, while the injector looked at the screen.
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
 		s.mu.Unlock()
 		return errHeadChanged
 	}
@@ -551,6 +569,10 @@ func (s *session) settle(ctx context.Context, in input) bool {
 	}
 	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
 		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
+	}
+	if status == pb.InputStatus_INPUT_STATUS_SUBMITTED && s.heldByCLI(in) {
+		s.hold(in)
+		return true
 	}
 	s.finishInput(in, status, "")
 	return true
@@ -704,11 +726,15 @@ func (s *session) popInput(requestID string) bool {
 func (s *session) markInflight(offset int64, requestID string) error {
 	seq := s.log.LastSeq()
 	s.mu.Lock()
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+	// The head may have been paused, or be a queue message whose turn
+	// started, while the injector looked at the screen.
+	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
 		s.mu.Unlock()
 		return errHeadChanged
 	}
 	prev := s.queue.Queue[0]
+	// Queue messages after this one wait for the turn it lands in.
+	s.gate, s.gateAt = s.turnEnds+1, time.Now()
 	s.queue.Queue[0].Inflight = &offset
 	s.queue.Queue[0].InflightSeq = seq
 	s.queue.Queue[0].Stage = pb.InputStage_INPUT_STAGE_SUBMITTING

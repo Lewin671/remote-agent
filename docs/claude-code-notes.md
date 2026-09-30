@@ -175,6 +175,7 @@
 | Esc | 中断这一轮：工具运行中时，这个工具记为被拒绝（`User rejected tool use`），另记 `[Request interrupted by user for tool use]`；生成文字时记 `[Request interrupted by user]`。都没有 `turn_duration`，也不触发 Stop hook | 未测；按两次会打开回退菜单（推测，未验证） |
 | Enter | 输入框里的消息**排队**：transcript 记 `queue-operation` `enqueue`，输入框上方显示这条消息，占位提示变成 `Press up to edit queued messages`。工具结束时它被并入当前这一轮（`queue-operation` `remove`，`reason: absorbed_mid_turn`，再有一条 `queued_command` 附件），模型在同一轮里回应 | 发送 |
 
+- **撤回排队的消息**（2.1.285，haiku，2026-09-30 实测）：运行中有排队消息时按 ↑，所有排队的消息一起回到输入框，多条之间换行，transcript 记一条 `queue-operation` `popAll`（实测 `content` 只有最后一条）。这时 Ctrl-U 清空输入框，这些消息就不会再发出：这一轮照常结束，之后也不会作为新的一轮提交。要撤回其中一条，只能全部拉回、清空，再把其余的重新回车排队
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
 
 粘贴图片路径（2.1.284，haiku，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：

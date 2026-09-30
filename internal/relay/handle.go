@@ -131,6 +131,10 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 		err = on(k.CancelInput.SessionId, func() error {
 			return call(ctx, l.CancelInput, k.CancelInput, func(m *pb.CancelInputResponse) { out.Kind = &pb.CommandResult_CancelInput{CancelInput: m} })
 		})
+	case *pb.Command_ResumeInput:
+		err = on(k.ResumeInput.SessionId, func() error {
+			return call(ctx, l.ResumeInput, k.ResumeInput, func(m *pb.ResumeInputResponse) { out.Kind = &pb.CommandResult_ResumeInput{ResumeInput: m} })
+		})
 	case *pb.Command_SetModel:
 		err = on(k.SetModel.SessionId, func() error {
 			return call(ctx, l.SetModel, k.SetModel, func(m *pb.SetModelResponse) { out.Kind = &pb.CommandResult_SetModel{SetModel: m} })

@@ -252,7 +252,9 @@ func TestUploadErrorsLogNoPaths(t *testing.T) {
 
 // A client starting a session whose default here is full access must
 // confirm it; the machine metadata says what the default is.
-func TestFullAccessDefaultNeedsConfirmation(t *testing.T) {
+// The default a session would get is reported, full access included; it
+// needs no confirmation (architecture §7), so creating is not refused.
+func TestClaudeDefaultModeReported(t *testing.T) {
 	h := newHarness(t, Config{ClaudeBin: "/bin/true"})
 	claudeHome := t.TempDir()
 	h.d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", claudeHome)
@@ -265,19 +267,6 @@ func TestFullAccessDefaultNeedsConfirmation(t *testing.T) {
 	}
 	if info == nil || info.DefaultMode != pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS || info.DefaultModeSource != pb.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG || !info.DefaultModeVaries {
 		t.Fatalf("agent info %v", info)
-	}
-	client := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d"}
-	_, err := h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Agent: pb.Agent_AGENT_CLAUDE, Prompt: "x"}, client)
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("unconfirmed full access: %v", err)
-	}
-	// A project's own settings count too.
-	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{}`), 0o600)
-	os.MkdirAll(filepath.Join(h.dir, ".claude"), 0o700)
-	os.WriteFile(filepath.Join(h.dir, ".claude", "settings.local.json"), []byte(`{"permissions":{"defaultMode":"bypassPermissions"}}`), 0o600)
-	_, err = h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Agent: pb.Agent_AGENT_CLAUDE, Prompt: "x"}, client)
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("project full access: %v", err)
 	}
 	// An unreadable configuration is reported as unknown.
 	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{broken`), 0o600)

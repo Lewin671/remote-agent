@@ -54,9 +54,17 @@ type session struct {
 	parser agent.Parser
 	reader *tail.Reader
 
-	mu          sync.Mutex
-	meta        meta
-	running     bool // a turn is in progress
+	mu      sync.Mutex
+	meta    meta
+	running bool // a turn is in progress
+	// turnEnds counts the turns that ended; aborted is set when the last
+	// one was interrupted, until the waiting input is paused.
+	turnEnds uint64
+	aborted  bool
+	// A queue message waits until turnEnds reaches gate: the turn in
+	// which the last message was written has ended (sendmode.go).
+	gate        uint64
+	gateAt      time.Time
 	context     *pb.TurnContext
 	usage       *pb.TokenUsage
 	title       string
@@ -119,6 +127,10 @@ type decision struct {
 	terminal bool
 	// origin is who answered through remote-agent.
 	origin *pb.Origin
+	// always, with allow: stop asking about requests like this one. The
+	// hook cannot say so; the daemon answers the CLI's own prompt
+	// (always.go).
+	always bool
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
@@ -172,6 +184,10 @@ func (s *session) observe(e *pb.Event) {
 		s.running = true
 	case *pb.Event_TurnEnded:
 		s.running = false
+		s.turnEnds++
+		if k.TurnEnded.Outcome == pb.TurnOutcome_TURN_OUTCOME_ABORTED {
+			s.aborted = true
+		}
 	case *pb.Event_TurnContext:
 		s.context = k.TurnContext
 	case *pb.Event_TokenUsage:
@@ -385,6 +401,7 @@ func (s *session) readRollout() {
 		s.mu.Unlock()
 		for _, e := range evs {
 			if m := e.GetUserMessage(); m != nil {
+				s.received(m.RequestId)
 				for _, ref := range m.Images {
 					if ref.UploadId != "" && ref.ImageId != "" {
 						s.d.uploads.embedded(ref.UploadId)
@@ -395,6 +412,7 @@ func (s *session) readRollout() {
 				// A request still waiting was answered in the terminal
 				// (or interrupted there) since the turn is over.
 				s.retractApprovals()
+				s.afterTurn()
 			}
 			if c := e.GetToolCall(); c != nil {
 				// Its call ran: allowed in the terminal before the
@@ -613,7 +631,8 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	}
 	if idx < 0 {
 		s.mu.Unlock()
-		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
+		// It may be held by the CLI, still short of the model.
+		return s.cancelHeld(requestID, origin)
 	}
 	if in := s.queue.Queue[idx]; in.Inflight != nil || in.Stage > pb.InputStage_INPUT_STAGE_WAITING {
 		s.mu.Unlock()
@@ -998,6 +1017,12 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "", originLocal)
 		return nil, nil
 	}
+	if d.always {
+		// The hook stays silent, so the CLI shows its own prompt; the
+		// daemon picks the prompt's "don't ask again" option there.
+		go s.answerAlways(a, p.TurnID, d.origin)
+		return nil, nil
+	}
 	if d.allow {
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message, d.origin)
 	} else {
@@ -1034,11 +1059,11 @@ func (s *session) claim(a *approval) bool {
 // resolve answers a pending approval. Success means the answer is the one
 // the CLI receives.
 func (s *session) resolve(id string, allow bool, message string) error {
-	return s.resolveBy(id, allow, message, originLocal)
+	return s.resolveBy(id, allow, false, message, originLocal)
 }
 
 // resolveBy is resolve on behalf of origin.
-func (s *session) resolveBy(id string, allow bool, message string, origin *pb.Origin) error {
+func (s *session) resolveBy(id string, allow, always bool, message string, origin *pb.Origin) error {
 	s.mu.Lock()
 	a, ok := s.approvals[id]
 	if !ok || a.claimed {
@@ -1052,7 +1077,7 @@ func (s *session) resolveBy(id string, allow bool, message string, origin *pb.Or
 	a.claimed = true
 	delete(s.approvals, id)
 	s.mu.Unlock()
-	a.decision <- decision{allow: allow, message: message, origin: origin}
+	a.decision <- decision{allow: allow, always: allow && always, message: message, origin: origin}
 	return nil
 }
 

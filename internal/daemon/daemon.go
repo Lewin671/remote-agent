@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
@@ -356,15 +355,6 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	}
 	if ag.Bin() == "" {
 		return nil, fmt.Errorf("%s is not installed on this machine", ag.Name())
-	}
-	// Full access needs a client user's say-so every time, also when it
-	// is only the default the session would get here. At the computer the
-	// user's own configuration stands.
-	remote := origin != nil && origin.Kind != pb.OriginKind_ORIGIN_KIND_LOCAL
-	if remote && req.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED && !req.ConfirmFullAccess {
-		if m, src, _ := d.defaultMode(ag, cwd); m == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS && src != pb.DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s starts in full access here by default; confirm it or choose another mode", ag.Name()))
-		}
 	}
 	args, err := d.sessionArgs(ag, req)
 	if err != nil {

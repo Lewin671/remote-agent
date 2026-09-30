@@ -24,7 +24,7 @@ func rpcErr(err error) error {
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning),
-		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
+		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, errHeldChanged), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	var ce *connect.Error
@@ -86,12 +86,23 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 			return nil, err
 		}
 	}
-	pos, err := s.enqueue(req.Msg.Text, req.Msg.RequestId, images, origin)
+	pos, err := s.enqueueMode(req.Msg.Text, req.Msg.RequestId, images, origin, req.Msg.Mode)
 	if err != nil {
 		h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil
+}
+
+func (h *handler) ResumeInput(ctx context.Context, req *connect.Request[pb.ResumeInputRequest]) (*connect.Response[pb.ResumeInputResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.resumeInputBy(req.Msg.RequestId, originOf(ctx)); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.ResumeInputResponse{}), nil
 }
 
 func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.InterruptRequest]) (*connect.Response[pb.InterruptResponse], error) {
@@ -122,7 +133,7 @@ func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.R
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.resolveBy(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Message, originOf(ctx)); err != nil {
+	if err := s.resolveBy(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Always, req.Msg.Message, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
