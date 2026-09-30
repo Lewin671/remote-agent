@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -72,7 +73,7 @@ fun DockFrame(more: Int, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun DockTitle(title: String, right: String = "") {
+fun DockTitle(title: String, right: String = "") {
     val p = pal
     Row(verticalAlignment = Alignment.CenterVertically) {
         Dot(p.orange)
@@ -124,8 +125,49 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -
 }
 
 /**
- * 拒绝 / 允许, and 附理由拒绝. Both lock after a tap until the daemon
- * answers; a failure leaves the card to try again.
+ * Decisions on approvals sent from here, for this run. One whose outcome
+ * is unknown is sent again unchanged, the same request (architecture §10):
+ * the daemon answers it from its log, and the opposite decision is never
+ * offered in its place.
+ */
+object Resolves {
+    class Resolve {
+        val attempt = io.github.lewin671.remoteagent.core.Attempt()
+        var allow = false
+        var message = ""
+    }
+
+    private val byApproval = HashMap<String, Resolve>()
+
+    fun of(approvalId: String): Resolve = byApproval.getOrPut(approvalId) { Resolve() }
+
+    fun clear() = byApproval.clear()
+}
+
+/** Sends [allow], or the earlier decision while its outcome is unknown; returns the decision that went. */
+suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, s: SessionView, a: ApprovalRequested, allow: Boolean, message: String): Boolean {
+    val r = Resolves.of(a.approvalId)
+    try {
+        val retry = r.attempt.frozen
+        val prepared = r.attempt.next {
+            r.allow = allow
+            r.message = message
+            remote.prepare(s.machineId, s.id, remote.cmd {
+                resolveApproval = ResolveApprovalRequest.newBuilder().setSessionId(s.id).setApprovalId(a.approvalId).setAllow(allow).setMessage(message).build()
+            })
+        }
+        remote.forward(prepared, retryOfUnknown = retry)
+        r.attempt.settle()
+        return r.allow
+    } catch (e: Exception) {
+        throw r.attempt.settle(e) ?: e
+    }
+}
+
+/**
+ * 拒绝 / 允许, and 附理由拒绝. A tap locks both until the computer
+ * confirms; a definite failure lets the user choose again, while an unknown
+ * outcome only offers to retry the same decision.
  */
 @Composable
 fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
@@ -133,18 +175,16 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val act = rememberAction()
-    var which by remember { mutableStateOf<Boolean?>(null) }
+    val r = Resolves.of(a.approvalId)
+    var which by remember { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
     var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var reason by Drafts.of("deny:${a.approvalId}")
+    val stuck = r.attempt.frozen
     fun resolve(allow: Boolean, message: String = "") {
         which = allow
-        act.run({
-            remote.command(s.id, remote.cmd {
-                resolveApproval = ResolveApprovalRequest.newBuilder().setSessionId(s.id).setApprovalId(a.approvalId).setAllow(allow).setMessage(message).build()
-            })
-        })
+        act.run({ resolveApproval(remote, s, a, allow, message); null })
     }
-    if (reasonOpen) {
+    if (reasonOpen && !stuck) {
         OutlinedTextField(reason, { reason = it }, Modifier.fillMaxWidth(), placeholder = { Text("告诉 ${agentName(s.agent())} 为什么不行") }, minLines = 2)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { reasonOpen = false }) { Text("取消") }
@@ -155,20 +195,30 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
         }
     } else {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { resolve(false) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
+            OutlinedButton(onClick = { resolve(false) }, enabled = !act.running && !stuck, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
                 Text(if (act.running && which == false) "拒绝中…" else "拒绝")
             }
-            Button(onClick = { resolve(true) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
+            Button(onClick = { resolve(true) }, enabled = !act.running && !stuck, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
                 Text(if (act.running && which == true) "允许中…" else "允许")
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (!stuck) Row(verticalAlignment = Alignment.CenterVertically) {
             Text("想告诉 ${agentName(s.agent())} 为什么？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
             TextButton(onClick = { if (compact) nav.approval(s.id, a.approvalId) else reasonOpen = true }) { Text("附理由拒绝 ›") }
         }
     }
-    if (act.error.isNotEmpty()) {
-        Text("没能提交：${act.error}" + if (act.unknown) "。可以重试，重复提交不会执行两次" else "", color = p.red, style = MaterialTheme.typography.bodySmall)
+    if (!act.running && stuck) {
+        val what = if (r.allow) "允许" else "拒绝"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (r.attempt.expired) "不确定「$what」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
+                else "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}。重试会再发同一个「$what」",
+                color = p.orangeInk, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
+            )
+            if (!r.attempt.expired) TextButton(onClick = { resolve(r.allow, r.message) }) { Text("重试") }
+        }
+    } else if (act.error.isNotEmpty()) {
+        Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -217,88 +267,146 @@ object Answers {
     }
 }
 
-/** Answers the current question by option; several questions go one by one. */
+/**
+ * Where the user is in a question, shared by the dock and the full page:
+ * which of several questions, and what is ticked in a multiple choice, so
+ * going between the two keeps both.
+ */
+object QuestionPicks {
+    val index = mutableStateMapOf<String, Int>()
+    val single = mutableStateMapOf<String, Int>()
+    val multi = mutableStateMapOf<String, Set<Int>>()
+
+    fun clear() {
+        index.clear()
+        single.clear()
+        multi.clear()
+    }
+}
+
+/** A question is long when the dock would cut it: then it has a page of its own. */
+fun longQuestion(q: io.github.lewin671.remoteagent.proto.Question): Boolean =
+    q.text.length > 120 || q.optionsCount > 4 || q.optionsList.sumOf { it.label.length + it.description.length } > 400
+
+/**
+ * Answers the current question by option; several questions go one by one.
+ * One choice answers at a tap; a multiple choice ticks, then 提交 N 项.
+ */
 @Composable
-fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
+fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full: Boolean, onLong: () -> Unit = {}, onAnswered: () -> Unit = {}) {
     val p = pal
     val remote = LocalRemote.current
-    var index by rememberSaveable(q.questionId) { mutableIntStateOf(0) }
-    val picked = remember(q.questionId) { mutableStateMapOf<Int, Int>() }
+    val qid = q.questionId
+    val index = QuestionPicks.index[qid] ?: 0
     val act = rememberAction()
-    val multi = remember(q.questionId) { mutableStateMapOf<Int, Set<Int>>() }
     val qs = q.questionsList
     val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return
-    val answer = Answers.of(q.questionId, index)
+    val answer = Answers.of(qid, index)
+    val key = "$qid#$index"
     fun submit(options: List<Int>) {
         val qi = index
         val multiSelect = cur.multiSelect
         act.run({
             val sent = Answers.send(answer, options, { opts ->
                 remote.prepare(s.machineId, s.id, remote.cmd {
-                    answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(q.questionId).also { b ->
+                    answerQuestion = AnswerQuestionRequest.newBuilder().setSessionId(s.id).setQuestionId(qid).also { b ->
                         if (multiSelect) b.addAllOptions(opts.map { it + 1 }) else b.setOption(opts.first() + 1)
                         if (qs.size > 1) b.setQuestionIndex(qi)
                     }.build()
                 })
-            }) { p, retry -> remote.forward(p, retryOfUnknown = retry) }
+            }) { pc, retry -> remote.forward(pc, retryOfUnknown = retry) }
             // Show what was answered, which after an unknown outcome is the earlier answer.
-            if (multiSelect) multi[qi] = sent.toSet() else picked[qi] = sent.first()
+            if (multiSelect) QuestionPicks.multi["$qid#$qi"] = sent.toSet() else QuestionPicks.single["$qid#$qi"] = sent.first()
             null
-        }) { if (qi + 1 < qs.size) index = qi + 1 }
+        }) {
+            if (qi + 1 < qs.size) QuestionPicks.index[qid] = qi + 1 else onAnswered()
+        }
     }
-    DockFrame(more) {
-        DockTitle("${agentName(s.agent())} 在问你", if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else "")
-        Text(cur.text, style = MaterialTheme.typography.titleSmall)
-        Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            cur.optionsList.forEachIndexed { i, o ->
-                val (label, rec) = optionLabel(o.label)
-                val sel = if (cur.multiSelect) i in (multi[index] ?: emptySet()) else picked[index] == i
-                Column(
-                    Modifier.fillMaxWidth().background(if (sel) p.blueSoft else p.soft, RoundedCornerShape(12.dp))
-                        .border(1.dp, if (sel) p.blue else p.line, RoundedCornerShape(12.dp))
-                        .clickable(enabled = !act.running) {
-                            if (cur.multiSelect) {
-                                val set = (multi[index] ?: emptySet()).toMutableSet()
-                                if (!set.add(i)) set.remove(i)
-                                multi[index] = set
-                            } else {
-                                picked[index] = i
-                                submit(listOf(i))
-                            }
+    val right = listOfNotNull(if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else null, if (cur.multiSelect) "可多选" else null).joinToString(" · ")
+    DockTitle("${agentName(s.agent())} 在问你", right)
+    Text(cur.text, style = MaterialTheme.typography.titleSmall, maxLines = if (full) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
+    if (!full && longQuestion(cur)) Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onLong))
+    Column(
+        (if (full) Modifier else Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        cur.optionsList.forEachIndexed { i, o ->
+            val (label, rec) = optionLabel(o.label)
+            val sel = if (cur.multiSelect) i in (QuestionPicks.multi[key] ?: emptySet()) else QuestionPicks.single[key] == i
+            Column(
+                Modifier.fillMaxWidth().background(if (sel) p.blueSoft else p.soft, RoundedCornerShape(12.dp))
+                    .border(1.dp, if (sel) p.blue else p.line, RoundedCornerShape(12.dp))
+                    .clickable(enabled = !act.running) {
+                        if (cur.multiSelect) {
+                            val set = (QuestionPicks.multi[key] ?: emptySet()).toMutableSet()
+                            if (!set.add(i)) set.remove(i)
+                            QuestionPicks.multi[key] = set
+                        } else {
+                            QuestionPicks.single[key] = i
+                            submit(listOf(i))
                         }
-                        .padding(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (sel) Text("✓ ", color = p.blue)
-                        Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                        if (rec) Chip("推荐", color = p.blue, bg = p.blueSoft)
                     }
-                    if (o.description.isNotEmpty()) Text(o.description, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-                    if (sel && act.running && !cur.multiSelect) Text("提交中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                    .padding(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (sel) Text("✓ ", color = p.blue)
+                    Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    if (rec) Chip("推荐", color = p.blue, bg = p.blueSoft)
                 }
+                if (o.description.isNotEmpty()) Text(o.description, style = MaterialTheme.typography.bodyMedium, color = p.muted)
+                if (sel && act.running && !cur.multiSelect) Text("提交中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
             }
         }
-        if (cur.multiSelect) {
-            Button(
-                onClick = { submit((multi[index] ?: emptySet()).sorted()) },
-                enabled = !act.running && !multi[index].isNullOrEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-            ) { Text(if (act.running) "提交中…" else "提交（可多选）") }
+    }
+    if (cur.multiSelect) {
+        val n = QuestionPicks.multi[key]?.size ?: 0
+        Button(
+            onClick = { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
+            enabled = !act.running && n > 0, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+        ) { Text(if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项") }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("都不合适？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
+        TextButton(onClick = onTerminal) { Text("其他回答：去终端 ›") }
+    }
+    if (!act.running && answer.attempt.frozen) {
+        val shown = answer.options.joinToString("、") { i -> cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}" }
+        Text(
+            if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
+            else "上次的回答「$shown」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答，电脑收到过就不会再提交一次",
+            color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
+        )
+        var gaveUp by remember { mutableStateOf(0) }
+        if (answer.attempt.expired) TextButton(onClick = { answer.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次回答") }
+    } else if (act.error.isNotEmpty()) {
+        Text("没能提交，终端里的问题可能已经变了：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
+    val nav = LocalNav.current
+    DockFrame(more) { QuestionBody(s, q, onTerminal, full = false, onLong = { nav.question(s.id, q.questionId) }) }
+}
+
+/** 回答提问: a long question on a page of its own; the answer button stays at hand. */
+@Composable
+fun QuestionPage(sid: String, qid: String) {
+    val remote = LocalRemote.current
+    val nav = LocalNav.current
+    val state by remote.state.collectAsState()
+    val s = state.sessions[sid]
+    val events by remote.events(sid).collectAsState()
+    val d = remember(events.events) { io.github.lewin671.remoteagent.core.derive(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) }
+    val q = d.questions[qid]
+    PageScaffold("回答提问") {
+        if (s == null || q == null) {
+            Text(if (d.answered.containsKey(qid)) "这个问题已经回答了。" else "读取中…", Modifier.padding(16.dp), color = pal.muted)
+            TextButton(onClick = nav.back) { Text("返回") }
+            return@PageScaffold
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("都不合适？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
-            TextButton(onClick = onTerminal) { Text("其他回答：去终端 ›") }
-        }
-        if (!act.running && answer.attempt.frozen) {
-            val shown = answer.options.joinToString("、") { i -> cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}" }
-            Text(
-                if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
-                else "上次的回答「$shown」结果不确定。再点任一选项会重发同一个回答，电脑收到过就不会再提交一次",
-                color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
-            )
-            var gaveUp by remember { mutableStateOf(0) }
-            if (answer.attempt.expired) TextButton(onClick = { answer.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次回答") }
-        } else if (act.error.isNotEmpty()) {
-            Text("没能提交，终端里的问题可能已经变了：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            QuestionBody(s, q, { nav.back(); nav.sessionTerminal(sid) }, full = true, onAnswered = { nav.back() })
         }
     }
 }
@@ -314,6 +422,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
         )
         Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onFull))
         PlanButtons(s, full = false)
+        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) Text("批准后使用询问模式", style = MaterialTheme.typography.bodySmall, color = p.muted)
     }
 }
 

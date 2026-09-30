@@ -249,6 +249,7 @@ fun DeviceScreen(id: String) {
             loadError = errorText(e)
         }
     }
+    var pickModel by remember { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings) = save.run({
         remote.machineCommand(id, remote.cmd { updateSettings = UpdateSettingsRequest.newBuilder().setSettings(s).build() })
     }) { r -> r?.updateSettings?.settings?.let { settings = it } }
@@ -260,16 +261,14 @@ fun DeviceScreen(id: String) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Text(if (m.online) "在线" else "不在线 · 最后在线 ${whenText(m.lastSeenMs)}", Modifier.padding(horizontal = 16.dp), color = if (m.online) p.greenInk else p.muted)
             val meta = m.meta
-            if (meta != null && (meta.hasPrimaryLimit() || meta.hasSecondaryLimit())) {
-                SectionHeader("Codex 额度" + if (meta.planType.isNotEmpty()) " · ${meta.planType}" else "")
-                Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for (l in listOf(meta.primaryLimit, meta.secondaryLimit).filter { it.windowMinutes > 0 || it.usedPercent > 0 }) {
-                            Text(windowName(l.windowMinutes), style = MaterialTheme.typography.titleSmall)
-                            LinearProgressIndicator(progress = { (l.usedPercent / 100).toFloat() }, Modifier.fillMaxWidth(), color = if (l.usedPercent > 80) p.orange else p.blue, trackColor = p.track)
-                            Text(limitText(l), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                        }
+            SectionHeader("账户额度")
+            Card(Modifier.padding(horizontal = 12.dp), onClick = { nav.quota(id) }) {
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    for (agent in machineAgents(m)) Row44 {
+                        Text(agentName(agent), Modifier.weight(1f))
+                        Text(quotaSummary(m, agent), color = p.muted, style = MaterialTheme.typography.bodyMedium)
                     }
+                    Row44 { Text("查看全部额度 ›", color = p.blue) }
                 }
             }
             if (meta != null) {
@@ -298,7 +297,10 @@ fun DeviceScreen(id: String) {
                         for (agent in machineAgents(m)) {
                             val d = if (agent == Agent.AGENT_CLAUDE) s.claude else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).setMode(s.defaultMode).build()
                             Text(agentName(agent), Modifier.padding(start = 16.dp, top = 10.dp), style = MaterialTheme.typography.titleSmall)
-                            Text("模型 ${d.model.ifEmpty { "默认" }} · 推理强度 ${d.effort.ifEmpty { "默认" }}", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium, color = p.muted)
+                            Row44(onClick = if (save.running) null else ({ pickModel = agent })) {
+                                Text("模型 · 推理强度", Modifier.weight(1f))
+                                Text("${d.model.ifEmpty { "默认" }} · ${d.effort.ifEmpty { "默认" }} ›", color = p.muted, style = MaterialTheme.typography.bodyMedium)
+                            }
                             Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 val cur = modeOf(d.mode)
                                 FilterChip(cur == null, { update(withMode(s, agent, null)) }, { Text("默认") }, enabled = !save.running)
@@ -324,15 +326,138 @@ fun DeviceScreen(id: String) {
                 }
             }
             Spacer(Modifier.height(16.dp))
-            TextButton(onClick = { confirm = true }, Modifier.padding(horizontal = 8.dp)) { Text("移除这台设备", color = p.red) }
+            TextButton(onClick = { confirm = true }, Modifier.padding(horizontal = 8.dp)) { Text("移除这台机器…", color = p.red) }
             if (remove.error.isNotEmpty()) Text(remove.error, Modifier.padding(16.dp), color = p.red)
             Spacer(Modifier.height(24.dp))
         }
+    }
+    val cur = settings
+    pickModel?.let { agent ->
+        if (cur != null) DefaultModelSheet(id, agent, cur, onPick = { model, effort -> pickModel = null; update(withModel(cur, agent, model, effort)) }, onClose = { pickModel = null })
     }
     if (confirm) Confirm(
         "移除 ${machineLabel(state, id)}？", "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。", "移除", danger = true,
         onDismiss = { confirm = false },
     ) { remove.run({ remote.removeDevice(id); null }) { nav.back() } }
+}
+
+private fun withModel(s: DaemonSettings, agent: Agent, model: String, effort: String): DaemonSettings =
+    if (agent == Agent.AGENT_CLAUDE) s.toBuilder().setClaude(s.claude.toBuilder().setModel(model).setEffort(effort)).build()
+    else s.toBuilder().setDefaultModel(model).setDefaultEffort(effort).build()
+
+/** A CLI's default model and effort for new sessions on this machine, from the models it offers. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings, onPick: (String, String) -> Unit, onClose: () -> Unit) {
+    val p = pal
+    val remote = LocalRemote.current
+    var models by remember { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+    var error by remember { mutableStateOf("") }
+    LaunchedEffect(machineId, agent) {
+        try {
+            models = remote.listModels(machineId, agent)
+        } catch (e: Exception) {
+            error = errorText(e)
+        }
+    }
+    val d = if (agent == Agent.AGENT_CLAUDE) s.claude else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).build()
+    var model by remember { mutableStateOf(d.model) }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${agentName(agent)} · 新会话默认模型", style = MaterialTheme.typography.titleMedium)
+            val ms = models
+            when {
+                error.isNotEmpty() -> Text("没能读取模型列表：$error", color = p.red)
+                ms == null -> Text("读取中…", color = p.muted)
+                else -> {
+                    Row44(onClick = { onPick("", "") }) {
+                        Text("默认（${agentName(agent)} 自己的配置）", Modifier.weight(1f))
+                        if (model.isEmpty()) Text("✓", color = p.blue)
+                    }
+                    for (m in ms.modelsList) Row44(onClick = { if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug }) {
+                        Text(m.displayName.ifEmpty { m.slug }, Modifier.weight(1f))
+                        if (m.effortsList.isEmpty()) Text("无推理强度", style = MaterialTheme.typography.bodySmall, color = p.faint)
+                        if (m.slug == model) Text("  ✓", color = p.blue)
+                    }
+                    ms.modelsList.firstOrNull { it.slug == model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
+                        Text("推理强度", style = MaterialTheme.typography.titleSmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            for (e in m.effortsList) FilterChip(d.model == m.slug && d.effort == e, { onPick(m.slug, e) }, { Text(e) })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One line per CLI on the device page: its account's usage, or why there is none. */
+fun quotaSummary(m: io.github.lewin671.remoteagent.core.MachineView, agent: Agent): String {
+    if (agent == Agent.AGENT_CLAUDE) return "暂不支持读取额度"
+    val meta = m.meta ?: return "暂未获取额度"
+    val ls = listOf(meta.primaryLimit, meta.secondaryLimit).filter { it.windowMinutes > 0 || it.usedPercent > 0 }
+    if (ls.isEmpty()) return "暂未获取额度"
+    return ls.joinToString(" · ") { "${windowName(it.windowMinutes)} ${if (it.usedPercent >= 100) "已用尽" else "已用 ${it.usedPercent.toInt()}%"}" } + if (!m.online) "（上次记录）" else ""
+}
+
+/**
+ * 账户额度: each CLI's account usage on this machine, apart. What is not
+ * known is said, never shown as 0%; an offline machine's numbers are its
+ * last record, and a reset time that passed only waits for an update.
+ */
+@Composable
+fun QuotaScreen(id: String) {
+    val remote = LocalRemote.current
+    val nav = LocalNav.current
+    val state by remote.state.collectAsState()
+    val m = state.machines[id]
+    val p = pal
+    val t = now()
+    PageScaffold("账户额度") {
+        if (m == null) {
+            Text("这台机器已经移除了", Modifier.padding(16.dp), color = p.muted)
+            return@PageScaffold
+        }
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            Text(machineLabel(state, id) + if (m.online) " · 在线" else " · 离线", Modifier.padding(horizontal = 16.dp), color = p.muted)
+            if (!m.online) Text("机器离线，显示上次记录", Modifier.padding(16.dp), color = p.orangeInk)
+            for (agent in machineAgents(m)) {
+                val meta = m.meta
+                SectionHeader(agentName(agent) + (if (agent != Agent.AGENT_CLAUDE && meta?.planType?.isNotEmpty() == true) " · ${meta.planType}" else "") + (if (!m.online) " · 上次记录" else ""))
+                Card(Modifier.padding(horizontal = 12.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (agent == Agent.AGENT_CLAUDE) {
+                            Text("暂不支持读取额度", style = MaterialTheme.typography.titleSmall)
+                            Text("电脑上的 remote-agent 还没有采集 Claude Code 的额度。可在本机 Claude Code 中查看 /usage。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                            val claudeSession = state.sessions.values.filter { it.machineId == id && it.info?.agent == Agent.AGENT_CLAUDE && !io.github.lewin671.remoteagent.core.exited(it) }.maxByOrNull { it.updatedMs }
+                            if (claudeSession != null) TextButton(onClick = { nav.sessionTerminal(claudeSession.id) }, enabled = m.online) { Text("去终端查看 /usage ›") }
+                            else Text("没有进行中的 Claude Code 会话：先打开一个会话再去终端查看。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                        } else {
+                            val ls = listOfNotNull(meta?.primaryLimit, meta?.secondaryLimit).filter { it.windowMinutes > 0 || it.usedPercent > 0 }
+                            if (ls.isEmpty()) Text("暂未获取额度", style = MaterialTheme.typography.titleSmall)
+                            for (l in ls) {
+                                val passed = l.resetsAt > 0 && l.resetsAt * 1000 < t
+                                val full = l.usedPercent >= 100
+                                Row {
+                                    Text(windowName(l.windowMinutes), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        (if (!m.online) "上次" else "") + if (full) "已用尽" else "已用 ${l.usedPercent.toInt()}%",
+                                        color = if (full || l.usedPercent >= 80) p.orangeInk else p.fg2,
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { (l.usedPercent / 100).toFloat().coerceIn(0f, 1f) }, Modifier.fillMaxWidth(),
+                                    color = if (!m.online || passed) p.gray else if (l.usedPercent >= 80) p.orange else p.blue, trackColor = p.track,
+                                )
+                                Text(if (passed) "重置时间已过 · 等待更新，不能据此确认额度已经恢复" else limitText(l), style = MaterialTheme.typography.bodySmall, color = p.muted)
+                            }
+                        }
+                    }
+                }
+            }
+            Text("额度属于 CLI 登录账户，该账户的其他使用也可能计入。", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
+        }
+    }
 }
 
 private fun withMode(s: DaemonSettings, agent: Agent, mode: Mode?): DaemonSettings {

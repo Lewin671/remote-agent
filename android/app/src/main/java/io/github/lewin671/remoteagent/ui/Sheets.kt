@@ -79,7 +79,11 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     }) { onClose() }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Text("审批模式", style = MaterialTheme.typography.titleMedium)
+            Text("${agentName(s.agent())} · 审批模式", style = MaterialTheme.typography.titleMedium)
+            // A mode set in the terminal outside the four is shown as it is.
+            s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }?.let {
+                Text("当前：${if (it == "acceptEdits") "accept edits" else it}（在终端设置）", style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
+            }
             Spacer(Modifier.height(8.dp))
             for (m in Mode.entries) {
                 val off = unavailable(m)
@@ -88,8 +92,8 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                         Text(m.text, style = MaterialTheme.typography.titleSmall, color = if (off) p.faint else if (m == Mode.FULL) p.red else p.fg)
                         Text(
                             when {
-                                off && m == Mode.FULL -> "这个会话启动时没有允许，不能切到完全放行"
-                                off -> "这个模型没有自动模式"
+                                off && m == Mode.FULL -> "本会话启动时未启用；需要时新建会话选择"
+                                off -> "当前 Haiku 模型不支持"
                                 else -> modeHelp.getValue(m)
                             },
                             style = MaterialTheme.typography.bodyMedium, color = p.muted,
@@ -98,8 +102,8 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                     if (m == cur) Text("✓", color = p.blue)
                 }
             }
-            s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }?.let {
-                Text("现在是 ${agentName(s.agent())} 自己的模式「$it」，这里只提供两个 CLI 共有的四种", style = MaterialTheme.typography.bodySmall, color = p.muted)
+            if (s.info?.permissionMode?.let { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null } == true) {
+                Text("照实显示终端中的模式；不提供切到 ${s.info?.permissionMode} 的按钮。", style = MaterialTheme.typography.bodySmall, color = p.muted)
             }
             Text("只改当前会话", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(top = 8.dp))
             if (act.running) Text("正在切换…", color = p.muted)
@@ -133,7 +137,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
     var pickedModel by remember { mutableStateOf("") }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("会话设置", style = MaterialTheme.typography.titleMedium)
+            Text("${agentName(s.agent())} · 会话设置", style = MaterialTheme.typography.titleMedium)
             val pc = contextPercent(s)
             if (pc != null) {
                 val i = s.info!!
@@ -150,6 +154,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 if (compact.error.isNotEmpty()) Text("没能压缩：${compact.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
             }
             if (running) Text("这一轮在运行，结束后才能切换模型和推理强度", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+            else Text("仅显示当前模型支持的档位；空闲时点选提交，等待电脑确认后更新实际值。", style = MaterialTheme.typography.bodySmall, color = p.muted)
             Text("模型", style = MaterialTheme.typography.titleSmall)
             val ms = models
             when {
@@ -164,7 +169,10 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                     for (m in ms.modelsList) {
                         Row44(onClick = { pickedModel = m.slug }) {
                             Column(Modifier.weight(1f)) {
-                                Text(m.displayName.ifEmpty { m.slug }, style = MaterialTheme.typography.titleSmall)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(m.displayName.ifEmpty { m.slug }, style = MaterialTheme.typography.titleSmall)
+                                    if (m.effortsList.isEmpty()) Text("  无推理强度", style = MaterialTheme.typography.bodySmall, color = p.faint)
+                                }
                                 if (m.description.isNotEmpty()) Text(m.description, style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2)
                             }
                             if (m.slug == pickedModel) Text("✓", color = p.blue)
@@ -233,17 +241,19 @@ fun ApprovalPage(sid: String, aid: String) {
         }
         Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(reason, { reason = it }, Modifier.fillMaxWidth(), placeholder = { Text("拒绝理由（可选），会告诉 ${agentName(s.agent())}") }, maxLines = 4)
+            val r = Resolves.of(aid)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 fun resolve(allow: Boolean) = act.run({
-                    remote.command(sid, remote.cmd {
-                        resolveApproval = io.github.lewin671.remoteagent.proto.ResolveApprovalRequest.newBuilder()
-                            .setSessionId(sid).setApprovalId(aid).setAllow(allow).setMessage(if (allow) "" else reason.trim()).build()
-                    })
+                    resolveApproval(remote, s, a, allow, if (allow) "" else reason.trim())
+                    null
                 }) { nav.back() }
-                OutlinedButton(onClick = { resolve(false) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                OutlinedButton(onClick = { resolve(false) }, enabled = !act.running && !r.attempt.frozen, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = p.red)) { Text(if (reason.isBlank()) "拒绝" else "发送理由并拒绝") }
-                Button(onClick = { resolve(true) }, enabled = !act.running && reason.isBlank(), modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("允许") }
+                Button(onClick = { resolve(true) }, enabled = !act.running && reason.isBlank() && !r.attempt.frozen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("允许") }
             }
+            if (!act.running && r.attempt.frozen && !r.attempt.expired) TextButton(onClick = {
+                act.run({ resolveApproval(remote, s, a, r.allow, r.message); null }) { nav.back() }
+            }) { Text("未收到电脑确认，重试「${if (r.allow) "允许" else "拒绝"}」") }
             if (act.error.isNotEmpty()) Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
         }
     }

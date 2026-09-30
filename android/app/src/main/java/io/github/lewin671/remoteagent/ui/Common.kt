@@ -71,6 +71,8 @@ class Nav(
     val queue: (String) -> Unit = {},
     val manageProjects: () -> Unit = {},
     val devices: () -> Unit = {},
+    val quota: (String) -> Unit = {},
+    val question: (sid: String, qid: String) -> Unit = { _, _ -> },
     /** The image viewer at an event's image. */
     val image: (sid: String, seq: Long, index: Int) -> Unit = { _, _, _ -> },
     val client: (String) -> Unit = {},
