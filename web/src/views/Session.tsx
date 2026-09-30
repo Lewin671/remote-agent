@@ -439,7 +439,12 @@ function ChatBody({
     } else if (count > seen.current) setUnseen(count - seen.current);
   }, [count, hist.loaded]);
 
-  const pending = outbox.filter((o) => ["sending", "delivered", "failed"].includes(phaseOf(o, d.inputs.get(o.sendId))));
+  // A v2 daemon names the request a recorded message came from; until
+  // then, a message it marked submitted (Codex takes one mid-turn and
+  // records it later) stays in view as written to the terminal.
+  const recorded = new Set(events.flatMap((e) => (e.kind.case === "userMessage" && e.kind.value.requestId ? [e.kind.value.requestId] : [])));
+  const awaiting = (o: Outgoing) => phaseOf(o, d.inputs.get(o.sendId)) === "done" && d.accepted.has(o.sendId) && !recorded.has(o.sendId);
+  const pending = outbox.filter((o) => ["sending", "delivered", "failed"].includes(phaseOf(o, d.inputs.get(o.sendId))) || awaiting(o));
   const started = session.info?.createdAt ? Number(session.info.createdAt.seconds) * 1000 : events[0] ? eventTime(events[0]) : 0;
   // The first message of a session started here, until the CLI takes it.
   const promptState = promptId ? d.inputs.get(promptId) : undefined;
@@ -486,7 +491,7 @@ function ChatBody({
           </div>
         )}
         {pending.map((o) => (
-          <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
+          <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} />
         ))}
       </div>
       {unseen > 0 && (
@@ -507,7 +512,7 @@ function ChatBody({
   );
 }
 
-function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Outgoing; phase: string }) {
+function Pending({ remote, sid, o, phase, agent }: { remote: Remote; sid: string; o: Outgoing; phase: string; agent: Agent }) {
   if (phase === "failed")
     return (
       <div className="me fail">
@@ -524,7 +529,7 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
     <div className={"me" + (phase === "sending" ? " pending" : "")}>
       <LocalThumbs blobs={o.thumbs} />
       {o.text && <div>{o.text}</div>}
-      <small>{phase === "sending" ? "◌ 发送中…" : "已送达电脑"}</small>
+      <small>{phase === "sending" ? "◌ 发送中…" : phase === "written" ? `已送入终端，等 ${agentName(agent)} 记录` : "已送达电脑"}</small>
     </div>
   );
 }

@@ -1266,3 +1266,21 @@ describe("sending images (v2)", () => {
     expect(host.textContent).toContain("VPS-dev 上的 remote-agent 版本较旧，不能发图片");
   });
 });
+
+it("keeps a submitted message in view until the CLI records it", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
+  (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "m1", requestId: "x", deadline: 0, text: "运行中插一句", status: "sent" }]);
+  push({ case: "inputState", value: { requestId: "m1", status: InputStatus.QUEUED, text: "运行中插一句" } });
+  push({ case: "inputState", value: { requestId: "m1", status: InputStatus.SUBMITTED } });
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  expect(host.textContent).toContain("运行中插一句");
+  expect(host.textContent).toContain("已送入终端");
+  act(() => {
+    push({ case: "userMessage", value: { text: "运行中插一句", requestId: "m1" } });
+    r.touch();
+  });
+  expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("运行中插一句")).length).toBe(1);
+  expect(host.textContent).not.toContain("已送入终端");
+});

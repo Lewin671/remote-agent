@@ -748,7 +748,7 @@ input.field { margin: 0; }
 .viewer .vact button { min-height: 44px; min-width: 44px; }
 .viewer .vact button:disabled, .lightbox .acts button:disabled { opacity: .4; }
 .session { position: relative; }
-.lightbox { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.86); display: grid; grid-template-columns: 64px 1fr 64px; grid-template-rows: 48px 1fr auto; color: #f2f3f5; }
+.lightbox { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.92); display: grid; grid-template-columns: 64px 1fr 64px; grid-template-rows: 48px 1fr auto; color: #f2f3f5; }
 .lightbox .lb-top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 0 18px; font-size: 13px; color: #c3c8ce; }
 .lightbox .lb-top button { color: #f2f3f5; font-size: 20px; min-width: 44px; min-height: 44px; }
 .lightbox .arr { display: flex; align-items: center; justify-content: center; font-size: 30px; color: #c3c8ce; }
