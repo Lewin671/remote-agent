@@ -204,6 +204,13 @@
   .btn.no { color: var(--red); }
   .btn.danger { background: var(--red-bg); color: var(--on-solid); }
   .btn.dis { opacity: .45; }
+  /* 审批：对应 CLI 原生审批框的三项。不允许 / 允许并排，「以后不再问」在下一行 */
+  .appr { margin-top: 8px; }
+  .appr-always { display: flex; align-items: center; justify-content: center; min-height: 44px; font-size: 14px; color: var(--blue); font-weight: 500; text-align: center; }
+  .appr-always code { font: 13px ui-monospace, Menlo, monospace; margin: 0 3px; }
+  .appr .dis { opacity: .45; }
+  .appr .deny-in { display: flex; flex-direction: column; gap: 8px; }
+  .appr .deny-in .field { margin: 0; color: var(--fg); }
 
   /* 会话底部 */
   .queued { font-size: 12px; color: var(--muted); padding: 4px 12px 0; flex: none; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -819,7 +826,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>工具只用一行表示：运行中写计时，失败写退出码，完成的折成一行；去掉工具详情页、输出、输入框上方的工具摘要和跳转终端的入口。</li><li>宽屏主页的主区域只放新建任务并居中：项目选择并入标题，设置摘要在输入框下方；需要处理只留在侧栏。侧栏的「新会话」改成和手机一样的新建图标，项目行的进行中数量改为灰字。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行、CLI 名移到第二行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>审批对齐 CLI 原生审批框的三项：「不允许 / 允许」并排，下一行蓝字「允许，…以后不再问」（按 CLI 写出前缀、目录或自动接受编辑）；点「不允许」就地写一句说明，也可不写。去掉单独的「附理由拒绝」流程和按钮下方的规则说明。</li><li>工具只用一行表示：运行中写计时，失败写退出码，完成的折成一行；去掉工具详情页、输出、输入框上方的工具摘要和跳转终端的入口。</li><li>宽屏主页的主区域只放新建任务并居中：项目选择并入标题，设置摘要在输入框下方；需要处理只留在侧栏。侧栏的「新会话」改成和手机一样的新建图标，项目行的进行中数量改为灰字。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行、CLI 名移到第二行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -842,8 +849,7 @@
           <div class="m">foo · VPS-dev</div>
           <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
           <pre>go test ./... -count=1</pre>
-          <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-          <div class="foot"><b>附理由拒绝 ›</b></div>
+          <div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，<code>go test</code> 以后不再问</div></div>
         </div>
         <div class="todo">
           <div class="k"><span>● Codex 在问你</span><span>9:20</span></div>
@@ -1048,8 +1054,7 @@
       <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
         <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
         <pre>go test ./... -count=1</pre>
-        </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-        <div class="foot"><b>附理由拒绝 ›</b></div>
+        </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，<code>go test</code> 以后不再问</div></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
@@ -1063,7 +1068,7 @@
       <div class="body chat">
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div></div></div></details>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，<code>go test</code> 以后不再问</div></div></div></div></details>
       <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：设置…</div></div></details><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
@@ -1083,12 +1088,11 @@ go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
 git status --short gen/</pre>
       </div>
       <div class="dock">
-        <div class="field" style="margin:0 0 8px;font-size:15px;color:var(--fg)">别删 gen，直接 buf generate 覆盖就行</div>
-        <div class="btns"><div class="btn no">发送理由并拒绝</div></div>
+        <div class="appr"><div class="deny-in"><div class="field">别删 gen，直接 buf generate 覆盖就行</div><div class="btns"><div class="btn">取消</div><div class="btn no">不允许</div></div></div></div>
       </div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap">长命令点「展开全文」进整页，命令可以滚动；附理由拒绝时，理由框和按钮贴在键盘上方，不会被收起</div>
+    <div class="cap">长命令点「展开全文」进整页，命令可以滚动；点「不允许」后，输入框和确认按钮贴在键盘上方，不会被收起</div>
   </div>
 
   <div>
@@ -1588,7 +1592,7 @@ GPT-6-Astra · medium ▾
     <li>同时有多项时，按上表顺序只停靠最前面的一项，右上角写「还有 1 项」，处理完自动换下一项</li>
     <li>展开后内容最多 240px，正文内部滚动，操作按钮固定在下方；展开处理时收起聊天键盘，普通草稿保留；长命令、计划和问题可以进入全文页，全文页的提交按钮固定在底部</li>
     <li>停靠区默认一行：类型 + 摘要 + 「处理」；点开后显示正文和操作，键盘弹出时仍保留入口</li>
-    <li>在停靠区里输入拒绝理由时不收起：卡片只留理由输入框和「发送理由并拒绝」，贴在键盘上方，聊天区让出高度</li>
+    <li>在停靠区里写不允许的说明时不收起：卡片只留输入框和按钮，贴在键盘上方，聊天区让出高度</li>
   </ul>
   <h4>会话标题</h4>
   <ul>
@@ -1691,21 +1695,28 @@ GPT-6-Astra · medium ▾
     <div class="st-h">审批 · 提交中 / 失败</div>
     <details class="dock pending submitting" open><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 7 分钟</span></div>
       <pre>go test ./... -count=1</pre>
-      </div><div class="pending-actions"><div class="btns"><div class="btn no dis">拒绝</div><div class="btn pri dis">允许中…</div></div>
+      </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no dis">不允许</div><div class="btn pri dis">允许中…</div></div><div class="appr-always dis">允许，<code>go test</code> 以后不再问</div></div>
     </div></div></details>
-    <div class="banner err" style="margin-top:8px">未收到电脑确认：连接超时<b>重试</b></div>
-    <div class="st-c">点下后两个按钮都锁住，直到电脑确认；明确失败时可再选；结果未知时只能重试原决定，不能换成相反决定</div>
+    <div class="banner err" style="margin-top:8px">没送到电脑<b>重试</b></div>
+    <div class="st-c">点下后整张卡锁住，等电脑确认；没送到时「重试」重发同一个选择</div>
   </div>
 
   <div class="st">
-    <div class="st-h">审批 · 附理由拒绝 / 权限请求</div>
+    <div class="st-h">审批 · Claude Code</div>
+    <div class="h" style="display:flex;justify-content:space-between;font-size:15px"><b>请求执行</b><span class="muted small">剩 8 分钟</span></div>
+    <pre style="background:var(--soft);border-radius:var(--r-xs);padding:7px 10px;font:12px/1.5 ui-monospace,Menlo,monospace;margin:6px 0 0">npm run build</pre>
+    <div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，本项目访问 <code>~/Code/shop</code> 以后不再问</div></div>
+    <div class="st-c">第 2 项照 CLI 自己框里的原意写：Codex 是「这个前缀的命令不再问」，Claude Code 是「本项目访问这个目录不再问」，改文件时是「本会话自动接受编辑」。CLI 框里没有第 2 项时只显示两项</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">审批 · 不允许并说明</div>
     <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
       <div class="desc">修改工作区外的文件</div>
       <pre class="cut">{"path": "/etc/hosts", "patch": "@@ -1,3 +1,4 @@\n 127.0.0.1 localhost\n+127.0.0.1 api.local"}</pre>
-      <div class="field" style="margin:0 0 8px;font-size:13px">改 /etc/hosts 不行，用 .env 配置</div>
-      </div><div class="pending-actions"><div class="btns"><div class="btn no">发送理由并拒绝</div></div>
+      </div><div class="pending-actions"><div class="appr"><div class="deny-in"><div class="field">改 /etc/hosts 不行，用 .env 配置</div><div class="btns"><div class="btn">取消</div><div class="btn no">不允许</div></div></div></div>
     </div></div></details>
-    <div class="st-c">不是命令的请求显示工具名和参数；理由会告诉 Codex</div>
+    <div class="st-c">点「不允许」就地展开输入框，写一句告诉它该怎么做，也可以不写直接确认；只拒这一步，Codex 拿到说明后接着做。不是命令的请求显示工具名和参数</div>
   </div>
 
   <div class="st">
@@ -1731,7 +1742,7 @@ GPT-6-Astra · medium ▾
     <div class="st-h">停靠区 · 多项排队</div>
     <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
       <pre>make migrate</pre>
-      </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
+      </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，<code>make migrate</code> 以后不再问</div></div>
     </div></div></details>
   </div>
 
@@ -3507,8 +3518,7 @@ Sonnet · high ▾
           <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 <i class="exp">›</i></span><span class="when-open">收起 <i class="exp up">›</i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
             <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
             <pre>go test ./... -count=1</pre>
-            </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-            <div class="foot"><b>附理由拒绝 ›</b></div>
+            </div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div><div class="appr-always">允许，<code>go test</code> 以后不再问</div></div>
           </div></div></details>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
         </div>

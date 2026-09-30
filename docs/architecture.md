@@ -192,7 +192,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | 会话的审批方式 | hook 的行为 | 用户看到什么 |
 |---|---|---|
 | 开着 `auto_review`（Codex 的 `Approve for me`） | 不输出、正常退出，交给 `auto_review` | 手机上不弹审批卡；模型在操作前拿不准时会在对话里问你（已实测），直接回复即可；`auto_review` 直接拒绝后模型会不会来问，未验证 |
-| 没开 `auto_review` | 把请求转到客户端，等待回复；超时拒绝 | 审批卡片：允许 / 拒绝，拒绝时可以附一句说明 |
+| 没开 `auto_review` | 把请求转到客户端，等待回复；超时拒绝 | 审批卡片：和原生审批框一样的三项（见下文「客户端的审批选项」） |
 
 依据：Codex 先调用 hook，hook 不表态时才交给 `auto_review`；hook 只能返回 allow 或 deny 加 message，做不到原生审批框里的「以后不再询问」（notes §3、§4）。
 
@@ -223,7 +223,10 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 各项的实测情况见 [codex-notes §4](codex-notes.md#4-审批模式) 和 [claude-code-notes.md](claude-code-notes.md)。
 
-- **只做共有的**：审批卡片只有「允许 / 拒绝」加说明；「总是允许」「允许并切到 auto」这类只有一边有的选项不做，需要时去终端
+- **审批选项对齐 CLI 的原生审批框**：两个 CLI 的框都是三项，客户端照着做，文案按原意翻译，不自己发明选项：
+  - 「允许」：hook 返回 allow
+  - 「允许，…以后不再问」：Codex 是 `Yes, and don't ask again for commands that start with <前缀>`，Claude Code 是 `Yes, and always allow access to <目录> from this project`，改文件时是 `Yes, and switch to accept edits`。hook 只能返回 allow 或 deny，做不到这一项（codex-notes §3、claude-code-notes §6），所以用户选它时 daemon 让 hook 不表态、正常退出，等原生框出现后核对第 2 项的文字再按 `2`，以工具开始执行为成功；框没出现或文字对不上就不按键，卡片报失败，由用户重选。前缀、目录这些具体内容取自原生框本身；原生框里没有第 2 项、或 daemon 认不出它时，卡片只显示另外两项
+  - 「不允许」：可以附一句告诉它该怎么做，hook 返回 deny 加这句说明，不写就是普通拒绝。只拒绝这一步、不中断这一轮，模型拿到说明后接着做；原生框的第 3 项会中断这一轮，这里不跟随，因为说明已经随拒绝送到了
 - **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
 - **Codex 的计划模式**：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会先关掉计划模式再切权限
 - **以 CLI 为准**：客户端只发「切换」指令，显示的是从 rollout、transcript 或屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端切到了这 4 种以外的模式（如 accept edits），照实显示
