@@ -226,3 +226,17 @@ it("uploads an image in chunks and resumes from what the machine has after a los
   expect(calls).toEqual([`begin 2000000 32`, "put 0 786432", "put 786432 786432", "status", "put 1572864 427136", "complete"]);
   expect(progress.at(-1)).toBe(2_000_000);
 });
+
+it("lets go of a sent message's local image copies once the CLI records it", async () => {
+  const { DemoRemote } = await import("./dev/demo");
+  const r = DemoRemote.create(new URLSearchParams());
+  r.start();
+  const blob = new Blob([new Uint8Array(10)]);
+  const id = r.send("s-idle", "看图", ["img-1"], [blob]);
+  const failedId = r.send("s-idle", "另一条", ["img-2"], [blob]);
+  expect(r.outbox("s-idle").find((o) => o.sendId === id)?.thumbs?.length).toBe(1);
+  r.recorded("s-idle", [id]);
+  expect(r.outbox("s-idle").find((o) => o.sendId === id)?.thumbs).toBeUndefined();
+  // Not yet recorded: kept for putting it back into the input.
+  expect(r.outbox("s-idle").find((o) => o.sendId === failedId)?.thumbs?.length).toBe(1);
+});

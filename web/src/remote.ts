@@ -674,6 +674,7 @@ export class Remote {
       b.pending.delete(next);
     }
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
+    this.recorded(s.id, stored.length ? recordedIds(b.events.slice(-stored.length)) : []);
     if (fillGaps && b.pending.size > 0) void this.fetchEvents(s.id);
     this.changed();
   }
@@ -809,6 +810,21 @@ export class Remote {
   resend(sid: string, failedId: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []) {
     if (this.replaced.has(failedId)) return;
     this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs));
+  }
+
+  /** The CLI recorded these messages: their images are in the session
+   * now, so this device's copies (up to six originals each) are let go.
+   * Messages not recorded keep theirs, to be put back into the input. */
+  recorded(sid: string, requestIds: string[]) {
+    if (!requestIds.length) return;
+    const ids = new Set(requestIds);
+    const box = this.outbox(sid);
+    if (!box.some((o) => ids.has(o.sendId) && o.thumbs?.length)) return;
+    this.outboxes.set(
+      sid,
+      box.map((o) => (ids.has(o.sendId) && o.thumbs ? { ...o, thumbs: undefined } : o)),
+    );
+    this.changed();
   }
 
   /** Sends a message that could not be confirmed again, with the same
@@ -1224,6 +1240,11 @@ export class Remote {
     this.error = errorText(e);
     this.changed();
   }
+}
+
+/** Request IDs of the messages recorded among events. */
+function recordedIds(events: Event[]): string[] {
+  return events.flatMap((e) => (e.kind.case === "userMessage" && e.kind.value.requestId ? [e.kind.value.requestId] : []));
 }
 
 function maxBig(a: bigint, ...rest: bigint[]): bigint {

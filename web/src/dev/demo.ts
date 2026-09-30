@@ -681,6 +681,7 @@ export class DemoRemote extends Remote {
   private push(sid: string, kind: EventKind) {
     const list = this.events(sid);
     list.push(create(EventSchema, { seq: BigInt(list.length + 1), sessionId: sid, time: timestampFromMs(Date.now()), kind }));
+    if (kind?.case === "userMessage" && kind.value?.requestId) this.recorded(sid, [kind.value.requestId]);
     const s = this.sessions.get(sid);
     if (s) s.updatedMs = BigInt(Date.now());
     this.changed();
