@@ -19,6 +19,7 @@ import {
   projectName,
   queueReason,
   shortPath,
+  shortenPath,
   shortenPaths,
   stateOf,
   timeline,
@@ -299,7 +300,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
   const prompt = remote.prompts.get(sid);
   const cwd = session.info?.cwd ?? "";
   const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
-  const short: Short = (title) => shortenPaths(title, cwd, home);
+  const short: Short = { text: (title) => shortenPaths(title, cwd, home), path: (path) => shortenPath(path, cwd, home) };
 
   // Text of a message this page knows, by request ID.
   const textOf = new Map(outbox.map((o) => [o.sendId, o.text]));
@@ -362,7 +363,7 @@ function ChatBody({ remote, session, events, d, agent, machine }: { remote: Remo
             正在 {machine} 上启动 {agentName(agent)}…
           </div>
         )}
-        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={short(t.title)} since={t.since} />)}
+        {d.running && d.tools.map((t, i) => <RunningTool key={t.callId || i} title={short.text(t.title)} since={t.since} />)}
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={phaseOf(o, d.inputs.get(o.sendId))} />
         ))}
@@ -405,11 +406,14 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
   );
 }
 
-/** Shortens the absolute paths in a tool title (see shortenPaths). */
-type Short = (title: string) => string;
+/** Shortens the absolute paths in a tool title (see shortenPaths), or a
+ * whole path such as a file edit's title, spaces and all. */
+type Short = { text: (title: string) => string; path: (path: string) => string };
+const asIs: Short = { text: (x) => x, path: (x) => x };
 
 function toolTitle(t: ToolCall, short: Short): string {
-  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short(t.title) : short(t.title || t.itemType);
+  // A file edit's title is one path, which may hold spaces.
+  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short.path(t.title) : short.text(t.title || t.itemType);
 }
 
 function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?: ApprovalDecision }) {
@@ -420,7 +424,7 @@ function ToolRow({ t, short, decision }: { t: ToolCall; short: Short; decision?:
   const lines = out ? out.split("\n") : [];
   // The details keep the original: the tool's input, or else the title as
   // the CLI wrote it when paths were shortened for the row.
-  const raw = t.input && t.input !== t.title ? t.input : toolTitle(t, (x) => x) !== toolTitle(t, short) ? t.title || t.itemType : "";
+  const raw = t.input && t.input !== t.title ? t.input : toolTitle(t, asIs) !== toolTitle(t, short) ? t.title || t.itemType : "";
   return (
     <>
       <button className="tool" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

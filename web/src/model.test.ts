@@ -25,6 +25,7 @@ import {
   previewOf,
   projects,
   queueReason,
+  shortenPath,
   shortenPaths,
   stateOf,
   statePriority,
@@ -356,6 +357,19 @@ describe("paths in tool titles", () => {
   ];
   it.each(cases)("shows %s in %s as expected", (title, cwd, home, shown) => {
     expect(shortenPaths(title, cwd, home)).toBe(shown);
+  });
+});
+
+describe("whole paths (file edit titles)", () => {
+  // [path, cwd, home, shown]: the whole title is one path, spaces and all.
+  const cases: [string, string, string, string][] = [
+    ["/Users/me/Code/foo bar/a.go", "/Users/me/Code/foo", "/Users/me", "~/Code/foo bar/a.go"],
+    ["/Users/me/Code/foo/sub dir/b.go", "/Users/me/Code/foo", "/Users/me", "sub dir/b.go"],
+    ["/private/tmp/p/x y.txt", "/tmp/p", "/Users/me", "x y.txt"],
+    ["/etc/x y", "/Users/me/Code/foo", "/Users/me", "/etc/x y"],
+  ];
+  it.each(cases)("shows %s in %s as expected", (path, cwd, home, shown) => {
+    expect(shortenPath(path, cwd, home)).toBe(shown);
   });
 });
 

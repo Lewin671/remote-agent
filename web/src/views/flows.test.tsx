@@ -535,3 +535,17 @@ it("keeps an answer of unknown outcome unknown when its retry comes back expired
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
 });
+
+it("shortens a file edit's whole path, spaces and all", () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  s.info = { ...s.info!, cwd: "/Users/me/Code/foo" };
+  const push = (title: string) =>
+    r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "toolCall", value: { title, kind: ToolKind.FILE_CHANGE, status: "failed" } } }));
+  push("/Users/me/Code/foo bar/a.go");
+  push("/Users/me/Code/foo/sub dir/b.go");
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const titles = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
+  expect(titles).toContain("编辑 ~/Code/foo bar/a.go");
+  expect(titles).toContain("编辑 sub dir/b.go");
+});

@@ -263,27 +263,32 @@ function samePlace(p: string): string {
  * /private/etc count as /tmp, /var and /etc. The expanded details keep the
  * original text. */
 export function shortenPaths(text: string, cwd: string, home = ""): string {
+  return text.replace(/(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g, (all, before: string, q: string | undefined, quoted?: string, bare?: string) => {
+    const path = quoted ?? bare ?? "";
+    const short = shortenPath(path, cwd, home);
+    if (short === path) return all;
+    return quoted !== undefined ? before + q + short + q : before + short;
+  });
+}
+
+/** One whole path shortened by the same rules, spaces and all, as a file
+ * edit's title is; unchanged if it is not under the session or home
+ * folder. */
+export function shortenPath(path: string, cwd: string, home = ""): string {
   const base = samePlace(cwd).replace(/\/+$/, "");
   const h = samePlace(home).replace(/\/+$/, "");
-  // What follows a folder in its token: a subpath, nothing, or :line[:col].
+  // What follows a folder in the path: a subpath, nothing, or :line[:col].
   const under = (p: string, dir: string): string | undefined => {
     if (!dir || !p.startsWith(dir)) return undefined;
     const rest = p.slice(dir.length);
     return rest === "" || rest[0] === "/" || /^:\d+(:\d+)*$/.test(rest) ? rest : undefined;
   };
-  const shorten = (path: string): string | undefined => {
-    const p = samePlace(path);
-    const inCwd = under(p, base);
-    if (inCwd !== undefined) return inCwd === "" || inCwd === "/" ? "." : inCwd[0] === "/" ? inCwd.slice(1) : "." + inCwd;
-    const home = h || /^\/(?:Users|home)\/[^/:]+/.exec(p)?.[0] || "";
-    const inHome = under(p, home);
-    return inHome === undefined ? undefined : "~" + inHome;
-  };
-  return text.replace(/(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g, (all, before: string, q: string | undefined, quoted?: string, bare?: string) => {
-    const short = shorten(quoted ?? bare ?? "");
-    if (short === undefined) return all;
-    return quoted !== undefined ? before + q + short + q : before + short;
-  });
+  const p = samePlace(path);
+  const inCwd = under(p, base);
+  if (inCwd !== undefined) return inCwd === "" || inCwd === "/" ? "." : inCwd[0] === "/" ? inCwd.slice(1) : "." + inCwd;
+  const hm = h || /^\/(?:Users|home)\/[^/:]+/.exec(p)?.[0] || "";
+  const inHome = under(p, hm);
+  return inHome === undefined ? path : "~" + inHome;
 }
 
 /** A path that does not fit keeps its end: …/ai-bot/remote-agent. */
