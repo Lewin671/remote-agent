@@ -45,6 +45,17 @@ class ProjectTest {
     }
 
     @Test
+    fun onlyAStartedSessionTakesTheDraft() {
+        // A refusal that asks for confirmation answers nothing: the draft stays.
+        org.junit.Assert.assertNull(startedSession(null))
+        org.junit.Assert.assertNull(startedSession(io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()))
+        val ok = io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setCreateSession(
+            io.github.lewin671.remoteagent.proto.CreateSessionResponse.newBuilder().setSession(io.github.lewin671.remoteagent.proto.Session.newBuilder().setId("s1")),
+        ).build()
+        assertEquals("s1", startedSession(ok))
+    }
+
+    @Test
     fun theDaemonsRefusalAsksForConfirmation() {
         val e = io.github.lewin671.remoteagent.core.CommandException("failed_precondition", "claude starts in full access here by default; confirm it or choose another mode", fromDaemon = true)
         org.junit.Assert.assertTrue(refusedForFullAccess(e))

@@ -178,6 +178,10 @@ fun launchMode(chosen: Mode?, d: DefaultMode): LaunchMode = when {
     else -> LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
 }
 
+/** The session a start created, or null when it did not (refused, or asked to confirm first). */
+fun startedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): String? =
+    r?.takeIf { it.hasCreateSession() && it.createSession.hasSession() }?.createSession?.session?.id?.takeIf { it.isNotEmpty() }
+
 /** The daemon refused a start because the folder's default is full access and nobody confirmed it. */
 fun refusedForFullAccess(e: Throwable): Boolean =
     e is io.github.lewin671.remoteagent.core.CommandException && e.fromDaemon && e.code == "failed_precondition" &&
@@ -333,10 +337,11 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                 throw err
             }
         }) { r ->
-            r?.createSession?.session?.id?.let {
-                Outbox.rememberPrompt(it, start.prompt)
-                if (terminalOnly) nav.sessionTerminal(it) else nav.session(it)
-            }
+            // Only a session that started takes the draft; a refusal that asks
+            // for confirmation, or no answer, leaves text and images as they are.
+            val sid = startedSession(r) ?: return@run
+            Outbox.rememberPrompt(sid, start.prompt)
+            if (terminalOnly) nav.sessionTerminal(sid) else nav.session(sid)
             if (!terminalOnly) {
                 if (text.trim() == start.prompt) text = ""
                 val taken = start.taken
