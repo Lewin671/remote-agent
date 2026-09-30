@@ -62,7 +62,7 @@ fun JoinScreen(app: RaApp) {
     val p = pal
     val scope = rememberCoroutineScope()
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
-    var code by rememberSaveable { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
     var server by rememberSaveable { mutableStateOf("https://") }
     var commit by remember { mutableStateOf<ByteArray?>(null) }
     var secret by remember { mutableStateOf("") }

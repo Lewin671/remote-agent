@@ -216,7 +216,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
     val key = initial?.cwd ?: name
     val draft = remember(key) { DraftConfig(initial) }
     val config = draft.value
-    var text by rememberSaveable { mutableStateOf("") }
+    var text by Drafts.of("new:$key")
     var change by remember { mutableStateOf(false) }
     val act = rememberAction()
     val fr = remember { FocusRequester() }
@@ -449,7 +449,7 @@ fun NewProjectScreen() {
     val state by remote.state.collectAsState()
     val p = pal
     var machine by rememberSaveable { mutableStateOf(state.machines.values.firstOrNull { it.online }?.id.orEmpty()) }
-    var path by rememberSaveable { mutableStateOf("") }
+    var path by remember { mutableStateOf("") }
     var dirs by remember { mutableStateOf<ListDirectoriesResponse?>(null) }
     var error by remember { mutableStateOf("") }
     var attempt by remember { mutableStateOf(0) }

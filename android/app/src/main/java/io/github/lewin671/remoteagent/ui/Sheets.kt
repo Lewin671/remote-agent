@@ -216,7 +216,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val p = pal
     val t = now()
     val act = rememberAction()
-    var reason by rememberSaveable { mutableStateOf("") }
+    var reason by Drafts.of("deny:$aid")
     PageScaffold(if (s != null) "审批详情" else "审批") {
         if (s == null || a == null) {
             val r = d.resolved[aid]

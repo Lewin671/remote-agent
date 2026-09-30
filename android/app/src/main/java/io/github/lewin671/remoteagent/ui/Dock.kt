@@ -135,7 +135,7 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
     val act = rememberAction()
     var which by remember { mutableStateOf<Boolean?>(null) }
     var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
-    var reason by rememberSaveable(a.approvalId) { mutableStateOf("") }
+    var reason by Drafts.of("deny:${a.approvalId}")
     fun resolve(allow: Boolean, message: String = "") {
         which = allow
         act.run({

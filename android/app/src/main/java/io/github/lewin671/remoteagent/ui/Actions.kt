@@ -64,6 +64,17 @@ class Outgoing(val requestId: String, val text: String) {
     var error by mutableStateOf("")
 }
 
+/**
+ * Text being written outside a session's message box: first messages and
+ * deny reasons. It lives in memory for this run only, never in saved
+ * instance state, which the system may write to disk in plaintext.
+ */
+object Drafts {
+    private val texts = HashMap<String, androidx.compose.runtime.MutableState<String>>()
+
+    fun of(key: String): androidx.compose.runtime.MutableState<String> = texts.getOrPut(key) { mutableStateOf("") }
+}
+
 /** Messages sent from this device, per session, for this run of the app. */
 object Outbox {
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
