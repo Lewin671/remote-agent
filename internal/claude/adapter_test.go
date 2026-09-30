@@ -576,3 +576,21 @@ func TestBackgroundWork(t *testing.T) {
 		}
 	}
 }
+
+// The "auto mode unavailable" note counts only in the live status area:
+// quoted in the conversation it says nothing, and a running Plan → ask
+// would pass auto (review verify3 P1).
+func TestAutoNoteOnlyInStatusArea(t *testing.T) {
+	a := New("claude", "")
+	facts := agent.ModeFacts{Model: "claude-sonnet-5-5"} // no bypass; auto on offer
+	f := &fakeClaude{noBypass: true, note: "⏺ The CLI said: auto mode unavailable for this model"}
+	f.mode = index("plan")
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, facts); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
+		t.Fatalf("running plan → ask via auto: %v %q", err, f.writes)
+	}
+	styled := rule + "\n\x1b[39m❯ \x1b[7m \x1b[0m\n" + rule + "\n   Sonnet 5.5  │  w     auto mode unavailable for this model\n  ⏸ plan mode on\n"
+	if StatusArea(styled) == "" || offered(facts, StatusArea(styled))["auto"] {
+		t.Fatal("the note in the status area was not read")
+	}
+}
+
