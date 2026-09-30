@@ -236,17 +236,27 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
         val p = img.ref.preview.toByteArray()
         return if (p.isEmpty()) null else p to img.ref.previewFormat
     }
+    fun doSave() {
+        val b = bytes() ?: return
+        scope.launch {
+            msg = try {
+                withContext(Dispatchers.IO) { save(context, b.first, b.second, fileName(img.ref.path)) }
+                "已保存到相册"
+            } catch (e: Exception) {
+                "没能保存：${errorText(e)}"
+            }
+        }
+    }
+    // Android 8 and 9 need the storage permission to add to the gallery; 10 and later do not.
+    val askStorage = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) doSave() else msg = "没有存储权限，没能保存"
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = {
-            val b = bytes() ?: return@TextButton
-            scope.launch {
-                msg = try {
-                    withContext(Dispatchers.IO) { save(context, b.first, b.second, fileName(img.ref.path)) }
-                    "已保存到相册"
-                } catch (e: Exception) {
-                    "没能保存：${errorText(e)}"
-                }
-            }
+            if (needsStoragePermission(Build.VERSION.SDK_INT) &&
+                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) askStorage.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            else doSave()
         }) { Text("保存", color = Color(0xFF9EC1FF)) }
         TextButton(onClick = {
             val b = bytes() ?: return@TextButton
@@ -292,3 +302,6 @@ private fun shareFile(context: Context, data: ByteArray, format: ImageFormat): a
 }
 
 const val SHARED_DIR = "shared"
+
+/** Saving to the gallery asks for the storage permission before Android 10 only. */
+fun needsStoragePermission(sdk: Int): Boolean = sdk < 29
