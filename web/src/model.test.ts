@@ -812,3 +812,9 @@ describe("messages the computer accepted (v2)", () => {
     expect([...d.typedLocally]).toEqual([3n]);
   });
 });
+
+it("leaves the CLI's image placeholders out of titles and previews", () => {
+  expect(titleOf(sess({ title: "[Image #1] 图里是什么图案？" }))).toBe("图里是什么图案？");
+  expect(plain("[Image #1][Image #2] 看这两张")).toBe("看这两张");
+  expect(plain("比较 [Image #1] 和 [Image #2]")).toBe("比较 图 1 和 图 2");
+});

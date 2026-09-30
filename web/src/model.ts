@@ -180,6 +180,9 @@ export function previewOf(s: SessionLike, st: State, pending?: { approval?: Appr
 export function plain(text: string): string {
   return oneLine(
     text
+      // The CLIs' image placeholders: gone before the words, 图 N among them.
+      .replace(/^(?:\s*\[Image #\d+\])+\s*/, "")
+      .replace(/\[Image #(\d+)\]/g, "图 $1")
       .replace(/```[^\n]*\n?/g, "")
       .replace(/`([^`]*)`/g, "$1")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
