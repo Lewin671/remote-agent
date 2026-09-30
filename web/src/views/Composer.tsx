@@ -2,7 +2,8 @@
 // draft with the mode, model, context and send in one card, and above it a
 // status line with what runs, the queue and a fixed interrupt.
 
-import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import type { Tray } from "../attach";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentOf, CONTEXT_WARN, contextPercent, modeOf, queuedIds, queueReason, toolPeek, type Derived } from "../model";
 import type { Remote, SessionView } from "../remote";
@@ -103,7 +104,10 @@ export function Composer({
   onMode,
   onModel,
   tray,
+  trayView,
   attach,
+  cardProps,
+  dropping,
 }: {
   ref: RefObject<HTMLTextAreaElement | null>;
   remote: Remote;
@@ -119,9 +123,13 @@ export function Composer({
   onDraft: (text: string) => void;
   onMode: () => void;
   onModel: () => void;
-  // Images waiting to go with the message, and the button that adds them.
-  tray?: ReactNode;
+  // Images waiting to go with the message, the button that adds them, and
+  // dropping or pasting them on the card.
+  tray?: Tray;
+  trayView?: ReactNode;
   attach?: ReactNode;
+  cardProps?: HTMLAttributes<HTMLDivElement>;
+  dropping?: boolean;
 }) {
   // The draft is the session's, not this input's: it survives opening an
   // approval, plan, queue or tool page and coming back.
@@ -137,12 +145,15 @@ export function Composer({
   const t = text.trim();
   // While the server is away, nothing is queued behind the user's back:
   // the text stays here until they send it themselves.
-  const canSend = !!t && online;
+  // With images, every one must be on the machine first; the text may
+  // then be empty.
+  const images = tray?.items.length ?? 0;
+  const canSend = online && (images ? tray!.ready() : !!t);
   const submit = (force = false) => {
     if (!canSend) return;
     // Slash commands typed as text go to the model; menus they would open
     // are not visible here.
-    if (t.startsWith("/") && !force) return setSlash(true);
+    if (t.startsWith("/") && !force && !images) return setSlash(true);
     setText("");
     onSend(t);
   };
@@ -154,8 +165,8 @@ export function Composer({
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : tool ? "继续输入，不会打断当前工具…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
   const high = pct !== undefined && pct > CONTEXT_WARN;
   return (
-    <div className={"compose-card" + (slim ? " slim" : "")}>
-      {tray}
+    <div className={"compose-card" + (slim ? " slim" : "") + (dropping ? " drop" : "")} {...cardProps}>
+      {trayView}
       <textarea
         ref={input}
         className={"draft" + (t ? " typed" : "")}

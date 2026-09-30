@@ -32,12 +32,13 @@ import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../sto
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote, type SessionView } from "../remote";
 
-type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "imageIds">;
+type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
 import { groupProjects } from "../prefs";
 import { useAutoGrow } from "./Composer";
+import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 
 export type Go = (route: string) => void;
 
@@ -151,7 +152,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
     const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent };
-    return { machineId: c.machineId, req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent } };
+    // The images are part of what is started: other images, another start.
+    return { machineId: c.machineId, req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent, imageIds: tray.imageIds() } };
   };
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
@@ -159,6 +161,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     const pending = current.payload;
     return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
   };
+  // Images for the first message go to the chosen machine; a new machine
+  // gets them again (the tray keeps them prepared).
+  const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
   const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
@@ -174,6 +179,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
+      if (!terminal) tray.clear();
       if (terminal) remote.termFirst.add(sid);
       remote.draftMachines.delete(key);
       // The new session now supplies the project's next launch settings.
@@ -219,6 +225,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     confirmFull: () => setFullConfirmed(confirmKey),
     issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, effectiveMode ?? ApprovalMode.UNSPECIFIED),
     parts: describeParts(cfg, machine, info),
+    tray,
+    attachWhy: attachBlocked(remote, machine),
     machine,
     info,
     line: describe(cfg, machine, info),
@@ -268,8 +276,10 @@ export function NewBox({
   const submit = async (confirmed = false, terminal = false) => {
     const prompt = terminal ? "" : text;
     // An unknown start that expired is not sent again, nor replaced by the
-    // same start under a new request.
+    // same start under a new request. Chosen images must all be on the
+    // machine first.
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
+    if (!terminal && ns.tray.items.length && !ns.tray.ready()) return;
     // Retrying an unknown start sends it as it was.
     const retry = ns.frozen && !ns.changes(prompt);
     if (!retry) {
@@ -289,7 +299,33 @@ export function NewBox({
     prompt: `在 ${name} 里开始新会话…`,
     start: "描述任务，⌘/Ctrl+Enter 开始",
   }[variant];
-  const disabled = cannot || (ns.expired && !ns.changes(text)) || !text.trim();
+  const tray = ns.tray;
+  const images = tray.items.length;
+  const disabled = cannot || (ns.expired && !ns.changes(text)) || (images ? !tray.ready() : !text.trim());
+  const [toast, setToast] = useState("");
+  const drop = useDropPaste(tray, ns.attachWhy, setToast);
+  // The machine changed under chosen images: they are uploaded again.
+  const lastMachine = useRef(ns.cfg.machineId);
+  const [moved, setMoved] = useState("");
+  useEffect(() => {
+    if (lastMachine.current !== ns.cfg.machineId && images) setMoved(machineName(ns.machine));
+    lastMachine.current = ns.cfg.machineId;
+  }, [ns.cfg.machineId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const trayView = (
+    <TrayView
+      tray={tray}
+      note={
+        <>
+          {moved && tray.busy() && <Banner>已换到 {moved}，图片正在重新上传</Banner>}
+          {toast && (
+            <Banner action="知道了" onAction={() => setToast("")}>
+              {toast}
+            </Banner>
+          )}
+        </>
+      }
+    />
+  );
   const field = (
     <textarea
       ref={input}
@@ -351,7 +387,7 @@ export function NewBox({
       )}
     </>
   );
-  const onlyTerm = !text && (
+  const onlyTerm = !text && !images && (
     <button className="onlyterm" disabled={cannot} onClick={() => void submit(false, true)}>
       只打开终端 ›
     </button>
@@ -376,7 +412,9 @@ export function NewBox({
           <span>＋ 新会话</span>
           {cliPick}
         </div>
-        <div className="row2">
+        {trayView}
+        <div className="row2" {...drop.props}>
+          <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} className="att-in" />
           {field}
           {go}
         </div>
@@ -411,9 +449,11 @@ export function NewBox({
         </div>
         {error}
         {notes}
-        <div className="compose-card newcard">
+        <div className={"compose-card newcard" + (drop.over ? " drop" : "")} {...drop.props}>
+          {trayView}
           {field}
           <div className="controls">
+            <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />
             <button className={"ctl mode" + (p.mode === "完全放行" ? " danger" : "")} onClick={() => setConfig("mode")}>
               {p.mode} ▾
             </button>

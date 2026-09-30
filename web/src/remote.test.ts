@@ -220,7 +220,7 @@ it("uploads an image in chunks and resumes from what the machine has after a los
     throw new Error("unexpected " + cmd?.case);
   };
   const progress: number[] = [];
-  const id = await r.uploadImage("mac", { bytes, format: "jpeg" }, (d) => progress.push(d));
+  const id = await Remote.prototype.uploadImage.call(r, "mac", { bytes, format: "jpeg" }, (d: number) => progress.push(d));
   expect(id).toBe("img-1");
   // Chunks of at most 768 KiB, each starting where the machine is.
   expect(calls).toEqual([`begin 2000000 32`, "put 0 786432", "put 786432 786432", "status", "put 1572864 427136", "complete"]);

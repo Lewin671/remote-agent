@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { sessionImages, splitPlaceholders } from "../imageview";
 import { GenCard, ImageStrip, ImageViewer, OpenImage } from "./Images";
+import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { ApprovalDecision, InputStatus, SessionStatus, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
 import {
@@ -105,6 +106,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [page, setPage] = useState<"" | "plan" | "question" | "queue" | { approval: string } | { tool: bigint | undefined }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
+  const setToastRef = useRef(setToast);
   const composer = useRef<HTMLTextAreaElement>(null);
   // Remounting the input shows a draft put back from the chat.
   const [composerKey, setComposerKey] = useState(0);
@@ -115,6 +117,9 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   };
 
   const items = dockItems(session, d, machine);
+  const tray = useTray(remote, sid, session.machineId, maxImages(machine));
+  const attachWhy = attachBlocked(remote, machine);
+  const drop = useDropPaste(tray, attachWhy, setToastRef.current);
   const pictures = useMemo(() => sessionImages(events), [events, events.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const [viewing, setViewing] = useState<number>();
   const openImage = useCallback((ref: ImageRef) => {
@@ -285,7 +290,15 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             wide={wide}
             slim={typing && !wide}
             onFocus={(v) => setTyping(v)}
-            onSend={(text) => remote.send(sid, text)}
+            onSend={(text) => {
+              remote.send(sid, text, tray.imageIds(), tray.items.map((i) => i.thumb!).filter(Boolean));
+              tray.clear();
+            }}
+            tray={tray}
+            trayView={<TrayView tray={tray} />}
+            attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />}
+            cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
+            dropping={drop.over}
             draft={remote.drafts.get(sid) ?? ""}
             onDraft={(text) => remote.drafts.set(sid, text)}
             onMode={() => setSheet("mode")}
@@ -498,7 +511,8 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
   if (phase === "failed")
     return (
       <div className="me fail">
-        <div>{o.text}</div>
+        <LocalThumbs blobs={o.thumbs} />
+        {o.text && <div>{o.text}</div>}
         <small>
           没能确认送达：{o.error}
           <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>
@@ -508,7 +522,8 @@ function Pending({ remote, sid, o, phase }: { remote: Remote; sid: string; o: Ou
     );
   return (
     <div className={"me" + (phase === "sending" ? " pending" : "")}>
-      <div>{o.text}</div>
+      <LocalThumbs blobs={o.thumbs} />
+      {o.text && <div>{o.text}</div>}
       <small>{phase === "sending" ? "◌ 发送中…" : "已送达电脑"}</small>
     </div>
   );
@@ -744,6 +759,27 @@ function Row({
     }
   }
   return null;
+}
+
+/** This device's copies of images on their way: shown until the CLI
+ * records the message with its own previews. */
+function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const us = (blobs ?? []).map((b) => URL.createObjectURL(b));
+    setUrls(us);
+    return () => us.forEach((u) => URL.revokeObjectURL(u));
+  }, [blobs]);
+  if (!urls.length) return null;
+  return (
+    <span className="pics">
+      {urls.map((u) => (
+        <span key={u} className="pic local">
+          <img src={u} alt="" />
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** How the chat names who did what (devices.ts). */

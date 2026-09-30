@@ -520,6 +520,18 @@ export class DemoRemote extends Remote {
       {} as Keys,
     );
     r.opts = q;
+    // Prepared as for real, remembering the file's name so that one named
+    // with "fail" can fail its upload.
+    const real = r.prepareImage;
+    r.prepareImage = async (f, original) => {
+      let p;
+      try {
+        p = await real(f, original);
+      } catch {
+        p = { bytes: new Uint8Array(await f.arrayBuffer()), format: "png" as const, width: 1, height: 1 };
+      }
+      return Object.assign(p, { name: (f as File).name ?? "" });
+    };
     r.seed();
     return r;
   }
@@ -541,10 +553,11 @@ export class DemoRemote extends Remote {
           { agent: Agent.CODEX, version: "0.71.0", verified: false },
           { agent: Agent.CLAUDE, version: "2.3.1", verified: true },
         ],
+        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true },
       });
       if (!empty) {
         machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true });
-        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true });
+        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true, capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxChunkBytes: 786432 } });
         machine("mini", "Mac mini", false);
       }
     }
@@ -589,6 +602,20 @@ export class DemoRemote extends Remote {
         }
       }
     this.changed();
+  }
+
+  // Uploads take a moment per piece; a file named with "fail" fails.
+  override async uploadImage(machineId: string, p: { bytes: Uint8Array; format: string }, progress: (done: number, total: number) => void = () => undefined): Promise<string> {
+    const total = p.bytes.length;
+    for (let done = 0; done < total; done += 786432) {
+      progress(done, total);
+      await sleep(400);
+    }
+    progress(total, total);
+    await sleep(300);
+    if (!this.machines.get(machineId)?.online) throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+    if ((p as { name?: string }).name?.includes("fail")) throw new CommandError("unavailable", "连接超时");
+    return "up-" + Math.random().toString(16).slice(2, 10);
   }
 
   override async getImage(sid: string, imageId: string) {

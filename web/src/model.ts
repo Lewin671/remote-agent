@@ -824,6 +824,8 @@ export interface Outgoing {
   text: string;
   // Images uploaded to the machine for this message (their image IDs).
   imageIds?: string[];
+  // This device's copies of them, shown until the CLI records the message.
+  thumbs?: Blob[];
   status: "sending" | "sent" | "failed";
   error?: string;
   // A try may have reached the computer: retries keep this request.

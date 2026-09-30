@@ -62,6 +62,8 @@ export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
+import type { Prepare, Tray } from "./attach";
+import { prepareForSending } from "./sendimages";
 import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
 import { modelLabel, type Outgoing } from "./model";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
@@ -261,6 +263,10 @@ export class Remote {
   devicesStatus: "loading" | "ready" | "unsupported" | "error" = "loading";
   // The account's project list preferences.
   prefs: PrefsState = { status: "loading", error: "", pending: new Map() };
+  // Images chosen for each draft, by draft key (a session ID, or
+  // "new:" + project path), and how a chosen file is prepared for sending.
+  trays = new Map<string, Tray>();
+  prepareImage: Prepare = prepareForSending;
   // Cancels asked for from this page, by the queued message's request ID,
   // until the message leaves the queue.
   cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
@@ -786,8 +792,8 @@ export class Remote {
 
   /** Sends text, and images uploaded to the machine, to a session; its
    * progress shows in outbox(sid). */
-  send(sid: string, text: string, imageIds: string[] = []) {
-    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, status: "sending" };
+  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []) {
+    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, status: "sending" };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
