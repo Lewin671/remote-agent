@@ -432,6 +432,7 @@ export class Remote {
         }
         break;
       case "deviceRemoved":
+        this.deviceRemovals.set(kind.value.deviceId, (this.deviceRemovals.get(kind.value.deviceId) ?? 0) + 1);
         this.devices.delete(kind.value.deviceId);
         this.changed();
         break;
@@ -948,17 +949,28 @@ export class Remote {
     }
   }
 
+  // Removals seen per device, so that metadata still opening when its
+  // device goes does not bring it back.
+  private deviceRemovals = new Map<string, number>();
+
   private async putDevice(d: Device) {
-    const prev = this.devices.get(d.id);
-    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: prev?.metaRev ?? 0n, meta: prev?.meta };
-    if (d.meta && d.metaRevision >= info.metaRev) {
+    const removals = this.deviceRemovals.get(d.id) ?? 0;
+    let meta: DeviceMeta | undefined;
+    if (d.meta) {
       try {
-        const { msg } = await openMessage(this.keys.deviceMeta, d.meta, { kind: PayloadKind.DEVICE_META, requestId: d.id, seq: d.metaRevision }, DeviceMetaSchema);
-        info.meta = msg;
-        info.metaRev = d.metaRevision;
+        ({ msg: meta } = await openMessage(this.keys.deviceMeta, d.meta, { kind: PayloadKind.DEVICE_META, requestId: d.id, seq: d.metaRevision }, DeviceMetaSchema));
       } catch (e) {
         this.report(e);
       }
+    }
+    // Checked after opening, against what is stored now: another update
+    // may have landed, or the device gone, in the meantime.
+    if ((this.deviceRemovals.get(d.id) ?? 0) !== removals) return;
+    const cur = this.devices.get(d.id);
+    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: cur?.metaRev ?? 0n, meta: cur?.meta };
+    if (meta && d.metaRevision >= info.metaRev) {
+      info.meta = meta;
+      info.metaRev = d.metaRevision;
     }
     this.devices.set(d.id, info);
   }
@@ -1182,6 +1194,8 @@ export class Remote {
   /** Unregisters a device; a machine's sessions go with it. */
   async removeDevice(deviceId: string): Promise<void> {
     await this.api.removeDevice({ deviceId });
+    this.deviceRemovals.set(deviceId, (this.deviceRemovals.get(deviceId) ?? 0) + 1);
+    this.devices.delete(deviceId);
     for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.sessions.delete(id);
     this.machines.delete(deviceId);
     this.changed();
