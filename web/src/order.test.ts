@@ -54,3 +54,23 @@ it("breaks project ties by path and never falls back to upload time for legacy m
   a.info.createdAt = undefined; b.info.createdAt = undefined;
   expect(projects([b, a]).map(p => p.key)).toEqual(["/a", "/b"]);
 });
+
+it("puts live projects first and moves a project back only when its last live session exits", () => {
+  const ended = session("ended", 9000, 999999, { cwd: "/ended", status: SessionStatus.EXITED });
+  const a = session("a", 1000, 0, { cwd: "/a", status: SessionStatus.RUNNING });
+  const older = session("older", 500, 0, { cwd: "/a", status: SessionStatus.IDLE });
+  const b = session("b", 2000, 0, { cwd: "/b", status: SessionStatus.IDLE });
+  const keys = () => projects([ended, a, older, b]).map(p => p.key);
+  expect(keys()).toEqual(["/b", "/a", "/ended"]);
+  for (const status of [SessionStatus.STARTING, SessionStatus.IDLE, SessionStatus.BLOCKED]) {
+    b.info.status = status;
+    b.info.pendingApprovals = 1;
+    expect(keys()).toEqual(["/b", "/a", "/ended"]);
+  }
+  a.info.status = SessionStatus.EXITED;
+  expect(keys()).toEqual(["/b", "/a", "/ended"]);
+  older.info.status = SessionStatus.EXITED;
+  expect(keys()).toEqual(["/b", "/ended", "/a"]);
+  b.info.status = SessionStatus.EXITED;
+  expect(keys()).toEqual(["/ended", "/b", "/a"]);
+});

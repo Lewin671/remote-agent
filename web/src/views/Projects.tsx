@@ -119,7 +119,7 @@ function ManageRow({ p, pinned, onMore, busy }: { p: { key: string; name: string
   );
 }
 
-/** 项目管理: pinned projects in their order, the others by latest session creation, and
+/** 项目管理: pinned projects in their order, the others by liveness then latest session creation, and
  * the way to the removed ones. */
 export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: Go; onBack: () => void; wide: boolean }) {
   useRemote(remote);

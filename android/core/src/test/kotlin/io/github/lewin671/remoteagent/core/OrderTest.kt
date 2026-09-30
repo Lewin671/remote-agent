@@ -48,4 +48,23 @@ class OrderTest {
         assertEquals(listOf("/a", "/b"), keys(b, a))
         assertEquals(listOf("/a", "/b"), keys(b.copy(info = b.info!!.toBuilder().clearCreatedAt().build()), a.copy(info = a.info!!.toBuilder().clearCreatedAt().build())))
     }
+
+    @Test fun liveProjectsFirstUntilTheirLastLiveSessionExits() {
+        val ended = s("ended", 9000, 999999) { cwd = "/ended"; status = SessionStatus.SESSION_STATUS_EXITED }
+        var a = s("a", 1000, 0) { cwd = "/a"; status = SessionStatus.SESSION_STATUS_RUNNING }
+        var older = s("older", 500, 0) { cwd = "/a"; status = SessionStatus.SESSION_STATUS_IDLE }
+        var b = s("b", 2000, 0) { cwd = "/b"; status = SessionStatus.SESSION_STATUS_IDLE }
+        fun keys() = projects(RemoteState(sessions = listOf(ended, a, older, b).associateBy { it.id })).map { it.key }
+        assertEquals(listOf("/b", "/a", "/ended"), keys())
+        for (status in listOf(SessionStatus.SESSION_STATUS_STARTING, SessionStatus.SESSION_STATUS_IDLE, SessionStatus.SESSION_STATUS_BLOCKED)) {
+            b = b.copy(info = b.info!!.toBuilder().setStatus(status).setPendingApprovals(1).build())
+            assertEquals(listOf("/b", "/a", "/ended"), keys())
+        }
+        a = a.copy(info = a.info!!.toBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED).build())
+        assertEquals(listOf("/b", "/a", "/ended"), keys())
+        older = older.copy(info = older.info!!.toBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED).build())
+        assertEquals(listOf("/b", "/ended", "/a"), keys())
+        b = b.copy(info = b.info!!.toBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED).build())
+        assertEquals(listOf("/ended", "/b", "/a"), keys())
+    }
 }

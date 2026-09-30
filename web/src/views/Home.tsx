@@ -215,7 +215,7 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
 }
 
 /** The project list: pinned projects first with 管理 beside their title,
- * then the others by latest session creation. Removed projects are not listed; their
+ * then the others with live projects first, by latest session creation. Removed projects are not listed; their
  * sessions still are, above, wherever they need the user. */
 function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
   const g = useProjectGroups(remote);
@@ -435,12 +435,12 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
   );
 }
 
-/** The wide home: a new-session box for the latest project, and what
+/** The wide home: a new-session box for the first project, and what
  * waits for the user. */
 export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
   const g = useProjectGroups(remote);
-  // The latest project on the list; a removed one is not offered.
+  // The first project by liveness and creation time; a removed one is not offered.
   const list = [...g.pinned, ...g.others].sort(compareProjects);
   const [key, setKey] = useState<string>();
   const [picking, setPicking] = useState<"" | "pick" | "new">("");
@@ -465,7 +465,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
               name={name}
               autoFocus={focus}
               variant="start"
-              // With no project picked, the box follows the latest project;
+              // With no project picked, the box follows project ordering;
               // once a draft begins it stays on that one, whatever other
               // projects do meanwhile.
               onDraft={() => setKey((k) => k ?? pkey)}
