@@ -5,7 +5,7 @@
 
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
-import { Agent, ApprovalDecision, ApprovalMode, InputStatus, SessionStatus, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SessionStatus, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
 import type { Session } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
@@ -491,6 +491,12 @@ export interface Derived {
   questions: Map<string, QuestionAsked>; // pending
   answered: Map<string, string[]>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
+  // What the computer accepted for each message, as its first QUEUED state
+  // says (v2 daemons): the text and images, and who sent it; so every
+  // client shows the same queue. Missing from older daemons.
+  accepted: Map<string, { text: string; imageIds: string[]; origin?: Event["origin"] }>;
+  stages: Map<string, InputStage>; // how far a queued message got
+  inputReasons: Map<string, string>; // why a message failed
   // Messages the session ended before writing: canceled for that reason
   // ("exited"), or, from daemons that recorded nothing, still queued when
   // the session ended. Never sent; not waiting either.
@@ -529,6 +535,9 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     questions: new Map(),
     answered: new Map(),
     inputs: new Map(),
+    accepted: new Map(),
+    stages: new Map(),
+    inputReasons: new Map(),
     unsent: new Set(),
     running: false,
     tools: [],
@@ -586,6 +595,10 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         break;
       case "inputState":
         d.inputs.set(k.value.requestId, k.value.status);
+        if (k.value.status === InputStatus.QUEUED && !d.accepted.has(k.value.requestId) && (k.value.text || k.value.imageIds.length))
+          d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin });
+        if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);
+        if (k.value.status === InputStatus.FAILED || k.value.status === InputStatus.NEEDS_TERMINAL) d.inputReasons.set(k.value.requestId, k.value.reason);
         if (k.value.status === InputStatus.CANCELED && k.value.reason === "exited") d.unsent.add(k.value.requestId);
         else if (k.value.status !== InputStatus.QUEUED) d.unsent.delete(k.value.requestId);
         if (k.value.status === InputStatus.QUEUED && !queuedAt.has(k.value.requestId)) queuedAt.set(k.value.requestId, e.seq);
@@ -604,6 +617,12 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         }
         break;
       case "userMessage":
+        // A v2 daemon says who sent it; the counting below is for older ones.
+        if (e.origin?.kind) {
+          if (e.origin.kind === OriginKind.LOCAL) d.typedLocally.add(e.seq);
+          if (submitted > 0 && k.value.requestId) submitted--;
+          break;
+        }
         if (submitted > 0) submitted--;
         // Codex sends this itself when a plan is approved.
         else if (k.value.text !== "Implement the plan.") {
@@ -811,7 +830,9 @@ export type Phase =
   | "failed" // not confirmed to have arrived: retry is safe
   | "unconfirmed" // typed into the terminal, not confirmed: no retry
   | "done" // the CLI recorded it: shown as a normal message
-  | "canceled";
+  | "canceled"
+  | "notSent" // failed before Enter; the terminal is as it was
+  | "needsTerminal"; // failed, and the terminal may hold part of it
 
 /** Where a message stands, from the send call and the daemon's events. */
 export function phaseOf(o: Pick<Outgoing, "status">, input?: InputStatus): Phase {
@@ -824,6 +845,10 @@ export function phaseOf(o: Pick<Outgoing, "status">, input?: InputStatus): Phase
       return "canceled";
     case InputStatus.QUEUED:
       return "queued";
+    case InputStatus.FAILED:
+      return "notSent";
+    case InputStatus.NEEDS_TERMINAL:
+      return "needsTerminal";
   }
   if (o.status === "failed") return "failed";
   return o.status === "sending" ? "sending" : "delivered";
@@ -847,6 +872,23 @@ export function queueReason(s: SessionLike, d: Derived): string {
  * first message of a session started here, which the chat shows. */
 export function queuedIds(d: Derived, skip?: string): string[] {
   return [...d.inputs.entries()].filter(([id, st]) => st === InputStatus.QUEUED && !d.unsent.has(id) && id !== skip).map(([id]) => id);
+}
+
+/** Why a message was not written, from the daemon's reason code. */
+export function inputFailure(reason: string, agent: Agent): string {
+  switch (reason) {
+    case "image_not_recognized":
+      return `${agentName(agent)} 没认出图片`;
+    case "input_changed":
+      return "终端输入框里有别的内容";
+    case "timeout":
+      return "等终端就绪超时";
+    case "restarted":
+      return "电脑上的 remote-agent 写入时重启了";
+    case "write_failed":
+      return "写入终端失败";
+  }
+  return "没有写进终端";
 }
 
 // --- the chat timeline ---
@@ -881,7 +923,7 @@ function visible(e: Event, d: Derived): boolean {
     case "inputState":
       // A message never sent shows once, where it was queued.
       if (d.unsent.has(k.value.requestId)) return k.value.status === InputStatus.QUEUED;
-      return k.value.status === InputStatus.CANCELED || k.value.status === InputStatus.UNCONFIRMED;
+      return [InputStatus.CANCELED, InputStatus.UNCONFIRMED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL].includes(k.value.status);
     case "settingsChanged":
       return k.value.compacted || !!k.value.model || !!modeName(k.value.mode);
     case "turnContext":

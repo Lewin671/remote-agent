@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
@@ -15,6 +15,7 @@ import {
   findModel,
   modelLabel,
   inheritConfig,
+  inputFailure,
   newConfigIssue,
   switchAgent,
   switchMachine,
@@ -28,6 +29,7 @@ import {
   previewOf,
   projects,
   queueReason,
+  queuedIds,
   shortenPath,
   shortenPaths,
   stateOf,
@@ -762,5 +764,51 @@ describe("switching a new session's CLI or machine (v2)", () => {
     expect(newConfigIssue(Agent.CLAUDE, "sonnet", ApprovalMode.AUTO)).toBe("");
     expect(newConfigIssue(Agent.CODEX, "haiku", ApprovalMode.AUTO)).toBe("");
     expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.ASK)).toBe("");
+  });
+});
+
+describe("messages the computer accepted (v2)", () => {
+  it("keeps what was accepted, whoever sent it, for the shared queue", () => {
+    const d = derive(
+      events(
+        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "补测试", imageIds: ["i1", "i2"] } },
+        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.PASTING_IMAGES } },
+      ),
+    );
+    expect(d.accepted.get("a")).toMatchObject({ text: "补测试", imageIds: ["i1", "i2"] });
+    expect(d.stages.get("a")).toBe(InputStage.PASTING_IMAGES);
+    expect(queuedIds(d)).toEqual(["a"]);
+  });
+
+  it("shows a message that failed before Enter once, and says why", () => {
+    const list = events(
+      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "看图" } },
+      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.PASTING_IMAGES } },
+      { case: "inputState", value: { requestId: "a", status: InputStatus.FAILED, reason: "image_not_recognized" } },
+      { case: "inputState", value: { requestId: "b", status: InputStatus.QUEUED, text: "再看" } },
+      { case: "inputState", value: { requestId: "b", status: InputStatus.NEEDS_TERMINAL, reason: "input_changed" } },
+    );
+    const d = derive(list);
+    expect(phaseOf({ status: "sent" }, d.inputs.get("a"))).toBe("notSent");
+    expect(phaseOf({ status: "sent" }, d.inputs.get("b"))).toBe("needsTerminal");
+    expect(queuedIds(d)).toEqual([]);
+    const rows = timeline(list, d).map((i) => (i.kind === "event" && i.event.kind.case === "inputState" ? `${i.event.kind.value.requestId}:${i.event.kind.value.status}` : i.kind));
+    expect(rows).toEqual([`a:${InputStatus.FAILED}`, `b:${InputStatus.NEEDS_TERMINAL}`]);
+    expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe("Claude Code 没认出图片");
+    expect(inputFailure("input_changed", Agent.CODEX)).toBe("终端输入框里有别的内容");
+    expect(inputFailure("", Agent.CODEX)).toBe("没有写进终端");
+  });
+
+  it("tells a message typed at the computer by its origin when the daemon gives one", () => {
+    const d = derive(
+      events(
+        { case: "inputState", value: { requestId: "r", status: InputStatus.SUBMITTED } },
+        { case: "userMessage", value: { text: "from a client", requestId: "r" }, },
+      ).concat(
+        create(EventSchema, { seq: 3n, origin: { kind: OriginKind.LOCAL }, kind: { case: "userMessage", value: { text: "typed" } } }),
+        create(EventSchema, { seq: 4n, origin: { kind: OriginKind.CLIENT, deviceId: "x" }, kind: { case: "userMessage", value: { text: "sent" } } }),
+      ),
+    );
+    expect([...d.typedLocally]).toEqual([3n]);
   });
 });

@@ -36,15 +36,31 @@ import {
   PeerFrameSchema,
   ServerFrameSchema,
   TermHelloSchema,
+  type AccountPrefsObject,
+  type Device,
   type Machine as RemoteMachine,
   type RemoteSession,
   type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
-import { CommandResultSchema, CommandSchema, MachineMetaSchema, TerminalFrameSchema, type CommandResult, type MachineMeta, type TerminalFrame } from "./gen/remoteagent/v1/remote_pb";
+import {
+  CommandResultSchema,
+  CommandSchema,
+  DeviceMetaSchema,
+  MachineMetaSchema,
+  ProjectPrefsSchema,
+  TerminalFrameSchema,
+  type CommandResult,
+  type DeviceMeta,
+  type MachineMeta,
+  type ProjectPrefs,
+  type TerminalFrame,
+} from "./gen/remoteagent/v1/remote_pb";
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
+import { describeBrowser, type DeviceInfo } from "./devices";
+import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
 import { modelLabel, type Outgoing } from "./model";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
@@ -145,6 +161,21 @@ export type ConnState = "connecting" | "online" | "offline";
 
 export const COMMAND_TTL_MS = 60_000;
 
+/** The account preferences object with the project list's settings. */
+export const PREFS_OBJECT = "project-prefs";
+
+export interface PrefsState {
+  status: "loading" | "ready" | "unsupported" | "error";
+  error: string;
+  snap?: PrefsSnapshot;
+  // Operations in flight, by project path.
+  pending: Map<string, PrefKind>;
+  // The last operation that did not go through, to retry as it was.
+  failed?: { op: PrefOp; error: string };
+  // When another client last changed the list.
+  changedAt?: number;
+}
+
 /** Joins the account in secretText with a new browser device. */
 export async function join(secretText: string): Promise<StoredAccount> {
   const secret = parseSecret(secretText);
@@ -207,6 +238,12 @@ export class Remote {
   // What the user has typed and not sent, by session. Once sent, the
   // message is in the outbox.
   drafts = new Map<string, string>();
+  // The account's devices, machines and clients (ListDevices); names of
+  // clients are sealed in their metadata.
+  devices = new Map<string, DeviceInfo>();
+  devicesStatus: "loading" | "ready" | "unsupported" | "error" = "loading";
+  // The account's project list preferences.
+  prefs: PrefsState = { status: "loading", error: "", pending: new Map() };
   // Cancels asked for from this page, by the queued message's request ID,
   // until the message leaves the queue.
   cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
@@ -359,6 +396,21 @@ export class Remote {
         // Subscribed first, then catch up: nothing falls in between.
         await this.refresh();
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
+        void this.loadDevices();
+        void this.loadPrefs();
+        break;
+      case "accountPrefsUpdated":
+        if (kind.value.object) await this.takePrefs(kind.value.object, true);
+        break;
+      case "deviceUpdated":
+        if (kind.value.device) {
+          await this.putDevice(kind.value.device);
+          this.changed();
+        }
+        break;
+      case "deviceRemoved":
+        this.devices.delete(kind.value.deviceId);
+        this.changed();
         break;
       case "machineRemoved":
         this.bump(this.removedPushes, kind.value.machineId);
@@ -823,6 +875,148 @@ export class Remote {
         ws.close();
       },
     };
+  }
+
+  // --- devices ---
+
+  /** Lists the account's devices. A server older than v2 has no list:
+   * the pages then say so rather than guess. */
+  async loadDevices() {
+    try {
+      const r = await this.api.listDevices({});
+      const ids = new Set(r.devices.map((d) => d.id));
+      for (const id of this.devices.keys()) if (!ids.has(id)) this.devices.delete(id);
+      for (const d of r.devices) await this.putDevice(d);
+      this.devicesStatus = "ready";
+      this.changed();
+      await this.describeSelf();
+    } catch (e) {
+      this.devicesStatus = e instanceof ConnectError && e.code === Code.Unimplemented ? "unsupported" : "error";
+      this.changed();
+    }
+  }
+
+  private async putDevice(d: Device) {
+    const prev = this.devices.get(d.id);
+    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: prev?.metaRev ?? 0n, meta: prev?.meta };
+    if (d.meta && d.metaRevision >= info.metaRev) {
+      try {
+        const { msg } = await openMessage(this.keys.deviceMeta, d.meta, { kind: PayloadKind.DEVICE_META, requestId: d.id, seq: d.metaRevision }, DeviceMetaSchema);
+        info.meta = msg;
+        info.metaRev = d.metaRevision;
+      } catch (e) {
+        this.report(e);
+      }
+    }
+    this.devices.set(d.id, info);
+  }
+
+  /** Says what this browser is, once, so other clients can name it. */
+  private async describeSelf() {
+    const me = this.devices.get(this.account.deviceId);
+    if (!me || me.meta) return;
+    await this.changeDeviceMeta(this.account.deviceId, (m) => ({ name: m?.name ?? "", platform: "web", description: m?.description || describeBrowser(navigator.userAgent) })).catch((e) => this.report(e));
+  }
+
+  /** Renames a client; the name is sealed, the server sees none. */
+  renameDevice(id: string, name: string): Promise<void> {
+    return this.changeDeviceMeta(id, (m) => ({ name: name.trim(), platform: m?.platform ?? "", description: m?.description ?? "" }));
+  }
+
+  /** Replaces a device's metadata with change(current). If another client
+   * wrote first, the change is made again on what it wrote. */
+  private async changeDeviceMeta(id: string, change: (m: DeviceMeta | undefined) => Omit<Partial<DeviceMeta>, "$typeName">) {
+    let cur = this.devices.get(id);
+    for (let i = 0; i < 5; i++) {
+      const rev = cur?.metaRev ?? 0n;
+      const env = await sealMessage(this.keys.deviceMeta, { kind: PayloadKind.DEVICE_META, requestId: id, seq: rev + 1n, sender: this.account.deviceId }, DeviceMetaSchema, create(DeviceMetaSchema, change(cur?.meta)));
+      const r = await this.api.putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env });
+      if (r.device) await this.putDevice(r.device);
+      this.changed();
+      if (r.applied) return;
+      cur = this.devices.get(id);
+    }
+    throw new Error("设备信息一直在被别的客户端修改，没能保存");
+  }
+
+  // --- project list preferences ---
+
+  private prefsStore: PrefsStore = {
+    get: async () => {
+      const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
+      return this.openPrefs(r.object);
+    },
+    put: async (expected, next) => {
+      const env = await sealMessage(this.keys.prefs, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: expected + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, next);
+      const r = await this.api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: expected, envelope: env });
+      return { applied: r.applied, current: await this.openPrefs(r.object) };
+    },
+  };
+
+  private async openPrefs(o: AccountPrefsObject | undefined): Promise<PrefsSnapshot> {
+    if (!o || o.revision === 0n || !o.envelope) return { revision: 0n, prefs: emptyPrefs() };
+    const { msg } = await openMessage(this.keys.prefs, o.envelope, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision }, ProjectPrefsSchema);
+    if (msg.schema !== 1) throw new Error("项目偏好的格式比这个网页新，请刷新网页");
+    return { revision: o.revision, prefs: msg };
+  }
+
+  /** The account's pinned and removed projects; empty until read. */
+  projectPrefs(): ProjectPrefs {
+    return this.prefs.snap?.prefs ?? emptyPrefs();
+  }
+
+  async loadPrefs() {
+    try {
+      const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
+      await this.takePrefs(r.object, false);
+      this.prefs = { ...this.prefs, status: "ready", error: "" };
+    } catch (e) {
+      const unsupported = e instanceof ConnectError && e.code === Code.Unimplemented;
+      this.prefs = { ...this.prefs, status: unsupported ? "unsupported" : this.prefs.snap ? "ready" : "error", error: unsupported ? "" : errorText(e) };
+    }
+    this.changed();
+  }
+
+  /** Takes a copy from the server if it is newer than the one here. */
+  private async takePrefs(o: AccountPrefsObject | undefined, pushed: boolean) {
+    try {
+      const snap = await this.openPrefs(o);
+      if (this.prefs.snap && snap.revision <= this.prefs.snap.revision) return;
+      // Changed by another client while nothing of this one's is in flight.
+      const elsewhere = pushed && this.prefs.pending.size === 0 && !!this.prefs.snap;
+      this.prefs = { ...this.prefs, snap, status: "ready", changedAt: elsewhere ? Date.now() : this.prefs.changedAt };
+      this.changed();
+    } catch (e) {
+      this.report(e);
+    }
+  }
+
+  /** Pins, unpins, removes or restores a project, for the whole account.
+   * Only while connected: offline the list is shown as cached and changes
+   * wait. Resolves false if it was not saved; the list then stays as it
+   * was, and retryPrefs tries the same operation again. */
+  async changePrefs(kind: PrefKind, path: string, op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() }): Promise<boolean> {
+    if (this.conn !== "online" || this.prefs.status !== "ready") return false;
+    this.prefs.pending.set(path, kind);
+    this.prefs = { ...this.prefs, failed: undefined };
+    this.changed();
+    try {
+      const snap = await commitOp(this.prefsStore, op, this.prefs.snap);
+      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision) this.prefs = { ...this.prefs, snap };
+      return true;
+    } catch (e) {
+      this.prefs = { ...this.prefs, failed: { op, error: errorText(e) } };
+      return false;
+    } finally {
+      this.prefs.pending.delete(path);
+      this.changed();
+    }
+  }
+
+  /** Tries the failed operation again, as the same operation. */
+  retryPrefs() {
+    const f = this.prefs.failed;
+    if (f) void this.changePrefs(f.op.kind, f.op.path, f.op);
   }
 
   /** Authorization for services called outside this class. */

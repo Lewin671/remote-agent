@@ -91,3 +91,51 @@ it("signs every command it forwards with the device key, naming itself the sende
   expect(sent!.signature.length).toBe(64);
   expect(await crypto.subtle.verify("Ed25519", device.publicKey, sent!.signature as Uint8Array<ArrayBuffer>, envelopeSigned(sent!))).toBe(true);
 });
+
+it("replays a project pin on another client's sealed copy after a conflict", async () => {
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
+  const keys = { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key };
+  class Probe extends Remote {
+    constructor(id: string) {
+      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: id }, keys);
+    }
+  }
+  // One server object; two clients share the account key.
+  let stored: { revision: bigint; envelope?: Envelope } = { revision: 0n };
+  let before: (() => Promise<void>) | undefined;
+  const api = {
+    getAccountPrefs: async () => ({ object: { objectId: "project-prefs", revision: stored.revision, envelope: stored.envelope } }),
+    putAccountPrefs: async (req: { expectedRevision: bigint; envelope: Envelope }) => {
+      const b = before;
+      before = undefined;
+      await b?.();
+      if (req.expectedRevision !== stored.revision) return { applied: false, object: { objectId: "project-prefs", ...stored } };
+      stored = { revision: req.expectedRevision + 1n, envelope: req.envelope };
+      return { applied: true, object: { objectId: "project-prefs", ...stored } };
+    },
+  };
+  const a = new Probe("a");
+  const b = new Probe("b");
+  for (const r of [a, b]) {
+    (r as unknown as { api: object }).api = api;
+    r.conn = "online";
+    await r.loadPrefs();
+  }
+  await a.changePrefs("pin", "/Users/me/Code/foo");
+  await b.loadPrefs();
+  // a hides blog from its copy while b pins billing in between.
+  before = async () => {
+    await b.changePrefs("pin", "/Users/me/Code/billing");
+  };
+  expect(await a.changePrefs("hide", "/Users/me/Code/blog")).toBe(true);
+  await b.loadPrefs();
+  for (const r of [a, b]) {
+    const p = r.projectPrefs();
+    expect(p.pinned.map((x) => x.path)).toEqual(["/Users/me/Code/foo", "/Users/me/Code/billing"]);
+    expect(p.hidden.map((x) => x.path)).toEqual(["/Users/me/Code/blog"]);
+  }
+  expect(stored.revision).toBe(3n);
+  // The server only ever held ciphertext.
+  expect(new TextDecoder().decode(stored.envelope!.ciphertext)).not.toContain("billing");
+});
