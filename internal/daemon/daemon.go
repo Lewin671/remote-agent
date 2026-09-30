@@ -233,10 +233,14 @@ func (d *Daemon) restore() error {
 			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
 			continue
 		}
+		alive := live[m.Tmux+"\x00"+m.ID]
+		if d.unstarted(m, dir, alive) {
+			log.Close()
+			continue
+		}
 		s := newSession(d, dir, *m, d.terminal(m), log)
 		d.sessions[m.ID] = s
 		s.cancelStaleApprovals()
-		alive := live[m.Tmux+"\x00"+m.ID]
 		if m.Exited && alive {
 			// Marked exited while still running, as when an earlier daemon
 			// misread tmux; stopping or ending kills the tmux session.
@@ -285,6 +289,30 @@ func (s *session) cancelStaleApprovals() {
 			}}})
 		}
 	}
+}
+
+// unstarted settles a session a previous daemon was creating when it
+// stopped. If its CLI never started, the creation did not happen: the
+// first message's images go back to pending, where they can be sent
+// again, and the session is removed; it reports true then. A creation
+// whose CLI did start is kept as it is.
+func (d *Daemon) unstarted(m *meta, dir string, alive bool) bool {
+	if !m.Starting {
+		return false
+	}
+	if alive {
+		m.Starting = false
+		if err := m.save(dir); err != nil {
+			slog.Error("save session", "session", m.ID, "err", errClass(err))
+		}
+		return false
+	}
+	d.uploads.release(m.ID)
+	if err := os.RemoveAll(dir); err != nil {
+		slog.Error("remove unstarted session", "session", m.ID, "err", errClass(err))
+	}
+	slog.Info("undid a session creation that did not finish", "session", m.ID)
+	return true
 }
 
 // create starts a new CLI session in tmux.
@@ -336,7 +364,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		return nil, err
 	}
 	id := newID(8)
-	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args)}
+	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -404,6 +432,13 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 			_ = d.cfg.Tmux.KillSession(m.Tmux)
 			return fail(err)
 		}
+	}
+	s.mu.Lock()
+	s.meta.Starting = false
+	started := s.meta
+	s.mu.Unlock()
+	if err := started.save(dir); err != nil {
+		slog.Error("save session", "session", id, "err", errClass(err))
 	}
 	d.mu.Lock()
 	d.sessions[id] = s

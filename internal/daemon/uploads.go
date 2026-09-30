@@ -560,6 +560,36 @@ func (u *uploads) reconcile() {
 	}
 }
 
+// release gives the images a session was sent back to pending, for a
+// session whose creation did not finish.
+func (u *uploads) release(sessionID string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
+		if err != nil || t.Session != sessionID || t.ImageID == "" {
+			continue
+		}
+		name := t.ImageID + "." + imageproc.Ext(t.Format)
+		src := filepath.Join(u.sessionDir(sessionID), name)
+		if _, err := os.Stat(src); err == nil {
+			if err := os.Rename(src, u.pending(name)); err != nil {
+				slog.Error("return image", "image", t.ImageID, "err", errClass(err))
+				continue
+			}
+		}
+		t.Session = ""
+		if err := u.save(t); err != nil {
+			slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
+		}
+	}
+	_ = os.Remove(u.sessionDir(sessionID))
+}
+
 // untake returns images of a message that was not accepted after all to
 // the pending folder.
 func (u *uploads) untake(imgs []queuedImage, sessionID string) {

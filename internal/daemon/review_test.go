@@ -355,3 +355,36 @@ func annotateLogged(s *session, evs ...*pb.Event) {
 	consume()
 	s.mu.Unlock()
 }
+
+// V1: a creation that stopped before its CLI started gives its first
+// message's images back instead of deleting them with the session.
+func TestUnstartedCreationReturnsImages(t *testing.T) {
+	h := newHarness(t, Config{})
+	st := completeUpload(t, h.d.uploads, "local")
+	id := "fedcba9876543210"
+	dir := t.TempDir()
+	m := meta{ID: id, Tmux: "ra-fedcba98", Starting: true}
+	m.save(dir)
+	if _, err := h.d.uploads.take([]string{st.ImageId}, "local", id); err != nil {
+		t.Fatal(err)
+	}
+	if !h.d.unstarted(&m, dir, false) {
+		t.Fatal("unstarted creation kept")
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal("session directory kept")
+	}
+	if err := h.d.uploads.check([]string{st.ImageId}, "local"); err != nil {
+		t.Fatalf("image not back: %v", err)
+	}
+	// A creation whose CLI did start is kept.
+	m2 := meta{ID: id, Tmux: "ra-fedcba98", Starting: true}
+	dir2 := t.TempDir()
+	m2.save(dir2)
+	if h.d.unstarted(&m2, dir2, true) {
+		t.Fatal("started creation dropped")
+	}
+	if loaded, _ := loadMeta(dir2); loaded.Starting {
+		t.Fatal("starting flag left")
+	}
+}
