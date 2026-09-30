@@ -490,6 +490,8 @@ export interface Derived {
   resolved: Map<string, { decision: ApprovalDecision; message: string }>;
   questions: Map<string, QuestionAsked>; // pending
   answered: Map<string, string[]>;
+  // Who answered an approval or a question, when the daemon says (v2).
+  by: Map<string, NonNullable<Event["origin"]>>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
   // What the computer accepted for each message, as its first QUEUED state
   // says (v2 daemons): the text and images, and who sent it; so every
@@ -534,6 +536,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
     resolved: new Map(),
     questions: new Map(),
     answered: new Map(),
+    by: new Map(),
     inputs: new Map(),
     accepted: new Map(),
     stages: new Map(),
@@ -573,12 +576,14 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       case "approvalResolved":
         d.approvals.delete(k.value.approvalId);
         d.resolved.set(k.value.approvalId, { decision: k.value.decision, message: k.value.message });
+        if (e.origin) d.by.set(k.value.approvalId, e.origin);
         break;
       case "questionAsked":
         if (!k.value.async) d.questions.set(k.value.questionId, k.value);
         break;
       case "questionAnswered":
         d.questions.delete(k.value.questionId);
+        if (e.origin) d.by.set(k.value.questionId, e.origin);
         d.answered.set(
           k.value.questionId,
           k.value.answers.flatMap((a) => a.answers),
@@ -817,6 +822,8 @@ export interface Outgoing {
   requestId: string;
   deadline: number;
   text: string;
+  // Images uploaded to the machine for this message (their image IDs).
+  imageIds?: string[];
   status: "sending" | "sent" | "failed";
   error?: string;
   // A try may have reached the computer: retries keep this request.
@@ -913,6 +920,7 @@ function visible(e: Event, d: Derived): boolean {
     case "toolCall":
     case "planProposed":
     case "toolStarted":
+    case "planAnswered":
       return true;
     case "turnEnded":
       return k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n;

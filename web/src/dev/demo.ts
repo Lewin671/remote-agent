@@ -455,7 +455,6 @@ export class DemoRemote extends Remote {
     out("s-msg", "o-sending", "最后提交", "sending");
     out("s-msg", "o-failed", "这两个页面底部的按钮都点不到", "sent");
     out("s-multi", "q-multi", "补充库存回滚测试。", "sent");
-    out("s-multi", "m-me", "把库存回滚的测试补上", "sent");
   }
 
   override start() {

@@ -736,8 +736,8 @@ export class Remote {
    * reaching the computer is a new one used; the send ID still keeps the
    * daemon from queueing the text twice. Returns the slot that got an
    * answer. */
-  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false): Promise<RequestSlot> {
-    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId } };
+  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false, imageIds: string[] = []): Promise<RequestSlot> {
+    const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId, imageIds } };
     try {
       await this.command(sid, cmd, slot);
       return slot;
@@ -767,9 +767,10 @@ export class Remote {
     this.changed();
   }
 
-  /** Sends text to a session; its progress shows in outbox(sid). */
-  send(sid: string, text: string) {
-    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, status: "sending" };
+  /** Sends text, and images uploaded to the machine, to a session; its
+   * progress shows in outbox(sid). */
+  send(sid: string, text: string, imageIds: string[] = []) {
+    const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, status: "sending" };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
@@ -794,7 +795,7 @@ export class Remote {
   private async deliver(sid: string, o: Outgoing) {
     this.patchOut(sid, o.sendId, { status: "sending", error: undefined });
     try {
-      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown);
+      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown, o.imageIds);
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);

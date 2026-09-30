@@ -12,6 +12,7 @@ import {
   eventTime,
   exitReason,
   hhmm,
+  inputFailure,
   machineName,
   modeName,
   phaseOf,
@@ -31,6 +32,9 @@ import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Dot, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
+import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
+import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { ComposeStatus, Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { QueuePage } from "./Queue";
@@ -372,8 +376,15 @@ function ChatBody({
   const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
   const short: Short = { text: (title) => shortenPaths(title, cwd, home), path: (path) => shortenPath(path, cwd, home) };
 
-  // Text of a message this page knows, by request ID.
-  const textOf = new Map(outbox.map((o) => [o.sendId, o.text]));
+  // Text of a message this page knows, by request ID; v2 daemons say
+  // what they accepted from any client.
+  const textOf = new Map([...[...d.accepted].map(([id, a]) => [id, a.text] as const), ...outbox.map((o) => [o.sendId, o.text] as const)]);
+  const who: Who = {
+    ctx: { me: remote.account.deviceId, devices: remote.devices, machine, mine: new Set(outbox.map((o) => o.requestId)) },
+    // Name this client on its own messages only when there are others.
+    many: [...remote.devices.values()].filter((x) => x.kind === DeviceKind.CLIENT).length > 1,
+    self: platformLabel(remote.devices.get(remote.account.deviceId)?.meta),
+  };
   const promptId = prompt ? [...d.inputs.keys()].find((id) => !textOf.has(id)) : undefined;
   if (promptId && prompt) textOf.set(promptId, prompt);
 
@@ -419,7 +430,7 @@ function ChatBody({
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
         {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTool={onTool} onTerminal={onTerminal} />
+          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTool={onTool} onTerminal={onTerminal} who={who} sid={sid} />
         ))}
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
@@ -492,6 +503,8 @@ function Row({
   remote,
   onTool,
   onTerminal,
+  who,
+  sid,
 }: {
   it: Item;
   d: Derived;
@@ -504,6 +517,8 @@ function Row({
   remote: Remote;
   onTool: (seq: bigint) => void;
   onTerminal?: () => void;
+  who: Who;
+  sid: string;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "running" || it.kind === "unsettled")
@@ -512,13 +527,16 @@ function Row({
   const e = it.event;
   const k = e.kind;
   switch (k.case) {
-    case "userMessage":
+    case "userMessage": {
+      const label = originLabel(e.origin, who.ctx);
+      const from = label === undefined ? (d.typedLocally.has(e.seq) ? `${machine} 终端` : "") : label === "本客户端" ? (who.many ? `本客户端 · ${who.self}` : "") : label;
       return (
         <div className="me">
           <div>{k.value.text}</div>
-          {d.typedLocally.has(e.seq) && <small>{machine} 终端</small>}
+          {from && <small>{from}</small>}
         </div>
       );
+    }
     case "agentMessage":
       return (
         <div className={"ai" + (k.value.phase === "commentary" ? " commentary" : "")}>
@@ -535,7 +553,17 @@ function Row({
     case "toolCall":
       return <ToolRow t={k.value} short={short} decision={it.decision} />;
     case "turnEnded":
-      return <div className="sysline">已中断</div>;
+      return <div className="sysline">已中断{otherThanMe(e.origin, who) ? ` · ${originLabel(e.origin, who.ctx) || "另一客户端"}` : ""}</div>;
+    case "planAnswered": {
+      const choices: Record<number, string> = { [PlanChoice.IMPLEMENT]: "批准执行计划", [PlanChoice.KEEP_PLANNING]: "继续规划", [PlanChoice.CLEAR_AND_IMPLEMENT]: "清空上下文后执行计划" };
+      const choice = choices[k.value.choice] ?? "回答了计划";
+      return (
+        <div className="sysline">
+          {choice}
+          {otherThanMe(e.origin, who) && ` · ${elsewhereLabel(e.origin, who.ctx)}`}
+        </div>
+      );
+    }
     case "approvalRequested": {
       const r = d.resolved.get(k.value.approvalId);
       if (!r) return null;
@@ -547,15 +575,20 @@ function Row({
         <div className="record">
           <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? "–" : ok ? "✓" : "✕"}</span>
           <code>{k.value.command || k.value.toolName}</code>
-          <span className="muted">{decisionText(r.decision)}</span>
+          <span className="muted">
+            {decisionText(r.decision)}
+            {otherThanMe(d.by.get(k.value.approvalId), who) && r.decision !== ApprovalDecision.TERMINAL && ` · ${elsewhereLabel(d.by.get(k.value.approvalId), who.ctx)}`}
+          </span>
         </div>
       );
     }
     case "questionAsked": {
       const a = d.answered.get(k.value.questionId);
+      const by = d.by.get(k.value.questionId);
       return a ? (
         <div className="sysline">
           回答了 <b>{a.join("、")}</b>
+          {otherThanMe(by, who) && ` · ${elsewhereLabel(by, who.ctx)}`}
         </div>
       ) : null;
     }
@@ -577,6 +610,32 @@ function Row({
         );
       }
       if (k.value.status === InputStatus.CANCELED) return <div className="sysline">取消了一条排队的消息</div>;
+      if (k.value.status === InputStatus.FAILED || k.value.status === InputStatus.NEEDS_TERMINAL) {
+        const text = textOf.get(k.value.requestId) ?? "";
+        const why = inputFailure(k.value.reason, agent);
+        const images = d.accepted.get(k.value.requestId)?.imageIds ?? [];
+        const mine = remote.outbox(sid).some((o) => o.sendId === k.value.requestId);
+        if (k.value.status === InputStatus.NEEDS_TERMINAL)
+          return (
+            <div className="me warn">
+              <div>{text || "一条消息"}</div>
+              <small>
+                没能发送：{why}。终端里可能留着这条消息的一部分，不会自动重发
+                {onTerminal && <button onClick={onTerminal}>去终端</button>}
+              </small>
+            </div>
+          );
+        return (
+          <div className="me fail">
+            <div>{text || "一条消息"}</div>
+            <small>
+              没能发送：{why}
+              {mine && text && <button onClick={() => remote.send(sid, text, images)}>重试</button>}
+              {text && <button onClick={() => onRestore(text)}>放回输入框</button>}
+            </small>
+          </div>
+        );
+      }
       const text = textOf.get(k.value.requestId);
       const note = `已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发`;
       return text ? (
@@ -607,7 +666,8 @@ function Row({
         );
       return (
         <div className="sysline">
-          模式切换到 <b>{modeName(c.mode)}</b>
+          {otherThanMe(e.origin, who) ? `${originLabel(e.origin, who.ctx) || "另一客户端"}将模式切到 ` : "模式切换到 "}
+          <b>{modeName(c.mode)}</b>
         </div>
       );
     }
@@ -641,6 +701,19 @@ function Row({
     }
   }
   return null;
+}
+
+/** How the chat names who did what (devices.ts). */
+interface Who {
+  ctx: OriginContext;
+  many: boolean; // the account has other clients
+  self: string; // this client's kind, e.g. Chrome
+}
+
+/** Whether an origin is someone other than this client. */
+function otherThanMe(o: Event["origin"], who: Who): boolean {
+  const l = originLabel(o, who.ctx);
+  return l !== undefined && l !== "本客户端" && l !== "";
 }
 
 /** The input's place when the session cannot take messages: ended, or the

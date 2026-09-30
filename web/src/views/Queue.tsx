@@ -3,8 +3,9 @@
 // it, each cancellable; and what became of a cancel.
 
 import { useEffect, useRef, useState } from "react";
-import { InputStatus } from "../gen/remoteagent/v1/event_pb";
-import { queuedIds, queueReason, type Derived } from "../model";
+import { InputStage, InputStatus } from "../gen/remoteagent/v1/event_pb";
+import { originLabel } from "../devices";
+import { machineName, queuedIds, queueReason, type Derived } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { NavBar } from "../ui";
 import { promptIdOf } from "./Composer";
@@ -14,6 +15,20 @@ import { promptIdOf } from "./Composer";
 export function cancelOutcome(status: InputStatus | undefined, mine: boolean): string {
   if (status === InputStatus.CANCELED) return mine ? "已取消" : "上一条已在另一客户端取消";
   if (status === InputStatus.SUBMITTED || status === InputStatus.UNCONFIRMED) return mine ? "上一条已送入终端，不能取消" : "";
+  return "";
+}
+
+/** How far a message got while it is written to the terminal: past the
+ * point where a cancel can still take it back. */
+export function stageText(stage: InputStage | undefined): string {
+  switch (stage) {
+    case InputStage.PASTING_IMAGES:
+      return "正在粘贴图片…";
+    case InputStage.IMAGES_RECOGNIZED:
+      return "图片已识别，正在发送…";
+    case InputStage.SUBMITTING:
+      return "已送入终端，等待确认";
+  }
   return "";
 }
 
@@ -33,6 +48,7 @@ export function QueuePage({
   const sid = session.id;
   const ids = queuedIds(d, promptIdOf(remote, sid, d));
   const texts = new Map(remote.outbox(sid).map((o) => [o.sendId, o.text]));
+  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)), mine: new Set(remote.outbox(sid).map((o) => o.requestId)) };
   const [toast, setToast] = useState("");
   const shown = useRef<string[]>(ids);
   // A message that left the queue while this page shows it: say what
@@ -74,19 +90,30 @@ export function QueuePage({
         {ids.map((id, i) => {
           const c = remote.cancels.get(id);
           const mine = texts.has(id);
-          const state = c?.state === "canceling" ? "正在取消…" : i === 0 ? (reason ? reason.replace(/^本轮结束后发送$/, "等待本轮结束").replace(/^就绪后发送$/, "等待输入框就绪") : "等待发送") : "等待发送";
+          const acc = d.accepted.get(id);
+          const text = texts.get(id) ?? acc?.text;
+          const from = mine ? "本客户端" : originLabel(acc?.origin, ctx) || "另一客户端";
+          const images = acc?.imageIds.length ?? 0;
+          const stage = stageText(d.stages.get(id));
+          const state =
+            c?.state === "canceling"
+              ? "正在取消…"
+              : stage || (i === 0 ? (reason ? reason.replace(/^本轮结束后发送$/, "等待本轮结束").replace(/^就绪后发送$/, "等待输入框就绪") : "等待发送") : "等待发送");
           return (
             <div key={id} className={"queue-entry" + (c?.state === "canceling" ? " canceling" : "")}>
               <div className="qh">
                 <b>
                   {i + 1} · {state}
                 </b>
-                <span className="qsrc">{mine ? "本客户端" : "另一客户端"}</span>
-                <button className="cancel" disabled={c?.state === "canceling" || !online} onClick={() => void cancel(id)}>
+                <span className="qsrc">
+                  {from}
+                  {images > 0 && ` · ${images} 张图`}
+                </span>
+                <button className="cancel" disabled={c?.state === "canceling" || !online || !!stage} onClick={() => void cancel(id)}>
                   {c?.state === "canceling" ? "◌" : "取消"}
                 </button>
               </div>
-              <p className={mine ? "" : "muted"}>{texts.get(id) ?? "另一客户端发送的消息，内容会在它发出后出现在聊天里"}</p>
+              <p className={text !== undefined ? "" : "muted"}>{text ?? "另一客户端发送的消息，内容会在它发出后出现在聊天里"}</p>
               {c?.state === "failed" && (
                 <small className="red">
                   取消未成功，消息仍在队列中：{c.error}

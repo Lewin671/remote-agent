@@ -1095,3 +1095,35 @@ describe("project management (v2)", () => {
     expect(button("设为常用")).toBeUndefined();
   });
 });
+
+describe("who did what (v2)", () => {
+  it("names verified clients, and says another client or the terminal otherwise", () => {
+    const r = demo();
+    const s = r.sessions.get("s-multi")!;
+    return (async () => {
+      await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
+      mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+      const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
+      expect(notes).toEqual(["本客户端 · Chrome", "Android · b71c", "VPS-dev 本地终端"]);
+      expect(host.textContent).toContain("另一客户端将模式切到 计划");
+      expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · b71c");
+      await click(button(/^排队 2/));
+      const entries = [...host.querySelectorAll(".queue-entry")].map((x) => x.textContent);
+      expect(entries[0]).toContain("本客户端");
+      expect(entries[0]).toContain("补充库存回滚测试。");
+      expect(entries[1]).toContain("Android · b71c");
+      expect(entries[1]).toContain("最后检查 README。");
+    })();
+  });
+
+  it("offers a retry for a message that failed before Enter, and the terminal when it may be half written", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-msg")!;
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    expect(host.textContent).toContain("没能发送：Codex 没认出图片");
+    expect(host.textContent).toContain("终端里可能留着这条消息的一部分");
+    const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
+    await click(button("重试", failed));
+    expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
+  });
+});

@@ -52,6 +52,7 @@ export function ComposeStatus({
   const lostAt = online ? undefined : (remote.lostAt ?? now);
   const peek = toolPeek(d, now, lostAt);
   const queued = queuedIds(d, promptIdOf(remote, session.id, d));
+  const queuedImages = queued.reduce((n, id) => n + (d.accepted.get(id)?.imageIds.length ?? remote.outbox(session.id).find((o) => o.sendId === id)?.imageIds?.length ?? 0), 0);
   const running = d.running;
   const reason = queueReason(session, d);
   if (!peek && !running && queued.length === 0) return null;
@@ -74,7 +75,8 @@ export function ComposeStatus({
       {queued.length > 0 && (
         <button className="queue-link" onClick={onQueue}>
           排队 {queued.length}
-          {peek ? "" : " 条"} ›
+          {peek ? "" : " 条"}
+          {queuedImages > 0 && ` · ${queuedImages} 张图`} ›
         </button>
       )}
       {!running && queued.length > 0 && reason && <span className="qreason">{reason}</span>}
