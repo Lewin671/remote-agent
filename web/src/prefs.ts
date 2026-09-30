@@ -82,14 +82,16 @@ export class PrefsConflict extends Error {}
  * page has, used for the first try. */
 export async function commitOp(store: PrefsStore, op: PrefOp, from?: PrefsSnapshot, tries = 6): Promise<PrefsSnapshot> {
   let cur = from ?? (await store.get());
+  let failures = 0;
   for (let i = 0; i < tries; i++) {
     if (applied(cur.prefs, op)) return cur;
     let r;
     try {
       r = await store.put(cur.revision, applyOp(cur.prefs, op));
     } catch (e) {
-      // The write may or may not have gone in: look before trying again.
-      if (i === tries - 1) throw e;
+      // The write may or may not have gone in: look before trying again,
+      // once; after that the user decides (retry is the same operation).
+      if (++failures > 1) throw e;
       cur = await store.get();
       continue;
     }

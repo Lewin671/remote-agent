@@ -7,6 +7,8 @@ import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
 import { SessionRow } from "./Home";
 import { NewBox, useNewSession, type Go } from "./NewSession";
+import { RemovedNotice } from "./Projects";
+import { isHidden } from "../prefs";
 
 const PAGE = 20;
 
@@ -49,8 +51,12 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
       </div>
     </div>
   );
+  // A removed project is still there to see; new sessions wait until it
+  // is restored.
+  const hidden = isHidden(remote.projectPrefs(), pkey);
   const lists = (
     <>
+      <RemovedNotice remote={remote} pkey={pkey} />
       {live.length > 0 && (
         <div className="label">
           进行中 <span>{live.length}</span>
@@ -78,7 +84,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
           {wide ? "更多" : `全部 ${ended.length} 个已结束的会话`} ›
         </button>
       )}
-      {!p && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}
+      {!p && !hidden && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}
     </>
   );
   if (wide)
@@ -86,7 +92,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
       <div className="body">
         <div className="wpage">
           {head}
-          <NewBox ns={ns} name={name} autoFocus={focus} variant="prompt" />
+          {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} variant="prompt" />}
           {lists}
         </div>
       </div>
@@ -98,7 +104,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
         <div className="pad">{head}</div>
         {lists}
       </div>
-      <NewBox ns={ns} name={name} autoFocus={focus} />
+      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} />}
     </div>
   );
 }

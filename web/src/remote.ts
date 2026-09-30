@@ -941,7 +941,7 @@ export class Remote {
 
   // --- project list preferences ---
 
-  private prefsStore: PrefsStore = {
+  protected prefsStore: PrefsStore = {
     get: async () => {
       const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
       return this.openPrefs(r.object);

@@ -27,6 +27,7 @@ import { Avatar, Banner, Dot, Skeleton, useNow, useRemote } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
+import { PrefsBanner, useProjectGroups } from "./Projects";
 
 export type { Go };
 
@@ -159,14 +160,17 @@ function pendingOf(remote: Remote, sid: string) {
   return { approval: [...d.approvals.values()][0], question: [...d.questions.values()][0] };
 }
 
-function ProjectRow({ p, go }: { p: Project<SessionView>; go: Go }) {
+function ProjectRow({ p, go, pinned }: { p: Project<SessionView>; go: Go; pinned?: boolean }) {
   const live = p.sessions.filter((s) => !exited(s)).length;
   return (
     <button className="proj" onClick={() => go("p/" + encodeURIComponent(p.key))}>
       <Avatar name={p.name} />
       <div className="pt">
         <div>
-          <div className="pn">{p.name}</div>
+          <div className="pn">
+            {p.name}
+            {pinned && <span className="pin">常用</span>}
+          </div>
           <div className="ps">
             {shortPath(p.key)} · {live ? `${live} 个进行中` : ago(p.updatedMs)}
           </div>
@@ -204,6 +208,41 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
         </>
       )}
     </div>
+  );
+}
+
+/** The project list: pinned projects first with 管理 beside their title,
+ * then the others by activity. Removed projects are not listed; their
+ * sessions still are, above, wherever they need the user. */
+function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
+  const g = useProjectGroups(remote);
+  const manage = (
+    <button className="link" onClick={() => go("projects")}>
+      管理 ›
+    </button>
+  );
+  return (
+    <>
+      <div className="pad">
+        <PrefsBanner remote={remote} quiet />
+      </div>
+      {g.pinned.length > 0 && (
+        <>
+          <div className="label">常用项目 {manage}</div>
+          {g.pinned.map((p) => (
+            <ProjectRow key={p.key} p={p} go={go} pinned />
+          ))}
+        </>
+      )}
+      <div className="label">
+        {g.pinned.length ? "其他项目" : "项目"}
+        {g.pinned.length === 0 && manage}
+      </div>
+      {g.others.map((p) => (
+        <ProjectRow key={p.key} p={p} go={go} />
+      ))}
+      {g.others.length === 0 && <p className="empty">{g.hidden.length ? "其余项目都已从列表移除" : "没有其他项目"}</p>}
+    </>
   );
 }
 
@@ -262,10 +301,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
               ))}
             </>
           )}
-          <div className="label">项目</div>
-          {list.map((p) => (
-            <ProjectRow key={p.key} p={p} go={go} />
-          ))}
+          <ProjectSections remote={remote} go={go} />
         </>
       )}
       {picking && <NewFlow remote={remote} go={go} onClose={() => setPicking(false)} />}
@@ -286,6 +322,53 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
   // Keep the open session in view where it would have been.
   if (sel && !todo.includes(sel) && !live.includes(sel)) live.unshift(sel);
   const list = projects(remote.sessions.values());
+  const groups = useProjectGroups(remote);
+  const projectRow = (p: Project<SessionView>, pinned: boolean) => {
+    const n = p.sessions.filter((s) => !exited(s)).length;
+    const ended = p.sessions.filter(exited);
+    const isOpen = open.has(p.key);
+    return (
+      <div key={p.key}>
+        <div className={"ph" + (project === p.key ? " sel" : "")}>
+          <button
+            className="arr"
+            aria-label={isOpen ? "收起" : "展开最近结束的会话"}
+            aria-expanded={isOpen}
+            onClick={() =>
+              setOpen((o) => {
+                const x = new Set(o);
+                if (x.has(p.key)) x.delete(p.key);
+                else x.add(p.key);
+                return x;
+              })
+            }
+          >
+            {isOpen ? "▾" : "▸"}
+          </button>
+          <button className="pname" onClick={() => go("p/" + encodeURIComponent(p.key))} title={shortPath(p.key)}>
+            <Avatar name={p.name} size="sm" />
+            <span className="nm">{p.name}</span>
+            {pinned && <span className="pin">常用</span>}
+            <span className={n ? "live" : ""}>{n ? `${n} 进行中` : ago(p.updatedMs)}</span>
+          </button>
+        </div>
+        {isOpen && (
+          <>
+            {ended.slice(0, 2).map((s) => (
+              <button key={s.id} className={"sub-sess" + (s.id === selected ? " sel" : "")} onClick={() => go("s/" + s.id)}>
+                <span>{titleOf(s)}</span>
+                <span>{ago(s.updatedMs)}</span>
+              </button>
+            ))}
+            <button className="sub-sess link" onClick={() => go("p/" + encodeURIComponent(p.key))}>
+              <span>{ended.length ? `全部 ${p.sessions.length} 个` : "没有结束的会话"}</span>
+              <span />
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
   const conn = remote.conn === "online" ? ["idle", "已连接"] : remote.everOnline ? ["wait", "重连中"] : ["off", remote.failures >= 2 ? "连不上" : "连接中"];
   return (
     <aside className="side">
@@ -316,52 +399,28 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
         {live.map((s) => (
           <SessionRow key={s.id} remote={remote} s={s} go={go} compact selected={s.id === selected} />
         ))}
-        {list.length > 0 && <div className="label">项目</div>}
-        {list.map((p) => {
-          const n = p.sessions.filter((s) => !exited(s)).length;
-          const ended = p.sessions.filter(exited);
-          const isOpen = open.has(p.key);
-          return (
-            <div key={p.key}>
-              <div className={"ph" + (project === p.key ? " sel" : "")}>
-                <button
-                  className="arr"
-                  aria-label={isOpen ? "收起" : "展开最近结束的会话"}
-                  aria-expanded={isOpen}
-                  onClick={() =>
-                    setOpen((o) => {
-                      const x = new Set(o);
-                      if (x.has(p.key)) x.delete(p.key);
-                      else x.add(p.key);
-                      return x;
-                    })
-                  }
-                >
-                  {isOpen ? "▾" : "▸"}
-                </button>
-                <button className="pname" onClick={() => go("p/" + encodeURIComponent(p.key))} title={shortPath(p.key)}>
-                  <Avatar name={p.name} size="sm" />
-                  <span className="nm">{p.name}</span>
-                  <span className={n ? "live" : ""}>{n ? `${n} 进行中` : ago(p.updatedMs)}</span>
+        {list.length > 0 && (
+          <>
+            {groups.pinned.length > 0 && (
+              <div className="label">
+                常用项目
+                <button className="link" onClick={() => go("projects")}>
+                  管理 ›
                 </button>
               </div>
-              {isOpen && (
-                <>
-                  {ended.slice(0, 2).map((s) => (
-                    <button key={s.id} className={"sub-sess" + (s.id === selected ? " sel" : "")} onClick={() => go("s/" + s.id)}>
-                      <span>{titleOf(s)}</span>
-                      <span>{ago(s.updatedMs)}</span>
-                    </button>
-                  ))}
-                  <button className="sub-sess link" onClick={() => go("p/" + encodeURIComponent(p.key))}>
-                    <span>{ended.length ? `全部 ${p.sessions.length} 个` : "没有结束的会话"}</span>
-                    <span />
-                  </button>
-                </>
+            )}
+            {groups.pinned.map((p) => projectRow(p, true))}
+            <div className="label">
+              {groups.pinned.length ? "其他项目" : "项目"}
+              {groups.pinned.length === 0 && (
+                <button className="link" onClick={() => go("projects")}>
+                  管理 ›
+                </button>
               )}
             </div>
-          );
-        })}
+            {groups.others.map((p) => projectRow(p, false))}
+          </>
+        )}
       </div>
       <div className="foot">
         <button onClick={() => go("settings")}>⚙︎ 设置</button>
@@ -377,7 +436,9 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
  * waits for the user. */
 export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
-  const list = projects(remote.sessions.values());
+  const g = useProjectGroups(remote);
+  // The latest project on the list; a removed one is not offered.
+  const list = [...g.pinned, ...g.others].sort((a, b) => b.updatedMs - a.updatedMs);
   const [key, setKey] = useState<string>();
   const [picking, setPicking] = useState<"" | "pick" | "new">("");
   const pkey = key ?? list[0]?.key ?? "";

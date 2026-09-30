@@ -5,6 +5,9 @@
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
+//   ?demo&prefs=fail | prefs=unsupported     saving project preferences
+//                                            fails, or the server has none
+//   ?demo&devices=unsupported                a server without ListDevices
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -14,7 +17,9 @@ import {
   ApprovalDecision,
   ApprovalMode,
   EventSchema,
+  InputStage,
   InputStatus,
+  OriginKind,
   SessionStatus,
   ToolKind,
   TurnOutcome,
@@ -23,8 +28,17 @@ import {
 import { DaemonSettingsSchema, ListModelsResponseSchema, SessionSchema, type Session } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResult, type TerminalFrame } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, Remote, type CommandKind, type History, type RequestSlot, type SessionView, type TermConn } from "../remote";
+import { applyOp, emptyPrefs, type PrefsSnapshot } from "../prefs";
+import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { DeviceMetaSchema, type ProjectPrefs } from "../gen/remoteagent/v1/remote_pb";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
+type EventInit = MessageInitShape<typeof EventSchema>;
+
+// This browser and two other clients of the demo account.
+export const ME = "aaaa0000aaaa0000aaaa0000aaaaa8f2";
+export const ANDROID = "bbbb0000bbbb0000bbbb0000bbbbb71c";
+const BROWSER = "cccc0000cccc0000cccc0000cccc92de";
 type SessionInit = MessageInitShape<typeof SessionSchema>;
 
 const now = Date.now();
@@ -66,8 +80,14 @@ interface Fixture {
   info: SessionInit;
   machine: string;
   updated: number;
-  events: EventKind[];
+  // An event, or one with its origin: [kind, origin].
+  events: (EventKind | [EventKind, EventInit["origin"]])[];
 }
+
+const fromMe = (requestId = "") => ({ kind: OriginKind.CLIENT, deviceId: ME, requestId });
+const fromAndroid = { kind: OriginKind.CLIENT, deviceId: ANDROID };
+const fromUnverified = { kind: OriginKind.UNVERIFIED_CLIENT, deviceId: BROWSER };
+const fromLocal = { kind: OriginKind.LOCAL };
 
 function fixtures(): Record<string, Fixture> {
   return {
@@ -260,6 +280,26 @@ function fixtures(): Record<string, Fixture> {
         { case: "approvalResolved", value: { approvalId: "r2", decision: ApprovalDecision.DENY } },
         { case: "approvalRequested", value: { approvalId: "r3", command: "npm install" } },
         { case: "approvalResolved", value: { approvalId: "r3", decision: ApprovalDecision.CANCELED } },
+        { case: "inputState", value: { requestId: "o-failed", status: InputStatus.QUEUED, text: "这两个页面底部的按钮都点不到" } },
+        { case: "inputState", value: { requestId: "o-failed", status: InputStatus.FAILED, reason: "image_not_recognized" } },
+        { case: "inputState", value: { requestId: "o-term", status: InputStatus.QUEUED, text: "对比一下这两张截图" } },
+        { case: "inputState", value: { requestId: "o-term", status: InputStatus.NEEDS_TERMINAL, reason: "input_changed" } },
+      ],
+    },
+    "s-multi": {
+      machine: "vps",
+      updated: now - 12 * min,
+      info: { title: "重构订单模块", cwd: "/Users/me/Code/shop", status: SessionStatus.RUNNING, agent: Agent.CLAUDE, model: "claude-sonnet-5-5", effort: "high", mode: ApprovalMode.PLAN, permissionMode: "plan", contextTokens: 23n, contextWindow: 100n },
+      events: [
+        [{ case: "userMessage", value: { text: "把库存回滚的测试补上", requestId: "m-me" } }, fromMe("m-me")],
+        [{ case: "userMessage", value: { text: "不要修改公开接口" } }, fromAndroid],
+        [{ case: "userMessage", value: { text: "先整理一下实现方案" } }, fromLocal],
+        [{ case: "settingsChanged", value: { mode: ApprovalMode.PLAN } }, fromUnverified],
+        { case: "approvalRequested", value: { approvalId: "mx", command: "go test ./...", toolName: "Bash" } },
+        [{ case: "approvalResolved", value: { approvalId: "mx", decision: ApprovalDecision.ALLOW } }, fromAndroid],
+        { case: "turnStarted", value: {} },
+        [{ case: "inputState", value: { requestId: "q-multi", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "补充库存回滚测试。" } }, fromMe()],
+        [{ case: "inputState", value: { requestId: "q-android", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "最后检查 README。" } }, fromAndroid],
       ],
     },
     "s-hist": {
@@ -359,7 +399,7 @@ export class DemoRemote extends Remote {
 
   static create(q: URLSearchParams): DemoRemote {
     const r = new DemoRemote(
-      { server: "https://ra.example.com", root: {} as CryptoKey, devicePrivate: {} as CryptoKey, deviceId: "demo" },
+      { server: "https://ra.example.com", root: {} as CryptoKey, devicePrivate: {} as CryptoKey, deviceId: ME },
       {} as Keys,
     );
     r.opts = q;
@@ -397,7 +437,10 @@ export class DemoRemote extends Remote {
       this.sessions.set(id, { id, machineId: f.machine, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: BigInt(f.events.length), updatedMs: BigInt(f.updated) });
       this.evs.set(
         id,
-        f.events.map((kind, i) => create(EventSchema, { seq: BigInt(i + 1), sessionId: id, time: timestampFromMs(f.updated - (f.events.length - i) * 20_000), kind })),
+        f.events.map((e, i) => {
+          const [kind, origin] = Array.isArray(e) ? e : [e, undefined];
+          return create(EventSchema, { seq: BigInt(i + 1), sessionId: id, time: timestampFromMs(f.updated - (f.events.length - i) * 20_000), kind, origin });
+        }),
       );
     }
     const out = (sid: string, sendId: string, text: string, status: "sending" | "sent" | "failed", error?: string) => {
@@ -410,6 +453,9 @@ export class DemoRemote extends Remote {
     out("s-msg", "o-sent", "再看下 README 要不要改", "sent");
     out("s-msg", "o-fail", "顺便补一个测试", "failed", "连接超时");
     out("s-msg", "o-sending", "最后提交", "sending");
+    out("s-msg", "o-failed", "这两个页面底部的按钮都点不到", "sent");
+    out("s-multi", "q-multi", "补充库存回滚测试。", "sent");
+    out("s-multi", "m-me", "把库存回滚的测试补上", "sent");
   }
 
   override start() {
@@ -420,7 +466,10 @@ export class DemoRemote extends Remote {
     else if (c === "reconnecting") Object.assign(this, { conn: "offline", everOnline: true });
     else if (c === "fail") Object.assign(this, { conn: "offline", failures: 3, connError: "证书无效" });
     else Object.assign(this, { conn: "online", everOnline: true });
+    if (this.conn !== "online") this.lostAt = Date.now() - 70_000;
     this.changed();
+    void this.loadDevices();
+    void this.loadPrefs();
   }
 
   override stop() {}
@@ -623,6 +672,67 @@ export class DemoRemote extends Remote {
         open = false;
       },
     };
+  }
+
+  // --- devices and project preferences, in memory ---
+
+  private metas = new Map<string, { rev: bigint; meta: ReturnType<typeof create<typeof DeviceMetaSchema>> }>([
+    [ME, { rev: 1n, meta: create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }) }],
+    [ANDROID, { rev: 1n, meta: create(DeviceMetaSchema, { platform: "android", description: "Android 16" }) }],
+  ]);
+
+  override async loadDevices() {
+    if (this.opts.get("devices") === "unsupported") {
+      this.devicesStatus = "unsupported";
+      return this.changed();
+    }
+    this.devices.clear();
+    for (const m of this.machines.values()) this.devices.set(m.id, { id: m.id, kind: DeviceKind.MACHINE, createdMs: 0n, metaRev: 0n });
+    for (const id of [ME, ANDROID, BROWSER]) {
+      const m = this.metas.get(id);
+      this.devices.set(id, { id, kind: DeviceKind.CLIENT, createdMs: 0n, metaRev: m?.rev ?? 0n, meta: m?.meta });
+    }
+    this.devicesStatus = "ready";
+    this.changed();
+  }
+
+  override async renameDevice(id: string, name: string) {
+    await sleep(500);
+    const cur = this.metas.get(id);
+    const meta = create(DeviceMetaSchema, { ...(cur?.meta ?? { platform: "web" }), name: name.trim() });
+    this.metas.set(id, { rev: (cur?.rev ?? 0n) + 1n, meta });
+    await this.loadDevices();
+  }
+
+  private stored: PrefsSnapshot = {
+    revision: 1n,
+    prefs: [["pin", "/Users/me/Code/foo"], ["hide", "/Users/me/Code/demo"], ["hide", "/Users/me/work/experiments"], ["hide", "/Users/me/Code/old-site"]].reduce(
+      (p, [kind, path], i) => applyOp(p, { id: "seed" + i, kind: kind as "pin", path, at: now - 86_400_000 }),
+      emptyPrefs(),
+    ),
+  };
+
+  protected override prefsStore = {
+    get: async () => {
+      await sleep(300);
+      return this.stored;
+    },
+    put: async (expected: bigint, next: ProjectPrefs) => {
+      await sleep(700);
+      if (this.opts.get("prefs") === "fail") throw new CommandError("unavailable", "服务器没有响应");
+      if (expected !== this.stored.revision) return { applied: false, current: this.stored };
+      this.stored = { revision: expected + 1n, prefs: next };
+      return { applied: true, current: this.stored };
+    },
+  };
+
+  override async loadPrefs() {
+    if (this.opts.get("prefs") === "unsupported") {
+      this.prefs = { ...this.prefs, status: "unsupported" };
+      return this.changed();
+    }
+    this.prefs = { ...this.prefs, status: "ready", snap: this.stored };
+    this.changed();
   }
 
   override async removeDevice(id: string) {

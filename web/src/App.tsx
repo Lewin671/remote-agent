@@ -4,6 +4,7 @@ import { NavBar, useRemote } from "./ui";
 import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
 import { AddDevicePage, Setup } from "./views/Pairing";
 import { ProjectPage } from "./views/Project";
+import { ManagePage, RemovedPage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import { MachinePage, Settings } from "./views/Settings";
 
@@ -96,6 +97,7 @@ function Main({ remote }: { remote: Remote }) {
         <div className="center muted">正在打开会话…</div>
       );
   else if (kind === "p") page = <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} wide={wide} />;
+  else if (kind === "projects") page = rest[0] === "removed" ? <RemovedPage remote={remote} onBack={back} wide={wide} /> : <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "m") page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "add") page = <AddDevicePage remote={remote} onBack={back} />;

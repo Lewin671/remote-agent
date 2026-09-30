@@ -25,16 +25,18 @@ import {
   titleOf,
   type MachineLike,
   type NewConfig,
+  type Project,
 } from "../model";
 import { Attempt } from "../attempt";
 import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../storage";
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
-import { errorText, type MachineView, type Remote } from "../remote";
+import { errorText, type MachineView, type Remote, type SessionView } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "imageIds">;
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
+import { groupProjects } from "../prefs";
 import { useAutoGrow } from "./Composer";
 
 export type Go = (route: string) => void;
@@ -816,7 +818,26 @@ export function DirBrowser({
 
 /** From the home page's ＋: pick a project first, or a new one. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会话 · 选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
-  const list = projects(remote.sessions.values());
+  // Grouped as the lists are; removed projects are left out.
+  const g = groupProjects(projects(remote.sessions.values()), remote.projectPrefs());
+  const row = (p: Project<SessionView>) => (
+    <button key={p.key} className="pi" onClick={() => onPick(p.key)}>
+      <Avatar name={p.name} size="sm" />
+      <div>
+        <b>{p.name}</b>
+        <small>
+          {shortPath(p.key)} ·{" "}
+          {p.machines
+            .map((id) => {
+              const m = remote.machines.get(id);
+              return machineName(m) + (m && !m.online ? "（不在线）" : "");
+            })
+            .join("、")}
+        </small>
+      </div>
+      <span className="chev">›</span>
+    </button>
+  );
   return (
     <Sheet onClose={onClose}>
       <div className="ns-head">
@@ -826,24 +847,10 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
         </button>
       </div>
       <div className="plist">
-        {list.map((p) => (
-          <button key={p.key} className="pi" onClick={() => onPick(p.key)}>
-            <Avatar name={p.name} size="sm" />
-            <div>
-              <b>{p.name}</b>
-              <small>
-                {shortPath(p.key)} ·{" "}
-                {p.machines
-                  .map((id) => {
-                    const m = remote.machines.get(id);
-                    return machineName(m) + (m && !m.online ? "（不在线）" : "");
-                  })
-                  .join("、")}
-              </small>
-            </div>
-            <span className="chev">›</span>
-          </button>
-        ))}
+        {g.pinned.length > 0 && <div className="fl">常用项目</div>}
+        {g.pinned.map(row)}
+        {g.pinned.length > 0 && g.others.length > 0 && <div className="fl">其他项目</div>}
+        {g.others.map(row)}
         <button className="pi add" onClick={onNew}>
           ＋ 新项目…<small>选机器和目录</small>
         </button>

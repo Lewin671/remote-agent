@@ -675,3 +675,29 @@ a { color: var(--blue); }
 .startnote { padding: 2px 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .startnote .link { font-weight: 400; min-height: 44px; }
 .newbox .banner, .start > .banner, .wpage > .banner { margin-bottom: 8px; }
+
+/* Project management. */
+.pin { font-size: 12px; color: var(--blue); margin-left: 5px; font-weight: 500; }
+.label .link { font-size: 13px; min-height: 32px; margin: -6px 0; }
+.manage-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.manage-row .pt { flex: 1; min-width: 0; }
+.manage-row .pn { font-weight: 600; font-size: 15px; }
+.manage-row .ps { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage-row .dots { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 15px; }
+.manage-row .dots:disabled { opacity: .45; }
+.manage-row.busy { opacity: .6; }
+.manage-hint { font-size: 13px; color: var(--muted); margin: 8px 16px 12px; }
+.wpage .manage-hint { margin-left: 0; margin-right: 0; }
+.wpage .pad { padding: 0; }
+.manage-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.manage-table td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.manage-table td:last-child { text-align: right; white-space: nowrap; color: var(--muted); }
+.manage-table td .link { font-size: 13px; font-weight: 400; min-height: 44px; padding: 0 4px; }
+.manage-table .path { display: block; color: var(--muted); font-size: 12px; }
+.wtitle { margin: 0; font-size: 22px; }
+.chip.linkchip { color: var(--blue); }
+.removed-note { padding: 4px 16px 8px; }
+.wpage .removed-note { padding: 4px 0 8px; }
+.removed-note .btns { margin-top: 8px; }
+.removed-note .banner { margin-top: 8px; }
+.body > .pad > .banner { margin: 4px 0; }
