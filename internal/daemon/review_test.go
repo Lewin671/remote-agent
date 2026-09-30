@@ -31,3 +31,17 @@ func TestImagesNeedAVerifiedDevice(t *testing.T) {
 		t.Fatalf("unsigned text: %v", err)
 	}
 }
+
+// G6: an image named twice is refused before a session is started.
+func TestCreateRefusesDuplicateImages(t *testing.T) {
+	h := newHarness(t, Config{})
+	u := h.d.uploads
+	st := completeUpload(t, u, "local")
+	_, err := h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Prompt: "x", ImageIds: []string{st.ImageId, st.ImageId}}, originLocal)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("duplicate images: %v", err)
+	}
+	if len(h.d.sessions) != 0 {
+		t.Fatal("a session was created")
+	}
+}

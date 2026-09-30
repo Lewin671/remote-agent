@@ -461,7 +461,12 @@ func (u *uploads) check(ids []string, device string) error {
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	seen := map[string]bool{}
 	for _, id := range ids {
+		if seen[id] {
+			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("image %s is named twice", id))
+		}
+		seen[id] = true
 		t := u.byImage(id)
 		switch {
 		case !validHexID(id) || t == nil || t.Session != "":

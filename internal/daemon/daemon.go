@@ -351,6 +351,20 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		log.Close()
 		return nil, err
 	}
+	// The first message's images move into the session before the CLI
+	// starts: if they cannot, nothing starts.
+	images, err := d.uploads.take(req.ImageIds, owner, id)
+	if err != nil {
+		os.Remove(envFile)
+		log.Close()
+		return nil, err
+	}
+	fail := func(err error) (*session, error) {
+		d.uploads.untake(images, id)
+		log.Close()
+		_ = os.RemoveAll(dir) // a session that never started leaves nothing
+		return nil, err
+	}
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", ag.Bin()}
 	argv = append(argv, cliArgs...)
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
@@ -358,13 +372,11 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	})
 	if err != nil {
 		os.Remove(envFile)
-		log.Close()
-		return nil, err
+		return fail(err)
 	}
 	if err := d.cfg.Tmux.SetSessionOption(m.Tmux, "@ra_session_id", id); err != nil {
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
-		log.Close()
-		return nil, err
+		return fail(err)
 	}
 	// The tmux status line is not part of the CLI's experience.
 	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
@@ -373,25 +385,20 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
 	}}})
+	if strings.TrimSpace(req.Prompt) != "" || len(images) > 0 {
+		// Queued like any message: it is written once the CLI shows its
+		// input box, after startup prompts are answered. A session whose
+		// first message cannot be accepted is not started.
+		if _, err := s.enqueue(req.Prompt, "", images, origin); err != nil {
+			_ = d.cfg.Tmux.KillSession(m.Tmux)
+			return fail(err)
+		}
+	}
 	d.mu.Lock()
 	d.sessions[id] = s
 	d.mu.Unlock()
 	s.start(d.ctx)
 	slog.Info("created session", "session", id)
-	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 {
-		// Queued like any message: it is written once the CLI shows its
-		// input box, after startup prompts are answered.
-		images, err := d.uploads.take(req.ImageIds, owner, id)
-		if err == nil {
-			_, err = s.enqueue(req.Prompt, "", images, origin)
-			if err != nil {
-				d.uploads.untake(images, id)
-			}
-		}
-		if err != nil {
-			slog.Warn("queue first message", "session", id, "err", err)
-		}
-	}
 	return s, nil
 }
 

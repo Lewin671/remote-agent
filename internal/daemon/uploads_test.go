@@ -142,3 +142,18 @@ func TestUploadChecks(t *testing.T) {
 		t.Fatalf("%d files left", len(entries))
 	}
 }
+
+// completeUpload uploads a small PNG for device and returns its status.
+func completeUpload(t *testing.T, u *uploads, device string) *pb.ImageUploadStatus {
+	t.Helper()
+	data := testPNG(t, 20, 10, color.RGBA{9, 9, 9, 255})
+	beginUpload(t, u, data, device)
+	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, device); err != nil {
+		t.Fatal(err)
+	}
+	st, err := u.complete(tid, device)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return st
+}
