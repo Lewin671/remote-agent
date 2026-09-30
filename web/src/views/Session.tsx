@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { Event, ToolCall } from "../gen/remoteagent/v1/event_pb";
 import { ApprovalDecision, InputStatus, SessionStatus, ToolKind, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
@@ -31,7 +31,7 @@ import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, Chips, ConnBar, Dot, NavBar, Skeleton, useNow, useRemote } from "../ui";
 import { useDerived } from "./actions";
-import { ApprovalPage, Dock, PlanPage } from "./Dock";
+import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { TerminalView } from "./Terminal";
 
 type Tab = "chat" | "term" | "split";
@@ -52,6 +52,22 @@ function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
   return [ref, w];
 }
 
+/** Tracks an element's height through a callback ref, for an element that
+ * comes and goes (the chat column when switching to the terminal). */
+function useHeight(): [(el: HTMLElement | null) => void, number] {
+  const [h, setH] = useState(0);
+  const ro = useRef<ResizeObserver>(undefined);
+  const ref = useCallback((el: HTMLElement | null) => {
+    ro.current?.disconnect();
+    if (!el) return;
+    const o = new ResizeObserver(() => setH(el.clientHeight));
+    o.observe(el);
+    ro.current = o;
+    setH(el.clientHeight);
+  }, []);
+  return [ref, h];
+}
+
 export function SessionPage({ remote, session, onBack, wide }: { remote: Remote; session: SessionView; onBack: () => void; wide: boolean }) {
   useRemote(remote);
   const sid = session.id;
@@ -68,6 +84,9 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const inactive = ended || st.kind === "offline";
 
   const [rootRef, width] = useWidth<HTMLDivElement>();
+  // The dock may take 45% of the chat column.
+  const [colRef, colHeight] = useHeight();
+  const room = colHeight > 0 ? colHeight * 0.45 : Infinity;
   const canSplit = wide && width >= 840;
   const [tabPick, setTab] = useState<Tab>("chat");
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
@@ -75,7 +94,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [page, setPage] = useState<"" | "plan" | { approval: string }>("");
+  const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -100,6 +119,22 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   // Detail pages replace the whole session view.
   if (page === "plan" && d.plan && session.info?.planOpen)
     return <PlanPage remote={remote} sid={sid} plan={d.plan} title={title} onBack={() => setPage("")} />;
+  const question = [...d.questions.values()][0];
+  if (page === "question" && question)
+    return (
+      <QuestionPage
+        remote={remote}
+        sid={sid}
+        q={question}
+        agent={agent}
+        title={title}
+        onBack={() => setPage("")}
+        onTerminal={() => {
+          setPage("");
+          setTab(canSplit ? "split" : "term");
+        }}
+      />
+    );
   if (typeof page === "object") {
     const a = d.approvals.get(page.approval);
     if (a) return <ApprovalPage remote={remote} sid={sid} a={a} agent={agent} title={title} onBack={() => setPage("")} />;
@@ -155,7 +190,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   );
 
   const chat = (
-    <div className="ccol">
+    <div className="ccol" ref={colRef}>
       <ChatBody remote={remote} session={session} events={events} d={d} agent={agent} machine={mname} />
       {toast && (
         <div className="toast" onClick={() => setToast("")}>
@@ -169,12 +204,14 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           items={items}
           agent={agent}
           collapsed={typing}
+          room={room}
           onExpand={() => {
             composer.current?.blur();
             setTyping(false);
           }}
           onDetail={(id) => setPage({ approval: id })}
           onPlan={() => setPage("plan")}
+          onQuestion={() => setPage("question")}
           onTerminal={() => setTab(canSplit ? "split" : "term")}
         />
       )}

@@ -12,7 +12,7 @@ import { derive, dockItems } from "../model";
 import type { CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { Dock, PlanPage } from "./Dock";
+import { Dock, PlanPage, QuestionPage } from "./Dock";
 import { Home } from "./Home";
 import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
@@ -351,4 +351,47 @@ it("retries a multi-select answer of unknown outcome unchanged", async () => {
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual([1, 3]);
   expect(slots[1]).toBe(slots[0]);
+});
+
+it("shows a dock with no room for it as one line that opens its page", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-appr")!;
+  const opened: string[] = [];
+  const dock = (room: number) => (
+    <Dock
+      remote={r}
+      sid="s-appr"
+      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
+      agent={Agent.CODEX}
+      collapsed={false}
+      room={room}
+      onExpand={() => opened.push("expand")}
+      onDetail={(id) => opened.push("detail:" + id)}
+      onPlan={() => opened.push("plan")}
+      onTerminal={() => opened.push("terminal")}
+    />
+  );
+  mount(dock(Infinity));
+  expect(host.querySelector(".dock.mini")).toBeNull();
+  // No room: the card needs at least its margin.
+  act(() => root!.render(dock(0)));
+  const mini = host.querySelector(".dock.mini")!;
+  expect(mini.textContent).toContain("请求执行");
+  // The full card is still there for measuring, but hidden and inert.
+  expect(host.querySelector(".dockwrap")!.classList.contains("offstage")).toBe(true);
+  await click(button("展开", mini));
+  expect(opened).toEqual(["detail:a1"]);
+});
+
+it("keeps a question's progress between its page and the dock", async () => {
+  const r = demo();
+  const q = derive(r.events("s-ask")).questions.get("q1")!;
+  mount(<QuestionPage remote={r} sid="s-ask" q={q} agent={Agent.CODEX} title="升级依赖" onBack={() => undefined} onTerminal={() => undefined} />);
+  await click(button(/^只升小版本/));
+  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  act(() => root!.render(<AskDock r={r} collapsed={false} />));
+  expect(host.textContent).toContain("第 2 题，共 2 题");
+  // The one-line form names the question now being asked.
+  act(() => root!.render(<AskDock r={r} collapsed />));
+  expect(host.querySelector(".dock.mini")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });

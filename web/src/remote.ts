@@ -183,6 +183,13 @@ export class Remote {
   // Sessions started here whose record has not arrived yet, and the
   // project whose new-session box should take focus when shown.
   created = new Set<string>();
+  // The question being answered in each multi-question call, by call ID.
+  questionIndex = new Map<string, number>();
+
+  setQuestionIndex(id: string, n: number) {
+    this.questionIndex.set(id, n);
+    this.changed();
+  }
   focusProject = "";
 
   private buffers = new Map<string, EventBuffer>();

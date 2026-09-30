@@ -2,14 +2,14 @@
 // plans and terminal popups. Only the first item is docked; long content
 // opens a full page, and the buttons stay in view.
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { Markdown } from "../markdown";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
-import { Banner, NavBar, useNow } from "../ui";
+import { Banner, NavBar, useNow, useRemote } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
 
 export function approvalTitle(a: ApprovalRequested): string {
@@ -21,12 +21,12 @@ export function approvalText(a: ApprovalRequested): string {
 }
 
 /** A dock item as one line: its type and a summary. */
-function summary(item: DockItem, agent: Agent): [string, string] {
+function summary(item: DockItem, agent: Agent, questionIndex = 0): [string, string] {
   switch (item.kind) {
     case "approval":
       return [approvalTitle(item.approval), approvalText(item.approval).replace(/\s+/g, " ")];
     case "question":
-      return [askTitle(agent), item.question.questions[0]?.text ?? ""];
+      return [askTitle(agent), item.question.questions[Math.min(questionIndex, item.question.questions.length - 1)]?.text ?? ""];
     case "plan":
       return ["计划待批准", (item.plan?.text ?? "").replace(/\s+/g, " ")];
     case "popup":
@@ -179,11 +179,18 @@ function ApprovalDock({ remote, sid, a, agent, more, onDetail }: { remote: Remot
   );
 }
 
+/** Which question of a call is being answered. Kept on the Remote so the
+ * docked card and the question page follow the terminal together. */
+function useQuestionIndex(remote: Remote, id: string): [number, (n: number) => void] {
+  useRemote(remote);
+  return [remote.questionIndex.get(id) ?? 0, (n) => remote.setQuestionIndex(id, n)];
+}
+
 function QuestionDock({ remote, sid, q, agent, more, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; more: number; onTerminal: () => void }) {
   // Which question to answer. The daemon only enters the option while the
   // terminal shows this very question, so a stale choice is refused rather
   // than answering another question.
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useQuestionIndex(remote, q.questionId);
   const ans = useAnswer(remote, sid, q.questionId);
   // Options ticked on a multi-select question, before submitting.
   const [ticked, setTicked] = useState<number[]>([]);
@@ -366,17 +373,27 @@ function PopupDock({ title, agent, more, onTerminal }: { title: string; agent: A
   );
 }
 
-/** The first waiting item, docked; collapsed to one line while the user
- * types a message. */
+/** Room the dock needs: its controls, at least 44 px of its content (less
+ * if there is less), and its bottom margin. */
+export function dockNeed(card: number, content: number, contentScroll: number): number {
+  return card - content + Math.min(44, contentScroll) + 6;
+}
+
+/** The first waiting item, docked. It gets at most room pixels (45% of
+ * the chat column). A card that cannot fit its controls and a little of
+ * its content in that shows as one line whose 展开 opens it as a page, so
+ * the input stays in view; so does any card while the user types. */
 export function Dock({
   remote,
   sid,
   items,
   agent,
   collapsed,
+  room = Infinity,
   onExpand,
   onDetail,
   onPlan,
+  onQuestion,
   onTerminal,
 }: {
   remote: Remote;
@@ -384,12 +401,42 @@ export function Dock({
   items: DockItem[];
   agent: Agent;
   collapsed: boolean;
+  room?: number;
   onExpand: () => void;
   onDetail: (approvalId: string) => void;
   onPlan: () => void;
+  onQuestion?: () => void;
   onTerminal: () => void;
 }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [need, setNeed] = useState(0);
+  const [controls, setControls] = useState(0);
+  const [reasoning, setReasoning] = useState(false);
   const item = items[0];
+  useLayoutEffect(() => {
+    const card = wrap.current?.firstElementChild as HTMLElement | null;
+    if (!card) return;
+    const measure = () => {
+      const scroll = card.querySelector<HTMLElement>(":scope > .dscroll");
+      const content = scroll?.offsetHeight ?? 0;
+      setControls(card.offsetHeight - content);
+      setNeed(dockNeed(card.offsetHeight, content, scroll?.scrollHeight ?? 0));
+      setReasoning(card.classList.contains("reasoning"));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(card);
+    const scroll = card.querySelector(":scope > .dscroll");
+    if (scroll) ro.observe(scroll);
+    // The card's class changes when a reason is being typed.
+    const mo = new MutationObserver(measure);
+    mo.observe(card, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [item?.id]);
   if (!item) return null;
   const more = items.length - 1;
   let full;
@@ -407,25 +454,48 @@ export function Dock({
       full = <PopupDock key={item.id} title={item.title} agent={agent} more={more} onTerminal={onTerminal} />;
       break;
   }
-  // Collapsing only hides the card: it stays mounted, so a question's
-  // progress or a half-typed reason survives the keyboard.
-  const [kind, text] = summary(item, agent);
+  // Typing a reason keeps the card above the keyboard, whatever the room.
+  const compact = !reasoning && need > room;
+  const oneLine = compact || (collapsed && !reasoning);
+  const page = () => {
+    if (item.kind === "approval") onDetail(item.approval.approvalId);
+    else if (item.kind === "plan") onPlan();
+    else if (item.kind === "question") onQuestion?.();
+    else onTerminal();
+  };
+  const [kind, text] = summary(item, agent, item.kind === "question" ? (remote.questionIndex.get(item.question.questionId) ?? 0) : 0);
   const cls = item.kind === "question" ? " ask" : item.kind === "plan" ? " plan" : "";
+  // The full card stays mounted, measurable but out of sight, while the
+  // one-line form shows: a question's progress or a half-typed reason
+  // survives, and the dock knows when the card fits again.
+  const style = { "--content-max": Number.isFinite(room) ? `${Math.max(44, room - controls - 6)}px` : "none" } as CSSProperties;
   return (
     <>
-      {collapsed && (
+      {oneLine && (
         <div className={"dock mini" + cls}>
           <b>{kind}</b>
           <code>{text}</code>
-          <button onMouseDown={(e) => e.preventDefault()} onClick={onExpand}>
+          <button onMouseDown={(e) => e.preventDefault()} onClick={compact ? page : onExpand}>
             展开
           </button>
         </div>
       )}
-      <div className="dockwrap" hidden={collapsed}>
+      <div className={"dockwrap" + (oneLine ? " offstage" : "")} ref={wrap} style={style} aria-hidden={oneLine || undefined}>
         {full}
       </div>
     </>
+  );
+}
+
+/** A question on its own page, for when the dock has no room for it. */
+export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; title: string; onBack: () => void; onTerminal: () => void }) {
+  return (
+    <div className="page">
+      <NavBar onBack={onBack} title="回答提问" sub={title} />
+      <div className="body pad qpage">
+        <QuestionDock remote={remote} sid={sid} q={q} agent={agent} more={0} onTerminal={onTerminal} />
+      </div>
+    </div>
   );
 }
 

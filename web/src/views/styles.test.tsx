@@ -30,15 +30,15 @@ it("does not cap a dock that holds only the reason and its button", () => {
   expect(dock.overflow).toBe("visible");
 });
 
-it("gives the dock's controls their own room and caps only its content", () => {
-  // A capped card lets its controls overflow onto the queue and the
-  // input; only the scrolling content may be capped.
-  document.body.innerHTML = '<div class="ccol"><div class="dock"><div class="dscroll">…</div><div class="btns"><button class="btn">允许</button></div></div></div>';
-  const dock = getComputedStyle(document.querySelector(".dock")!);
-  expect(["", "none"]).toContain(dock.maxHeight);
-  expect(dock.flexShrink).toBe("0");
+it("caps a dock's content by the room measured for it, and measures cards out of sight", () => {
+  document.body.innerHTML =
+    '<div class="ccol"><div class="dockwrap offstage" style="--content-max: 60px"><div class="dock"><div class="dscroll">…</div><div class="btns"><button class="btn">允许</button></div></div></div></div>';
   const content = getComputedStyle(document.querySelector(".dock > .dscroll")!);
   expect(content.overflowY).toBe("auto");
-  expect(content.maxHeight).toContain("45cqh");
-  expect(getComputedStyle(document.querySelector(".ccol")!).containerType).toBe("size");
+  expect(content.maxHeight).toBe("60px");
+  // The card behind the one-line form is laid out but hidden and inert.
+  const off = getComputedStyle(document.querySelector(".dockwrap.offstage")!);
+  expect(off.visibility).toBe("hidden");
+  expect(off.pointerEvents).toBe("none");
+  expect(off.position).toBe("absolute");
 });
