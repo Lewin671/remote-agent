@@ -21,3 +21,18 @@ export function setTheme(t: Theme) {
   else localStorage.setItem(KEY, t);
   applyTheme(t);
 }
+
+/**
+ * Apple devices draw the mockup's weights with SF and PingFang. Elsewhere
+ * Chinese comes from fonts that draw each weight heavier, so the page asks
+ * for one step lighter (design-system §3; the weights live in styles.css).
+ * iPadOS reports itself as a Mac.
+ */
+export function shiftedWeights(ua: string): boolean {
+  return !/Macintosh|Mac OS X|iPhone|iPad|iPod/.test(ua);
+}
+
+export function applyFonts(ua: string = navigator.userAgent) {
+  if (shiftedWeights(ua)) document.documentElement.dataset.weights = "shifted";
+  else delete document.documentElement.dataset.weights;
+}
