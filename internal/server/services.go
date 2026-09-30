@@ -88,6 +88,9 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		slog.Info("account created")
 	}
 	slog.Info("device registered", "device", id, "kind", reg.Kind.String())
+	if d, err := a.s.store.deviceEntry(ctx, id); err == nil {
+		a.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})
+	}
 	return connect.NewResponse(&pb.RegisterDeviceResponse{DeviceId: id}), nil
 }
 

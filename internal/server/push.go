@@ -328,6 +328,7 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 		return nil, internal(err)
 	}
 	slog.Info("device removed", "device", req.Msg.DeviceId)
+	c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: req.Msg.DeviceId}}})
 	if machine {
 		c.s.hub.drop(req.Msg.DeviceId)
 		c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineRemoved{MachineRemoved: &pb.MachineRemoved{MachineId: req.Msg.DeviceId}}})

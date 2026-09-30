@@ -28,6 +28,8 @@ func main() {
 	db := flag.String("db", "remote-agent.db", "SQLite database file")
 	origins := flag.String("allowed-origins", "", "comma-separated web origins allowed to use the API, e.g. http://localhost:5173")
 	fcmAccount := flag.String("fcm-service-account", os.Getenv("RA_FCM_SERVICE_ACCOUNT"), "Firebase service account key file for Android pushes (RA_FCM_SERVICE_ACCOUNT); empty turns them off")
+	retention := flag.Duration("image-retention", 30*24*time.Hour, "how long image display copies are kept")
+	quota := flag.Int64("image-quota", 1<<30, "bytes of image display copies the account may store")
 	flag.Parse()
 
 	var allowed []string
@@ -42,6 +44,8 @@ func main() {
 		AllowedOrigins: allowed,
 
 		FCMServiceAccount: *fcmAccount,
+		ImageRetention:    *retention,
+		ImageQuota:        *quota,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "remote-agent-server:", err)

@@ -42,6 +42,11 @@ type Config struct {
 	// FCMServiceAccount is the path of a Firebase service account key file
 	// for Android pushes; empty turns FCM off.
 	FCMServiceAccount string
+	// ImageRetention is how long image display copies are kept, 30 days
+	// by default; ImageQuota bounds the bytes of stored images, 1 GiB by
+	// default.
+	ImageRetention time.Duration
+	ImageQuota     int64
 }
 
 // Limits on what peers may send.
@@ -66,6 +71,9 @@ type Server struct {
 	push    *pusher
 	pairing *pairingService
 
+	stop     chan struct{}
+	stopOnce sync.Once
+
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
 }
@@ -86,11 +94,25 @@ func New(cfg Config) (*Server, error) {
 	if cfg.PingInterval == 0 {
 		cfg.PingInterval = 20 * time.Second
 	}
+	if cfg.ImageRetention == 0 {
+		cfg.ImageRetention = defaultImageRetention
+	}
+	if cfg.ImageQuota == 0 {
+		cfg.ImageQuota = defaultImageQuota
+	}
 	st, err := openStore(cfg.DBPath)
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}}
+	if _, err := st.db.Exec(v2Schema); err != nil {
+		st.Close()
+		return nil, err
+	}
+	if err := st.migrate(); err != nil {
+		st.Close()
+		return nil, err
+	}
+	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
@@ -98,11 +120,15 @@ func New(cfg Config) (*Server, error) {
 		st.Close()
 		return nil, err
 	}
+	go s.expireLoop(s.stop)
 	return s, nil
 }
 
 // Close closes the database.
-func (s *Server) Close() error { return s.store.Close() }
+func (s *Server) Close() error {
+	s.stopOnce.Do(func() { close(s.stop) })
+	return s.store.Close()
+}
 
 // Handler returns the HTTP handler serving the API and the stream.
 func (s *Server) Handler() http.Handler {
