@@ -339,7 +339,11 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
                     TextButton(onClick = { putBack(remote, sid, o) }) { Text("放回输入框") }
                 }
             }
-            input == InputStatus.INPUT_STATUS_UNCONFIRMED -> Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+            input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
+                Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+                // Its images are kept until then; the user decides when to let go.
+                TextButton(onClick = { Outbox.remove(sid, o); o.images.forEach { it.release() } }) { Text("看过终端了，移除此提示", color = p.muted) }
+            }
             o.state == Outgoing.State.SENDING -> Text("◌ 发送中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
             o.state == Outgoing.State.SENT -> Text("已送达电脑", style = MaterialTheme.typography.bodySmall, color = p.muted)
             else -> {
