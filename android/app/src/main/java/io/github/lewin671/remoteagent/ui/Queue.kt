@@ -1,6 +1,9 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -114,67 +117,46 @@ fun QueuePage(sid: String) {
         }
         shown.value = ids.toSet()
     }
-    PageScaffold("消息队列") {
+    PageScaffold("消息队列", subtitle = s?.let { "${titleOf(it)} · ${agentName(agent)}" }) {
         if (s == null) {
-            Text("读取中…", Modifier.padding(16.dp), color = p.muted)
+            PageNote("读取中…")
             return@PageScaffold
         }
-        Text("${titleOf(s)} · ${agentName(agent)}", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
         val status = statusIn(state, s)
-        Text(
-            "本轮结束后按顺序发送。取消只对尚未送入终端的消息生效。这是电脑上的同一条队列，所有客户端看到同样的已接受消息。",
-            Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = p.muted,
-        )
         val online = state.conn == ConnState.ONLINE
-        LazyColumn(Modifier.weight(1f)) {
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+            item { Text("本轮结束后按顺序发送。取消只对尚未送入终端的消息生效；所有客户端看到的是电脑上的同一条队列。", style = T.meta, color = p.muted, modifier = Modifier.padding(bottom = 4.dp)) }
             itemsIndexed(ids, key = { _, id -> id }) { i, id ->
                 val c = Cancels.states[id]
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).background(p.card, RoundedCornerShape(12.dp)).padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.fillMaxWidth().bottomLine(p.line).padding(vertical = 8.dp).alpha(if (c == Cancels.State.Canceling) .5f else 1f)) {
+                    Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
                         val writing = when (d.accepted[id]?.stage) {
                             io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_PASTING_IMAGES -> "正在粘贴图片"
                             io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_IMAGES_RECOGNIZED, io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_SUBMITTING -> "正在送入终端"
                             else -> null
                         }
                         val where = writing ?: if (i == 0) queueWhy(s, status).long else "等待发送"
-                        Text(
-                            "${i + 1} · " + if (c == Cancels.State.Canceling) "正在取消…" else where,
-                            style = MaterialTheme.typography.labelMedium, color = p.muted, modifier = Modifier.weight(1f),
-                        )
-                        if (c == Cancels.State.Canceling) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        else if (writing != null) Text("不能取消", style = MaterialTheme.typography.bodySmall, color = p.faint)
-                        else TextButton(onClick = { Cancels.cancel(remote, sid, id) }, enabled = online) { Text("取消") }
-                    }
-                    val acc = d.accepted[id]
-                    val from = io.github.lewin671.remoteagent.core.originLabel(acc?.origin, state, remote.account.deviceId, machineLabel(state, s.machineId))
-                    if (from != null) Text(from, style = MaterialTheme.typography.labelSmall, color = p.faint)
-                    Text(
-                        acc?.text?.takeIf { it.isNotEmpty() || acc.imageIds.isNotEmpty() }?.let { t -> t + if (acc.imageIds.isNotEmpty()) "（${acc.imageIds.size} 张图）" else "" }
-                            ?: Outbox.text(sid, id) ?: Outbox.prompt(sid)?.takeIf { ids.size == 1 } ?: "（另一客户端发送的消息，送入终端后才能看到内容）",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (c == Cancels.State.Canceling) p.faint else p.fg,
-                    )
-                    if (c is Cancels.State.Failed) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("取消未成功，消息仍在队列中：${c.error}", style = MaterialTheme.typography.bodySmall, color = p.red, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { Cancels.cancel(remote, sid, id) }, enabled = online) { Text("重试") }
+                        Text("${i + 1} · " + if (c == Cancels.State.Canceling) "正在取消…" else where, style = T.smB, color = p.fg, modifier = Modifier.weight(1f))
+                        if (c != Cancels.State.Canceling) {
+                            if (writing != null) Text("不能取消", style = T.sm, color = p.muted)
+                            else TextAction("取消", { Cancels.cancel(remote, sid, id) }, enabled = online, style = T.sm)
                         }
                     }
-                }
-            }
-            if (ids.isEmpty()) item { Text("队列是空的", Modifier.padding(16.dp), color = p.muted) }
-            Cancels.notes[sid]?.let { note ->
-                item {
-                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(note, style = MaterialTheme.typography.bodySmall, color = p.orangeInk, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { Cancels.notes.remove(sid) }) { Text("知道了") }
+                    Text(
+                        d.accepted[id]?.let { acc -> acc.text.takeIf { it.isNotEmpty() || acc.imageIds.isNotEmpty() }?.let { t -> t + if (acc.imageIds.isNotEmpty()) "（${acc.imageIds.size} 张图）" else "" } }
+                            ?: Outbox.text(sid, id) ?: Outbox.prompt(sid)?.takeIf { ids.size == 1 } ?: "（另一客户端发送的消息，送入终端后才能看到内容）",
+                        style = T.body, color = if (c == Cancels.State.Canceling) p.muted else p.fg, modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    val from = io.github.lewin671.remoteagent.core.originLabel(d.accepted[id]?.origin, state, remote.account.deviceId, machineLabel(state, s.machineId))
+                    if (from != null) Text(from, style = T.meta, color = p.muted)
+                    if (c is Cancels.State.Failed) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("取消未成功，消息仍在队列中：${c.error}", style = T.meta, color = p.red, modifier = Modifier.weight(1f, fill = false))
+                        Text(" · 重试", style = T.metaB, color = p.red, modifier = Modifier.clickable(enabled = online) { Cancels.cancel(remote, sid, id) })
                     }
                 }
             }
-            item { Spacer(Modifier.width(1.dp).padding(bottom = 16.dp)) }
+            if (ids.isEmpty()) item { PageNote("队列是空的") }
         }
+        Cancels.notes[sid]?.let { note -> Banner(note, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), action = "知道了", onAction = { Cancels.notes.remove(sid) }) }
     }
 }

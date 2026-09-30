@@ -81,6 +81,8 @@ class Nav(
     val image: (sid: String, seq: Long, index: Int) -> Unit = { _, _, _ -> },
     val client: (String) -> Unit = {},
     val hiddenProjects: () -> Unit = {},
+    /** A folder chosen for a new project, to start its first session in. */
+    val newProjectAt: (machine: String, path: String) -> Unit = { _, _ -> },
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }
@@ -102,11 +104,6 @@ fun now(periodMs: Long = 30_000): Long {
     return t
 }
 
-@Composable
-fun Dot(color: Color, size: Int = 8) {
-    Box(Modifier.size(size.dp).clip(CircleShape).background(color))
-}
-
 /** A status: a dot and a word, not color alone. */
 @Composable
 fun StatusLabel(status: Status, modifier: Modifier = Modifier) {
@@ -114,94 +111,67 @@ fun StatusLabel(status: Status, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Dot(p.tone(status.tone))
         Spacer(Modifier.width(5.dp))
-        Text(status.text, style = MaterialTheme.typography.bodySmall, color = if (status.tone == io.github.lewin671.remoteagent.core.Tone.WAIT) p.orangeInk else p.muted)
+        Text(status.text, style = T.meta, color = p.muted)
     }
 }
 
 @Composable
-fun Avatar(key: String, size: Int = 36) {
-    val p = pal
-    val colors = listOf(p.blue to p.blueSoft, p.green to Color(0x2922A05A), p.purple to p.purpleSoft, p.orange to p.orangeSoft)
-    val (fg, bg) = colors[avatarIndex(key)]
-    Box(Modifier.size(size.dp).clip(RoundedCornerShape(10.dp)).background(bg), contentAlignment = Alignment.Center) {
-        Text(projectName(key).take(1).lowercase(), color = fg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-    }
-}
+fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) = Label(title, count, modifier)
 
-@Composable
-fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) {
-    val p = pal
-    Row(modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = p.muted)
-        if (count != null) {
-            Spacer(Modifier.width(6.dp))
-            Text("$count", style = MaterialTheme.typography.bodySmall, color = p.muted)
-        }
-    }
-}
-
+/** A card on a grey page. */
 @Composable
 fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     val p = pal
-    Surface(
-        modifier = modifier.fillMaxWidth().then(if (onClick != null) Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(14.dp),
-        color = p.card,
-        border = if (p.dark) androidx.compose.foundation.BorderStroke(1.dp, p.line) else null,
-    ) { content() }
+    Box(modifier.fillMaxWidth().clip(Radii.MD).background(p.card).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) { content() }
 }
 
+/** A small grey pill; 44 dp tall when it can be tapped. */
 @Composable
 fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> Unit)? = null) {
     val p = pal
     Box(
-        Modifier.heightIn(min = if (onClick != null) 44.dp else 32.dp).clip(RoundedCornerShape(16.dp)).background(bg ?: p.chip)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+        Modifier.heightIn(min = if (onClick != null) 44.dp else 26.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.labelSmall, color = color ?: p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            text, style = T.meta, color = color ?: p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(bg ?: p.chip).padding(horizontal = 9.dp, vertical = 4.dp),
+        )
     }
 }
 
-/** "◌ 连接断了，正在重连 · 内容可能不是最新的" under the top bar; nothing when online. */
+/** The server connection, under the navigation bar and apart from the session's state; nothing when online. */
 @Composable
 fun ConnBanner(state: RemoteState) {
     val p = pal
     if (state.conn == ConnState.ONLINE) return
-    val text = when (state.conn) {
-        ConnState.CONNECTING -> "◌ 连接中…"
-        else -> if (state.error.isNotEmpty() && !state.loaded) "✕ 连不上服务器：${state.error}" else "◌ 连接断了，正在重连 · 内容可能不是最新的"
+    val failed = state.conn != ConnState.CONNECTING && state.error.isNotEmpty() && !state.loaded
+    val text = when {
+        state.conn == ConnState.CONNECTING -> "连接中…"
+        failed -> "连不上服务器：${state.error}"
+        else -> "连接断了，正在重连 · 内容可能不是最新的"
     }
     Text(
         text,
-        Modifier.fillMaxWidth().background(p.orangeSoft).padding(horizontal = 16.dp, vertical = 8.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = p.orangeInk,
+        Modifier.fillMaxWidth().background(p.soft).padding(horizontal = 16.dp, vertical = 5.dp),
+        style = T.meta,
+        color = if (failed) p.red else p.muted,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
 }
 
 @Composable
-fun Confirm(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
-        confirmButton = {
-            TextButton(onClick = { onDismiss(); onConfirm() }) { Text(confirm, color = if (danger) pal.red else MaterialTheme.colorScheme.primary) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    )
-}
+fun Confirm(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) =
+    Alert(title, text, confirm, danger, onDismiss, onConfirm)
 
+/** A 44 dp row with the page's side padding. */
 @Composable
 fun Row44(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable RowScope.() -> Unit) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp)
+        modifier.fillMaxWidth().heightIn(min = 44.dp)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
@@ -211,7 +181,7 @@ fun Row44(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content:
 @Composable
 fun Bordered(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val p = pal
-    Box(modifier.border(1.dp, p.line, RoundedCornerShape(12.dp)).padding(12.dp)) { content() }
+    Box(modifier.border(1.dp, p.line, Radii.SM).padding(12.dp)) { content() }
 }
 
 fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines[s.machineId]
@@ -220,36 +190,10 @@ fun statusIn(state: RemoteState, s: SessionView): Status = statusOf(s, state.mac
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
 
-/** A bounded input control; the hit area remains 44 dp even with small type. */
+/** 聊天 / 终端 for a session: the terminal greys out once the session has ended and gets a dot when it needs you. */
 @Composable
-fun InputControl(text: String, modifier: Modifier = Modifier, color: Color? = null, bg: Color? = null, enabled: Boolean = true, onClick: () -> Unit) {
-    val p = pal
-    Box(modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(bg ?: p.card)
-        .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
-        .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) {
-        Text(text, style = MaterialTheme.typography.labelSmall, color = (color ?: p.fg2).copy(alpha = if (enabled) 1f else .45f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-fun SessionTabs(selected: Int, terminalEnabled: Boolean, needsTerminal: Boolean, onSelect: (Int) -> Unit) {
-    val p = pal
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
-        .clip(RoundedCornerShape(12.dp)).background(p.seg).padding(3.dp)
-        .selectableGroup(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        listOf("聊天", "终端").forEachIndexed { index, title ->
-            val enabled = index == 0 || terminalEnabled
-            Row(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(9.dp))
-                .background(if (index == selected) p.card else Color.Transparent)
-                .selectable(selected = selected == index, enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(index) })
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                Text(title, style = MaterialTheme.typography.labelMedium, color = if (!enabled) p.faint else if (selected == index) p.fg else p.muted)
-                if (index == 1 && needsTerminal) { Spacer(Modifier.width(5.dp)); Dot(p.orange, 6) }
-            }
-        }
-    }
-}
+fun SessionTabs(selected: Int, terminalEnabled: Boolean, needsTerminal: Boolean, dark: Boolean = false, onSelect: (Int) -> Unit) =
+    ViewTabs(listOf("聊天", "终端"), selected, onSelect, enabled = { it == 0 || terminalEnabled }, dot = if (needsTerminal) 1 else -1, dark = dark)
 
 /** Incremental event state, with an immutable result per history snapshot. */
 @Composable

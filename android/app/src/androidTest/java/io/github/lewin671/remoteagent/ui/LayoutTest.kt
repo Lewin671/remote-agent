@@ -67,12 +67,12 @@ class LayoutTest {
             }
         }
         ui.onNodeWithContentDescription("发送").assertIsDisplayed()
-        ui.onNodeWithText("设置… ●").assertIsDisplayed()
-        ui.onNodeWithText("完全放行 ▾").assertIsDisplayed()
+        ui.onNodeWithContentDescription("附件与会话设置").assertIsDisplayed()
+        ui.onNodeWithText("完全放行").assertIsDisplayed()
         val send = ui.onNodeWithContentDescription("发送").fetchSemanticsNode().boundsInRoot
-        val settings = ui.onNodeWithText("设置… ●").fetchSemanticsNode().boundsInRoot
+        val menu = ui.onNodeWithContentDescription("附件与会话设置").fetchSemanticsNode().boundsInRoot
         val root = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
-        assertTrue(send.right <= root.right && settings.right <= send.left)
+        assertTrue(send.right <= root.right && menu.right <= send.left)
         screenshot("composer-dark-large")
     }
     @Test fun terminalTabsExposeSelectionAndDisableEndedTerminal() {
@@ -85,19 +85,19 @@ class LayoutTest {
         ui.onNodeWithText("终端").assertIsNotEnabled()
         ui.onNodeWithText("聊天").assertIsSelected()
     }
-    @Test fun projectCardKeepsLongConfigurationWithinBounds() {
+    @Test fun projectBoxKeepsControlsWithinBounds() {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.bg)) {
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.card)) {
                         SectionHeader("最近结束", 3)
-                        SessionRow(state, session(ended = true), System.currentTimeMillis(), false, false)
-                        NewSessionCard(state, NewConfig(machineId, key, model = "long-model-name", mode = Mode.ASK), "remote-agent-with-a-very-long-project-name", false)
+                        SessionRow(state, session(ended = true), System.currentTimeMillis())
+                        NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name", mode = Mode.ASK), "remote-agent-with-a-very-long-project-name", false)
                     }
                 }
             }
         }
-        ui.onNodeWithText("更改").assertIsDisplayed().assertHasClickAction()
+        ui.onNodeWithContentDescription("附件与会话设置").assertIsDisplayed().assertHasClickAction()
         ui.onNodeWithContentDescription("开始").assertIsDisplayed().assertIsNotEnabled()
         val root = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
         for (node in ui.onAllNodes(hasClickAction()).fetchSemanticsNodes()) {

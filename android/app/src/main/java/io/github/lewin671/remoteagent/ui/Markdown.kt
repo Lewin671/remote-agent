@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -189,43 +190,53 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
     }
 }
 
+/** An agent's reply (client-v7 .ai): 15 at 1.55, paragraphs 6 apart, list items 4. */
 @Composable
 fun Markdown(text: String, modifier: Modifier = Modifier) {
     val blocks = remember(text) { parseMarkdown(text) }
     val p = pal
-    val body = MaterialTheme.typography.bodyLarge
+    val body = T.chat.copy(color = p.fg)
     SelectionContainer(modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (b in blocks) when (b) {
-                is Block.Heading -> Text(
-                    inline(b.text, p.chip, p.blue),
-                    style = if (b.level <= 2) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
-                )
-                is Block.Para -> Text(inline(b.text.replace("\n", " "), p.chip, p.blue), style = body)
-                is Block.Item -> Row(Modifier.padding(start = (b.depth * 16).dp)) {
-                    Text(b.marker, style = body, color = p.muted, modifier = Modifier.widthIn(min = 18.dp))
-                    Text(inline(b.text, p.chip, p.blue), style = body)
+        Column {
+            blocks.forEachIndexed { i, b ->
+                val prev = blocks.getOrNull(i - 1)
+                val gap = when {
+                    i == 0 -> 0.dp
+                    prev is Block.Item && b is Block.Item -> 4.dp
+                    b is Block.Code || b is Block.Table || prev is Block.Code || prev is Block.Table -> 6.dp
+                    else -> 6.dp
                 }
-                is Block.Quote -> Row {
-                    Box(Modifier.width(3.dp).background(p.line).padding(vertical = 2.dp)) { Text(" ") }
-                    Text(inline(b.text, p.chip, p.blue), style = body, color = p.muted, modifier = Modifier.padding(start = 10.dp))
+                Box(Modifier.padding(top = gap)) {
+                    when (b) {
+                        is Block.Heading -> Text(inline(b.text, p.chip, p.blue), style = if (b.level <= 2) T.h17 else T.bodyB, color = p.fg)
+                        is Block.Para -> Text(inline(b.text.replace("\n", " "), p.chip, p.blue), style = body)
+                        is Block.Item -> Row(Modifier.padding(start = (b.depth * 20).dp)) {
+                            Box(Modifier.width(20.dp), contentAlignment = Alignment.TopCenter) { Text(b.marker, style = body, color = p.fg) }
+                            Text(inline(b.text, p.chip, p.blue), style = body)
+                        }
+                        is Block.Quote -> Row {
+                            Box(Modifier.width(3.dp).background(p.line).padding(vertical = 2.dp)) { Text(" ") }
+                            Text(inline(b.text, p.chip, p.blue), style = body, color = p.muted, modifier = Modifier.padding(start = 10.dp))
+                        }
+                        is Block.Code -> CodeBlock(b.text)
+                        is Block.Table -> TableBlock(b)
+                        Block.Rule -> HorizontalDivider(color = p.line)
+                    }
                 }
-                is Block.Code -> CodeBlock(b.text)
-                is Block.Table -> TableBlock(b)
-                Block.Rule -> HorizontalDivider(color = p.line)
             }
         }
     }
 }
 
+/** A code block in a reply: soft, a line around, radius 6, mono 12. */
 @Composable
 fun CodeBlock(text: String, maxLines: Int = Int.MAX_VALUE, modifier: Modifier = Modifier) {
     val p = pal
     Box(
-        modifier.fillMaxWidth().background(p.code, RoundedCornerShape(10.dp)).border(1.dp, p.line, RoundedCornerShape(10.dp))
-            .horizontalScroll(rememberScrollState()).padding(10.dp),
+        modifier.fillMaxWidth().background(p.soft, Radii.XS).border(1.dp, p.line, Radii.XS)
+            .horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
-        Text(text, fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 17.sp, color = p.fg2, softWrap = false, maxLines = maxLines)
+        Text(text, style = T.mono, color = p.fg2, softWrap = false, maxLines = maxLines)
     }
 }
 
@@ -233,7 +244,7 @@ fun CodeBlock(text: String, maxLines: Int = Int.MAX_VALUE, modifier: Modifier = 
 private fun TableBlock(t: Block.Table) {
     val p = pal
     Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-        Column(Modifier.border(1.dp, p.line, RoundedCornerShape(8.dp))) {
+        Column(Modifier.border(1.dp, p.line)) {
             val all = listOf(t.header) + t.rows
             val cols = all.maxOf { it.size }
             for ((ri, row) in all.withIndex()) {
@@ -241,8 +252,8 @@ private fun TableBlock(t: Block.Table) {
                     for (ci in 0 until cols) {
                         Text(
                             inline(row.getOrElse(ci) { "" }, p.chip, p.blue),
-                            Modifier.widthIn(min = 64.dp, max = 240.dp).padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.bodyMedium,
+                            Modifier.widthIn(min = 48.dp, max = 240.dp).padding(horizontal = 7.dp, vertical = 3.dp),
+                            style = T.sm, color = p.fg,
                             fontWeight = if (ri == 0) FontWeight.SemiBold else null,
                         )
                     }

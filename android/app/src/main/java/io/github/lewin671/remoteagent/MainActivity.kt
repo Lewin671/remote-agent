@@ -20,14 +20,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.ui.T
+import io.github.lewin671.remoteagent.ui.topLine
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,7 +95,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by app.prefs.settings.collectAsState(Settings())
             RaTheme(settings.theme) {
-                Surface(Modifier.fillMaxSize(), color = pal.bg) {
+                Surface(Modifier.fillMaxSize(), color = pal.card) {
                     val loaded by app.loaded.collectAsState()
                     val remote by app.remote.collectAsState()
                     val accountError by app.accountError.collectAsState()
@@ -159,6 +168,9 @@ class MainActivity : ComponentActivity() {
                     composable("approval/{sid}/{aid}") { ApprovalPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("aid").orEmpty()) }
                     composable("plan/{sid}") { PlanPage(it.arguments?.getString("sid").orEmpty()) }
                     composable("newproject") { NewProjectScreen() }
+                    composable("newproject/{machine}/{path}") {
+                        io.github.lewin671.remoteagent.ui.NewProjectAtScreen(it.arguments?.getString("machine").orEmpty(), routeValue(it.arguments?.getString("path")))
+                    }
                     composable("pick") { PickProjectScreen() }
                     composable("projects") { ManageProjectsScreen() }
                     composable("quota/{id}") { io.github.lewin671.remoteagent.ui.QuotaScreen(it.arguments?.getString("id").orEmpty()) }
@@ -183,13 +195,8 @@ class MainActivity : ComponentActivity() {
     private fun BottomBar(remote: Remote, route: String?, nav: NavHostController) {
         val state by remote.state.collectAsState()
         val waiting = state.sessions.values.count { statusIn(state, it).tone == Tone.WAIT }
-        NavigationBar(containerColor = pal.card) {
-            NavigationBarItem(route == "home", { if (route != "home") nav.navigate("home") { popUpTo("home") { inclusive = true } } }, {
-                BadgedBox({ if (waiting > 0) Badge { Text("$waiting") } }) { Icon(Icons.Default.ChatBubbleOutline, null) }
-            }, label = { Text("会话") })
-            NavigationBarItem(route == "settings", { if (route != "settings") nav.navigate("settings") { popUpTo("home") } }, {
-                Icon(Icons.Default.Settings, null)
-            }, label = { Text("设置") })
+        io.github.lewin671.remoteagent.ui.TabBar(route, waiting) { r ->
+            if (r == "home") nav.navigate("home") { popUpTo("home") { inclusive = true } } else nav.navigate("settings") { popUpTo("home") }
         }
     }
 
@@ -215,6 +222,7 @@ class MainActivity : ComponentActivity() {
         image = { sid, seq, i -> nav.navigate("image/$sid/$seq/$i") },
         client = { nav.navigate("client/$it") },
         hiddenProjects = { nav.navigate("projects/hidden") },
+        newProjectAt = { machine, path -> nav.navigate("newproject/$machine/${routeArg(path)}") },
         sessionTerminal = { sid ->
             OpenTerminal.requested[sid] = true
             nav.navigate("session/$sid") { launchSingleTop = true }

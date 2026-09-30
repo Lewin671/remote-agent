@@ -3,6 +3,20 @@ package io.github.lewin671.remoteagent.term
 import android.view.inputmethod.InputMethodManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.ui.Btn
+import io.github.lewin671.remoteagent.ui.BtnKind
+import io.github.lewin671.remoteagent.ui.Radii
+import io.github.lewin671.remoteagent.ui.T
+import io.github.lewin671.remoteagent.ui.TermColors
+import io.github.lewin671.remoteagent.ui.bottomLine
+import io.github.lewin671.remoteagent.ui.ts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -123,44 +137,35 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val p = pal
 
     Column(modifier) {
+        // The toolbar says the size, and that it changed; nothing pops up over the screen.
         Row(
-            Modifier.fillMaxWidth().background(p.soft).padding(horizontal = 12.dp).height(40.dp),
+            Modifier.fillMaxWidth().background(TermColors.bar).bottomLine(TermColors.rule).padding(start = 12.dp, end = 4.dp).heightIn(min = 44.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val (cols, rows) = size
             Text(
                 when {
                     state != RemoteTerminal.State.Live -> "终端"
+                    resized -> "远端尺寸已变化 · ${cols}×$rows"
                     fitted -> "已适配这块屏幕 · ${cols}×$rows"
                     else -> "电脑上 ${cols}×$rows"
                 },
-                style = MaterialTheme.typography.bodyMedium,
-                color = p.muted,
-                modifier = Modifier.weight(1f),
+                style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f),
             )
-            if (state == RemoteTerminal.State.Live) {
-                TextButton(onClick = { term.toggleFit() }) { Text(if (fitted) "还原" else "⤢ 适配我的屏幕") }
+            if (state == RemoteTerminal.State.Live) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
+                Text(if (fitted) "还原" else if (resized) "适配" else "⤢ 适配我的屏幕", style = T.metaB, color = TermColors.link)
             }
         }
         Row(
-            Modifier.fillMaxWidth().background(p.soft).height(40.dp).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            Modifier.fillMaxWidth().background(TermColors.bar).heightIn(min = 40.dp).padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("字号", style = MaterialTheme.typography.bodyMedium, color = p.muted, modifier = Modifier.weight(1f))
-            TextButton(onClick = { changeFont(-1) }, enabled = fontDp > 10) { Text("A−") }
-            Text("$fontDp", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-            TextButton(onClick = { changeFont(1) }, enabled = fontDp < 22) { Text("A+") }
+            Text("字号", style = ts(14.sp), color = TermColors.dim, modifier = Modifier.weight(1f))
+            FontButton("A−", fontDp > 10) { changeFont(-1) }
+            Text("$fontDp", style = ts(14.sp), color = TermColors.dim)
+            FontButton("A+", fontDp < 22) { changeFont(1) }
         }
-        if (resized) {
-            Column(Modifier.fillMaxWidth().background(p.orangeSoft).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text("远端尺寸已变化", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
-                Text(
-                    "窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。",
-                    style = MaterialTheme.typography.bodySmall, color = p.orangeInk,
-                )
-            }
-        }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(Color.Black)) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(TermColors.bg)) {
             val widthPx = constraints.maxWidth
             val heightPx = constraints.maxHeight
             val (cols, rows) = size
@@ -225,29 +230,26 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 )
             }
             if (state != RemoteTerminal.State.Live) {
-                Surface(
-                    Modifier.align(Alignment.Center).padding(24.dp),
-                    shape = MaterialTheme.shapes.large,
-                    color = p.card,
+                Column(
+                    Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.SM).background(TermColors.bar)
+                        .border(1.dp, TermColors.line, Radii.SM).padding(12.dp),
                 ) {
-                    Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        when (val s = state) {
-                            RemoteTerminal.State.Connecting -> Text("连接终端…", color = p.muted)
-                            is RemoteTerminal.State.Closed -> {
-                                Text("终端连接断开了", style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "会话还在运行，聊天照常更新。" else "会话不在运行。",
-                                    style = MaterialTheme.typography.bodyMedium, color = p.muted, textAlign = TextAlign.Center,
-                                )
-                                var details by remember { mutableIntStateOf(0) }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, enabled = online) { Text("重新连接") }
-                                    TextButton(onClick = { details++ }) { Text("查看详情") }
-                                }
-                                if (details % 2 == 1) Text(s.reason, style = MaterialTheme.typography.bodySmall, color = p.muted, fontFamily = FontFamily.Monospace)
+                    when (val s = state) {
+                        RemoteTerminal.State.Connecting -> Text("◌ 连接终端…", style = T.sm, color = TermColors.dim)
+                        is RemoteTerminal.State.Closed -> {
+                            Text("终端连接断开了", style = T.bodyB, color = TermColors.fg)
+                            Text(
+                                (if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "下面是断开前的画面。会话还在运行，聊天照常更新。" else "会话不在运行。"),
+                                style = T.sm, color = TermColors.dim, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                            )
+                            var details by remember { mutableIntStateOf(0) }
+                            Btn("重新连接", { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = online)
+                            Box(Modifier.heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.CenterStart) {
+                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.meta, color = TermColors.link)
                             }
-                            else -> {}
+                            if (details % 2 == 1) Text(s.reason, style = T.mono, color = TermColors.dim)
                         }
+                        else -> {}
                     }
                 }
             }
@@ -264,13 +266,20 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
 }
 
 @Composable
+private fun FontButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(label, style = ts(14.sp, androidx.compose.ui.text.font.FontWeight.SemiBold), color = if (enabled) TermColors.link else TermColors.tool)
+    }
+}
+
+/** The keys a phone keyboard lacks, two rows of 44 dp keys (client-v7). */
+@Composable
 private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit) {
-    val p = pal
-    Column(Modifier.fillMaxWidth().background(p.soft)) {
-        Row(Modifier.fillMaxWidth().height(44.dp)) {
+    Column(Modifier.fillMaxWidth().background(TermColors.bar).padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
         }
-        Row(Modifier.fillMaxWidth().height(44.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
             KeyButton("⌨ 键盘", true, Modifier.weight(1f), onKeyboard)
         }
@@ -279,14 +288,10 @@ private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Uni
 
 @Composable
 private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val p = pal
-    TextButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.height(44.dp),
-        shape = MaterialTheme.shapes.small,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    Box(
+        modifier.height(44.dp).clip(RoundedCornerShape(7.dp)).background(TermColors.key).clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(label, fontFamily = FontFamily.Monospace, color = if (enabled) p.fg else p.faint, maxLines = 1)
+        Text(label, style = T.sm, color = if (enabled) TermColors.fg else TermColors.tool, maxLines = 1)
     }
 }

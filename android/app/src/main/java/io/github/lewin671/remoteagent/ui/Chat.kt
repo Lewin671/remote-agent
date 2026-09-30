@@ -3,6 +3,14 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,7 +103,8 @@ sealed interface ChatItem {
 
     /** Two or more completed tool calls in a row, folded into one line. */
     data class Tools(override val key: String, val calls: List<ToolCall>, val callSeqs: List<Long> = emptyList()) : ChatItem
-    data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0) : ChatItem
+    /** A line of its own: a centred note, or with [icon] a record like a tool row, [meta] at its right. */
+    data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0, val meta: String = "") : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
 
     /** A message the session ended before writing; [text] is known when sent from here. */
@@ -298,7 +307,7 @@ fun buildChat(
                 val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
                 val by = who(d.resolvedBy[a.approvalId])?.takeIf { it != "本客户端" }
-                out += ChatItem.Note(k, listOf(what, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: "")).filter { it.isNotEmpty() }.joinToString("  "), if (ok) "✓" else "✕", if (ok) 1 else 2)
+                out += ChatItem.Note(k, what, if (ok) "✓" else "✕", if (ok) 1 else 2, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: ""))
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
@@ -355,7 +364,7 @@ fun buildChat(
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                 flush()
-                out += ChatItem.Note(k, dateTime(eventTime(e)) + " 结束")
+                out += ChatItem.TurnEnd(k, dateTime(eventTime(e)) + " 结束")
             }
             else -> {}
         }
@@ -373,46 +382,111 @@ fun duration(ms: Long): String {
     }
 }
 
+/**
+ * A message of the user's, on the right: soft, 18 dp corners with a small
+ * one at the bottom right, at most 80% wide; [caption] under it says where
+ * it came from or how sending went, with [links] after it.
+ */
+@Composable
+fun MeBubble(
+    text: String?,
+    caption: String? = null,
+    captionColor: Color? = null,
+    failed: Boolean = false,
+    links: List<Pair<String, () -> Unit>> = emptyList(),
+    padded: Boolean = true,
+    top: (@Composable () -> Unit)? = null,
+) {
+    val p = pal
+    Column(Modifier.fillMaxWidth().padding(horizontal = if (padded) 14.dp else 0.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
+        top?.invoke()
+        if (text != null) Box(Modifier.fillMaxWidth(0.8f), contentAlignment = Alignment.CenterEnd) {
+            val shape = RoundedCornerShape(18.dp, 18.dp, 5.dp, 18.dp)
+            Box(
+                Modifier.clip(shape).background(if (failed) p.chip else p.soft)
+                    .then(if (failed) Modifier.border(1.5.dp, p.red, shape) else Modifier).padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.body, color = p.fg) }
+            }
+        }
+        if (caption != null || links.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (caption != null) Text(caption, style = T.meta, color = captionColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+            for ((label, go) in links) Text(label, style = T.metaB, color = p.blue, modifier = Modifier.padding(start = 6.dp).clickable(onClick = go))
+        }
+    }
+}
+
+/** A thin line with a note in the middle: a turn's time and tokens, a date. */
+@Composable
+fun SepLine(text: String) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(1.dp).background(p.line))
+        Text(text, style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 8.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(p.line))
+    }
+}
+
+/** A tool's line: a quiet mark, what it did in mono, and a note at the right. */
+@Composable
+fun ToolLine(mark: String, markColor: Color, title: String, modifier: Modifier = Modifier, meta: String = "", metaColor: Color? = null, onClick: (() -> Unit)? = null, bold: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
+    val p = pal
+    Row(
+        modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 4.dp).heightIn(min = 20.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(mark, style = T.meta, color = markColor)
+        if (bold) Text(title, style = ts(13.sp, FontWeight.Medium), color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        else Text(title, style = T.mono, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (meta.isNotEmpty()) Text(meta, style = T.meta, color = metaColor ?: p.muted, maxLines = 1)
+        trailing?.invoke()
+    }
+}
+
+/** A tool's output under its line, indented past the mark. */
+@Composable
+fun ToolOut(text: String, modifier: Modifier = Modifier, more: String? = null) {
+    val p = pal
+    Column(
+        modifier.padding(start = 20.dp, bottom = 6.dp).fillMaxWidth().clip(Radii.XS).background(p.soft)
+            .horizontalScroll(rememberScrollState()).padding(horizontal = 9.dp, vertical = 6.dp),
+    ) {
+        Text(text, style = T.mono, color = p.fg2, softWrap = false)
+        if (more != null) Text(more, style = T.mono, color = p.muted)
+    }
+}
+
 @Composable
 fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
     val p = pal
+    val chat = LocalChat.current
     when (item) {
-        is ChatItem.User -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
-            val from = item.from ?: if (item.local) "在终端里输入" else null
-            if (from != null) Text(from, style = MaterialTheme.typography.bodySmall, color = p.faint)
-            val chat = LocalChat.current
-            if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(vertical = 4.dp))
-            if (item.text.isNotBlank() || item.images.isEmpty()) Box(Modifier.widthIn(max = 320.dp).background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(item.text, style = MaterialTheme.typography.bodyLarge, color = p.fg)
-                }
-            }
+        is ChatItem.User -> MeBubble(
+            item.text.takeIf { it.isNotBlank() || item.images.isEmpty() },
+            caption = item.from ?: if (item.local) "在终端里输入" else null,
+            top = if (item.images.isNotEmpty()) ({ ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp)) }) else null,
+        )
+        is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp))
+        is ChatItem.Thought -> Expandable("思考过程", Modifier.padding(horizontal = 14.dp)) {
+            Text(item.text, style = T.sm, color = p.muted, modifier = Modifier.padding(bottom = 6.dp))
         }
-        is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
-        is ChatItem.Thought -> Expandable("▸ 思考", "▾ 思考", Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-        }
-        is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+        is ChatItem.Tool -> Column(Modifier.padding(horizontal = 14.dp)) {
             if (item.background) BackgroundRow(item.call, cwd, home, item.decision)
             else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
             // A tool's images sit right under it, e.g. the file Claude Code read.
-            val chat = LocalChat.current
-            if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
+            if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
         }
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
-        is ChatItem.Tools -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+        is ChatItem.Tools -> Column(Modifier.padding(horizontal = 14.dp)) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
-            Text(
-                "✓ " + toolsSummary(item.calls) + if (open) "  ▾" else "  ▸",
-                Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp),
-                style = MaterialTheme.typography.bodyMedium, color = p.muted,
-            )
-            val chat = LocalChat.current
+            ToolLine("✓", p.muted, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
+                Arrow(p.muted, T.sm, down = !open, up = open)
+            }
             if (open) Column(Modifier.padding(start = 12.dp)) {
                 item.calls.forEachIndexed { ci, c ->
                     ToolRow(c, cwd, home)
                     // Each call's images stay under it when the group is open.
-                    if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(bottom = 4.dp))
+                    if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
                 }
             }
             else {
@@ -424,59 +498,42 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                         if (n < c.imagesCount) { chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, n); break }
                         n -= c.imagesCount
                     }
-                }, Modifier.padding(bottom = 4.dp))
+                }, Modifier.padding(start = 21.dp, bottom = 6.dp))
             }
         }
-        is ChatItem.Generated -> {
-            val chat = LocalChat.current
-            GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
-        }
-        is ChatItem.Note -> Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (item.icon.isNotEmpty()) {
-                Text(item.icon, color = when (item.tone) { 1 -> p.green; 2 -> p.red; else -> p.muted }, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.width(6.dp))
+        is ChatItem.Generated -> GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
+        is ChatItem.Note ->
+            if (item.icon.isNotEmpty()) ToolLine(item.icon, p.muted, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.muted)
+            else Text(item.text, style = T.meta, color = p.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
+        is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp)) {
+            Text("计划", style = T.smB, color = p.fg2)
+            var open by rememberSaveable(item.key) { mutableStateOf(false) }
+            Box(Modifier.animateContentSize().padding(top = 4.dp)) {
+                if (open) Markdown(item.text)
+                else Text(
+                    item.text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(6).joinToString("\n"),
+                    style = ts(13.sp, lineHeight = 1.6f), color = p.fg, maxLines = 6, overflow = TextOverflow.Ellipsis,
+                )
             }
-            Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (item.text.lines().size > 6) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open) }
         }
-        is ChatItem.Plan -> Card(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Column(Modifier.padding(14.dp)) {
-                Text("计划", style = MaterialTheme.typography.titleSmall, color = p.purple)
-                var open by rememberSaveable(item.key) { mutableStateOf(false) }
-                Box(Modifier.animateContentSize()) {
-                    if (open) Markdown(item.text)
-                    else Text(
-                        item.text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(6).joinToString("\n"),
-                        style = MaterialTheme.typography.bodyMedium, maxLines = 6, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (item.text.lines().size > 6) Text(if (open) "收起" else "展开全文 ›", color = p.blue, modifier = Modifier.clickable { open = !open }.padding(top = 6.dp))
-            }
-        }
-        is ChatItem.Unsent -> Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
-            Box(Modifier.widthIn(max = 320.dp).background(p.soft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(item.text ?: "一条排队的消息", style = MaterialTheme.typography.bodyLarge, color = p.muted)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("会话结束，没有发出", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
-                if (item.text != null && onPutBack != null) {
-                    androidx.compose.material3.TextButton(onClick = { onPutBack(item.requestId, item.text) }) { Text("放回输入框") }
-                }
-            }
-        }
-        is ChatItem.TurnEnd -> Text(item.text, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = p.faint)
+        is ChatItem.Unsent -> MeBubble(
+            item.text ?: "一条排队的消息", caption = "会话结束，没有发出", captionColor = p.orangeInk,
+            links = if (item.text != null && onPutBack != null) listOf("放回输入框" to { onPutBack(item.requestId, item.text) }) else emptyList(),
+        )
+        is ChatItem.TurnEnd -> SepLine(item.text)
     }
 }
 
+/** A line that opens what is under it in place: 思考过程 ⌄. */
 @Composable
-fun Expandable(closed: String, opened: String, modifier: Modifier = Modifier, color: Color? = null, content: @Composable () -> Unit) {
+fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = null, content: @Composable () -> Unit) {
     val p = pal
-    var open by rememberSaveable(closed) { mutableStateOf(false) }
+    var open by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier.animateContentSize()) {
-        Text(
-            if (open) opened else closed,
-            Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp),
-            style = MaterialTheme.typography.bodyMedium, color = color ?: p.muted,
-        )
+        Box(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp)) {
+            ArrowText(if (open) "收起$title" else title, color ?: p.muted, T.sm, down = !open, up = open)
+        }
         if (open) content()
     }
 }
@@ -487,41 +544,24 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
     val ok = toolOk(t)
     var open by rememberSaveable(t.callId, t.title) { mutableStateOf(false) }
     val out = t.output.trimEnd('\n')
+    // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
+    val meta = listOfNotNull(
+        if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
+        decision.takeIf { it.isNotEmpty() },
+    ).joinToString(" · ").ifEmpty { if (t.durationMs >= 1000) "${t.durationMs / 1000}s" else "" }
     Column(Modifier.animateContentSize()) {
-        Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (ok) "✓" else "✕", color = if (ok) p.green else p.red, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.width(6.dp))
-            Text(
-                toolTitle(t, cwd, home).lines().first(),
-                style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = p.fg2,
-                maxLines = if (open) 4 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-            )
-            // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
-            val meta = listOfNotNull(
-                if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
-                decision.takeIf { it.isNotEmpty() },
-            )
-            if (meta.isNotEmpty()) {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    meta.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
-                    color = if (!ok || !decisionOk) p.red else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-            } else if (t.durationMs >= 1000) {
-                Spacer(Modifier.width(8.dp))
-                Text("${t.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = p.faint)
-            }
-        }
+        ToolLine(
+            if (ok) "✓" else "✕", if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
+            meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.muted, onClick = { open = !open },
+        )
         if (open) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-                val raw = toolRaw(t, cwd, home)
-                if (raw.isNotEmpty()) CodeBlock(raw, maxLines = 30)
-                if (out.isNotEmpty()) CodeBlock(out + if (t.outputTruncated) "\n…（已截断）" else "", maxLines = 40)
-            }
+            val raw = toolRaw(t, cwd, home)
+            if (raw.isNotEmpty()) ToolOut(raw)
+            if (out.isNotEmpty()) ToolOut(out.lines().take(40).joinToString("\n"), more = if (t.outputTruncated || out.lines().size > 40) "…（已截断）" else null)
         } else if (!ok && out.isNotEmpty()) {
             // A failure shows its first line without opening.
             val lines = out.lines()
-            CodeBlock(lines.first() + if (lines.size > 1) "\n… 还有 ${lines.size - 1} 行，展开" else "", maxLines = 2, modifier = Modifier.clickable { open = true })
+            ToolOut(lines.first(), Modifier.clickable { open = true }, more = if (lines.size > 1) "… 还有 ${lines.size - 1} 行，展开" else null)
         }
     }
 }
@@ -535,26 +575,15 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
 private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: String = "") {
     val p = pal
     val chat = LocalChat.current
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(p.soft, RoundedCornerShape(12.dp)).padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("◌", color = p.muted, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                io.github.lewin671.remoteagent.core.backgroundTitle(t.kind, t.itemType, chat?.agent ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) + " · 状态待确认",
-                style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f),
-            )
-            if (t.backgroundId.isNotEmpty()) Text(t.backgroundId, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = p.muted)
-        }
-        Text(toolTitle(t, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(io.github.lewin671.remoteagent.core.backgroundNote(t.background), style = MaterialTheme.typography.bodySmall, color = p.muted)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (decision.isNotEmpty()) Text(decision, style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
-            if (chat != null && chat.terminalOpen && chat.frozenAt == 0L) androidx.compose.material3.TextButton(onClick = chat.onTerminal) { Text("去终端 ›") }
-            else Text("终端不可用", style = MaterialTheme.typography.bodySmall, color = p.faint)
-        }
-    }
+    ActiveTool(
+        "◌ " + io.github.lewin671.remoteagent.core.backgroundTitle(t.kind, t.itemType, chat?.agent ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) + " · 状态待确认 —",
+        toolTitle(t, cwd, home).lines().first(),
+        io.github.lewin671.remoteagent.core.backgroundNote(t.background) + if (decision.isNotEmpty()) " · $decision" else "",
+        onDetails = null,
+        onTerminal = if (chat != null && chat.terminalOpen && chat.frozenAt == 0L) chat.onTerminal else null,
+        key = "bg" + t.callId,
+    )
 }
-
 
 /** Ordinary messages append without rebuilding old rows. State-changing events use the full builder. */
 class ChatProjection {

@@ -1,0 +1,562 @@
+package io.github.lewin671.remoteagent.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import io.github.lewin671.remoteagent.core.Status
+import io.github.lewin671.remoteagent.core.avatarIndex
+import io.github.lewin671.remoteagent.core.projectName
+
+/*
+ * The shared pieces of docs/design/client-v7.html, sized as the mockup's CSS
+ * (1 CSS px = 1 dp). What each is for is in docs/design-system.md §6.
+ */
+
+/** 1dp line at the bottom of the element, as a CSS border-bottom. */
+fun Modifier.bottomLine(color: Color, startInset: Dp = 0.dp): Modifier = drawBehind {
+    val y = size.height - 0.5.dp.toPx()
+    drawLine(color, Offset(startInset.toPx(), y), Offset(size.width, y), 1.dp.toPx())
+}
+
+/** 1dp line at the top, as a CSS border-top. */
+fun Modifier.topLine(color: Color): Modifier = drawBehind {
+    drawLine(color, Offset(0f, 0.5.dp.toPx()), Offset(size.width, 0.5.dp.toPx()), 1.dp.toPx())
+}
+
+/** A tap target without ripple bounds changing the look; at least 44 dp in the caller. */
+fun Modifier.tap(enabled: Boolean = true, role: Role? = Role.Button, onClick: () -> Unit): Modifier =
+    clickable(enabled = enabled, role = role, onClick = onClick)
+
+@Composable
+fun Dot(color: Color, size: Int = 8) {
+    Box(Modifier.size(size.dp).clip(CircleShape).background(color))
+}
+
+/** An arrow: › goes to another page; [down] / [up] open and close in place (design-system §5). */
+@Composable
+fun Arrow(color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
+    Text("›", style = style, color = color, modifier = if (down) Modifier.rotate(90f) else if (up) Modifier.rotate(-90f) else Modifier)
+}
+
+/** Text with a trailing arrow, as "处理 ⌄" or "管理 ›". */
+@Composable
+fun ArrowText(text: String, color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = style, color = color, maxLines = 1)
+        Spacer(Modifier.width(4.dp))
+        Arrow(color, style, down, up)
+    }
+}
+
+/** A project's letter on its fixed gradient: 40 on lists, 22 in sheets, 52 on the project page, 16 in chips. */
+@Composable
+fun Avatar(key: String, size: Int = 40) {
+    val (radius, font) = when {
+        size >= 52 -> 15 to 22
+        size >= 36 -> 11 to 17
+        size >= 22 -> 6 to 12
+        else -> 4 to 9
+    }
+    Box(
+        Modifier.size(size.dp).clip(RoundedCornerShape(radius.dp)).background(avatarGradients[avatarIndex(key) % avatarGradients.size]),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(projectName(key).take(1).lowercase(), color = Color.White, style = ts(font.sp, FontWeight.Bold, 1.2f))
+    }
+}
+
+/**
+ * The navigation bar: ‹ and ⋯ in 44 dp, the title centered with the CLI
+ * beside it, and a second line for the status, project and machine.
+ */
+@Composable
+fun NavBar(
+    title: String,
+    onBack: (() -> Unit)?,
+    agent: String? = null,
+    subtitle: String? = null,
+    dot: Color? = null,
+    more: (() -> Unit)? = null,
+    dark: Boolean = false,
+    right: (@Composable () -> Unit)? = null,
+) {
+    val p = pal
+    val link = if (dark) TermColors.link else p.blue
+    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp).then(if (onBack != null) Modifier.tap { onBack() } else Modifier), contentAlignment = Alignment.Center) {
+            if (onBack != null) Text("‹", color = link, style = ts(26.sp, lineHeight = 1f))
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (title.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (agent != null) Text(agent, style = ts(12.sp, FontWeight.Medium), color = if (dark) TermColors.dim else p.muted, maxLines = 1)
+            }
+            if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                if (dot != null) {
+                    Dot(dot)
+                    Spacer(Modifier.width(5.dp))
+                }
+                Text(subtitle, style = T.meta, color = if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        Box(Modifier.size(44.dp).then(if (more != null) Modifier.tap { more() } else Modifier), contentAlignment = Alignment.Center) {
+            if (right != null) right()
+            else if (more != null) Text("⋯", color = link, style = ts(20.sp, lineHeight = 1f))
+        }
+    }
+}
+
+/** A navigation bar with a status line for a session or tool page. */
+@Composable
+fun StatusNavBar(title: String, agent: String?, status: Status, rest: String, onBack: () -> Unit, more: (() -> Unit)?, dark: Boolean = false) {
+    val p = pal
+    NavBar(title, onBack, agent, status.text + if (rest.isNotEmpty()) " · $rest" else "", p.tone(status.tone), more, dark)
+}
+
+/** A first-level page title: 会话, 设置. */
+@Composable
+fun LargeTitle(text: String, modifier: Modifier = Modifier, action: (() -> Unit)? = null, actionLabel: String = "新会话") {
+    val p = pal
+    Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
+        if (action != null) Box(
+            Modifier.size(44.dp).tap { action() }.semantics { contentDescription = actionLabel },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
+                Text("＋", color = p.blue, style = ts(22.sp, lineHeight = 1f))
+            }
+        }
+    }
+}
+
+/** A section label: 13 semibold muted, a count or one link at the right. */
+@Composable
+fun Label(text: String, count: Int? = null, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
+    val p = pal
+    if (action != null && onAction != null) return LabelWithLink(text, action, onAction)
+    Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.smB, color = p.muted, modifier = Modifier.weight(1f))
+        if (count != null) Text("$count", style = T.sm, color = p.muted)
+    }
+}
+
+/**
+ * The same with the link's 44 dp target drawn over the padding, so the row
+ * keeps its 13 dp height as in the mockup.
+ */
+@Composable
+fun LabelWithLink(text: String, action: String, onAction: () -> Unit) {
+    val p = pal
+    Box(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(text, style = T.smB, color = p.muted, modifier = Modifier.weight(1f))
+            ArrowText(action, p.blue, T.smB)
+        }
+        Box(Modifier.align(Alignment.CenterEnd).width(88.dp).height(44.dp).tap { onAction() })
+    }
+}
+
+/**
+ * Tabs that switch a view (聊天 / 终端): underlined, on phones and wide
+ * screens alike (design-system §6). [dot] marks a tab that needs you.
+ */
+@Composable
+fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enabled: (Int) -> Boolean = { true }, dot: Int = -1, dark: Boolean = false, modifier: Modifier = Modifier) {
+    val p = pal
+    val line = if (dark) TermColors.line else p.line
+    Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 4.dp).bottomLine(line).selectableGroup()) {
+        items.forEachIndexed { i, title ->
+            val on = i == selected
+            val ok = enabled(i)
+            val under = if (dark) TermColors.fg else p.fg2
+            Row(
+                Modifier.weight(1f).heightIn(min = 44.dp)
+                    .then(if (on) Modifier.drawBehind { drawLine(under, Offset(0f, size.height - 1.dp.toPx()), Offset(size.width, size.height - 1.dp.toPx()), 2.dp.toPx()) } else Modifier)
+                    .selectable(selected = on, enabled = ok, role = Role.Tab, onClick = { onSelect(i) })
+                    .alpha(if (ok) 1f else .4f),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(title, style = if (on) T.smB else T.sm, color = if (dark) (if (on) TermColors.fg else TermColors.dim) else if (on) p.fg else p.muted)
+                if (i == dot) Text("●", style = ts(13.sp, FontWeight.Bold), color = p.orange, modifier = Modifier.padding(start = 3.dp))
+            }
+        }
+    }
+}
+
+enum class BtnKind { PRIMARY, SECONDARY, NEGATIVE, DANGER }
+
+/**
+ * A button (design-system §6): primary blue, secondary grey, negative grey
+ * with red text (拒绝), danger red only in confirmations. 44 dp, radius 10.
+ */
+@Composable
+fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: BtnKind = BtnKind.SECONDARY, enabled: Boolean = true, bg: Color? = null, style: TextStyle = T.bodyB) {
+    val p = pal
+    val (back, fore) = when (kind) {
+        BtnKind.PRIMARY -> p.blueBg to Color.White
+        BtnKind.SECONDARY -> p.chip to p.fg
+        BtnKind.NEGATIVE -> p.chip to p.red
+        BtnKind.DANGER -> p.redBg to Color.White
+    }
+    Box(
+        modifier.heightIn(min = 44.dp).clip(Radii.SM).background(bg ?: back).alpha(if (enabled) 1f else .45f)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = style, color = fore, textAlign = TextAlign.Center, maxLines = 2)
+    }
+}
+
+/** A row of buttons sharing the width, 8 dp apart. */
+@Composable
+fun Btns(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
+}
+
+enum class Tone2 { PLAIN, WARN, ERROR }
+
+/** Set on grey (soft) pages, where notices and code use the card surface instead (design-system §2). */
+val LocalOnSoft = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** A notice: soft, 13, at most one text action at the right (design-system §6). */
+@Composable
+fun Banner(text: String, modifier: Modifier = Modifier, tone: Tone2 = Tone2.PLAIN, action: String? = null, onAction: (() -> Unit)? = null, lead: (@Composable () -> Unit)? = null) {
+    val p = pal
+    Row(
+        modifier.fillMaxWidth().clip(Radii.SM).background(if (LocalOnSoft.current) p.card else p.soft).heightIn(min = 38.dp).padding(start = 12.dp, end = if (action != null) 4.dp else 12.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        lead?.invoke()
+        Text(
+            text, style = T.sm, modifier = Modifier.weight(1f).padding(vertical = 9.dp),
+            color = when (tone) { Tone2.PLAIN -> p.fg2; Tone2.WARN -> p.orangeInk; Tone2.ERROR -> p.red },
+        )
+        if (action != null) Box(Modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).tap { onAction?.invoke() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
+            Text(action, style = T.smB, color = p.blue, maxLines = 1)
+        }
+    }
+}
+
+/** A text action: blue, or red for 中断; 44 dp tall. */
+@Composable
+fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true) {
+    Box(modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else .45f), contentAlignment = Alignment.CenterStart) {
+        Text(text, style = style, color = color ?: pal.blue, maxLines = 1)
+    }
+}
+
+/** A grouped list on a grey page: card, radius 14, 16 dp in from the sides. */
+@Composable
+fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
+    val p = pal
+    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.MD).background(p.card)) {
+        rows.forEachIndexed { i, r ->
+            if (i > 0) HorizontalDivider(color = p.line, thickness = 1.dp)
+            r()
+        }
+    }
+}
+
+/**
+ * A row in a group: 15 with a value at the right. A row that goes somewhere
+ * ends in ›; one that does something is blue ([action]) or red ([danger]).
+ */
+@Composable
+fun GRow(
+    text: String,
+    value: String? = null,
+    onClick: (() -> Unit)? = null,
+    chevron: Boolean = false,
+    action: Boolean = false,
+    danger: Boolean = false,
+    enabled: Boolean = true,
+    valueColor: Color? = null,
+    lead: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val p = pal
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
+            .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        lead?.invoke()
+        Text(text, style = T.body, color = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted, modifier = Modifier.weight(1f).padding(vertical = 11.dp))
+        if (value != null) Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.widthIn(max = 200.dp))
+        trailing?.invoke()
+        if (chevron) Arrow(p.muted, T.sm)
+    }
+}
+
+/** A label above a group on a grey page. */
+@Composable
+fun GLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().padding(start = 30.dp, end = 30.dp, top = 4.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.sm, color = p.muted, modifier = Modifier.weight(1f))
+        if (action != null) Box(Modifier.height(20.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { ArrowText(action, p.blue, T.sm) }
+    }
+}
+
+/** The grab handle and title row of a bottom sheet. */
+@Composable
+fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = null, onBack: (() -> Unit)? = null) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Text("‹", style = ts(22.sp, lineHeight = 1f), color = p.blue) }
+        Text(title, style = T.h17, color = p.fg, modifier = Modifier.weight(1f))
+        if (action != null) Box(Modifier.size(44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.body, color = p.blue) }
+    }
+}
+
+@Composable
+private fun Grab() {
+    Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.width(36.dp).height(5.dp).clip(RoundedCornerShape(3.dp)).background(pal.track))
+    }
+}
+
+/** A bottom sheet: card, top corners 20, grab handle, 16 dp sides (design-system §6). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Sheet(onClose: () -> Unit, scroll: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    val p = pal
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = p.card,
+        shape = RoundedCornerShape(topStart = Radii.lg, topEnd = Radii.lg),
+        dragHandle = { Grab() },
+        scrimColor = Color.Black.copy(alpha = .35f),
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp).then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+            content = content,
+        )
+    }
+}
+
+/** 12 grey caption under a sheet's content. */
+@Composable
+fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null) {
+    Text(text, style = T.meta, color = color ?: pal.muted, modifier = modifier.padding(top = 8.dp))
+}
+
+/** A field title inside a sheet (模型, 推理强度). */
+@Composable
+fun FieldLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = T.metaB, color = pal.muted, modifier = modifier.padding(top = 12.dp, bottom = 6.dp))
+}
+
+/** A choice in a sheet's list: title, optional description, ✓ when chosen. */
+@Composable
+fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onClick: (() -> Unit)?, enabled: Boolean = true, danger: Boolean = false, small: String? = null, last: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
+    val p = pal
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (!last) Modifier.bottomLine(p.line) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier).padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = if (desc != null) T.bodyB else T.body, color = if (!enabled) p.muted else if (danger) p.red else p.fg)
+                if (small != null) Text(small, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 4.dp))
+            }
+            if (desc != null) Text(desc, style = ts(12.sp, lineHeight = 1.45f), color = p.muted)
+        }
+        trailing?.invoke()
+        if (checked) Text("✓", style = T.bodyB, color = p.blue)
+    }
+}
+
+/**
+ * A confirmation (design-system §6): title in the text color, the danger is
+ * the button's. Cancel left, the action right.
+ */
+@Composable
+fun Alert(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val p = pal
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(title, style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 6.dp))
+                Text(text, style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 14.dp))
+                Btns {
+                    Btn("取消", onDismiss, Modifier.weight(1f))
+                    Btn(confirm, { onDismiss(); onConfirm() }, Modifier.weight(1f), if (danger) BtnKind.DANGER else BtnKind.PRIMARY)
+                }
+            }
+        }
+    }
+}
+
+/** One choice of an action sheet. */
+class SheetAction(val text: String, val danger: Boolean = false, val onClick: () -> Unit)
+
+/** The ⋯ menu: a card of actions above a separate 取消, from the bottom. */
+@Composable
+fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onDismiss: () -> Unit) {
+    val p = pal
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { onDismiss() }) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(start = 8.dp, end = 8.dp, bottom = 20.dp)) {
+                Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card)) {
+                    if (info != null) Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { info() }
+                    actions.forEachIndexed { i, a ->
+                        if (i > 0 || info != null) HorizontalDivider(color = p.line, thickness = 1.dp)
+                        Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).tap { onDismiss(); a.onClick() }, contentAlignment = Alignment.Center) {
+                            Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else p.blue)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card).heightIn(min = 50.dp).tap { onDismiss() }, contentAlignment = Alignment.Center) {
+                    Text("取消", style = ts(17.sp, FontWeight.SemiBold), color = p.blue)
+                }
+            }
+        }
+    }
+}
+
+/** A code or command block outside the terminal: soft, radius 6, mono 12 (design-system §6). */
+@Composable
+fun Code(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, bg: Color? = null, border: Boolean = false) {
+    val p = pal
+    Box(
+        modifier.fillMaxWidth().clip(Radii.XS).background(bg ?: p.code).then(if (border) Modifier.border(1.dp, p.line, Radii.XS) else Modifier)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+    ) {
+        Text(text, style = T.mono, color = p.fg2, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** An input field on a soft surface. */
+@Composable
+fun FieldBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    Box(modifier.fillMaxWidth().clip(Radii.SM).background(pal.soft).padding(horizontal = 14.dp, vertical = 11.dp), content = content)
+}
+
+/** A page: navigation bar and content; card background, or soft for grouped settings pages ([gray]). */
+@Composable
+fun Page(
+    title: String,
+    onBack: (() -> Unit)?,
+    gray: Boolean = false,
+    subtitle: String? = null,
+    more: (() -> Unit)? = null,
+    right: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val p = pal
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
+        Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
+            NavBar(title, onBack, subtitle = subtitle, more = more, right = right)
+            content()
+        }
+    }
+}
+
+/** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
+@Composable
+fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().background(p.card).topLine(p.line).padding(top = 6.dp, bottom = 8.dp)) {
+        for ((r, label) in listOf("home" to "会话", "settings" to "设置")) {
+            val on = route == r
+            Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable { if (!on) onSelect(r) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                Box {
+                    androidx.compose.material3.Icon(
+                        if (r == "home") androidx.compose.material.icons.Icons.Outlined.ChatBubbleOutline else androidx.compose.material.icons.Icons.Outlined.Settings,
+                        null, tint = if (on) p.blue else p.muted, modifier = Modifier.size(22.dp),
+                    )
+                    if (r == "home" && waiting > 0) Text(
+                        "$waiting", style = T.tab.copy(fontWeight = FontWeight.Bold, lineHeight = 16.sp), color = Color.White,
+                        modifier = Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp).clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
+                    )
+                }
+                Text(label, style = T.tab, color = if (on) p.blue else p.muted, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+/** A confirmation with one line of text to enter, such as a name. */
+@Composable
+fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    val p = pal
+    var value by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(initial) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).imePadding(), contentAlignment = Alignment.Center) {
+            Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {
+                Text(title, style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+                ReasonField(value, { value = it.take(40) }, placeholder)
+                Btns(Modifier.padding(top = 6.dp)) {
+                    Btn("取消", onDismiss, Modifier.weight(1f))
+                    Btn(confirm, { onDismiss(); onConfirm(value) }, Modifier.weight(1f), BtnKind.PRIMARY)
+                }
+            }
+        }
+    }
+}

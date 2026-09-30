@@ -79,7 +79,45 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 
+/** A switch as the mockup draws it: 42 × 25, green when on. */
+@Composable
+fun Sw(on: Boolean) {
+    val p = pal
+    Box(Modifier.size(width = 42.dp, height = 25.dp).clip(RoundedCornerShape(13.dp)).background(if (on) p.green else p.track).padding(2.dp), contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart) {
+        Box(Modifier.size(21.dp).clip(CircleShape).background(Color.White))
+    }
+}
+
+/** A row with a switch; [sub] explains it under the title. */
+@Composable
+private fun ToggleRow(title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChange(!value) }.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = T.body, color = p.fg)
+            if (sub.isNotEmpty()) Text(sub, style = T.meta, color = p.muted)
+        }
+        Sw(value)
+    }
+}
+
+/** A small colored square with a sign, in front of a machine's row. */
+@Composable
+private fun Ico(text: String, bg: Color) {
+    Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(bg), contentAlignment = Alignment.Center) { Text(text, style = T.sm, color = Color.White) }
+}
+
+/** 设置 (client-v7): computers, clients, notifications, this phone's storage, appearance and the account, on a grey page. */
 @Composable
 fun SettingsScreen() {
     val app = RaApp.instance
@@ -91,132 +129,111 @@ fun SettingsScreen() {
     val p = pal
     val scope = rememberCoroutineScope()
     var logout by remember { mutableStateOf(false) }
+    var storage by remember { mutableStateOf(false) }
     val t = now()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("设置", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp))
+    if (storage) {
+        androidx.activity.compose.BackHandler { storage = false }
+        PhoneImageStoragePage { storage = false }
+        return
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+    Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState())) {
+        LargeTitle("设置")
         ConnBanner(state)
-        if (push.problem.isNotEmpty()) {
-            Card(Modifier.padding(12.dp)) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(push.problem, Modifier.weight(1f), color = p.orangeInk)
-                    if (push.action.isNotEmpty()) TextButton(onClick = { Push.fix(app, remote) }) { Text(push.action) }
-                }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionHeader("电脑", modifier = Modifier.weight(1f))
-            TextButton(onClick = { nav.devices() }, Modifier.padding(end = 8.dp)) { Text("全部设备 ›") }
-        }
-        Card(Modifier.padding(horizontal = 12.dp)) {
-            Column {
-                for ((i, m) in state.machines.values.sortedBy { machineLabel(state, it.id) }.withIndex()) {
-                    if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                    Row44(onClick = { nav.device(m.id) }) {
-                        Text("⌘", color = p.muted)
-                        Column(Modifier.weight(1f)) {
-                            Text(machineLabel(state, m.id), style = MaterialTheme.typography.titleSmall)
-                            val used = m.meta?.takeIf { it.hasSecondaryLimit() }?.secondaryLimit?.usedPercent
-                            Text(
-                                (if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" }) + (used?.let { " · 已用 ${it.toInt()}%" } ?: ""),
-                                style = MaterialTheme.typography.bodySmall, color = if (m.online) p.greenInk else p.muted,
-                            )
+        if (push.problem.isNotEmpty()) Banner(push.problem, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.WARN, action = push.action.ifEmpty { null }, onAction = { Push.fix(app, remote) })
+        GLabel("电脑", "全部设备", onAction = { nav.devices() })
+        Group(rows = state.machines.values.sortedBy { machineLabel(state, it.id) }.map { m -> @Composable {
+            Row(Modifier.fillMaxWidth().clickable { nav.device(m.id) }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Ico("⌘", p.blueBg)
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(machineLabel(state, m.id), style = T.body, color = p.fg)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Dot(if (m.online) p.green else p.gray)
+                            Text(if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" }, style = T.sm, color = p.muted)
                         }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.faint)
                     }
+                    val q = io.github.lewin671.remoteagent.core.quotaGroups(m, t).firstOrNull()?.let { g -> g.rows.lastOrNull { it.percent != null }?.let { "${agentName(g.agent)} · ${it.label}${it.used}" } }
+                    if (q != null) Text(q, style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
                 }
-                if (state.machines.isNotEmpty()) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                Row44(onClick = { nav.pair() }) { Text("＋ 添加设备", color = p.blue, style = MaterialTheme.typography.titleSmall) }
+                Arrow(p.muted, T.body)
             }
-        }
-        SectionHeader("客户端")
-        Card(Modifier.padding(horizontal = 12.dp)) {
-            Column {
-                val me = remote.account.deviceId
-                Row44(onClick = if (state.devicesSupported) ({ nav.client(me) }) else null) {
-                    Text("▢", color = p.muted)
-                    Column(Modifier.weight(1f)) {
-                        Text(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), style = MaterialTheme.typography.titleSmall)
-                        Text("当前客户端", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                    }
-                }
-                val others = state.devices.values.filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != me }
-                for (c in others.sortedBy { it.createdMs }.take(3)) {
-                    HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                    Row44(onClick = { nav.client(c.id) }) {
-                        Text("▢", color = p.muted)
-                        Column(Modifier.weight(1f)) {
-                            Text(io.github.lewin671.remoteagent.core.clientName(c, c.id), style = MaterialTheme.typography.titleSmall)
-                            Text("已配对", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                        }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.faint)
-                    }
-                }
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                if (state.devicesSupported) Row44(onClick = { nav.devices() }) { Text("全部客户端 ›", color = p.blue) }
-                else Text("服务器还不支持设备目录，更新服务器后才能看到其他客户端", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
-            }
-        }
-        SectionHeader("本客户端的通知")
-        Card(Modifier.padding(horizontal = 12.dp)) {
-            Column {
-                Toggle("等我处理时", "审批、提问、计划、终端弹窗", settings.notifyAttention) { v -> scope.launch { app.prefs.update { it.copy(notifyAttention = v) }; Push.register(app, remote) } }
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                Toggle("一轮结束时", "", settings.notifyTurnEnded) { v -> scope.launch { app.prefs.update { it.copy(notifyTurnEnded = v) }; Push.register(app, remote) } }
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                Toggle(
+        } } + listOf(@Composable { GRow("＋ 添加设备", onClick = { nav.pair() }, action = true) }))
+        GLabel("客户端")
+        val me = remote.account.deviceId
+        val others = state.devices.values.filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != me }.sortedBy { it.createdMs }.take(3)
+        Group(rows = listOf<@Composable () -> Unit>(
+            { GRow(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), "当前", onClick = if (state.devicesSupported) ({ nav.client(me) }) else null) },
+        ) + others.map { c -> @Composable { GRow(io.github.lewin671.remoteagent.core.clientName(c, c.id), "已配对 ›", onClick = { nav.client(c.id) }) } } + listOf(
+            @Composable {
+                if (state.devicesSupported) GRow("全部客户端 ›", onClick = { nav.devices() }, action = true)
+                else Text("服务器还不支持设备目录，更新服务器后才能看到其他客户端", Modifier.padding(14.dp), style = T.meta, color = p.muted)
+            },
+        ))
+        GLabel("本客户端的通知")
+        Group(rows = listOf(
+            { ToggleRow("等我处理时", "", settings.notifyAttention) { v -> scope.launch { app.prefs.update { it.copy(notifyAttention = v) }; Push.register(app, remote) } } },
+            { ToggleRow("一轮结束时", "", settings.notifyTurnEnded) { v -> scope.launch { app.prefs.update { it.copy(notifyTurnEnded = v) }; Push.register(app, remote) } } },
+            {
+                ToggleRow(
                     "在通知里显示内容并直接审批",
-                    "关着时通知只写「有会话在等你处理」，点开再审批。打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案",
+                    "打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案",
                     settings.showContent,
                 ) { v -> scope.launch { app.prefs.update { it.copy(showContent = v) } } }
-            }
-        }
-        PhoneImageStorage()
-        SectionHeader("外观")
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            },
+        ))
+        GLabel("本机存储")
+        Group(rows = listOf { GRow("图片存储", onClick = { storage = true }, chevron = true) })
+        GLabel("外观")
+        Group(rows = listOf {
             val opts = listOf(ThemeMode.SYSTEM to "自动", ThemeMode.LIGHT to "亮色", ThemeMode.DARK to "暗色")
-            opts.forEachIndexed { i, (mode, label) ->
-                SegmentedButton(settings.theme == mode, { scope.launch { app.prefs.update { it.copy(theme = mode) } } }, SegmentedButtonDefaults.itemShape(i, opts.size), icon = {}) { Text(label) }
+            Box(Modifier.padding(horizontal = 14.dp)) {
+                SegTabs(opts.map { it.second }, opts.indexOfFirst { it.first == settings.theme }) { i -> scope.launch { app.prefs.update { it.copy(theme = opts[i].first) } } }
             }
-        }
-        SectionHeader("版本")
-        Card(Modifier.padding(horizontal = 12.dp)) {
-            Row44 {
-                Text("remote-agent", Modifier.weight(1f))
-                Text("${io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME} · ${io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7)}", color = p.muted)
-            }
-        }
-        SectionHeader("账户")
-        Card(Modifier.padding(horizontal = 12.dp)) {
-            Column {
-                Row44 {
-                    Text("服务器", Modifier.weight(1f))
-                    Text(remote.account.server.removePrefix("https://"), color = p.muted, style = MaterialTheme.typography.bodyMedium)
-                }
-                HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                Row44(onClick = { logout = true }) { Text("退出并删除本机密钥", color = p.red) }
-            }
-        }
-        Spacer(Modifier.height(32.dp))
+        })
+        GLabel("账户")
+        Group(rows = listOf(
+            { GRow("服务器", remote.account.server.removePrefix("https://")) },
+            { GRow("版本", "${io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME} · ${io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7)}") },
+            { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
+        ))
+        Spacer(Modifier.height(24.dp))
+    }
     }
     if (logout) Confirm(
-        "退出并删除本机密钥？", "这台手机会忘掉账户密钥、设备密钥和缓存，要重新配对才能再用。电脑上的会话不受影响。", "退出", danger = true,
+        "退出并删除本机密钥？", "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。", "退出", danger = true,
         onDismiss = { logout = false },
     ) { scope.launch { app.logout() } }
 }
 
+/** Underlined choices inside a settings row (外观). */
 @Composable
-private fun Toggle(title: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) {
+fun SegTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     val p = pal
-    Row44(onClick = { onChange(!value) }) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = p.muted)
+    Row(Modifier.fillMaxWidth().bottomLine(p.line)) {
+        items.forEachIndexed { i, s ->
+            val on = i == selected
+            Box(
+                Modifier.weight(1f).heightIn(min = 44.dp).then(if (on) Modifier.bottomLine(p.fg2, 0.dp).bottomLine(p.fg2) else Modifier).clickable { onSelect(i) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(s, style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted)
+                if (on) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(2.dp).background(p.fg2))
+            }
         }
-        Switch(value, onChange)
     }
 }
 
-/** 设备详情: usage windows, CLI versions, defaults for new sessions, timeout, projects, remove. */
+/** A choice from a few options in a sheet: a mode, a timeout, a limit. */
+@Composable
+private fun ChoiceSheet(title: String, options: List<Pair<String, String?>>, selected: Int, onPick: (Int) -> Unit, onClose: () -> Unit) {
+    Sheet(onClose) {
+        SheetHead(title)
+        options.forEachIndexed { i, (label, desc) -> ListItem(label, desc, checked = i == selected, last = i == options.size - 1, onClick = { onPick(i) }) }
+    }
+}
+
+/** 设备详情 (client-v7): quota, CLI versions, the defaults for new sessions, image storage, projects, remove. */
 @Composable
 fun DeviceScreen(id: String) {
     val remote = LocalRemote.current
@@ -230,7 +247,8 @@ fun DeviceScreen(id: String) {
     var imageStorage by remember { mutableStateOf<ImageStorageUsage?>(null) }
     var loadError by remember { mutableStateOf("") }
     val save = rememberAction()
-    LaunchedEffect(id, m?.online) {
+    var attempt by remember { mutableStateOf(0) }
+    LaunchedEffect(id, m?.online, attempt) {
         if (m?.online != true) return@LaunchedEffect
         try {
             val reply = remote.machineCommand(id, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings
@@ -242,102 +260,81 @@ fun DeviceScreen(id: String) {
         }
     }
     var pickModel by remember { mutableStateOf<Agent?>(null) }
+    var pickMode by remember { mutableStateOf<Agent?>(null) }
+    var pickTimeout by remember { mutableStateOf(false) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) = save.run({
         remote.machineCommand(id, remote.cmd { updateSettings = UpdateSettingsRequest.newBuilder().setSettings(s).setCleanImages(cleanImages).build() })
     }) { r -> r?.updateSettings?.let { settings = it.settings; if (it.hasImageStorage()) imageStorage = it.imageStorage } }
-    PageScaffold(machineLabel(state, id)) {
+    PageScaffold(machineLabel(state, id), gray = true) {
         if (m == null) {
-            Text("这台设备已经移除了", Modifier.padding(16.dp), color = p.muted)
+            PageNote("这台设备已经移除了")
             return@PageScaffold
         }
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Text(if (m.online) "在线" else "不在线 · 最后在线 ${whenText(m.lastSeenMs)}", Modifier.padding(horizontal = 16.dp), color = if (m.online) p.greenInk else p.muted)
+            if (!m.online) Banner("不在线 · 最后在线 ${whenText(m.lastSeenMs)}", Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp))
             val meta = m.meta
-            SectionHeader("账户额度")
-            Card(Modifier.padding(horizontal = 12.dp), onClick = { nav.quota(id) }) {
-                Column(Modifier.padding(vertical = 4.dp)) {
-                    for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())) Row44 {
-                        Text(g.title, Modifier.weight(1f))
-                        Text(io.github.lewin671.remoteagent.core.quotaLine(g), color = p.muted, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Row44 { Text("查看全部额度 ›", color = p.blue) }
-                }
+            val groups = io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())
+            val first = groups.firstOrNull { it.rows.any { r -> r.percent != null } }
+            if (first != null) {
+                GLabel(agentName(first.agent) + " 额度" + first.title.removePrefix(agentName(first.agent)))
+                Group(rows = first.rows.map { r -> @Composable { QuotaRowView(r, compact = true) } })
             }
+            Group(rows = groups.filter { it != first }.map { g -> @Composable { GRow("${agentName(g.agent)} 额度", io.github.lewin671.remoteagent.core.quotaLine(g) + " ›", onClick = { nav.quota(id) }) } } +
+                listOf(@Composable { GRow("查看全部额度", onClick = { nav.quota(id) }, action = true, chevron = true) }))
             if (meta != null) {
-                SectionHeader("CLI 版本")
-                Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column {
-                        val agents = meta.agentsList.ifEmpty {
-                            listOf(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setVersion(meta.codexVersion).setVerified(meta.codexVerified).build())
-                        }
-                        for (a in agents) Row44 {
-                            Text(agentName(a.agent), Modifier.weight(1f))
-                            Text((if (a.verified) "已验证 · " else "未验证 · ") + a.version.ifEmpty { "未知" }, color = if (a.verified) p.muted else p.orangeInk, style = MaterialTheme.typography.bodyMedium)
-                        }
-                        if (agents.any { !it.verified }) Text("未验证的版本请在电脑上运行 remote-agent doctor", Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                    }
+                val agents = meta.agentsList.ifEmpty {
+                    listOf(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setVersion(meta.codexVersion).setVerified(meta.codexVerified).build())
                 }
+                Group(rows = agents.map { a -> @Composable {
+                    GRow("${agentName(a.agent)} 版本", trailing = {
+                        Text(
+                            androidx.compose.ui.text.buildAnnotatedString {
+                                if (!a.verified) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.orangeInk)); append("未验证 · "); pop() }
+                                append(a.version.ifEmpty { "未知" })
+                            },
+                            style = T.sm, color = p.muted,
+                        )
+                    })
+                } })
+                if (agents.any { !it.verified }) Hint("未验证的版本请在电脑上运行 remote-agent doctor", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
             }
-            SectionHeader("新会话默认设置")
             val s = settings
             when {
-                !m.online -> Text("${machineLabel(state, id)} 不在线，连上后才能读取和修改", Modifier.padding(horizontal = 16.dp), color = p.muted)
-                loadError.isNotEmpty() -> Text("没能读取设置：$loadError", Modifier.padding(horizontal = 16.dp), color = p.red)
-                s == null -> Text("读取中…", Modifier.padding(horizontal = 16.dp), color = p.muted)
-                else -> Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column(Modifier.padding(vertical = 4.dp)) {
-                        for (agent in machineAgents(m)) {
-                            val d = if (agent == Agent.AGENT_CLAUDE) s.claude else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).setMode(s.defaultMode).build()
-                            Text(agentName(agent), Modifier.padding(start = 16.dp, top = 10.dp), style = MaterialTheme.typography.titleSmall)
-                            Row44(onClick = if (save.running) null else ({ pickModel = agent })) {
-                                Text("模型 · 推理强度", Modifier.weight(1f))
-                                Text("${d.model.ifEmpty { "默认" }} · ${d.effort.ifEmpty { "默认" }} ›", color = p.muted, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            // What a session started without a mode really gets, as the machine reads it.
-                            val eff = defaultModeOf(m, agent)
-                            val src = m.meta?.agentsList?.firstOrNull { io.github.lewin671.remoteagent.core.effectiveAgent(it.agent) == agent }?.defaultModeSource
-                            Text(
-                                "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：") +
-                                    when (src) {
-                                        io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_DAEMON_SETTINGS -> "（来自这里的设置）"
-                                        io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG -> "（来自 ${agentName(agent)} 自己的配置）"
-                                        else -> ""
-                                    },
-                                Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall,
-                                color = if (eff.mode == Mode.FULL || !eff.known) p.red else p.muted,
+                !m.online -> Hint("${machineLabel(state, id)} 不在线，连上后才能读取和修改新会话默认设置", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
+                loadError.isNotEmpty() -> Banner("没能读取设置：$loadError", Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.ERROR, action = "重试", onAction = { attempt++ })
+                s == null -> Hint("读取中…", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
+                else -> for (agent in machineAgents(m)) {
+                    val d = if (agent == Agent.AGENT_CLAUDE) s.claude else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).setMode(s.defaultMode).build()
+                    // What a session started without a mode really gets, as the machine reads it.
+                    val eff = defaultModeOf(m, agent)
+                    val cur = modeOf(d.mode)
+                    val timeoutRow: @Composable () -> Unit = { GRow("审批超时", "${s.approvalTimeoutSeconds / 60} 分钟 ›", onClick = if (save.running) null else ({ pickTimeout = true })) }
+                    GLabel("${agentName(agent)} · 新会话默认设置")
+                    Group(rows = listOfNotNull<@Composable () -> Unit>(
+                        @Composable { GRow("模型", d.model.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
+                        @Composable { GRow("推理强度", d.effort.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
+                        @Composable {
+                            GRow(
+                                "审批模式", (cur?.text ?: modeLabel(null, eff, agent)) + " ›", onClick = if (save.running) null else ({ pickMode = agent }),
+                                valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
                             )
-                            Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                val cur = modeOf(d.mode)
-                                FilterChip(cur == null, { update(withMode(s, agent, null)) }, { Text("默认") }, enabled = !save.running)
-                                for (mode in listOf(Mode.ASK, Mode.AUTO)) FilterChip(cur == mode, { update(withMode(s, agent, mode)) }, { Text(mode.text) }, enabled = !save.running)
-                            }
-                        }
-                        Text("审批超时", Modifier.padding(start = 16.dp, top = 10.dp), style = MaterialTheme.typography.titleSmall)
-                        Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for (min in listOf(2, 5, 10, 30)) FilterChip(
-                                s.approvalTimeoutSeconds == min * 60, { update(s.toBuilder().setApprovalTimeoutSeconds(min * 60).build()) },
-                                { Text("$min 分钟") }, enabled = !save.running,
-                            )
-                        }
-                        if (save.error.isNotEmpty()) Text("没能保存：${save.error}", Modifier.padding(16.dp), color = p.red)
-                    }
+                        },
+                        timeoutRow.takeIf { agent == Agent.AGENT_CODEX || machineAgents(m).size == 1 },
+                    ))
                 }
             }
+            if (save.error.isNotEmpty()) Banner("没能保存：${save.error}", Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.ERROR)
             settings?.let { s -> if (meta?.capabilities?.imageStorage == true) {
-                MachineImageStorage(s, imageStorage, m.online && !save.running, onChange = { next, clean -> update(next, clean) }, onRefresh = {
-                    save.run({ remote.machineCommand(id, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }) }) { r -> r?.getSettings?.let { settings = it.settings; if (it.hasImageStorage()) imageStorage = it.imageStorage } }
-                })
+                MachineImageStorage(s, imageStorage, m.online && !save.running, onChange = { next, clean -> update(next, clean) })
             } }
             val projects = state.sessions.values.filter { it.machineId == id }.mapNotNull { it.info?.cwd }.distinct()
             if (projects.isNotEmpty()) {
-                SectionHeader("项目")
-                Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column { projects.forEach { cwd -> Row44(onClick = { nav.project(cwd) }) { Column { Text(projectName(cwd)); Text(shortPath(cwd), style = MaterialTheme.typography.bodySmall, color = p.muted) } } } }
-                }
+                GLabel("项目")
+                Group(rows = projects.map { cwd -> @Composable { GRow(projectName(cwd), shortPath(cwd), onClick = { nav.project(cwd) }) } })
             }
-            Spacer(Modifier.height(16.dp))
-            TextButton(onClick = { confirm = true }, Modifier.padding(horizontal = 8.dp)) { Text("移除这台机器…", color = p.red) }
-            if (remove.error.isNotEmpty()) Text(remove.error, Modifier.padding(16.dp), color = p.red)
+            Group(rows = listOf { GRow("移除这台机器…", onClick = { confirm = true }, danger = true) })
+            Text("移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            if (remove.error.isNotEmpty()) Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -345,10 +342,64 @@ fun DeviceScreen(id: String) {
     pickModel?.let { agent ->
         if (cur != null) DefaultModelSheet(id, agent, cur, onPick = { model, effort -> pickModel = null; update(withModel(cur, agent, model, effort)) }, onClose = { pickModel = null })
     }
+    pickMode?.let { agent ->
+        if (cur != null) {
+            val eff = defaultModeOf(m, agent)
+            val d = if (agent == Agent.AGENT_CLAUDE) cur.claude.mode else cur.defaultMode
+            val opts = listOf(null, Mode.ASK, Mode.AUTO)
+            ChoiceSheet(
+                "${agentName(agent)} · 审批模式",
+                opts.map { mode -> (mode?.text ?: "默认") to (if (mode == null) "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：") else modeHelp.getValue(mode).replace("CLI", agentName(agent))) },
+                opts.indexOf(modeOf(d)).coerceAtLeast(0),
+                onPick = { i -> pickMode = null; update(withMode(cur, agent, opts[i])) },
+                onClose = { pickMode = null },
+            )
+        }
+    }
+    if (pickTimeout && cur != null) {
+        val mins = listOf(2, 5, 10, 30)
+        ChoiceSheet("审批超时", mins.map { "$it 分钟" to null }, mins.indexOf(cur.approvalTimeoutSeconds / 60), onPick = { i ->
+            pickTimeout = false
+            update(cur.toBuilder().setApprovalTimeoutSeconds(mins[i] * 60).build())
+        }, onClose = { pickTimeout = false })
+    }
     if (confirm) Confirm(
         "移除 ${machineLabel(state, id)}？", "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。", "移除", danger = true,
         onDismiss = { confirm = false },
     ) { remove.run({ remote.removeDevice(id); null }) { nav.back() } }
+}
+
+/** One usage window: its name, how much is used, a bar, and when it resets. */
+@Composable
+private fun QuotaRowView(r: io.github.lewin671.remoteagent.core.QuotaRow, received: String = "", compact: Boolean = false) {
+    val p = pal
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(r.label, style = T.body, color = p.fg, modifier = Modifier.weight(1f))
+            Text(
+                if (compact && r.reset.isNotEmpty()) "${r.used} · ${r.reset}" else r.used, style = T.sm,
+                color = when (r.tone) {
+                    io.github.lewin671.remoteagent.core.QuotaTone.FULL, io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
+                    else -> p.muted
+                },
+            )
+        }
+        r.percent?.let { pc ->
+            Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(p.track)) {
+                Box(
+                    Modifier.fillMaxWidth((pc / 100).toFloat().coerceIn(0f, 1f)).height(6.dp).clip(RoundedCornerShape(3.dp)).background(
+                        when (r.tone) {
+                            io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.gray
+                            io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blueBg
+                            else -> p.orange
+                        },
+                    ),
+                )
+            }
+        }
+        val sub = if (compact) "" else listOf(r.reset, r.note, received).filter { it.isNotEmpty() }.joinToString(" · ")
+        if (sub.isNotEmpty()) Text(sub, style = T.meta, color = p.muted, modifier = Modifier.padding(top = 8.dp))
+    }
 }
 
 private fun withModel(s: DaemonSettings, agent: Agent, model: String, effort: String): DaemonSettings =
@@ -356,7 +407,6 @@ private fun withModel(s: DaemonSettings, agent: Agent, model: String, effort: St
     else s.toBuilder().setDefaultModel(model).setDefaultEffort(effort).build()
 
 /** A CLI's default model and effort for new sessions on this machine, from the models it offers. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings, onPick: (String, String) -> Unit, onClose: () -> Unit) {
     val p = pal
@@ -372,29 +422,21 @@ private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings
     }
     val d = if (agent == Agent.AGENT_CLAUDE) s.claude else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).build()
     var model by remember { mutableStateOf(d.model) }
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("${agentName(agent)} · 新会话默认模型", style = MaterialTheme.typography.titleMedium)
-            val ms = models
-            when {
-                error.isNotEmpty() -> Text("没能读取模型列表：$error", color = p.red)
-                ms == null -> Text("读取中…", color = p.muted)
-                else -> {
-                    Row44(onClick = { onPick("", "") }) {
-                        Text("默认（${agentName(agent)} 自己的配置）", Modifier.weight(1f))
-                        if (model.isEmpty()) Text("✓", color = p.blue)
-                    }
-                    for (m in ms.modelsList) Row44(onClick = { if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug }) {
-                        Text(m.displayName.ifEmpty { m.slug }, Modifier.weight(1f))
-                        if (m.effortsList.isEmpty()) Text("无推理强度", style = MaterialTheme.typography.bodySmall, color = p.faint)
-                        if (m.slug == model) Text("  ✓", color = p.blue)
-                    }
-                    ms.modelsList.firstOrNull { it.slug == model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
-                        Text("推理强度", style = MaterialTheme.typography.titleSmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for (e in m.effortsList) FilterChip(d.model == m.slug && d.effort == e, { onPick(m.slug, e) }, { Text(e) })
-                        }
-                    }
+    Sheet(onClose) {
+        SheetHead("${agentName(agent)} · 新会话默认模型")
+        val ms = models
+        when {
+            error.isNotEmpty() -> Banner("没能读取模型列表：$error", tone = Tone2.ERROR)
+            ms == null -> Text("读取中…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
+            else -> {
+                ListItem("默认（${agentName(agent)} 自己的配置）", checked = model.isEmpty(), onClick = { onPick("", "") })
+                ms.modelsList.forEachIndexed { i, m ->
+                    ListItem(m.displayName.ifEmpty { m.slug }, small = if (m.effortsList.isEmpty()) "无推理强度" else null, checked = m.slug == model, last = i == ms.modelsCount - 1,
+                        onClick = { if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug })
+                }
+                ms.modelsList.firstOrNull { it.slug == model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
+                    FieldLabel("推理强度")
+                    ChoiceGrid(m.effortsList, if (d.model == m.slug) d.effort else null, true) { onPick(m.slug, it) }
                 }
             }
         }
@@ -415,75 +457,44 @@ fun QuotaScreen(id: String) {
     val m = state.machines[id]
     val p = pal
     val t = now()
-    PageScaffold("账户额度") {
+    val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t) }.orEmpty()
+    PageScaffold("账户额度", subtitle = m?.let { machineLabel(state, id) + " · " + (groups.firstOrNull { g -> g.received.isNotEmpty() }?.received ?: if (it.online) "在线" else "离线") }, gray = true) {
         if (m == null) {
-            Text("这台机器已经移除了", Modifier.padding(16.dp), color = p.muted)
+            PageNote("这台机器已经移除了")
             return@PageScaffold
         }
-        val groups = io.github.lewin671.remoteagent.core.quotaGroups(m, t)
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            Text(machineLabel(state, id) + if (m.online) " · 在线" else " · 离线", Modifier.padding(horizontal = 16.dp), color = p.muted)
-            if (!m.online) Text("机器离线，显示上次记录", Modifier.padding(16.dp), color = p.orangeInk)
+            if (!m.online) Text("机器离线，显示上次记录", style = T.sm, color = p.orangeInk, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp))
             for (g in groups) {
-                SectionHeader(g.title + if (g.lastRecord) " · 上次记录" else "")
-                Card(Modifier.padding(horizontal = 12.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        when (g.status) {
-                            io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED -> {
-                                Text("暂不支持读取额度", style = MaterialTheme.typography.titleSmall)
-                                Text(g.detail.ifEmpty { "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。" } + if (g.agent == Agent.AGENT_CLAUDE) " 可在本机 Claude Code 中查看 /usage。" else "", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                            }
-                            io.github.lewin671.remoteagent.core.QuotaStatus.WAITING -> {
-                                Text("暂未获取额度", style = MaterialTheme.typography.titleSmall)
-                                Text("等待 ${agentName(g.agent)} 返回额度数据", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                            }
-                            io.github.lewin671.remoteagent.core.QuotaStatus.FAILED -> {
-                                Text("没能读取 ${agentName(g.agent)} 额度" + if (g.detail.isNotEmpty()) "：${g.detail}" else "", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
-                                if (g.rows.isEmpty()) Text("暂未获取额度", style = MaterialTheme.typography.bodySmall, color = p.muted)
-                            }
-                            else -> {}
-                        }
-                        // Used up or close to it; nothing switches CLI or model by itself.
-                        io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let {
-                            Text("$it，不会自动切换 CLI 或模型", style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
-                        }
-                        for (r in g.rows) {
-                            Row {
-                                Text(r.label, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    r.used,
-                                    color = when (r.tone) {
-                                        io.github.lewin671.remoteagent.core.QuotaTone.FULL, io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
-                                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.muted
-                                        else -> p.fg2
-                                    },
-                                )
-                            }
-                            r.percent?.let { pc ->
-                                LinearProgressIndicator(
-                                    progress = { (pc / 100).toFloat().coerceIn(0f, 1f) }, Modifier.fillMaxWidth(),
-                                    color = when (r.tone) {
-                                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.gray
-                                        io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blue
-                                        else -> p.orange
-                                    },
-                                    trackColor = p.track,
-                                )
-                            }
-                            val sub = listOf(r.reset, r.note).filter { it.isNotEmpty() }.joinToString(" · ")
-                            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = p.muted)
-                        }
-                        io.github.lewin671.remoteagent.core.quotaPartial(g).takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = p.muted) }
-                        if (g.received.isNotEmpty()) Text(g.received, style = MaterialTheme.typography.bodySmall, color = p.faint)
-                        if (g.agent == Agent.AGENT_CLAUDE && g.status != io.github.lewin671.remoteagent.core.QuotaStatus.OK) {
-                            val claudeSession = state.sessions.values.filter { it.machineId == id && it.info?.agent == Agent.AGENT_CLAUDE && !io.github.lewin671.remoteagent.core.exited(it) }.maxByOrNull { it.updatedMs }
-                            if (claudeSession != null) TextButton(onClick = { nav.sessionTerminal(claudeSession.id) }, enabled = m.online) { Text("去终端查看 /usage ›") }
-                            else Text("没有进行中的 Claude Code 会话：先打开一个会话再去终端查看。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                if (g.status == io.github.lewin671.remoteagent.core.QuotaStatus.FAILED) Text("没能读取 ${agentName(g.agent)} 额度" + if (g.detail.isNotEmpty()) "：${g.detail}" else "", style = T.sm, color = p.red, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp))
+                GLabel(g.title + if (g.lastRecord) " · 上次记录" else "")
+                val rows = mutableListOf<@Composable () -> Unit>()
+                when (g.status) {
+                    io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED -> rows += @Composable {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                            Text("暂不支持读取额度", style = T.bodyB, color = p.fg)
+                            Text(g.detail.ifEmpty { "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。" } + if (g.agent == Agent.AGENT_CLAUDE) " 可在本机 Claude Code 中查看 /usage。" else "", style = T.meta, color = p.muted)
                         }
                     }
+                    io.github.lewin671.remoteagent.core.QuotaStatus.WAITING -> rows += @Composable {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                            Text("暂未获取额度", style = T.bodyB, color = p.fg)
+                            Text("等待 ${agentName(g.agent)} 返回额度数据", style = T.meta, color = p.muted)
+                        }
+                    }
+                    else -> {}
                 }
+                for (r in g.rows) rows += @Composable { QuotaRowView(r, received = if (r.percent != null) g.received else "") }
+                if (g.agent == Agent.AGENT_CLAUDE && g.status != io.github.lewin671.remoteagent.core.QuotaStatus.OK) {
+                    val claudeSession = state.sessions.values.filter { it.machineId == id && it.info?.agent == Agent.AGENT_CLAUDE && !io.github.lewin671.remoteagent.core.exited(it) }.maxByOrNull { it.updatedMs }
+                    rows += @Composable { GRow("去终端查看 /usage", onClick = claudeSession?.let { cs -> { nav.sessionTerminal(cs.id) } }, chevron = true, enabled = m.online && claudeSession != null) }
+                }
+                if (rows.isNotEmpty()) Group(rows = rows)
+                // Used up or close to it; nothing switches CLI or model by itself.
+                io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let { Text("$it，不会自动切换 CLI 或模型", style = T.sm, color = p.orangeInk, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }
+                io.github.lewin671.remoteagent.core.quotaPartial(g).takeIf { it.isNotEmpty() }?.let { Text(it, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }
             }
-            Text("额度属于 CLI 登录账户，该账户的其他使用也可能计入。", Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
+            Text("额度属于 CLI 登录账户，该账户的其他使用也可能计入。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
     }
 }
@@ -539,27 +550,29 @@ fun PairScreen() {
     }
     DisposableEffect(Unit) { onDispose { init?.let { i -> if (phase != "done") scope.launch { i.cancelOnServer() } } } }
     PageScaffold("添加设备") {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val i = init
             when (phase) {
-                "start" -> CircularProgressIndicator()
+                "start" -> Skeleton()
                 "wait" -> if (i != null) {
-                    Text(i.code.chunked(4).joinToString(" "), fontSize = 30.sp, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.displaySmall)
                     val bmp = remember(i) { qrBitmap(i.link.url(webOrigin(remote.account.server, settings.webOrigin))) }
-                    Image(bmp.asImageBitmap(), "配对二维码", Modifier.size(240.dp).background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(8.dp)).padding(8.dp), filterQuality = FilterQuality.None)
-                    Text("在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。", color = p.muted, textAlign = TextAlign.Center)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("  等待新设备…", color = p.muted)
+                    Box(Modifier.padding(top = 14.dp, bottom = 10.dp).size(170.dp).clip(RoundedCornerShape(20.dp)).background(Color.White).padding(12.dp)) {
+                        Image(bmp.asImageBitmap(), "配对二维码", Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
                     }
+                    Text(i.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
+                    Text("在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+                    Text("◌ 等待新设备…", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 10.dp))
                 }
-                "emoji", "sending" -> {
-                    Text("新设备请求加入", style = MaterialTheme.typography.titleMedium)
-                    Text(emoji.orEmpty().joinToString("  "), fontSize = 40.sp)
-                    Text("和新设备上的 4 个图案一模一样才允许", color = p.muted, textAlign = TextAlign.Center)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = { scope.launch { i?.cancelOnServer() }; nav.back() }, enabled = phase == "emoji", modifier = Modifier.heightIn(min = 48.dp)) { Text("拒绝") }
-                        Button(onClick = {
+                "emoji", "sending" -> Column(Modifier.padding(top = 14.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text("新电脑", style = T.smB, color = p.fg)
+                        Text(" 请求加入", style = T.sm, color = p.muted)
+                    }
+                    Text(emoji.orEmpty().joinToString("  "), fontSize = 30.sp, modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
+                    Text("和新设备上的 4 个图案一模一样才允许", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 10.dp))
+                    Btns {
+                        Btn("拒绝", { scope.launch { i?.cancelOnServer() }; nav.back() }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = phase == "emoji", bg = p.card)
+                        Btn(if (phase == "sending") "正在交给新设备…" else "图案一致，允许", {
                             phase = "sending"
                             scope.launch {
                                 try {
@@ -570,67 +583,66 @@ fun PairScreen() {
                                     phase = "error"
                                 }
                             }
-                        }, enabled = phase == "emoji", modifier = Modifier.heightIn(min = 48.dp)) { Text(if (phase == "sending") "正在把密钥交给新设备…" else "图案一致，允许") }
+                        }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = phase == "emoji")
                     }
                 }
                 "done" -> {
-                    Text("✓ 新设备已加入", style = MaterialTheme.typography.titleMedium, color = p.greenInk)
-                    Button(onClick = nav.back) { Text("完成") }
+                    Banner("✓ 新设备已加入", Modifier.padding(top = 14.dp), action = "完成", onAction = nav.back)
                 }
-                else -> {
-                    Text(error, color = p.red, textAlign = TextAlign.Center)
-                    Button(onClick = { attempt++ }) { Text("换一个") }
-                }
+                else -> Banner(error, Modifier.padding(top = 14.dp), Tone2.ERROR, action = "换一个", onAction = { attempt++ })
             }
         }
     }
 }
 
 private fun imageBytes(n: Long) = "%.1f MiB".format(n / 1048576.0)
+private fun mib(n: Long) = if (n >= 1L shl 30 && n % (1L shl 30) == 0L) "${n shr 30} GiB" else "${n shr 20} MiB"
 
 @Composable
-private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsage?, enabled: Boolean, onChange: (DaemonSettings, Boolean) -> Unit, onRefresh: () -> Unit) {
-    val p = pal
+private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsage?, enabled: Boolean, onChange: (DaemonSettings, Boolean) -> Unit) {
     var clean by remember { mutableStateOf(false) }
-    SectionHeader("图片存储 · 这台电脑")
-    Card(Modifier.padding(horizontal = 12.dp)) {
-        Column(Modifier.padding(12.dp)) {
-            Text("上传文件 ${usage?.let { imageBytes(it.uploadBytes) } ?: "读取中…"} · 传输预留 ${usage?.let { imageBytes(it.reservedBytes) } ?: "—"}")
-            Text("需保留 ${usage?.let { imageBytes(it.protectedBytes) } ?: "—"} · 可回收 ${usage?.let { imageBytes(it.reclaimableBytes) } ?: "—"}", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            Text("上传上限：${imageBytes(settings.imageUploadQuotaBytes)}", Modifier.padding(top = 8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for ((n,label) in listOf((256L shl 20) to "256 MiB", (1L shl 30) to "1 GiB", (5L shl 30) to "5 GiB")) TextButton(enabled = enabled, onClick = { onChange(settings.toBuilder().setImageUploadQuotaBytes(n).build(), false) }) { Text(label) }
-            }
-            Text("预览和待同步缓存 ${usage?.let { imageBytes(it.cacheBytes) } ?: "—"} · 上限 150 MiB")
-            for (s in usage?.sessionsList.orEmpty()) Text("会话 ${s.sessionId.take(8)} · 原图 ${imageBytes(s.bytes)} · 需保留 ${imageBytes(s.protectedBytes)}", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            Row { TextButton(enabled = enabled, onClick = onRefresh) { Text("刷新占用") }; TextButton(enabled = enabled, onClick = { clean = true }) { Text("清理可回收图片…") } }
-            Text("正在发送和当前执行的图片不会被清理。历史图片保留，但已回收的原始路径可能无法再读取。", style = MaterialTheme.typography.bodySmall, color = p.muted)
-        }
+    var limit by remember { mutableStateOf(false) }
+    GLabel("图片存储 · 这台电脑")
+    Group(rows = listOf(
+        { GRow("上传文件", usage?.let { imageBytes(it.uploadBytes) } ?: "读取中…") },
+        { GRow("需保留 / 可回收", usage?.let { "${imageBytes(it.protectedBytes)} / ${imageBytes(it.reclaimableBytes)}" } ?: "—") },
+        { GRow("上传空间上限", mib(settings.imageUploadQuotaBytes) + " ›", onClick = if (enabled) ({ limit = true }) else null) },
+        { GRow("预览和待同步缓存", usage?.let { "${imageBytes(it.cacheBytes)} / 150 MiB" } ?: "—") },
+        { GRow("清理可回收图片和缓存…", onClick = if (enabled) ({ clean = true }) else null, action = true, enabled = enabled) },
+    ))
+    if (limit) {
+        val opts = listOf(256L shl 20, 1L shl 30, 5L shl 30)
+        ChoiceSheet("上传空间上限", opts.map { mib(it) to null }, opts.indexOf(settings.imageUploadQuotaBytes), onPick = { i ->
+            limit = false
+            onChange(settings.toBuilder().setImageUploadQuotaBytes(opts[i]).build(), false)
+        }, onClose = { limit = false })
     }
     if (clean) Confirm("清理可回收图片？", "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。", "清理", onDismiss = { clean = false }) { clean = false; onChange(settings, true) }
 }
 
+/** 图片存储 · 这台手机 (Android): drafts and the viewing cache, limited apart; clearing the cache keeps drafts. */
 @Composable
-private fun PhoneImageStorage() {
+fun PhoneImageStoragePage(onBack: () -> Unit) {
     val app = RaApp.instance
     val p = pal
     val action = rememberAction()
     var stamp by remember { mutableStateOf(0) }
     var used by remember { mutableStateOf(0L) }
     var cache by remember { mutableStateOf(0L) }
-    var expired by remember { mutableStateOf(0) }
     LaunchedEffect(stamp) {
-        withContext(Dispatchers.IO) { app.pendingStore.expire(); used = app.pendingStore.used; cache = app.imageEnvelopes.used; expired = app.pendingStore.expired }
+        withContext(Dispatchers.IO) { app.pendingStore.expire(); used = app.pendingStore.used; cache = app.imageEnvelopes.used }
     }
-    SectionHeader("图片存储 · 这台手机")
-    Card(Modifier.padding(horizontal = 12.dp)) {
-        Column(Modifier.padding(12.dp)) {
-            Text("待发和待确认图片 ${imageBytes(used)} / 256 MiB")
-            Text("草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。累计已清理 $expired 张过期草稿。", color = p.muted, style = MaterialTheme.typography.bodySmall)
-            Text("查看缓存 ${imageBytes(cache)} / 150 MiB", Modifier.padding(top = 8.dp))
-            TextButton(enabled = !action.running, onClick = { action.run({ withContext(Dispatchers.IO) { app.imageEnvelopes.clear() }; null }) { stamp++ } }) { Text("清理查看缓存") }
-            TextButton(onClick = { stamp++ }) { Text("刷新占用") }
-            if (action.error.isNotEmpty()) Text(action.error, color = p.red)
-        }
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+    Column(Modifier.fillMaxSize().background(p.soft)) {
+        NavBar("设置", onBack)
+        GLabel("图片存储 · 这台手机")
+        Group(rows = listOf(
+            { GRow("待发和待确认图片", "${imageBytes(used)} / 256 MiB") },
+            { Text("草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。", style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) },
+            { GRow("查看缓存", "${imageBytes(cache)} / 150 MiB") },
+            { GRow(if (action.running) "正在清理…" else "清理查看缓存", onClick = { action.run({ withContext(Dispatchers.IO) { app.imageEnvelopes.clear() }; null }) { stamp++ } }, action = true, enabled = !action.running) },
+        ))
+        if (action.error.isNotEmpty()) Banner(action.error, Modifier.padding(horizontal = 16.dp), Tone2.ERROR)
     }
+}
 }

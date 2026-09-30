@@ -1,46 +1,32 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
@@ -48,11 +34,11 @@ import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.contextPercent
-import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.modeOf
 import io.github.lewin671.remoteagent.core.titleOf
+import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.CompactRequest
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
 import io.github.lewin671.remoteagent.proto.SetApprovalModeRequest
@@ -65,7 +51,10 @@ val modeHelp = mapOf(
     Mode.FULL to "所有操作都不审批",
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** A sheet's title names the CLI only when it is not Codex, as the mockup does. */
+private fun sheetTitle(s: SessionView, what: String) = if (s.agent() == Agent.AGENT_CODEX) what else "${agentName(s.agent())} · $what"
+
+/** 审批模式: the four modes; full access is confirmed first; only this session changes. */
 @Composable
 fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     val p = pal
@@ -77,38 +66,27 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     fun set(m: Mode) = act.run({
         remote.command(s.id, remote.cmd { setApprovalMode = SetApprovalModeRequest.newBuilder().setSessionId(s.id).setMode(m.proto).build() })
     }) { onClose() }
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
-            Text("${agentName(s.agent())} · 审批模式", style = MaterialTheme.typography.titleMedium)
-            // A mode set in the terminal outside the four is shown as it is.
-            s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }?.let {
-                Text("当前：${if (it == "acceptEdits") "accept edits" else it}（在终端设置）", style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
-            }
-            Spacer(Modifier.height(8.dp))
-            for (m in Mode.entries) {
-                val off = unavailable(m)
-                Row44(onClick = if (act.running || off) null else ({ if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m) })) {
-                    Column(Modifier.weight(1f)) {
-                        Text(m.text, style = MaterialTheme.typography.titleSmall, color = if (off) p.faint else if (m == Mode.FULL) p.red else p.fg)
-                        Text(
-                            when {
-                                off && m == Mode.FULL -> "本会话启动时未启用；需要时新建会话选择"
-                                off -> "当前 Haiku 模型不支持"
-                                else -> modeHelp.getValue(m)
-                            },
-                            style = MaterialTheme.typography.bodyMedium, color = p.muted,
-                        )
-                    }
-                    if (m == cur) Text("✓", color = p.blue)
-                }
-            }
-            if (s.info?.permissionMode?.let { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null } == true) {
-                Text("照实显示终端中的模式；不提供切到 ${s.info?.permissionMode} 的按钮。", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            }
-            Text("只改当前会话", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.padding(top = 8.dp))
-            if (act.running) Text("正在切换…", color = p.muted)
-            if (act.error.isNotEmpty()) Text("没能切换：${act.error}", color = p.red)
+    // A mode set in the terminal outside the four is shown as it is.
+    val outside = s.info?.permissionMode?.takeIf { it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null }
+    Sheet(onClose) {
+        SheetHead(sheetTitle(s, "审批模式"))
+        if (outside != null) Text("当前：${if (outside == "acceptEdits") "accept edits" else outside}（在终端设置）", style = T.meta, color = p.muted, modifier = Modifier.padding(bottom = 4.dp))
+        Mode.entries.forEachIndexed { i, m ->
+            val off = unavailable(m)
+            ListItem(
+                m.text,
+                when {
+                    off && m == Mode.FULL -> "本会话启动时未启用；需要时新建会话选择"
+                    off -> "当前 Haiku 模型不支持"
+                    else -> modeHelp.getValue(m).replace("CLI", agentName(s.agent()))
+                },
+                checked = m == cur, enabled = !off, danger = m == Mode.FULL && !off, last = i == Mode.entries.size - 1,
+                onClick = if (act.running || off) null else ({ if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m) }),
+            )
         }
+        Hint(if (outside != null) "照实显示终端中的模式；不提供切到 ${if (outside == "acceptEdits") "accept edits" else outside} 的按钮。" else "只改当前会话")
+        if (act.running) Hint("正在切换…")
+        if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
     }
     if (confirmFull) Confirm(
         "切到完全放行？", "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。", "切换", danger = true,
@@ -116,7 +94,45 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     ) { set(Mode.FULL) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** The context box of 会话设置: the percent, what it is of, and 压缩. */
+@Composable
+fun ContextBox(percent: Int, detail: String, action: String?, onAction: () -> Unit, enabled: Boolean = true) {
+    val p = pal
+    Row(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("$percent%", style = T.h22, color = if (percent > 80) p.orangeInk else p.fg)
+            Text(detail, style = T.sm, color = p.muted)
+        }
+        if (action != null) Box(Modifier.heightIn(min = 44.dp).clickable(enabled = enabled, onClick = onAction).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+            Text(action, style = T.bodyB, color = if (enabled) p.blue else p.muted)
+        }
+    }
+}
+
+/** Choices laid out three to a row (推理强度). */
+@Composable
+fun ChoiceGrid(items: List<String>, selected: String?, enabled: Boolean, onPick: (String) -> Unit) {
+    val p = pal
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (row in items.chunked(3)) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (e in row) {
+                val on = e == selected
+                Box(
+                    Modifier.weight(1f).heightIn(min = 44.dp).clip(Radii.SM).background(if (on) p.blueSoft else p.soft)
+                        .then(if (on) Modifier.border(1.dp, p.blue, Radii.SM) else Modifier)
+                        .clickable(enabled = enabled) { onPick(e) },
+                    contentAlignment = Alignment.Center,
+                ) { Text(e, style = T.sm, color = if (on) p.blue else if (enabled) p.fg else p.muted) }
+            }
+            repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+        }
+    }
+}
+
+/**
+ * 会话设置: context and 压缩, the model and its reasoning effort. A choice
+ * is sent at once while idle; the sheet shows the computer's value after.
+ */
 @Composable
 fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: () -> Unit) {
     val p = pal
@@ -124,6 +140,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
     var models by remember { mutableStateOf<ListModelsResponse?>(null) }
     var loadError by remember { mutableStateOf("") }
     var attempt by remember { mutableStateOf(0) }
+    var all by remember { mutableStateOf(false) }
     LaunchedEffect(attempt) {
         try {
             models = remote.listModels(s.machineId, s.agent())
@@ -135,79 +152,54 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
     val act = rememberAction()
     val compact = rememberAction()
     var pickedModel by remember { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("${agentName(s.agent())} · 会话设置", style = MaterialTheme.typography.titleMedium)
-            val pc = contextPercent(s)
-            if (pc != null) {
-                val i = s.info!!
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("$pc%  上下文 ${i.contextTokens / 1000}k / ${i.contextWindow / 1000}k", style = MaterialTheme.typography.bodyMedium, color = if (pc > 80) p.orangeInk else p.fg2)
-                        LinearProgressIndicator(progress = { pc / 100f }, Modifier.fillMaxWidth().padding(top = 4.dp), color = if (pc > 80) p.orange else p.blue, trackColor = p.track)
-                    }
-                    Spacer(Modifier.padding(6.dp))
-                    OutlinedButton(onClick = {
-                        compact.run({ remote.command(s.id, remote.cmd { this.compact = CompactRequest.newBuilder().setSessionId(s.id).build() }) }) { onClose() }
-                    }, enabled = !running && !compact.running) { Text(if (compact.running) "正在压缩…" else "压缩") }
-                }
-                if (compact.error.isNotEmpty()) Text("没能压缩：${compact.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
-            }
-            if (running) Text("这一轮在运行，结束后才能切换模型和推理强度", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
-            else Text("仅显示当前模型支持的档位；空闲时点选提交，等待电脑确认后更新实际值。", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            Text("模型", style = MaterialTheme.typography.titleSmall)
-            val ms = models
-            when {
-                loadError.isNotEmpty() -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("没能读取模型列表：$loadError", color = p.red, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { attempt++ }) { Text("重试") }
-                }
-                ms == null -> Text("读取中…", color = p.muted)
-                else -> {
-                    val current = io.github.lewin671.remoteagent.core.findModel(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
-                    if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
-                    for (m in ms.modelsList) {
-                        Row44(onClick = { pickedModel = m.slug }) {
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(m.displayName.ifEmpty { m.slug }, style = MaterialTheme.typography.titleSmall)
-                                    if (m.effortsList.isEmpty()) Text("  无推理强度", style = MaterialTheme.typography.bodySmall, color = p.faint)
-                                }
-                                if (m.description.isNotEmpty()) Text(m.description, style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 2)
-                            }
-                            if (m.slug == pickedModel) Text("✓", color = p.blue)
-                        }
-                    }
-                    val model = ms.modelsList.firstOrNull { it.slug == pickedModel }
-                    if (model != null && model.effortsList.isEmpty() && model != current) {
-                        Button(onClick = {
-                            act.run({
-                                remote.command(s.id, remote.cmd { setModel = SetModelRequest.newBuilder().setSessionId(s.id).setModel(model.slug).build() })
-                            }) { onClose() }
-                        }, enabled = !running && !act.running, modifier = Modifier.fillMaxWidth()) { Text("切换到 ${model.displayName.ifEmpty { model.slug }}") }
-                    }
-                    if (model != null && model.effortsList.isNotEmpty()) {
-                        Text("推理强度", style = MaterialTheme.typography.titleSmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                            for (e in model.effortsList) {
-                                FilterChip(
-                                    selected = e == s.info?.effort && model == current,
-                                    onClick = {
-                                        act.run({
-                                            remote.command(s.id, remote.cmd { setModel = SetModelRequest.newBuilder().setSessionId(s.id).setModel(model.slug).setEffort(e).build() })
-                                        }) { onClose() }
-                                    },
-                                    enabled = !running && !act.running,
-                                    label = { Text(e) },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (act.running) Text("正在切换…", color = p.muted)
-            if (act.error.isNotEmpty()) Text("没能切换：${act.error}", color = p.red)
+    fun setModel(slug: String, effort: String) = act.run({
+        remote.command(s.id, remote.cmd { setModel = SetModelRequest.newBuilder().setSessionId(s.id).setModel(slug).also { if (effort.isNotEmpty()) it.setEffort(effort) }.build() })
+    }) { onClose() }
+    Sheet(onClose) {
+        SheetHead(sheetTitle(s, "会话设置"))
+        val pc = contextPercent(s)
+        if (pc != null) {
+            val i = s.info!!
+            ContextBox(
+                pc, if (i.contextWindow > 0) "上下文 ${i.contextTokens / 1000}k / ${i.contextWindow / 1000}k" else "上下文占用",
+                if (compact.running) "正在压缩…" else "压缩", enabled = !running && !compact.running,
+                onAction = { compact.run({ remote.command(s.id, remote.cmd { this.compact = CompactRequest.newBuilder().setSessionId(s.id).build() }) }) { onClose() } },
+            )
+            if (compact.error.isNotEmpty()) Hint("没能压缩：${compact.error}", color = p.red)
         }
+        FieldLabel("模型", Modifier.padding(top = 2.dp))
+        val ms = models
+        when {
+            loadError.isNotEmpty() -> Banner("没能读取模型列表：$loadError", tone = Tone2.ERROR, action = "重试", onAction = { attempt++ })
+            ms == null -> Text("读取中…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
+            else -> {
+                val current = io.github.lewin671.remoteagent.core.findModel(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
+                if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
+                val list = if (all || ms.modelsCount <= 5) ms.modelsList else ms.modelsList.take(3)
+                list.forEachIndexed { i, m ->
+                    ListItem(
+                        m.displayName.ifEmpty { m.slug }, small = if (m.effortsList.isEmpty()) "无推理强度" else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { "最高 $it" },
+                        checked = m.slug == pickedModel, enabled = !running && !act.running, last = i == list.size - 1 && (all || ms.modelsCount <= 5),
+                        onClick = {
+                            pickedModel = m.slug
+                            // A model without efforts has nothing more to choose.
+                            if (m.effortsList.isEmpty() && m != current) setModel(m.slug, "")
+                        },
+                    )
+                }
+                if (!all && ms.modelsCount > 5) Box(Modifier.heightIn(min = 44.dp).clickable { all = true }, contentAlignment = Alignment.CenterStart) {
+                    ArrowText("全部模型", p.blue, T.body)
+                }
+                val model = ms.modelsList.firstOrNull { it.slug == pickedModel }
+                if (model != null && model.effortsList.isNotEmpty()) {
+                    FieldLabel("推理强度")
+                    ChoiceGrid(model.effortsList, if (model == current) s.info?.effort else null, !running && !act.running) { setModel(model.slug, it) }
+                }
+            }
+        }
+        Hint(if (running) "只在空闲时能切换；这一轮结束后再选" else "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
+        if (act.running) Hint("正在切换…")
+        if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
     }
 }
 
@@ -219,42 +211,39 @@ fun ApprovalPage(sid: String, aid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
-    val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
+    val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
     val a = d.approvals[aid]
     val p = pal
     val t = now()
     val act = rememberAction()
     var reason by Drafts.of("deny:$aid")
-    PageScaffold(if (s != null) "审批详情" else "审批") {
+    PageScaffold("审批详情", subtitle = s?.let { titleOf(it) + if (a != null && a.hasDeadline()) " · 剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "" }) {
         if (s == null || a == null) {
             val r = d.resolved[aid]
-            Text(if (r != null) "这条审批已经处理了。" else "读取中…", color = p.muted, modifier = Modifier.padding(16.dp))
-            TextButton(onClick = nav.back) { Text("返回") }
+            Text(if (r != null) "这条审批已经处理了。" else "读取中…", style = T.body, color = p.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(titleOf(s) + if (a.hasDeadline()) " · 剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "", color = p.muted)
-            if (a.toolName.isNotEmpty()) Text("工具：${a.toolName}", style = MaterialTheme.typography.bodyMedium)
-            if (a.description.isNotEmpty()) Text(a.description, style = MaterialTheme.typography.bodyLarge)
-            if (a.command.isNotEmpty()) CodeBlock(a.command)
-            if (a.toolInputJson.isNotEmpty() && a.command.isEmpty()) CodeBlock(a.toolInputJson)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+            if (a.toolName.isNotEmpty() && a.command.isEmpty()) Text("请求权限 · ${a.toolName}", style = T.smB, color = p.fg2, modifier = Modifier.padding(bottom = 4.dp))
+            if (a.description.isNotEmpty()) Text(a.description, style = T.sm, color = p.fg2, modifier = Modifier.padding(bottom = 6.dp))
+            Code(a.command.ifEmpty { a.toolInputJson })
         }
-        Column(Modifier.fillMaxWidth().imePadding().background(p.card).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(reason, { reason = it }, Modifier.fillMaxWidth(), placeholder = { Text("拒绝理由（可选），会告诉 ${agentName(s.agent())}") }, maxLines = 4)
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line).padding(top = 8.dp, bottom = 16.dp)) {
+            ReasonField(reason, { reason = it }, "拒绝理由（可选），会告诉 ${agentName(s.agent())}")
             val r = Resolves.of(aid)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                fun resolve(allow: Boolean) = act.run({
-                    resolveApproval(remote, s, a, allow, if (allow) "" else reason.trim())
-                    null
-                }) { nav.back() }
-                OutlinedButton(onClick = { resolve(false) }, enabled = !act.running && !r.attempt.frozen, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = p.red)) { Text(if (reason.isBlank()) "拒绝" else "发送理由并拒绝") }
-                Button(onClick = { resolve(true) }, enabled = !act.running && reason.isBlank() && !r.attempt.frozen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("允许") }
-            }
-            if (!act.running && r.attempt.frozen && !r.attempt.expired) TextButton(onClick = {
-                act.run({ resolveApproval(remote, s, a, r.allow, r.message); null }) { nav.back() }
-            }) { Text("未收到电脑确认，重试「${if (r.allow) "允许" else "拒绝"}」") }
-            if (act.error.isNotEmpty()) Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+            fun resolve(allow: Boolean) = act.run({
+                resolveApproval(remote, s, a, allow, if (allow) "" else reason.trim())
+                null
+            }) { nav.back() }
+            if (reason.isBlank()) Btns {
+                Btn("拒绝", { resolve(false) }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = !act.running && !r.attempt.frozen)
+                Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running && !r.attempt.frozen)
+            } else Btn("发送理由并拒绝", { resolve(false) }, Modifier.fillMaxWidth(), BtnKind.NEGATIVE, enabled = !act.running && !r.attempt.frozen)
+            if (!act.running && r.attempt.frozen && !r.attempt.expired) Banner(
+                "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}", Modifier.padding(top = 8.dp), Tone2.ERROR, action = "重试",
+                onAction = { act.run({ resolveApproval(remote, s, a, r.allow, r.message); null }) { nav.back() } },
+            )
+            else if (act.error.isNotEmpty()) Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
         }
     }
 }
@@ -266,29 +255,33 @@ fun PlanPage(sid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val events by remote.events(sid).collectAsState()
-    val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
-    PageScaffold("计划") {
+    val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
+    PageScaffold("计划", subtitle = s?.let { titleOf(it) }) {
         val plan = d.plan
         if (s == null || plan == null) {
-            Text("读取中…", Modifier.padding(16.dp))
+            Text("读取中…", style = T.body, color = pal.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) { Markdown(plan.text) }
-        if (s.info?.planOpen == true) Column(Modifier.padding(12.dp)) { PlanButtons(s, full = true) { nav.back() } }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Markdown(plan.text) }
+        if (s.info?.planOpen == true) Column(Modifier.padding(horizontal = 14.dp).topLine(pal.line).padding(top = 8.dp, bottom = 16.dp)) { PlanButtons(s, full = true) { nav.back() } }
     }
 }
 
-/** A page with a back arrow and a title. */
+/** A page with ‹, a centered title and an optional second line; [gray] for grouped settings pages. */
 @Composable
-fun PageScaffold(title: String, action: @Composable () -> Unit = {}, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+fun PageScaffold(title: String, subtitle: String? = null, gray: Boolean = false, action: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val nav = LocalNav.current
     val p = pal
-    Column(Modifier.fillMaxSize().background(p.bg)) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = nav.back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            action()
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
+        Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
+            NavBar(title, nav.back, subtitle = subtitle, right = action)
+            content()
         }
-        content()
     }
+}
+
+/** A centered empty or loading note on a page. */
+@Composable
+fun PageNote(text: String) {
+    Text(text, style = T.sm, color = pal.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(24.dp))
 }

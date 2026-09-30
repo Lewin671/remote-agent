@@ -2,6 +2,10 @@ package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -131,38 +135,26 @@ fun JoinScreen(app: RaApp) {
             },
             onCancel = { step = JoinStep.Form },
         )
-        else -> Column(
-            Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Spacer(Modifier.height(24.dp))
+        else -> Column(Modifier.fillMaxSize().background(p.card).safeDrawingPadding().imePadding().verticalScroll(rememberScrollState())) {
             when (s) {
                 is JoinStep.Emoji -> {
-                    Text("核对图案", style = MaterialTheme.typography.headlineSmall)
-                    Text(s.emoji.joinToString("  "), fontSize = 40.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                    Text("确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。", color = p.muted)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.padding(end = 10.dp).size(18.dp), strokeWidth = 2.dp)
-                        Text("等待允许…", color = p.muted)
-                    }
-                    TextButton(onClick = { cancel() }) { Text("取消，图案不一致也点这里") }
+                    NavBar("核对图案", null, right = { Text("取消", style = T.body, color = p.blue, modifier = Modifier.clickable { cancel() }) }, more = { cancel() })
+                    Text(s.emoji.joinToString("  "), fontSize = 30.sp, modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 12.dp), textAlign = TextAlign.Center)
+                    Text("确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                    Text("◌ 等待允许…", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp))
+                    Btn("图案不一致，返回填码", { cancel() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                    Hint("返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。", Modifier.padding(horizontal = 16.dp))
                 }
                 JoinStep.Working -> {
-                    Text("加入账户", style = MaterialTheme.typography.headlineSmall)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.padding(end = 10.dp).size(18.dp), strokeWidth = 2.dp)
-                        Text("正在连接…", color = p.muted)
-                    }
+                    JoinTitle("加入账户")
+                    Text("◌ 正在连接…", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
                 }
                 JoinStep.Secret -> {
-                    Text("用账户密钥加入", style = MaterialTheme.typography.headlineSmall)
-                    Text("在电脑上运行 remote-agent account secret，把输出的 ra1. 开头的整串粘贴到这里。", color = p.muted)
-                    OutlinedTextField(
-                        secret, { secret = it }, Modifier.fillMaxWidth(), label = { Text("账户密钥") },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), minLines = 3,
-                    )
-                    if (error.isNotEmpty()) Text(error, color = p.red)
-                    Button(onClick = {
+                    JoinTitle("用账户密钥加入")
+                    Text("在电脑上运行 remote-agent account secret，把输出的 ra1. 开头的整串粘贴到这里。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp))
+                    JoinField("账户密钥", secret, { secret = it }, "ra1.…", mono = true, lines = 3)
+                    if (error.isNotEmpty()) Banner(error, Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp), Tone2.ERROR)
+                    Btn("加入", {
                         error = ""
                         step = JoinStep.Working
                         scope.launch {
@@ -176,38 +168,72 @@ fun JoinScreen(app: RaApp) {
                                 step = JoinStep.Secret
                             }
                         }
-                    }, enabled = secret.isNotBlank(), modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("加入") }
-                    TextButton(onClick = { error = ""; step = JoinStep.Form }) { Text("改用配对码") }
+                    }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), BtnKind.PRIMARY, enabled = secret.isNotBlank())
+                    JoinLink("改用配对码") { error = ""; step = JoinStep.Form }
                 }
                 JoinStep.Form, JoinStep.Scan -> {
-                    Text("加入账户", style = MaterialTheme.typography.headlineSmall)
-                    Text("在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。", color = p.muted)
-                    OutlinedButton(onClick = { error = ""; step = JoinStep.Scan }, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("扫描二维码") }
-                    OutlinedTextField(
-                        code, { v -> code = v.filter { it.isDigit() || it == ' ' }.take(9); commit = null }, Modifier.fillMaxWidth(),
-                        label = { Text("配对码") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
-                    )
-                    OutlinedTextField(
-                        server, { server = it.trim() }, Modifier.fillMaxWidth(), label = { Text("服务器") }, singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    )
-                    if (error.isNotEmpty()) Text(error, color = p.red)
-                    Button(
-                        onClick = {
-                            try {
-                                join(PairLink(code.filter { it.isDigit() }, checkedServer(server), commit))
-                            } catch (e: Exception) {
-                                error = errorText(e)
+                    JoinTitle("加入账户")
+                    Text("在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这里。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp))
+                    if (error.isNotEmpty()) Banner(error, Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp), Tone2.PLAIN)
+                    androidx.compose.foundation.text.BasicTextField(
+                        code, { v -> code = v.filter { it.isDigit() || it == ' ' }.take(9); commit = null },
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 10.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = 4.sp, textAlign = TextAlign.Center, color = p.fg),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true,
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
+                        decorationBox = { inner ->
+                            FieldBox {
+                                if (code.isEmpty()) Text("输入 8 位配对码", style = T.body, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                inner()
                             }
                         },
-                        enabled = code.count { it.isDigit() } == 8 && server.length > 8,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                    ) { Text("加入") }
-                    TextButton(onClick = { error = ""; step = JoinStep.Secret }) { Text("改用账户密钥") }
+                    )
+                    JoinField("服务器", server, { server = it.trim() }, "https://", keyboard = KeyboardType.Uri)
+                    Btn("加入", {
+                        try {
+                            join(PairLink(code.filter { it.isDigit() }, checkedServer(server), commit))
+                        } catch (e: Exception) {
+                            error = errorText(e)
+                        }
+                    }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), BtnKind.PRIMARY, enabled = code.count { it.isDigit() } == 8 && server.length > 8)
+                    JoinLink("扫描二维码") { error = ""; step = JoinStep.Scan }
+                    JoinLink("改用账户密钥") { error = ""; step = JoinStep.Secret }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun JoinTitle(text: String) {
+    Text(text, style = T.title30, color = pal.fg, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp))
+}
+
+@Composable
+private fun JoinLink(text: String, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(text, style = T.sm, color = pal.blue)
+    }
+}
+
+/** A field on the join page: a small label over what is typed. */
+@Composable
+private fun JoinField(label: String, value: String, onValue: (String) -> Unit, placeholder: String, mono: Boolean = false, lines: Int = 1, keyboard: KeyboardType = KeyboardType.Text) {
+    val p = pal
+    androidx.compose.foundation.text.BasicTextField(
+        value, onValue, Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 10.dp),
+        textStyle = (if (mono) T.mono13 else T.body).copy(color = p.fg), singleLine = lines == 1, minLines = lines,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboard), cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
+        decorationBox = { inner ->
+            FieldBox {
+                Column {
+                    Text(label, style = T.meta, color = p.muted, modifier = Modifier.padding(bottom = 2.dp))
+                    Box {
+                        if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)
+                        inner()
+                    }
+                }
+            }
+        },
+    )
 }

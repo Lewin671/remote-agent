@@ -104,7 +104,7 @@ class ChatTest {
         val events = list.mapIndexed { i, b -> ev(i + 1L, b) }
         return buildChat(events, derive(events, io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE), "M").map {
             when (it) {
-                is ChatItem.Note -> "record " + it.text.replace("  ", " ")
+                is ChatItem.Note -> "record " + listOf(it.text, it.meta).filter { m -> m.isNotEmpty() }.joinToString(" ")
                 is ChatItem.Tool -> "tool " + it.call.title + if (it.decision.isNotEmpty()) " " + it.decision else ""
                 is ChatItem.Tools -> "tools"
                 else -> it.javaClass.simpleName

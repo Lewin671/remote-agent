@@ -4,28 +4,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,13 +31,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.optionLabel
+import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.AnswerPlanRequest
 import io.github.lewin671.remoteagent.proto.AnswerQuestionRequest
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
@@ -49,59 +55,94 @@ import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 
 /** What the dock holds: the highest item of the priority list. */
 sealed interface DockItem {
-    data class Approval(val a: ApprovalRequested) : DockItem
-    data class Question(val q: QuestionAsked) : DockItem
-    data class Plan(val text: String) : DockItem
-    data class Popup(val title: String) : DockItem
+    val id: String
+
+    data class Approval(val a: ApprovalRequested) : DockItem {
+        override val id get() = "a:" + a.approvalId
+    }
+
+    data class Question(val q: QuestionAsked) : DockItem {
+        override val id get() = "q:" + q.questionId
+    }
+
+    data class Plan(val text: String) : DockItem {
+        override val id get() = "plan"
+    }
+
+    data class Popup(val title: String) : DockItem {
+        override val id get() = "popup:$title"
+    }
 }
 
+/** The dock's one line: type, a summary, 处理 (client-v7). */
+fun dockSummary(item: DockItem, agent: String): Pair<String, String> = when (item) {
+    is DockItem.Approval -> (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to item.a.command.ifEmpty { item.a.toolName }.lines().first()
+    is DockItem.Question -> "$agent 在问你" to item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
+    is DockItem.Plan -> "计划待批准" to ""
+    is DockItem.Popup -> "终端里有弹窗" to item.title
+}
+
+/**
+ * What waits for the user, docked above the message box. It is one line
+ * until opened; open, its body scrolls within 240 dp while the actions stay
+ * put, and the chat keyboard goes away. [more] others wait behind it.
+ */
 @Composable
-fun DockFrame(more: Int, content: @Composable () -> Unit) {
+fun PendingDock(item: DockItem, agent: String, more: Int, body: @Composable ColumnScope.(close: () -> Unit) -> Unit, actions: @Composable ColumnScope.() -> Unit) {
     val p = pal
-    Surface(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = p.card,
-        border = androidx.compose.foundation.BorderStroke(1.dp, p.orange.copy(alpha = 0.5f)),
-        shadowElevation = 2.dp,
-    ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            content()
-            if (more > 0) Text("还有 $more 项", style = MaterialTheme.typography.bodySmall, color = p.muted)
+    var open by rememberSaveable(item.id) { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
+    val (label, brief) = dockSummary(item, agent)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button, onClickLabel = if (open) "收起" else "处理") {
+                if (!open) { keyboard?.hide(); focus.clearFocus() }
+                open = !open
+            },
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Dot(p.orangeInk, 7)
+            Text(label, style = T.sm, color = p.fg2, maxLines = 1)
+            Text(
+                brief + if (more > 0) " · 还有 $more 项" else "", style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            ArrowText(if (open) "收起" else "处理", p.blue, T.sm, down = !open, up = open)
+        }
+        if (open) {
+            Column(Modifier.heightIn(max = 240.dp)) {
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 6.dp)) { body { open = false } }
+                Column(Modifier.padding(top = 4.dp, bottom = 10.dp)) { actions() }
+            }
         }
     }
 }
 
+/** The first line of an open dock item: its type and, at the right, a note or a link. */
 @Composable
-fun DockTitle(title: String, right: String = "") {
+fun DockHead(title: String, right: String = "", rightLink: (() -> Unit)? = null, extra: (@Composable () -> Unit)? = null) {
     val p = pal
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Dot(p.orange)
-        Spacer(Modifier.width(6.dp))
-        Text(title, style = MaterialTheme.typography.titleSmall, color = p.orangeInk, modifier = Modifier.weight(1f))
-        if (right.isNotEmpty()) Text(right, style = MaterialTheme.typography.bodySmall, color = p.muted)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = T.smB, color = p.fg2, modifier = Modifier.weight(1f))
+        extra?.invoke()
+        if (right.isNotEmpty()) {
+            if (rightLink != null) Text(right, style = T.smB, color = p.blue, modifier = Modifier.clickable(onClick = rightLink))
+            else Text(right, style = T.sm, color = p.muted)
+        }
     }
 }
 
-/** The dock collapsed to one line while typing: type, summary and 展开. */
+/** The grey line under a dock's buttons: a question at the left, one link at the right. */
 @Composable
-fun DockCollapsed(item: DockItem, onExpand: () -> Unit) {
+fun DockFoot(left: String, link: String, danger: Boolean = false, onLink: () -> Unit) {
     val p = pal
-    val (type, text) = when (item) {
-        is DockItem.Approval -> (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to item.a.command.ifEmpty { item.a.toolName }
-        is DockItem.Question -> "在问你" to item.q.questionsList.firstOrNull()?.text.orEmpty()
-        is DockItem.Plan -> "计划待批准" to item.text.lines().firstOrNull().orEmpty()
-        is DockItem.Popup -> "终端里有弹窗" to item.title
-    }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).background(p.orangeSoft, RoundedCornerShape(12.dp))
-            .clickable(onClick = onExpand).padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(type, style = MaterialTheme.typography.labelMedium, color = p.orangeInk)
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Text("展开", color = p.blue, style = MaterialTheme.typography.labelMedium)
+    // With nothing at the left the link starts the line.
+    Row(Modifier.fillMaxWidth().padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (left.isNotEmpty()) Text(left, style = T.meta, color = p.muted, modifier = Modifier.weight(1f))
+        Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onLink), contentAlignment = Alignment.CenterStart) {
+            Text(link, style = T.metaB, color = if (danger) p.red else p.blue)
+        }
     }
 }
 
@@ -109,18 +150,27 @@ fun DockCollapsed(item: DockItem, onExpand: () -> Unit) {
 fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -> Unit) {
     val p = pal
     val t = now(15_000)
-    DockFrame(more) {
-        DockTitle(
+    val agent = agentName(s.agent())
+    var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
+    PendingDock(DockItem.Approval(a), agent, more, body = {
+        DockHead(
             if (a.command.isNotEmpty()) "请求执行" else "请求权限" + (if (a.toolName.isNotEmpty()) " · ${a.toolName}" else ""),
             if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝" else "",
         )
-        if (a.description.isNotEmpty()) Text(a.description, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (a.description.isNotEmpty()) Text(a.description, style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 4.dp))
         val body = a.command.ifEmpty { a.toolInputJson }
         if (body.isNotEmpty()) {
-            CodeBlock(body, maxLines = 4)
-            if (body.lines().size > 4 || body.length > 200) Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onDetail))
+            val cut = body.lines().size > 4 || body.length > 200
+            Box(Modifier.padding(vertical = 8.dp)) {
+                Code(body, maxLines = 4)
+                if (cut) Text(
+                    "展开全文", style = T.metaB, color = p.blue,
+                    modifier = Modifier.align(Alignment.BottomEnd).background(p.code).padding(start = 12.dp, end = 6.dp, bottom = 4.dp).clickable(onClick = onDetail),
+                )
+            }
         }
-        ApprovalButtons(s, a, compact = false)
+    }) {
+        ApprovalButtons(s, a, compact = false, reasonOpen = reasonOpen, onReason = { reasonOpen = it })
     }
 }
 
@@ -167,17 +217,17 @@ suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, 
 /**
  * 拒绝 / 允许, and 附理由拒绝. A tap locks both until the computer
  * confirms; a definite failure lets the user choose again, while an unknown
- * outcome only offers to retry the same decision.
+ * outcome only offers to retry the same decision. [onCard]: on a grey card,
+ * where the buttons are white.
  */
 @Composable
-fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
+fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reasonOpen: Boolean = false, onReason: (Boolean) -> Unit = {}, onCard: Boolean = false) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val act = rememberAction()
     val r = Resolves.of(a.approvalId)
     var which by remember { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
-    var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var reason by Drafts.of("deny:${a.approvalId}")
     val stuck = r.attempt.frozen
     fun resolve(allow: Boolean, message: String = "") {
@@ -185,41 +235,46 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean) {
         act.run({ resolveApproval(remote, s, a, allow, message); null })
     }
     if (reasonOpen && !stuck) {
-        OutlinedTextField(reason, { reason = it }, Modifier.fillMaxWidth(), placeholder = { Text("告诉 ${agentName(s.agent())} 为什么不行") }, minLines = 2)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { reasonOpen = false }) { Text("取消") }
-            Button(
-                onClick = { resolve(false, reason.trim()) }, enabled = !act.running && reason.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = p.redBg), modifier = Modifier.weight(1f).heightIn(min = 44.dp),
-            ) { Text(if (act.running) "拒绝中…" else "发送理由并拒绝") }
-        }
+        ReasonField(reason, { reason = it }, "告诉 ${agentName(s.agent())} 为什么不行")
+        Btn(
+            if (act.running) "拒绝中…" else "发送理由并拒绝", { resolve(false, reason.trim()) }, Modifier.fillMaxWidth(), BtnKind.NEGATIVE,
+            enabled = !act.running && reason.isNotBlank(),
+        )
+        DockFoot("", "不附理由") { onReason(false) }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { resolve(false) }, enabled = !act.running && !stuck, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
-                Text(if (act.running && which == false) "拒绝中…" else "拒绝")
-            }
-            Button(onClick = { resolve(true) }, enabled = !act.running && !stuck, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) {
-                Text(if (act.running && which == true) "允许中…" else "允许")
-            }
+        Btns {
+            Btn(if (act.running && which == false) "拒绝中…" else "拒绝", { resolve(false) }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = !act.running && !stuck, bg = if (onCard) p.card else null)
+            Btn(if (act.running && which == true) "允许中…" else "允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running && !stuck)
         }
-        if (!stuck) Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("想告诉 ${agentName(s.agent())} 为什么？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
-            TextButton(onClick = { if (compact) nav.approval(s.id, a.approvalId) else reasonOpen = true }) { Text("附理由拒绝 ›") }
-        }
+        if (!stuck) DockFoot("", "附理由拒绝 ›") { if (compact) nav.approval(s.id, a.approvalId) else onReason(true) }
     }
     if (!act.running && stuck) {
         val what = if (r.allow) "允许" else "拒绝"
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (r.attempt.expired) "不确定「$what」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-                else "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}。重试会再发同一个「$what」",
-                color = p.orangeInk, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
-            )
-            if (!r.attempt.expired) TextButton(onClick = { resolve(r.allow, r.message) }) { Text("重试") }
-        }
+        Banner(
+            if (r.attempt.expired) "不确定「$what」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
+            else "未收到电脑确认：${act.error.ifEmpty { "结果未知" }}。重试会再发同一个「$what」",
+            Modifier.padding(top = 8.dp), Tone2.ERROR,
+            action = if (!r.attempt.expired) "重试" else null, onAction = { resolve(r.allow, r.message) },
+        )
     } else if (act.error.isNotEmpty()) {
-        Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
     }
+}
+
+/** A text box on a soft field, for a reason or another short answer. */
+@Composable
+fun ReasonField(value: String, onValue: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    val p = pal
+    BasicTextField(
+        value, onValue, modifier.fillMaxWidth().padding(bottom = 8.dp),
+        textStyle = T.body.copy(color = p.fg), cursorBrush = SolidColor(p.blue), maxLines = 4,
+        decorationBox = { inner ->
+            FieldBox {
+                if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)
+                inner()
+            }
+        },
+    )
 }
 
 /**
@@ -291,14 +346,14 @@ fun longQuestion(q: io.github.lewin671.remoteagent.proto.Question): Boolean =
 /**
  * Answers the current question by option; several questions go one by one.
  * One choice answers at a tap; a multiple choice ticks, then 提交 N 项.
+ * The dock shows it in [body]; the page ([full]) as a whole.
  */
 @Composable
-fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full: Boolean, onLong: () -> Unit = {}, onAnswered: () -> Unit = {}) {
+fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full: Boolean, onLong: () -> Unit = {}, onAnswered: () -> Unit = {}, part: Int = 0, act: Action = rememberAction()) {
     val p = pal
     val remote = LocalRemote.current
     val qid = q.questionId
     val index = QuestionPicks.index[qid] ?: 0
-    val act = rememberAction()
     val qs = q.questionsList
     val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return
     val answer = Answers.of(qid, index)
@@ -322,20 +377,19 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
             if (qi + 1 < qs.size) QuestionPicks.index[qid] = qi + 1 else onAnswered()
         }
     }
-    val right = listOfNotNull(if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else null, if (cur.multiSelect) "可多选" else null).joinToString(" · ")
-    DockTitle("${agentName(s.agent())} 在问你", right)
-    Text(cur.text, style = MaterialTheme.typography.titleSmall, maxLines = if (full) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
-    if (!full && longQuestion(cur)) Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onLong))
-    Column(
-        (if (full) Modifier else Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    // part 0: everything; 1: the scrolling body; 2: the fixed actions.
+    if (part != 2) {
+        val progress = listOfNotNull(if (qs.size > 1) "第 ${index + 1} 题，共 ${qs.size} 题" else null, if (cur.multiSelect) "可多选" else null).joinToString(" · ")
+        if (full) Text(progress, style = T.meta, color = p.muted, modifier = Modifier.padding(top = 12.dp))
+        else DockHead("${agentName(s.agent())} 在问你", progress, extra = if (qs.size > 1) ({ Steps(qs.size, index) }) else null)
+        Text(cur.text, style = if (full) T.h17 else T.bodyB, color = p.fg, maxLines = if (full) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (full) 8.dp else 6.dp, bottom = if (full) 12.dp else 6.dp))
+        if (!full && longQuestion(cur)) Text("展开全文 ›", style = T.smB, color = p.blue, modifier = Modifier.clickable(onClick = onLong).padding(bottom = 4.dp))
         cur.optionsList.forEachIndexed { i, o ->
             val (label, rec) = optionLabel(o.label)
             val sel = if (cur.multiSelect) i in (QuestionPicks.multi[key] ?: emptySet()) else QuestionPicks.single[key] == i
-            Column(
-                Modifier.fillMaxWidth().background(if (sel) p.blueSoft else p.soft, RoundedCornerShape(12.dp))
-                    .border(1.dp, if (sel) p.blue else p.line, RoundedCornerShape(12.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 3.dp).heightIn(min = 44.dp).clip(Radii.SM).background(if (sel) p.blueSoft else androidx.compose.ui.graphics.Color.Transparent)
+                    .border(1.dp, if (sel) p.blue else p.line, Radii.SM)
                     .clickable(enabled = !act.running) {
                         if (cur.multiSelect) {
                             val set = (QuestionPicks.multi[key] ?: emptySet()).toMutableSet()
@@ -346,47 +400,64 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
                             submit(listOf(i))
                         }
                     }
-                    .padding(12.dp),
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (sel) Text("✓ ", color = p.blue)
-                    Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                    if (rec) Chip("推荐", color = p.blue, bg = p.blueSoft)
+                if (cur.multiSelect) Box(
+                    Modifier.padding(top = 1.dp).size(18.dp).clip(RoundedCornerShape(4.dp)).background(if (sel) p.blueBg else androidx.compose.ui.graphics.Color.Transparent)
+                        .border(1.dp, if (sel) p.blueBg else p.muted, RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center,
+                ) { if (sel) Text("✓", style = ts(12.sp, FontWeight.Bold, 1f), color = androidx.compose.ui.graphics.Color.White) }
+                else if (sel) Text("✓", style = T.smB, color = p.blue)
+                Column(Modifier.weight(1f)) {
+                    Text(label, style = T.sm, color = p.fg)
+                    if (o.description.isNotEmpty()) Text(o.description, style = T.meta, color = p.muted)
+                    if (sel && act.running && !cur.multiSelect) Text("提交中…", style = T.meta, color = p.muted)
                 }
-                if (o.description.isNotEmpty()) Text(o.description, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-                if (sel && act.running && !cur.multiSelect) Text("提交中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                if (rec) Text("推荐", style = T.metaB, color = p.blue)
             }
         }
+        if (!act.running && answer.attempt.frozen) {
+            val shown = answer.options.joinToString("、") { i -> cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}" }
+            Banner(
+                if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
+                else "上次的回答「$shown」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
+                Modifier.padding(top = 6.dp), Tone2.ERROR,
+                action = if (answer.attempt.expired) "放弃" else null, onAction = { answer.attempt.abandon(); act.error = "" },
+            )
+        } else if (act.error.isNotEmpty()) {
+            Banner("没能提交，终端里的问题可能已经变了：${act.error}", Modifier.padding(top = 6.dp), Tone2.ERROR)
+        }
     }
-    if (cur.multiSelect) {
-        val n = QuestionPicks.multi[key]?.size ?: 0
-        Button(
-            onClick = { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
-            enabled = !act.running && n > 0, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-        ) { Text(if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项") }
+    if (part != 1) {
+        if (cur.multiSelect) {
+            val n = QuestionPicks.multi[key]?.size ?: 0
+            Btn(
+                if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项", { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
+                Modifier.fillMaxWidth().padding(top = 6.dp), BtnKind.PRIMARY, enabled = !act.running && n > 0,
+            )
+            DockFoot(if (n > 0) "已选 $n 项" else "", "其他回答：去终端 ›", onLink = onTerminal)
+        } else DockFoot("都不合适？", "其他回答：去终端 ›", onLink = onTerminal)
     }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("都不合适？", style = MaterialTheme.typography.bodySmall, color = p.muted, modifier = Modifier.weight(1f))
-        TextButton(onClick = onTerminal) { Text("其他回答：去终端 ›") }
-    }
-    if (!act.running && answer.attempt.frozen) {
-        val shown = answer.options.joinToString("、") { i -> cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}" }
-        Text(
-            if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
-            else "上次的回答「$shown」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答，电脑收到过就不会再提交一次",
-            color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
-        )
-        var gaveUp by remember { mutableStateOf(0) }
-        if (answer.attempt.expired) TextButton(onClick = { answer.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次回答") }
-    } else if (act.error.isNotEmpty()) {
-        Text("没能提交，终端里的问题可能已经变了：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+}
+
+/** 第 1 题 of several, as short bars. */
+@Composable
+fun Steps(n: Int, at: Int) {
+    val p = pal
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(n) { i -> Box(Modifier.width(16.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (i <= at) p.blue else p.track)) }
     }
 }
 
 @Composable
 fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
     val nav = LocalNav.current
-    DockFrame(more) { QuestionBody(s, q, onTerminal, full = false, onLong = { nav.question(s.id, q.questionId) }) }
+    // One submission for both halves, which the dock lays out apart.
+    val act = rememberAction()
+    PendingDock(DockItem.Question(q), agentName(s.agent()), more, body = {
+        QuestionBody(s, q, onTerminal, full = false, onLong = { nav.question(s.id, q.questionId) }, part = 1, act = act)
+    }) { QuestionBody(s, q, onTerminal, full = false, part = 2, act = act) }
 }
 
 /** 回答提问: a long question on a page of its own; the answer button stays at hand. */
@@ -399,14 +470,18 @@ fun QuestionPage(sid: String, qid: String) {
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val q = d.questions[qid]
-    PageScaffold("回答提问") {
+    PageScaffold("回答提问", subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
         if (s == null || q == null) {
-            Text(if (d.answered.containsKey(qid)) "这个问题已经回答了。" else "读取中…", Modifier.padding(16.dp), color = pal.muted)
-            TextButton(onClick = nav.back) { Text("返回") }
+            PageNote(if (d.answered.containsKey(qid)) "这个问题已经回答了。" else "读取中…")
             return@PageScaffold
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuestionBody(s, q, { nav.back(); nav.sessionTerminal(sid) }, full = true, onAnswered = { nav.back() })
+        val act = rememberAction()
+        val toTerminal = { nav.back(); nav.sessionTerminal(sid) }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+            QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 1, act = act)
+        }
+        Column(Modifier.padding(horizontal = 14.dp).topLine(pal.line).padding(top = 8.dp, bottom = 16.dp)) {
+            QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 2, act = act)
         }
     }
 }
@@ -414,46 +489,42 @@ fun QuestionPage(sid: String, qid: String) {
 @Composable
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     val p = pal
-    DockFrame(more) {
-        DockTitle("计划待批准")
+    PendingDock(DockItem.Plan(text), agentName(s.agent()), more, body = {
+        DockHead("计划待批准", "展开全文 ›", rightLink = onFull)
         Text(
             text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(4).joinToString("\n"),
-            style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis,
+            style = ts(13.sp, lineHeight = 1.6f), color = p.fg, maxLines = 4, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clip(Radii.XS).background(p.soft).padding(horizontal = 10.dp, vertical = 7.dp),
         )
-        Text("展开全文 ›", color = p.blue, modifier = Modifier.clickable(onClick = onFull))
-        PlanButtons(s, full = false)
-        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) Text("批准后使用询问模式", style = MaterialTheme.typography.bodySmall, color = p.muted)
-    }
+        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) Text("批准后使用询问模式", style = T.meta, color = p.muted)
+    }) { PlanButtons(s, full = false) }
 }
 
 @Composable
 fun PlanButtons(s: SessionView, full: Boolean, onDone: () -> Unit = {}) {
-    val p = pal
     val remote = LocalRemote.current
     val act = rememberAction()
     fun answer(c: PlanChoice) = act.run({
         remote.command(s.id, remote.cmd { answerPlan = AnswerPlanRequest.newBuilder().setSessionId(s.id).setChoice(c).build() })
     }) { onDone() }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text("继续规划…") }
-        Button(onClick = { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) }, enabled = !act.running, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text(if (act.running) "提交中…" else "批准执行") }
+    Btns {
+        Btn("继续规划…", { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
+        Btn(if (act.running) "提交中…" else "批准执行", { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running)
     }
     // Claude Code has no such choice.
     if (full && s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) {
-        TextButton(onClick = { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }, enabled = !act.running) { Text("清空上下文后执行") }
+        DockFoot("", "清空上下文后执行") { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
     }
-    if (act.error.isNotEmpty()) Text("没能提交：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+    if (act.error.isNotEmpty()) Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
 }
 
 @Composable
 fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) {
     val p = pal
-    DockFrame(more) {
-        DockTitle("终端里有弹窗")
-        Text("${agentName(s.agent())} 在等你", style = MaterialTheme.typography.bodyMedium, color = p.muted)
-        if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.titleSmall)
+    PendingDock(DockItem.Popup(title), agentName(s.agent()), more, body = {
+        DockHead("终端里有弹窗", "${agentName(s.agent())} 在等你")
+        if (title.isNotEmpty()) Text(title, style = ts(15.sp, FontWeight.Medium), color = p.fg, modifier = Modifier.padding(vertical = 6.dp))
         val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
-        if (hint.isNotEmpty()) Text(hint, style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
-        Button(onClick = onTerminal, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("去终端处理") }
-    }
+        if (hint.isNotEmpty()) Text(hint, style = T.sm, color = p.orangeInk)
+    }) { Btn("去终端处理", onTerminal, Modifier.fillMaxWidth(), BtnKind.PRIMARY) }
 }

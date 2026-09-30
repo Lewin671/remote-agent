@@ -59,6 +59,7 @@ import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -132,10 +133,11 @@ fun SessionScreen(sid: String) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(p.card)) {
-        SessionTopBar(state, s, status, d.running, onTerminal = { tab = 1 })
+    val term = tab == 1 && status != Status.EXITED
+    Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
+        SessionTopBar(state, s, status, d.running, dark = term)
         ConnBanner(state)
-        SessionTabs(tab, status != Status.EXITED, status == Status.POPUP) { tab = it }
+        SessionTabs(tab, status != Status.EXITED, status == Status.POPUP, dark = term) { tab = it }
         if (tab == 1 && status != Status.EXITED) {
             TerminalPane(remote, sid, sessionRunning = status != Status.EXITED, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
@@ -144,47 +146,30 @@ fun SessionScreen(sid: String) {
     }
 }
 
+/** ‹, the title with its CLI, the status, project and machine, and ⋯: 中断本轮 and 结束会话…. */
 @Composable
-private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, onTerminal: () -> Unit) {
+private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, dark: Boolean) {
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
     val act = rememberAction()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = nav.back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
-        Column(Modifier.weight(1f)) {
-            Text(titleOf(s), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusLabel(status)
-                Text(
-                    " · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}" +
-                        (if (s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX) " · ${agentName(s.agent())}" else ""),
-                    style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+    StatusNavBar(titleOf(s), agentName(s.agent()), status, "${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}", nav.back, { menu = true }, dark)
+    if (menu) ActionSheet(
+        info = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(shortPath(s.info?.cwd.orEmpty()) + " · " + machineLabel(state, s.machineId), style = T.meta, color = p.muted, fontFamily = FontFamily.Monospace)
+                Text("会话 ${s.id.take(16)}", style = T.meta, color = p.muted, fontFamily = FontFamily.Monospace)
             }
-        }
-        Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "更多") }
-            DropdownMenu(menu, { menu = false }) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(shortPath(s.info?.cwd.orEmpty()) + " · " + machineLabel(state, s.machineId), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                    Text("会话 ${s.id.take(16)}", style = MaterialTheme.typography.bodySmall, color = p.faint, fontFamily = FontFamily.Monospace)
-                }
-                HorizontalDivider()
-                if (running) DropdownMenuItem({ Text("中断本轮") }, onClick = {
-                    menu = false
-                    act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) })
-                })
-                if (status != Status.EXITED) {
-                    DropdownMenuItem({ Text("终端") }, onClick = { menu = false; onTerminal() })
-                    DropdownMenuItem({ Text("结束会话…", color = p.red) }, onClick = { menu = false; confirmStop = true })
-                }
-            }
-        }
-    }
-    if (act.error.isNotEmpty()) Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = MaterialTheme.typography.bodySmall)
+        },
+        actions = buildList {
+            if (running) add(SheetAction("中断本轮") { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
+            if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true) { confirmStop = true })
+        },
+        onDismiss = { menu = false },
+    )
+    if (act.error.isNotEmpty()) Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.meta)
     if (confirmStop) Confirm(
         "结束这个会话？",
         "${machineLabel(state, s.machineId)} 上的 ${agentName(s.agent())} 会被关掉，聊天记录保留，之后可以恢复。",
@@ -255,12 +240,10 @@ private fun ChatPane(
             )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-                if (!loaded && events.isEmpty() && startPrompt == null) item { Text("读取中…", Modifier.padding(16.dp), color = p.muted) }
+                item { Spacer(Modifier.height(6.dp)) }
+                if (!loaded && events.isEmpty() && startPrompt == null) item { Skeleton() }
                 if (startPrompt != null) item(key = "start-prompt") {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
-                        Box(Modifier.background(p.blueSoft, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) { Text(startPrompt.text, style = MaterialTheme.typography.bodyLarge) }
-                        Text(startPrompt.caption, style = MaterialTheme.typography.bodySmall, color = if (startPrompt.warning) p.orangeInk else p.muted)
-                    }
+                    MeBubble(startPrompt.text, caption = startPrompt.caption, captionColor = if (startPrompt.warning) p.orangeInk else p.muted)
                 }
                 items(items, key = { it.key }) {
                     ChatItemView(it, agentName(s.agent()), cwd, home) { requestId, text ->
@@ -270,13 +253,7 @@ private fun ChatPane(
                     }
                 }
                 if (error != null) item {
-                    Card(Modifier.padding(12.dp)) {
-                        Column(Modifier.padding(14.dp)) {
-                            Text("后面的记录没读到", style = MaterialTheme.typography.titleSmall)
-                            Text(error, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-                            TextButton(onClick = { remote.retryEvents(s.id) }) { Text("重试") }
-                        }
-                    }
+                    Banner("后面的记录没读到：$error", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), Tone2.ERROR, action = "重试", onAction = { remote.retryEvents(s.id) })
                 }
                 // Messages from this device, until the chat shows them.
                 val pending = outbox.filter { o ->
@@ -289,16 +266,15 @@ private fun ChatPane(
             }
             }
             val fresh = items.size - seen
+            // Only for what came in while reading back; the list keeps following otherwise.
             if (!atBottom && fresh > 0) {
-                Surface(
-                    Modifier.align(Alignment.BottomCenter).padding(8.dp).clickable { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } },
-                    shape = RoundedCornerShape(18.dp), color = p.blueBg, shadowElevation = 3.dp,
-                ) { Text("↓ $fresh 条新消息", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), color = p.card) }
-            } else if (!atBottom) {
-                Surface(
-                    Modifier.align(Alignment.BottomCenter).padding(8.dp).clickable { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } },
-                    shape = RoundedCornerShape(18.dp), color = p.chip, shadowElevation = 2.dp,
-                ) { Text("回到最新", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), color = p.fg2) }
+                Box(
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).heightIn(min = 44.dp)
+                        .shadow(10.dp, RoundedCornerShape(16.dp), ambientColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = .15f))
+                        .clip(RoundedCornerShape(16.dp)).background(p.card)
+                        .clickable { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } }.padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("↓ $fresh 条新消息", style = T.smB, color = p.blue) }
             }
         }
         Bottom(state, s, status, d, onTerminal, onDetail = { aid -> nav.approval(s.id, aid) }, onPlan = { nav.plan(s.id) })
@@ -309,50 +285,42 @@ private fun ChatPane(
 private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure: String?, onTerminal: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalAlignment = Alignment.End) {
-        if (o.images.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+    val agent = remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
+    val failed = input == InputStatus.INPUT_STATUS_FAILED || input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL ||
+        (input == null && o.state != Outgoing.State.SENDING && o.state != Outgoing.State.SENT)
+    val links = mutableListOf<Pair<String, () -> Unit>>()
+    val (caption, color) = when {
+        // Nothing was submitted and the terminal is as it was.
+        input == InputStatus.INPUT_STATUS_FAILED -> {
+            links += "放回输入框" to { putBack(remote, sid, o); Unit }
+            "没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框已恢复原样" to p.red
+        }
+        // Not submitted, and part of it may still be in the input box.
+        input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
+            links += "去终端" to onTerminal
+            links += "放回输入框" to { putBack(remote, sid, o); Unit }
+            "没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框里可能还留着一部分，不会自动重发" to p.red
+        }
+        input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
+            // Its images are kept until then; the user decides when to let go.
+            links += "移除此提示" to { Outbox.remove(sid, o); o.images.forEach { it.release() } }
+            "已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发" to p.orangeInk
+        }
+        o.state == Outgoing.State.SENDING -> "◌ 发送中…" to p.muted
+        o.state == Outgoing.State.SENT -> "已送达电脑" to p.muted
+        else -> {
+            links += "重试" to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
+            links += "移除此提示" to { Outbox.remove(sid, o); o.images.forEach { it.release() } }
+            (if (o.state == Outgoing.State.UNKNOWN) "没能确认送达：" else "没能送达：") + o.error to p.red
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+        if (o.images.isNotEmpty()) Row(Modifier.align(Alignment.End).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (img in o.images.take(4)) img.thumb?.let {
-                androidx.compose.foundation.Image(it, null, Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                androidx.compose.foundation.Image(it, null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
             }
         }
-        if (o.text.isNotEmpty()) Box(Modifier.background(p.blueSoft.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text(o.text, style = MaterialTheme.typography.bodyLarge, color = p.fg2)
-        }
-        val agent = remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
-        when {
-            // Nothing was submitted and the terminal is as it was.
-            input == InputStatus.INPUT_STATUS_FAILED -> {
-                Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框已恢复原样", style = MaterialTheme.typography.bodySmall, color = p.red)
-                Row {
-                    TextButton(onClick = { putBack(remote, sid, o) }) { Text("放回输入框") }
-                }
-            }
-            // Not submitted, and part of it may still be in the input box.
-            input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
-                Text("没能发送：" + io.github.lewin671.remoteagent.core.failureText(failure.orEmpty(), agent) + "。电脑的输入框里可能还留着一部分，请去终端处理，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.red)
-                Row {
-                    TextButton(onClick = onTerminal) { Text("去终端 ›") }
-                    TextButton(onClick = { putBack(remote, sid, o) }) { Text("放回输入框") }
-                }
-            }
-            input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
-                Text("已送到终端，但没能确认 ${agentName(remote.state.value.sessions[sid]?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)} 收到，不会自动重发", style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
-                // Its images are kept until then; the user decides when to let go.
-                TextButton(onClick = { Outbox.remove(sid, o); o.images.forEach { it.release() } }) { Text("看过终端了，移除此提示", color = p.muted) }
-            }
-            o.state == Outgoing.State.SENDING -> Text("◌ 发送中…", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            o.state == Outgoing.State.SENT -> Text("已送达电脑", style = MaterialTheme.typography.bodySmall, color = p.muted)
-            else -> {
-                Text(
-                    (if (o.state == Outgoing.State.UNKNOWN) "没能确认送达：" else "没能送达：") + o.error,
-                    style = MaterialTheme.typography.bodySmall, color = p.red,
-                )
-                Row {
-                    TextButton(onClick = { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }) { Text("重试") }
-                    TextButton(onClick = { Outbox.remove(sid, o); o.images.forEach { it.release() } }) { Text("移除此提示", color = p.muted) }
-                }
-            }
-        }
+        MeBubble(o.text.ifEmpty { null }, caption = caption, captionColor = color, failed = failed, links = links, padded = false)
     }
 }
 
@@ -372,24 +340,23 @@ private fun Bottom(
     val m = state.machines[s.machineId]
     if (status == Status.EXITED) {
         val act = rememberAction()
-        StatusCard("会话已结束", buildString {
+        EndCard("会话已结束", buildString {
             append(if (s.info?.statusDetail == "stopped") "会话是被手动结束的。" else "tmux 会话已经不在了。")
             if (m?.online == true) append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
             else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
-        }) {
-            if (m?.online == true) {
-                Button(
-                    onClick = { act.run({ remote.command(s.id, remote.cmd { resumeSession = ResumeSessionRequest.newBuilder().setSessionId(s.id).build() }) }) },
-                    enabled = !act.running && state.conn == ConnState.ONLINE, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                ) { Text(if (act.running) "正在恢复…" else if (act.error.isNotEmpty()) "再试一次" else "恢复会话") }
-            }
-            if (act.error.isNotEmpty()) Text("恢复失败：${act.error}", color = p.red, style = MaterialTheme.typography.bodySmall)
+        }, dot = if (act.running) p.blueBg else p.gray, title2 = if (act.running) "正在恢复…" else null) {
+            if (m?.online == true && !act.running) Btn(
+                if (act.error.isNotEmpty()) "再试一次" else "恢复会话",
+                { act.run({ remote.command(s.id, remote.cmd { resumeSession = ResumeSessionRequest.newBuilder().setSessionId(s.id).build() }) }) },
+                Modifier.fillMaxWidth(), if (act.error.isNotEmpty()) BtnKind.SECONDARY else BtnKind.PRIMARY, enabled = state.conn == ConnState.ONLINE,
+            )
+            if (act.error.isNotEmpty()) Text("恢复失败：${act.error}", color = p.red, style = T.meta, modifier = Modifier.padding(top = 6.dp))
         }
         return
     }
     if (status == Status.OFFLINE) {
         val t = now()
-        StatusCard(
+        EndCard(
             "${machineLabel(state, s.machineId)} 不在线",
             (if ((m?.lastSeenMs ?: 0) > 0) whenText(m!!.lastSeenMs, t) + "断开。" else "") + "电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
         ) {}
@@ -401,105 +368,67 @@ private fun Bottom(
         if (s.info?.planOpen == true && d.plan != null) add(DockItem.Plan(d.plan!!.text))
         if (status == Status.POPUP) add(DockItem.Popup(s.info?.statusDetail.orEmpty()))
     }
-    var typing by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val ime = WindowInsets.ime.getBottom(density) > 0
-    val focus = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
     val first = dockItems.firstOrNull()
     if (first != null) {
-        if (typing && ime) DockCollapsed(first) { keyboard?.hide(); focus.clearFocus() }
-        else when (first) {
+        when (first) {
             is DockItem.Approval -> ApprovalDock(s, first.a, dockItems.size - 1) { onDetail(first.a.approvalId) }
             is DockItem.Question -> QuestionDock(s, first.q, dockItems.size - 1, onTerminal)
             is DockItem.Plan -> PlanDock(s, first.text, dockItems.size - 1, onPlan)
             is DockItem.Popup -> PopupDock(s, first.title, dockItems.size - 1, onTerminal)
         }
     }
-    StatusStrip(state, s, d, status, onTerminal)
-    Composer(state, s, d, status, onFocus = { typing = it })
+    StatusStrip(state, s, d, status)
+    Composer(state, s, d, status, onFocus = {})
 }
 
+/** In place of the message box when nothing can be sent: the session ended, or its computer is away. */
 @Composable
-private fun StatusCard(title: String, text: String, actions: @Composable () -> Unit) {
+private fun EndCard(title: String, text: String, dot: androidx.compose.ui.graphics.Color? = null, title2: String? = null, actions: @Composable () -> Unit) {
     val p = pal
-    Surface(Modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(16.dp), color = p.soft) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
-            actions()
+    Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 20.dp).clip(Radii.MD).background(p.soft).padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Dot(dot ?: p.gray)
+            Spacer(Modifier.width(8.dp))
+            Text(title2 ?: title, style = T.bodyB, color = p.fg)
         }
+        Text(text, style = T.sm, color = p.muted, modifier = Modifier.padding(top = 3.dp, bottom = 10.dp))
+        actions()
     }
 }
 
 /**
- * The line above the message box (client-v2): what runs now (the tool and
- * its timer, or the turn), the queue's count and why it waits, and the
- * interrupt, which stays in the same place whether or not there is a draft.
+ * The line above the message box (client-v7): the queue's count and why it
+ * waits, and 中断, which stays in the same place with or without a draft.
+ * Running tools are told in the chat, where they started.
  */
 @Composable
-private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onTerminal: () -> Unit) {
+private fun StatusStrip(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val online = state.conn == ConnState.ONLINE
-    val frozen = if (online) 0 else state.offlineSinceMs
-    val running = status == Status.RUNNING || d.running
+    // Interrupt while it works; a session waiting for the user has ⋯ for that.
+    val running = status == Status.RUNNING || status == Status.STARTING
     val q = io.github.lewin671.remoteagent.core.queued(d)
-    if (!running && q.isEmpty() && d.tools.isEmpty() && d.background.isEmpty()) return
-    val t = if (online && d.tools.any { it.since > 0 }) now(1000) else System.currentTimeMillis()
-    val tools = toolSummary(d, s.agent(), t, frozen)
+    if (!running && q.isEmpty()) return
     val interrupt = rememberAction()
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        when {
-            tools != null -> Chip("$tools ›") {
-                val oldest = d.tools.minByOrNull { if (it.since > 0) it.since else Long.MAX_VALUE }
-                if (oldest != null) nav.tool(s.id, oldest.seq) else onTerminal()
-            }
-            running -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(p.blue, 6)
-                Spacer(Modifier.width(5.dp))
-                // Claude Code takes a message into the running turn.
-                Text(
-                    if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) "加入当前轮" else "运行中",
-                    style = MaterialTheme.typography.bodySmall, color = p.muted,
-                )
-            }
-        }
-        if (q.isNotEmpty()) {
-            Chip("排队 ${q.size} 条 ›") { nav.queue(s.id) }
-            Text(
-                io.github.lewin671.remoteagent.core.queueWhy(s, status).short,
-                style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        if (running && online) {
-            TextButton(
-                onClick = { interrupt.run({ remote.command(s.id, remote.cmd { this.interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) },
-                enabled = !interrupt.running,
-                modifier = Modifier.heightIn(min = 44.dp),
-            ) {
-                Icon(Icons.Default.Stop, null, tint = p.red, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(if (interrupt.running) "中断中…" else "中断", color = p.red)
-            }
-        }
-    }
-    if (interrupt.error.isNotEmpty()) Text("没能中断：${interrupt.error}", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.red)
+    ComposeStatus(
+        queue = if (q.isNotEmpty()) "排队 ${q.size} 条" else null,
+        why = if (q.isNotEmpty()) io.github.lewin671.remoteagent.core.queueWhy(s, status).short else null,
+        onQueue = { nav.queue(s.id) },
+        interrupt = if (running && online) (if (interrupt.running) "中断中…" else "中断") else null,
+        onInterrupt = { interrupt.run({ remote.command(s.id, remote.cmd { this.interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) },
+        interruptEnabled = !interrupt.running,
+    )
+    if (interrupt.error.isNotEmpty()) Text("没能中断：${interrupt.error}", Modifier.padding(horizontal = 16.dp), style = T.meta, color = p.red)
 }
 
 /**
- * The unified message box (client-v2): the text grows to about six lines,
- * then scrolls; Enter is a new line and ↑ sends. Mode, model and context sit
- * in the same box; with the keyboard up the model and context fold into
- * 设置…, while full access stays in sight. Without the server connection the
- * draft stays and sending and settings wait.
+ * The message box (client-v7): ＋, the text from one line up to about six,
+ * and ↑. 添加图片, the mode, the model and the context are in the ＋ menu;
+ * full access stays in sight under the text, a full context is an orange dot
+ * on ＋. Without the server connection the draft stays and sending and
+ * settings wait.
  */
 @Composable
 internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
@@ -509,9 +438,6 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val online = state.conn == ConnState.ONLINE
     val running = status == Status.RUNNING || d.running
-    val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    var focused by remember { mutableStateOf(false) }
-    val compact = ime && focused
     val images = ImageDrafts.forSession(s.id)
     var keeping by remember { mutableStateOf(false) }
     val machine = state.machines[s.machineId]
@@ -519,98 +445,76 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
     // Images picked before the machine went away go there again once it is back.
     LaunchedEffect(blocked, images.images.size) { if (blocked == null) images.sendAllTo(remote, s.machineId) }
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-            .border(1.dp, p.line, RoundedCornerShape(16.dp)).background(p.soft, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
-    ) {
-        ImageStrip(images, remote, s.machineId, maxImg)
-        androidx.compose.foundation.text.BasicTextField(
-            text, { text = it },
-            Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 10.dp, vertical = 8.dp)
-                .onFocusChanged { focused = it.isFocused; onFocus(it.isFocused) },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = p.fg),
-            cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
-            maxLines = 6,
-            decorationBox = { inner ->
-                Box {
-                    if (text.isEmpty()) Text(
-                        when {
-                            d.tools.isNotEmpty() -> "继续输入，不会打断当前工具…"
-                            d.questions.isNotEmpty() -> "答完后继续…"
-                            else -> "消息"
-                        },
-                        style = MaterialTheme.typography.bodyLarge, color = p.faint,
-                    )
-                    inner()
-                }
-            },
-        )
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val foldSettings = compact || maxWidth / LocalDensity.current.fontScale < 300.dp
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                ImageAddButton(images, remote, s.machineId, blocked, maxImg)
-                val label = io.github.lewin671.remoteagent.core.modeLabel(s)
-                val mode = label?.mode
-                InputControl(
-                    (label?.text ?: "模式") + " ▾", enabled = online,
-                    color = when (mode) { Mode.FULL -> p.red; Mode.PLAN -> p.purple; Mode.AUTO -> p.greenInk; else -> p.fg2 },
-                    bg = when (mode) { Mode.FULL -> p.redSoft; Mode.PLAN -> p.purpleSoft; else -> p.chip },
-                ) { if (online) sheet = 1 }
-                val pc = contextPercent(s)
-                if (foldSettings) {
-                    InputControl("设置…" + if ((pc ?: 0) > 80) " ●" else "", modifier = Modifier.weight(1f), enabled = online, color = if ((pc ?: 0) > 80) p.orangeInk else p.fg2) { sheet = 2 }
-                } else {
-                    // Claude Code records full model IDs; show the alias the list offers.
-                    var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
-                    LaunchedEffect(s.machineId, s.agent()) {
-                        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
-                    }
-                    val raw = s.info?.model.orEmpty()
-                    val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
-                    val effort = s.info?.effort.orEmpty()
-                    Box(Modifier.weight(1f)) {
-                        InputControl(if (model.isEmpty()) "会话设置 ▾" else model + (if (effort.isNotEmpty()) " · $effort" else "") + " ▾", enabled = online, modifier = Modifier.fillMaxWidth()) { sheet = 2 }
-                    }
-                    // Unknown context is left out, never shown as 0%.
-                    pc?.let { InputControl("$it%", enabled = online, color = if (it > 80) p.orangeInk else p.fg2, bg = if (it > 80) p.orangeSoft else p.chip) { if (online) sheet = 2 } }
-                }
-                FilledIconButton(
-                    onClick = {
-                        val msg = text.trim()
-                        if (msg.isEmpty() && images.images.isEmpty()) return@FilledIconButton
-                        // Every image must be on the computer first: never a message with some of them.
-                        if (!images.ready(s.machineId) && images.images.isNotEmpty()) return@FilledIconButton
-                        val picked = images.images.toList()
-                        if (picked.isEmpty()) {
-                            text = ""
-                            Outbox.send(RaApp.instance.scope, remote, s.id, msg)
-                            return@FilledIconButton
-                        }
-                        // Kept on disk with the message until the CLI has it; sent
-                        // only once that worked, and only then out of the draft.
-                        keeping = true
-                        Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
-                            keeping = false
-                            kept.onSuccess {
-                                if (text.trim() == msg) text = ""
-                                images.detach(picked)
-                            }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
-                        }
-                    },
-                    enabled = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
-                    modifier = Modifier.size(44.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = p.blueBg, contentColor = androidx.compose.ui.graphics.Color.White),
-                ) { Icon(Icons.Default.ArrowUpward, "发送") }
-            }
+    val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
+    // Claude Code records full model IDs; show the alias the list offers.
+    var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+    LaunchedEffect(s.machineId, s.agent()) {
+        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+    }
+    val raw = s.info?.model.orEmpty()
+    val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
+    val effort = s.info?.effort.orEmpty()
+    val label = io.github.lewin671.remoteagent.core.modeLabel(s)
+    val pc = contextPercent(s)
+    fun send() {
+        val msg = text.trim()
+        if (msg.isEmpty() && images.images.isEmpty()) return
+        // Every image must be on the computer first: never a message with some of them.
+        if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
+        val picked = images.images.toList()
+        if (picked.isEmpty()) {
+            text = ""
+            Outbox.send(RaApp.instance.scope, remote, s.id, msg)
+            return
+        }
+        // Kept on disk with the message until the CLI has it; sent
+        // only once that worked, and only then out of the draft.
+        keeping = true
+        Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original) { kept ->
+            keeping = false
+            kept.onSuccess {
+                if (text.trim() == msg) text = ""
+                images.detach(picked)
+            }.onFailure { images.notice = "没能保存待发的图，这条没有发出：${errorText(it)}" }
         }
     }
-    if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在上面的按钮里。", Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall, color = p.orangeInk)
+    ComposeBox(
+        text, { text = it },
+        placeholder = when {
+            d.questions.isNotEmpty() -> "排队发送，回答后继续"
+            d.tools.isNotEmpty() -> "消息…"
+            else -> "消息"
+        },
+        canSend = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
+        onSend = ::send,
+        menu = listOfNotNull(
+            MenuEntry("添加图片", enabled = blocked == null, onClick = pick),
+            MenuEntry("模式：${label?.text ?: "未知"} ▾") { sheet = 1 },
+            MenuEntry("模型：" + (if (model.isEmpty()) "会话设置" else model + if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { sheet = 2 },
+            // Unknown context is left out, never shown as 0%.
+            pc?.let { MenuEntry("上下文：$it%") { sheet = 2 } },
+        ),
+        menuEnabled = online,
+        contextHigh = (pc ?: 0) > 80,
+        warning = if (label?.mode == Mode.FULL) "完全放行" else null,
+        onFocus = onFocus,
+        top = { ImageStrip(images, remote, s.machineId, maxImg) },
+    )
+    if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在 ＋ 菜单里。", Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp), style = T.meta, color = p.orangeInk)
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
     }
 }
 
+/** Grey bars while the history loads. */
+@Composable
+fun Skeleton() {
+    val p = pal
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        for (w in listOf(0.7f, 0.9f, 0.5f)) Box(Modifier.padding(vertical = 7.dp).fillMaxWidth(w).height(12.dp).clip(RoundedCornerShape(6.dp)).background(p.chip))
+    }
+}
 
 /**
  * Whether the chat follows new messages. Only the user turns it off, by

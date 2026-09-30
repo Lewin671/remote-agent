@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -112,112 +116,82 @@ fun ManageProjectsScreen() {
     }
     PageScaffold("项目管理") {
         LazyColumn(Modifier.weight(1f)) {
-            item { Text("只管理项目入口，不移动或删除电脑上的目录。", Modifier.padding(horizontal = 16.dp), color = p.muted, style = MaterialTheme.typography.bodyMedium) }
-            if (blocked != null) item { Notice(blocked) }
-            if (elsewhere) item { Notice("项目列表已在另一客户端更新") { elsewhere = false } }
+            item { Text("只管理项目入口，不移动或删除电脑上的目录。", style = T.sm, color = p.muted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)) }
+            if (blocked != null) item { Banner(blocked, Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
+            if (elsewhere) item { Banner("项目列表已在另一客户端更新", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), action = "知道了", onAction = { elsewhere = false }) }
             if (g.pinned.isNotEmpty()) {
-                item { SectionHeader("常用", g.pinned.size) }
-                item { Card(Modifier.padding(horizontal = 12.dp)) { Column { g.pinned.forEachIndexed { i, pr -> ManageRow(state, pr, pinned = true, divider = i > 0, blocked = blocked != null) } } } }
+                item { Label("常用", g.pinned.size) }
+                items(g.pinned, key = { "p" + it.key }) { pr -> ManageRow(state, pr, pinned = true, blocked = blocked != null) }
             }
             if (g.others.isNotEmpty()) {
-                item { SectionHeader("其他项目", g.others.size) }
-                item { Card(Modifier.padding(horizontal = 12.dp)) { Column { g.others.forEachIndexed { i, pr -> ManageRow(state, pr, pinned = false, divider = i > 0, blocked = blocked != null) } } } }
+                item { Label("其他项目", g.others.size) }
+                items(g.others, key = { "o" + it.key }) { pr -> ManageRow(state, pr, pinned = false, blocked = blocked != null) }
             }
             item {
-                Card(Modifier.padding(12.dp), onClick = { nav.hiddenProjects() }) {
-                    Row44 {
-                        Text(if (g.hidden.isEmpty()) "没有已移除的项目" else "已移除 ${g.hidden.size} 个项目", Modifier.weight(1f))
-                        if (g.hidden.isNotEmpty()) Text("查看 ›", color = p.blue)
-                    }
-                }
+                if (g.hidden.isEmpty()) Label("没有已移除的项目")
+                else Label("已移除 ${g.hidden.size} 个项目", action = "查看", onAction = { nav.hiddenProjects() })
             }
-            item {
-                Text(
-                    "常用和已移除项目在账户内同步。断线时可查看缓存，修改暂停；不会影响会话和提醒。",
-                    Modifier.padding(16.dp), color = p.muted, style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            item { Text("常用和已移除项目在账户内同步。断线时可查看缓存，修改暂停；不会影响会话和提醒。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
         }
         UndoBar(remote, state)
     }
 }
 
 @Composable
-private fun Notice(text: String, onDismiss: (() -> Unit)? = null) {
-    val p = pal
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).background(p.orangeSoft, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text, Modifier.weight(1f), color = p.orangeInk, style = MaterialTheme.typography.bodySmall)
-        if (onDismiss != null) TextButton(onClick = onDismiss) { Text("知道了") }
-    }
-}
-
-@Composable
-private fun ManageRow(state: RemoteState, pr: Project, pinned: Boolean, divider: Boolean, blocked: Boolean) {
+private fun ManageRow(state: RemoteState, pr: Project, pinned: Boolean, blocked: Boolean) {
     val p = pal
     val remote = LocalRemote.current
     var menu by remember { mutableStateOf(false) }
     val change = PrefsChanges.states[pr.key]
-    if (divider) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-    Row44 {
-        Avatar(pr.key)
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Avatar(pr.key, 22)
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(pr.name, style = MaterialTheme.typography.titleSmall)
-                if (pinned) {
-                    Spacer(Modifier.width(6.dp))
-                    Text("常用", style = MaterialTheme.typography.labelSmall, color = p.blue)
-                }
-            }
-            Text(shortPath(pr.key), style = MaterialTheme.typography.bodySmall, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(pr.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(shortPath(pr.key), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when (change) {
-                PrefsChanges.State.Saving -> Text("◌ 正在同步…", style = MaterialTheme.typography.bodySmall, color = p.muted)
+                PrefsChanges.State.Saving -> Text("◌ 正在同步…", style = T.meta, color = p.muted)
                 is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("没能保存，列表保持原样：${change.error}", style = MaterialTheme.typography.bodySmall, color = p.red, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { PrefsChanges.run(remote, change.op) }, enabled = !blocked) { Text("重试") }
+                    Text("没能保存，列表保持原样：${change.error}", style = T.meta, color = p.red, modifier = Modifier.weight(1f, fill = false))
+                    Text(" · 重试", style = T.metaB, color = p.blue, modifier = Modifier.clickable(enabled = !blocked) { PrefsChanges.run(remote, change.op) })
                 }
                 null -> {}
             }
         }
-        if (change == PrefsChanges.State.Saving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        else Box {
-            IconButton(onClick = { menu = true }, enabled = !blocked) { Icon(Icons.Default.MoreVert, "更多") }
-            DropdownMenu(menu, { menu = false }) {
-                Text("${pr.name}\n${shortPath(pr.key)}", Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                DropdownMenuItem({ Text(if (pinned) "取消常用" else "设为常用") }, onClick = {
-                    menu = false
-                    PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key))
-                })
-                DropdownMenuItem({ Text("从项目列表移除") }, onClick = {
-                    menu = false
-                    PrefsChanges.run(remote, PrefsOp.Hide(pr.key)) { PrefsChanges.undo = pr.key }
-                })
-            }
+        Box(Modifier.size(44.dp).clickable(enabled = !blocked && change != PrefsChanges.State.Saving) { menu = true }.alpha(if (blocked) .4f else 1f), contentAlignment = Alignment.Center) {
+            Text("⋯", style = T.body, color = p.blue)
         }
     }
+    if (menu) ActionSheet(
+        info = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(pr.name, style = T.metaB, color = p.muted)
+                Text(shortPath(pr.key), style = T.mono, color = p.fg2)
+            }
+        },
+        actions = listOf(
+            SheetAction(if (pinned) "取消常用" else "设为常用") { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) },
+            SheetAction("从项目列表移除", danger = true) { PrefsChanges.run(remote, PrefsOp.Hide(pr.key)) { PrefsChanges.undo = pr.key } },
+        ),
+        onDismiss = { menu = false },
+    )
 }
 
-/** 已移除 xxx · 撤销: a short undo after removing; 已移除的项目 stays the lasting way back. */
+/** 已移除 billing · 撤销, for a while after removing; the removed list keeps it longer. */
 @Composable
 fun UndoBar(remote: Remote, state: RemoteState) {
-    val p = pal
     val key = PrefsChanges.undo ?: return
     LaunchedEffect(key) {
         delay(8_000)
         if (PrefsChanges.undo == key) PrefsChanges.undo = null
     }
-    Column(Modifier.fillMaxWidth().padding(12.dp).background(p.fg, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Text("${projectName(key)} 的会话和历史仍然保留。有新的待处理项时，主页仍会显示。", color = p.card, style = MaterialTheme.typography.bodySmall)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("已移除 ${projectName(key)}", color = p.card, modifier = Modifier.weight(1f))
-            TextButton(onClick = {
-                PrefsChanges.undo = null
-                PrefsChanges.run(remote, PrefsOp.Unhide(key))
-            }, enabled = prefsBlocked(state) == null) { Text("撤销", color = p.blueBg) }
-        }
-    }
+    Banner(
+        "已移除 ${projectName(key)}", Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        action = if (prefsBlocked(state) == null) "撤销" else null,
+        onAction = {
+            PrefsChanges.undo = null
+            PrefsChanges.run(remote, PrefsOp.Unhide(key))
+        },
+    )
 }
 
 /** 已移除的项目: restore brings a project back among the others; it starts or resumes nothing. */
@@ -230,36 +204,23 @@ fun HiddenProjectsScreen() {
     val blocked = prefsBlocked(state)
     PageScaffold("已移除的项目") {
         LazyColumn(Modifier.weight(1f)) {
-            item { Text("恢复只让项目重新出现在列表里，不会启动或恢复会话。", Modifier.padding(horizontal = 16.dp), color = p.muted, style = MaterialTheme.typography.bodyMedium) }
-            if (blocked != null) item { Notice(blocked) }
-            if (hidden.isEmpty()) item { Text("没有已移除的项目", Modifier.padding(16.dp), color = p.muted) }
-            else item {
-                Card(Modifier.padding(12.dp)) {
-                    Column {
-                        hidden.forEachIndexed { i, pr ->
-                            if (i > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = p.line)
-                            val change = PrefsChanges.states[pr.key]
-                            Row44 {
-                                Avatar(pr.key)
-                                Column(Modifier.weight(1f)) {
-                                    Text(pr.name, style = MaterialTheme.typography.titleSmall)
-                                    Text(shortPath(pr.key), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                                    if (change is PrefsChanges.State.Failed) Text("没能保存：${change.error}", style = MaterialTheme.typography.bodySmall, color = p.red)
-                                }
-                                if (change == PrefsChanges.State.Saving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                                else TextButton(onClick = { PrefsChanges.run(remote, PrefsOp.Unhide(pr.key)) }, enabled = blocked == null) { Text("恢复") }
-                            }
-                        }
+            item { Text("恢复只让项目重新出现在列表里，不会启动或恢复会话。", style = T.sm, color = p.muted, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)) }
+            if (blocked != null) item { Banner(blocked, Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
+            if (hidden.isEmpty()) item { PageNote("没有已移除的项目") }
+            items(hidden, key = { it.key }) { pr ->
+                val change = PrefsChanges.states[pr.key]
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Avatar(pr.key, 22)
+                    Column(Modifier.weight(1f)) {
+                        Text(pr.name, style = T.bodyB, color = p.fg)
+                        Text(shortPath(pr.key), style = T.meta, color = p.muted)
+                        if (change is PrefsChanges.State.Failed) Text("没能保存：${change.error}", style = T.meta, color = p.red)
                     }
+                    if (change == PrefsChanges.State.Saving) Text("恢复中…", style = T.body, color = p.muted)
+                    else TextAction("恢复", { PrefsChanges.run(remote, PrefsOp.Unhide(pr.key)) }, enabled = blocked == null, style = T.body)
                 }
             }
-            item {
-                Text(
-                    "已移除的项目不出现在项目列表和新建选择器中；进行中会话、待处理卡片和通知入口仍然可访问。",
-                    Modifier.padding(16.dp), color = p.muted, style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            item { Spacer(Modifier.height(16.dp)) }
+            item { Text("已移除的项目不出现在项目列表和新建选择器中；进行中会话、待处理卡片和通知入口仍然可访问。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp)) }
         }
     }
 }
