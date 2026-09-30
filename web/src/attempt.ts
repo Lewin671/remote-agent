@@ -11,11 +11,13 @@ export function expiredError(e: unknown): boolean {
   return e instanceof CommandError && e.code === "deadline_exceeded";
 }
 
-/** Whether an attempt's outcome stays unknown after error. A retry of an
- * unknown one that comes back expired says nothing new: the daemon forgets
- * a request a minute after its deadline, so the first send may have run. */
+/** Whether an attempt's outcome stays unknown after error. Once a
+ * request's outcome was unknown, no later failure says it did not run:
+ * not an expired answer (the daemon forgets a request a minute after its
+ * deadline), not an offline machine or a network error. Only the daemon's
+ * own answer for the request settles it. */
 export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
-  return uncertain(error) || (wasUnknown && expiredError(error));
+  return uncertain(error) || (wasUnknown && (expiredError(error) || (error instanceof CommandError && error.code === "unavailable")));
 }
 
 export class Attempt<P> {

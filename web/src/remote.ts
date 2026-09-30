@@ -43,6 +43,7 @@ import { CommandResultSchema, CommandSchema, MachineMetaSchema, TerminalFrameSch
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
+import { stillUnknown } from "./attempt";
 import { findModel, type Outgoing } from "./model";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
@@ -616,6 +617,9 @@ export class Remote {
       CommandSchema,
       create(CommandSchema, { kind: cmd }),
     );
+    // Once a try may have reached the daemon, no later failure of this
+    // request can say it did not run.
+    let mayHaveRun = false;
     for (let attempt = 0; ; attempt++) {
       try {
         const res = await this.api.forward({ machineId, command: env });
@@ -635,12 +639,16 @@ export class Remote {
           await this.login();
           continue;
         }
+        // DeadlineExceeded is also the server's word for a daemon that gave
+        // no result: it may have run.
         const unknown = [Code.DeadlineExceeded, Code.Unknown, Code.Internal, Code.Canceled].includes(ce.code);
+        if (unknown) mayHaveRun = true;
         if (unknown && attempt < 3 && Date.now() + 2000 < deadline) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
-        if (ce.code === Code.Unavailable) throw new CommandError("unavailable", "电脑不在线，指令没有发出");
+        if (ce.code === Code.Unavailable)
+          throw mayHaveRun ? new CommandError("unknown", "电脑断开了，不确定指令是否已经执行") : new CommandError("unavailable", "电脑不在线，指令没有发出");
         if (unknown) throw new CommandError("unknown", "连接超时");
         throw e;
       }
@@ -652,13 +660,14 @@ export class Remote {
    * reaching the computer is a new one used; the send ID still keeps the
    * daemon from queueing the text twice. Returns the slot that got an
    * answer. */
-  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot): Promise<RequestSlot> {
+  async sendMessage(sid: string, text: string, sendId: string, slot: RequestSlot, wasUnknown = false): Promise<RequestSlot> {
     const cmd: CommandKind = { case: "send", value: { sessionId: sid, text, requestId: sendId } };
     try {
       await this.command(sid, cmd, slot);
       return slot;
     } catch (e) {
-      if (!(e instanceof CommandError) || e.code !== "deadline_exceeded" || Date.now() < slot.deadline) throw e;
+      // A send whose outcome was unknown is never sealed afresh.
+      if (wasUnknown || !(e instanceof CommandError) || e.code !== "deadline_exceeded" || Date.now() < slot.deadline) throw e;
       const fresh = newSlot();
       await this.command(sid, cmd, fresh);
       return fresh;
@@ -709,11 +718,13 @@ export class Remote {
   private async deliver(sid: string, o: Outgoing) {
     this.patchOut(sid, o.sendId, { status: "sending", error: undefined });
     try {
-      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline });
+      const slot = await this.sendMessage(sid, o.text, o.sendId, { requestId: o.requestId, deadline: o.deadline }, o.unknown);
       this.patchOut(sid, o.sendId, { status: "sent", ...slot });
     } catch (e) {
-      // The send ID still keeps the daemon from queueing the text twice.
-      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e), ...(uncertain(e) ? {} : newSlot()) });
+      // Once unknown, it stays unknown and keeps its request (attempt.ts);
+      // the send ID also keeps the daemon from queueing the text twice.
+      const still = stillUnknown(e, o.unknown ?? false);
+      this.patchOut(sid, o.sendId, { status: "failed", error: errorText(e), unknown: still, ...(still ? {} : newSlot()) });
     }
   }
 

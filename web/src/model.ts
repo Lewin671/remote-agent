@@ -674,6 +674,8 @@ export interface Outgoing {
   text: string;
   status: "sending" | "sent" | "failed";
   error?: string;
+  // A try may have reached the computer: retries keep this request.
+  unknown?: boolean;
 }
 
 export type Phase =

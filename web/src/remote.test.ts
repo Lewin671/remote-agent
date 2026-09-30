@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { expect, it } from "vitest";
-import { CommandError, COMMAND_TTL_MS, newSlot, uncertain } from "./remote";
+import { expect, it, vi } from "vitest";
+import { CommandError, COMMAND_TTL_MS, newSlot, Remote, uncertain, type RequestSlot } from "./remote";
 
 it("reuses a request slot only when the outcome is unknown", () => {
   // Timed out or cut off: the command may have run; a retry must reuse
@@ -20,4 +20,47 @@ it("gives each slot a fresh ID and a deadline a minute out", () => {
   expect(a.requestId).not.toBe(b.requestId);
   expect(a.requestId).toMatch(/^[0-9a-f]{32}$/);
   expect(a.deadline).toBe(1000 + COMMAND_TTL_MS);
+});
+
+it("reports a command unknown when a retry finds the machine gone", async () => {
+  // A Remote whose server answers "no result from the machine" and then
+  // "machine offline".
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  class Probe extends Remote {
+    constructor() {
+      super({ server: "https://ra.example.com", root: key, devicePrivate: key, deviceId: "d" }, { wrap: key, meta: key, command: key });
+    }
+  }
+  const r = new Probe();
+  const replies = [new ConnectError("no reply from the machine in time", Code.DeadlineExceeded), new ConnectError("machine is offline", Code.Unavailable)];
+  (r as unknown as { api: object }).api = {
+    forward: async () => {
+      throw replies.shift();
+    },
+  };
+  // Between the two tries forward waits a second.
+  const e = await r.machineCommand("m", { case: "listModels", value: {} }).catch((x) => x);
+  expect(e).toBeInstanceOf(CommandError);
+  expect((e as CommandError).code).toBe("unknown");
+}, 10_000);
+
+it("keeps a message of unknown outcome on its request when the machine is then offline", async () => {
+  const { DemoRemote } = await import("./dev/demo");
+  const r = DemoRemote.create(new URLSearchParams());
+  const replies = [new CommandError("unknown", "连接超时"), new CommandError("unavailable", "电脑不在线，指令没有发出")];
+  const seen: string[] = [];
+  r.command = async (_s: string, _c: unknown, slot?: RequestSlot) => {
+    seen.push(slot!.requestId);
+    throw replies.shift() ?? new CommandError("unavailable", "电脑不在线，指令没有发出");
+  };
+  r.send("s-idle", "hi");
+  await vi.waitFor(() => expect(r.outbox("s-idle")[0].status).toBe("failed"));
+  const o = r.outbox("s-idle")[0];
+  r.retrySend("s-idle", o.sendId);
+  await vi.waitFor(() => expect(seen).toHaveLength(2));
+  await vi.waitFor(() => expect(r.outbox("s-idle")[0].status).toBe("failed"));
+  r.retrySend("s-idle", o.sendId);
+  await vi.waitFor(() => expect(seen).toHaveLength(3));
+  expect(new Set(seen).size).toBe(1);
+  expect(r.outbox("s-idle")[0].unknown).toBe(true);
 });

@@ -563,3 +563,27 @@ it("shows a failed call's exit code beside its approval", () => {
   expect(row.textContent).toContain("退出码 7");
   expect(row.textContent).toContain("已允许");
 });
+
+it("keeps an answer of unknown outcome unknown when its retry finds the machine offline", async () => {
+  const r = demo();
+  const slots: string[] = [];
+  const answers = [new CommandError("unknown", "连接超时"), new CommandError("unavailable", "电脑不在线，指令没有发出")];
+  r.command = async (_s: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "answerQuestion") {
+      slots.push(slot!.requestId);
+      const e = answers.shift();
+      if (e) throw e;
+    }
+    return create(CommandResultSchema, {});
+  };
+  mount(<ClaudeAsk r={r} />);
+  await click(button(/按 IP/));
+  await click(button("提交 1 项"));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(slots).toHaveLength(2));
+  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await click(button("重试"));
+  await vi.waitFor(() => expect(slots).toHaveLength(3));
+  expect(new Set(slots).size).toBe(1);
+});

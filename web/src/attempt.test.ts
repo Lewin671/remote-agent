@@ -49,3 +49,13 @@ it("takes a first send refused as expired as not run", () => {
   a.settle(new CommandError("deadline_exceeded", "check the device clocks"));
   expect(a.frozen).toBe(false);
 });
+
+it("keeps an unknown start unknown when its retry finds the machine offline", () => {
+  const a = new Attempt<string>();
+  const first = a.next("x");
+  a.settle(new CommandError("unknown", "连接超时"));
+  a.next("x");
+  a.settle(new CommandError("unavailable", "电脑不在线，指令没有发出"));
+  expect(a.frozen).toBe(true);
+  expect(a.next("y").slot).toBe(first.slot);
+});
