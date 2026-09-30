@@ -225,6 +225,10 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 没做或没验证：Codex 生成图卡片、大图过期和校验失败、取消排队的消息（没能在真实 CLI 上造出排队）、两个客户端同时操作同一会话的来源显示（只有一个客户端）、原图的 JPEG 无损旋转（带方向标记的原图以最高画质重新编码，界面上注明）、API 26–28 上保存图片所需的存储权限请求；Claude Code 额度等 daemon 采集后接入。
 
+**网页进度**（2026-09-30）：v2 的全部画面已按 client-v3 实现并推到 main（网页终端维持 v2 的样子），规则在 `web/src/model.ts`（工具运行与待确认、队列、切换 CLI、来源）、`prefs.ts`（项目偏好的操作与冲突重做）、`devices.ts`、`quota.ts`、`attach.ts`（待发图片）、`imageview.ts` 和 `images.ts`（选图处理：转正、去元数据、压缩、JPEG 无损旋转，对 jpegtran `-perfect` 逐个系数比对），`pnpm test` 覆盖这些规则和对 Go `v2-vectors.json` 的签名、新用途密钥与信封。`/?demo` 可以看到所有画面和状态（`&prefs=fail|unsupported`、`&devices=unsupported` 等见 `web/src/dev/demo.ts`）。本机 Chrome 上逐屏对照过 320 / 390 / 900 / 1280 宽、亮色和暗色；用隔离的 server、daemon 和 tmux 连真实 CLI（Claude Code 2.1.285 haiku，Codex 0.159.0 GPT-6-Luna low）验过：新项目选目录后新建两个 CLI 的会话、信任弹窗用按键栏处理；耗时 Bash 在结果返回前显示命令和计时；Claude Code `Read` 与 Codex `view_image` 的预览和大图（显示版解密后按文件头核对）；带方向标记和 GPS 的 JPEG 以原图发出后电脑上是转正且没有 EXIF 的文件、模型读出图案；新建会话第一条消息带图；终端里留着草稿时消息排队，从队列取消；两个网页客户端（不同来源即不同设备）用配对码加入、改名同步、另一端发的排队消息显示发送者和全文、另一端取消后本端提示、另一端允许的审批显示「已允许 · 第二浏览器」、项目偏好改动实时推到另一端；本地 `remote-agent send` 的消息标为「本地终端」。
+- 在真实 CLI 上造出排队的办法：先在终端里敲一段不发送的草稿，再从客户端发消息（daemon 不覆盖草稿，消息留在队列里）
+- 网页没做或没验证：Codex 生成图的真实数据（只用演示数据看过）、手机真机上的键盘和系统选图、分享面板；图片被丢弃（切换原图、换机器、移除）时没有 `AbortImageUpload`，未完成的传输由 daemon 一小时后清理
+
 - 新建卡片直接选择 CLI；机器与审批模式完整显示；输入期间配置稳定，切换 CLI 验证模型、强度和模式。
 - 统一输入区、独立中断入口、键盘精简设置行、上下文与模型面板、队列完整查看和取消反馈。
 - Claude Code 多选与长问题、计划操作差异、不可用模式、按 CLI 的设备默认设置、终端左右方向键。
@@ -245,6 +249,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 
 - 客户端切换 fast 模式是否要做（优先级低）
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[architecture §17](architecture.md#17-会话里的图片)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
+- 新会话的默认模式没在 daemon 设置里指定、沿用 CLI 自己的配置时，客户端不知道它是什么（实测 Claude Code 本机 `defaultMode` 是 bypass，新建卡片只能写「默认审批」，启动前没有完全放行的确认）；需要 daemon 在设置或机器元数据里报出各 CLI 实际的默认模式，客户端才能按「新 CLI 默认完全放行仍需确认」处理
 - 图片过期后要不要支持从电脑重新取（daemon 从 rollout 或 transcript 里重新编码上传）；需要机器在线，也要一个新的指令
 
 **Android App**
