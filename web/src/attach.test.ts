@@ -99,3 +99,29 @@ it("tells the machine to drop an image that was removed or replaced", async () =
   tray.clear();
   expect(aborted).toEqual(["mac-1", "mac-2"]);
 });
+
+it("never sends the compressed bytes when 原图 is on and the original failed (review B7)", async () => {
+  const uploaded: number[] = [];
+  const tray = new Tray(
+    async (_f, original) => {
+      if (original) throw new Error("图片超过 20 MB");
+      return png(10);
+    },
+    async (_m, p) => {
+      uploaded.push(p.bytes.length);
+      return "id" + uploaded.length;
+    },
+    () => undefined,
+  );
+  tray.machineId = "mac";
+  tray.add([file("a")]);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  tray.setOriginal(true);
+  await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
+  tray.retry(tray.items[0].key);
+  await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
+  tray.retarget("vps");
+  await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
+  expect(tray.ready()).toBe(false);
+  expect(uploaded).toEqual([10]);
+});

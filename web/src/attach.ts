@@ -23,6 +23,7 @@ export interface TrayItem {
   state: "preparing" | "uploading" | "done" | "failed";
   progress: number; // 0..1 of the upload
   prepared?: Prepared;
+  preparedOriginal?: boolean; // which way prepared was made
   thumb?: Blob; // what the tray shows: the prepared image once there is one
   imageId?: string;
   machineId?: string; // where imageId is
@@ -92,13 +93,18 @@ export class Tray {
   retarget(machineId: string) {
     if (machineId === this.machineId) return;
     this.machineId = machineId;
-    for (const i of this.items) void this.run(i, !i.prepared);
+    for (const i of this.items) void this.run(i, !this.fresh(i));
     this.onChange();
   }
 
   retry(key: string) {
     const i = this.items.find((x) => x.key === key);
-    if (i) void this.run(i, !i.prepared);
+    if (i) void this.run(i, !this.fresh(i));
+  }
+
+  /** Whether an item's prepared bytes are the kind 原图 now asks for. */
+  private fresh(i: TrayItem): boolean {
+    return !!i.prepared && i.preparedOriginal === this.original;
   }
 
   /** After sending: the images are the message's now, nothing to drop. */
@@ -150,11 +156,13 @@ export class Tray {
     item.abort?.();
     item.abort = undefined;
     try {
-      if (prepare || !item.prepared) {
-        set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
-        const p = await this.prepare(item.file, this.original);
+      if (prepare || !this.fresh(item)) {
+        // What was prepared the other way is never sent in its place.
+        const original = this.original;
+        set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
+        const p = await this.prepare(item.file, original);
         if (!current()) return;
-        set({ prepared: p, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
+        set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
       set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, machineId: undefined });
       const id = await this.upload(
