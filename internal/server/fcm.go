@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,11 +48,26 @@ type fcmTransient struct {
 func (e *fcmTransient) Error() string { return e.err.Error() }
 func (e *fcmTransient) Unwrap() error { return e.err }
 
-// fcmAttempts bounds retries of one message; fcmMaxWait caps a wait.
+// fcmAttempts bounds retries of one message; fcmMaxBackoff caps our own
+// backoff between them, never a wait FCM asks for.
 const (
-	fcmAttempts = 4
-	fcmMaxWait  = 30 * time.Second
+	fcmAttempts   = 4
+	fcmMaxBackoff = 30 * time.Second
 )
+
+// retryAfter reads a Retry-After header: seconds or an HTTP date.
+func retryAfter(v string, now time.Time) time.Duration {
+	if v == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(v); err == nil {
+		return max(0, time.Duration(secs)*time.Second)
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		return max(0, t.Sub(now))
+	}
+	return 0
+}
 
 type fcm struct {
 	projectID string
@@ -197,11 +213,7 @@ func (f *fcm) send(ctx context.Context, token string, data map[string]string, tt
 		f.mu.Unlock()
 		return &fcmTransient{err: err}
 	case res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500:
-		t := &fcmTransient{err: err}
-		if secs, e := strconv.Atoi(res.Header.Get("Retry-After")); e == nil && secs > 0 {
-			t.after = time.Duration(secs) * time.Second
-		}
-		return t
+		return &fcmTransient{err: err, after: retryAfter(res.Header.Get("Retry-After"), time.Now())}
 	}
 	return err
 }
@@ -217,11 +229,17 @@ func (f *fcm) sendRetrying(ctx context.Context, token string, data map[string]st
 		if !errors.As(err, &t) || attempt == fcmAttempts-1 {
 			return err
 		}
+		// FCM's Retry-After is a minimum; only our own backoff is capped.
 		wait := t.after
 		if wait == 0 {
-			wait = f.retryBase << attempt
+			wait = min(f.retryBase<<attempt, fcmMaxBackoff)
 		}
-		wait = min(wait, fcmMaxWait)
+		// Retrying earlier than FCM allows would only fail again: give up
+		// when the wait does not fit in the time left.
+		if dl, ok := ctx.Deadline(); ok && time.Until(dl) < wait {
+			slog.Warn("fcm push: retry would come after the deadline", "wait", wait.Round(time.Second))
+			return err
+		}
 		select {
 		case <-ctx.Done():
 			return err

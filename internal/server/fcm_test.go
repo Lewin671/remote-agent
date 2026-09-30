@@ -37,9 +37,12 @@ type fakeFCM struct {
 	sent   []map[string]string
 	gone   bool
 	tokens int
-	// Statuses to answer the next sends with, before succeeding.
-	fail    []int
-	account string
+	// Statuses to answer the next sends with, before succeeding, and the
+	// Retry-After to send with them.
+	fail       []int
+	retryAfter string
+	sendTimes  []time.Time
+	account    string
 }
 
 func newFakeFCM(t *testing.T) *fakeFCM {
@@ -79,9 +82,13 @@ func (f *fakeFCM) serve(w http.ResponseWriter, r *http.Request) {
 		f.tokens++
 		json.NewEncoder(w).Encode(map[string]any{"access_token": fmt.Sprintf("access-%d", f.tokens), "expires_in": 3600})
 	case "/send":
+		f.sendTimes = append(f.sendTimes, time.Now())
 		if len(f.fail) > 0 {
 			code := f.fail[0]
 			f.fail = f.fail[1:]
+			if f.retryAfter != "" {
+				w.Header().Set("Retry-After", f.retryAfter)
+			}
 			w.WriteHeader(code)
 			return
 		}
@@ -275,5 +282,52 @@ func TestFCMRetriesTransientFailures(t *testing.T) {
 	fake.gone = true
 	if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); !errors.Is(err, errFCMToken) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestFCMRespectsRetryAfter(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	for v, want := range map[string]time.Duration{
+		"120": 120 * time.Second,
+		"0":   0,
+		now.Add(90 * time.Second).Format(http.TimeFormat): 90 * time.Second,
+		"garbage": 0,
+		"":        0,
+	} {
+		if got := retryAfter(v, now); got != want {
+			t.Errorf("retryAfter(%q) = %v, want %v", v, got, want)
+		}
+	}
+
+	fake := newFakeFCM(t)
+	f, err := loadFCM(fake.account)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.sendURL = fake.srv.URL + "/send"
+	f.retryBase = time.Millisecond
+
+	// A wait longer than our own backoff cap is honoured, not shortened.
+	fake.fail = []int{http.StatusTooManyRequests}
+	fake.retryAfter = "1"
+	if err := f.sendRetrying(context.Background(), "tok", map[string]string{}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if gap := fake.sendTimes[1].Sub(fake.sendTimes[0]); gap < time.Second {
+		t.Fatalf("retried after %v, before FCM's Retry-After", gap)
+	}
+
+	// A wait that does not fit in the time left ends the retries at once.
+	fake.fail = []int{http.StatusServiceUnavailable, http.StatusServiceUnavailable}
+	fake.retryAfter = "120"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	before := len(fake.sendTimes)
+	start := time.Now()
+	if err := f.sendRetrying(ctx, "tok", map[string]string{}, time.Minute); err == nil {
+		t.Fatal("expected an error")
+	}
+	if n := len(fake.sendTimes) - before; n != 1 || time.Since(start) > time.Second {
+		t.Fatalf("%d sends in %v; want one and no early retry", n, time.Since(start))
 	}
 }
