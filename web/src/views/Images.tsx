@@ -9,6 +9,7 @@ import { ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { hhmm } from "../model";
 import { aspectOf, baseName, extOf, matchesFormat, mimeOf, sizeText, type SessionImage } from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
+import { useRemote } from "../ui";
 
 /** Opens the viewer at a picture; provided by the session page. */
 export const OpenImage = createContext<(ref: ImageRef) => void>(() => undefined);
@@ -118,6 +119,7 @@ type Load = { kind: "idle" | "loading" | "offline" | "error" | "preview-only" | 
 
 /** Fetches the display copy of the picture shown, once per picture. */
 function useDisplay(remote: Remote, sid: string, img: SessionImage | undefined, attempt: number): Load {
+  useRemote(remote);
   const [state, setState] = useState<Load>({ kind: "idle" });
   useEffect(() => {
     if (!img) return;
@@ -136,7 +138,8 @@ function useDisplay(remote: Remote, sid: string, img: SessionImage | undefined, 
     return () => {
       alive = false;
     };
-  }, [remote, sid, img, attempt]);
+    // Offline, it waits for the connection and then fetches by itself.
+  }, [remote, sid, img, attempt, remote.conn === "online"]); // eslint-disable-line react-hooks/exhaustive-deps
   return state;
 }
 

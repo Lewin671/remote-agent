@@ -1413,3 +1413,20 @@ describe("an image-only new-session draft (review B8)", () => {
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
   });
 });
+
+it("loads a picture opened offline once the connection is back (review B11)", async () => {
+  const r = DemoRemote.create(new URLSearchParams("conn=reconnecting"));
+  r.start();
+  const s = r.sessions.get("s-img-claude")!;
+  for (const e of r.events("s-img-claude"))
+    if (e.kind.case === "toolCall" || e.kind.case === "userMessage") for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(host.querySelector<HTMLButtonElement>('.pic[aria-label="图片 old.png"]')!);
+  const note = () => host.querySelector(".viewer .vnote")?.textContent;
+  expect(note()).toBe("连上后加载");
+  act(() => {
+    r.conn = "online";
+    r.touch();
+  });
+  await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
+});
