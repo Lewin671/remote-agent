@@ -180,7 +180,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **切换审批模式**：询问、自动、完全放行分别是 `/permissions` 菜单的 1、2、3，按数字直接选中；完全放行还要在 `Enable full access?` 里按 1 确认，以屏幕出现 `Permission selection requested` 为成功。计划模式用 Shift+Tab 切换，以状态栏右侧的 `Plan mode` 判断当前状态。运行中也能切，下一轮起生效（notes §4）。同样先记 `SettingsChanged`
 - **压缩上下文**：空闲时输入 `/compact`。压缩在 rollout 里是一条 `ContextCompaction`，无论是客户端发起的还是终端里敲的，都解析成「上下文已压缩」事件
 - **计划**：Plan 模式下模型给出计划后，rollout 里的 `Plan` 条目解析成 `PlanProposed` 事件，屏幕上的 `Implement this plan?` 让会话处于「计划待批准」，客户端显示计划卡片，回答时注入 1、2 或 3（notes §4）
-- **工具开始**：rollout 在调用工具时先写一条 `custom_tool_call`，完成后才有 `item_completed`；前者解析成 `ToolStarted`，客户端据此显示运行中的工具和耗时。两条记录没有共同的 ID，按先后顺序配对
+- **工具开始**：rollout 在调用工具时先写一条 `custom_tool_call`（或 `function_call`），结束时写同一个 `call_id` 的 `*_call_output`，中间可能有描述它做了什么的 `item_completed`（如 `CommandExecution`）。开始解析成带 `call_id` 的 `ToolStarted`；期间完成的第一个条目用这个 `call_id` 报成 `ToolCall`，同一次调用的后续条目用 `<call_id>#2` 这样的 ID；没有任何条目的调用（很多 `exec` 就是这样）在输出到来时补一条 `ToolCall`，保证每个开始都有结束。`wait` 是在等之前让出的 exec 单元（输出以 `Script running with cell ID N` 开头），不算新的调用，它的输出结束的是那个 exec
 - **菜单操作的共同做法**：和注入一样拿控制锁、暂存本地按键，并在操作期间续期暂存；每一步都先确认画面再按键，等不到预期画面就按 Esc 退出。操作期间暂停状态检测，免得把自己打开的菜单当成弹窗
 - **命令参数**：Go 代码调用 tmux 和 codex 时一律传参数数组，不拼 shell 字符串
 
@@ -342,7 +342,7 @@ daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取�
 
 ### 工具执行反馈
 
-客户端收到 ToolStarted 后立即展示命令摘要和调用耗时，工具未完成时不能收入完成调用分组；等待审批与工具处理中分开显示。耗时从 daemon 的事件时间计算，各端使用同一起点，未知起点不猜时间；客户端断线时冻结读数并标「等待同步」。Claude Code 按调用 ID 配对开始与结果；Codex 当前开始事件没有可靠的共同 ID，沿用现有保守配对，不能据此生成不存在的单工具停止能力。
+客户端收到 ToolStarted 后立即展示命令摘要和调用耗时，工具未完成时不能收入完成调用分组；等待审批与工具处理中分开显示。耗时从 daemon 的事件时间计算，各端使用同一起点，未知起点不猜时间；客户端断线时冻结读数并标「等待同步」。Claude Code 按调用 ID 配对开始与结果；Codex 也按 `call_id` 配对（v2 以前的 daemon 没有，仍按先后顺序），但这不代表能单独停止某个工具。
 
 工具开始事件与最终结果不等于 stdout 的实时流。当前聊天没有可靠中间输出时显示「尚未收到工具结果」，提供终端入口；不识别屏幕来生成结构化进度。工具调用返回、后台进程结束和一轮对话结束也是不同状态；明确转到后台但没有可靠完成事件时写「后台状态待确认」。中断只中断本轮，不保证终止后台命令（Codex 的实测见 [codex-notes.md §8](codex-notes.md#8-中断和运行中的输入)）；后台管理保留在原生终端中。
 

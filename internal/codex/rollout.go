@@ -33,10 +33,27 @@ type Parser struct {
 	generated map[string]bool
 	// found are the images of the last Parse.
 	found []agent.FoundImage
+	// calls are tool calls started and not yet ended, by call ID; cells
+	// maps a running exec cell to its call; current is the call running
+	// now, which items completed meanwhile belong to.
+	calls   map[string]*openCall
+	cells   map[string]string
+	waits   map[string]string // wait call ID -> the call it waits for
+	current string
+}
+
+// openCall is a tool call between its start and its output.
+type openCall struct {
+	title string
+	// reported: a ToolCall with this call's ID went out.
+	reported bool
+	items    int
 }
 
 // NewParser returns a Parser.
-func NewParser() *Parser { return &Parser{questions: map[string]bool{}, generated: map[string]bool{}} }
+func NewParser() *Parser {
+	return &Parser{questions: map[string]bool{}, generated: map[string]bool{}, calls: map[string]*openCall{}, cells: map[string]string{}, waits: map[string]string{}}
+}
 
 // Images returns the images found by the last Parse.
 func (p *Parser) Images() []agent.FoundImage {
@@ -63,6 +80,18 @@ func (p *Parser) Replay(e *pb.Event) {
 	}
 	if g := e.GetImageGenerated(); g != nil && g.CallId != "" {
 		p.generated[g.CallId] = true
+	}
+	if t := e.GetToolStarted(); t != nil && t.CallId != "" {
+		p.calls[t.CallId] = &openCall{title: t.Title}
+		p.current = t.CallId
+	}
+	if c := e.GetToolCall(); c != nil {
+		if oc := p.calls[c.CallId]; oc != nil {
+			oc.reported = true
+		}
+	}
+	if e.GetTurnEnded() != nil {
+		p.endCalls()
 	}
 }
 
@@ -121,6 +150,7 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}), nil
 	case "task_complete":
 		flushed := p.flushView()
+		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			DurationMS int64  `json:"duration_ms"`
@@ -133,6 +163,7 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		}}})...), nil
 	case "turn_aborted":
 		flushed := p.flushView()
+		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
 			Reason     string `json:"reason"`
@@ -147,7 +178,13 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 	case "token_count":
 		return tokenCount(raw)
 	case "item_completed":
-		return p.itemCompleted(raw)
+		evs, err := p.itemCompleted(raw)
+		for _, e := range evs {
+			if tc := e.GetToolCall(); tc != nil {
+				p.claim(tc)
+			}
+		}
+		return evs, err
 	}
 	return nil, nil
 }
@@ -525,14 +562,14 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 		}
 		return one("", p.generatedImage(m.ID, m.RevisedPrompt, m.Result, "")), nil
 	case "custom_tool_call_output":
-		return p.toolOutputImages(m.CallID, m.Output), nil
+		return p.callOutput(m.CallID, m.Output), nil
 	case "custom_tool_call":
-		// Written when the call starts; the item_completed record comes
-		// when it ends.
-		return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: toolTitle(m.Name, m.Input)}}}), nil
+		// Written when the call starts; its output record comes when it
+		// ends, with items for what it did in between.
+		return p.startCall(m.CallID, m.Name, m.Input), nil
 	case "function_call":
 		if m.Name != "request_user_input" && m.Name != "request_user_input_async" {
-			return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: toolTitle(m.Name, m.Arguments)}}}), nil
+			return p.startCall(m.CallID, m.Name, m.Arguments), nil
 		}
 		q, err := ParseQuestions(m.CallID, m.Name, []byte(m.Arguments))
 		if err != nil {
@@ -543,7 +580,7 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 	case "function_call_output":
 		answers, ok := parseAnswers(m.Output)
 		if !ok {
-			return p.toolOutputImages(m.CallID, m.Output), nil
+			return p.callOutput(m.CallID, m.Output), nil
 		}
 		return one("", &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{
 			QuestionId: m.CallID, Answers: answers,
@@ -810,4 +847,115 @@ func (p *Parser) generatedImage(id, prompt, result, path string) *pb.Event {
 	}
 	ref := p.found1(&pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_GENERATED, Path: path}, result)
 	return &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: id, RevisedPrompt: prompt, Images: []*pb.ImageRef{ref}}}}
+}
+
+// cellRE matches an exec that yielded before its script finished.
+var cellRE = regexp.MustCompile(`^Script running with cell ID (\S+)`)
+
+// startCall reports a tool call's start, under its call ID. A "wait" for
+// a running exec cell is not a call of its own: it continues that exec.
+func (p *Parser) startCall(callID, name, input string) []*pb.Event {
+	if name == "wait" {
+		var a struct {
+			CellID json.RawMessage `json:"cell_id"`
+		}
+		_ = json.Unmarshal([]byte(input), &a)
+		cell := strings.Trim(string(a.CellID), `"`)
+		if target := p.cells[cell]; target != "" {
+			p.waits[callID] = target
+			p.current = target
+			return nil
+		}
+	}
+	p.calls[callID] = &openCall{title: toolTitle(name, input)}
+	p.current = callID
+	return one("", &pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{Title: p.calls[callID].title, CallId: callID}}})
+}
+
+// claim gives a tool call reported by an item the ID of the call running
+// now, so that it pairs with that call's start; a second item of the same
+// call gets an ID of its own.
+func (p *Parser) claim(tc *pb.ToolCall) {
+	oc := p.calls[p.current]
+	if oc == nil {
+		return
+	}
+	oc.items++
+	if oc.reported {
+		tc.CallId = p.current + "#" + strconv.Itoa(oc.items)
+		return
+	}
+	tc.CallId = p.current
+	oc.reported = true
+}
+
+// callOutput ends a call when its output comes: it reports the images
+// the output holds, and a ToolCall for the call if nothing did yet, so
+// that every start has an end. An exec that yielded stays open for the
+// waits that follow it.
+func (p *Parser) callOutput(callID string, raw json.RawMessage) []*pb.Event {
+	target := callID
+	if t, ok := p.waits[callID]; ok {
+		delete(p.waits, callID)
+		target = t
+	}
+	text := outputText(raw)
+	if m := cellRE.FindStringSubmatch(text); m != nil && p.calls[target] != nil {
+		p.cells[m[1]] = target
+		return nil
+	}
+	evs := p.toolOutputImages(target, raw)
+	oc := p.calls[target]
+	for _, e := range evs {
+		if tc := e.GetToolCall(); tc != nil && oc != nil {
+			p.current = target
+			p.claim(tc)
+		}
+	}
+	if oc != nil && !oc.reported {
+		tc := &pb.ToolCall{CallId: target, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: oc.title, Status: "completed", ItemType: "ToolCall"}
+		if strings.HasPrefix(text, "Script failed") {
+			tc.Status = "failed"
+		}
+		tc.Output, tc.OutputTruncated = truncate(text)
+		evs = append(evs, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: tc}})...)
+	}
+	delete(p.calls, target)
+	for cell, c := range p.cells {
+		if c == target {
+			delete(p.cells, cell)
+		}
+	}
+	if p.current == target {
+		p.current = ""
+	}
+	return evs
+}
+
+// endCalls forgets the calls of an ended turn.
+func (p *Parser) endCalls() {
+	clear(p.calls)
+	clear(p.cells)
+	clear(p.waits)
+	p.current = ""
+}
+
+// outputText is a tool output's text: a string, or its text parts.
+func outputText(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var parts []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	_ = json.Unmarshal(raw, &parts)
+	var out []string
+	for _, p := range parts {
+		if p.Text != "" {
+			out = append(out, p.Text)
+		}
+	}
+	return strings.Join(out, "\n")
 }

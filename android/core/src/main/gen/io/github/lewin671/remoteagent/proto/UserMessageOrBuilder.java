@@ -40,7 +40,7 @@ public interface UserMessageOrBuilder extends
    *
    * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
    * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-   *     See remoteagent/v1/event.proto;l=198
+   *     See remoteagent/v1/event.proto;l=200
    * @return The imageCount.
    */
   @java.lang.Deprecated int getImageCount();

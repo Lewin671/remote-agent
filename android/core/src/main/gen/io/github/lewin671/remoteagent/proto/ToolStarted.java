@@ -7,9 +7,11 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * ToolStarted says the model called a tool; its ToolCall event follows when
- * the call completes. Codex gives the two no common ID, so call_id is empty
- * and they pair in order; Claude Code runs tools in parallel and sets it.
+ * ToolStarted says the model called a tool; its ToolCall event with the
+ * same call_id follows when the call completes. Daemons before v2 left
+ * call_id empty for Codex, whose start and end then pair in order. For
+ * Codex a call is one exec script: a second command it ran reports a
+ * ToolCall with the ID "&lt;call_id&gt;#2", which has no start of its own.
  * </pre>
  *
  * Protobuf type {@code remoteagent.v1.ToolStarted}
@@ -454,9 +456,11 @@ public  final class ToolStarted extends
 
   /**
    * <pre>
-   * ToolStarted says the model called a tool; its ToolCall event follows when
-   * the call completes. Codex gives the two no common ID, so call_id is empty
-   * and they pair in order; Claude Code runs tools in parallel and sets it.
+   * ToolStarted says the model called a tool; its ToolCall event with the
+   * same call_id follows when the call completes. Daemons before v2 left
+   * call_id empty for Codex, whose start and end then pair in order. For
+   * Codex a call is one exec script: a second command it ran reports a
+   * ToolCall with the ID "&lt;call_id&gt;#2", which has no start of its own.
    * </pre>
    *
    * Protobuf type {@code remoteagent.v1.ToolStarted}

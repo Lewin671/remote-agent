@@ -102,7 +102,7 @@ public  final class UserMessage extends
    *
    * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
    * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-   *     See remoteagent/v1/event.proto;l=198
+   *     See remoteagent/v1/event.proto;l=200
    * @return The imageCount.
    */
   @java.lang.Override
@@ -484,7 +484,7 @@ public  final class UserMessage extends
      *
      * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
      * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=198
+     *     See remoteagent/v1/event.proto;l=200
      * @return The imageCount.
      */
     @java.lang.Override
@@ -499,7 +499,7 @@ public  final class UserMessage extends
      *
      * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
      * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=198
+     *     See remoteagent/v1/event.proto;l=200
      * @param value The imageCount to set.
      * @return This builder for chaining.
      */
@@ -516,7 +516,7 @@ public  final class UserMessage extends
      *
      * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
      * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=198
+     *     See remoteagent/v1/event.proto;l=200
      * @return This builder for chaining.
      */
     @java.lang.Deprecated public Builder clearImageCount() {

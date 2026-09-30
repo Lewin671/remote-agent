@@ -1512,9 +1512,11 @@ func (x *PlanAnswered) GetChoice() int32 {
 	return 0
 }
 
-// ToolStarted says the model called a tool; its ToolCall event follows when
-// the call completes. Codex gives the two no common ID, so call_id is empty
-// and they pair in order; Claude Code runs tools in parallel and sets it.
+// ToolStarted says the model called a tool; its ToolCall event with the
+// same call_id follows when the call completes. Daemons before v2 left
+// call_id empty for Codex, whose start and end then pair in order. For
+// Codex a call is one exec script: a second command it ran reports a
+// ToolCall with the ID "<call_id>#2", which has no start of its own.
 type ToolStarted struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Title  string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
