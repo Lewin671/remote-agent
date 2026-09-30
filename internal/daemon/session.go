@@ -1000,6 +1000,11 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		ToolInputJson: string(p.ToolInput),
 		Deadline:      timestamppb.New(a.deadline),
 	}
+	if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+		// The digest the daemon matches the call with, so clients need
+		// not compute it themselves.
+		req.InputDigest = agent.InputDigest(p.ToolName, p.ToolInput)
+	}
 	var shell agent.ShellInput
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
 		req.Command, req.Description = shell.Command, shell.Description

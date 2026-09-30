@@ -204,6 +204,10 @@ message ApprovalRequested {
   string command = 4;
   string tool_input_json = 5;
   google.protobuf.Timestamp deadline = 6;
+  // The digest of the requested call's complete input, computed exactly as
+  // ToolCall.input_digest (Claude Code), so a client matches the request
+  // to its call by comparing the two strings; empty for Codex.
+  string input_digest = 7;
 }
 
 enum ApprovalDecision {

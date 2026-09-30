@@ -583,3 +583,30 @@ func TestClaudeRanBeforeParallel(t *testing.T) {
 	}
 	h.s.retractApprovals()
 }
+
+// The approval event carries the same digest as the call it is for.
+func TestClaudeApprovalCarriesInputDigest(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	input := `{"file_path":"/w/a.txt","content":"x\u00e9"}`
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Write","input":`+input+`}]}}`)
+	h.s.bindRollout("cc-1", path)
+	go h.s.hook(context.Background(), claudePermission("Write", input))
+	eventually(t, "the card", func() bool { return h.s.info().PendingApprovals == 1 })
+	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.readRollout()
+	var req, call string
+	for _, e := range h.events() {
+		if r := e.GetApprovalRequested(); r != nil {
+			req = r.InputDigest
+		}
+		if c := e.GetToolCall(); c != nil {
+			call = c.InputDigest
+		}
+	}
+	if req == "" || req != call {
+		t.Fatalf("approval %q, call %q", req, call)
+	}
+	h.s.retractApprovals()
+}

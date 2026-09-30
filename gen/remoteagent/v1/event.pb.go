@@ -1675,6 +1675,10 @@ type ApprovalRequested struct {
 	Command       string                 `protobuf:"bytes,4,opt,name=command,proto3" json:"command,omitempty"`
 	ToolInputJson string                 `protobuf:"bytes,5,opt,name=tool_input_json,json=toolInputJson,proto3" json:"tool_input_json,omitempty"`
 	Deadline      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	// The digest of the requested call's complete input, computed exactly as
+	// ToolCall.input_digest (Claude Code), so a client matches the request
+	// to its call by comparing the two strings; empty for Codex.
+	InputDigest   string `protobuf:"bytes,7,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1749,6 +1753,13 @@ func (x *ApprovalRequested) GetDeadline() *timestamppb.Timestamp {
 		return x.Deadline
 	}
 	return nil
+}
+
+func (x *ApprovalRequested) GetInputDigest() string {
+	if x != nil {
+		return x.InputDigest
+	}
+	return ""
 }
 
 type ApprovalResolved struct {
@@ -2322,7 +2333,7 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x12approvals_reviewer\x18\x04 \x01(\tR\x11approvalsReviewer\x12\x18\n" +
 	"\asandbox\x18\x05 \x01(\tR\asandbox\x12-\n" +
 	"\x12collaboration_mode\x18\x06 \x01(\tR\x11collaborationMode\x12'\n" +
-	"\x0fpermission_mode\x18\a \x01(\tR\x0epermissionMode\"\xed\x01\n" +
+	"\x0fpermission_mode\x18\a \x01(\tR\x0epermissionMode\"\x90\x02\n" +
 	"\x11ApprovalRequested\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +
@@ -2330,7 +2341,8 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
 	"\acommand\x18\x04 \x01(\tR\acommand\x12&\n" +
 	"\x0ftool_input_json\x18\x05 \x01(\tR\rtoolInputJson\x126\n" +
-	"\bdeadline\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\x8b\x01\n" +
+	"\bdeadline\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\x12!\n" +
+	"\finput_digest\x18\a \x01(\tR\vinputDigest\"\x8b\x01\n" +
 	"\x10ApprovalResolved\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12<\n" +

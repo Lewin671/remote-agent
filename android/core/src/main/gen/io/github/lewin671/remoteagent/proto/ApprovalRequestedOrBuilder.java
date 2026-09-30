@@ -88,4 +88,28 @@ public interface ApprovalRequestedOrBuilder extends
    * @return The deadline.
    */
   com.google.protobuf.Timestamp getDeadline();
+
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  java.lang.String getInputDigest();
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  com.google.protobuf.ByteString
+      getInputDigestBytes();
 }

@@ -20,6 +20,7 @@ public  final class ApprovalRequested extends
     description_ = "";
     command_ = "";
     toolInputJson_ = "";
+    inputDigest_ = "";
   }
   private int bitField0_;
   public static final int APPROVAL_ID_FIELD_NUMBER = 1;
@@ -328,6 +329,84 @@ public  final class ApprovalRequested extends
   private void clearDeadline() {
     deadline_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int INPUT_DIGEST_FIELD_NUMBER = 7;
+  private java.lang.String inputDigest_;
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  @java.lang.Override
+  public java.lang.String getInputDigest() {
+    return inputDigest_;
+  }
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getInputDigestBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(inputDigest_);
+  }
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @param value The inputDigest to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setInputDigest(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    inputDigest_ = value;
+  }
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   */
+  private void clearInputDigest() {
+
+    inputDigest_ = getDefaultInstance().getInputDigest();
+  }
+  /**
+   * <pre>
+   * The digest of the requested call's complete input, computed exactly as
+   * ToolCall.input_digest (Claude Code), so a client matches the request
+   * to its call by comparing the two strings; empty for Codex.
+   * </pre>
+   *
+   * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+   * @param value The bytes for inputDigest to set.
+   */
+  private void setInputDigestBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    inputDigest_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.ApprovalRequested parseFrom(
@@ -739,6 +818,85 @@ public  final class ApprovalRequested extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The digest of the requested call's complete input, computed exactly as
+     * ToolCall.input_digest (Claude Code), so a client matches the request
+     * to its call by comparing the two strings; empty for Codex.
+     * </pre>
+     *
+     * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+     * @return The inputDigest.
+     */
+    @java.lang.Override
+    public java.lang.String getInputDigest() {
+      return instance.getInputDigest();
+    }
+    /**
+     * <pre>
+     * The digest of the requested call's complete input, computed exactly as
+     * ToolCall.input_digest (Claude Code), so a client matches the request
+     * to its call by comparing the two strings; empty for Codex.
+     * </pre>
+     *
+     * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+     * @return The bytes for inputDigest.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getInputDigestBytes() {
+      return instance.getInputDigestBytes();
+    }
+    /**
+     * <pre>
+     * The digest of the requested call's complete input, computed exactly as
+     * ToolCall.input_digest (Claude Code), so a client matches the request
+     * to its call by comparing the two strings; empty for Codex.
+     * </pre>
+     *
+     * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+     * @param value The inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigest(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setInputDigest(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The digest of the requested call's complete input, computed exactly as
+     * ToolCall.input_digest (Claude Code), so a client matches the request
+     * to its call by comparing the two strings; empty for Codex.
+     * </pre>
+     *
+     * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInputDigest() {
+      copyOnWrite();
+      instance.clearInputDigest();
+      return this;
+    }
+    /**
+     * <pre>
+     * The digest of the requested call's complete input, computed exactly as
+     * ToolCall.input_digest (Claude Code), so a client matches the request
+     * to its call by comparing the two strings; empty for Codex.
+     * </pre>
+     *
+     * <code>string input_digest = 7 [json_name = "inputDigest"];</code>
+     * @param value The bytes for inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigestBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setInputDigestBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ApprovalRequested)
   }
   @java.lang.Override
@@ -762,10 +920,11 @@ public  final class ApprovalRequested extends
             "command_",
             "toolInputJson_",
             "deadline_",
+            "inputDigest_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u1009\u0000";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
