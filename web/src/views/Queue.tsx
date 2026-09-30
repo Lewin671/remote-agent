@@ -8,6 +8,7 @@ import { originLabel } from "../devices";
 import { machineName, queuedIds, queueReason, type Derived } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { NavBar } from "../ui";
+import { LocalThumbs } from "./Images";
 import { promptIdOf } from "./Composer";
 
 /** How a cancel ended, as the page reports it once the message leaves
@@ -113,6 +114,7 @@ export function QueuePage({
                   {c?.state === "canceling" ? "◌" : "取消"}
                 </button>
               </div>
+              <LocalThumbs blobs={remote.outbox(sid).find((o) => o.sendId === id)?.thumbs} />
               <p className={text !== undefined ? "" : "muted"}>{text ?? "另一客户端发送的消息，内容会在它发出后出现在聊天里"}</p>
               {c?.state === "failed" && (
                 <small className="red">

@@ -1207,3 +1207,62 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
     revoke.mockRestore();
   }
 });
+
+describe("sending images (v2)", () => {
+  function setup(fail: (name: string) => boolean) {
+    const r = demo();
+    r.prepareImage = async (f) => Object.assign({ bytes: new Uint8Array(4), format: "png" as const, width: 1, height: 1 }, { name: (f as File).name });
+    r.uploadImage = async (_m, p) => {
+      const name = (p as { name?: string }).name ?? "";
+      if (fail(name)) throw new CommandError("unavailable", "连接超时");
+      return "id-" + name;
+    };
+    const sent: { text?: string; imageIds?: string[] }[] = [];
+    const real = r.command.bind(r);
+    r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
+      if (cmd?.case === "send") sent.push({ text: cmd.value.text, imageIds: cmd.value.imageIds });
+      return real(sid, cmd, slot);
+    };
+    const s = r.sessions.get("s-idle")!;
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    const pick = async (...names: string[]) =>
+      act(async () => {
+        const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
+        Object.defineProperty(input, "files", { value: names.map((n) => new File(["x"], n, { type: "image/png" })), configurable: true });
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    return { r, sent, pick };
+  }
+
+  it("never sends a message with fewer images than shown", async () => {
+    const t = setup((n) => n === "b.png");
+    await t.pick("a.png", "b.png");
+    await vi.waitFor(() => expect(host.textContent).toContain("1 张图没能传到电脑"));
+    const send = () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!;
+    expect(send().disabled).toBe(true);
+    // Removing the failed one lets the rest go, with only their IDs.
+    await click(host.querySelectorAll<HTMLButtonElement>(".att-tray .x")[1]);
+    await vi.waitFor(() => expect(send().disabled).toBe(false));
+    await click(send());
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(t.sent[0]).toEqual({ text: "", imageIds: ["id-a.png"] });
+    expect(host.querySelector(".att-tray")).toBeNull();
+  });
+
+  it("takes six at most from one pick and says the rest were left out", async () => {
+    const t = setup(() => false);
+    await t.pick(...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `p${i}.png`));
+    expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
+    expect(host.textContent).toContain("一条消息最多 6 张，多选的 2 张没有加入");
+    expect(host.querySelector(".ctl.att")!.classList.contains("off")).toBe(true);
+  });
+
+  it("offers no ＋ on a computer whose daemon cannot take images", async () => {
+    const r = demo();
+    const s = r.sessions.get("s-appr")!; // on VPS-dev, an older daemon
+    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await click(host.querySelector<HTMLButtonElement>(".ctl.att")!);
+    expect(host.querySelector("input[type=file]")).toBeTruthy();
+    expect(host.textContent).toContain("VPS-dev 上的 remote-agent 版本较旧，不能发图片");
+  });
+});

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { sessionImages, splitPlaceholders } from "../imageview";
-import { GenCard, ImageStrip, ImageViewer, OpenImage } from "./Images";
+import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { ApprovalDecision, InputStatus, SessionStatus, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
@@ -759,27 +759,6 @@ function Row({
     }
   }
   return null;
-}
-
-/** This device's copies of images on their way: shown until the CLI
- * records the message with its own previews. */
-function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
-  const [urls, setUrls] = useState<string[]>([]);
-  useEffect(() => {
-    const us = (blobs ?? []).map((b) => URL.createObjectURL(b));
-    setUrls(us);
-    return () => us.forEach((u) => URL.revokeObjectURL(u));
-  }, [blobs]);
-  if (!urls.length) return null;
-  return (
-    <span className="pics">
-      {urls.map((u) => (
-        <span key={u} className="pic local">
-          <img src={u} alt="" />
-        </span>
-      ))}
-    </span>
-  );
 }
 
 /** How the chat names who did what (devices.ts). */

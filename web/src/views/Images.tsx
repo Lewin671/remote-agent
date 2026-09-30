@@ -366,3 +366,25 @@ async function toPng(blob: Blob): Promise<Blob> {
   bmp.close();
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("转换失败"))), "image/png"));
 }
+
+/** This device's copies of images on their way: shown until the CLI
+ * records the message with its own previews. */
+export function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const us = (blobs ?? []).map((b) => URL.createObjectURL(b));
+    setUrls(us);
+    return () => us.forEach((u) => URL.revokeObjectURL(u));
+  }, [blobs]);
+  if (!urls.length) return null;
+  return (
+    <span className="pics">
+      {urls.map((u) => (
+        <span key={u} className="pic local">
+          <img src={u} alt="" />
+        </span>
+      ))}
+    </span>
+  );
+}
+
