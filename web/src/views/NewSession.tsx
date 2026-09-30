@@ -27,6 +27,7 @@ import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
+type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
 
@@ -105,17 +106,34 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // One pending attempt per project: the wide home reuses this hook when
   // switching projects, and an unknown start in one project must never be
   // what another project's box sends.
-  const attempts = useRef(new Map<string, Attempt<{ machineId: string; req: CreateReq }>>());
+  const attempts = useRef(new Map<string, Attempt<StartPayload>>());
   let attempt = attempts.current.get(key);
   if (!attempt) attempts.current.set(key, (attempt = new Attempt()));
   const current = attempt;
   // A failure shown for one project is not the next one's.
   useEffect(() => setError(""), [key]);
 
+  // What a start would send. While one's outcome is unknown, only what the
+  // user changed counts: the message as sent (trimmed), and the settings
+  // only if they chose others; the page's own view of the settings may
+  // change as the started session's record arrives.
+  const payloadFor = (prompt: string): StartPayload => {
+    const pending = current.payload;
+    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
+    return { machineId: c.machineId, req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent } };
+  };
+  /** Whether sending prompt now would be a different start from the one
+   * whose outcome is unknown. */
+  const changes = (prompt: string): boolean => {
+    const pending = current.payload;
+    return !!pending && JSON.stringify(payloadFor(prompt)) !== JSON.stringify(pending);
+  };
   const create = async (prompt: string) => {
-    const req: CreateReq = { cwd: cfg.cwd, prompt, model: cfg.model, effort: cfg.effort, mode: cfg.mode, agent: cfg.agent };
+    // A different start gives up the unknown one; the same start, however
+    // it was typed, is retried as the same request.
+    if (changes(prompt)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = current.next({ machineId: cfg.machineId, req });
+    const { payload, slot } = current.next(payloadFor(prompt));
     setBusy(true);
     setError("");
     try {
@@ -142,11 +160,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     current.abandon();
     setError("");
   };
-  const setCfg = (c: NewConfig | undefined) => {
-    if (current.frozen) abandon();
-    setOverride(c);
-  };
-  return { remote, frozen: current.frozen, expired: current.expired, abandon, p, cfg, setCfg, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
+  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg: setOverride, machine, info, line: describe(cfg, machine, info), create, busy, error, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -162,8 +176,9 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   const submit = async () => {
-    // An unknown start that expired is not sent again, nor replaced.
-    if (ns.busy || ns.blocked || ns.expired) return;
+    // An unknown start that expired is not sent again, nor replaced by the
+    // same start under a new request.
+    if (ns.busy || ns.blocked || (ns.expired && !ns.changes(text))) return;
     await ns.create(text.trim());
   };
   const agent = agentName(ns.cfg.agent);
@@ -180,11 +195,7 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
       rows={variant === "box" ? 1 : 2}
       value={text}
       placeholder={placeholder}
-      onChange={(e) => {
-        // A different first message is a different start.
-        if (ns.frozen) ns.abandon();
-        setText(e.target.value);
-      }}
+      onChange={(e) => setText(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
@@ -195,7 +206,7 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
     />
   );
   const go = (
-    <button className="go" disabled={ns.busy || !!ns.blocked || ns.expired} onClick={() => void submit()} aria-label="开始新会话">
+    <button className="go" disabled={ns.busy || !!ns.blocked || (ns.expired && !ns.changes(text))} onClick={() => void submit()} aria-label="开始新会话">
       ↑
     </button>
   );

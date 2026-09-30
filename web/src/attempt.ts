@@ -52,6 +52,11 @@ export class Attempt<P> {
     this.pending = undefined;
   }
 
+  /** The payload of the attempt of unknown outcome, if any. */
+  get payload(): P | undefined {
+    return this.pending?.payload;
+  }
+
   /** Whether the next attempt repeats an unknown one. */
   get frozen(): boolean {
     return this.pending !== undefined;

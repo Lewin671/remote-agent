@@ -4,7 +4,7 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
 import { Agent, ApprovalDecision, EventSchema, PlanProposedSchema, ToolKind } from "../gen/remoteagent/v1/event_pb";
@@ -264,7 +264,7 @@ it("never sends one project's unknown start from another project's box", async (
   expect(sent[1].requestId).not.toBe(sent[0].requestId);
   // Back in foo, the unknown start is still the one retried.
   act(() => root!.render(<Box pkey="/Users/me/Code/foo" />));
-  await act(async () => void (await ns!.create("改了的文字")));
+  await act(async () => void (await ns!.create("在 foo 里做")));
   expect(sent[2]).toEqual(sent[0]);
 });
 
@@ -586,4 +586,83 @@ it("keeps an answer of unknown outcome unknown when its retry finds the machine 
   await click(button("重试"));
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
+});
+
+describe("an unknown session start", () => {
+  function setup(outcomes: (CommandError | "wait")[]) {
+    const r = demo();
+    const sent: { id: string; prompt: string; agent: number }[] = [];
+    let release: (() => void) | undefined;
+    r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case !== "createSession") throw new CommandError("unavailable", "no");
+      sent.push({ id: slot!.requestId, prompt: cmd.value.prompt ?? "", agent: cmd.value.agent ?? 0 });
+      const o = outcomes.shift() ?? new CommandError("unknown", "连接超时");
+      if (o === "wait") {
+        await new Promise<void>((res) => (release = res));
+        throw new CommandError("unknown", "连接超时");
+      }
+      throw o;
+    };
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    const type = async (value: string) =>
+      act(async () => {
+        const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    const send = async (n: number) => {
+      await click(button("↑"));
+      await vi.waitFor(() => expect(sent).toHaveLength(n));
+      await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+    };
+    return { r, sent, type, send, release: () => release?.() };
+  }
+
+  it("is retried as the same request when only whitespace changed", async () => {
+    const t = setup([]);
+    await t.type("加限流");
+    await t.send(1);
+    await t.type("加限流 ");
+    await t.send(2);
+    expect(t.sent[1].id).toBe(t.sent[0].id);
+  });
+
+  it("is not given up by typing while it is on its way", async () => {
+    const t = setup(["wait"]);
+    await t.type("加限流");
+    await click(button("↑"));
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    await t.type("加限流\n");
+    await act(async () => t.release());
+    await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+    await t.send(2);
+    expect(t.sent[1].id).toBe(t.sent[0].id);
+  });
+
+  it("stays the same start while the page's settings follow another session", async () => {
+    const t = setup([]);
+    await t.type("加限流");
+    await t.send(1);
+    // The Claude Code session becomes the project's latest meanwhile.
+    act(() => {
+      t.r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
+      (t.r as unknown as { changed(): void }).changed();
+    });
+    await t.send(2);
+    expect(t.sent[1]).toEqual(t.sent[0]);
+  });
+
+  it("gives way to a different start, even once it expired", async () => {
+    const t = setup([new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "expired")]);
+    await t.type("加限流");
+    await t.send(1);
+    await t.send(2);
+    await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
+    expect(button("↑")?.disabled).toBe(true);
+    await t.type("给登录接口加限流");
+    expect(button("↑")?.disabled).toBe(false);
+    await t.send(3);
+    expect(t.sent[2].id).not.toBe(t.sent[0].id);
+    expect(t.sent[2].prompt).toBe("给登录接口加限流");
+  });
 });
