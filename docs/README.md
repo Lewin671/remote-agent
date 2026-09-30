@@ -25,7 +25,7 @@
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器、选图和图片 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v7.html](design/client-v7.html) | 界面稿 | 当前设计：精简等待事项、工具详情和移动端输入区；保留 v6 全部页面 |
+| [design/client-v7.html](design/client-v7.html) | 界面稿 | 当前设计：精简等待事项、工具详情，统一会话与新建输入框；移除只启动终端入口 |
 | [design/client-v6.html](design/client-v6.html) | 界面稿 | 在 v5 全部页面上增加图片存储占用、限额与清理；只读 |
 | [design/client-v5.html](design/client-v5.html) | 界面稿 | 保留 v4 排序并统一项目卡片、历史层级、分段栏与输入控件；只读 |
 | [design/client-v4.html](design/client-v4.html) | 界面稿 | 保留 v3 全部页面并统一会话排序；只读 |

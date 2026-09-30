@@ -170,7 +170,7 @@
   .newmsg { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); background: var(--card); color: var(--blue); font-size: 13px; font-weight: 600;
     border-radius: 16px; padding: 5px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.15); white-space: nowrap; }
 
-  /* 停靠区：固定在输入框上方，最高占会话内容区的 45%，正文在卡片里滚动，按钮始终可见 */
+  /* 等待事项：默认一行，展开后正文滚动、操作固定。 */
   .dock { flex: none; margin: 0 10px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px;
     box-shadow: 0 0 0 1.5px var(--orange), 0 -4px 18px rgba(0,0,0,.08); }
   .dock .h { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
@@ -304,21 +304,10 @@
   .plist .pi .chev { color: var(--faint); font-size: 18px; }
   .plist .pi.add { color: var(--blue); font-weight: 600; border: none; }
   .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
-  /* 项目页底部：这次会用的配置，一行小字，点「更改」才打开设置 */
+  /* 项目页底部：新建配置按需打开 */
   .cfgline { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 16px 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
   .cfgline em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
   .cfgline b { margin-left: auto; color: var(--blue); font-weight: 600; flex: none; padding: 4px 0; }
-  /* 项目页底部的「新会话」卡片：和聊天输入框区分开 */
-  .newbox { flex: none; margin: 4px 10px 20px; background: var(--card); border-radius: 18px; padding: 10px 12px 8px;
-    box-shadow: 0 0 0 1px var(--line), 0 -4px 18px rgba(0,0,0,.06); }
-  .newbox .nh { font-size: 12px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
-  .newbox .row2 { display: flex; gap: 8px; align-items: center; }
-  .newbox .in { flex: 1; background: var(--chip); border-radius: 20px; padding: 10px 14px; color: var(--muted); font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .newbox .in.typed { color: var(--fg); }
-  .newbox .go { width: 40px; height: 40px; border-radius: 50%; background: var(--blue-bg); color: var(--on-solid); display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
-  .newbox .cfg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 7px; white-space: nowrap; }
-  .newbox .cfg em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
-  .newbox .cfg b { margin-left: auto; color: var(--blue); font-weight: 600; flex: none; }
   .step { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--blue-bg); color: #fff; font-size: 12px; font-weight: 700; align-items: center; justify-content: center; margin-right: 4px; }
   .recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-top: 10px; align-items: center; }
   .recent small { font-size: 12px; color: var(--muted); flex: none; }
@@ -495,14 +484,10 @@
   .navbar .title .tname { display:block; font-size:15px; color:var(--fg); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .navbar .title .agent-id { font-size:12px; flex:none; }
   .sess .mc { line-height:1.5; }
-  .newbox .nh { display:flex; align-items:center; justify-content:space-between; margin:0 0 4px; min-height:44px; }
   .cli-pick { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 10px; background:var(--soft); color:var(--fg2); border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; flex:none; }
-  .newbox .cfg { display:grid; grid-template-columns:1fr auto; gap:0 8px; white-space:normal; margin-top:4px; align-items:center; }
   .cfg-main { display:flex; gap:8px; align-items:center; min-width:0; font-size:13px; color:var(--fg2); }
   .cfg-model { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; }
   .cfg-edit { grid-column:2; grid-row:1 / 3; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--blue); font-weight:600; }
-  .newbox .go, .go44 { width:44px; height:44px; border-radius:50%; background:var(--blue-bg); color:var(--on-solid); display:flex; align-items:center; justify-content:center; flex:none; }
-  .newbox .onlyterm { color:var(--blue); min-height:44px; display:flex; align-items:center; font-size:13px; }
   .compose-card { flex:none; margin:4px 10px 16px; padding:10px; border:1px solid var(--line); border-radius:18px; background:var(--soft); min-width:0; }
   .compose-card .draft { min-height:48px; max-height:132px; overflow-y:auto; font-size:15px; line-height:1.5; padding:2px 4px 8px; overflow-wrap:anywhere; white-space:pre-wrap; color:var(--muted); }
   .compose-card .draft.typed { color:var(--fg); }
@@ -566,7 +551,6 @@
 
   .compose-card:has(.go44.off) .ctl { opacity:.4; }
   .compose-card .draft:not(.typed) ~ .controls .go44 { opacity:.4; }
-  .newbox .in:not(.typed) + .go { opacity:.4; }
   .compose-status + .compose-status { min-height:0; }
   .draft-note { font-size:12px; color:var(--muted); line-height:1.5; }
 
@@ -642,8 +626,6 @@
   .att-tray .pic { width:56px; height:56px; }
   .pic .x { position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
   .att-tray .pic .ring { width:24px; height:24px; margin:-12px 0 0 -12px; }
-  .newbox .att-in { width:40px; height:40px; border-radius:50%; background:var(--chip); color:var(--fg2); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
-  .newbox .att-tray { padding:0 0 8px; }
   .att-meta { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:0 2px 6px; }
   .att-meta .orig { display:inline-flex; align-items:center; gap:5px; min-height:28px; color:var(--fg2); }
   .att-meta .orig i { width:14px; height:14px; border-radius:50%; border:1.5px solid var(--muted); display:inline-block; }
@@ -668,8 +650,6 @@
   }
 
   /* v5 visual refinements shared by PWA and Android */
-  .newbox { border-radius:16px; box-shadow:none; border:1px solid var(--line); padding:6px 12px; }
-  .newbox .nh { color:var(--fg2); font-size:13px; font-weight:500; }
   .compose-card { border-radius:16px; padding:8px; }
   .seg { border-radius:12px; padding:3px; }
   .seg div { border-radius:9px; }
@@ -707,13 +687,83 @@
   .compose-menu summary { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--muted); list-style:none; cursor:pointer; }
   .context-high::after { content:""; width:5px; height:5px; border-radius:50%; background:var(--orange); position:absolute; left:32px; top:12px; }
   .compose-pop { position:absolute; bottom:calc(100% + 8px); left:0; z-index:10; padding:6px 12px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.1); max-width:100%; font-size:13px; }
+  .compose-pop > a { min-height:44px; display:flex; align-items:center; text-decoration:none; }
   .compose-pop > div { min-height:44px; display:flex; align-items:center; overflow-wrap:anywhere; }
-  .compose-card .go44 { grid-column:3; grid-row:1; width:44px; height:44px; align-self:end; background:var(--fg); color:var(--card); border:6px solid var(--card); }
+  .compose-card .go44 { border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; grid-column:3; grid-row:1; width:44px; height:44px; align-self:end; background:var(--fg); color:var(--card); border:6px solid var(--card); }
   .compose-card .access-warning { grid-column:1 / -1; grid-row:2; color:var(--red); font-size:12px; padding:2px 12px; }
   .compose-card .att-tray, .compose-card .att-meta { grid-column:1 / -1; }
   .compose-card:has(.att-tray) .draft, .compose-card:has(.att-tray) .compose-menu, .compose-card:has(.att-tray) .go44 { grid-row:3; }
   .chat .banner { background:none; border-radius:0; padding:8px 0; border-top:1px solid var(--line); }
   @media(max-width:600px) { .wrap { padding:24px 12px 60px; } .screens { gap:24px; } .top { align-items:flex-start; flex-wrap:wrap; } }
+
+  /* Full v7 review: quiet status surfaces, reachable actions, readable terminal chrome. */
+  .dot.run, .dot.wait { box-shadow:none; }
+  .todo { background:var(--soft); border-radius:10px; }
+  .todo pre { background:var(--card); color:var(--fg2); border:1px solid var(--line); }
+  [data-theme="dark"] .todo pre { background:var(--card); }
+  .banner, .banner.warn, .banner.err, .gwarn { background:var(--soft); }
+  .banner.warn, .gwarn { color:var(--orange-ink); }
+  .banner.err { color:var(--red); }
+  .phone .seg { background:none; border-radius:0; padding:0; border-bottom:1px solid var(--line); }
+  .phone .seg div { border-radius:0; background:none; box-shadow:none; }
+  .phone .seg div.on { background:none; box-shadow:inset 0 -2px var(--fg2); }
+  .phone .seg.dark { border-color:#30363d; }
+  .phone .seg.dark div.on { background:none; box-shadow:inset 0 -2px #e6edf3; }
+  .phone[style*="background:#0d1117"] { --fg:#e8eaed; --fg2:#c9ced4; --muted:#a0a7af; --card:#0d1117; --line:#2a2d32; }
+  .pending-content { display:flex; flex-direction:column; max-height:240px; overflow:visible; padding:0; }
+  .pending-scroll { min-height:0; overflow-y:auto; padding:4px 0 6px; }
+  .pending-actions { flex:none; padding:4px 0 10px; }
+  .pending.submitting .pending-action { color:var(--muted); }
+  .pending.submitting .ans { pointer-events:none; }
+  .dock:not(.pending) { padding:8px 0 16px; }
+  .ans { min-height:44px; }
+  .viewer .vact span { min-width:44px; justify-content:center; }
+  .sheet { max-height:calc(100% - 48px); overflow-y:auto; }
+  .ns-head span { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .ttool b, .ttool > span:last-child { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tstate { top:12px; left:12px; right:12px; border-radius:8px; padding:12px; text-align:left; }
+  .tstate .det { min-height:44px; display:flex; align-items:center; }
+  .compose-pop { width:max-content; min-width:160px; max-width:calc(100% - 4px); }
+  .compose-pop > div { white-space:normal; }
+  .compose-menu[aria-disabled="true"] summary { opacity:.4; cursor:default; }
+  .compose-menu[aria-disabled="true"] .compose-pop { display:none; }
+  .compose-card .att-tray { grid-row:1; flex-wrap:wrap; }
+  .compose-card .att-meta { grid-row:2; }
+  .compose-card:has(.att-tray) .access-warning { grid-row:4; }
+  .att-tray .pic .x { width:44px; height:44px; top:-4px; right:-4px; background:none; }
+  .att-tray .pic .x::before { content:""; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.6); position:absolute; z-index:-1; }
+  .att-tray .pic .x { isolation:isolate; }
+
+  .compose-menu summary { position:relative; }
+  .dock .foot b { min-height:44px; display:inline-flex; align-items:center; }
+  .phone .label a { min-height:44px; display:inline-flex; align-items:center; margin-top:-10px; margin-bottom:-10px; }
+  .gwarn b { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+  .phone .glabel a { min-width:44px; min-height:44px; display:inline-flex; align-items:center; margin-top:-12px; margin-bottom:-12px; }
+  @media(max-width:344px) { .wrap { padding-left:0; padding-right:0; } .top, .review-nav, h2 { margin-left:12px; margin-right:12px; } }
+
+  .sr .v, .row .v { min-width:0; max-width:68%; white-space:normal; overflow-wrap:anywhere; text-align:right; }
+  .sr .v::after { flex:none; }
+  .list .mi .mt { overflow-wrap:anywhere; }
+  .phone:has(.pending[open]) > .kbd { display:none; }
+  .dock pre.cut::after { background:var(--soft); color:var(--blue); }
+  .req .btn { font-size:13px; white-space:nowrap; }
+
+
+  .navbar .title > span { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .navbar .title > span > .dot { margin-right:5px; vertical-align:middle; }
+  .sess .mc, .proj .pn, .manage-row .pn { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row.dis { color:var(--muted); opacity:.6; pointer-events:none; }
+
+  .banner b { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; margin-top:-8px; margin-bottom:-8px; }
+  .gwarn b { margin-top:-8px; margin-bottom:-8px; }
+  .todo .foot b { min-height:44px; display:flex; align-items:center; }
+  .att-meta .orig { min-height:44px; }
+  .gen-card .meta { align-items:center; }
+  .gen-card .meta b { min-height:44px; display:flex; align-items:center; }
+  .newmsg { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .when-open { display:none; }
+  details[open] > summary .when-closed { display:none; }
+  details[open] > summary .when-open { display:inline; }
 </style>
 </head>
 <body>
@@ -726,13 +776,13 @@
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
-<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留 v4 的完整页面、统一会话排序和终端字号调节，统一项目卡片、历史层级与输入控件。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
+<div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、工具详情、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v6 的改动</h4><ul><li>审批、问题、计划和终端弹窗默认收成一行，展开后处理。</li><li>运行中的工具改为可展开摘要，命令与结果按需查看。</li><li>输入框单行起步；附件、模式、模型与上下文收进「＋」菜单，完全放行常驻提示。</li><li>对话内提示使用中性色和细分隔线，移除彩色外框、阴影及重复工具状态。</li></ul>
+  <h4>相对 v6 的改动</h4><ul><li>审批、问题、计划和终端弹窗默认收成一行，展开后处理。</li><li>运行中的工具改为可展开摘要，命令与结果按需查看。</li><li>会话与项目页输入框统一单行起步；项目页去掉新会话标题和配置行，配置从「＋」按需打开，完全放行常驻提示。</li><li>移除只启动终端的空会话入口，新会话由首条文字或图片消息开始。</li><li>对话内提示使用中性色和细分隔线，移除彩色外框、阴影及重复工具状态；终端尺寸变化在工具栏提示。</li><li>展开请求时正文滚动、操作固定；补齐离线禁用、默认审批确认、退出确认和 Android 图片存储入口。</li><li>长名称与大字号可换行或省略；修正亮色下的终端标题及小按钮点击区。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -796,7 +846,7 @@
 
 <!-- ============================= -->
 <h2 id="new">新建会话</h2>
-<div class="note" style="margin:0 0 20px">在项目页底部的「新会话」卡片里写任务、选择 CLI，再发送。配置沿用上次使用的 CLI 和设置；开始输入后固定，切换 CLI 时保留草稿，并改用该 CLI 支持的模型、强度和模式。主页的 ＋ 只是先帮你选项目；「新项目…」选好机器和目录后也回到这张卡片。</div>
+<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送。配置沿用上次使用的 CLI 和设置；开始输入后固定，切换 CLI 时保留草稿，并改用该 CLI 支持的模型、强度和模式。主页的 ＋ 只是先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
 <div class="screens">
   <div>
     <div class="phone">
@@ -814,13 +864,9 @@
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · Claude Code · MacBook</div></div></div>
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · Codex · MacBook</div></div></div>
       </div>
-      <div class="newbox">
-        <div class="nh"><span>新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
-        <div class="row2"><div class="att-in">＋</div><div class="in">描述任务…</div><div class="go">↑</div></div>
-        <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div><div class="onlyterm">只打开终端 ›</div>
-      </div>
+      <div class="compose-card new-compose"><div class="draft">描述任务…</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap"><span class="step">1</span>在项目页：底部的「新会话」卡片就是新建入口。配置已沿用最近会话，机器和模式一行、模型和强度一行，不把模式挤掉</div>
+    <div class="cap"><span class="step">1</span>项目页底部只保留「＋、描述任务、发送」；沿用最近会话配置，需要调整时从「＋」进入新会话设置</div>
   </div>
 
   <div>
@@ -832,14 +878,10 @@
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · VPS-dev</div></div></div>
         <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
       </div>
-      <div class="newbox" style="margin-bottom:6px">
-        <div class="nh"><span>新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
-        <div class="row2"><div class="att-in">＋</div><div class="in typed">给登录接口加限流</div><div class="go">↑</div></div>
-        <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div>
-      </div>
+      <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap"><span class="step">2</span>点卡片直接打字，不弹面板、不用选配置，点 ↑ 发送。空消息不发送；「只打开终端」入口可创建无首条消息的会话</div>
+    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话；键盘弹出时项目标题收进导航栏，不显示配置行，空消息不发送</div>
   </div>
 
   <div>
@@ -875,7 +917,7 @@
         </div>
       </div>
     </div>
-    <div class="cap">从主页新建：右上角 ＋ 只是帮你先选项目。选中后进入第 2 步，卡片已聚焦、键盘已弹出</div>
+    <div class="cap">从主页新建：右上角 ＋ 只是帮你先选项目。选中后进入第 2 步，输入框已聚焦、键盘已弹出</div>
   </div>
 
   <div>
@@ -885,17 +927,17 @@
       <div class="dim"></div>
       <div class="sheet">
         <div class="grab"></div>
-        <div class="ns-head"><b>这次的设置</b><span>完成</span></div>
-        <div class="setrows" style="margin-top:0">
+        <div class="ns-head" id="new-settings"><b>新会话设置</b><span>完成</span></div>
+        <div class="setrows" style="margin-top:0"><div class="sr"><span class="lbl">CLI</span><span class="v">Codex</span></div>
           <div class="sr"><span class="lbl">机器</span><span class="v"><span class="dot idle"></span>MacBook</span></div>
           <div class="sr"><span class="lbl">目录</span><span class="v">~/Code/foo</span></div>
           <div class="sr"><span class="lbl">模型</span><span class="v">GPT-6-Astra · medium</span></div>
           <div class="sr"><span class="lbl">审批</span><span class="v">询问</span></div>
         </div>
-        <div class="hint">默认沿用 foo 最近一个会话（修复登录超时）。改了之后，这个项目下次也会沿用新的设置。机器只在这个项目用过的机器里选；目录可以选项目里的子目录；完全放行和计划不直接继承。开始输入后配置固定，换机器或 CLI 后更新这一行</div>
+        <div class="hint">沿用 foo 最近会话的设置；更换 CLI 或机器会保留草稿。</div>
       </div>
     </div>
-    <div class="cap">点卡片里的「更改」才打开，只在想换机器、模型或审批模式时用</div>
+    <div class="cap">从输入框「＋」选择新会话设置，查看或更换 CLI、机器、目录、模型和审批模式</div>
   </div>
 
   <div>
@@ -922,7 +964,7 @@
 </div>
 
 <!-- ============================= -->
-<h2>会话</h2>
+<h2 id="conversation">会话</h2>
 <div class="screens">
 
   <div>
@@ -961,12 +1003,12 @@
         <div class="record"><span style="color:var(--green)">✓</span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
         <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
         <pre>go test ./... -count=1</pre>
-        <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
+        </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
         <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
-      </div></details>
+      </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">审批以一行入口停靠在输入框上方，展开后处理；处理后在聊天里留一行「已允许 / 已拒绝」</div>
@@ -979,7 +1021,7 @@
       <div class="body chat">
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
-      <div class="dock mini"><b>请求执行</b><code>go test ./... -count=1</code><span>展开</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div><pre>go test ./... -count=1</pre></div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div></div></div></details>
       <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：设置…</div></div></details><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
@@ -1017,12 +1059,12 @@ git status --short gen/</pre>
         <div class="tool"><span class="ok">✓</span><code>go list -m -u all</code></div>
         <div class="ai">有 12 个依赖可以升级，其中 <code>pgx</code> 是 v4 → v5 的大版本。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="steps"><i class="done"></i><i></i> <span class="muted">第 1 题，共 2 题</span></span></div>
         <div class="q">大版本也一起升吗？</div>
         <div class="ans"><div>只升小版本<small>改动小，go build 大概率直接通过</small></div><span class="tag">推荐</span></div>
         <div class="ans"><div>包括 pgx v5<small>要改连接池和事务相关的调用</small></div></div>
-        <div class="foot"><span>都不合适？</span><b>其他回答：去终端 ›</b></div>
-      </div></details>
+        </div><div class="pending-actions"><div class="foot"><span>都不合适？</span><b>其他回答：去终端 ›</b></div>
+      </div></div></details>
       <div class="compose-status"><span class="queue-link">排队 1 条 ›</span><span>就绪后发送</span></div>
       <div class="compose-card"><div class="draft">排队发送，回答后继续</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
@@ -1040,10 +1082,10 @@ git status --short gen/</pre>
         <div class="tool"><span class="ok">✓</span><code>读取 14 个文件</code></div>
         <div class="ai">方案如下，批准后开始改。</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>计划待批准</b><span style="color:var(--blue);font-weight:600">展开全文 ›</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>计划待批准</b><span style="color:var(--blue);font-weight:600">展开全文 ›</span></div>
         <div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
-        <div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
-      </div></details>
+        </div><div class="pending-actions"><div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
+      </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：计划 ▾</div><div>模型：GPT-6-Sol · high ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">计划：同样停靠；全文页里还有「清空上下文后执行」。Codex 批准后按 CLI 实际模式显示；Claude Code 批准后进入询问模式，不提供清空上下文后执行</div>
@@ -1057,14 +1099,14 @@ git status --short gen/</pre>
       <div class="body chat">
         <div class="sep">11:25 · ~/Code/billing</div>
       </div>
-      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
+      <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">终端里有弹窗</span><span class="pending-brief">Trust this folder?</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>终端里有弹窗</b><span class="muted">Codex 在等你</span></div>
         <div class="q" style="font-weight:500">Trust this folder?</div>
-        <div class="btns"><div class="btn pri">去终端处理</div></div>
-      </div></details>
+        </div><div class="pending-actions"><div class="btns"><div class="btn pri">去终端处理</div></div>
+      </div></div></details>
       <div class="compose-status"><span class="queue-link">排队 1 条 ›</span><span>就绪后发送</span></div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap">其他弹窗：停靠区显示弹窗标题，「终端」标签上加提示点</div>
+    <div class="cap">其他弹窗：停靠区显示弹窗标题，展开后去终端处理；「终端」标签上加提示点</div>
   </div>
 
   <div>
@@ -1123,7 +1165,7 @@ git status --short gen/</pre>
   </div>
 </div>
 
-<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。键盘弹出时隐藏普通上下文读数，高占用在「＋」旁显示橙点。退出设置、队列或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>空闲 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
+<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。读数只在菜单里显示，高占用在「＋」旁显示橙点。退出设置、队列或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>空闲 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
 先给我一个方案。</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1440,7 +1482,7 @@ Sonnet · high ▾
 <div class="compose-card">
 <div class="draft typed">写好的消息继续留在这里</div>
 <div class="controls">
-<details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
+<details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
 GPT-6-Astra · medium ▾
 </div><div>上下文：11%</div></div></details>
 
@@ -1453,7 +1495,7 @@ GPT-6-Astra · medium ▾
 </div>
 </div>
 <!-- ============================= -->
-<h2>会话的边界状态</h2>
+<h2 id="boundaries">会话的边界状态</h2>
 <div class="screens">
 
   <div>
@@ -1503,7 +1545,7 @@ GPT-6-Astra · medium ▾
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
       </div>
-      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44 off">↑</span></div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44 off">↑</span></div></div>
     </div>
     <div class="cap">和服务器断线：导航栏下一条提示，和会话状态分开；发送和设置类操作暂停，写好的消息留在输入框里，连上后自己点发送</div>
   </div>
@@ -1555,7 +1597,7 @@ GPT-6-Astra · medium ▾
   <h4>停靠区</h4>
   <ul>
     <li>同时有多项时，按上表顺序只停靠最前面的一项，右上角写「还有 1 项」，处理完自动换下一项</li>
-    <li>展开后内容最多 240px，内部滚动查看正文和操作；长命令、计划和问题可以进入全文页，全文页的提交按钮固定在底部</li>
+    <li>展开后内容最多 240px，正文内部滚动，操作按钮固定在下方；展开处理时收起聊天键盘，普通草稿保留；长命令、计划和问题可以进入全文页，全文页的提交按钮固定在底部</li>
     <li>停靠区默认一行：类型 + 摘要 + 「处理」；点开后显示正文和操作，键盘弹出时仍保留入口</li>
     <li>在停靠区里输入拒绝理由时不收起：卡片只留理由输入框和「发送理由并拒绝」，贴在键盘上方，聊天区让出高度</li>
   </ul>
@@ -1578,7 +1620,7 @@ GPT-6-Astra · medium ▾
 </div>
 
 <!-- ============================= -->
-<h2>状态集</h2>
+<h2 id="states">状态集</h2>
 <div class="stgrid">
 
   <div class="st">
@@ -1603,22 +1645,22 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">审批 · 提交中 / 失败</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">剩 7 分钟</span></div>
+    <details class="dock pending submitting" open><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 7 分钟</span></div>
       <pre>go test ./... -count=1</pre>
-      <div class="btns"><div class="btn no dis">拒绝</div><div class="btn pri dis">允许中…</div></div>
-    </div></details>
+      </div><div class="pending-actions"><div class="btns"><div class="btn no dis">拒绝</div><div class="btn pri dis">允许中…</div></div>
+    </div></div></details>
     <div class="banner err" style="margin-top:8px">未收到电脑确认：连接超时<b>重试</b></div>
     <div class="st-c">点下后两个按钮都锁住，直到电脑确认；明确失败时可再选；结果未知时只能重试原决定，不能换成相反决定</div>
   </div>
 
   <div class="st">
     <div class="st-h">审批 · 附理由拒绝 / 权限请求</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
+    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">请求权限 · apply_patch</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求权限 · apply_patch</b><span class="muted">剩 6 分钟</span></div>
       <div class="desc">修改工作区外的文件</div>
       <pre class="cut">{"path": "/etc/hosts", "patch": "@@ -1,3 +1,4 @@\n 127.0.0.1 localhost\n+127.0.0.1 api.local"}</pre>
       <div class="field" style="margin:0 0 8px;font-size:13px">改 /etc/hosts 不行，用 .env 配置</div>
-      <div class="btns"><div class="btn no">发送理由并拒绝</div></div>
-    </div></details>
+      </div><div class="pending-actions"><div class="btns"><div class="btn no">发送理由并拒绝</div></div>
+    </div></div></details>
     <div class="st-c">不是命令的请求显示工具名和参数；理由会告诉 Codex</div>
   </div>
 
@@ -1633,20 +1675,20 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">提问 · 选中后提交中</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">要顺便更新 go.mod 的 Go 版本吗？</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>Codex 在问你</b><span class="muted">第 2 题，共 2 题</span></div>
+    <details class="dock pending submitting" open><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">要顺便更新 go.mod 的 Go 版本吗？</span><span class="pending-action">等待确认</span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 2 题，共 2 题</span></div>
       <div class="q">要顺便更新 go.mod 的 Go 版本吗？</div>
       <div class="ans on"><span class="ck">✓</span><div>更新到 1.27<small>提交中…</small></div></div>
       <div class="ans"><div>保持不变</div></div>
-    </div></details>
+    </div></div></details>
     <div class="st-c">选中用勾和底色，「推荐」只是一个标签；在终端答了就收起，聊天里留「已在终端回答」</div>
   </div>
 
   <div class="st">
     <div class="st-h">停靠区 · 多项排队</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
+    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">make migrate · 还有 1 项</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">还有 1 项 · 剩 8 分钟</span></div>
       <pre>make migrate</pre>
-      <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
-    </div></details>
+      </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
+    </div></div></details>
   </div>
 
   <div class="st">
@@ -1702,17 +1744,22 @@ GPT-6-Astra · medium ▾
       <div class="mi"><div class="mt">cmd</div><span class="muted">›</span></div>
       <div class="mi"><div class="mt">internal</div><span class="muted">›</span></div>
     </div>
-    <div class="btns" style="margin-top:8px"><div class="btn pri">在 foo 里开始</div></div>
-    <div class="st-c">没有子目录时写「没有子目录」；读不了时写原因和「重试」</div>
+    <div class="btns" style="margin-top:8px"><div class="btn pri">使用这个目录</div></div>
+    <div class="st-c">选好目录回到任务输入框；没有子目录时写「没有子目录」，读不了时给出原因与重试入口</div>
   </div>
 
   <div class="st">
     <div class="st-h">新建 · 创建中 / 失败</div>
-    <div class="prompt"><div class="ph" style="height:auto;color:var(--fg)">给登录接口加限流</div><div class="pf"><small>正在 MacBook 上启动…</small><div class="go" style="opacity:.5">↑</div></div></div>
+    <div class="me"><div>给登录接口加限流</div><small>已送达电脑，等待启动</small></div><div class="sysline">正在 MacBook 上启动…</div>
     <div class="banner err" style="margin-top:8px">启动失败：tmux 没有安装<b>重试</b></div>
     <div class="st-c">失败时输入的内容保留</div>
   </div>
 
+  <div class="st">
+    <div class="st-h">新建 · 默认完全放行 / 模式未知</div>
+    <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="access-warning">当前默认：完全放行 · 发送前确认</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
+    <div class="st-c">默认模式未知时先明确选择审批模式；读取失败保留草稿并提示重试。完全放行使用已有二次确认，不默默启动。</div>
+  </div>
   <div class="st">
     <div class="st-h">主页 · 加载中 / 空账户</div>
     <div class="skel" style="width:40%"></div><div class="skel"></div><div class="skel" style="width:80%"></div>
@@ -1753,11 +1800,11 @@ GPT-6-Astra · medium ▾
 
   <div class="st">
     <div class="st-h">提问 · 回答没送到</div>
-    <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
+    <details class="dock pending" open><summary><span class="pending-dot">●</span><span class="pending-label">Codex 在问你</span><span class="pending-brief">大版本也一起升吗？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>Codex 在问你</b><span class="muted">第 1 题，共 2 题</span></div>
       <div class="q">大版本也一起升吗？</div>
       <div class="ans on"><span class="ck">✓</span><div>只升小版本<small style="color:var(--red)">没能提交，终端里的问题可能已经变了</small></div></div>
-      <div class="foot"><span></span><b>重试</b></div>
-    </div></details>
+      </div><div class="pending-actions"><div class="foot"><span></span><b>重试</b></div>
+    </div></div></details>
   </div>
 
   <div class="st">
@@ -1817,9 +1864,9 @@ GPT-6-Astra · medium ▾
 <div>跑一遍库存集成测试</div>
 </div>
 <div class="ai">测试需要启动数据库，可能要等一会儿。</div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 2 分 12 秒</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 处理中 2 分 12 秒</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
 <pre>go test ./internal/inventory/... -count=1</pre>
-<div class="td">尚未收到工具结果；实时画面可在终端查看。</div>
+<div class="td">尚未收到结果 · 可去终端查看</div>
 <div class="ta">
 <span>查看详情 ›</span>
 <span>去终端 ›</span>
@@ -1833,7 +1880,7 @@ GPT-6-Astra · medium ▾
 <span class="interrupt">■ 中断</span>
 </div>
 <div class="compose-card">
-<div class="draft">继续输入，不会打断当前工具…</div>
+<div class="draft">消息…</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
 Sonnet · high ▾
@@ -1872,9 +1919,9 @@ Sonnet · high ▾
 <div class="me">
 <div>并行检查测试和构建</div>
 </div>
-<details class="active-tool"><summary><span>◌ Bash · 处理中 3 分 08 秒</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 处理中 3 分 08 秒</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
-<div class="td">尚未收到工具结果；实时画面可在终端查看。</div>
+<div class="td">尚未收到结果 · 可去终端查看</div>
 <div class="ta">
 <span>查看详情 ›</span>
 <span>去终端 ›</span>
@@ -1898,7 +1945,7 @@ Sonnet · high ▾
 <span class="interrupt">■ 中断</span>
 </div>
 <div class="compose-card">
-<div class="draft">继续输入，不会打断当前工具…</div>
+<div class="draft">消息…</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
 Sonnet · high ▾
@@ -1937,12 +1984,12 @@ Sonnet · high ▾
 <div class="label">Bash · 处理中 <span>调用耗时 2 分 12 秒</span>
 </div>
 <div class="crumb">~/Code/shop</div>
-<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool" open><summary><span>◌ 完整命令 2:12</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
 <pre>go test ./internal/inventory/... -count=1</pre>
-<div class="td">工具结果尚未返回。这里没有可用的中间输出，不能据此判断命令卡住。</div>
+<div class="td">尚未收到工具结果。实时输出请去终端查看。</div>
 
 </div></details>
-<div class="hint">聊天中的计时从工具开始事件算起，不是进度百分比。长时间没有输出也可能正常。</div>
+<div class="hint">耗时不代表进度；没有输出也可能仍在运行。</div>
 </div>
 <div class="dock" style="box-shadow:0 0 0 1px var(--line)">
 <div class="btns">
@@ -1981,7 +2028,7 @@ Sonnet · high ▾
 </div>
 <div class="connbar">连接断了，工具状态可能已变化</div>
 <div class="body chat">
-<details class="active-tool"><summary><span>◌ Bash · 等待同步 上次 2:12</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ Bash · 等待同步 上次 2:12</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">未连接到服务器，暂时无法确认是否还在运行。</div>
 <div class="ta">
@@ -1997,7 +2044,7 @@ Sonnet · high ▾
 <div class="compose-card">
 <div class="draft typed">这条草稿保留，重连后再发</div>
 <div class="controls">
-<details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
+<details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
 Sonnet · high ▾
 </div><div>上下文：42%</div></div></details>
 
@@ -2032,7 +2079,7 @@ Sonnet · high ▾
 </div>
 <div class="body chat">
 <div class="sysline">已中断本轮</div>
-<details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted">详情 ▸</span></summary><div class="tool-details">
+<details class="active-tool"><summary><span>◌ 后台命令 · 状态待确认 —</span><span class="muted"><span class="when-closed">详情 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="tool-details">
 <pre>go test ./...</pre>
 <div class="td">工具已转到后台；本轮结束不表示后台进程结束。请到终端确认。</div>
 <div class="ta">
@@ -2165,7 +2212,7 @@ GPT-6-Astra · medium ▾
 </div>
 <div class="cap" style="width:auto;text-align:left">宽屏：聊天里的预览放大到 140px 高；点开在会话区上方打开大图，←/→ 切换、Esc 关闭，可以保存和复制</div>
 
-<div class="note" style="margin:32px 0 20px">从客户端发图片：输入区左下角和新建卡片里的「＋」打开系统的图片选择（相册、拍照、文件），一条消息最多 6 张；宽屏上也可以拖进输入区或直接粘贴。默认在本机压缩，也可以勾选「原图」；选好后立即传到电脑上，发送时和文字一起交给 CLI，电脑终端里显示为 <code>[Image #N]</code>。发出的图和在电脑上粘贴的图显示方式相同。</div>
+<div class="note" style="margin:32px 0 20px">从客户端发图片：输入区的「＋」菜单里选「添加图片」，打开系统的图片选择（相册、拍照、文件），一条消息最多 6 张；宽屏上也可以拖进输入区或直接粘贴。默认在本机压缩，也可以勾选「原图」；选好后立即传到电脑上，发送时和文字一起交给 CLI，电脑终端里显示为 <code>[Image #N]</code>。发出的图和在电脑上粘贴的图显示方式相同。</div>
 <div class="screens">
 
   <div>
@@ -2227,13 +2274,7 @@ GPT-6-Astra · medium ▾
         <div class="label">会话</div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>首页改版</b><span>9:38</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · MacBook</div></div></div>
       </div>
-      <div class="newbox" style="margin-bottom:6px">
-        <div class="nh"><span>新会话</span><a class="cli-pick" href="#cli">Codex ▾</a></div>
-        <div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="pct"><b style="width:62%"></b></span><span class="x">✕</span></i></div>
-        <div class="att-meta"><span class="orig on"><i></i>原图 · 共 9.8 MB</span><span>2 / 6</span></div>
-        <div class="row2"><div class="att-in">＋</div><div class="in typed">按截图把设置页重做一遍</div><div class="go" style="opacity:.4">↑</div></div>
-        <div class="cfg"><div class="cfg-main"><span class="dot idle"></span>MacBook <span>· 询问</span></div><div class="cfg-model">GPT-6-Astra · medium</div><span class="cfg-edit">更改</span></div>
-      </div>
+      <div class="compose-card new-compose"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="pct"><b style="width:62%"></b></span><span class="x">✕</span></i></div><div class="att-meta"><span class="orig on"><i></i>原图 · 共 9.8 MB</span><span>2 / 6</span></div><div class="draft typed">按截图把设置页重做一遍</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">新建会话的第一条消息同样可以带图：图先传到选中的机器，会话建好后和第一句话一起发出。选了原图时写总大小，底部细条是分块上传的进度；两个 CLI 仍会把过大的图缩到 2000px 左右，原图保住的是画质</div>
   </div>
@@ -2250,7 +2291,7 @@ GPT-6-Astra · medium ▾
     <div class="st-h">发图 · 最多 6 张</div>
     <div class="att-tray" style="gap:4px"><i class="pic port ui" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i><i class="pic port empty" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i><i class="pic port ui" style="width:40px;height:40px"></i><i class="pic land web" style="width:40px;height:40px"></i></div>
     <div class="banner">一条消息最多 6 张，多选的 2 张没有加入</div>
-    <div class="st-c">满 6 张后「＋」置灰；一次多选超出时按选择顺序取前 6 张，并提示没加入的数量</div>
+    <div class="st-c">满 6 张后仅「添加图片」不可用，会话设置仍可打开；一次多选超出时按选择顺序取前 6 张，并提示没加入的数量</div>
   </div>
   <div class="st">
     <div class="st-h">新建 · 换了机器</div>
@@ -2265,7 +2306,7 @@ GPT-6-Astra · medium ▾
   </div>
   <div class="st">
     <div class="st-h">发图 · 机器离线</div>
-    <div class="compose-card" style="margin:0"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 ▾</div></div></details><span class="go44 off">↑</span></div></div>
+    <div class="compose-card" style="margin:0"><div class="draft">消息</div><div class="controls"><details class="compose-menu" aria-disabled="true" inert><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet 5.5 ▾</div></div></details><span class="go44 off">↑</span></div></div>
     <div class="st-c">图要先传到电脑，机器离线时「＋」不可用，点按提示「MacBook 离线，连上后才能添加图片」</div>
   </div>
   <div class="st">
@@ -2329,26 +2370,9 @@ GPT-6-Astra · medium ▾
 </div>
 </div>
 </div>
-<div class="newbox">
-<div class="nh">
-<span>新会话</span>
-<a class="cli-pick" href="#cli">Claude Code ▾</a>
+<div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
 </div>
-<div class="row2">
-<div class="att-in">＋</div><div class="in typed">给登录接口加限流</div>
-<div class="go">↑</div>
-</div>
-<div class="cfg">
-<div class="cfg-main">
-<span class="dot idle">
-</span>MacBook · 询问</div>
-<div class="cfg-model">Sonnet · high</div>
-<span class="cfg-edit">更改</span>
-</div>
-<div class="onlyterm">只打开终端 ›</div>
-</div>
-</div>
-<div class="cap">混合 CLI 的项目页：新建卡片直接选择 CLI，切换保留第一句话；运行中的会话不能换 CLI</div>
+<div class="cap">混合 CLI 的项目页：输入区仍是一行，CLI 从「＋」里的新会话设置更换，草稿保留；运行中的会话不能换 CLI</div>
 </div>
 <div>
 <div class="phone">
@@ -2389,7 +2413,7 @@ GPT-6-Astra · medium ▾
 </div>
 </div>
 </div>
-<div class="cap">CLI 选择：只列当前机器已安装的；不自动改机器，不把 CLI 切换藏在设置的第二层</div>
+<div class="cap">CLI 选择：只列当前机器已安装的；不自动改机器，从新会话设置的 CLI 行直接选择</div>
 </div>
 <div>
 <div class="phone">
@@ -2469,7 +2493,7 @@ GPT-6-Astra · medium ▾
 </div>
 <div class="ai">接下来想优先覆盖哪些异常情况？</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief">哪些场景需要测试？</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h">
+<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief">哪些场景需要测试？</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
 <b>Claude Code 在问你</b>
 <span class="muted">可多选</span>
 </div>
@@ -2490,14 +2514,14 @@ GPT-6-Astra · medium ▾
 <div>并发限流</div>
 </div>
 </div>
-<div class="btns">
+</div><div class="pending-actions"><div class="btns">
 <div class="btn pri">提交 2 项</div>
 </div>
 <div class="foot">
 <span>都不合适？</span>
 <b>去终端 ›</b>
 </div>
-</div></details>
+</div></div></details>
 <div class="compose-card slim">
 <div class="draft">答完后继续…</div>
 <div class="controls">
@@ -2597,19 +2621,19 @@ GPT-6-Astra · medium ▾
 </div>
 <div class="ai">方案已经整理好，批准后开始改。</div>
 </div>
-<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h">
+<details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">计划待批准</span><span class="pending-brief"></span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h">
 <b>计划待批准</b>
 <span style="color:var(--blue)">展开全文 ›</span>
 </div>
 <div class="plan-body">1. 抽出库存接口<br>2. 迁移扣减与回滚<br>3. 补充并发测试</div>
-<div class="btns">
+</div><div class="pending-actions"><div class="btns">
 <div class="btn">继续规划</div>
 <div class="btn pri">批准执行</div>
 </div>
 <div class="foot">
 <span>批准后使用询问模式</span>
 </div>
-</div></details>
+</div></div></details>
 <div class="compose-card">
 <div class="draft">补充你对计划的要求…</div>
 <div class="controls">
@@ -2697,7 +2721,7 @@ Sonnet · high ▾
 </div>
 <div class="body pad">
 <div class="banner warn">MacBook 已离线，任务尚未开始</div>
-<div class="hint">草稿和配置保留，不自动换机器或 CLI。</div>
+<div class="hint">草稿已保留，请选择在线机器。</div>
 <div class="field" style="margin:12px 0;color:var(--fg)">给登录接口加限流</div>
 <div class="list">
 <div class="mi">
@@ -2708,14 +2732,14 @@ Sonnet · high ▾
 <span class="muted">›</span>
 </div>
 </div>
-<div class="hint">换机器后回到新建卡片，检查配置，再点发送。</div>
+<div class="hint">换机器后回到输入框，确认设置并发送。</div>
 </div>
 </div>
 <div class="cap">写草稿期间机器离线：主动换机器；CLI 不可用时一起明确选择，不默默回退</div>
 </div>
 </div>
 <!-- ============================= -->
-<h2>审批模式</h2>
+<h2 id="approval-mode">审批模式</h2>
 <div class="screens">
 
   <div>
@@ -2775,7 +2799,7 @@ Sonnet · high ▾
 </div>
 
 <!-- ============================= -->
-<h2>模型与上下文</h2>
+<h2 id="models">模型与上下文</h2>
 <div class="screens">
 
   <div>
@@ -2841,7 +2865,7 @@ Sonnet · high ▾
           <div class="row">审批模式<span class="v">自动 ›</span></div>
           <div class="row">审批超时<span class="v">10 分钟 ›</span></div>
         </div>
-        <div class="glabel">Claude Code · 新会话默认设置</div><div class="grp"><div class="row">模型<span class="v">Sonnet ›</span></div><div class="row">推理强度<span class="v">high ›</span></div><div class="row">审批模式<span class="v">询问 ›</span></div></div><div class="glabel">图片存储 · 这台电脑</div><div class="grp"><div class="row">上传文件<span class="v">200 MiB</span></div><div class="row">需保留 / 可回收<span class="v">80 / 120 MiB</span></div><div class="row">上传空间上限<span class="v">1 GiB ›</span></div><div class="row">预览和待同步缓存<span class="v">32 / 150 MiB</span></div><div class="row">清理可回收图片和缓存…</div></div><div class="pad small muted">上传、排队与当前执行中的原图保留。确认图片已内嵌且这一轮结束后可按最近使用顺序回收；历史保留，原始路径之后可能不可读。</div>
+        <div class="glabel">Claude Code · 新会话默认设置</div><div class="grp"><div class="row">模型<span class="v">Sonnet ›</span></div><div class="row">推理强度<span class="v">high ›</span></div><div class="row">审批模式<span class="v">询问 ›</span></div></div><div class="glabel">图片存储 · 这台电脑</div><div class="grp"><div class="row">上传文件<span class="v">200 MiB</span></div><div class="row">需保留 / 可回收<span class="v">80 / 120 MiB</span></div><div class="row">上传空间上限<span class="v">1 GiB ›</span></div><div class="row">预览和待同步缓存<span class="v">32 / 150 MiB</span></div><div class="row">清理可回收图片和缓存…</div></div><div class="pad small muted">清理保留正在上传、排队和执行的图片，以及历史预览。清理后可能无法再用原路径读取原图。</div>
         <div class="glabel">项目</div>
         <div class="grp">
           <div class="row">foo<span class="v">~/Code/foo</span></div>
@@ -3452,15 +3476,12 @@ Sonnet · high ▾
 </span>
 <span class="more">⋯</span>
 </div>
-<div class="ttool">远端 80×30<span style="margin-left:auto;color:#79c0ff">适配</span>
+<div class="ttool">远端尺寸已变化 · 80×30<span style="margin-left:auto;color:#79c0ff">适配</span>
 </div>
 <div class="term">
 <span class="b">❯</span> 正在执行测试…
 
-<div class="tstate">
-<b>远端尺寸已变化</b>
-<p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
-</div>
+
 </div>
 <div class="keys">
 <div class="keyrow">
@@ -3478,7 +3499,7 @@ Sonnet · high ▾
 </div>
 </div>
 </div>
-<div class="cap">终端也是同一个：适配影响电脑和其他客户端；其他端改尺寸后不继续显示错误的已适配状态</div>
+<div class="cap">终端也是同一个：适配影响电脑和其他客户端；尺寸变化只在工具栏提示，不弹居中卡片，不继续显示错误的已适配状态</div>
 </div>
 <div>
 <div class="phone">
@@ -3535,7 +3556,7 @@ Sonnet · high ▾
           <div class="row">等我处理时<span class="sw off"></span></div>
           <div class="row">一轮结束时<span class="sw off"></span></div>
         </div>
-        <div class="glabel">外观</div>
+        <div class="glabel">本机存储</div><div class="grp"><a class="row" href="#phone-image-storage" style="text-decoration:none;color:var(--fg)">图片存储<span class="v">›</span></a></div><div class="glabel">外观</div>
         <div class="grp"><div class="row"><div class="seg" style="flex:1"><div class="on">自动</div><div>亮色</div><div>暗色</div></div></div></div>
         <div class="glabel">账户</div>
         <div class="grp">
@@ -3545,7 +3566,7 @@ Sonnet · high ▾
       </div>
       <div class="tabbar"><div><i>▦</i>会话</div><div class="on"><i>⚙︎</i>设置</div></div>
     </div>
-    <div class="cap">设置：推送没开时置顶提示；退出和移除设备都要二次确认</div>
+    <div class="cap">设置：推送没开时显示一行提示；本机存储一组仅 Android 显示；退出和移除设备都要二次确认</div>
   </div>
 
   <div>
@@ -3553,7 +3574,7 @@ Sonnet · high ▾
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back">‹</span><span class="title"><b>添加设备</b></span><span class="more"></span></div>
       <div class="body">
-        <div class="qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">
+        <div class="qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges" role="img" aria-label="配对二维码（示例）">
           <path fill="#16181c" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h1v1H8zM10 0h2v1h-2zM9 2h2v1H9zM8 4h1v2H8zM11 4h2v1h-2zM10 6h1v2h-1zM8 8h3v1H8zM12 8h2v2h-2zM0 8h2v1H0zM3 8h2v2H3zM5 10h2v1H5zM1 11h2v1H1zM15 8h2v1h-2zM18 8h3v1h-3zM16 10h2v2h-2zM19 10h2v1h-2zM8 10h1v3H8zM10 11h3v1h-3zM14 12h1v2h-1zM17 13h3v1h-3zM8 14h2v1H8zM11 14h2v2h-2zM9 16h1v2H9zM12 17h3v1h-3zM16 15h2v2h-2zM19 15h2v1h-2zM8 19h3v2H8zM13 19h2v2h-2zM17 18h1v3h-1zM19 18h2v1h-2zM20 20h1v1h-1z"/>
         </svg></div>
         <div class="code">4829 1756</div>
@@ -3612,7 +3633,14 @@ Sonnet · high ▾
   </div>
 </div>
 
-<div class="stgrid" style="margin-top:24px">
+<div class="stgrid" style="margin-top:28px">
+  <div class="st">
+    <div class="st-h">账户 · 退出确认</div>
+    <div class="alert" style="position:static;transform:none;width:auto">
+      <h5>退出并删除本机密钥？</h5><p>这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。</p>
+      <div class="btns"><div class="btn">取消</div><div class="btn danger">退出</div></div>
+    </div>
+  </div>
   <div class="st">
     <div class="st-h">配对 · 已有设备这边</div>
     <div class="banner">◌ 正在把密钥交给新电脑…</div>
@@ -3656,9 +3684,9 @@ Sonnet · high ▾
     </div>
     <div class="dm">
       <div class="start">
-        <h3>开始一个任务</h3><div class="wide-project-tools"><span class="chip"><div class="av xs c1">f</div>foo ▾</span><a class="cli-pick" href="#cli">Claude Code ▾</a><span class="small muted">MacBook · 询问</span></div>
-        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="go44">↑</span></div></div><div class="small" style="color:var(--blue);padding:8px 0">只打开终端 ›</div>
-        <div class="small muted">沿用 foo 最近一次的 Claude Code 设置 · <span style="color:var(--blue)">更改机器与目录</span></div>
+        <h3>开始一个任务</h3><div class="wide-project-tools"><span class="chip"><div class="av xs c1">f</div>foo ▾</span></div>
+        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
+
         <div class="label">需要处理</div>
         <div class="todo">
           <div class="k"><span>● 请求执行</span><span>剩 8 分钟，超时拒绝</span></div>
@@ -3671,7 +3699,7 @@ Sonnet · high ▾
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏三段，项目区列出全部项目，点名字进项目页、点箭头展开最近结束的；主区域直接是新建会话：默认最近用的项目，CLI 直接选择，机器与模式保持完整显示；模型放在统一输入区，点「更改」调整机器与目录；下面列出要处理的</div>
+<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏三段，项目区列出全部项目，点名字进项目页、点箭头展开最近结束的；主区域直接是新建会话：默认最近用的项目，输入区只保留附件、正文和发送，CLI、机器、目录和模型从「＋」里的新会话设置调整；下面列出要处理的</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 并排</span></div>
@@ -3704,12 +3732,12 @@ Sonnet · high ▾
             <div class="record"><span style="color:var(--green)">✓</span><code>mkdir -p internal/handler</code><span class="muted">已允许</span></div>
             <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
           </div>
-          <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action">处理 ▸</span></summary><div class="pending-content"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
+          <details class="dock pending"><summary><span class="pending-dot">●</span><span class="pending-label">请求执行</span><span class="pending-brief">go test ./... -count=1</span><span class="pending-action"><span class="when-closed">处理 ▸</span><span class="when-open">收起 ⌃</span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="h"><b>请求执行</b><span class="muted">剩 8 分钟，超时拒绝</span></div>
             <div class="desc">跑一遍全部测试，确认拆包没有破坏行为</div>
             <pre>go test ./... -count=1</pre>
-            <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
+            </div><div class="pending-actions"><div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
             <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
-          </div></details>
+          </div></div></details>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44">↑</span></div></div>
         </div>
         <div class="tcol">
@@ -3751,7 +3779,7 @@ Sonnet · high ▾
           <div class="av lg c1">f</div>
           <div style="flex:1"><div style="font-size:22px;font-weight:700">foo</div><div class="muted small">~/Code/foo · MacBook · VPS-dev</div></div>
         </div>
-        <div class="wide-project-tools"><a class="cli-pick" href="#cli">Claude Code ▾</a><span class="small muted">MacBook · 询问</span><span class="small" style="color:var(--blue)">更改</span></div><div class="compose-card"><div class="draft">描述任务…</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="go44">↑</span></div></div>
+        <div class="compose-card"><div class="draft">描述任务…</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与新会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><a href="#new-settings">新会话设置 ›</a></div></details><span class="go44">↑</span></div></div>
         <div class="label" style="padding-left:0;padding-right:0">进行中 <span>1</span></div>
         <div class="sess" style="padding-left:0;padding-right:0"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
         <div class="label" style="padding-left:0;padding-right:0">已结束 <span>12</span></div>
@@ -3795,6 +3823,21 @@ Sonnet · high ▾
     mode = b.dataset.t;
     apply();
     t.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+
+  // Review interactions only; no remote operations.
+  document.addEventListener("toggle", (e) => {
+    const menu = e.target;
+    if (!menu.matches?.(".compose-menu") || !menu.open) return;
+    document.querySelectorAll(".compose-menu[open]").forEach((other) => { if (other !== menu) other.open = false; });
+  }, true);
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".compose-menu")) return;
+    document.querySelectorAll(".compose-menu[open]").forEach((menu) => { menu.open = false; });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".compose-menu[open]").forEach((menu) => { menu.open = false; });
   });
 </script>
 </body>
