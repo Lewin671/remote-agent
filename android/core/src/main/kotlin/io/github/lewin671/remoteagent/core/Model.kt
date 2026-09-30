@@ -279,6 +279,15 @@ class RunningTool(
 fun backgroundInput(input: String): Boolean = Regex("\"run_in_background\"\\s*:\\s*true").containsMatchIn(input)
 
 /**
+ * The call returned while its command went on in the background. Claude
+ * Code's Bash says so in its result, also when it backgrounds a long
+ * command on its own (claude-code-notes, 2.1.284: the input is then just
+ * the command); an input asking for it counts too.
+ */
+fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean =
+    backgroundInput(c.input) || c.output.startsWith("Command running in background with ID:")
+
+/**
  * A tool whose end is not known (architecture §13, 工具执行反馈): its call
  * went to the background, or the turn ended before its result came. It is
  * not shown as a success; the terminal is where to check.
@@ -395,7 +404,7 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
                 if (j >= 0) {
                     val t = d.tools.removeAt(j)
                     d.completedAt[t.seq] = e.seq
-                    if (t.toBackground || backgroundInput(e.toolCall.input)) d.background += BackgroundTool(t, returned = true)
+                    if (t.toBackground || wentToBackground(e.toolCall)) d.background += BackgroundTool(t, returned = true)
                 }
             }
             Event.KindCase.TOKEN_USAGE -> d.usage = e.tokenUsage

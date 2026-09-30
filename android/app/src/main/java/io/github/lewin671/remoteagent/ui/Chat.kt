@@ -228,7 +228,7 @@ fun buildChat(
                 val c = callAt[e.seq]
                 if (c != null) {
                     val started = startedTools[e.seq]
-                    addCall(k, c, started?.toBackground == true || io.github.lewin671.remoteagent.core.backgroundInput(c.toolCall.input))
+                    addCall(k, c, started?.toBackground == true || io.github.lewin671.remoteagent.core.wentToBackground(c.toolCall))
                 } else {
                     val r = running[e.seq]
                     if (r != null || e.seq in d.unfinished) {
@@ -237,7 +237,7 @@ fun buildChat(
                     }
                 }
             }
-            Event.KindCase.TOOL_CALL -> if (e.seq !in placed) addCall(k, e, io.github.lewin671.remoteagent.core.backgroundInput(e.toolCall.input))
+            Event.KindCase.TOOL_CALL -> if (e.seq !in placed) addCall(k, e, io.github.lewin671.remoteagent.core.wentToBackground(e.toolCall))
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 out += ChatItem.User(k, e.userMessage.text, e.seq in d.typedLocally, eventTime(e))
