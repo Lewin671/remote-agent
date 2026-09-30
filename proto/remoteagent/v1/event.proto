@@ -47,6 +47,8 @@ message ToolStarted {
   string input = 4;
   // The CLI's tool name, e.g. "Bash".
   string item_type = 5;
+  // See ToolCall.input_digest.
+  string input_digest = 6;
 }
 
 // Agent is the CLI a session runs. Sessions recorded before Claude Code
@@ -100,6 +102,10 @@ message ToolCall {
   int64 duration_ms = 9;
   // Original Codex item type, e.g. "CommandExecution".
   string item_type = 10;
+  // Hex SHA-256 of the call's complete input (Claude Code: the command of
+  // a shell call, else the input as compact JSON), however long; it ties
+  // the call to its approval request.
+  string input_digest = 11;
 }
 
 message TurnStarted {}

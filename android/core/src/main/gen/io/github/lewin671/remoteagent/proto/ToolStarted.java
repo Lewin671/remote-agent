@@ -25,6 +25,7 @@ public  final class ToolStarted extends
     callId_ = "";
     input_ = "";
     itemType_ = "";
+    inputDigest_ = "";
   }
   public static final int TITLE_FIELD_NUMBER = 1;
   private java.lang.String title_;
@@ -297,6 +298,74 @@ public  final class ToolStarted extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     itemType_ = value.toStringUtf8();
+
+  }
+
+  public static final int INPUT_DIGEST_FIELD_NUMBER = 6;
+  private java.lang.String inputDigest_;
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  @java.lang.Override
+  public java.lang.String getInputDigest() {
+    return inputDigest_;
+  }
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getInputDigestBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(inputDigest_);
+  }
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @param value The inputDigest to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setInputDigest(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    inputDigest_ = value;
+  }
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   */
+  private void clearInputDigest() {
+
+    inputDigest_ = getDefaultInstance().getInputDigest();
+  }
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @param value The bytes for inputDigest to set.
+   */
+  private void setInputDigestBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    inputDigest_ = value.toStringUtf8();
 
   }
 
@@ -685,6 +754,75 @@ public  final class ToolStarted extends
       return this;
     }
 
+    /**
+     * <pre>
+     * See ToolCall.input_digest.
+     * </pre>
+     *
+     * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+     * @return The inputDigest.
+     */
+    @java.lang.Override
+    public java.lang.String getInputDigest() {
+      return instance.getInputDigest();
+    }
+    /**
+     * <pre>
+     * See ToolCall.input_digest.
+     * </pre>
+     *
+     * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+     * @return The bytes for inputDigest.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getInputDigestBytes() {
+      return instance.getInputDigestBytes();
+    }
+    /**
+     * <pre>
+     * See ToolCall.input_digest.
+     * </pre>
+     *
+     * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+     * @param value The inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigest(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setInputDigest(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * See ToolCall.input_digest.
+     * </pre>
+     *
+     * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInputDigest() {
+      copyOnWrite();
+      instance.clearInputDigest();
+      return this;
+    }
+    /**
+     * <pre>
+     * See ToolCall.input_digest.
+     * </pre>
+     *
+     * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+     * @param value The bytes for inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigestBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setInputDigestBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolStarted)
   }
   @java.lang.Override
@@ -706,10 +844,11 @@ public  final class ToolStarted extends
             "kind_",
             "input_",
             "itemType_",
+            "inputDigest_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\f\u0004\u0208\u0005\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\f\u0004\u0208\u0005\u0208\u0006\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

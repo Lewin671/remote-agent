@@ -25,6 +25,7 @@ public  final class ToolCall extends
     output_ = "";
     status_ = "";
     itemType_ = "";
+    inputDigest_ = "";
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -540,6 +541,84 @@ public  final class ToolCall extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     itemType_ = value.toStringUtf8();
+
+  }
+
+  public static final int INPUT_DIGEST_FIELD_NUMBER = 11;
+  private java.lang.String inputDigest_;
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  @java.lang.Override
+  public java.lang.String getInputDigest() {
+    return inputDigest_;
+  }
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getInputDigestBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(inputDigest_);
+  }
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @param value The inputDigest to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setInputDigest(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    inputDigest_ = value;
+  }
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   */
+  private void clearInputDigest() {
+
+    inputDigest_ = getDefaultInstance().getInputDigest();
+  }
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @param value The bytes for inputDigest to set.
+   */
+  private void setInputDigestBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    inputDigest_ = value.toStringUtf8();
 
   }
 
@@ -1176,6 +1255,85 @@ public  final class ToolCall extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Hex SHA-256 of the call's complete input (Claude Code: the command of
+     * a shell call, else the input as compact JSON), however long; it ties
+     * the call to its approval request.
+     * </pre>
+     *
+     * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+     * @return The inputDigest.
+     */
+    @java.lang.Override
+    public java.lang.String getInputDigest() {
+      return instance.getInputDigest();
+    }
+    /**
+     * <pre>
+     * Hex SHA-256 of the call's complete input (Claude Code: the command of
+     * a shell call, else the input as compact JSON), however long; it ties
+     * the call to its approval request.
+     * </pre>
+     *
+     * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+     * @return The bytes for inputDigest.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getInputDigestBytes() {
+      return instance.getInputDigestBytes();
+    }
+    /**
+     * <pre>
+     * Hex SHA-256 of the call's complete input (Claude Code: the command of
+     * a shell call, else the input as compact JSON), however long; it ties
+     * the call to its approval request.
+     * </pre>
+     *
+     * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+     * @param value The inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigest(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setInputDigest(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Hex SHA-256 of the call's complete input (Claude Code: the command of
+     * a shell call, else the input as compact JSON), however long; it ties
+     * the call to its approval request.
+     * </pre>
+     *
+     * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInputDigest() {
+      copyOnWrite();
+      instance.clearInputDigest();
+      return this;
+    }
+    /**
+     * <pre>
+     * Hex SHA-256 of the call's complete input (Claude Code: the command of
+     * a shell call, else the input as compact JSON), however long; it ties
+     * the call to its approval request.
+     * </pre>
+     *
+     * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+     * @param value The bytes for inputDigest to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInputDigestBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setInputDigestBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolCall)
   }
   @java.lang.Override
@@ -1203,10 +1361,12 @@ public  final class ToolCall extends
             "exitCode_",
             "durationMs_",
             "itemType_",
+            "inputDigest_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0208" +
-              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002\n\u0208";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002" +
+              "\n\u0208\u000b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

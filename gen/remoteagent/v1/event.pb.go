@@ -790,7 +790,9 @@ type ToolStarted struct {
 	Kind  ToolKind `protobuf:"varint,3,opt,name=kind,proto3,enum=remoteagent.v1.ToolKind" json:"kind,omitempty"`
 	Input string   `protobuf:"bytes,4,opt,name=input,proto3" json:"input,omitempty"`
 	// The CLI's tool name, e.g. "Bash".
-	ItemType      string `protobuf:"bytes,5,opt,name=item_type,json=itemType,proto3" json:"item_type,omitempty"`
+	ItemType string `protobuf:"bytes,5,opt,name=item_type,json=itemType,proto3" json:"item_type,omitempty"`
+	// See ToolCall.input_digest.
+	InputDigest   string `protobuf:"bytes,6,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -856,6 +858,13 @@ func (x *ToolStarted) GetInput() string {
 func (x *ToolStarted) GetItemType() string {
 	if x != nil {
 		return x.ItemType
+	}
+	return ""
+}
+
+func (x *ToolStarted) GetInputDigest() string {
+	if x != nil {
+		return x.InputDigest
 	}
 	return ""
 }
@@ -1028,7 +1037,11 @@ type ToolCall struct {
 	ExitCode   *int32 `protobuf:"varint,8,opt,name=exit_code,json=exitCode,proto3,oneof" json:"exit_code,omitempty"`
 	DurationMs int64  `protobuf:"varint,9,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
 	// Original Codex item type, e.g. "CommandExecution".
-	ItemType      string `protobuf:"bytes,10,opt,name=item_type,json=itemType,proto3" json:"item_type,omitempty"`
+	ItemType string `protobuf:"bytes,10,opt,name=item_type,json=itemType,proto3" json:"item_type,omitempty"`
+	// Hex SHA-256 of the call's complete input (Claude Code: the command of
+	// a shell call, else the input as compact JSON), however long; it ties
+	// the call to its approval request.
+	InputDigest   string `protobuf:"bytes,11,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1129,6 +1142,13 @@ func (x *ToolCall) GetDurationMs() int64 {
 func (x *ToolCall) GetItemType() string {
 	if x != nil {
 		return x.ItemType
+	}
+	return ""
+}
+
+func (x *ToolCall) GetInputDigest() string {
+	if x != nil {
+		return x.InputDigest
 	}
 	return ""
 }
@@ -2229,13 +2249,14 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\rplan_proposed\x18\x18 \x01(\v2\x1c.remoteagent.v1.PlanProposedH\x00R\fplanProposed\x12L\n" +
 	"\x10settings_changed\x18\x19 \x01(\v2\x1f.remoteagent.v1.SettingsChangedH\x00R\x0fsettingsChanged\x12@\n" +
 	"\ftool_started\x18\x1a \x01(\v2\x1b.remoteagent.v1.ToolStartedH\x00R\vtoolStartedB\x06\n" +
-	"\x04kind\"\x9d\x01\n" +
+	"\x04kind\"\xc0\x01\n" +
 	"\vToolStarted\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x17\n" +
 	"\acall_id\x18\x02 \x01(\tR\x06callId\x12,\n" +
 	"\x04kind\x18\x03 \x01(\x0e2\x18.remoteagent.v1.ToolKindR\x04kind\x12\x14\n" +
 	"\x05input\x18\x04 \x01(\tR\x05input\x12\x1b\n" +
-	"\titem_type\x18\x05 \x01(\tR\bitemType\"B\n" +
+	"\titem_type\x18\x05 \x01(\tR\bitemType\x12!\n" +
+	"\finput_digest\x18\x06 \x01(\tR\vinputDigest\"B\n" +
 	"\vUserMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
 	"\vimage_count\x18\x02 \x01(\x05R\n" +
@@ -2244,7 +2265,7 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
 	"\x05phase\x18\x02 \x01(\tR\x05phase\"\x1f\n" +
 	"\tReasoning\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"\xc6\x02\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"\xe9\x02\n" +
 	"\bToolCall\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.remoteagent.v1.ToolKindR\x04kind\x12\x14\n" +
@@ -2257,7 +2278,8 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\vduration_ms\x18\t \x01(\x03R\n" +
 	"durationMs\x12\x1b\n" +
 	"\titem_type\x18\n" +
-	" \x01(\tR\bitemTypeB\f\n" +
+	" \x01(\tR\bitemType\x12!\n" +
+	"\finput_digest\x18\v \x01(\tR\vinputDigestB\f\n" +
 	"\n" +
 	"_exit_code\"\r\n" +
 	"\vTurnStarted\"{\n" +

@@ -35,10 +35,11 @@ type Parser struct {
 }
 
 type call struct {
-	name  string
-	title string
-	input string
-	kind  pb.ToolKind
+	name   string
+	title  string
+	input  string
+	kind   pb.ToolKind
+	digest string // agent.InputDigest
 }
 
 // NewParser returns a Parser.
@@ -68,7 +69,7 @@ func (p *Parser) Replay(e *pb.Event) {
 			if kind == pb.ToolKind_TOOL_KIND_UNSPECIFIED {
 				kind = pb.ToolKind_TOOL_KIND_OTHER
 			}
-			p.calls[t.CallId] = call{name: t.ItemType, title: t.Title, input: t.Input, kind: kind}
+			p.calls[t.CallId] = call{name: t.ItemType, title: t.Title, input: t.Input, kind: kind, digest: t.InputDigest}
 		}
 	case *pb.Event_ToolCall:
 		delete(p.calls, k.ToolCall.CallId)
@@ -387,7 +388,7 @@ func (p *Parser) toolUse(b block) []*pb.Event {
 	c := describe(b.Name, b.Input)
 	p.calls[b.ID] = c
 	return []*pb.Event{{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{
-		Title: c.title, CallId: b.ID, Kind: c.kind, Input: c.input, ItemType: c.name,
+		Title: c.title, CallId: b.ID, Kind: c.kind, Input: c.input, ItemType: c.name, InputDigest: c.digest,
 	}}}}
 }
 
@@ -405,7 +406,7 @@ func describe(name string, raw json.RawMessage) call {
 	var in map[string]any
 	_ = json.Unmarshal(raw, &in)
 	str := func(k string) string { s, _ := in[k].(string); return s }
-	c := call{name: name, title: name, kind: pb.ToolKind_TOOL_KIND_OTHER, input: compactJSON(raw)}
+	c := call{name: name, title: name, kind: pb.ToolKind_TOOL_KIND_OTHER, input: compactJSON(raw), digest: agent.InputDigest(name, raw)}
 	switch name {
 	case "Bash":
 		c.kind, c.title, c.input = pb.ToolKind_TOOL_KIND_COMMAND, str("command"), str("command")
@@ -458,7 +459,7 @@ func (p *Parser) toolResult(b block, structured json.RawMessage) []*pb.Event {
 		c = call{title: "tool", kind: pb.ToolKind_TOOL_KIND_OTHER}
 	}
 	delete(p.calls, b.ToolUseID)
-	tc := &pb.ToolCall{CallId: b.ToolUseID, Kind: c.kind, Title: c.title, Input: c.input, Status: "completed", ItemType: c.name}
+	tc := &pb.ToolCall{CallId: b.ToolUseID, Kind: c.kind, Title: c.title, Input: c.input, Status: "completed", ItemType: c.name, InputDigest: c.digest}
 	if b.IsError {
 		tc.Status = "failed"
 	}

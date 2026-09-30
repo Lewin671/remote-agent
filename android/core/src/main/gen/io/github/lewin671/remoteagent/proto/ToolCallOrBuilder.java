@@ -155,4 +155,28 @@ public interface ToolCallOrBuilder extends
    */
   com.google.protobuf.ByteString
       getItemTypeBytes();
+
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  java.lang.String getInputDigest();
+  /**
+   * <pre>
+   * Hex SHA-256 of the call's complete input (Claude Code: the command of
+   * a shell call, else the input as compact JSON), however long; it ties
+   * the call to its approval request.
+   * </pre>
+   *
+   * <code>string input_digest = 11 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  com.google.protobuf.ByteString
+      getInputDigestBytes();
 }

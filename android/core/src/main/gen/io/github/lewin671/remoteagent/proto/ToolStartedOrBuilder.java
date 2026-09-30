@@ -84,4 +84,24 @@ public interface ToolStartedOrBuilder extends
    */
   com.google.protobuf.ByteString
       getItemTypeBytes();
+
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @return The inputDigest.
+   */
+  java.lang.String getInputDigest();
+  /**
+   * <pre>
+   * See ToolCall.input_digest.
+   * </pre>
+   *
+   * <code>string input_digest = 6 [json_name = "inputDigest"];</code>
+   * @return The bytes for inputDigest.
+   */
+  com.google.protobuf.ByteString
+      getInputDigestBytes();
 }

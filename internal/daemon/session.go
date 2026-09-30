@@ -91,9 +91,9 @@ type approval struct {
 	// as the start of the command; seen is set once the prompt showed.
 	key  string
 	seen bool
-	// tool and input are the tool call the request is for, as its
-	// ToolCall event will show them.
-	tool, input string
+	// tool and digest (agent.InputDigest) identify the tool call the
+	// request is for.
+	tool, digest string
 }
 
 type decision struct {
@@ -932,7 +932,7 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	if json.Unmarshal(p.ToolInput, &shell) == nil {
 		req.Command, req.Description = shell.Command, shell.Description
 	}
-	a.key, a.tool, a.input = promptKey(p.ToolInput), p.ToolName, callInput(p.ToolName, p.ToolInput)
+	a.key, a.tool, a.digest = promptKey(p.ToolInput), p.ToolName, agent.InputDigest(p.ToolName, p.ToolInput)
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
@@ -1078,14 +1078,18 @@ func (s *session) retractApprovals() {
 
 // retractFor settles as answered in the terminal the waiting approval
 // whose tool call has completed: the one request for the same tool with
-// the same complete input. Several such requests, as parallel identical
-// calls, cannot be told apart, and none is settled.
+// the same complete input, compared by digest however long it is. Several
+// such requests, as parallel identical calls, cannot be told apart, and
+// none is settled.
 func (s *session) retractFor(c *pb.ToolCall) {
+	if c.InputDigest == "" {
+		return
+	}
 	s.mu.Lock()
 	var match *approval
 	n := 0
 	for _, a := range s.approvals {
-		if !a.claimed && a.tool != "" && a.tool == c.ItemType && a.input != "" && a.input == c.Input {
+		if !a.claimed && a.tool == c.ItemType && a.digest == c.InputDigest {
 			match = a
 			n++
 		}
@@ -1098,28 +1102,6 @@ func (s *session) retractFor(c *pb.ToolCall) {
 	delete(s.approvals, match.id)
 	s.mu.Unlock()
 	match.decision <- decision{terminal: true}
-}
-
-// callInput is a tool call's input as its ToolCall event carries it: a
-// shell command, or the input as compact JSON; empty when too long to
-// compare.
-func callInput(tool string, raw []byte) string {
-	if tool == "Bash" {
-		var in agent.ShellInput
-		if json.Unmarshal(raw, &in) != nil {
-			return ""
-		}
-		return in.Command
-	}
-	var v any
-	if json.Unmarshal(raw, &v) != nil {
-		return ""
-	}
-	b, _ := json.Marshal(v)
-	if len(b) > 16*1024 {
-		return ""
-	}
-	return string(b)
 }
 
 // promptKey is text a permission prompt shows for a tool call: the start

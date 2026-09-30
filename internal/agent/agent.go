@@ -5,6 +5,8 @@
 package agent
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -185,6 +187,28 @@ type Hook struct {
 	ToolName       string          `json:"tool_name"`
 	ToolInput      json.RawMessage `json:"tool_input"`
 	ToolUseID      string          `json:"tool_use_id"`
+}
+
+// InputDigest identifies a Claude Code tool call by its complete input:
+// hex SHA-256 of a shell call's command, else of the input as compact
+// JSON with sorted keys. Empty if the input cannot be read.
+func InputDigest(tool string, raw []byte) string {
+	var text []byte
+	if tool == "Bash" {
+		var in ShellInput
+		if json.Unmarshal(raw, &in) != nil {
+			return ""
+		}
+		text = []byte(in.Command)
+	} else {
+		var v any
+		if json.Unmarshal(raw, &v) != nil {
+			return ""
+		}
+		text, _ = json.Marshal(v)
+	}
+	sum := sha256.Sum256(text)
+	return hex.EncodeToString(sum[:])
 }
 
 // ShellInput is the tool_input of a shell PermissionRequest.
