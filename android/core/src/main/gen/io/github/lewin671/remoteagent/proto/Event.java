@@ -45,6 +45,8 @@ public  final class Event extends
     PLAN_PROPOSED(24),
     SETTINGS_CHANGED(25),
     TOOL_STARTED(26),
+    IMAGE_GENERATED(27),
+    PLAN_ANSWERED(28),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -77,6 +79,8 @@ public  final class Event extends
         case 24: return PLAN_PROPOSED;
         case 25: return SETTINGS_CHANGED;
         case 26: return TOOL_STARTED;
+        case 27: return IMAGE_GENERATED;
+        case 28: return PLAN_ANSWERED;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -298,6 +302,89 @@ public  final class Event extends
     checkByteStringIsUtf8(value);
     turnId_ = value.toStringUtf8();
 
+  }
+
+  public static final int ORIGIN_FIELD_NUMBER = 5;
+  private io.github.lewin671.remoteagent.proto.Origin origin_;
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOrigin() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Origin getOrigin() {
+    return origin_ == null ? io.github.lewin671.remoteagent.proto.Origin.getDefaultInstance() : origin_;
+  }
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
+    value.getClass();  // minimal bytecode null check
+    origin_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
+    value.getClass();  // minimal bytecode null check
+    if (origin_ != null &&
+        origin_ != io.github.lewin671.remoteagent.proto.Origin.getDefaultInstance()) {
+      origin_ =
+        io.github.lewin671.remoteagent.proto.Origin.newBuilder(origin_).mergeFrom(value).buildPartial();
+    } else {
+      origin_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   */
+  private void clearOrigin() {
+    origin_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static final int USER_MESSAGE_FIELD_NUMBER = 10;
@@ -1184,6 +1271,110 @@ public  final class Event extends
     }
   }
 
+  public static final int IMAGE_GENERATED_FIELD_NUMBER = 27;
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasImageGenerated() {
+    return kindCase_ == 27;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ImageGenerated getImageGenerated() {
+    if (kindCase_ == 27) {
+       return (io.github.lewin671.remoteagent.proto.ImageGenerated) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ImageGenerated.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 27 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ImageGenerated.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ImageGenerated.newBuilder((io.github.lewin671.remoteagent.proto.ImageGenerated) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   */
+  private void clearImageGenerated() {
+    if (kindCase_ == 27) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int PLAN_ANSWERED_FIELD_NUMBER = 28;
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPlanAnswered() {
+    return kindCase_ == 28;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.PlanAnswered getPlanAnswered() {
+    if (kindCase_ == 28) {
+       return (io.github.lewin671.remoteagent.proto.PlanAnswered) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.PlanAnswered.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPlanAnswered(io.github.lewin671.remoteagent.proto.PlanAnswered value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 28;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePlanAnswered(io.github.lewin671.remoteagent.proto.PlanAnswered value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 28 &&
+        kind_ != io.github.lewin671.remoteagent.proto.PlanAnswered.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.PlanAnswered.newBuilder((io.github.lewin671.remoteagent.proto.PlanAnswered) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 28;
+  }
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   */
+  private void clearPlanAnswered() {
+    if (kindCase_ == 28) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.Event parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1501,6 +1692,95 @@ public  final class Event extends
         com.google.protobuf.ByteString value) {
       copyOnWrite();
       instance.setTurnIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOrigin() {
+      return instance.hasOrigin();
+    }
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Origin getOrigin() {
+      return instance.getOrigin();
+    }
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    public Builder setOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
+      copyOnWrite();
+      instance.setOrigin(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    public Builder setOrigin(
+        io.github.lewin671.remoteagent.proto.Origin.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOrigin(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    public Builder mergeOrigin(io.github.lewin671.remoteagent.proto.Origin value) {
+      copyOnWrite();
+      instance.mergeOrigin(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Who caused the event, when the daemon knows: set on InputState,
+     * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+     * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+     * older than v2 and when unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+     */
+    public Builder clearOrigin() {  copyOnWrite();
+      instance.clearOrigin();
       return this;
     }
 
@@ -2320,6 +2600,102 @@ public  final class Event extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasImageGenerated() {
+      return instance.hasImageGenerated();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ImageGenerated getImageGenerated() {
+      return instance.getImageGenerated();
+    }
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    public Builder setImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated value) {
+      copyOnWrite();
+      instance.setImageGenerated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    public Builder setImageGenerated(
+        io.github.lewin671.remoteagent.proto.ImageGenerated.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImageGenerated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    public Builder mergeImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated value) {
+      copyOnWrite();
+      instance.mergeImageGenerated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+     */
+    public Builder clearImageGenerated() {
+      copyOnWrite();
+      instance.clearImageGenerated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPlanAnswered() {
+      return instance.hasPlanAnswered();
+    }
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.PlanAnswered getPlanAnswered() {
+      return instance.getPlanAnswered();
+    }
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    public Builder setPlanAnswered(io.github.lewin671.remoteagent.proto.PlanAnswered value) {
+      copyOnWrite();
+      instance.setPlanAnswered(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    public Builder setPlanAnswered(
+        io.github.lewin671.remoteagent.proto.PlanAnswered.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPlanAnswered(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    public Builder mergePlanAnswered(io.github.lewin671.remoteagent.proto.PlanAnswered value) {
+      copyOnWrite();
+      instance.mergePlanAnswered(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+     */
+    public Builder clearPlanAnswered() {
+      copyOnWrite();
+      instance.clearPlanAnswered();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Event)
   }
   @java.lang.Override
@@ -2343,6 +2719,7 @@ public  final class Event extends
             "sessionId_",
             "time_",
             "turnId_",
+            "origin_",
             io.github.lewin671.remoteagent.proto.UserMessage.class,
             io.github.lewin671.remoteagent.proto.AgentMessage.class,
             io.github.lewin671.remoteagent.proto.Reasoning.class,
@@ -2360,12 +2737,15 @@ public  final class Event extends
             io.github.lewin671.remoteagent.proto.PlanProposed.class,
             io.github.lewin671.remoteagent.proto.SettingsChanged.class,
             io.github.lewin671.remoteagent.proto.ToolStarted.class,
+            io.github.lewin671.remoteagent.proto.ImageGenerated.class,
+            io.github.lewin671.remoteagent.proto.PlanAnswered.class,
           };
           java.lang.String info =
-              "\u0000\u0015\u0001\u0001\u0001\u001a\u0015\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u0208\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000" +
-              "\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015" +
-              "<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000";
+              "\u0000\u0018\u0001\u0001\u0001\u001c\u0018\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u1009\u0000\u0004\u0208\u0005\u1009\u0001\n<\u0000\u000b<\u0000\f<\u0000\r" +
+              "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
+              "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a" +
+              "<\u0000\u001b<\u0000\u001c<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -58,7 +58,10 @@ public interface HeaderOrBuilder extends
   /**
    * <pre>
    * Event sequence number for EVENT; revision for SESSION_META and
-   * MACHINE_META, so that an older copy is never shown over a newer one.
+   * MACHINE_META, so that an older copy is never shown over a newer one;
+   * the new revision for ACCOUNT_PREFS and DEVICE_META (the expected
+   * revision plus one), so that the server cannot pass a copy off as
+   * another revision.
    * </pre>
    *
    * <code>uint64 seq = 5 [json_name = "seq"];</code>
@@ -68,7 +71,9 @@ public interface HeaderOrBuilder extends
 
   /**
    * <pre>
-   * Client-chosen ID for COMMAND and COMMAND_RESULT.
+   * Client-chosen ID for COMMAND and COMMAND_RESULT; the image ID for
+   * IMAGE; the object ID for ACCOUNT_PREFS; the described device's ID for
+   * DEVICE_META.
    * </pre>
    *
    * <code>string request_id = 6 [json_name = "requestId"];</code>
@@ -77,7 +82,9 @@ public interface HeaderOrBuilder extends
   java.lang.String getRequestId();
   /**
    * <pre>
-   * Client-chosen ID for COMMAND and COMMAND_RESULT.
+   * Client-chosen ID for COMMAND and COMMAND_RESULT; the image ID for
+   * IMAGE; the object ID for ACCOUNT_PREFS; the described device's ID for
+   * DEVICE_META.
    * </pre>
    *
    * <code>string request_id = 6 [json_name = "requestId"];</code>

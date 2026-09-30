@@ -23,11 +23,19 @@ public interface SendRequestOrBuilder extends
       getSessionIdBytes();
 
   /**
+   * <pre>
+   * May be empty when image_ids are given.
+   * </pre>
+   *
    * <code>string text = 2 [json_name = "text"];</code>
    * @return The text.
    */
   java.lang.String getText();
   /**
+   * <pre>
+   * May be empty when image_ids are given.
+   * </pre>
+   *
    * <code>string text = 2 [json_name = "text"];</code>
    * @return The bytes for text.
    */
@@ -53,4 +61,61 @@ public interface SendRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRequestIdBytes();
+
+  /**
+   * <pre>
+   * Images to paste before the text, in order: IDs from
+   * CompleteImageUpload by the same device, at most 6. Each is pasted into
+   * the input box and must turn into "[Image #N]" before the text and
+   * Enter are written; if one does not, nothing is submitted (the message
+   * ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 4 [json_name = "imageIds"];</code>
+   * @return A list containing the imageIds.
+   */
+  java.util.List<java.lang.String>
+      getImageIdsList();
+  /**
+   * <pre>
+   * Images to paste before the text, in order: IDs from
+   * CompleteImageUpload by the same device, at most 6. Each is pasted into
+   * the input box and must turn into "[Image #N]" before the text and
+   * Enter are written; if one does not, nothing is submitted (the message
+   * ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 4 [json_name = "imageIds"];</code>
+   * @return The count of imageIds.
+   */
+  int getImageIdsCount();
+  /**
+   * <pre>
+   * Images to paste before the text, in order: IDs from
+   * CompleteImageUpload by the same device, at most 6. Each is pasted into
+   * the input box and must turn into "[Image #N]" before the text and
+   * Enter are written; if one does not, nothing is submitted (the message
+   * ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 4 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  java.lang.String getImageIds(int index);
+  /**
+   * <pre>
+   * Images to paste before the text, in order: IDs from
+   * CompleteImageUpload by the same device, at most 6. Each is pasted into
+   * the input box and must turn into "[Image #N]" before the text and
+   * Enter are written; if one does not, nothing is submitted (the message
+   * ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 4 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getImageIdsBytes(int index);
 }

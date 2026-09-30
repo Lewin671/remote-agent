@@ -179,4 +179,30 @@ public interface ToolCallOrBuilder extends
    */
   com.google.protobuf.ByteString
       getInputDigestBytes();
+
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> 
+      getImagesList();
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.ImageRef getImages(int index);
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  int getImagesCount();
 }

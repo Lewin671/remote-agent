@@ -87,6 +87,20 @@ const (
 	// ClientServiceSetPushTargetProcedure is the fully-qualified name of the ClientService's
 	// SetPushTarget RPC.
 	ClientServiceSetPushTargetProcedure = "/remoteagent.v1.ClientService/SetPushTarget"
+	// ClientServiceGetImageProcedure is the fully-qualified name of the ClientService's GetImage RPC.
+	ClientServiceGetImageProcedure = "/remoteagent.v1.ClientService/GetImage"
+	// ClientServiceListDevicesProcedure is the fully-qualified name of the ClientService's ListDevices
+	// RPC.
+	ClientServiceListDevicesProcedure = "/remoteagent.v1.ClientService/ListDevices"
+	// ClientServicePutDeviceMetaProcedure is the fully-qualified name of the ClientService's
+	// PutDeviceMeta RPC.
+	ClientServicePutDeviceMetaProcedure = "/remoteagent.v1.ClientService/PutDeviceMeta"
+	// ClientServiceGetAccountPrefsProcedure is the fully-qualified name of the ClientService's
+	// GetAccountPrefs RPC.
+	ClientServiceGetAccountPrefsProcedure = "/remoteagent.v1.ClientService/GetAccountPrefs"
+	// ClientServicePutAccountPrefsProcedure is the fully-qualified name of the ClientService's
+	// PutAccountPrefs RPC.
+	ClientServicePutAccountPrefsProcedure = "/remoteagent.v1.ClientService/PutAccountPrefs"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -101,6 +115,8 @@ const (
 	MachineServiceListSessionHeadsProcedure = "/remoteagent.v1.MachineService/ListSessionHeads"
 	// MachineServiceNotifyProcedure is the fully-qualified name of the MachineService's Notify RPC.
 	MachineServiceNotifyProcedure = "/remoteagent.v1.MachineService/Notify"
+	// MachineServicePutImageProcedure is the fully-qualified name of the MachineService's PutImage RPC.
+	MachineServicePutImageProcedure = "/remoteagent.v1.MachineService/PutImage"
 )
 
 // AuthServiceClient is a client for the remoteagent.v1.AuthService service.
@@ -445,6 +461,17 @@ type ClientServiceClient interface {
 	// target per type: Web Push and FCM can be set side by side.
 	// SetPushSubscription is the same for Web Push.
 	SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error)
+	// GetImage returns the display copy of an image in a session.
+	GetImage(context.Context, *connect.Request[v1.GetImageRequest]) (*connect.Response[v1.GetImageResponse], error)
+	// ListDevices lists the account's devices, machines and clients.
+	ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error)
+	// PutDeviceMeta replaces a client device's sealed metadata if its
+	// revision is still the expected one.
+	PutDeviceMeta(context.Context, *connect.Request[v1.PutDeviceMetaRequest]) (*connect.Response[v1.PutDeviceMetaResponse], error)
+	// Account preference objects, stored sealed and replaced with a check
+	// of the expected revision.
+	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
+	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -506,6 +533,36 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("SetPushTarget")),
 			connect.WithClientOptions(opts...),
 		),
+		getImage: connect.NewClient[v1.GetImageRequest, v1.GetImageResponse](
+			httpClient,
+			baseURL+ClientServiceGetImageProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("GetImage")),
+			connect.WithClientOptions(opts...),
+		),
+		listDevices: connect.NewClient[v1.ListDevicesRequest, v1.ListDevicesResponse](
+			httpClient,
+			baseURL+ClientServiceListDevicesProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("ListDevices")),
+			connect.WithClientOptions(opts...),
+		),
+		putDeviceMeta: connect.NewClient[v1.PutDeviceMetaRequest, v1.PutDeviceMetaResponse](
+			httpClient,
+			baseURL+ClientServicePutDeviceMetaProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("PutDeviceMeta")),
+			connect.WithClientOptions(opts...),
+		),
+		getAccountPrefs: connect.NewClient[v1.GetAccountPrefsRequest, v1.GetAccountPrefsResponse](
+			httpClient,
+			baseURL+ClientServiceGetAccountPrefsProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("GetAccountPrefs")),
+			connect.WithClientOptions(opts...),
+		),
+		putAccountPrefs: connect.NewClient[v1.PutAccountPrefsRequest, v1.PutAccountPrefsResponse](
+			httpClient,
+			baseURL+ClientServicePutAccountPrefsProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("PutAccountPrefs")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -519,6 +576,11 @@ type clientServiceClient struct {
 	setPushSubscription *connect.Client[v1.SetPushSubscriptionRequest, v1.SetPushSubscriptionResponse]
 	removeDevice        *connect.Client[v1.RemoveDeviceRequest, v1.RemoveDeviceResponse]
 	setPushTarget       *connect.Client[v1.SetPushTargetRequest, v1.SetPushTargetResponse]
+	getImage            *connect.Client[v1.GetImageRequest, v1.GetImageResponse]
+	listDevices         *connect.Client[v1.ListDevicesRequest, v1.ListDevicesResponse]
+	putDeviceMeta       *connect.Client[v1.PutDeviceMetaRequest, v1.PutDeviceMetaResponse]
+	getAccountPrefs     *connect.Client[v1.GetAccountPrefsRequest, v1.GetAccountPrefsResponse]
+	putAccountPrefs     *connect.Client[v1.PutAccountPrefsRequest, v1.PutAccountPrefsResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -561,6 +623,31 @@ func (c *clientServiceClient) SetPushTarget(ctx context.Context, req *connect.Re
 	return c.setPushTarget.CallUnary(ctx, req)
 }
 
+// GetImage calls remoteagent.v1.ClientService.GetImage.
+func (c *clientServiceClient) GetImage(ctx context.Context, req *connect.Request[v1.GetImageRequest]) (*connect.Response[v1.GetImageResponse], error) {
+	return c.getImage.CallUnary(ctx, req)
+}
+
+// ListDevices calls remoteagent.v1.ClientService.ListDevices.
+func (c *clientServiceClient) ListDevices(ctx context.Context, req *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error) {
+	return c.listDevices.CallUnary(ctx, req)
+}
+
+// PutDeviceMeta calls remoteagent.v1.ClientService.PutDeviceMeta.
+func (c *clientServiceClient) PutDeviceMeta(ctx context.Context, req *connect.Request[v1.PutDeviceMetaRequest]) (*connect.Response[v1.PutDeviceMetaResponse], error) {
+	return c.putDeviceMeta.CallUnary(ctx, req)
+}
+
+// GetAccountPrefs calls remoteagent.v1.ClientService.GetAccountPrefs.
+func (c *clientServiceClient) GetAccountPrefs(ctx context.Context, req *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error) {
+	return c.getAccountPrefs.CallUnary(ctx, req)
+}
+
+// PutAccountPrefs calls remoteagent.v1.ClientService.PutAccountPrefs.
+func (c *clientServiceClient) PutAccountPrefs(ctx context.Context, req *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error) {
+	return c.putAccountPrefs.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -581,6 +668,17 @@ type ClientServiceHandler interface {
 	// target per type: Web Push and FCM can be set side by side.
 	// SetPushSubscription is the same for Web Push.
 	SetPushTarget(context.Context, *connect.Request[v1.SetPushTargetRequest]) (*connect.Response[v1.SetPushTargetResponse], error)
+	// GetImage returns the display copy of an image in a session.
+	GetImage(context.Context, *connect.Request[v1.GetImageRequest]) (*connect.Response[v1.GetImageResponse], error)
+	// ListDevices lists the account's devices, machines and clients.
+	ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error)
+	// PutDeviceMeta replaces a client device's sealed metadata if its
+	// revision is still the expected one.
+	PutDeviceMeta(context.Context, *connect.Request[v1.PutDeviceMetaRequest]) (*connect.Response[v1.PutDeviceMetaResponse], error)
+	// Account preference objects, stored sealed and replaced with a check
+	// of the expected revision.
+	GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error)
+	PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -638,6 +736,36 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("SetPushTarget")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServiceGetImageHandler := connect.NewUnaryHandler(
+		ClientServiceGetImageProcedure,
+		svc.GetImage,
+		connect.WithSchema(clientServiceMethods.ByName("GetImage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServiceListDevicesHandler := connect.NewUnaryHandler(
+		ClientServiceListDevicesProcedure,
+		svc.ListDevices,
+		connect.WithSchema(clientServiceMethods.ByName("ListDevices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServicePutDeviceMetaHandler := connect.NewUnaryHandler(
+		ClientServicePutDeviceMetaProcedure,
+		svc.PutDeviceMeta,
+		connect.WithSchema(clientServiceMethods.ByName("PutDeviceMeta")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServiceGetAccountPrefsHandler := connect.NewUnaryHandler(
+		ClientServiceGetAccountPrefsProcedure,
+		svc.GetAccountPrefs,
+		connect.WithSchema(clientServiceMethods.ByName("GetAccountPrefs")),
+		connect.WithHandlerOptions(opts...),
+	)
+	clientServicePutAccountPrefsHandler := connect.NewUnaryHandler(
+		ClientServicePutAccountPrefsProcedure,
+		svc.PutAccountPrefs,
+		connect.WithSchema(clientServiceMethods.ByName("PutAccountPrefs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -656,6 +784,16 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceRemoveDeviceHandler.ServeHTTP(w, r)
 		case ClientServiceSetPushTargetProcedure:
 			clientServiceSetPushTargetHandler.ServeHTTP(w, r)
+		case ClientServiceGetImageProcedure:
+			clientServiceGetImageHandler.ServeHTTP(w, r)
+		case ClientServiceListDevicesProcedure:
+			clientServiceListDevicesHandler.ServeHTTP(w, r)
+		case ClientServicePutDeviceMetaProcedure:
+			clientServicePutDeviceMetaHandler.ServeHTTP(w, r)
+		case ClientServiceGetAccountPrefsProcedure:
+			clientServiceGetAccountPrefsHandler.ServeHTTP(w, r)
+		case ClientServicePutAccountPrefsProcedure:
+			clientServicePutAccountPrefsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -697,6 +835,26 @@ func (UnimplementedClientServiceHandler) SetPushTarget(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.SetPushTarget is not implemented"))
 }
 
+func (UnimplementedClientServiceHandler) GetImage(context.Context, *connect.Request[v1.GetImageRequest]) (*connect.Response[v1.GetImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.GetImage is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) ListDevices(context.Context, *connect.Request[v1.ListDevicesRequest]) (*connect.Response[v1.ListDevicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.ListDevices is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) PutDeviceMeta(context.Context, *connect.Request[v1.PutDeviceMetaRequest]) (*connect.Response[v1.PutDeviceMetaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.PutDeviceMeta is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) GetAccountPrefs(context.Context, *connect.Request[v1.GetAccountPrefsRequest]) (*connect.Response[v1.GetAccountPrefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.GetAccountPrefs is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) PutAccountPrefs(context.Context, *connect.Request[v1.PutAccountPrefsRequest]) (*connect.Response[v1.PutAccountPrefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.PutAccountPrefs is not implemented"))
+}
+
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.
 type MachineServiceClient interface {
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
@@ -707,6 +865,10 @@ type MachineServiceClient interface {
 	ListSessionHeads(context.Context, *connect.Request[v1.ListSessionHeadsRequest]) (*connect.Response[v1.ListSessionHeadsResponse], error)
 	// Notify asks the server to push a notification with generic text.
 	Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error)
+	// PutImage stores the display copy of an image in one of the machine's
+	// sessions. Storing an image ID again is a no-op. Fails with
+	// "resource_exhausted" when the account's image quota is full.
+	PutImage(context.Context, *connect.Request[v1.PutImageRequest]) (*connect.Response[v1.PutImageResponse], error)
 }
 
 // NewMachineServiceClient constructs a client for the remoteagent.v1.MachineService service. By
@@ -750,6 +912,12 @@ func NewMachineServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(machineServiceMethods.ByName("Notify")),
 			connect.WithClientOptions(opts...),
 		),
+		putImage: connect.NewClient[v1.PutImageRequest, v1.PutImageResponse](
+			httpClient,
+			baseURL+MachineServicePutImageProcedure,
+			connect.WithSchema(machineServiceMethods.ByName("PutImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -760,6 +928,7 @@ type machineServiceClient struct {
 	uploadEvents     *connect.Client[v1.UploadEventsRequest, v1.UploadEventsResponse]
 	listSessionHeads *connect.Client[v1.ListSessionHeadsRequest, v1.ListSessionHeadsResponse]
 	notify           *connect.Client[v1.NotifyRequest, v1.NotifyResponse]
+	putImage         *connect.Client[v1.PutImageRequest, v1.PutImageResponse]
 }
 
 // PutMachine calls remoteagent.v1.MachineService.PutMachine.
@@ -787,6 +956,11 @@ func (c *machineServiceClient) Notify(ctx context.Context, req *connect.Request[
 	return c.notify.CallUnary(ctx, req)
 }
 
+// PutImage calls remoteagent.v1.MachineService.PutImage.
+func (c *machineServiceClient) PutImage(ctx context.Context, req *connect.Request[v1.PutImageRequest]) (*connect.Response[v1.PutImageResponse], error) {
+	return c.putImage.CallUnary(ctx, req)
+}
+
 // MachineServiceHandler is an implementation of the remoteagent.v1.MachineService service.
 type MachineServiceHandler interface {
 	PutMachine(context.Context, *connect.Request[v1.PutMachineRequest]) (*connect.Response[v1.PutMachineResponse], error)
@@ -797,6 +971,10 @@ type MachineServiceHandler interface {
 	ListSessionHeads(context.Context, *connect.Request[v1.ListSessionHeadsRequest]) (*connect.Response[v1.ListSessionHeadsResponse], error)
 	// Notify asks the server to push a notification with generic text.
 	Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error)
+	// PutImage stores the display copy of an image in one of the machine's
+	// sessions. Storing an image ID again is a no-op. Fails with
+	// "resource_exhausted" when the account's image quota is full.
+	PutImage(context.Context, *connect.Request[v1.PutImageRequest]) (*connect.Response[v1.PutImageResponse], error)
 }
 
 // NewMachineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -836,6 +1014,12 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 		connect.WithSchema(machineServiceMethods.ByName("Notify")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineServicePutImageHandler := connect.NewUnaryHandler(
+		MachineServicePutImageProcedure,
+		svc.PutImage,
+		connect.WithSchema(machineServiceMethods.ByName("PutImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.MachineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MachineServicePutMachineProcedure:
@@ -848,6 +1032,8 @@ func NewMachineServiceHandler(svc MachineServiceHandler, opts ...connect.Handler
 			machineServiceListSessionHeadsHandler.ServeHTTP(w, r)
 		case MachineServiceNotifyProcedure:
 			machineServiceNotifyHandler.ServeHTTP(w, r)
+		case MachineServicePutImageProcedure:
+			machineServicePutImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -875,4 +1061,8 @@ func (UnimplementedMachineServiceHandler) ListSessionHeads(context.Context, *con
 
 func (UnimplementedMachineServiceHandler) Notify(context.Context, *connect.Request[v1.NotifyRequest]) (*connect.Response[v1.NotifyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.Notify is not implemented"))
+}
+
+func (UnimplementedMachineServiceHandler) PutImage(context.Context, *connect.Request[v1.PutImageRequest]) (*connect.Response[v1.PutImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.MachineService.PutImage is not implemented"))
 }

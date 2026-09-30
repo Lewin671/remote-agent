@@ -50,6 +50,17 @@ const (
 	// with the notify key; the header's request_id is the notification's
 	// dedupe key.
 	PayloadKind_PAYLOAD_KIND_NOTIFY PayloadKind = 10
+	// An ImagePayload, the display copy of an image in a session, sealed
+	// with the session key; the header's request_id is the image ID.
+	PayloadKind_PAYLOAD_KIND_IMAGE PayloadKind = 11
+	// An account preferences object (ProjectPrefs), sealed with the
+	// account-prefs key; the header's request_id is the object ID and seq
+	// its revision.
+	PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS PayloadKind = 12
+	// A DeviceMeta describing a client device, sealed with the device-meta
+	// key; the header's request_id is the ID of the device described and
+	// seq the metadata's revision.
+	PayloadKind_PAYLOAD_KIND_DEVICE_META PayloadKind = 13
 )
 
 // Enum value maps for PayloadKind.
@@ -66,6 +77,9 @@ var (
 		8:  "PAYLOAD_KIND_TERMINAL_INPUT",
 		9:  "PAYLOAD_KIND_PAIRING",
 		10: "PAYLOAD_KIND_NOTIFY",
+		11: "PAYLOAD_KIND_IMAGE",
+		12: "PAYLOAD_KIND_ACCOUNT_PREFS",
+		13: "PAYLOAD_KIND_DEVICE_META",
 	}
 	PayloadKind_value = map[string]int32{
 		"PAYLOAD_KIND_UNSPECIFIED":     0,
@@ -79,6 +93,9 @@ var (
 		"PAYLOAD_KIND_TERMINAL_INPUT":  8,
 		"PAYLOAD_KIND_PAIRING":         9,
 		"PAYLOAD_KIND_NOTIFY":          10,
+		"PAYLOAD_KIND_IMAGE":           11,
+		"PAYLOAD_KIND_ACCOUNT_PREFS":   12,
+		"PAYLOAD_KIND_DEVICE_META":     13,
 	}
 )
 
@@ -120,7 +137,20 @@ type Envelope struct {
 	// 12 random bytes.
 	Nonce []byte `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	// AES-256-GCM ciphertext followed by the 16-byte tag.
-	Ciphertext    []byte `protobuf:"bytes,3,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	Ciphertext []byte `protobuf:"bytes,3,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	// Ed25519 signature by the sending device's key, so that a daemon can
+	// tell which device sent a command even though the server is not
+	// trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+	// and from clients older than v2. It signs the bytes as transmitted:
+	//
+	//	"remote-agent/v1/envelope-signature\x00"
+	//	|| uint32be(len(header)) || header
+	//	|| uint32be(len(nonce)) || nonce
+	//	|| uint32be(len(ciphertext)) || ciphertext
+	//
+	// (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+	// header's sender must be the ID of the signing device.
+	Signature     []byte `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -176,6 +206,13 @@ func (x *Envelope) GetCiphertext() []byte {
 	return nil
 }
 
+func (x *Envelope) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
 // Header binds an envelope to its place. The receiver checks every field
 // against where the envelope was found, so the server cannot move an
 // envelope to another machine, session, position or request.
@@ -187,9 +224,14 @@ type Header struct {
 	MachineId string      `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	SessionId string      `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	// Event sequence number for EVENT; revision for SESSION_META and
-	// MACHINE_META, so that an older copy is never shown over a newer one.
+	// MACHINE_META, so that an older copy is never shown over a newer one;
+	// the new revision for ACCOUNT_PREFS and DEVICE_META (the expected
+	// revision plus one), so that the server cannot pass a copy off as
+	// another revision.
 	Seq uint64 `protobuf:"varint,5,opt,name=seq,proto3" json:"seq,omitempty"`
-	// Client-chosen ID for COMMAND and COMMAND_RESULT.
+	// Client-chosen ID for COMMAND and COMMAND_RESULT; the image ID for
+	// IMAGE; the object ID for ACCOUNT_PREFS; the described device's ID for
+	// DEVICE_META.
 	RequestId string `protobuf:"bytes,6,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Unix milliseconds after which a COMMAND must not run.
 	DeadlineMs int64 `protobuf:"varint,7,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
@@ -289,13 +331,14 @@ var File_remoteagent_v1_envelope_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\n" +
-	"\x1dremoteagent/v1/envelope.proto\x12\x0eremoteagent.v1\"X\n" +
+	"\x1dremoteagent/v1/envelope.proto\x12\x0eremoteagent.v1\"v\n" +
 	"\bEnvelope\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\fR\x06header\x12\x14\n" +
 	"\x05nonce\x18\x02 \x01(\fR\x05nonce\x12\x1e\n" +
 	"\n" +
 	"ciphertext\x18\x03 \x01(\fR\n" +
-	"ciphertext\"\xfb\x01\n" +
+	"ciphertext\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xfb\x01\n" +
 	"\x06Header\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12/\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.PayloadKindR\x04kind\x12\x1d\n" +
@@ -308,7 +351,7 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"request_id\x18\x06 \x01(\tR\trequestId\x12\x1f\n" +
 	"\vdeadline_ms\x18\a \x01(\x03R\n" +
 	"deadlineMs\x12\x16\n" +
-	"\x06sender\x18\b \x01(\tR\x06sender*\xd0\x02\n" +
+	"\x06sender\x18\b \x01(\tR\x06sender*\xa6\x03\n" +
 	"\vPayloadKind\x12\x1c\n" +
 	"\x18PAYLOAD_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PAYLOAD_KIND_EVENT\x10\x01\x12\x1d\n" +
@@ -321,7 +364,10 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\x1bPAYLOAD_KIND_TERMINAL_INPUT\x10\b\x12\x18\n" +
 	"\x14PAYLOAD_KIND_PAIRING\x10\t\x12\x17\n" +
 	"\x13PAYLOAD_KIND_NOTIFY\x10\n" +
-	"B\xbf\x01\n" +
+	"\x12\x16\n" +
+	"\x12PAYLOAD_KIND_IMAGE\x10\v\x12\x1e\n" +
+	"\x1aPAYLOAD_KIND_ACCOUNT_PREFS\x10\f\x12\x1c\n" +
+	"\x18PAYLOAD_KIND_DEVICE_META\x10\rB\xbf\x01\n" +
 	"\x12com.remoteagent.v1B\rEnvelopeProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
 var (

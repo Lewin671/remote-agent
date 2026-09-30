@@ -202,4 +202,49 @@ java.lang.String defaultValue);
    * @return The agent.
    */
   io.github.lewin671.remoteagent.proto.Agent getAgent();
+
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @return A list containing the imageIds.
+   */
+  java.util.List<java.lang.String>
+      getImageIdsList();
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @return The count of imageIds.
+   */
+  int getImageIdsCount();
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  java.lang.String getImageIds(int index);
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getImageIdsBytes(int index);
 }

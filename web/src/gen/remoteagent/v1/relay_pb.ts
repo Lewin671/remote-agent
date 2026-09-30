@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/relay.proto.
  */
 export const file_remoteagent_v1_relay: GenFile = /*@__PURE__*/
-  fileDesc("ChpyZW1vdGVhZ2VudC92MS9yZWxheS5wcm90bxIOcmVtb3RlYWdlbnQudjEiiQEKEkRldmljZVJlZ2lzdHJhdGlvbhIaChJhY2NvdW50X3B1YmxpY19rZXkYASABKAwSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSKAoEa2luZBgDIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgEIAEoAyJVChVSZWdpc3RlckRldmljZVJlcXVlc3QSFAoMcmVnaXN0cmF0aW9uGAEgASgMEhEKCXNpZ25hdHVyZRgCIAEoDBITCgtzZXR1cF90b2tlbhgDIAEoCSIrChZSZWdpc3RlckRldmljZVJlc3BvbnNlEhEKCWRldmljZV9pZBgBIAEoCSIoChNHZXRDaGFsbGVuZ2VSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCSIpChRHZXRDaGFsbGVuZ2VSZXNwb25zZRIRCgljaGFsbGVuZ2UYASABKAwiRwoMTG9naW5SZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIRCgljaGFsbGVuZ2UYAiABKAwSEQoJc2lnbmF0dXJlGAMgASgMIjIKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSEgoKZXhwaXJlc19tcxgCIAEoAyImChRDcmVhdGVQYWlyaW5nUmVxdWVzdBIOCgZjb21taXQYASABKAwiTQoVQ3JlYXRlUGFpcmluZ1Jlc3BvbnNlEhIKCnBhaXJpbmdfaWQYASABKAkSDAoEY29kZRgCIAEoCRISCgpleHBpcmVzX21zGAMgASgDImoKEkpvaW5QYWlyaW5nUmVxdWVzdBIMCgRjb2RlGAEgASgJEhUKDWpvaW5lcl9wdWJsaWMYAiABKAwSLwoLam9pbmVyX2tpbmQYAyABKA4yGi5yZW1vdGVhZ2VudC52MS5EZXZpY2VLaW5kIlIKE0pvaW5QYWlyaW5nUmVzcG9uc2USEgoKcGFpcmluZ19pZBgBIAEoCRIOCgZjb21taXQYAiABKAwSFwoPY2FuZGlkYXRlX3Rva2VuGAMgASgJIlIKEUdldFBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSFwoPY2FuZGlkYXRlX3Rva2VuGAIgASgJEhAKCHJlY2VpdmVkGAMgASgIIt4BChJHZXRQYWlyaW5nUmVzcG9uc2USKwoFc3RhdGUYASABKA4yHC5yZW1vdGVhZ2VudC52MS5QYWlyaW5nU3RhdGUSDgoGY29tbWl0GAIgASgMEhUKDWpvaW5lcl9wdWJsaWMYAyABKAwSLwoLam9pbmVyX2tpbmQYBCABKA4yGi5yZW1vdGVhZ2VudC52MS5EZXZpY2VLaW5kEhgKEGluaXRpYXRvcl9wdWJsaWMYBSABKAwSKQoHcGF5bG9hZBgGIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIkQKFFJldmVhbFBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSGAoQaW5pdGlhdG9yX3B1YmxpYxgCIAEoDCIXChVSZXZlYWxQYWlyaW5nUmVzcG9uc2UiVgoVQXBwcm92ZVBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSKQoHcGF5bG9hZBgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhgKFkFwcHJvdmVQYWlyaW5nUmVzcG9uc2UiQwoUQ2FuY2VsUGFpcmluZ1JlcXVlc3QSEgoKcGFpcmluZ19pZBgBIAEoCRIXCg9jYW5kaWRhdGVfdG9rZW4YAiABKAkiFwoVQ2FuY2VsUGFpcmluZ1Jlc3BvbnNlImMKB01hY2hpbmUSCgoCaWQYASABKAkSDgoGb25saW5lGAIgASgIEiYKBG1ldGEYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIUCgxsYXN0X3NlZW5fbXMYBCABKAMirAEKDVJlbW90ZVNlc3Npb24SEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEiUKA2tleRgDIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEiYKBG1ldGEYBCABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIQCghsYXN0X3NlcRgFIAEoBBISCgp1cGRhdGVkX21zGAYgASgDIkYKC1N0b3JlZEV2ZW50EgsKA3NlcRgBIAEoBBIqCghlbnZlbG9wZRgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhUKE0xpc3RNYWNoaW5lc1JlcXVlc3QiQQoUTGlzdE1hY2hpbmVzUmVzcG9uc2USKQoIbWFjaGluZXMYASADKAsyFy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lIhsKGUxpc3RSZW1vdGVTZXNzaW9uc1JlcXVlc3QiTQoaTGlzdFJlbW90ZVNlc3Npb25zUmVzcG9uc2USLwoIc2Vzc2lvbnMYASADKAsyHS5yZW1vdGVhZ2VudC52MS5SZW1vdGVTZXNzaW9uIkgKEEdldEV2ZW50c1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglhZnRlcl9zZXEYAiABKAQSDQoFbGltaXQYAyABKA0iTgoRR2V0RXZlbnRzUmVzcG9uc2USKwoGZXZlbnRzGAEgAygLMhsucmVtb3RlYWdlbnQudjEuU3RvcmVkRXZlbnQSDAoEbW9yZRgCIAEoCCJPCg5Gb3J3YXJkUmVxdWVzdBISCgptYWNoaW5lX2lkGAEgASgJEikKB2NvbW1hbmQYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSI7Cg9Gb3J3YXJkUmVzcG9uc2USKAoGcmVzdWx0GAEgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiOwoRUHV0TWFjaGluZVJlcXVlc3QSJgoEbWV0YRgBIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhQKElB1dE1hY2hpbmVSZXNwb25zZSJ2ChFQdXRTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEiUKA2tleRgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEiYKBG1ldGEYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIUChJQdXRTZXNzaW9uUmVzcG9uc2UiVgoTVXBsb2FkRXZlbnRzUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEisKBmV2ZW50cxgCIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50IigKFFVwbG9hZEV2ZW50c1Jlc3BvbnNlEhAKCGxhc3Rfc2VxGAEgASgEIhkKF0xpc3RTZXNzaW9uSGVhZHNSZXF1ZXN0IkoKC1Nlc3Npb25IZWFkEhIKCnNlc3Npb25faWQYASABKAkSEAoIbGFzdF9zZXEYAiABKAQSFQoNbWV0YV9yZXZpc2lvbhgDIAEoBCJJChhMaXN0U2Vzc2lvbkhlYWRzUmVzcG9uc2USLQoIc2Vzc2lvbnMYASADKAsyGy5yZW1vdGVhZ2VudC52MS5TZXNzaW9uSGVhZCIcCgtTdHJlYW1IZWxsbxINCgV0b2tlbhgBIAEoCSJ4CglQZWVyRnJhbWUSLAoFaGVsbG8YASABKAsyGy5yZW1vdGVhZ2VudC52MS5TdHJlYW1IZWxsb0gAEjUKDWZvcndhcmRfcmVwbHkYAiABKAsyHC5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkUmVwbHlIAEIGCgRraW5kIt4CCgtTZXJ2ZXJGcmFtZRImCgVyZWFkeRgBIAEoCzIVLnJlbW90ZWFnZW50LnYxLlJlYWR5SAASOQoPZXZlbnRzX2FwcGVuZGVkGAIgASgLMh4ucmVtb3RlYWdlbnQudjEuRXZlbnRzQXBwZW5kZWRIABI5Cg9zZXNzaW9uX3VwZGF0ZWQYAyABKAsyHi5yZW1vdGVhZ2VudC52MS5TZXNzaW9uVXBkYXRlZEgAEjkKD21hY2hpbmVfdXBkYXRlZBgEIAEoCzIeLnJlbW90ZWFnZW50LnYxLk1hY2hpbmVVcGRhdGVkSAASOQoPbWFjaGluZV9yZW1vdmVkGAYgASgLMh4ucmVtb3RlYWdlbnQudjEuTWFjaGluZVJlbW92ZWRIABIzCgxmb3J3YXJkX2NhbGwYBSABKAsyGy5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkQ2FsbEgAQgYKBGtpbmQiHwoFUmVhZHkSFgoOc2VydmVyX3RpbWVfbXMYASABKAMiZQoORXZlbnRzQXBwZW5kZWQSEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEisKBmV2ZW50cxgDIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50IkAKDlNlc3Npb25VcGRhdGVkEi4KB3Nlc3Npb24YASABKAsyHS5yZW1vdGVhZ2VudC52MS5SZW1vdGVTZXNzaW9uIjoKDk1hY2hpbmVVcGRhdGVkEigKB21hY2hpbmUYASABKAsyFy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lIiQKDk1hY2hpbmVSZW1vdmVkEhIKCm1hY2hpbmVfaWQYASABKAkiSQoLRm9yd2FyZENhbGwSDwoHY2FsbF9pZBgBIAEoBBIpCgdjb21tYW5kGAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiWAoMRm9yd2FyZFJlcGx5Eg8KB2NhbGxfaWQYASABKAQSKAoGcmVzdWx0GAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSDQoFZXJyb3IYAyABKAkiQQoJVGVybUhlbGxvEg0KBXRva2VuGAEgASgJEhEKCXN0cmVhbV9pZBgCIAEoCRISCgptYWNoaW5lX2lkGAMgASgJIhMKEUdldFB1c2hLZXlSZXF1ZXN0IigKEkdldFB1c2hLZXlSZXNwb25zZRISCgpwdWJsaWNfa2V5GAEgASgJImIKGlNldFB1c2hTdWJzY3JpcHRpb25SZXF1ZXN0EhkKEXN1YnNjcmlwdGlvbl9qc29uGAEgASgJEikKBWtpbmRzGAIgAygOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZCIdChtTZXRQdXNoU3Vic2NyaXB0aW9uUmVzcG9uc2UiKAoTUmVtb3ZlRGV2aWNlUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkiFgoUUmVtb3ZlRGV2aWNlUmVzcG9uc2UijAEKDU5vdGlmeVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIoCgRraW5kGAIgASgOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZBIpCgdjb250ZW50GAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSEgoKZGVkdXBlX2tleRgEIAEoCSJ5ChRTZXRQdXNoVGFyZ2V0UmVxdWVzdBImCgR0eXBlGAEgASgOMhgucmVtb3RlYWdlbnQudjEuUHVzaFR5cGUSDgoGdGFyZ2V0GAIgASgJEikKBWtpbmRzGAMgAygOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZCIoChVTZXRQdXNoVGFyZ2V0UmVzcG9uc2USDwoHZW5hYmxlZBgBIAEoCCIQCg5Ob3RpZnlSZXNwb25zZSpaCgpEZXZpY2VLaW5kEhsKF0RFVklDRV9LSU5EX1VOU1BFQ0lGSUVEEAASFwoTREVWSUNFX0tJTkRfTUFDSElORRABEhYKEkRFVklDRV9LSU5EX0NMSUVOVBACKtABCgxQYWlyaW5nU3RhdGUSHQoZUEFJUklOR19TVEFURV9VTlNQRUNJRklFRBAAEhYKElBBSVJJTkdfU1RBVEVfT1BFThABEhgKFFBBSVJJTkdfU1RBVEVfSk9JTkVEEAISGgoWUEFJUklOR19TVEFURV9SRVZFQUxFRBADEhoKFlBBSVJJTkdfU1RBVEVfQVBQUk9WRUQQBBIaChZQQUlSSU5HX1NUQVRFX0NBTkNFTEVEEAUSGwoXUEFJUklOR19TVEFURV9ERUxJVkVSRUQQBipgCgpOb3RpZnlLaW5kEhsKF05PVElGWV9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTk9USUZZX0tJTkRfQVRURU5USU9OEAESGgoWTk9USUZZX0tJTkRfVFVSTl9FTkRFRBACKlAKCFB1c2hUeXBlEhkKFVBVU0hfVFlQRV9VTlNQRUNJRklFRBAAEhYKElBVU0hfVFlQRV9XRUJfUFVTSBABEhEKDVBVU0hfVFlQRV9GQ00QAjKPAgoLQXV0aFNlcnZpY2USXwoOUmVnaXN0ZXJEZXZpY2USJS5yZW1vdGVhZ2VudC52MS5SZWdpc3RlckRldmljZVJlcXVlc3QaJi5yZW1vdGVhZ2VudC52MS5SZWdpc3RlckRldmljZVJlc3BvbnNlElkKDEdldENoYWxsZW5nZRIjLnJlbW90ZWFnZW50LnYxLkdldENoYWxsZW5nZVJlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5HZXRDaGFsbGVuZ2VSZXNwb25zZRJECgVMb2dpbhIcLnJlbW90ZWFnZW50LnYxLkxvZ2luUmVxdWVzdBodLnJlbW90ZWFnZW50LnYxLkxvZ2luUmVzcG9uc2UyuAQKDlBhaXJpbmdTZXJ2aWNlElwKDUNyZWF0ZVBhaXJpbmcSJC5yZW1vdGVhZ2VudC52MS5DcmVhdGVQYWlyaW5nUmVxdWVzdBolLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVBhaXJpbmdSZXNwb25zZRJWCgtKb2luUGFpcmluZxIiLnJlbW90ZWFnZW50LnYxLkpvaW5QYWlyaW5nUmVxdWVzdBojLnJlbW90ZWFnZW50LnYxLkpvaW5QYWlyaW5nUmVzcG9uc2USUwoKR2V0UGFpcmluZxIhLnJlbW90ZWFnZW50LnYxLkdldFBhaXJpbmdSZXF1ZXN0GiIucmVtb3RlYWdlbnQudjEuR2V0UGFpcmluZ1Jlc3BvbnNlElwKDVJldmVhbFBhaXJpbmcSJC5yZW1vdGVhZ2VudC52MS5SZXZlYWxQYWlyaW5nUmVxdWVzdBolLnJlbW90ZWFnZW50LnYxLlJldmVhbFBhaXJpbmdSZXNwb25zZRJfCg5BcHByb3ZlUGFpcmluZxIlLnJlbW90ZWFnZW50LnYxLkFwcHJvdmVQYWlyaW5nUmVxdWVzdBomLnJlbW90ZWFnZW50LnYxLkFwcHJvdmVQYWlyaW5nUmVzcG9uc2USXAoNQ2FuY2VsUGFpcmluZxIkLnJlbW90ZWFnZW50LnYxLkNhbmNlbFBhaXJpbmdSZXF1ZXN0GiUucmVtb3RlYWdlbnQudjEuQ2FuY2VsUGFpcmluZ1Jlc3BvbnNlMvMFCg1DbGllbnRTZXJ2aWNlElkKDExpc3RNYWNoaW5lcxIjLnJlbW90ZWFnZW50LnYxLkxpc3RNYWNoaW5lc1JlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5MaXN0TWFjaGluZXNSZXNwb25zZRJrChJMaXN0UmVtb3RlU2Vzc2lvbnMSKS5yZW1vdGVhZ2VudC52MS5MaXN0UmVtb3RlU2Vzc2lvbnNSZXF1ZXN0GioucmVtb3RlYWdlbnQudjEuTGlzdFJlbW90ZVNlc3Npb25zUmVzcG9uc2USUAoJR2V0RXZlbnRzEiAucmVtb3RlYWdlbnQudjEuR2V0RXZlbnRzUmVxdWVzdBohLnJlbW90ZWFnZW50LnYxLkdldEV2ZW50c1Jlc3BvbnNlEkoKB0ZvcndhcmQSHi5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkUmVxdWVzdBofLnJlbW90ZWFnZW50LnYxLkZvcndhcmRSZXNwb25zZRJTCgpHZXRQdXNoS2V5EiEucmVtb3RlYWdlbnQudjEuR2V0UHVzaEtleVJlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5HZXRQdXNoS2V5UmVzcG9uc2USbgoTU2V0UHVzaFN1YnNjcmlwdGlvbhIqLnJlbW90ZWFnZW50LnYxLlNldFB1c2hTdWJzY3JpcHRpb25SZXF1ZXN0GisucmVtb3RlYWdlbnQudjEuU2V0UHVzaFN1YnNjcmlwdGlvblJlc3BvbnNlElkKDFJlbW92ZURldmljZRIjLnJlbW90ZWFnZW50LnYxLlJlbW92ZURldmljZVJlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5SZW1vdmVEZXZpY2VSZXNwb25zZRJcCg1TZXRQdXNoVGFyZ2V0EiQucmVtb3RlYWdlbnQudjEuU2V0UHVzaFRhcmdldFJlcXVlc3QaJS5yZW1vdGVhZ2VudC52MS5TZXRQdXNoVGFyZ2V0UmVzcG9uc2UyxQMKDk1hY2hpbmVTZXJ2aWNlElMKClB1dE1hY2hpbmUSIS5yZW1vdGVhZ2VudC52MS5QdXRNYWNoaW5lUmVxdWVzdBoiLnJlbW90ZWFnZW50LnYxLlB1dE1hY2hpbmVSZXNwb25zZRJTCgpQdXRTZXNzaW9uEiEucmVtb3RlYWdlbnQudjEuUHV0U2Vzc2lvblJlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5QdXRTZXNzaW9uUmVzcG9uc2USWQoMVXBsb2FkRXZlbnRzEiMucmVtb3RlYWdlbnQudjEuVXBsb2FkRXZlbnRzUmVxdWVzdBokLnJlbW90ZWFnZW50LnYxLlVwbG9hZEV2ZW50c1Jlc3BvbnNlEmUKEExpc3RTZXNzaW9uSGVhZHMSJy5yZW1vdGVhZ2VudC52MS5MaXN0U2Vzc2lvbkhlYWRzUmVxdWVzdBooLnJlbW90ZWFnZW50LnYxLkxpc3RTZXNzaW9uSGVhZHNSZXNwb25zZRJHCgZOb3RpZnkSHS5yZW1vdGVhZ2VudC52MS5Ob3RpZnlSZXF1ZXN0Gh4ucmVtb3RlYWdlbnQudjEuTm90aWZ5UmVzcG9uc2ViBnByb3RvMw", [file_remoteagent_v1_envelope]);
+  fileDesc("ChpyZW1vdGVhZ2VudC92MS9yZWxheS5wcm90bxIOcmVtb3RlYWdlbnQudjEiiQEKEkRldmljZVJlZ2lzdHJhdGlvbhIaChJhY2NvdW50X3B1YmxpY19rZXkYASABKAwSGQoRZGV2aWNlX3B1YmxpY19rZXkYAiABKAwSKAoEa2luZBgDIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgEIAEoAyJVChVSZWdpc3RlckRldmljZVJlcXVlc3QSFAoMcmVnaXN0cmF0aW9uGAEgASgMEhEKCXNpZ25hdHVyZRgCIAEoDBITCgtzZXR1cF90b2tlbhgDIAEoCSIrChZSZWdpc3RlckRldmljZVJlc3BvbnNlEhEKCWRldmljZV9pZBgBIAEoCSIoChNHZXRDaGFsbGVuZ2VSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCSIpChRHZXRDaGFsbGVuZ2VSZXNwb25zZRIRCgljaGFsbGVuZ2UYASABKAwiRwoMTG9naW5SZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIRCgljaGFsbGVuZ2UYAiABKAwSEQoJc2lnbmF0dXJlGAMgASgMIjIKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSEgoKZXhwaXJlc19tcxgCIAEoAyImChRDcmVhdGVQYWlyaW5nUmVxdWVzdBIOCgZjb21taXQYASABKAwiTQoVQ3JlYXRlUGFpcmluZ1Jlc3BvbnNlEhIKCnBhaXJpbmdfaWQYASABKAkSDAoEY29kZRgCIAEoCRISCgpleHBpcmVzX21zGAMgASgDImoKEkpvaW5QYWlyaW5nUmVxdWVzdBIMCgRjb2RlGAEgASgJEhUKDWpvaW5lcl9wdWJsaWMYAiABKAwSLwoLam9pbmVyX2tpbmQYAyABKA4yGi5yZW1vdGVhZ2VudC52MS5EZXZpY2VLaW5kIlIKE0pvaW5QYWlyaW5nUmVzcG9uc2USEgoKcGFpcmluZ19pZBgBIAEoCRIOCgZjb21taXQYAiABKAwSFwoPY2FuZGlkYXRlX3Rva2VuGAMgASgJIlIKEUdldFBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSFwoPY2FuZGlkYXRlX3Rva2VuGAIgASgJEhAKCHJlY2VpdmVkGAMgASgIIt4BChJHZXRQYWlyaW5nUmVzcG9uc2USKwoFc3RhdGUYASABKA4yHC5yZW1vdGVhZ2VudC52MS5QYWlyaW5nU3RhdGUSDgoGY29tbWl0GAIgASgMEhUKDWpvaW5lcl9wdWJsaWMYAyABKAwSLwoLam9pbmVyX2tpbmQYBCABKA4yGi5yZW1vdGVhZ2VudC52MS5EZXZpY2VLaW5kEhgKEGluaXRpYXRvcl9wdWJsaWMYBSABKAwSKQoHcGF5bG9hZBgGIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIkQKFFJldmVhbFBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSGAoQaW5pdGlhdG9yX3B1YmxpYxgCIAEoDCIXChVSZXZlYWxQYWlyaW5nUmVzcG9uc2UiVgoVQXBwcm92ZVBhaXJpbmdSZXF1ZXN0EhIKCnBhaXJpbmdfaWQYASABKAkSKQoHcGF5bG9hZBgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhgKFkFwcHJvdmVQYWlyaW5nUmVzcG9uc2UiQwoUQ2FuY2VsUGFpcmluZ1JlcXVlc3QSEgoKcGFpcmluZ19pZBgBIAEoCRIXCg9jYW5kaWRhdGVfdG9rZW4YAiABKAkiFwoVQ2FuY2VsUGFpcmluZ1Jlc3BvbnNlImMKB01hY2hpbmUSCgoCaWQYASABKAkSDgoGb25saW5lGAIgASgIEiYKBG1ldGEYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIUCgxsYXN0X3NlZW5fbXMYBCABKAMirAEKDVJlbW90ZVNlc3Npb24SEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEiUKA2tleRgDIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEiYKBG1ldGEYBCABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIQCghsYXN0X3NlcRgFIAEoBBISCgp1cGRhdGVkX21zGAYgASgDIkYKC1N0b3JlZEV2ZW50EgsKA3NlcRgBIAEoBBIqCghlbnZlbG9wZRgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhUKE0xpc3RNYWNoaW5lc1JlcXVlc3QiQQoUTGlzdE1hY2hpbmVzUmVzcG9uc2USKQoIbWFjaGluZXMYASADKAsyFy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lIhsKGUxpc3RSZW1vdGVTZXNzaW9uc1JlcXVlc3QiTQoaTGlzdFJlbW90ZVNlc3Npb25zUmVzcG9uc2USLwoIc2Vzc2lvbnMYASADKAsyHS5yZW1vdGVhZ2VudC52MS5SZW1vdGVTZXNzaW9uIkgKEEdldEV2ZW50c1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIRCglhZnRlcl9zZXEYAiABKAQSDQoFbGltaXQYAyABKA0iTgoRR2V0RXZlbnRzUmVzcG9uc2USKwoGZXZlbnRzGAEgAygLMhsucmVtb3RlYWdlbnQudjEuU3RvcmVkRXZlbnQSDAoEbW9yZRgCIAEoCCJPCg5Gb3J3YXJkUmVxdWVzdBISCgptYWNoaW5lX2lkGAEgASgJEikKB2NvbW1hbmQYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSI7Cg9Gb3J3YXJkUmVzcG9uc2USKAoGcmVzdWx0GAEgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiOwoRUHV0TWFjaGluZVJlcXVlc3QSJgoEbWV0YRgBIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIhQKElB1dE1hY2hpbmVSZXNwb25zZSJ2ChFQdXRTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEiUKA2tleRgCIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEiYKBG1ldGEYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZSIUChJQdXRTZXNzaW9uUmVzcG9uc2UiVgoTVXBsb2FkRXZlbnRzUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEisKBmV2ZW50cxgCIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50IigKFFVwbG9hZEV2ZW50c1Jlc3BvbnNlEhAKCGxhc3Rfc2VxGAEgASgEIhkKF0xpc3RTZXNzaW9uSGVhZHNSZXF1ZXN0IkoKC1Nlc3Npb25IZWFkEhIKCnNlc3Npb25faWQYASABKAkSEAoIbGFzdF9zZXEYAiABKAQSFQoNbWV0YV9yZXZpc2lvbhgDIAEoBCJJChhMaXN0U2Vzc2lvbkhlYWRzUmVzcG9uc2USLQoIc2Vzc2lvbnMYASADKAsyGy5yZW1vdGVhZ2VudC52MS5TZXNzaW9uSGVhZCIcCgtTdHJlYW1IZWxsbxINCgV0b2tlbhgBIAEoCSJ4CglQZWVyRnJhbWUSLAoFaGVsbG8YASABKAsyGy5yZW1vdGVhZ2VudC52MS5TdHJlYW1IZWxsb0gAEjUKDWZvcndhcmRfcmVwbHkYAiABKAsyHC5yZW1vdGVhZ2VudC52MS5Gb3J3YXJkUmVwbHlIAEIGCgRraW5kIpYECgtTZXJ2ZXJGcmFtZRImCgVyZWFkeRgBIAEoCzIVLnJlbW90ZWFnZW50LnYxLlJlYWR5SAASOQoPZXZlbnRzX2FwcGVuZGVkGAIgASgLMh4ucmVtb3RlYWdlbnQudjEuRXZlbnRzQXBwZW5kZWRIABI5Cg9zZXNzaW9uX3VwZGF0ZWQYAyABKAsyHi5yZW1vdGVhZ2VudC52MS5TZXNzaW9uVXBkYXRlZEgAEjkKD21hY2hpbmVfdXBkYXRlZBgEIAEoCzIeLnJlbW90ZWFnZW50LnYxLk1hY2hpbmVVcGRhdGVkSAASOQoPbWFjaGluZV9yZW1vdmVkGAYgASgLMh4ucmVtb3RlYWdlbnQudjEuTWFjaGluZVJlbW92ZWRIABJEChVhY2NvdW50X3ByZWZzX3VwZGF0ZWQYByABKAsyIy5yZW1vdGVhZ2VudC52MS5BY2NvdW50UHJlZnNVcGRhdGVkSAASNwoOZGV2aWNlX3VwZGF0ZWQYCCABKAsyHS5yZW1vdGVhZ2VudC52MS5EZXZpY2VVcGRhdGVkSAASNwoOZGV2aWNlX3JlbW92ZWQYCSABKAsyHS5yZW1vdGVhZ2VudC52MS5EZXZpY2VSZW1vdmVkSAASMwoMZm9yd2FyZF9jYWxsGAUgASgLMhsucmVtb3RlYWdlbnQudjEuRm9yd2FyZENhbGxIAEIGCgRraW5kIh8KBVJlYWR5EhYKDnNlcnZlcl90aW1lX21zGAEgASgDImUKDkV2ZW50c0FwcGVuZGVkEhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIrCgZldmVudHMYAyADKAsyGy5yZW1vdGVhZ2VudC52MS5TdG9yZWRFdmVudCJACg5TZXNzaW9uVXBkYXRlZBIuCgdzZXNzaW9uGAEgASgLMh0ucmVtb3RlYWdlbnQudjEuUmVtb3RlU2Vzc2lvbiI6Cg5NYWNoaW5lVXBkYXRlZBIoCgdtYWNoaW5lGAEgASgLMhcucmVtb3RlYWdlbnQudjEuTWFjaGluZSIkCg5NYWNoaW5lUmVtb3ZlZBISCgptYWNoaW5lX2lkGAEgASgJIqcBCgtGb3J3YXJkQ2FsbBIPCgdjYWxsX2lkGAEgASgEEikKB2NvbW1hbmQYAiABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIYChBzZW5kZXJfZGV2aWNlX2lkGAMgASgJEhsKE3NlbmRlcl9yZWdpc3RyYXRpb24YBCABKAwSJQodc2VuZGVyX3JlZ2lzdHJhdGlvbl9zaWduYXR1cmUYBSABKAwiWAoMRm9yd2FyZFJlcGx5Eg8KB2NhbGxfaWQYASABKAQSKAoGcmVzdWx0GAIgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSDQoFZXJyb3IYAyABKAkiQQoJVGVybUhlbGxvEg0KBXRva2VuGAEgASgJEhEKCXN0cmVhbV9pZBgCIAEoCRISCgptYWNoaW5lX2lkGAMgASgJIhMKEUdldFB1c2hLZXlSZXF1ZXN0IigKEkdldFB1c2hLZXlSZXNwb25zZRISCgpwdWJsaWNfa2V5GAEgASgJImIKGlNldFB1c2hTdWJzY3JpcHRpb25SZXF1ZXN0EhkKEXN1YnNjcmlwdGlvbl9qc29uGAEgASgJEikKBWtpbmRzGAIgAygOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZCIdChtTZXRQdXNoU3Vic2NyaXB0aW9uUmVzcG9uc2UiKAoTUmVtb3ZlRGV2aWNlUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkiFgoUUmVtb3ZlRGV2aWNlUmVzcG9uc2UijAEKDU5vdGlmeVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIoCgRraW5kGAIgASgOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZBIpCgdjb250ZW50GAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSEgoKZGVkdXBlX2tleRgEIAEoCSJ5ChRTZXRQdXNoVGFyZ2V0UmVxdWVzdBImCgR0eXBlGAEgASgOMhgucmVtb3RlYWdlbnQudjEuUHVzaFR5cGUSDgoGdGFyZ2V0GAIgASgJEikKBWtpbmRzGAMgAygOMhoucmVtb3RlYWdlbnQudjEuTm90aWZ5S2luZCIoChVTZXRQdXNoVGFyZ2V0UmVzcG9uc2USDwoHZW5hYmxlZBgBIAEoCCIQCg5Ob3RpZnlSZXNwb25zZSI3Cg9HZXRJbWFnZVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSJgChBHZXRJbWFnZVJlc3BvbnNlEicKBWltYWdlGAEgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSDwoHZXhwaXJlZBgCIAEoCBISCgpleHBpcmVzX21zGAMgASgDImAKD1B1dEltYWdlUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJEicKBWltYWdlGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiJgoQUHV0SW1hZ2VSZXNwb25zZRISCgpleHBpcmVzX21zGAEgASgDIpEBCgZEZXZpY2USCgoCaWQYASABKAkSKAoEa2luZBgCIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgDIAEoAxImCgRtZXRhGAQgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSFQoNbWV0YV9yZXZpc2lvbhgFIAEoBCIUChJMaXN0RGV2aWNlc1JlcXVlc3QiWQoTTGlzdERldmljZXNSZXNwb25zZRInCgdkZXZpY2VzGAEgAygLMhYucmVtb3RlYWdlbnQudjEuRGV2aWNlEhkKEWN1cnJlbnRfZGV2aWNlX2lkGAIgASgJImwKFFB1dERldmljZU1ldGFSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgCIAEoBBImCgRtZXRhGAMgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUiUAoVUHV0RGV2aWNlTWV0YVJlc3BvbnNlEg8KB2FwcGxpZWQYASABKAgSJgoGZGV2aWNlGAIgASgLMhYucmVtb3RlYWdlbnQudjEuRGV2aWNlInkKEkFjY291bnRQcmVmc09iamVjdBIRCglvYmplY3RfaWQYASABKAkSEAoIcmV2aXNpb24YAiABKAQSKgoIZW52ZWxvcGUYAyABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRISCgp1cGRhdGVkX21zGAQgASgDIisKFkdldEFjY291bnRQcmVmc1JlcXVlc3QSEQoJb2JqZWN0X2lkGAEgASgJIk0KF0dldEFjY291bnRQcmVmc1Jlc3BvbnNlEjIKBm9iamVjdBgBIAEoCzIiLnJlbW90ZWFnZW50LnYxLkFjY291bnRQcmVmc09iamVjdCJyChZQdXRBY2NvdW50UHJlZnNSZXF1ZXN0EhEKCW9iamVjdF9pZBgBIAEoCRIZChFleHBlY3RlZF9yZXZpc2lvbhgCIAEoBBIqCghlbnZlbG9wZRgDIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIl4KF1B1dEFjY291bnRQcmVmc1Jlc3BvbnNlEg8KB2FwcGxpZWQYASABKAgSMgoGb2JqZWN0GAIgASgLMiIucmVtb3RlYWdlbnQudjEuQWNjb3VudFByZWZzT2JqZWN0IkkKE0FjY291bnRQcmVmc1VwZGF0ZWQSMgoGb2JqZWN0GAEgASgLMiIucmVtb3RlYWdlbnQudjEuQWNjb3VudFByZWZzT2JqZWN0IjcKDURldmljZVVwZGF0ZWQSJgoGZGV2aWNlGAEgASgLMhYucmVtb3RlYWdlbnQudjEuRGV2aWNlIiIKDURldmljZVJlbW92ZWQSEQoJZGV2aWNlX2lkGAEgASgJKloKCkRldmljZUtpbmQSGwoXREVWSUNFX0tJTkRfVU5TUEVDSUZJRUQQABIXChNERVZJQ0VfS0lORF9NQUNISU5FEAESFgoSREVWSUNFX0tJTkRfQ0xJRU5UEAIq0AEKDFBhaXJpbmdTdGF0ZRIdChlQQUlSSU5HX1NUQVRFX1VOU1BFQ0lGSUVEEAASFgoSUEFJUklOR19TVEFURV9PUEVOEAESGAoUUEFJUklOR19TVEFURV9KT0lORUQQAhIaChZQQUlSSU5HX1NUQVRFX1JFVkVBTEVEEAMSGgoWUEFJUklOR19TVEFURV9BUFBST1ZFRBAEEhoKFlBBSVJJTkdfU1RBVEVfQ0FOQ0VMRUQQBRIbChdQQUlSSU5HX1NUQVRFX0RFTElWRVJFRBAGKmAKCk5vdGlmeUtpbmQSGwoXTk9USUZZX0tJTkRfVU5TUEVDSUZJRUQQABIZChVOT1RJRllfS0lORF9BVFRFTlRJT04QARIaChZOT1RJRllfS0lORF9UVVJOX0VOREVEEAIqUAoIUHVzaFR5cGUSGQoVUFVTSF9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSUFVTSF9UWVBFX1dFQl9QVVNIEAESEQoNUFVTSF9UWVBFX0ZDTRACMo8CCgtBdXRoU2VydmljZRJfCg5SZWdpc3RlckRldmljZRIlLnJlbW90ZWFnZW50LnYxLlJlZ2lzdGVyRGV2aWNlUmVxdWVzdBomLnJlbW90ZWFnZW50LnYxLlJlZ2lzdGVyRGV2aWNlUmVzcG9uc2USWQoMR2V0Q2hhbGxlbmdlEiMucmVtb3RlYWdlbnQudjEuR2V0Q2hhbGxlbmdlUmVxdWVzdBokLnJlbW90ZWFnZW50LnYxLkdldENoYWxsZW5nZVJlc3BvbnNlEkQKBUxvZ2luEhwucmVtb3RlYWdlbnQudjEuTG9naW5SZXF1ZXN0Gh0ucmVtb3RlYWdlbnQudjEuTG9naW5SZXNwb25zZTK4BAoOUGFpcmluZ1NlcnZpY2USXAoNQ3JlYXRlUGFpcmluZxIkLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVBhaXJpbmdSZXF1ZXN0GiUucmVtb3RlYWdlbnQudjEuQ3JlYXRlUGFpcmluZ1Jlc3BvbnNlElYKC0pvaW5QYWlyaW5nEiIucmVtb3RlYWdlbnQudjEuSm9pblBhaXJpbmdSZXF1ZXN0GiMucmVtb3RlYWdlbnQudjEuSm9pblBhaXJpbmdSZXNwb25zZRJTCgpHZXRQYWlyaW5nEiEucmVtb3RlYWdlbnQudjEuR2V0UGFpcmluZ1JlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5HZXRQYWlyaW5nUmVzcG9uc2USXAoNUmV2ZWFsUGFpcmluZxIkLnJlbW90ZWFnZW50LnYxLlJldmVhbFBhaXJpbmdSZXF1ZXN0GiUucmVtb3RlYWdlbnQudjEuUmV2ZWFsUGFpcmluZ1Jlc3BvbnNlEl8KDkFwcHJvdmVQYWlyaW5nEiUucmVtb3RlYWdlbnQudjEuQXBwcm92ZVBhaXJpbmdSZXF1ZXN0GiYucmVtb3RlYWdlbnQudjEuQXBwcm92ZVBhaXJpbmdSZXNwb25zZRJcCg1DYW5jZWxQYWlyaW5nEiQucmVtb3RlYWdlbnQudjEuQ2FuY2VsUGFpcmluZ1JlcXVlc3QaJS5yZW1vdGVhZ2VudC52MS5DYW5jZWxQYWlyaW5nUmVzcG9uc2UywAkKDUNsaWVudFNlcnZpY2USWQoMTGlzdE1hY2hpbmVzEiMucmVtb3RlYWdlbnQudjEuTGlzdE1hY2hpbmVzUmVxdWVzdBokLnJlbW90ZWFnZW50LnYxLkxpc3RNYWNoaW5lc1Jlc3BvbnNlEmsKEkxpc3RSZW1vdGVTZXNzaW9ucxIpLnJlbW90ZWFnZW50LnYxLkxpc3RSZW1vdGVTZXNzaW9uc1JlcXVlc3QaKi5yZW1vdGVhZ2VudC52MS5MaXN0UmVtb3RlU2Vzc2lvbnNSZXNwb25zZRJQCglHZXRFdmVudHMSIC5yZW1vdGVhZ2VudC52MS5HZXRFdmVudHNSZXF1ZXN0GiEucmVtb3RlYWdlbnQudjEuR2V0RXZlbnRzUmVzcG9uc2USSgoHRm9yd2FyZBIeLnJlbW90ZWFnZW50LnYxLkZvcndhcmRSZXF1ZXN0Gh8ucmVtb3RlYWdlbnQudjEuRm9yd2FyZFJlc3BvbnNlElMKCkdldFB1c2hLZXkSIS5yZW1vdGVhZ2VudC52MS5HZXRQdXNoS2V5UmVxdWVzdBoiLnJlbW90ZWFnZW50LnYxLkdldFB1c2hLZXlSZXNwb25zZRJuChNTZXRQdXNoU3Vic2NyaXB0aW9uEioucmVtb3RlYWdlbnQudjEuU2V0UHVzaFN1YnNjcmlwdGlvblJlcXVlc3QaKy5yZW1vdGVhZ2VudC52MS5TZXRQdXNoU3Vic2NyaXB0aW9uUmVzcG9uc2USWQoMUmVtb3ZlRGV2aWNlEiMucmVtb3RlYWdlbnQudjEuUmVtb3ZlRGV2aWNlUmVxdWVzdBokLnJlbW90ZWFnZW50LnYxLlJlbW92ZURldmljZVJlc3BvbnNlElwKDVNldFB1c2hUYXJnZXQSJC5yZW1vdGVhZ2VudC52MS5TZXRQdXNoVGFyZ2V0UmVxdWVzdBolLnJlbW90ZWFnZW50LnYxLlNldFB1c2hUYXJnZXRSZXNwb25zZRJNCghHZXRJbWFnZRIfLnJlbW90ZWFnZW50LnYxLkdldEltYWdlUmVxdWVzdBogLnJlbW90ZWFnZW50LnYxLkdldEltYWdlUmVzcG9uc2USVgoLTGlzdERldmljZXMSIi5yZW1vdGVhZ2VudC52MS5MaXN0RGV2aWNlc1JlcXVlc3QaIy5yZW1vdGVhZ2VudC52MS5MaXN0RGV2aWNlc1Jlc3BvbnNlElwKDVB1dERldmljZU1ldGESJC5yZW1vdGVhZ2VudC52MS5QdXREZXZpY2VNZXRhUmVxdWVzdBolLnJlbW90ZWFnZW50LnYxLlB1dERldmljZU1ldGFSZXNwb25zZRJiCg9HZXRBY2NvdW50UHJlZnMSJi5yZW1vdGVhZ2VudC52MS5HZXRBY2NvdW50UHJlZnNSZXF1ZXN0GicucmVtb3RlYWdlbnQudjEuR2V0QWNjb3VudFByZWZzUmVzcG9uc2USYgoPUHV0QWNjb3VudFByZWZzEiYucmVtb3RlYWdlbnQudjEuUHV0QWNjb3VudFByZWZzUmVxdWVzdBonLnJlbW90ZWFnZW50LnYxLlB1dEFjY291bnRQcmVmc1Jlc3BvbnNlMpQECg5NYWNoaW5lU2VydmljZRJTCgpQdXRNYWNoaW5lEiEucmVtb3RlYWdlbnQudjEuUHV0TWFjaGluZVJlcXVlc3QaIi5yZW1vdGVhZ2VudC52MS5QdXRNYWNoaW5lUmVzcG9uc2USUwoKUHV0U2Vzc2lvbhIhLnJlbW90ZWFnZW50LnYxLlB1dFNlc3Npb25SZXF1ZXN0GiIucmVtb3RlYWdlbnQudjEuUHV0U2Vzc2lvblJlc3BvbnNlElkKDFVwbG9hZEV2ZW50cxIjLnJlbW90ZWFnZW50LnYxLlVwbG9hZEV2ZW50c1JlcXVlc3QaJC5yZW1vdGVhZ2VudC52MS5VcGxvYWRFdmVudHNSZXNwb25zZRJlChBMaXN0U2Vzc2lvbkhlYWRzEicucmVtb3RlYWdlbnQudjEuTGlzdFNlc3Npb25IZWFkc1JlcXVlc3QaKC5yZW1vdGVhZ2VudC52MS5MaXN0U2Vzc2lvbkhlYWRzUmVzcG9uc2USRwoGTm90aWZ5Eh0ucmVtb3RlYWdlbnQudjEuTm90aWZ5UmVxdWVzdBoeLnJlbW90ZWFnZW50LnYxLk5vdGlmeVJlc3BvbnNlEk0KCFB1dEltYWdlEh8ucmVtb3RlYWdlbnQudjEuUHV0SW1hZ2VSZXF1ZXN0GiAucmVtb3RlYWdlbnQudjEuUHV0SW1hZ2VSZXNwb25zZWIGcHJvdG8z", [file_remoteagent_v1_envelope]);
 
 /**
  * DeviceRegistration is signed by the account key.
@@ -706,7 +706,8 @@ export type ForwardRequest = Message<"remoteagent.v1.ForwardRequest"> & {
   machineId: string;
 
   /**
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    *
    * @generated from field: remoteagent.v1.Envelope command = 2;
    */
@@ -1001,6 +1002,24 @@ export type ServerFrame = Message<"remoteagent.v1.ServerFrame"> & {
     case: "machineRemoved";
   } | {
     /**
+     * @generated from field: remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7;
+     */
+    value: AccountPrefsUpdated;
+    case: "accountPrefsUpdated";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.DeviceUpdated device_updated = 8;
+     */
+    value: DeviceUpdated;
+    case: "deviceUpdated";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.DeviceRemoved device_removed = 9;
+     */
+    value: DeviceRemoved;
+    case: "deviceRemoved";
+  } | {
+    /**
      * To daemons.
      *
      * @generated from field: remoteagent.v1.ForwardCall forward_call = 5;
@@ -1131,6 +1150,27 @@ export type ForwardCall = Message<"remoteagent.v1.ForwardCall"> & {
    * @generated from field: remoteagent.v1.Envelope command = 2;
    */
   command?: Envelope | undefined;
+
+  /**
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   *
+   * @generated from field: string sender_device_id = 3;
+   */
+  senderDeviceId: string;
+
+  /**
+   * @generated from field: bytes sender_registration = 4;
+   */
+  senderRegistration: Uint8Array;
+
+  /**
+   * @generated from field: bytes sender_registration_signature = 5;
+   */
+  senderRegistrationSignature: Uint8Array;
 };
 
 /**
@@ -1405,6 +1445,436 @@ export type NotifyResponse = Message<"remoteagent.v1.NotifyResponse"> & {
  */
 export const NotifyResponseSchema: GenMessage<NotifyResponse> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_relay, 59);
+
+/**
+ * @generated from message remoteagent.v1.GetImageRequest
+ */
+export type GetImageRequest = Message<"remoteagent.v1.GetImageRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string image_id = 2;
+   */
+  imageId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.GetImageRequest.
+ * Use `create(GetImageRequestSchema)` to create a new message.
+ */
+export const GetImageRequestSchema: GenMessage<GetImageRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 60);
+
+/**
+ * @generated from message remoteagent.v1.GetImageResponse
+ */
+export type GetImageResponse = Message<"remoteagent.v1.GetImageResponse"> & {
+  /**
+   * IMAGE envelope; absent when expired.
+   *
+   * @generated from field: remoteagent.v1.Envelope image = 1;
+   */
+  image?: Envelope | undefined;
+
+  /**
+   * The image was stored but its retention ran out; only the preview in
+   * the event is left. An image never stored fails with "not_found".
+   *
+   * @generated from field: bool expired = 2;
+   */
+  expired: boolean;
+
+  /**
+   * Unix milliseconds when the server deletes the image.
+   *
+   * @generated from field: int64 expires_ms = 3;
+   */
+  expiresMs: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.GetImageResponse.
+ * Use `create(GetImageResponseSchema)` to create a new message.
+ */
+export const GetImageResponseSchema: GenMessage<GetImageResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 61);
+
+/**
+ * @generated from message remoteagent.v1.PutImageRequest
+ */
+export type PutImageRequest = Message<"remoteagent.v1.PutImageRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string image_id = 2;
+   */
+  imageId: string;
+
+  /**
+   * IMAGE envelope, at most 1 MiB.
+   *
+   * @generated from field: remoteagent.v1.Envelope image = 3;
+   */
+  image?: Envelope | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutImageRequest.
+ * Use `create(PutImageRequestSchema)` to create a new message.
+ */
+export const PutImageRequestSchema: GenMessage<PutImageRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 62);
+
+/**
+ * @generated from message remoteagent.v1.PutImageResponse
+ */
+export type PutImageResponse = Message<"remoteagent.v1.PutImageResponse"> & {
+  /**
+   * Unix milliseconds when the server deletes the image.
+   *
+   * @generated from field: int64 expires_ms = 1;
+   */
+  expiresMs: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutImageResponse.
+ * Use `create(PutImageResponseSchema)` to create a new message.
+ */
+export const PutImageResponseSchema: GenMessage<PutImageResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 63);
+
+/**
+ * @generated from message remoteagent.v1.Device
+ */
+export type Device = Message<"remoteagent.v1.Device"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: remoteagent.v1.DeviceKind kind = 2;
+   */
+  kind: DeviceKind;
+
+  /**
+   * @generated from field: int64 created_ms = 3;
+   */
+  createdMs: bigint;
+
+  /**
+   * DEVICE_META envelope for a client, absent until one names it.
+   *
+   * @generated from field: remoteagent.v1.Envelope meta = 4;
+   */
+  meta?: Envelope | undefined;
+
+  /**
+   * Revision of meta, 0 without one.
+   *
+   * @generated from field: uint64 meta_revision = 5;
+   */
+  metaRevision: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.Device.
+ * Use `create(DeviceSchema)` to create a new message.
+ */
+export const DeviceSchema: GenMessage<Device> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 64);
+
+/**
+ * @generated from message remoteagent.v1.ListDevicesRequest
+ */
+export type ListDevicesRequest = Message<"remoteagent.v1.ListDevicesRequest"> & {
+};
+
+/**
+ * Describes the message remoteagent.v1.ListDevicesRequest.
+ * Use `create(ListDevicesRequestSchema)` to create a new message.
+ */
+export const ListDevicesRequestSchema: GenMessage<ListDevicesRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 65);
+
+/**
+ * @generated from message remoteagent.v1.ListDevicesResponse
+ */
+export type ListDevicesResponse = Message<"remoteagent.v1.ListDevicesResponse"> & {
+  /**
+   * @generated from field: repeated remoteagent.v1.Device devices = 1;
+   */
+  devices: Device[];
+
+  /**
+   * The calling device.
+   *
+   * @generated from field: string current_device_id = 2;
+   */
+  currentDeviceId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.ListDevicesResponse.
+ * Use `create(ListDevicesResponseSchema)` to create a new message.
+ */
+export const ListDevicesResponseSchema: GenMessage<ListDevicesResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 66);
+
+/**
+ * @generated from message remoteagent.v1.PutDeviceMetaRequest
+ */
+export type PutDeviceMetaRequest = Message<"remoteagent.v1.PutDeviceMetaRequest"> & {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId: string;
+
+  /**
+   * The revision the change is based on, 0 for a device without
+   * metadata. The envelope's header seq must be this plus one.
+   *
+   * @generated from field: uint64 expected_revision = 2;
+   */
+  expectedRevision: bigint;
+
+  /**
+   * DEVICE_META envelope.
+   *
+   * @generated from field: remoteagent.v1.Envelope meta = 3;
+   */
+  meta?: Envelope | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutDeviceMetaRequest.
+ * Use `create(PutDeviceMetaRequestSchema)` to create a new message.
+ */
+export const PutDeviceMetaRequestSchema: GenMessage<PutDeviceMetaRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 67);
+
+/**
+ * @generated from message remoteagent.v1.PutDeviceMetaResponse
+ */
+export type PutDeviceMetaResponse = Message<"remoteagent.v1.PutDeviceMetaResponse"> & {
+  /**
+   * False when the stored revision was not the expected one; device is
+   * then what is stored, for the client to redo its change on. A retry
+   * of a write that went through (same envelope) counts as applied.
+   *
+   * @generated from field: bool applied = 1;
+   */
+  applied: boolean;
+
+  /**
+   * @generated from field: remoteagent.v1.Device device = 2;
+   */
+  device?: Device | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutDeviceMetaResponse.
+ * Use `create(PutDeviceMetaResponseSchema)` to create a new message.
+ */
+export const PutDeviceMetaResponseSchema: GenMessage<PutDeviceMetaResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 68);
+
+/**
+ * AccountPrefsObject is a sealed account preferences object. The server
+ * sees only its ID, revision and size.
+ *
+ * @generated from message remoteagent.v1.AccountPrefsObject
+ */
+export type AccountPrefsObject = Message<"remoteagent.v1.AccountPrefsObject"> & {
+  /**
+   * "project-prefs" holds a ProjectPrefs.
+   *
+   * @generated from field: string object_id = 1;
+   */
+  objectId: string;
+
+  /**
+   * 0 while the object does not exist.
+   *
+   * @generated from field: uint64 revision = 2;
+   */
+  revision: bigint;
+
+  /**
+   * ACCOUNT_PREFS envelope; absent at revision 0.
+   *
+   * @generated from field: remoteagent.v1.Envelope envelope = 3;
+   */
+  envelope?: Envelope | undefined;
+
+  /**
+   * @generated from field: int64 updated_ms = 4;
+   */
+  updatedMs: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.AccountPrefsObject.
+ * Use `create(AccountPrefsObjectSchema)` to create a new message.
+ */
+export const AccountPrefsObjectSchema: GenMessage<AccountPrefsObject> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 69);
+
+/**
+ * @generated from message remoteagent.v1.GetAccountPrefsRequest
+ */
+export type GetAccountPrefsRequest = Message<"remoteagent.v1.GetAccountPrefsRequest"> & {
+  /**
+   * @generated from field: string object_id = 1;
+   */
+  objectId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.GetAccountPrefsRequest.
+ * Use `create(GetAccountPrefsRequestSchema)` to create a new message.
+ */
+export const GetAccountPrefsRequestSchema: GenMessage<GetAccountPrefsRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 70);
+
+/**
+ * @generated from message remoteagent.v1.GetAccountPrefsResponse
+ */
+export type GetAccountPrefsResponse = Message<"remoteagent.v1.GetAccountPrefsResponse"> & {
+  /**
+   * @generated from field: remoteagent.v1.AccountPrefsObject object = 1;
+   */
+  object?: AccountPrefsObject | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.GetAccountPrefsResponse.
+ * Use `create(GetAccountPrefsResponseSchema)` to create a new message.
+ */
+export const GetAccountPrefsResponseSchema: GenMessage<GetAccountPrefsResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 71);
+
+/**
+ * @generated from message remoteagent.v1.PutAccountPrefsRequest
+ */
+export type PutAccountPrefsRequest = Message<"remoteagent.v1.PutAccountPrefsRequest"> & {
+  /**
+   * @generated from field: string object_id = 1;
+   */
+  objectId: string;
+
+  /**
+   * The revision the change is based on, 0 to create the object. The
+   * envelope's header seq must be this plus one.
+   *
+   * @generated from field: uint64 expected_revision = 2;
+   */
+  expectedRevision: bigint;
+
+  /**
+   * @generated from field: remoteagent.v1.Envelope envelope = 3;
+   */
+  envelope?: Envelope | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutAccountPrefsRequest.
+ * Use `create(PutAccountPrefsRequestSchema)` to create a new message.
+ */
+export const PutAccountPrefsRequestSchema: GenMessage<PutAccountPrefsRequest> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 72);
+
+/**
+ * @generated from message remoteagent.v1.PutAccountPrefsResponse
+ */
+export type PutAccountPrefsResponse = Message<"remoteagent.v1.PutAccountPrefsResponse"> & {
+  /**
+   * False when the stored revision was not the expected one; object is
+   * then what is stored, and the client redoes its operation (pin, hide,
+   * restore; never a toggle) on it. A retry of a write that went through
+   * (same envelope) counts as applied.
+   *
+   * @generated from field: bool applied = 1;
+   */
+  applied: boolean;
+
+  /**
+   * @generated from field: remoteagent.v1.AccountPrefsObject object = 2;
+   */
+  object?: AccountPrefsObject | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.PutAccountPrefsResponse.
+ * Use `create(PutAccountPrefsResponseSchema)` to create a new message.
+ */
+export const PutAccountPrefsResponseSchema: GenMessage<PutAccountPrefsResponse> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 73);
+
+/**
+ * AccountPrefsUpdated is pushed to clients after an object changed.
+ *
+ * @generated from message remoteagent.v1.AccountPrefsUpdated
+ */
+export type AccountPrefsUpdated = Message<"remoteagent.v1.AccountPrefsUpdated"> & {
+  /**
+   * @generated from field: remoteagent.v1.AccountPrefsObject object = 1;
+   */
+  object?: AccountPrefsObject | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.AccountPrefsUpdated.
+ * Use `create(AccountPrefsUpdatedSchema)` to create a new message.
+ */
+export const AccountPrefsUpdatedSchema: GenMessage<AccountPrefsUpdated> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 74);
+
+/**
+ * DeviceUpdated is pushed to clients when a device registers or its
+ * metadata changes.
+ *
+ * @generated from message remoteagent.v1.DeviceUpdated
+ */
+export type DeviceUpdated = Message<"remoteagent.v1.DeviceUpdated"> & {
+  /**
+   * @generated from field: remoteagent.v1.Device device = 1;
+   */
+  device?: Device | undefined;
+};
+
+/**
+ * Describes the message remoteagent.v1.DeviceUpdated.
+ * Use `create(DeviceUpdatedSchema)` to create a new message.
+ */
+export const DeviceUpdatedSchema: GenMessage<DeviceUpdated> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 75);
+
+/**
+ * DeviceRemoved is pushed to clients when a device was removed.
+ *
+ * @generated from message remoteagent.v1.DeviceRemoved
+ */
+export type DeviceRemoved = Message<"remoteagent.v1.DeviceRemoved"> & {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.DeviceRemoved.
+ * Use `create(DeviceRemovedSchema)` to create a new message.
+ */
+export const DeviceRemovedSchema: GenMessage<DeviceRemoved> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_relay, 76);
 
 /**
  * @generated from enum remoteagent.v1.DeviceKind
@@ -1734,6 +2204,56 @@ export const ClientService: GenService<{
     input: typeof SetPushTargetRequestSchema;
     output: typeof SetPushTargetResponseSchema;
   },
+  /**
+   * GetImage returns the display copy of an image in a session.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.GetImage
+   */
+  getImage: {
+    methodKind: "unary";
+    input: typeof GetImageRequestSchema;
+    output: typeof GetImageResponseSchema;
+  },
+  /**
+   * ListDevices lists the account's devices, machines and clients.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.ListDevices
+   */
+  listDevices: {
+    methodKind: "unary";
+    input: typeof ListDevicesRequestSchema;
+    output: typeof ListDevicesResponseSchema;
+  },
+  /**
+   * PutDeviceMeta replaces a client device's sealed metadata if its
+   * revision is still the expected one.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.PutDeviceMeta
+   */
+  putDeviceMeta: {
+    methodKind: "unary";
+    input: typeof PutDeviceMetaRequestSchema;
+    output: typeof PutDeviceMetaResponseSchema;
+  },
+  /**
+   * Account preference objects, stored sealed and replaced with a check
+   * of the expected revision.
+   *
+   * @generated from rpc remoteagent.v1.ClientService.GetAccountPrefs
+   */
+  getAccountPrefs: {
+    methodKind: "unary";
+    input: typeof GetAccountPrefsRequestSchema;
+    output: typeof GetAccountPrefsResponseSchema;
+  },
+  /**
+   * @generated from rpc remoteagent.v1.ClientService.PutAccountPrefs
+   */
+  putAccountPrefs: {
+    methodKind: "unary";
+    input: typeof PutAccountPrefsRequestSchema;
+    output: typeof PutAccountPrefsResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_remoteagent_v1_relay, 2);
 
@@ -1787,6 +2307,18 @@ export const MachineService: GenService<{
     methodKind: "unary";
     input: typeof NotifyRequestSchema;
     output: typeof NotifyResponseSchema;
+  },
+  /**
+   * PutImage stores the display copy of an image in one of the machine's
+   * sessions. Storing an image ID again is a no-op. Fails with
+   * "resource_exhausted" when the account's image quota is full.
+   *
+   * @generated from rpc remoteagent.v1.MachineService.PutImage
+   */
+  putImage: {
+    methodKind: "unary";
+    input: typeof PutImageRequestSchema;
+    output: typeof PutImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_remoteagent_v1_relay, 3);

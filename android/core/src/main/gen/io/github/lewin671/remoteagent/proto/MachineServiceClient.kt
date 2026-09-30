@@ -82,4 +82,21 @@ public class MachineServiceClient(
     ),
   )
 
+
+  /**
+   *  PutImage stores the display copy of an image in one of the machine's
+   *  sessions. Storing an image ID again is a no-op. Fails with
+   *  "resource_exhausted" when the account's image quota is full.
+   */
+  override suspend fun putImage(request: PutImageRequest, headers: Headers): ResponseMessage<PutImageResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.MachineService/PutImage",
+      io.github.lewin671.remoteagent.proto.PutImageRequest::class,
+      io.github.lewin671.remoteagent.proto.PutImageResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

@@ -232,6 +232,71 @@ public class LocalServiceClient(
   )
 
 
+  /**
+   *  Image upload: a client sends each image to the machine in chunks,
+   *  before the Send or CreateSession that uses it. These are machine
+   *  commands (no session). A transfer belongs to the device that began it.
+   */
+  override suspend fun beginImageUpload(request: BeginImageUploadRequest, headers: Headers): ResponseMessage<BeginImageUploadResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/BeginImageUpload",
+      io.github.lewin671.remoteagent.proto.BeginImageUploadRequest::class,
+      io.github.lewin671.remoteagent.proto.BeginImageUploadResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun putImageChunk(request: PutImageChunkRequest, headers: Headers): ResponseMessage<PutImageChunkResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/PutImageChunk",
+      io.github.lewin671.remoteagent.proto.PutImageChunkRequest::class,
+      io.github.lewin671.remoteagent.proto.PutImageChunkResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun getImageUploadStatus(request: GetImageUploadStatusRequest, headers: Headers): ResponseMessage<GetImageUploadStatusResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/GetImageUploadStatus",
+      io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest::class,
+      io.github.lewin671.remoteagent.proto.GetImageUploadStatusResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun completeImageUpload(request: CompleteImageUploadRequest, headers: Headers): ResponseMessage<CompleteImageUploadResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/CompleteImageUpload",
+      io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest::class,
+      io.github.lewin671.remoteagent.proto.CompleteImageUploadResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun abortImageUpload(request: AbortImageUploadRequest, headers: Headers): ResponseMessage<AbortImageUploadResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/AbortImageUpload",
+      io.github.lewin671.remoteagent.proto.AbortImageUploadRequest::class,
+      io.github.lewin671.remoteagent.proto.AbortImageUploadResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun resolveApproval(request: ResolveApprovalRequest, headers: Headers): ResponseMessage<ResolveApprovalResponse> = client.unary(
     request,
     headers,

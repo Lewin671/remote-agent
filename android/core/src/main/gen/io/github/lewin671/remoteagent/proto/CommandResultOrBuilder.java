@@ -231,5 +231,60 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.UpdateSettingsResponse getUpdateSettings();
 
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadResponse begin_image_upload = 35 [json_name = "beginImageUpload"];</code>
+   * @return Whether the beginImageUpload field is set.
+   */
+  boolean hasBeginImageUpload();
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadResponse begin_image_upload = 35 [json_name = "beginImageUpload"];</code>
+   * @return The beginImageUpload.
+   */
+  io.github.lewin671.remoteagent.proto.BeginImageUploadResponse getBeginImageUpload();
+
+  /**
+   * <code>.remoteagent.v1.PutImageChunkResponse put_image_chunk = 36 [json_name = "putImageChunk"];</code>
+   * @return Whether the putImageChunk field is set.
+   */
+  boolean hasPutImageChunk();
+  /**
+   * <code>.remoteagent.v1.PutImageChunkResponse put_image_chunk = 36 [json_name = "putImageChunk"];</code>
+   * @return The putImageChunk.
+   */
+  io.github.lewin671.remoteagent.proto.PutImageChunkResponse getPutImageChunk();
+
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusResponse get_image_upload_status = 37 [json_name = "getImageUploadStatus"];</code>
+   * @return Whether the getImageUploadStatus field is set.
+   */
+  boolean hasGetImageUploadStatus();
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusResponse get_image_upload_status = 37 [json_name = "getImageUploadStatus"];</code>
+   * @return The getImageUploadStatus.
+   */
+  io.github.lewin671.remoteagent.proto.GetImageUploadStatusResponse getGetImageUploadStatus();
+
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadResponse complete_image_upload = 38 [json_name = "completeImageUpload"];</code>
+   * @return Whether the completeImageUpload field is set.
+   */
+  boolean hasCompleteImageUpload();
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadResponse complete_image_upload = 38 [json_name = "completeImageUpload"];</code>
+   * @return The completeImageUpload.
+   */
+  io.github.lewin671.remoteagent.proto.CompleteImageUploadResponse getCompleteImageUpload();
+
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadResponse abort_image_upload = 39 [json_name = "abortImageUpload"];</code>
+   * @return Whether the abortImageUpload field is set.
+   */
+  boolean hasAbortImageUpload();
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadResponse abort_image_upload = 39 [json_name = "abortImageUpload"];</code>
+   * @return The abortImageUpload.
+   */
+  io.github.lewin671.remoteagent.proto.AbortImageUploadResponse getAbortImageUpload();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

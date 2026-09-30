@@ -48,6 +48,26 @@ public enum InputStatus
    * <code>INPUT_STATUS_CANCELED = 4;</code>
    */
   INPUT_STATUS_CANCELED(4),
+  /**
+   * <pre>
+   * Not submitted: something failed before Enter (e.g. the CLI did not
+   * turn an image into "[Image #N]"), and the input box was verified to be
+   * empty again. Nothing is retried automatically.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_FAILED = 5;</code>
+   */
+  INPUT_STATUS_FAILED(5),
+  /**
+   * <pre>
+   * Not submitted, and remote-agent could not verify that the input box is
+   * back to what it was: part of the message may still be in it. It is
+   * neither submitted nor retried; the user sorts it out in the terminal.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_NEEDS_TERMINAL = 6;</code>
+   */
+  INPUT_STATUS_NEEDS_TERMINAL(6),
   UNRECOGNIZED(-1),
   ;
 
@@ -88,6 +108,26 @@ public enum InputStatus
    * <code>INPUT_STATUS_CANCELED = 4;</code>
    */
   public static final int INPUT_STATUS_CANCELED_VALUE = 4;
+  /**
+   * <pre>
+   * Not submitted: something failed before Enter (e.g. the CLI did not
+   * turn an image into "[Image #N]"), and the input box was verified to be
+   * empty again. Nothing is retried automatically.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_FAILED = 5;</code>
+   */
+  public static final int INPUT_STATUS_FAILED_VALUE = 5;
+  /**
+   * <pre>
+   * Not submitted, and remote-agent could not verify that the input box is
+   * back to what it was: part of the message may still be in it. It is
+   * neither submitted nor retried; the user sorts it out in the terminal.
+   * </pre>
+   *
+   * <code>INPUT_STATUS_NEEDS_TERMINAL = 6;</code>
+   */
+  public static final int INPUT_STATUS_NEEDS_TERMINAL_VALUE = 6;
 
 
   @java.lang.Override
@@ -116,6 +156,8 @@ public enum InputStatus
       case 2: return INPUT_STATUS_SUBMITTED;
       case 3: return INPUT_STATUS_UNCONFIRMED;
       case 4: return INPUT_STATUS_CANCELED;
+      case 5: return INPUT_STATUS_FAILED;
+      case 6: return INPUT_STATUS_NEEDS_TERMINAL;
       default: return null;
     }
   }

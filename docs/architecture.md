@@ -245,10 +245,14 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | `machine-meta` | AES-256 | 加密机器元数据（机器名、系统） |
 | `command` | AES-256 | 加密客户端发给 daemon 的指令和返回结果 |
 | `notify` | AES-256 | 加密推送里的通知内容，只给 Android App 在后台解密用（第 15 节） |
+| `account-prefs` | AES-256 | 加密账户级的偏好对象（项目的常用和隐藏，第 8 节） |
+| `device-meta` | AES-256 | 加密客户端设备的元数据（名称、平台），见下文「设备目录」 |
 
 每个会话另有一把随机的**会话密钥**，加密这个会话的事件和元数据。它存在 daemon 的会话目录里（`relay.key`），用 `wrap` 加密后上传到 server，客户端从 server 取回再解开。
 
 **设备**：每台电脑、每个浏览器和每个 App 都有自己的 Ed25519 设备密钥，设备 ID 是公钥 SHA-256 的前 16 字节。登记时用账户密钥签名，server 用账户公钥验证；登录时设备签 server 给的一次性 challenge，换取 30 天有效的 token。设备登记由账户密钥签名，而不是由一台已登记的设备签名：单用户场景下根密钥本身就是信任根，这样新设备加入时不需要旧设备在线。
+
+**指令签名**：`command` 密钥是账户里所有设备共用的，只能证明「账户里有设备发了这条指令」，而 server 不可信，它说的发送方也不能当真。所以客户端用自己的设备密钥给每条指令的信封签名（`Envelope.signature`），签的是上下文 `remote-agent/v1/envelope-signature\0` 加上 header、nonce、密文的原始字节，每段前面带 4 字节大端的长度。server 转发时核对 header 的发送方就是登录的设备，并附上这台设备登记时的原文和账户签名；daemon 先用账户公钥验证登记，再用登记里的设备公钥验证信封签名，两者都对才把来源记为这台设备（`ORIGIN_KIND_CLIENT`）。没有签名的指令（v2 以前的客户端）照常执行，来源记为未经验证，客户端只写「另一客户端」；签名验证失败的指令拒绝执行。字节格式的测试向量在 `internal/e2e/testdata/v2-vectors.json`。
 
 **把根密钥交给新设备：配对**。已有设备（网页的「设置 › 添加设备」或 `remote-agent account pair`）显示二维码和 8 位配对码，新设备扫码、输码（网页），或用 `remote-agent account join --code` 加入。实现在 `internal/e2e/pair.go`、`internal/relay/pair.go` 和 `web/src/pairing.ts`，要点：
 

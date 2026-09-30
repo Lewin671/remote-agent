@@ -155,4 +155,27 @@ public interface MachineMetaOrBuilder extends
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
    */
   int getAgentsCount();
+
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   * @return Whether the capabilities field is set.
+   */
+  boolean hasCapabilities();
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   * @return The capabilities.
+   */
+  io.github.lewin671.remoteagent.proto.MachineCapabilities getCapabilities();
 }

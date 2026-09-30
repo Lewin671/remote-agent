@@ -34,6 +34,14 @@ service LocalService {
   rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse);
   rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
   rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+  // Image upload: a client sends each image to the machine in chunks,
+  // before the Send or CreateSession that uses it. These are machine
+  // commands (no session). A transfer belongs to the device that began it.
+  rpc BeginImageUpload(BeginImageUploadRequest) returns (BeginImageUploadResponse);
+  rpc PutImageChunk(PutImageChunkRequest) returns (PutImageChunkResponse);
+  rpc GetImageUploadStatus(GetImageUploadStatusRequest) returns (GetImageUploadStatusResponse);
+  rpc CompleteImageUpload(CompleteImageUploadRequest) returns (CompleteImageUploadResponse);
+  rpc AbortImageUpload(AbortImageUploadRequest) returns (AbortImageUploadResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
@@ -104,6 +112,9 @@ message CreateSessionRequest {
   ApprovalMode mode = 7;
   // The CLI to start; unspecified means Codex.
   Agent agent = 8;
+  // Images for the first message, IDs from CompleteImageUpload (at most
+  // 6). The prompt may be empty when there are images.
+  repeated string image_ids = 9;
 }
 
 message CreateSessionResponse {
@@ -129,9 +140,16 @@ message GetSessionResponse {
 
 message SendRequest {
   string session_id = 1;
+  // May be empty when image_ids are given.
   string text = 2;
   // Stable ID chosen by the caller; retries with the same ID are not sent twice.
   string request_id = 3;
+  // Images to paste before the text, in order: IDs from
+  // CompleteImageUpload by the same device, at most 6. Each is pasted into
+  // the input box and must turn into "[Image #N]" before the text and
+  // Enter are written; if one does not, nothing is submitted (the message
+  // ends FAILED or NEEDS_TERMINAL). Needs MachineCapabilities.image_upload.
+  repeated string image_ids = 4;
 }
 
 message SendResponse {
@@ -327,3 +345,88 @@ message ResumeSessionRequest {
 message ResumeSessionResponse {
   Session session = 1;
 }
+
+enum ImageUploadState {
+  IMAGE_UPLOAD_STATE_UNSPECIFIED = 0;
+  // Chunks are arriving; persisted_bytes says how many are on disk.
+  IMAGE_UPLOAD_STATE_RECEIVING = 1;
+  // All bytes arrived and were checked; image_id is ready to be sent.
+  IMAGE_UPLOAD_STATE_COMPLETE = 2;
+  // A message that uses the image was accepted.
+  IMAGE_UPLOAD_STATE_USED = 3;
+}
+
+// ImageUploadStatus is the state of a transfer, returned by every upload
+// call. Unknown or expired transfers fail with "not_found".
+message ImageUploadStatus {
+  string transfer_id = 1;
+  ImageUploadState state = 2;
+  // Bytes stored durably so far; the next chunk starts here.
+  int64 persisted_bytes = 3;
+  int64 total_bytes = 4;
+  // Set once COMPLETE: the ID to name in SendRequest or
+  // CreateSessionRequest.
+  string image_id = 5;
+  int32 width = 6;
+  int32 height = 7;
+  // Unix milliseconds when the daemon deletes the unfinished transfer (an
+  // hour after its last chunk) or the unused image (24 hours after it
+  // completed).
+  int64 expires_ms = 8;
+  // Most bytes one PutImageChunk may carry.
+  int32 max_chunk_bytes = 9;
+}
+
+message BeginImageUploadRequest {
+  // 128 random bits, hex, chosen by the client. Beginning the same
+  // transfer again with the same parameters returns its status, so a
+  // client that lost a reply can go on where the daemon is.
+  string transfer_id = 1;
+  // PNG, JPEG, WebP or GIF; the daemon checks the bytes are that format.
+  ImageFormat format = 2;
+  // At most MachineCapabilities.max_upload_bytes.
+  int64 total_bytes = 3;
+  // SHA-256 of the whole file, checked on completion.
+  bytes sha256 = 4;
+}
+
+message BeginImageUploadResponse {
+  ImageUploadStatus status = 1;
+}
+
+message PutImageChunkRequest {
+  string transfer_id = 1;
+  // Where data goes; at most persisted_bytes. Bytes the daemon already has
+  // must be the same as before (a retried chunk), or the call fails.
+  int64 offset = 2;
+  bytes data = 3;
+}
+
+message PutImageChunkResponse {
+  ImageUploadStatus status = 1;
+}
+
+message GetImageUploadStatusRequest {
+  string transfer_id = 1;
+}
+
+message GetImageUploadStatusResponse {
+  ImageUploadStatus status = 1;
+}
+
+// CompleteImageUploadRequest checks the length, hash and format and that
+// the image decodes, then makes it ready to send. Completing again returns
+// the same image ID.
+message CompleteImageUploadRequest {
+  string transfer_id = 1;
+}
+
+message CompleteImageUploadResponse {
+  ImageUploadStatus status = 1;
+}
+
+message AbortImageUploadRequest {
+  string transfer_id = 1;
+}
+
+message AbortImageUploadResponse {}

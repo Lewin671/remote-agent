@@ -4,9 +4,9 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Agent, RateLimit } from "./event_pb";
+import type { Agent, ImageFormat, RateLimit } from "./event_pb";
 import { file_remoteagent_v1_event } from "./event_pb";
-import type { AnswerPlanRequest, AnswerPlanResponse, AnswerQuestionRequest, AnswerQuestionResponse, CancelInputRequest, CancelInputResponse, CompactRequest, CompactResponse, CreateSessionRequest, CreateSessionResponse, GetSettingsRequest, GetSettingsResponse, InterruptRequest, InterruptResponse, ListDirectoriesRequest, ListDirectoriesResponse, ListModelsRequest, ListModelsResponse, ResolveApprovalRequest, ResolveApprovalResponse, ResumeSessionRequest, ResumeSessionResponse, SendRequest, SendResponse, SetApprovalModeRequest, SetApprovalModeResponse, SetModelRequest, SetModelResponse, StopSessionRequest, StopSessionResponse, UpdateSettingsRequest, UpdateSettingsResponse } from "./local_pb";
+import type { AbortImageUploadRequest, AbortImageUploadResponse, AnswerPlanRequest, AnswerPlanResponse, AnswerQuestionRequest, AnswerQuestionResponse, BeginImageUploadRequest, BeginImageUploadResponse, CancelInputRequest, CancelInputResponse, CompactRequest, CompactResponse, CompleteImageUploadRequest, CompleteImageUploadResponse, CreateSessionRequest, CreateSessionResponse, GetImageUploadStatusRequest, GetImageUploadStatusResponse, GetSettingsRequest, GetSettingsResponse, InterruptRequest, InterruptResponse, ListDirectoriesRequest, ListDirectoriesResponse, ListModelsRequest, ListModelsResponse, PutImageChunkRequest, PutImageChunkResponse, ResolveApprovalRequest, ResolveApprovalResponse, ResumeSessionRequest, ResumeSessionResponse, SendRequest, SendResponse, SetApprovalModeRequest, SetApprovalModeResponse, SetModelRequest, SetModelResponse, StopSessionRequest, StopSessionResponse, UpdateSettingsRequest, UpdateSettingsResponse } from "./local_pb";
 import { file_remoteagent_v1_local } from "./local_pb";
 import type { NotifyKind } from "./relay_pb";
 import { file_remoteagent_v1_relay } from "./relay_pb";
@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/remote.proto.
  */
 export const file_remoteagent_v1_remote: GenFile = /*@__PURE__*/
-  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIowCCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCRIVCg1jb2RleF92ZXJzaW9uGAcgASgJEhYKDmNvZGV4X3ZlcmlmaWVkGAggASgIEikKBmFnZW50cxgJIAMoCzIZLnJlbW90ZWFnZW50LnYxLkFnZW50SW5mbyJUCglBZ2VudEluZm8SJAoFYWdlbnQYASABKA4yFS5yZW1vdGVhZ2VudC52MS5BZ2VudBIPCgd2ZXJzaW9uGAIgASgJEhAKCHZlcmlmaWVkGAMgASgIIpUICgdDb21tYW5kEisKBHNlbmQYASABKAsyGy5yZW1vdGVhZ2VudC52MS5TZW5kUmVxdWVzdEgAEjUKCWludGVycnVwdBgCIAEoCzIgLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlcXVlc3RIABJCChByZXNvbHZlX2FwcHJvdmFsGAMgASgLMiYucmVtb3RlYWdlbnQudjEuUmVzb2x2ZUFwcHJvdmFsUmVxdWVzdEgAEkAKD2Fuc3dlcl9xdWVzdGlvbhgEIAEoCzIlLnJlbW90ZWFnZW50LnYxLkFuc3dlclF1ZXN0aW9uUmVxdWVzdEgAEjoKDHN0b3Bfc2Vzc2lvbhgFIAEoCzIiLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVxdWVzdEgAEjoKDGNhbmNlbF9pbnB1dBgGIAEoCzIiLnJlbW90ZWFnZW50LnYxLkNhbmNlbElucHV0UmVxdWVzdEgAEjQKCXNldF9tb2RlbBgHIAEoCzIfLnJlbW90ZWFnZW50LnYxLlNldE1vZGVsUmVxdWVzdEgAEkMKEXNldF9hcHByb3ZhbF9tb2RlGAggASgLMiYucmVtb3RlYWdlbnQudjEuU2V0QXBwcm92YWxNb2RlUmVxdWVzdEgAEjEKB2NvbXBhY3QYCSABKAsyHi5yZW1vdGVhZ2VudC52MS5Db21wYWN0UmVxdWVzdEgAEjgKC2Fuc3dlcl9wbGFuGAogASgLMiEucmVtb3RlYWdlbnQudjEuQW5zd2VyUGxhblJlcXVlc3RIABI8Cg1vcGVuX3Rlcm1pbmFsGAsgASgLMiMucmVtb3RlYWdlbnQudjEuT3BlblRlcm1pbmFsUmVxdWVzdEgAEj4KDnJlc3VtZV9zZXNzaW9uGAwgASgLMiQucmVtb3RlYWdlbnQudjEuUmVzdW1lU2Vzc2lvblJlcXVlc3RIABI+Cg5jcmVhdGVfc2Vzc2lvbhgUIAEoCzIkLnJlbW90ZWFnZW50LnYxLkNyZWF0ZVNlc3Npb25SZXF1ZXN0SAASOAoLbGlzdF9tb2RlbHMYFSABKAsyIS5yZW1vdGVhZ2VudC52MS5MaXN0TW9kZWxzUmVxdWVzdEgAEkIKEGxpc3RfZGlyZWN0b3JpZXMYFiABKAsyJi5yZW1vdGVhZ2VudC52MS5MaXN0RGlyZWN0b3JpZXNSZXF1ZXN0SAASOgoMZ2V0X3NldHRpbmdzGBcgASgLMiIucmVtb3RlYWdlbnQudjEuR2V0U2V0dGluZ3NSZXF1ZXN0SAASQAoPdXBkYXRlX3NldHRpbmdzGBggASgLMiUucmVtb3RlYWdlbnQudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0SABCBgoEa2luZCLXCAoNQ29tbWFuZFJlc3VsdBISCgplcnJvcl9jb2RlGAEgASgJEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSLAoEc2VuZBgKIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlbmRSZXNwb25zZUgAEjYKCWludGVycnVwdBgLIAEoCzIhLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlc3BvbnNlSAASQwoQcmVzb2x2ZV9hcHByb3ZhbBgMIAEoCzInLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlc3BvbnNlSAASQQoPYW5zd2VyX3F1ZXN0aW9uGA0gASgLMiYucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXNwb25zZUgAEjsKDHN0b3Bfc2Vzc2lvbhgOIAEoCzIjLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVzcG9uc2VIABI7CgxjYW5jZWxfaW5wdXQYDyABKAsyIy5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlc3BvbnNlSAASNQoJc2V0X21vZGVsGBAgASgLMiAucmVtb3RlYWdlbnQudjEuU2V0TW9kZWxSZXNwb25zZUgAEkQKEXNldF9hcHByb3ZhbF9tb2RlGBEgASgLMicucmVtb3RlYWdlbnQudjEuU2V0QXBwcm92YWxNb2RlUmVzcG9uc2VIABIyCgdjb21wYWN0GBIgASgLMh8ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlc3BvbnNlSAASOQoLYW5zd2VyX3BsYW4YEyABKAsyIi5yZW1vdGVhZ2VudC52MS5BbnN3ZXJQbGFuUmVzcG9uc2VIABI9Cg1vcGVuX3Rlcm1pbmFsGBQgASgLMiQucmVtb3RlYWdlbnQudjEuT3BlblRlcm1pbmFsUmVzcG9uc2VIABI/Cg5yZXN1bWVfc2Vzc2lvbhgVIAEoCzIlLnJlbW90ZWFnZW50LnYxLlJlc3VtZVNlc3Npb25SZXNwb25zZUgAEj8KDmNyZWF0ZV9zZXNzaW9uGB4gASgLMiUucmVtb3RlYWdlbnQudjEuQ3JlYXRlU2Vzc2lvblJlc3BvbnNlSAASOQoLbGlzdF9tb2RlbHMYHyABKAsyIi5yZW1vdGVhZ2VudC52MS5MaXN0TW9kZWxzUmVzcG9uc2VIABJDChBsaXN0X2RpcmVjdG9yaWVzGCAgASgLMicucmVtb3RlYWdlbnQudjEuTGlzdERpcmVjdG9yaWVzUmVzcG9uc2VIABI7CgxnZXRfc2V0dGluZ3MYISABKAsyIy5yZW1vdGVhZ2VudC52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlSAASQQoPdXBkYXRlX3NldHRpbmdzGCIgASgLMiYucmVtb3RlYWdlbnQudjEuVXBkYXRlU2V0dGluZ3NSZXNwb25zZUgAQgYKBGtpbmQiPAoTT3BlblRlcm1pbmFsUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhEKCXN0cmVhbV9pZBgCIAEoCSIWChRPcGVuVGVybWluYWxSZXNwb25zZSK0AQoNVGVybWluYWxGcmFtZRI0CghzbmFwc2hvdBgBIAEoCzIgLnJlbW90ZWFnZW50LnYxLlRlcm1pbmFsU25hcHNob3RIABIQCgZvdXRwdXQYAiABKAxIABIQCgZjbG9zZWQYAyABKAlIABIPCgVpbnB1dBgKIAEoDEgAEjAKBnJlc2l6ZRgLIAEoCzIeLnJlbW90ZWFnZW50LnYxLlRlcm1pbmFsUmVzaXplSABCBgoEa2luZCI8ChBUZXJtaW5hbFNuYXBzaG90EgwKBGRhdGEYASABKAwSDAoEY29scxgCIAEoBRIMCgRyb3dzGAMgASgFIjkKDlRlcm1pbmFsUmVzaXplEgwKBGNvbHMYASABKAUSDAoEcm93cxgCIAEoBRILCgNmaXQYAyABKAgiLgoOUGFpcmluZ1BheWxvYWQSDAoEcm9vdBgBIAEoDBIOCgZzZXJ2ZXIYAiABKAkisAEKDU5vdGlmeUNvbnRlbnQSEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEigKBGtpbmQYAyABKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kEg0KBXRpdGxlGAQgASgJEgwKBHRleHQYBSABKAkSMAoIYXBwcm92YWwYBiABKAsyHi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlBcHByb3ZhbCKaAQoOTm90aWZ5QXBwcm92YWwSEwoLYXBwcm92YWxfaWQYASABKAkSEQoJdG9vbF9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg8KB2NvbW1hbmQYBCABKAkSEQoJdHJ1bmNhdGVkGAUgASgIEhMKC2RlYWRsaW5lX21zGAYgASgDEhIKCnRvb2xfaW5wdXQYByABKAliBnByb3RvMw", [file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay]);
+  fileDesc("ChtyZW1vdGVhZ2VudC92MS9yZW1vdGUucHJvdG8SDnJlbW90ZWFnZW50LnYxIscCCgtNYWNoaW5lTWV0YRIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIwCg1wcmltYXJ5X2xpbWl0GAMgASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgEIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYBSABKAkSDAoEaG9tZRgGIAEoCRIVCg1jb2RleF92ZXJzaW9uGAcgASgJEhYKDmNvZGV4X3ZlcmlmaWVkGAggASgIEikKBmFnZW50cxgJIAMoCzIZLnJlbW90ZWFnZW50LnYxLkFnZW50SW5mbxI5CgxjYXBhYmlsaXRpZXMYCiABKAsyIy5yZW1vdGVhZ2VudC52MS5NYWNoaW5lQ2FwYWJpbGl0aWVzIucBChNNYWNoaW5lQ2FwYWJpbGl0aWVzEhYKDnNlc3Npb25faW1hZ2VzGAEgASgIEhQKDGltYWdlX3VwbG9hZBgCIAEoCBIeChZtYXhfaW1hZ2VzX3Blcl9tZXNzYWdlGAMgASgFEhgKEG1heF91cGxvYWRfYnl0ZXMYBCABKAMSFwoPbWF4X2NodW5rX2J5dGVzGAUgASgFEjMKDnVwbG9hZF9mb3JtYXRzGAYgAygOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSGgoSY29tbWFuZF9zaWduYXR1cmVzGAcgASgIIlQKCUFnZW50SW5mbxIkCgVhZ2VudBgBIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50Eg8KB3ZlcnNpb24YAiABKAkSEAoIdmVyaWZpZWQYAyABKAgigQsKB0NvbW1hbmQSKwoEc2VuZBgBIAEoCzIbLnJlbW90ZWFnZW50LnYxLlNlbmRSZXF1ZXN0SAASNQoJaW50ZXJydXB0GAIgASgLMiAucmVtb3RlYWdlbnQudjEuSW50ZXJydXB0UmVxdWVzdEgAEkIKEHJlc29sdmVfYXBwcm92YWwYAyABKAsyJi5yZW1vdGVhZ2VudC52MS5SZXNvbHZlQXBwcm92YWxSZXF1ZXN0SAASQAoPYW5zd2VyX3F1ZXN0aW9uGAQgASgLMiUucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXF1ZXN0SAASOgoMc3RvcF9zZXNzaW9uGAUgASgLMiIucmVtb3RlYWdlbnQudjEuU3RvcFNlc3Npb25SZXF1ZXN0SAASOgoMY2FuY2VsX2lucHV0GAYgASgLMiIucmVtb3RlYWdlbnQudjEuQ2FuY2VsSW5wdXRSZXF1ZXN0SAASNAoJc2V0X21vZGVsGAcgASgLMh8ucmVtb3RlYWdlbnQudjEuU2V0TW9kZWxSZXF1ZXN0SAASQwoRc2V0X2FwcHJvdmFsX21vZGUYCCABKAsyJi5yZW1vdGVhZ2VudC52MS5TZXRBcHByb3ZhbE1vZGVSZXF1ZXN0SAASMQoHY29tcGFjdBgJIAEoCzIeLnJlbW90ZWFnZW50LnYxLkNvbXBhY3RSZXF1ZXN0SAASOAoLYW5zd2VyX3BsYW4YCiABKAsyIS5yZW1vdGVhZ2VudC52MS5BbnN3ZXJQbGFuUmVxdWVzdEgAEjwKDW9wZW5fdGVybWluYWwYCyABKAsyIy5yZW1vdGVhZ2VudC52MS5PcGVuVGVybWluYWxSZXF1ZXN0SAASPgoOcmVzdW1lX3Nlc3Npb24YDCABKAsyJC5yZW1vdGVhZ2VudC52MS5SZXN1bWVTZXNzaW9uUmVxdWVzdEgAEj4KDmNyZWF0ZV9zZXNzaW9uGBQgASgLMiQucmVtb3RlYWdlbnQudjEuQ3JlYXRlU2Vzc2lvblJlcXVlc3RIABI4CgtsaXN0X21vZGVscxgVIAEoCzIhLnJlbW90ZWFnZW50LnYxLkxpc3RNb2RlbHNSZXF1ZXN0SAASQgoQbGlzdF9kaXJlY3RvcmllcxgWIAEoCzImLnJlbW90ZWFnZW50LnYxLkxpc3REaXJlY3Rvcmllc1JlcXVlc3RIABI6CgxnZXRfc2V0dGluZ3MYFyABKAsyIi5yZW1vdGVhZ2VudC52MS5HZXRTZXR0aW5nc1JlcXVlc3RIABJACg91cGRhdGVfc2V0dGluZ3MYGCABKAsyJS5yZW1vdGVhZ2VudC52MS5VcGRhdGVTZXR0aW5nc1JlcXVlc3RIABJFChJiZWdpbl9pbWFnZV91cGxvYWQYGSABKAsyJy5yZW1vdGVhZ2VudC52MS5CZWdpbkltYWdlVXBsb2FkUmVxdWVzdEgAEj8KD3B1dF9pbWFnZV9jaHVuaxgaIAEoCzIkLnJlbW90ZWFnZW50LnYxLlB1dEltYWdlQ2h1bmtSZXF1ZXN0SAASTgoXZ2V0X2ltYWdlX3VwbG9hZF9zdGF0dXMYGyABKAsyKy5yZW1vdGVhZ2VudC52MS5HZXRJbWFnZVVwbG9hZFN0YXR1c1JlcXVlc3RIABJLChVjb21wbGV0ZV9pbWFnZV91cGxvYWQYHCABKAsyKi5yZW1vdGVhZ2VudC52MS5Db21wbGV0ZUltYWdlVXBsb2FkUmVxdWVzdEgAEkUKEmFib3J0X2ltYWdlX3VwbG9hZBgdIAEoCzInLnJlbW90ZWFnZW50LnYxLkFib3J0SW1hZ2VVcGxvYWRSZXF1ZXN0SABCBgoEa2luZCLICwoNQ29tbWFuZFJlc3VsdBISCgplcnJvcl9jb2RlGAEgASgJEhUKDWVycm9yX21lc3NhZ2UYAiABKAkSLAoEc2VuZBgKIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlbmRSZXNwb25zZUgAEjYKCWludGVycnVwdBgLIAEoCzIhLnJlbW90ZWFnZW50LnYxLkludGVycnVwdFJlc3BvbnNlSAASQwoQcmVzb2x2ZV9hcHByb3ZhbBgMIAEoCzInLnJlbW90ZWFnZW50LnYxLlJlc29sdmVBcHByb3ZhbFJlc3BvbnNlSAASQQoPYW5zd2VyX3F1ZXN0aW9uGA0gASgLMiYucmVtb3RlYWdlbnQudjEuQW5zd2VyUXVlc3Rpb25SZXNwb25zZUgAEjsKDHN0b3Bfc2Vzc2lvbhgOIAEoCzIjLnJlbW90ZWFnZW50LnYxLlN0b3BTZXNzaW9uUmVzcG9uc2VIABI7CgxjYW5jZWxfaW5wdXQYDyABKAsyIy5yZW1vdGVhZ2VudC52MS5DYW5jZWxJbnB1dFJlc3BvbnNlSAASNQoJc2V0X21vZGVsGBAgASgLMiAucmVtb3RlYWdlbnQudjEuU2V0TW9kZWxSZXNwb25zZUgAEkQKEXNldF9hcHByb3ZhbF9tb2RlGBEgASgLMicucmVtb3RlYWdlbnQudjEuU2V0QXBwcm92YWxNb2RlUmVzcG9uc2VIABIyCgdjb21wYWN0GBIgASgLMh8ucmVtb3RlYWdlbnQudjEuQ29tcGFjdFJlc3BvbnNlSAASOQoLYW5zd2VyX3BsYW4YEyABKAsyIi5yZW1vdGVhZ2VudC52MS5BbnN3ZXJQbGFuUmVzcG9uc2VIABI9Cg1vcGVuX3Rlcm1pbmFsGBQgASgLMiQucmVtb3RlYWdlbnQudjEuT3BlblRlcm1pbmFsUmVzcG9uc2VIABI/Cg5yZXN1bWVfc2Vzc2lvbhgVIAEoCzIlLnJlbW90ZWFnZW50LnYxLlJlc3VtZVNlc3Npb25SZXNwb25zZUgAEj8KDmNyZWF0ZV9zZXNzaW9uGB4gASgLMiUucmVtb3RlYWdlbnQudjEuQ3JlYXRlU2Vzc2lvblJlc3BvbnNlSAASOQoLbGlzdF9tb2RlbHMYHyABKAsyIi5yZW1vdGVhZ2VudC52MS5MaXN0TW9kZWxzUmVzcG9uc2VIABJDChBsaXN0X2RpcmVjdG9yaWVzGCAgASgLMicucmVtb3RlYWdlbnQudjEuTGlzdERpcmVjdG9yaWVzUmVzcG9uc2VIABI7CgxnZXRfc2V0dGluZ3MYISABKAsyIy5yZW1vdGVhZ2VudC52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlSAASQQoPdXBkYXRlX3NldHRpbmdzGCIgASgLMiYucmVtb3RlYWdlbnQudjEuVXBkYXRlU2V0dGluZ3NSZXNwb25zZUgAEkYKEmJlZ2luX2ltYWdlX3VwbG9hZBgjIAEoCzIoLnJlbW90ZWFnZW50LnYxLkJlZ2luSW1hZ2VVcGxvYWRSZXNwb25zZUgAEkAKD3B1dF9pbWFnZV9jaHVuaxgkIAEoCzIlLnJlbW90ZWFnZW50LnYxLlB1dEltYWdlQ2h1bmtSZXNwb25zZUgAEk8KF2dldF9pbWFnZV91cGxvYWRfc3RhdHVzGCUgASgLMiwucmVtb3RlYWdlbnQudjEuR2V0SW1hZ2VVcGxvYWRTdGF0dXNSZXNwb25zZUgAEkwKFWNvbXBsZXRlX2ltYWdlX3VwbG9hZBgmIAEoCzIrLnJlbW90ZWFnZW50LnYxLkNvbXBsZXRlSW1hZ2VVcGxvYWRSZXNwb25zZUgAEkYKEmFib3J0X2ltYWdlX3VwbG9hZBgnIAEoCzIoLnJlbW90ZWFnZW50LnYxLkFib3J0SW1hZ2VVcGxvYWRSZXNwb25zZUgAQgYKBGtpbmQiPAoTT3BlblRlcm1pbmFsUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhEKCXN0cmVhbV9pZBgCIAEoCSIWChRPcGVuVGVybWluYWxSZXNwb25zZSK0AQoNVGVybWluYWxGcmFtZRI0CghzbmFwc2hvdBgBIAEoCzIgLnJlbW90ZWFnZW50LnYxLlRlcm1pbmFsU25hcHNob3RIABIQCgZvdXRwdXQYAiABKAxIABIQCgZjbG9zZWQYAyABKAlIABIPCgVpbnB1dBgKIAEoDEgAEjAKBnJlc2l6ZRgLIAEoCzIeLnJlbW90ZWFnZW50LnYxLlRlcm1pbmFsUmVzaXplSABCBgoEa2luZCI8ChBUZXJtaW5hbFNuYXBzaG90EgwKBGRhdGEYASABKAwSDAoEY29scxgCIAEoBRIMCgRyb3dzGAMgASgFIjkKDlRlcm1pbmFsUmVzaXplEgwKBGNvbHMYASABKAUSDAoEcm93cxgCIAEoBRILCgNmaXQYAyABKAgiLgoOUGFpcmluZ1BheWxvYWQSDAoEcm9vdBgBIAEoDBIOCgZzZXJ2ZXIYAiABKAkisAEKDU5vdGlmeUNvbnRlbnQSEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXNzaW9uX2lkGAIgASgJEigKBGtpbmQYAyABKA4yGi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlLaW5kEg0KBXRpdGxlGAQgASgJEgwKBHRleHQYBSABKAkSMAoIYXBwcm92YWwYBiABKAsyHi5yZW1vdGVhZ2VudC52MS5Ob3RpZnlBcHByb3ZhbCKaAQoOTm90aWZ5QXBwcm92YWwSEwoLYXBwcm92YWxfaWQYASABKAkSEQoJdG9vbF9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg8KB2NvbW1hbmQYBCABKAkSEQoJdHJ1bmNhdGVkGAUgASgIEhMKC2RlYWRsaW5lX21zGAYgASgDEhIKCnRvb2xfaW5wdXQYByABKAkiaAoMSW1hZ2VQYXlsb2FkEisKBmZvcm1hdBgBIAEoDjIbLnJlbW90ZWFnZW50LnYxLkltYWdlRm9ybWF0Eg0KBXdpZHRoGAIgASgFEg4KBmhlaWdodBgDIAEoBRIMCgRkYXRhGAQgASgMIkEKCkRldmljZU1ldGESDAoEbmFtZRgBIAEoCRIQCghwbGF0Zm9ybRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCSKMAQoMUHJvamVjdFByZWZzEg4KBnNjaGVtYRgBIAEoBRIrCgZwaW5uZWQYAiADKAsyGy5yZW1vdGVhZ2VudC52MS5Qcm9qZWN0UHJlZhIrCgZoaWRkZW4YAyADKAsyGy5yZW1vdGVhZ2VudC52MS5Qcm9qZWN0UHJlZhISCgpyZWNlbnRfb3BzGAQgAygJIi0KC1Byb2plY3RQcmVmEgwKBHBhdGgYASABKAkSEAoIc2luY2VfbXMYAiABKANiBnByb3RvMw", [file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay]);
 
 /**
  * MachineMeta describes a computer running a daemon.
@@ -79,6 +79,15 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
    * @generated from field: repeated remoteagent.v1.AgentInfo agents = 9;
    */
   agents: AgentInfo[];
+
+  /**
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   *
+   * @generated from field: remoteagent.v1.MachineCapabilities capabilities = 10;
+   */
+  capabilities?: MachineCapabilities | undefined;
 };
 
 /**
@@ -87,6 +96,66 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
  */
 export const MachineMetaSchema: GenMessage<MachineMeta> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_remote, 0);
+
+/**
+ * @generated from message remoteagent.v1.MachineCapabilities
+ */
+export type MachineCapabilities = Message<"remoteagent.v1.MachineCapabilities"> & {
+  /**
+   * Images in the session carry ImageRefs and display copies (GetImage).
+   *
+   * @generated from field: bool session_images = 1;
+   */
+  sessionImages: boolean;
+
+  /**
+   * The image upload commands, and image IDs in Send and CreateSession.
+   *
+   * @generated from field: bool image_upload = 2;
+   */
+  imageUpload: boolean;
+
+  /**
+   * @generated from field: int32 max_images_per_message = 3;
+   */
+  maxImagesPerMessage: number;
+
+  /**
+   * Largest file BeginImageUpload accepts.
+   *
+   * @generated from field: int64 max_upload_bytes = 4;
+   */
+  maxUploadBytes: bigint;
+
+  /**
+   * Largest data in one PutImageChunk.
+   *
+   * @generated from field: int32 max_chunk_bytes = 5;
+   */
+  maxChunkBytes: number;
+
+  /**
+   * Formats BeginImageUpload accepts.
+   *
+   * @generated from field: repeated remoteagent.v1.ImageFormat upload_formats = 6;
+   */
+  uploadFormats: ImageFormat[];
+
+  /**
+   * Commands are checked against Envelope.signature and events carry
+   * their Origin.
+   *
+   * @generated from field: bool command_signatures = 7;
+   */
+  commandSignatures: boolean;
+};
+
+/**
+ * Describes the message remoteagent.v1.MachineCapabilities.
+ * Use `create(MachineCapabilitiesSchema)` to create a new message.
+ */
+export const MachineCapabilitiesSchema: GenMessage<MachineCapabilities> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 1);
 
 /**
  * @generated from message remoteagent.v1.AgentInfo
@@ -115,7 +184,7 @@ export type AgentInfo = Message<"remoteagent.v1.AgentInfo"> & {
  * Use `create(AgentInfoSchema)` to create a new message.
  */
 export const AgentInfoSchema: GenMessage<AgentInfo> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 1);
+  messageDesc(file_remoteagent_v1_remote, 2);
 
 /**
  * Command is what a client asks a daemon to do. The session operations
@@ -233,6 +302,36 @@ export type Command = Message<"remoteagent.v1.Command"> & {
      */
     value: UpdateSettingsRequest;
     case: "updateSettings";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25;
+     */
+    value: BeginImageUploadRequest;
+    case: "beginImageUpload";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.PutImageChunkRequest put_image_chunk = 26;
+     */
+    value: PutImageChunkRequest;
+    case: "putImageChunk";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27;
+     */
+    value: GetImageUploadStatusRequest;
+    case: "getImageUploadStatus";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28;
+     */
+    value: CompleteImageUploadRequest;
+    case: "completeImageUpload";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29;
+     */
+    value: AbortImageUploadRequest;
+    case: "abortImageUpload";
   } | { case: undefined; value?: undefined };
 };
 
@@ -241,7 +340,7 @@ export type Command = Message<"remoteagent.v1.Command"> & {
  * Use `create(CommandSchema)` to create a new message.
  */
 export const CommandSchema: GenMessage<Command> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 2);
+  messageDesc(file_remoteagent_v1_remote, 3);
 
 /**
  * CommandResult is the daemon's reply to a Command. A retried request ID
@@ -368,6 +467,36 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
      */
     value: UpdateSettingsResponse;
     case: "updateSettings";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.BeginImageUploadResponse begin_image_upload = 35;
+     */
+    value: BeginImageUploadResponse;
+    case: "beginImageUpload";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.PutImageChunkResponse put_image_chunk = 36;
+     */
+    value: PutImageChunkResponse;
+    case: "putImageChunk";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.GetImageUploadStatusResponse get_image_upload_status = 37;
+     */
+    value: GetImageUploadStatusResponse;
+    case: "getImageUploadStatus";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.CompleteImageUploadResponse complete_image_upload = 38;
+     */
+    value: CompleteImageUploadResponse;
+    case: "completeImageUpload";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.AbortImageUploadResponse abort_image_upload = 39;
+     */
+    value: AbortImageUploadResponse;
+    case: "abortImageUpload";
   } | { case: undefined; value?: undefined };
 };
 
@@ -376,7 +505,7 @@ export type CommandResult = Message<"remoteagent.v1.CommandResult"> & {
  * Use `create(CommandResultSchema)` to create a new message.
  */
 export const CommandResultSchema: GenMessage<CommandResult> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 3);
+  messageDesc(file_remoteagent_v1_remote, 4);
 
 /**
  * OpenTerminalRequest asks the daemon to stream a session's terminal. The
@@ -404,7 +533,7 @@ export type OpenTerminalRequest = Message<"remoteagent.v1.OpenTerminalRequest"> 
  * Use `create(OpenTerminalRequestSchema)` to create a new message.
  */
 export const OpenTerminalRequestSchema: GenMessage<OpenTerminalRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 4);
+  messageDesc(file_remoteagent_v1_remote, 5);
 
 /**
  * @generated from message remoteagent.v1.OpenTerminalResponse
@@ -417,7 +546,7 @@ export type OpenTerminalResponse = Message<"remoteagent.v1.OpenTerminalResponse"
  * Use `create(OpenTerminalResponseSchema)` to create a new message.
  */
 export const OpenTerminalResponseSchema: GenMessage<OpenTerminalResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 5);
+  messageDesc(file_remoteagent_v1_remote, 6);
 
 /**
  * TerminalFrame is the content of a TERMINAL_OUTPUT or TERMINAL_INPUT
@@ -473,7 +602,7 @@ export type TerminalFrame = Message<"remoteagent.v1.TerminalFrame"> & {
  * Use `create(TerminalFrameSchema)` to create a new message.
  */
 export const TerminalFrameSchema: GenMessage<TerminalFrame> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 6);
+  messageDesc(file_remoteagent_v1_remote, 7);
 
 /**
  * TerminalSnapshot is the screen as it is now; output continues from it.
@@ -502,7 +631,7 @@ export type TerminalSnapshot = Message<"remoteagent.v1.TerminalSnapshot"> & {
  * Use `create(TerminalSnapshotSchema)` to create a new message.
  */
 export const TerminalSnapshotSchema: GenMessage<TerminalSnapshot> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 7);
+  messageDesc(file_remoteagent_v1_remote, 8);
 
 /**
  * TerminalResize with fit set resizes the tmux window to the client's
@@ -532,7 +661,7 @@ export type TerminalResize = Message<"remoteagent.v1.TerminalResize"> & {
  * Use `create(TerminalResizeSchema)` to create a new message.
  */
 export const TerminalResizeSchema: GenMessage<TerminalResize> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 8);
+  messageDesc(file_remoteagent_v1_remote, 9);
 
 /**
  * PairingPayload is what an existing device hands a new one.
@@ -556,7 +685,7 @@ export type PairingPayload = Message<"remoteagent.v1.PairingPayload"> & {
  * Use `create(PairingPayloadSchema)` to create a new message.
  */
 export const PairingPayloadSchema: GenMessage<PairingPayload> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 9);
+  messageDesc(file_remoteagent_v1_remote, 10);
 
 /**
  * NotifyContent is what a daemon tells the Android app in a push, sealed
@@ -608,7 +737,7 @@ export type NotifyContent = Message<"remoteagent.v1.NotifyContent"> & {
  * Use `create(NotifyContentSchema)` to create a new message.
  */
 export const NotifyContentSchema: GenMessage<NotifyContent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 10);
+  messageDesc(file_remoteagent_v1_remote, 11);
 
 /**
  * @generated from message remoteagent.v1.NotifyApproval
@@ -663,5 +792,149 @@ export type NotifyApproval = Message<"remoteagent.v1.NotifyApproval"> & {
  * Use `create(NotifyApprovalSchema)` to create a new message.
  */
 export const NotifyApprovalSchema: GenMessage<NotifyApproval> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_remote, 11);
+  messageDesc(file_remoteagent_v1_remote, 12);
+
+/**
+ * ImagePayload is the content of an IMAGE envelope: the display copy of an
+ * image in a session, re-encoded by the daemon (long side at most 2048,
+ * the whole envelope at most 1 MiB). A client checks that data starts
+ * with the format's signature before showing it.
+ *
+ * @generated from message remoteagent.v1.ImagePayload
+ */
+export type ImagePayload = Message<"remoteagent.v1.ImagePayload"> & {
+  /**
+   * @generated from field: remoteagent.v1.ImageFormat format = 1;
+   */
+  format: ImageFormat;
+
+  /**
+   * @generated from field: int32 width = 2;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 3;
+   */
+  height: number;
+
+  /**
+   * @generated from field: bytes data = 4;
+   */
+  data: Uint8Array;
+};
+
+/**
+ * Describes the message remoteagent.v1.ImagePayload.
+ * Use `create(ImagePayloadSchema)` to create a new message.
+ */
+export const ImagePayloadSchema: GenMessage<ImagePayload> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 13);
+
+/**
+ * DeviceMeta is the content of a DEVICE_META envelope: what the account's
+ * clients call a client device. Machines describe themselves in
+ * MachineMeta instead.
+ *
+ * @generated from message remoteagent.v1.DeviceMeta
+ */
+export type DeviceMeta = Message<"remoteagent.v1.DeviceMeta"> & {
+  /**
+   * Name the user gave the device, e.g. "Pixel".
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * "web", "android", ...
+   *
+   * @generated from field: string platform = 2;
+   */
+  platform: string;
+
+  /**
+   * What the device says it runs on, e.g. "Chrome 140 on macOS".
+   *
+   * @generated from field: string description = 3;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.DeviceMeta.
+ * Use `create(DeviceMetaSchema)` to create a new message.
+ */
+export const DeviceMetaSchema: GenMessage<DeviceMeta> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 14);
+
+/**
+ * ProjectPrefs is the content of the ACCOUNT_PREFS object "project-prefs":
+ * the account's pinned and hidden projects. A project is its absolute
+ * path, as in the client's grouping.
+ *
+ * @generated from message remoteagent.v1.ProjectPrefs
+ */
+export type ProjectPrefs = Message<"remoteagent.v1.ProjectPrefs"> & {
+  /**
+   * 1 for this layout.
+   *
+   * @generated from field: int32 schema = 1;
+   */
+  schema: number;
+
+  /**
+   * Pinned projects in the order they were pinned.
+   *
+   * @generated from field: repeated remoteagent.v1.ProjectPref pinned = 2;
+   */
+  pinned: ProjectPref[];
+
+  /**
+   * Projects removed from the project list.
+   *
+   * @generated from field: repeated remoteagent.v1.ProjectPref hidden = 3;
+   */
+  hidden: ProjectPref[];
+
+  /**
+   * IDs of the latest operations applied (at most 64, newest last), so a
+   * client whose write reply was lost can tell whether its operation is
+   * in.
+   *
+   * @generated from field: repeated string recent_ops = 4;
+   */
+  recentOps: string[];
+};
+
+/**
+ * Describes the message remoteagent.v1.ProjectPrefs.
+ * Use `create(ProjectPrefsSchema)` to create a new message.
+ */
+export const ProjectPrefsSchema: GenMessage<ProjectPrefs> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 15);
+
+/**
+ * @generated from message remoteagent.v1.ProjectPref
+ */
+export type ProjectPref = Message<"remoteagent.v1.ProjectPref"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * Unix milliseconds when it was pinned or hidden.
+   *
+   * @generated from field: int64 since_ms = 2;
+   */
+  sinceMs: bigint;
+};
+
+/**
+ * Describes the message remoteagent.v1.ProjectPref.
+ * Use `create(ProjectPrefSchema)` to create a new message.
+ */
+export const ProjectPrefSchema: GenMessage<ProjectPref> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_remote, 16);
 

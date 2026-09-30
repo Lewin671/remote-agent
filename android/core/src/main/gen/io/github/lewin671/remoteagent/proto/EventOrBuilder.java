@@ -64,6 +64,31 @@ public interface EventOrBuilder extends
       getTurnIdBytes();
 
   /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   * @return Whether the origin field is set.
+   */
+  boolean hasOrigin();
+  /**
+   * <pre>
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
+   * @return The origin.
+   */
+  io.github.lewin671.remoteagent.proto.Origin getOrigin();
+
+  /**
    * <code>.remoteagent.v1.UserMessage user_message = 10 [json_name = "userMessage"];</code>
    * @return Whether the userMessage field is set.
    */
@@ -249,6 +274,28 @@ public interface EventOrBuilder extends
    * @return The toolStarted.
    */
   io.github.lewin671.remoteagent.proto.ToolStarted getToolStarted();
+
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   * @return Whether the imageGenerated field is set.
+   */
+  boolean hasImageGenerated();
+  /**
+   * <code>.remoteagent.v1.ImageGenerated image_generated = 27 [json_name = "imageGenerated"];</code>
+   * @return The imageGenerated.
+   */
+  io.github.lewin671.remoteagent.proto.ImageGenerated getImageGenerated();
+
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   * @return Whether the planAnswered field is set.
+   */
+  boolean hasPlanAnswered();
+  /**
+   * <code>.remoteagent.v1.PlanAnswered plan_answered = 28 [json_name = "planAnswered"];</code>
+   * @return The planAnswered.
+   */
+  io.github.lewin671.remoteagent.proto.PlanAnswered getPlanAnswered();
 
   public io.github.lewin671.remoteagent.proto.Event.KindCase getKindCase();
 }

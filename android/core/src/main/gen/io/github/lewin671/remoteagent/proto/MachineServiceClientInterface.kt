@@ -27,4 +27,11 @@ public interface MachineServiceClientInterface {
    *  Notify asks the server to push a notification with generic text.
    */
   public suspend fun notify(request: NotifyRequest, headers: Headers = emptyMap()): ResponseMessage<NotifyResponse>
+
+  /**
+   *  PutImage stores the display copy of an image in one of the machine's
+   *  sessions. Storing an image ID again is a no-op. Fails with
+   *  "resource_exhausted" when the account's image quota is full.
+   */
+  public suspend fun putImage(request: PutImageRequest, headers: Headers = emptyMap()): ResponseMessage<PutImageResponse>
 }

@@ -30,4 +30,44 @@ public interface ForwardCallOrBuilder extends
    * @return The command.
    */
   io.github.lewin671.remoteagent.proto.Envelope getCommand();
+
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @return The senderDeviceId.
+   */
+  java.lang.String getSenderDeviceId();
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @return The bytes for senderDeviceId.
+   */
+  com.google.protobuf.ByteString
+      getSenderDeviceIdBytes();
+
+  /**
+   * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+   * @return The senderRegistration.
+   */
+  com.google.protobuf.ByteString getSenderRegistration();
+
+  /**
+   * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+   * @return The senderRegistrationSignature.
+   */
+  com.google.protobuf.ByteString getSenderRegistrationSignature();
 }

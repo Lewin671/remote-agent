@@ -41,4 +41,23 @@ public interface EnvelopeOrBuilder extends
    * @return The ciphertext.
    */
   com.google.protobuf.ByteString getCiphertext();
+
+  /**
+   * <pre>
+   * Ed25519 signature by the sending device's key, so that a daemon can
+   * tell which device sent a command even though the server is not
+   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+   * and from clients older than v2. It signs the bytes as transmitted:
+   * "remote-agent/v1/envelope-signature&#92;x00"
+   * || uint32be(len(header)) || header
+   * || uint32be(len(nonce)) || nonce
+   * || uint32be(len(ciphertext)) || ciphertext
+   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+   * header's sender must be the ID of the signing device.
+   * </pre>
+   *
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
+   * @return The signature.
+   */
+  com.google.protobuf.ByteString getSignature();
 }

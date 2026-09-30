@@ -70,7 +70,8 @@ public  final class ForwardRequest extends
   private io.github.lewin671.remoteagent.proto.Envelope command_;
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -81,7 +82,8 @@ public  final class ForwardRequest extends
   }
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -92,7 +94,8 @@ public  final class ForwardRequest extends
   }
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -105,7 +108,8 @@ public  final class ForwardRequest extends
   }
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -124,7 +128,8 @@ public  final class ForwardRequest extends
   }
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -282,7 +287,8 @@ public  final class ForwardRequest extends
 
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -293,7 +299,8 @@ public  final class ForwardRequest extends
     }
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -304,7 +311,8 @@ public  final class ForwardRequest extends
     }
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -316,7 +324,8 @@ public  final class ForwardRequest extends
       }
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -329,7 +338,8 @@ public  final class ForwardRequest extends
     }
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -341,7 +351,8 @@ public  final class ForwardRequest extends
     }
     /**
      * <pre>
-     * COMMAND envelope.
+     * COMMAND envelope. Its header's sender must be the calling device, or
+     * the server refuses it.
      * </pre>
      *
      * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>

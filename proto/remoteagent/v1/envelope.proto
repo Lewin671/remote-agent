@@ -13,6 +13,17 @@ message Envelope {
   bytes nonce = 2;
   // AES-256-GCM ciphertext followed by the 16-byte tag.
   bytes ciphertext = 3;
+  // Ed25519 signature by the sending device's key, so that a daemon can
+  // tell which device sent a command even though the server is not
+  // trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+  // and from clients older than v2. It signs the bytes as transmitted:
+  //   "remote-agent/v1/envelope-signature\x00"
+  //   || uint32be(len(header)) || header
+  //   || uint32be(len(nonce)) || nonce
+  //   || uint32be(len(ciphertext)) || ciphertext
+  // (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+  // header's sender must be the ID of the signing device.
+  bytes signature = 4;
 }
 
 // PayloadKind says what an envelope holds and which key seals it.
@@ -42,6 +53,17 @@ enum PayloadKind {
   // with the notify key; the header's request_id is the notification's
   // dedupe key.
   PAYLOAD_KIND_NOTIFY = 10;
+  // An ImagePayload, the display copy of an image in a session, sealed
+  // with the session key; the header's request_id is the image ID.
+  PAYLOAD_KIND_IMAGE = 11;
+  // An account preferences object (ProjectPrefs), sealed with the
+  // account-prefs key; the header's request_id is the object ID and seq
+  // its revision.
+  PAYLOAD_KIND_ACCOUNT_PREFS = 12;
+  // A DeviceMeta describing a client device, sealed with the device-meta
+  // key; the header's request_id is the ID of the device described and
+  // seq the metadata's revision.
+  PAYLOAD_KIND_DEVICE_META = 13;
 }
 
 // Header binds an envelope to its place. The receiver checks every field
@@ -54,9 +76,14 @@ message Header {
   string machine_id = 3;
   string session_id = 4;
   // Event sequence number for EVENT; revision for SESSION_META and
-  // MACHINE_META, so that an older copy is never shown over a newer one.
+  // MACHINE_META, so that an older copy is never shown over a newer one;
+  // the new revision for ACCOUNT_PREFS and DEVICE_META (the expected
+  // revision plus one), so that the server cannot pass a copy off as
+  // another revision.
   uint64 seq = 5;
-  // Client-chosen ID for COMMAND and COMMAND_RESULT.
+  // Client-chosen ID for COMMAND and COMMAND_RESULT; the image ID for
+  // IMAGE; the object ID for ACCOUNT_PREFS; the described device's ID for
+  // DEVICE_META.
   string request_id = 6;
   // Unix milliseconds after which a COMMAND must not run.
   int64 deadline_ms = 7;

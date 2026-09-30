@@ -617,6 +617,84 @@ public  final class MachineMeta extends
     agents_.remove(index);
   }
 
+  public static final int CAPABILITIES_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.MachineCapabilities capabilities_;
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCapabilities() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.MachineCapabilities getCapabilities() {
+    return capabilities_ == null ? io.github.lewin671.remoteagent.proto.MachineCapabilities.getDefaultInstance() : capabilities_;
+  }
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities value) {
+    value.getClass();  // minimal bytecode null check
+    capabilities_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities value) {
+    value.getClass();  // minimal bytecode null check
+    if (capabilities_ != null &&
+        capabilities_ != io.github.lewin671.remoteagent.proto.MachineCapabilities.getDefaultInstance()) {
+      capabilities_ =
+        io.github.lewin671.remoteagent.proto.MachineCapabilities.newBuilder(capabilities_).mergeFrom(value).buildPartial();
+    } else {
+      capabilities_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * What this daemon supports beyond the base protocol. Absent from
+   * daemons older than v2: a client then offers none of it and says the
+   * computer needs updating.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+   */
+  private void clearCapabilities() {
+    capabilities_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1328,6 +1406,89 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCapabilities() {
+      return instance.hasCapabilities();
+    }
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.MachineCapabilities getCapabilities() {
+      return instance.getCapabilities();
+    }
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    public Builder setCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities value) {
+      copyOnWrite();
+      instance.setCapabilities(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    public Builder setCapabilities(
+        io.github.lewin671.remoteagent.proto.MachineCapabilities.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCapabilities(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    public Builder mergeCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities value) {
+      copyOnWrite();
+      instance.mergeCapabilities(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What this daemon supports beyond the base protocol. Absent from
+     * daemons older than v2: a client then offers none of it and says the
+     * computer needs updating.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
+     */
+    public Builder clearCapabilities() {  copyOnWrite();
+      instance.clearCapabilities();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -1355,10 +1516,12 @@ public  final class MachineMeta extends
             "codexVerified_",
             "agents_",
             io.github.lewin671.remoteagent.proto.AgentInfo.class,
+            "capabilities_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
-              "\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u0208\u0007\u0208\b\u0007\t\u001b";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
+              "\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009" +
+              "\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

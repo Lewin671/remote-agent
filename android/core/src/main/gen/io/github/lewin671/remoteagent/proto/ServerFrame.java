@@ -28,6 +28,9 @@ public  final class ServerFrame extends
     SESSION_UPDATED(3),
     MACHINE_UPDATED(4),
     MACHINE_REMOVED(6),
+    ACCOUNT_PREFS_UPDATED(7),
+    DEVICE_UPDATED(8),
+    DEVICE_REMOVED(9),
     FORWARD_CALL(5),
     KIND_NOT_SET(0);
     private final int value;
@@ -49,6 +52,9 @@ public  final class ServerFrame extends
         case 3: return SESSION_UPDATED;
         case 4: return MACHINE_UPDATED;
         case 6: return MACHINE_REMOVED;
+        case 7: return ACCOUNT_PREFS_UPDATED;
+        case 8: return DEVICE_UPDATED;
+        case 9: return DEVICE_REMOVED;
         case 5: return FORWARD_CALL;
         case 0: return KIND_NOT_SET;
         default: return null;
@@ -346,6 +352,162 @@ public  final class ServerFrame extends
    */
   private void clearMachineRemoved() {
     if (kindCase_ == 6) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int ACCOUNT_PREFS_UPDATED_FIELD_NUMBER = 7;
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAccountPrefsUpdated() {
+    return kindCase_ == 7;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AccountPrefsUpdated getAccountPrefsUpdated() {
+    if (kindCase_ == 7) {
+       return (io.github.lewin671.remoteagent.proto.AccountPrefsUpdated) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsUpdated value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 7;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsUpdated value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 7 &&
+        kind_ != io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.newBuilder((io.github.lewin671.remoteagent.proto.AccountPrefsUpdated) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 7;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   */
+  private void clearAccountPrefsUpdated() {
+    if (kindCase_ == 7) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int DEVICE_UPDATED_FIELD_NUMBER = 8;
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDeviceUpdated() {
+    return kindCase_ == 8;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DeviceUpdated getDeviceUpdated() {
+    if (kindCase_ == 8) {
+       return (io.github.lewin671.remoteagent.proto.DeviceUpdated) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.DeviceUpdated.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDeviceUpdated(io.github.lewin671.remoteagent.proto.DeviceUpdated value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 8;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDeviceUpdated(io.github.lewin671.remoteagent.proto.DeviceUpdated value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 8 &&
+        kind_ != io.github.lewin671.remoteagent.proto.DeviceUpdated.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.DeviceUpdated.newBuilder((io.github.lewin671.remoteagent.proto.DeviceUpdated) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 8;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   */
+  private void clearDeviceUpdated() {
+    if (kindCase_ == 8) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int DEVICE_REMOVED_FIELD_NUMBER = 9;
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDeviceRemoved() {
+    return kindCase_ == 9;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DeviceRemoved getDeviceRemoved() {
+    if (kindCase_ == 9) {
+       return (io.github.lewin671.remoteagent.proto.DeviceRemoved) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.DeviceRemoved.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDeviceRemoved(io.github.lewin671.remoteagent.proto.DeviceRemoved value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDeviceRemoved(io.github.lewin671.remoteagent.proto.DeviceRemoved value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 9 &&
+        kind_ != io.github.lewin671.remoteagent.proto.DeviceRemoved.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.DeviceRemoved.newBuilder((io.github.lewin671.remoteagent.proto.DeviceRemoved) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   */
+  private void clearDeviceRemoved() {
+    if (kindCase_ == 9) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -801,6 +963,150 @@ public  final class ServerFrame extends
     }
 
     /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAccountPrefsUpdated() {
+      return instance.hasAccountPrefsUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AccountPrefsUpdated getAccountPrefsUpdated() {
+      return instance.getAccountPrefsUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    public Builder setAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsUpdated value) {
+      copyOnWrite();
+      instance.setAccountPrefsUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    public Builder setAccountPrefsUpdated(
+        io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAccountPrefsUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    public Builder mergeAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsUpdated value) {
+      copyOnWrite();
+      instance.mergeAccountPrefsUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+     */
+    public Builder clearAccountPrefsUpdated() {
+      copyOnWrite();
+      instance.clearAccountPrefsUpdated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDeviceUpdated() {
+      return instance.hasDeviceUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DeviceUpdated getDeviceUpdated() {
+      return instance.getDeviceUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    public Builder setDeviceUpdated(io.github.lewin671.remoteagent.proto.DeviceUpdated value) {
+      copyOnWrite();
+      instance.setDeviceUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    public Builder setDeviceUpdated(
+        io.github.lewin671.remoteagent.proto.DeviceUpdated.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDeviceUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    public Builder mergeDeviceUpdated(io.github.lewin671.remoteagent.proto.DeviceUpdated value) {
+      copyOnWrite();
+      instance.mergeDeviceUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+     */
+    public Builder clearDeviceUpdated() {
+      copyOnWrite();
+      instance.clearDeviceUpdated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDeviceRemoved() {
+      return instance.hasDeviceRemoved();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DeviceRemoved getDeviceRemoved() {
+      return instance.getDeviceRemoved();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    public Builder setDeviceRemoved(io.github.lewin671.remoteagent.proto.DeviceRemoved value) {
+      copyOnWrite();
+      instance.setDeviceRemoved(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    public Builder setDeviceRemoved(
+        io.github.lewin671.remoteagent.proto.DeviceRemoved.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDeviceRemoved(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    public Builder mergeDeviceRemoved(io.github.lewin671.remoteagent.proto.DeviceRemoved value) {
+      copyOnWrite();
+      instance.mergeDeviceRemoved(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+     */
+    public Builder clearDeviceRemoved() {
+      copyOnWrite();
+      instance.clearDeviceRemoved();
+      return this;
+    }
+
+    /**
      * <pre>
      * To daemons.
      * </pre>
@@ -896,10 +1202,13 @@ public  final class ServerFrame extends
             io.github.lewin671.remoteagent.proto.MachineUpdated.class,
             io.github.lewin671.remoteagent.proto.ForwardCall.class,
             io.github.lewin671.remoteagent.proto.MachineRemoved.class,
+            io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.class,
+            io.github.lewin671.remoteagent.proto.DeviceUpdated.class,
+            io.github.lewin671.remoteagent.proto.DeviceRemoved.class,
           };
           java.lang.String info =
-              "\u0000\u0006\u0001\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000";
+              "\u0000\t\u0001\u0000\u0001\t\t\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

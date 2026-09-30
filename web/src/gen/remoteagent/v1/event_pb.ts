@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/event.proto.
  */
 export const file_remoteagent_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("ChpyZW1vdGVhZ2VudC92MS9ldmVudC5wcm90bxIOcmVtb3RlYWdlbnQudjEijwgKBUV2ZW50EgsKA3NlcRgBIAEoBBISCgpzZXNzaW9uX2lkGAIgASgJEigKBHRpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3R1cm5faWQYBCABKAkSMwoMdXNlcl9tZXNzYWdlGAogASgLMhsucmVtb3RlYWdlbnQudjEuVXNlck1lc3NhZ2VIABI1Cg1hZ2VudF9tZXNzYWdlGAsgASgLMhwucmVtb3RlYWdlbnQudjEuQWdlbnRNZXNzYWdlSAASLgoJcmVhc29uaW5nGAwgASgLMhkucmVtb3RlYWdlbnQudjEuUmVhc29uaW5nSAASLQoJdG9vbF9jYWxsGA0gASgLMhgucmVtb3RlYWdlbnQudjEuVG9vbENhbGxIABIzCgx0dXJuX3N0YXJ0ZWQYDiABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuU3RhcnRlZEgAEi8KCnR1cm5fZW5kZWQYDyABKAsyGS5yZW1vdGVhZ2VudC52MS5UdXJuRW5kZWRIABIxCgt0b2tlbl91c2FnZRgQIAEoCzIaLnJlbW90ZWFnZW50LnYxLlRva2VuVXNhZ2VIABIzCgx0dXJuX2NvbnRleHQYESABKAsyGy5yZW1vdGVhZ2VudC52MS5UdXJuQ29udGV4dEgAEj8KEmFwcHJvdmFsX3JlcXVlc3RlZBgSIAEoCzIhLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsUmVxdWVzdGVkSAASPQoRYXBwcm92YWxfcmVzb2x2ZWQYEyABKAsyIC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbFJlc29sdmVkSAASNwoOcXVlc3Rpb25fYXNrZWQYFCABKAsyHS5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFza2VkSAASPQoRcXVlc3Rpb25fYW5zd2VyZWQYFSABKAsyIC5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFuc3dlcmVkSAASNQoNc2Vzc2lvbl9zdGF0ZRgWIAEoCzIcLnJlbW90ZWFnZW50LnYxLlNlc3Npb25TdGF0ZUgAEjEKC2lucHV0X3N0YXRlGBcgASgLMhoucmVtb3RlYWdlbnQudjEuSW5wdXRTdGF0ZUgAEjUKDXBsYW5fcHJvcG9zZWQYGCABKAsyHC5yZW1vdGVhZ2VudC52MS5QbGFuUHJvcG9zZWRIABI7ChBzZXR0aW5nc19jaGFuZ2VkGBkgASgLMh8ucmVtb3RlYWdlbnQudjEuU2V0dGluZ3NDaGFuZ2VkSAASMwoMdG9vbF9zdGFydGVkGBogASgLMhsucmVtb3RlYWdlbnQudjEuVG9vbFN0YXJ0ZWRIAEIGCgRraW5kIo0BCgtUb29sU3RhcnRlZBINCgV0aXRsZRgBIAEoCRIPCgdjYWxsX2lkGAIgASgJEiYKBGtpbmQYAyABKA4yGC5yZW1vdGVhZ2VudC52MS5Ub29sS2luZBINCgVpbnB1dBgEIAEoCRIRCglpdGVtX3R5cGUYBSABKAkSFAoMaW5wdXRfZGlnZXN0GAYgASgJIjAKC1VzZXJNZXNzYWdlEgwKBHRleHQYASABKAkSEwoLaW1hZ2VfY291bnQYAiABKAUiKwoMQWdlbnRNZXNzYWdlEgwKBHRleHQYASABKAkSDQoFcGhhc2UYAiABKAkiGQoJUmVhc29uaW5nEgwKBHRleHQYASABKAki/wEKCFRvb2xDYWxsEg8KB2NhbGxfaWQYASABKAkSJgoEa2luZBgCIAEoDjIYLnJlbW90ZWFnZW50LnYxLlRvb2xLaW5kEg0KBXRpdGxlGAMgASgJEg0KBWlucHV0GAQgASgJEg4KBm91dHB1dBgFIAEoCRIYChBvdXRwdXRfdHJ1bmNhdGVkGAYgASgIEg4KBnN0YXR1cxgHIAEoCRIWCglleGl0X2NvZGUYCCABKAVIAIgBARITCgtkdXJhdGlvbl9tcxgJIAEoAxIRCglpdGVtX3R5cGUYCiABKAkSFAoMaW5wdXRfZGlnZXN0GAsgASgJQgwKCl9leGl0X2NvZGUiDQoLVHVyblN0YXJ0ZWQiXgoJVHVybkVuZGVkEiwKB291dGNvbWUYASABKA4yGy5yZW1vdGVhZ2VudC52MS5UdXJuT3V0Y29tZRIOCgZyZWFzb24YAiABKAkSEwoLZHVyYXRpb25fbXMYAyABKAMizQIKClRva2VuVXNhZ2USFAoMaW5wdXRfdG9rZW5zGAEgASgDEhsKE2NhY2hlZF9pbnB1dF90b2tlbnMYAiABKAMSFQoNb3V0cHV0X3Rva2VucxgDIAEoAxIfChdyZWFzb25pbmdfb3V0cHV0X3Rva2VucxgEIAEoAxIUCgx0b3RhbF90b2tlbnMYBSABKAMSGQoRbGFzdF90b3RhbF90b2tlbnMYBiABKAMSFgoOY29udGV4dF93aW5kb3cYByABKAMSMAoNcHJpbWFyeV9saW1pdBgIIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIyCg9zZWNvbmRhcnlfbGltaXQYCSABKAsyGS5yZW1vdGVhZ2VudC52MS5SYXRlTGltaXQSEQoJcGxhbl90eXBlGAogASgJEhIKCm1lc3NhZ2VfaWQYCyABKAkiTAoJUmF0ZUxpbWl0EhQKDHVzZWRfcGVyY2VudBgBIAEoARIWCg53aW5kb3dfbWludXRlcxgCIAEoAxIRCglyZXNldHNfYXQYAyABKAMiLQoMUGxhblByb3Bvc2VkEgwKBHRleHQYASABKAkSDwoHY2FsbF9pZBgCIAEoCSJvCg9TZXR0aW5nc0NoYW5nZWQSDQoFbW9kZWwYASABKAkSDgoGZWZmb3J0GAIgASgJEioKBG1vZGUYAyABKA4yHC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbE1vZGUSEQoJY29tcGFjdGVkGAQgASgIIqcBCgtUdXJuQ29udGV4dBINCgVtb2RlbBgBIAEoCRIOCgZlZmZvcnQYAiABKAkSFwoPYXBwcm92YWxfcG9saWN5GAMgASgJEhoKEmFwcHJvdmFsc19yZXZpZXdlchgEIAEoCRIPCgdzYW5kYm94GAUgASgJEhoKEmNvbGxhYm9yYXRpb25fbW9kZRgGIAEoCRIXCg9wZXJtaXNzaW9uX21vZGUYByABKAkivgEKEUFwcHJvdmFsUmVxdWVzdGVkEhMKC2FwcHJvdmFsX2lkGAEgASgJEhEKCXRvb2xfbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIPCgdjb21tYW5kGAQgASgJEhcKD3Rvb2xfaW5wdXRfanNvbhgFIAEoCRIsCghkZWFkbGluZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFAoMaW5wdXRfZGlnZXN0GAcgASgJImwKEEFwcHJvdmFsUmVzb2x2ZWQSEwoLYXBwcm92YWxfaWQYASABKAkSMgoIZGVjaXNpb24YAiABKA4yIC5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbERlY2lzaW9uEg8KB21lc3NhZ2UYAyABKAkiNAoOUXVlc3Rpb25PcHRpb24SDQoFbGFiZWwYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkiewoIUXVlc3Rpb24SCgoCaWQYASABKAkSDgoGaGVhZGVyGAIgASgJEgwKBHRleHQYAyABKAkSLwoHb3B0aW9ucxgEIAMoCzIeLnJlbW90ZWFnZW50LnYxLlF1ZXN0aW9uT3B0aW9uEhQKDG11bHRpX3NlbGVjdBgFIAEoCCJgCg1RdWVzdGlvbkFza2VkEhMKC3F1ZXN0aW9uX2lkGAEgASgJEisKCXF1ZXN0aW9ucxgCIAMoCzIYLnJlbW90ZWFnZW50LnYxLlF1ZXN0aW9uEg0KBWFzeW5jGAMgASgIIjYKDlF1ZXN0aW9uQW5zd2VyEhMKC3F1ZXN0aW9uX2lkGAEgASgJEg8KB2Fuc3dlcnMYAiADKAkiWAoQUXVlc3Rpb25BbnN3ZXJlZBITCgtxdWVzdGlvbl9pZBgBIAEoCRIvCgdhbnN3ZXJzGAIgAygLMh4ucmVtb3RlYWdlbnQudjEuUXVlc3Rpb25BbnN3ZXIiTQoMU2Vzc2lvblN0YXRlEi0KBnN0YXR1cxgBIAEoDjIdLnJlbW90ZWFnZW50LnYxLlNlc3Npb25TdGF0dXMSDgoGZGV0YWlsGAIgASgJIl0KCklucHV0U3RhdGUSEgoKcmVxdWVzdF9pZBgBIAEoCRIrCgZzdGF0dXMYAiABKA4yGy5yZW1vdGVhZ2VudC52MS5JbnB1dFN0YXR1cxIOCgZyZWFzb24YAyABKAkqQQoFQWdlbnQSFQoRQUdFTlRfVU5TUEVDSUZJRUQQABIPCgtBR0VOVF9DT0RFWBABEhAKDEFHRU5UX0NMQVVERRACKpkBCghUb29sS2luZBIZChVUT09MX0tJTkRfVU5TUEVDSUZJRUQQABIVChFUT09MX0tJTkRfQ09NTUFORBABEhkKFVRPT0xfS0lORF9GSUxFX0NIQU5HRRACEhEKDVRPT0xfS0lORF9NQ1AQAxIYChRUT09MX0tJTkRfV0VCX1NFQVJDSBAEEhMKD1RPT0xfS0lORF9PVEhFUhAFKmEKC1R1cm5PdXRjb21lEhwKGFRVUk5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhoKFlRVUk5fT1VUQ09NRV9DT01QTEVURUQQARIYChRUVVJOX09VVENPTUVfQUJPUlRFRBACKpMBCgxBcHByb3ZhbE1vZGUSHQoZQVBQUk9WQUxfTU9ERV9VTlNQRUNJRklFRBAAEhUKEUFQUFJPVkFMX01PREVfQVNLEAESFgoSQVBQUk9WQUxfTU9ERV9BVVRPEAISHQoZQVBQUk9WQUxfTU9ERV9GVUxMX0FDQ0VTUxADEhYKEkFQUFJPVkFMX01PREVfUExBThAEKs0BChBBcHByb3ZhbERlY2lzaW9uEiEKHUFQUFJPVkFMX0RFQ0lTSU9OX1VOU1BFQ0lGSUVEEAASGwoXQVBQUk9WQUxfREVDSVNJT05fQUxMT1cQARIaChZBUFBST1ZBTF9ERUNJU0lPTl9ERU5ZEAISHQoZQVBQUk9WQUxfREVDSVNJT05fVElNRU9VVBADEh4KGkFQUFJPVkFMX0RFQ0lTSU9OX0NBTkNFTEVEEAQSHgoaQVBQUk9WQUxfREVDSVNJT05fVEVSTUlOQUwQBSq4AQoNU2Vzc2lvblN0YXR1cxIeChpTRVNTSU9OX1NUQVRVU19VTlNQRUNJRklFRBAAEhsKF1NFU1NJT05fU1RBVFVTX1NUQVJUSU5HEAESFwoTU0VTU0lPTl9TVEFUVVNfSURMRRACEhoKFlNFU1NJT05fU1RBVFVTX1JVTk5JTkcQAxIaChZTRVNTSU9OX1NUQVRVU19CTE9DS0VEEAQSGQoVU0VTU0lPTl9TVEFUVVNfRVhJVEVEEAUqmQEKC0lucHV0U3RhdHVzEhwKGElOUFVUX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE0lOUFVUX1NUQVRVU19RVUVVRUQQARIaChZJTlBVVF9TVEFUVVNfU1VCTUlUVEVEEAISHAoYSU5QVVRfU1RBVFVTX1VOQ09ORklSTUVEEAMSGQoVSU5QVVRfU1RBVFVTX0NBTkNFTEVEEARiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChpyZW1vdGVhZ2VudC92MS9ldmVudC5wcm90bxIOcmVtb3RlYWdlbnQudjEiqQkKBUV2ZW50EgsKA3NlcRgBIAEoBBISCgpzZXNzaW9uX2lkGAIgASgJEigKBHRpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3R1cm5faWQYBCABKAkSJgoGb3JpZ2luGAUgASgLMhYucmVtb3RlYWdlbnQudjEuT3JpZ2luEjMKDHVzZXJfbWVzc2FnZRgKIAEoCzIbLnJlbW90ZWFnZW50LnYxLlVzZXJNZXNzYWdlSAASNQoNYWdlbnRfbWVzc2FnZRgLIAEoCzIcLnJlbW90ZWFnZW50LnYxLkFnZW50TWVzc2FnZUgAEi4KCXJlYXNvbmluZxgMIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJlYXNvbmluZ0gAEi0KCXRvb2xfY2FsbBgNIAEoCzIYLnJlbW90ZWFnZW50LnYxLlRvb2xDYWxsSAASMwoMdHVybl9zdGFydGVkGA4gASgLMhsucmVtb3RlYWdlbnQudjEuVHVyblN0YXJ0ZWRIABIvCgp0dXJuX2VuZGVkGA8gASgLMhkucmVtb3RlYWdlbnQudjEuVHVybkVuZGVkSAASMQoLdG9rZW5fdXNhZ2UYECABKAsyGi5yZW1vdGVhZ2VudC52MS5Ub2tlblVzYWdlSAASMwoMdHVybl9jb250ZXh0GBEgASgLMhsucmVtb3RlYWdlbnQudjEuVHVybkNvbnRleHRIABI/ChJhcHByb3ZhbF9yZXF1ZXN0ZWQYEiABKAsyIS5yZW1vdGVhZ2VudC52MS5BcHByb3ZhbFJlcXVlc3RlZEgAEj0KEWFwcHJvdmFsX3Jlc29sdmVkGBMgASgLMiAucmVtb3RlYWdlbnQudjEuQXBwcm92YWxSZXNvbHZlZEgAEjcKDnF1ZXN0aW9uX2Fza2VkGBQgASgLMh0ucmVtb3RlYWdlbnQudjEuUXVlc3Rpb25Bc2tlZEgAEj0KEXF1ZXN0aW9uX2Fuc3dlcmVkGBUgASgLMiAucmVtb3RlYWdlbnQudjEuUXVlc3Rpb25BbnN3ZXJlZEgAEjUKDXNlc3Npb25fc3RhdGUYFiABKAsyHC5yZW1vdGVhZ2VudC52MS5TZXNzaW9uU3RhdGVIABIxCgtpbnB1dF9zdGF0ZRgXIAEoCzIaLnJlbW90ZWFnZW50LnYxLklucHV0U3RhdGVIABI1Cg1wbGFuX3Byb3Bvc2VkGBggASgLMhwucmVtb3RlYWdlbnQudjEuUGxhblByb3Bvc2VkSAASOwoQc2V0dGluZ3NfY2hhbmdlZBgZIAEoCzIfLnJlbW90ZWFnZW50LnYxLlNldHRpbmdzQ2hhbmdlZEgAEjMKDHRvb2xfc3RhcnRlZBgaIAEoCzIbLnJlbW90ZWFnZW50LnYxLlRvb2xTdGFydGVkSAASOQoPaW1hZ2VfZ2VuZXJhdGVkGBsgASgLMh4ucmVtb3RlYWdlbnQudjEuSW1hZ2VHZW5lcmF0ZWRIABI1Cg1wbGFuX2Fuc3dlcmVkGBwgASgLMhwucmVtb3RlYWdlbnQudjEuUGxhbkFuc3dlcmVkSABCBgoEa2luZCJZCgZPcmlnaW4SKAoEa2luZBgBIAEoDjIaLnJlbW90ZWFnZW50LnYxLk9yaWdpbktpbmQSEQoJZGV2aWNlX2lkGAIgASgJEhIKCnJlcXVlc3RfaWQYAyABKAki1gMKCEltYWdlUmVmEhAKCGltYWdlX2lkGAEgASgJEisKBnNvdXJjZRgCIAEoDjIbLnJlbW90ZWFnZW50LnYxLkltYWdlU291cmNlEicKBHN5bmMYAyABKA4yGS5yZW1vdGVhZ2VudC52MS5JbWFnZVN5bmMSEQoJY2xpX2luZGV4GAQgASgFEgwKBHBhdGgYBSABKAkSKwoGZm9ybWF0GAYgASgOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSDQoFd2lkdGgYByABKAUSDgoGaGVpZ2h0GAggASgFEg0KBWJ5dGVzGAkgASgDEhYKDm9yaWdpbmFsX3dpZHRoGAogASgFEhcKD29yaWdpbmFsX2hlaWdodBgLIAEoBRIVCg1kaXNwbGF5X3dpZHRoGAwgASgFEhYKDmRpc3BsYXlfaGVpZ2h0GA0gASgFEg8KB3ByZXZpZXcYDiABKAwSMwoOcHJldmlld19mb3JtYXQYDyABKA4yGy5yZW1vdGVhZ2VudC52MS5JbWFnZUZvcm1hdBIVCg1wcmV2aWV3X3dpZHRoGBAgASgFEhYKDnByZXZpZXdfaGVpZ2h0GBEgASgFEhEKCXVwbG9hZF9pZBgSIAEoCSJjCg5JbWFnZUdlbmVyYXRlZBIPCgdjYWxsX2lkGAEgASgJEhYKDnJldmlzZWRfcHJvbXB0GAIgASgJEigKBmltYWdlcxgDIAMoCzIYLnJlbW90ZWFnZW50LnYxLkltYWdlUmVmIh4KDFBsYW5BbnN3ZXJlZBIOCgZjaG9pY2UYASABKAUijQEKC1Rvb2xTdGFydGVkEg0KBXRpdGxlGAEgASgJEg8KB2NhbGxfaWQYAiABKAkSJgoEa2luZBgDIAEoDjIYLnJlbW90ZWFnZW50LnYxLlRvb2xLaW5kEg0KBWlucHV0GAQgASgJEhEKCWl0ZW1fdHlwZRgFIAEoCRIUCgxpbnB1dF9kaWdlc3QYBiABKAkicgoLVXNlck1lc3NhZ2USDAoEdGV4dBgBIAEoCRIXCgtpbWFnZV9jb3VudBgCIAEoBUICGAESKAoGaW1hZ2VzGAMgAygLMhgucmVtb3RlYWdlbnQudjEuSW1hZ2VSZWYSEgoKcmVxdWVzdF9pZBgEIAEoCSIrCgxBZ2VudE1lc3NhZ2USDAoEdGV4dBgBIAEoCRINCgVwaGFzZRgCIAEoCSIZCglSZWFzb25pbmcSDAoEdGV4dBgBIAEoCSKpAgoIVG9vbENhbGwSDwoHY2FsbF9pZBgBIAEoCRImCgRraW5kGAIgASgOMhgucmVtb3RlYWdlbnQudjEuVG9vbEtpbmQSDQoFdGl0bGUYAyABKAkSDQoFaW5wdXQYBCABKAkSDgoGb3V0cHV0GAUgASgJEhgKEG91dHB1dF90cnVuY2F0ZWQYBiABKAgSDgoGc3RhdHVzGAcgASgJEhYKCWV4aXRfY29kZRgIIAEoBUgAiAEBEhMKC2R1cmF0aW9uX21zGAkgASgDEhEKCWl0ZW1fdHlwZRgKIAEoCRIUCgxpbnB1dF9kaWdlc3QYCyABKAkSKAoGaW1hZ2VzGAwgAygLMhgucmVtb3RlYWdlbnQudjEuSW1hZ2VSZWZCDAoKX2V4aXRfY29kZSINCgtUdXJuU3RhcnRlZCJeCglUdXJuRW5kZWQSLAoHb3V0Y29tZRgBIAEoDjIbLnJlbW90ZWFnZW50LnYxLlR1cm5PdXRjb21lEg4KBnJlYXNvbhgCIAEoCRITCgtkdXJhdGlvbl9tcxgDIAEoAyLNAgoKVG9rZW5Vc2FnZRIUCgxpbnB1dF90b2tlbnMYASABKAMSGwoTY2FjaGVkX2lucHV0X3Rva2VucxgCIAEoAxIVCg1vdXRwdXRfdG9rZW5zGAMgASgDEh8KF3JlYXNvbmluZ19vdXRwdXRfdG9rZW5zGAQgASgDEhQKDHRvdGFsX3Rva2VucxgFIAEoAxIZChFsYXN0X3RvdGFsX3Rva2VucxgGIAEoAxIWCg5jb250ZXh0X3dpbmRvdxgHIAEoAxIwCg1wcmltYXJ5X2xpbWl0GAggASgLMhkucmVtb3RlYWdlbnQudjEuUmF0ZUxpbWl0EjIKD3NlY29uZGFyeV9saW1pdBgJIAEoCzIZLnJlbW90ZWFnZW50LnYxLlJhdGVMaW1pdBIRCglwbGFuX3R5cGUYCiABKAkSEgoKbWVzc2FnZV9pZBgLIAEoCSJMCglSYXRlTGltaXQSFAoMdXNlZF9wZXJjZW50GAEgASgBEhYKDndpbmRvd19taW51dGVzGAIgASgDEhEKCXJlc2V0c19hdBgDIAEoAyItCgxQbGFuUHJvcG9zZWQSDAoEdGV4dBgBIAEoCRIPCgdjYWxsX2lkGAIgASgJIm8KD1NldHRpbmdzQ2hhbmdlZBINCgVtb2RlbBgBIAEoCRIOCgZlZmZvcnQYAiABKAkSKgoEbW9kZRgDIAEoDjIcLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsTW9kZRIRCgljb21wYWN0ZWQYBCABKAgipwEKC1R1cm5Db250ZXh0Eg0KBW1vZGVsGAEgASgJEg4KBmVmZm9ydBgCIAEoCRIXCg9hcHByb3ZhbF9wb2xpY3kYAyABKAkSGgoSYXBwcm92YWxzX3Jldmlld2VyGAQgASgJEg8KB3NhbmRib3gYBSABKAkSGgoSY29sbGFib3JhdGlvbl9tb2RlGAYgASgJEhcKD3Blcm1pc3Npb25fbW9kZRgHIAEoCSK+AQoRQXBwcm92YWxSZXF1ZXN0ZWQSEwoLYXBwcm92YWxfaWQYASABKAkSEQoJdG9vbF9uYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg8KB2NvbW1hbmQYBCABKAkSFwoPdG9vbF9pbnB1dF9qc29uGAUgASgJEiwKCGRlYWRsaW5lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxpbnB1dF9kaWdlc3QYByABKAkibAoQQXBwcm92YWxSZXNvbHZlZBITCgthcHByb3ZhbF9pZBgBIAEoCRIyCghkZWNpc2lvbhgCIAEoDjIgLnJlbW90ZWFnZW50LnYxLkFwcHJvdmFsRGVjaXNpb24SDwoHbWVzc2FnZRgDIAEoCSI0Cg5RdWVzdGlvbk9wdGlvbhINCgVsYWJlbBgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCSJ7CghRdWVzdGlvbhIKCgJpZBgBIAEoCRIOCgZoZWFkZXIYAiABKAkSDAoEdGV4dBgDIAEoCRIvCgdvcHRpb25zGAQgAygLMh4ucmVtb3RlYWdlbnQudjEuUXVlc3Rpb25PcHRpb24SFAoMbXVsdGlfc2VsZWN0GAUgASgIImAKDVF1ZXN0aW9uQXNrZWQSEwoLcXVlc3Rpb25faWQYASABKAkSKwoJcXVlc3Rpb25zGAIgAygLMhgucmVtb3RlYWdlbnQudjEuUXVlc3Rpb24SDQoFYXN5bmMYAyABKAgiNgoOUXVlc3Rpb25BbnN3ZXISEwoLcXVlc3Rpb25faWQYASABKAkSDwoHYW5zd2VycxgCIAMoCSJYChBRdWVzdGlvbkFuc3dlcmVkEhMKC3F1ZXN0aW9uX2lkGAEgASgJEi8KB2Fuc3dlcnMYAiADKAsyHi5yZW1vdGVhZ2VudC52MS5RdWVzdGlvbkFuc3dlciJNCgxTZXNzaW9uU3RhdGUSLQoGc3RhdHVzGAEgASgOMh0ucmVtb3RlYWdlbnQudjEuU2Vzc2lvblN0YXR1cxIOCgZkZXRhaWwYAiABKAkiqQEKCklucHV0U3RhdGUSEgoKcmVxdWVzdF9pZBgBIAEoCRIrCgZzdGF0dXMYAiABKA4yGy5yZW1vdGVhZ2VudC52MS5JbnB1dFN0YXR1cxIOCgZyZWFzb24YAyABKAkSKQoFc3RhZ2UYBCABKA4yGi5yZW1vdGVhZ2VudC52MS5JbnB1dFN0YWdlEgwKBHRleHQYBSABKAkSEQoJaW1hZ2VfaWRzGAYgAygJKpMBCgpPcmlnaW5LaW5kEhsKF09SSUdJTl9LSU5EX1VOU1BFQ0lGSUVEEAASFgoST1JJR0lOX0tJTkRfQ0xJRU5UEAESIQodT1JJR0lOX0tJTkRfVU5WRVJJRklFRF9DTElFTlQQAhIVChFPUklHSU5fS0lORF9MT0NBTBADEhYKEk9SSUdJTl9LSU5EX1NZU1RFTRAEKoUBCgtJbWFnZUZvcm1hdBIcChhJTUFHRV9GT1JNQVRfVU5TUEVDSUZJRUQQABIUChBJTUFHRV9GT1JNQVRfUE5HEAESFQoRSU1BR0VfRk9STUFUX0pQRUcQAhIVChFJTUFHRV9GT1JNQVRfV0VCUBADEhQKEElNQUdFX0ZPUk1BVF9HSUYQBCp1CgtJbWFnZVNvdXJjZRIcChhJTUFHRV9TT1VSQ0VfVU5TUEVDSUZJRUQQABIVChFJTUFHRV9TT1VSQ0VfVVNFUhABEhUKEUlNQUdFX1NPVVJDRV9UT09MEAISGgoWSU1BR0VfU09VUkNFX0dFTkVSQVRFRBADKnUKCUltYWdlU3luYxIaChZJTUFHRV9TWU5DX1VOU1BFQ0lGSUVEEAASFQoRSU1BR0VfU1lOQ19TWU5DRUQQARIbChdJTUFHRV9TWU5DX1BSRVZJRVdfT05MWRACEhgKFElNQUdFX1NZTkNfTkFNRV9PTkxZEAMqQQoFQWdlbnQSFQoRQUdFTlRfVU5TUEVDSUZJRUQQABIPCgtBR0VOVF9DT0RFWBABEhAKDEFHRU5UX0NMQVVERRACKpkBCghUb29sS2luZBIZChVUT09MX0tJTkRfVU5TUEVDSUZJRUQQABIVChFUT09MX0tJTkRfQ09NTUFORBABEhkKFVRPT0xfS0lORF9GSUxFX0NIQU5HRRACEhEKDVRPT0xfS0lORF9NQ1AQAxIYChRUT09MX0tJTkRfV0VCX1NFQVJDSBAEEhMKD1RPT0xfS0lORF9PVEhFUhAFKmEKC1R1cm5PdXRjb21lEhwKGFRVUk5fT1VUQ09NRV9VTlNQRUNJRklFRBAAEhoKFlRVUk5fT1VUQ09NRV9DT01QTEVURUQQARIYChRUVVJOX09VVENPTUVfQUJPUlRFRBACKpMBCgxBcHByb3ZhbE1vZGUSHQoZQVBQUk9WQUxfTU9ERV9VTlNQRUNJRklFRBAAEhUKEUFQUFJPVkFMX01PREVfQVNLEAESFgoSQVBQUk9WQUxfTU9ERV9BVVRPEAISHQoZQVBQUk9WQUxfTU9ERV9GVUxMX0FDQ0VTUxADEhYKEkFQUFJPVkFMX01PREVfUExBThAEKs0BChBBcHByb3ZhbERlY2lzaW9uEiEKHUFQUFJPVkFMX0RFQ0lTSU9OX1VOU1BFQ0lGSUVEEAASGwoXQVBQUk9WQUxfREVDSVNJT05fQUxMT1cQARIaChZBUFBST1ZBTF9ERUNJU0lPTl9ERU5ZEAISHQoZQVBQUk9WQUxfREVDSVNJT05fVElNRU9VVBADEh4KGkFQUFJPVkFMX0RFQ0lTSU9OX0NBTkNFTEVEEAQSHgoaQVBQUk9WQUxfREVDSVNJT05fVEVSTUlOQUwQBSq4AQoNU2Vzc2lvblN0YXR1cxIeChpTRVNTSU9OX1NUQVRVU19VTlNQRUNJRklFRBAAEhsKF1NFU1NJT05fU1RBVFVTX1NUQVJUSU5HEAESFwoTU0VTU0lPTl9TVEFUVVNfSURMRRACEhoKFlNFU1NJT05fU1RBVFVTX1JVTk5JTkcQAxIaChZTRVNTSU9OX1NUQVRVU19CTE9DS0VEEAQSGQoVU0VTU0lPTl9TVEFUVVNfRVhJVEVEEAUq0wEKC0lucHV0U3RhdHVzEhwKGElOUFVUX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE0lOUFVUX1NUQVRVU19RVUVVRUQQARIaChZJTlBVVF9TVEFUVVNfU1VCTUlUVEVEEAISHAoYSU5QVVRfU1RBVFVTX1VOQ09ORklSTUVEEAMSGQoVSU5QVVRfU1RBVFVTX0NBTkNFTEVEEAQSFwoTSU5QVVRfU1RBVFVTX0ZBSUxFRBAFEh8KG0lOUFVUX1NUQVRVU19ORUVEU19URVJNSU5BTBAGKqEBCgpJbnB1dFN0YWdlEhsKF0lOUFVUX1NUQUdFX1VOU1BFQ0lGSUVEEAASFwoTSU5QVVRfU1RBR0VfV0FJVElORxABEh4KGklOUFVUX1NUQUdFX1BBU1RJTkdfSU1BR0VTEAISIQodSU5QVVRfU1RBR0VfSU1BR0VTX1JFQ09HTklaRUQQAxIaChZJTlBVVF9TVEFHRV9TVUJNSVRUSU5HEARiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * Event is one entry in a session's unified event stream. It is the content
@@ -45,6 +45,16 @@ export type Event = Message<"remoteagent.v1.Event"> & {
    * @generated from field: string turn_id = 4;
    */
   turnId: string;
+
+  /**
+   * Who caused the event, when the daemon knows: set on InputState,
+   * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
+   * older than v2 and when unknown.
+   *
+   * @generated from field: remoteagent.v1.Origin origin = 5;
+   */
+  origin?: Origin | undefined;
 
   /**
    * @generated from oneof remoteagent.v1.Event.kind
@@ -151,6 +161,18 @@ export type Event = Message<"remoteagent.v1.Event"> & {
      */
     value: ToolStarted;
     case: "toolStarted";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.ImageGenerated image_generated = 27;
+     */
+    value: ImageGenerated;
+    case: "imageGenerated";
+  } | {
+    /**
+     * @generated from field: remoteagent.v1.PlanAnswered plan_answered = 28;
+     */
+    value: PlanAnswered;
+    case: "planAnswered";
   } | { case: undefined; value?: undefined };
 };
 
@@ -160,6 +182,227 @@ export type Event = Message<"remoteagent.v1.Event"> & {
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
   messageDesc(file_remoteagent_v1_event, 0);
+
+/**
+ * Origin is the source of an action. A client shows a device by name only
+ * for ORIGIN_KIND_CLIENT, resolving device_id through ListDevices; a device
+ * no longer listed shows as a short ID.
+ *
+ * @generated from message remoteagent.v1.Origin
+ */
+export type Origin = Message<"remoteagent.v1.Origin"> & {
+  /**
+   * @generated from field: remoteagent.v1.OriginKind kind = 1;
+   */
+  kind: OriginKind;
+
+  /**
+   * @generated from field: string device_id = 2;
+   */
+  deviceId: string;
+
+  /**
+   * The command's request ID, for ORIGIN_KIND_CLIENT and
+   * ORIGIN_KIND_UNVERIFIED_CLIENT.
+   *
+   * @generated from field: string request_id = 3;
+   */
+  requestId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.Origin.
+ * Use `create(OriginSchema)` to create a new message.
+ */
+export const OriginSchema: GenMessage<Origin> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 1);
+
+/**
+ * ImageRef is one appearance of an image in a session. The same picture
+ * appearing twice gets two refs that may share image_id (and so one
+ * display copy), each with its own index, path and source.
+ *
+ * @generated from message remoteagent.v1.ImageRef
+ */
+export type ImageRef = Message<"remoteagent.v1.ImageRef"> & {
+  /**
+   * Random 128-bit hex ID, never derived from the content, under which the
+   * display copy is stored (GetImage). Empty with IMAGE_SYNC_NAME_ONLY.
+   *
+   * @generated from field: string image_id = 1;
+   */
+  imageId: string;
+
+  /**
+   * @generated from field: remoteagent.v1.ImageSource source = 2;
+   */
+  source: ImageSource;
+
+  /**
+   * @generated from field: remoteagent.v1.ImageSync sync = 3;
+   */
+  sync: ImageSync;
+
+  /**
+   * N of the CLI's "[Image #N]" placeholder in the message text, 0 if the
+   * image has none (tool results, generated images).
+   *
+   * @generated from field: int32 cli_index = 4;
+   */
+  cliIndex: number;
+
+  /**
+   * Where the image is on the computer, if the CLI recorded it: the file a
+   * tool read, a pasted file, a generated image's saved copy.
+   *
+   * @generated from field: string path = 5;
+   */
+  path: string;
+
+  /**
+   * Format and pixel size of the image as the CLI recorded it; bytes is
+   * its encoded size.
+   *
+   * @generated from field: remoteagent.v1.ImageFormat format = 6;
+   */
+  format: ImageFormat;
+
+  /**
+   * @generated from field: int32 width = 7;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 8;
+   */
+  height: number;
+
+  /**
+   * @generated from field: int64 bytes = 9;
+   */
+  bytes: bigint;
+
+  /**
+   * The size of the picture before the CLI shrank it, when the CLI says
+   * (Claude Code does for Read); 0 when unknown or the same as width and
+   * height.
+   *
+   * @generated from field: int32 original_width = 10;
+   */
+  originalWidth: number;
+
+  /**
+   * @generated from field: int32 original_height = 11;
+   */
+  originalHeight: number;
+
+  /**
+   * Size of the display copy (long side at most 2048), 0 without one.
+   *
+   * @generated from field: int32 display_width = 12;
+   */
+  displayWidth: number;
+
+  /**
+   * @generated from field: int32 display_height = 13;
+   */
+  displayHeight: number;
+
+  /**
+   * Preview (long side at most 320) embedded in the event, so a list can
+   * draw it without fetching anything; JPEG, or PNG when transparent.
+   * Empty with IMAGE_SYNC_NAME_ONLY and when an oversized event had to
+   * drop it.
+   *
+   * @generated from field: bytes preview = 14;
+   */
+  preview: Uint8Array;
+
+  /**
+   * @generated from field: remoteagent.v1.ImageFormat preview_format = 15;
+   */
+  previewFormat: ImageFormat;
+
+  /**
+   * @generated from field: int32 preview_width = 16;
+   */
+  previewWidth: number;
+
+  /**
+   * @generated from field: int32 preview_height = 17;
+   */
+  previewHeight: number;
+
+  /**
+   * For an image sent from a client: the image ID CompleteImageUpload
+   * returned, so the sender can match its local thumbnail.
+   *
+   * @generated from field: string upload_id = 18;
+   */
+  uploadId: string;
+};
+
+/**
+ * Describes the message remoteagent.v1.ImageRef.
+ * Use `create(ImageRefSchema)` to create a new message.
+ */
+export const ImageRefSchema: GenMessage<ImageRef> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 2);
+
+/**
+ * ImageGenerated is an image the agent made (Codex's image generation).
+ *
+ * @generated from message remoteagent.v1.ImageGenerated
+ */
+export type ImageGenerated = Message<"remoteagent.v1.ImageGenerated"> & {
+  /**
+   * The CLI's ID for the generation call.
+   *
+   * @generated from field: string call_id = 1;
+   */
+  callId: string;
+
+  /**
+   * The prompt as the CLI rewrote it, if recorded.
+   *
+   * @generated from field: string revised_prompt = 2;
+   */
+  revisedPrompt: string;
+
+  /**
+   * @generated from field: repeated remoteagent.v1.ImageRef images = 3;
+   */
+  images: ImageRef[];
+};
+
+/**
+ * Describes the message remoteagent.v1.ImageGenerated.
+ * Use `create(ImageGeneratedSchema)` to create a new message.
+ */
+export const ImageGeneratedSchema: GenMessage<ImageGenerated> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 3);
+
+/**
+ * PlanAnswered records an answer to the CLI's plan prompt sent through
+ * remote-agent; the event's origin says by whom.
+ *
+ * @generated from message remoteagent.v1.PlanAnswered
+ */
+export type PlanAnswered = Message<"remoteagent.v1.PlanAnswered"> & {
+  /**
+   * A PlanChoice value (local.proto).
+   *
+   * @generated from field: int32 choice = 1;
+   */
+  choice: number;
+};
+
+/**
+ * Describes the message remoteagent.v1.PlanAnswered.
+ * Use `create(PlanAnsweredSchema)` to create a new message.
+ */
+export const PlanAnsweredSchema: GenMessage<PlanAnswered> = /*@__PURE__*/
+  messageDesc(file_remoteagent_v1_event, 4);
 
 /**
  * ToolStarted says the model called a tool; its ToolCall event follows when
@@ -211,23 +454,41 @@ export type ToolStarted = Message<"remoteagent.v1.ToolStarted"> & {
  * Use `create(ToolStartedSchema)` to create a new message.
  */
 export const ToolStartedSchema: GenMessage<ToolStarted> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 1);
+  messageDesc(file_remoteagent_v1_event, 5);
 
 /**
  * @generated from message remoteagent.v1.UserMessage
  */
 export type UserMessage = Message<"remoteagent.v1.UserMessage"> & {
   /**
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   *
    * @generated from field: string text = 1;
    */
   text: string;
 
   /**
-   * Number of images attached to the message.
+   * Number of images attached to the message. Deprecated: use images;
+   * still set for clients older than v2.
    *
-   * @generated from field: int32 image_count = 2;
+   * @generated from field: int32 image_count = 2 [deprecated = true];
+   * @deprecated
    */
   imageCount: number;
+
+  /**
+   * @generated from field: repeated remoteagent.v1.ImageRef images = 3;
+   */
+  images: ImageRef[];
+
+  /**
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   *
+   * @generated from field: string request_id = 4;
+   */
+  requestId: string;
 };
 
 /**
@@ -235,7 +496,7 @@ export type UserMessage = Message<"remoteagent.v1.UserMessage"> & {
  * Use `create(UserMessageSchema)` to create a new message.
  */
 export const UserMessageSchema: GenMessage<UserMessage> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 2);
+  messageDesc(file_remoteagent_v1_event, 6);
 
 /**
  * @generated from message remoteagent.v1.AgentMessage
@@ -259,7 +520,7 @@ export type AgentMessage = Message<"remoteagent.v1.AgentMessage"> & {
  * Use `create(AgentMessageSchema)` to create a new message.
  */
 export const AgentMessageSchema: GenMessage<AgentMessage> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 3);
+  messageDesc(file_remoteagent_v1_event, 7);
 
 /**
  * Reasoning carries only the summary Codex writes to the rollout.
@@ -278,7 +539,7 @@ export type Reasoning = Message<"remoteagent.v1.Reasoning"> & {
  * Use `create(ReasoningSchema)` to create a new message.
  */
 export const ReasoningSchema: GenMessage<Reasoning> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 4);
+  messageDesc(file_remoteagent_v1_event, 8);
 
 /**
  * ToolCall is a completed tool invocation together with its result.
@@ -354,6 +615,13 @@ export type ToolCall = Message<"remoteagent.v1.ToolCall"> & {
    * @generated from field: string input_digest = 11;
    */
   inputDigest: string;
+
+  /**
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   *
+   * @generated from field: repeated remoteagent.v1.ImageRef images = 12;
+   */
+  images: ImageRef[];
 };
 
 /**
@@ -361,7 +629,7 @@ export type ToolCall = Message<"remoteagent.v1.ToolCall"> & {
  * Use `create(ToolCallSchema)` to create a new message.
  */
 export const ToolCallSchema: GenMessage<ToolCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 5);
+  messageDesc(file_remoteagent_v1_event, 9);
 
 /**
  * @generated from message remoteagent.v1.TurnStarted
@@ -374,7 +642,7 @@ export type TurnStarted = Message<"remoteagent.v1.TurnStarted"> & {
  * Use `create(TurnStartedSchema)` to create a new message.
  */
 export const TurnStartedSchema: GenMessage<TurnStarted> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 6);
+  messageDesc(file_remoteagent_v1_event, 10);
 
 /**
  * @generated from message remoteagent.v1.TurnEnded
@@ -401,7 +669,7 @@ export type TurnEnded = Message<"remoteagent.v1.TurnEnded"> & {
  * Use `create(TurnEndedSchema)` to create a new message.
  */
 export const TurnEndedSchema: GenMessage<TurnEnded> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 7);
+  messageDesc(file_remoteagent_v1_event, 11);
 
 /**
  * @generated from message remoteagent.v1.TokenUsage
@@ -475,7 +743,7 @@ export type TokenUsage = Message<"remoteagent.v1.TokenUsage"> & {
  * Use `create(TokenUsageSchema)` to create a new message.
  */
 export const TokenUsageSchema: GenMessage<TokenUsage> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 8);
+  messageDesc(file_remoteagent_v1_event, 12);
 
 /**
  * RateLimit is one of the account's usage windows.
@@ -506,7 +774,7 @@ export type RateLimit = Message<"remoteagent.v1.RateLimit"> & {
  * Use `create(RateLimitSchema)` to create a new message.
  */
 export const RateLimitSchema: GenMessage<RateLimit> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 9);
+  messageDesc(file_remoteagent_v1_event, 13);
 
 /**
  * PlanProposed is a plan the CLI wrote in Plan mode (Claude Code: its
@@ -534,7 +802,7 @@ export type PlanProposed = Message<"remoteagent.v1.PlanProposed"> & {
  * Use `create(PlanProposedSchema)` to create a new message.
  */
 export const PlanProposedSchema: GenMessage<PlanProposed> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 10);
+  messageDesc(file_remoteagent_v1_event, 14);
 
 /**
  * SettingsChanged records a change made through remote-agent that Codex
@@ -571,7 +839,7 @@ export type SettingsChanged = Message<"remoteagent.v1.SettingsChanged"> & {
  * Use `create(SettingsChangedSchema)` to create a new message.
  */
 export const SettingsChangedSchema: GenMessage<SettingsChanged> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 11);
+  messageDesc(file_remoteagent_v1_event, 15);
 
 /**
  * TurnContext is the configuration the CLI recorded at the start of a
@@ -630,7 +898,7 @@ export type TurnContext = Message<"remoteagent.v1.TurnContext"> & {
  * Use `create(TurnContextSchema)` to create a new message.
  */
 export const TurnContextSchema: GenMessage<TurnContext> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 12);
+  messageDesc(file_remoteagent_v1_event, 16);
 
 /**
  * @generated from message remoteagent.v1.ApprovalRequested
@@ -683,7 +951,7 @@ export type ApprovalRequested = Message<"remoteagent.v1.ApprovalRequested"> & {
  * Use `create(ApprovalRequestedSchema)` to create a new message.
  */
 export const ApprovalRequestedSchema: GenMessage<ApprovalRequested> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 13);
+  messageDesc(file_remoteagent_v1_event, 17);
 
 /**
  * @generated from message remoteagent.v1.ApprovalResolved
@@ -710,7 +978,7 @@ export type ApprovalResolved = Message<"remoteagent.v1.ApprovalResolved"> & {
  * Use `create(ApprovalResolvedSchema)` to create a new message.
  */
 export const ApprovalResolvedSchema: GenMessage<ApprovalResolved> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 14);
+  messageDesc(file_remoteagent_v1_event, 18);
 
 /**
  * @generated from message remoteagent.v1.QuestionOption
@@ -732,7 +1000,7 @@ export type QuestionOption = Message<"remoteagent.v1.QuestionOption"> & {
  * Use `create(QuestionOptionSchema)` to create a new message.
  */
 export const QuestionOptionSchema: GenMessage<QuestionOption> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 15);
+  messageDesc(file_remoteagent_v1_event, 19);
 
 /**
  * @generated from message remoteagent.v1.Question
@@ -775,7 +1043,7 @@ export type Question = Message<"remoteagent.v1.Question"> & {
  * Use `create(QuestionSchema)` to create a new message.
  */
 export const QuestionSchema: GenMessage<Question> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 16);
+  messageDesc(file_remoteagent_v1_event, 20);
 
 /**
  * @generated from message remoteagent.v1.QuestionAsked
@@ -806,7 +1074,7 @@ export type QuestionAsked = Message<"remoteagent.v1.QuestionAsked"> & {
  * Use `create(QuestionAskedSchema)` to create a new message.
  */
 export const QuestionAskedSchema: GenMessage<QuestionAsked> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 17);
+  messageDesc(file_remoteagent_v1_event, 21);
 
 /**
  * @generated from message remoteagent.v1.QuestionAnswer
@@ -828,7 +1096,7 @@ export type QuestionAnswer = Message<"remoteagent.v1.QuestionAnswer"> & {
  * Use `create(QuestionAnswerSchema)` to create a new message.
  */
 export const QuestionAnswerSchema: GenMessage<QuestionAnswer> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 18);
+  messageDesc(file_remoteagent_v1_event, 22);
 
 /**
  * @generated from message remoteagent.v1.QuestionAnswered
@@ -850,7 +1118,7 @@ export type QuestionAnswered = Message<"remoteagent.v1.QuestionAnswered"> & {
  * Use `create(QuestionAnsweredSchema)` to create a new message.
  */
 export const QuestionAnsweredSchema: GenMessage<QuestionAnswered> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 19);
+  messageDesc(file_remoteagent_v1_event, 23);
 
 /**
  * @generated from message remoteagent.v1.SessionState
@@ -874,7 +1142,7 @@ export type SessionState = Message<"remoteagent.v1.SessionState"> & {
  * Use `create(SessionStateSchema)` to create a new message.
  */
 export const SessionStateSchema: GenMessage<SessionState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 20);
+  messageDesc(file_remoteagent_v1_event, 24);
 
 /**
  * InputState tracks a message sent with Send. The text itself appears in
@@ -896,11 +1164,33 @@ export type InputState = Message<"remoteagent.v1.InputState"> & {
   /**
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    *
    * @generated from field: string reason = 3;
    */
   reason: string;
+
+  /**
+   * With QUEUED, and on later updates while it is being written.
+   *
+   * @generated from field: remoteagent.v1.InputStage stage = 4;
+   */
+  stage: InputStage;
+
+  /**
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   *
+   * @generated from field: string text = 5;
+   */
+  text: string;
+
+  /**
+   * @generated from field: repeated string image_ids = 6;
+   */
+  imageIds: string[];
 };
 
 /**
@@ -908,7 +1198,179 @@ export type InputState = Message<"remoteagent.v1.InputState"> & {
  * Use `create(InputStateSchema)` to create a new message.
  */
 export const InputStateSchema: GenMessage<InputState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_v1_event, 21);
+  messageDesc(file_remoteagent_v1_event, 25);
+
+/**
+ * OriginKind says where an action came from.
+ *
+ * @generated from enum remoteagent.v1.OriginKind
+ */
+export enum OriginKind {
+  /**
+   * @generated from enum value: ORIGIN_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A client device whose command carried a valid signature by its
+   * device key, registered with the account key (Envelope.signature).
+   * device_id names it.
+   *
+   * @generated from enum value: ORIGIN_KIND_CLIENT = 1;
+   */
+  CLIENT = 1,
+
+  /**
+   * A client command without a signature, e.g. from a client older than
+   * v2. device_id is the device the server says sent it, which is not
+   * proof: show it as "another client", not by name.
+   *
+   * @generated from enum value: ORIGIN_KIND_UNVERIFIED_CLIENT = 2;
+   */
+  UNVERIFIED_CLIENT = 2,
+
+  /**
+   * The computer: typed in the local terminal, or sent with the local
+   * remote-agent command.
+   *
+   * @generated from enum value: ORIGIN_KIND_LOCAL = 3;
+   */
+  LOCAL = 3,
+
+  /**
+   * The CLI or the daemon on its own, e.g. Claude Code answering a
+   * finished background task, or an approval timing out.
+   *
+   * @generated from enum value: ORIGIN_KIND_SYSTEM = 4;
+   */
+  SYSTEM = 4,
+}
+
+/**
+ * Describes the enum remoteagent.v1.OriginKind.
+ */
+export const OriginKindSchema: GenEnum<OriginKind> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 0);
+
+/**
+ * @generated from enum remoteagent.v1.ImageFormat
+ */
+export enum ImageFormat {
+  /**
+   * @generated from enum value: IMAGE_FORMAT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: IMAGE_FORMAT_PNG = 1;
+   */
+  PNG = 1,
+
+  /**
+   * @generated from enum value: IMAGE_FORMAT_JPEG = 2;
+   */
+  JPEG = 2,
+
+  /**
+   * @generated from enum value: IMAGE_FORMAT_WEBP = 3;
+   */
+  WEBP = 3,
+
+  /**
+   * @generated from enum value: IMAGE_FORMAT_GIF = 4;
+   */
+  GIF = 4,
+}
+
+/**
+ * Describes the enum remoteagent.v1.ImageFormat.
+ */
+export const ImageFormatSchema: GenEnum<ImageFormat> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 1);
+
+/**
+ * ImageSource says how an image entered the session.
+ *
+ * @generated from enum remoteagent.v1.ImageSource
+ */
+export enum ImageSource {
+  /**
+   * @generated from enum value: IMAGE_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Part of a user message: pasted in the terminal, or sent from a client
+   * (then ImageRef.upload_id is set).
+   *
+   * @generated from enum value: IMAGE_SOURCE_USER = 1;
+   */
+  USER = 1,
+
+  /**
+   * Returned by a tool the agent called: Claude Code's Read, Codex's
+   * view_image, a browser screenshot.
+   *
+   * @generated from enum value: IMAGE_SOURCE_TOOL = 2;
+   */
+  TOOL = 2,
+
+  /**
+   * Made by the agent (Codex image generation).
+   *
+   * @generated from enum value: IMAGE_SOURCE_GENERATED = 3;
+   */
+  GENERATED = 3,
+}
+
+/**
+ * Describes the enum remoteagent.v1.ImageSource.
+ */
+export const ImageSourceSchema: GenEnum<ImageSource> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 2);
+
+/**
+ * ImageSync says whether the image's display copy can be fetched with
+ * GetImage.
+ *
+ * @generated from enum remoteagent.v1.ImageSync
+ */
+export enum ImageSync {
+  /**
+   * @generated from enum value: IMAGE_SYNC_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The display copy was uploaded before this event. GetImage may still
+   * report it expired later.
+   *
+   * @generated from enum value: IMAGE_SYNC_SYNCED = 1;
+   */
+  SYNCED = 1,
+
+  /**
+   * No display copy: it could not be made or uploaded (too large, not
+   * decodable, account quota full, upload kept failing). The preview is
+   * all there is; the original stays in the CLI's record on the computer.
+   *
+   * @generated from enum value: IMAGE_SYNC_PREVIEW_ONLY = 2;
+   */
+  PREVIEW_ONLY = 2,
+
+  /**
+   * Not even a preview: only what else the ref says (path, size) is known.
+   *
+   * @generated from enum value: IMAGE_SYNC_NAME_ONLY = 3;
+   */
+  NAME_ONLY = 3,
+}
+
+/**
+ * Describes the enum remoteagent.v1.ImageSync.
+ */
+export const ImageSyncSchema: GenEnum<ImageSync> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 3);
 
 /**
  * Agent is the CLI a session runs. Sessions recorded before Claude Code
@@ -937,7 +1399,7 @@ export enum Agent {
  * Describes the enum remoteagent.v1.Agent.
  */
 export const AgentSchema: GenEnum<Agent> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 0);
+  enumDesc(file_remoteagent_v1_event, 4);
 
 /**
  * @generated from enum remoteagent.v1.ToolKind
@@ -978,7 +1440,7 @@ export enum ToolKind {
  * Describes the enum remoteagent.v1.ToolKind.
  */
 export const ToolKindSchema: GenEnum<ToolKind> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 1);
+  enumDesc(file_remoteagent_v1_event, 5);
 
 /**
  * @generated from enum remoteagent.v1.TurnOutcome
@@ -1004,7 +1466,7 @@ export enum TurnOutcome {
  * Describes the enum remoteagent.v1.TurnOutcome.
  */
 export const TurnOutcomeSchema: GenEnum<TurnOutcome> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 2);
+  enumDesc(file_remoteagent_v1_event, 6);
 
 /**
  * ApprovalMode is what a client can switch a session to. ASK, AUTO and
@@ -1044,7 +1506,7 @@ export enum ApprovalMode {
  * Describes the enum remoteagent.v1.ApprovalMode.
  */
 export const ApprovalModeSchema: GenEnum<ApprovalMode> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 3);
+  enumDesc(file_remoteagent_v1_event, 7);
 
 /**
  * @generated from enum remoteagent.v1.ApprovalDecision
@@ -1093,7 +1555,7 @@ export enum ApprovalDecision {
  * Describes the enum remoteagent.v1.ApprovalDecision.
  */
 export const ApprovalDecisionSchema: GenEnum<ApprovalDecision> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 4);
+  enumDesc(file_remoteagent_v1_event, 8);
 
 /**
  * @generated from enum remoteagent.v1.SessionStatus
@@ -1136,7 +1598,7 @@ export enum SessionStatus {
  * Describes the enum remoteagent.v1.SessionStatus.
  */
 export const SessionStatusSchema: GenEnum<SessionStatus> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 5);
+  enumDesc(file_remoteagent_v1_event, 9);
 
 /**
  * @generated from enum remoteagent.v1.InputStatus
@@ -1175,11 +1637,77 @@ export enum InputStatus {
    * @generated from enum value: INPUT_STATUS_CANCELED = 4;
    */
   CANCELED = 4,
+
+  /**
+   * Not submitted: something failed before Enter (e.g. the CLI did not
+   * turn an image into "[Image #N]"), and the input box was verified to be
+   * empty again. Nothing is retried automatically.
+   *
+   * @generated from enum value: INPUT_STATUS_FAILED = 5;
+   */
+  FAILED = 5,
+
+  /**
+   * Not submitted, and remote-agent could not verify that the input box is
+   * back to what it was: part of the message may still be in it. It is
+   * neither submitted nor retried; the user sorts it out in the terminal.
+   *
+   * @generated from enum value: INPUT_STATUS_NEEDS_TERMINAL = 6;
+   */
+  NEEDS_TERMINAL = 6,
 }
 
 /**
  * Describes the enum remoteagent.v1.InputStatus.
  */
 export const InputStatusSchema: GenEnum<InputStatus> = /*@__PURE__*/
-  enumDesc(file_remoteagent_v1_event, 6);
+  enumDesc(file_remoteagent_v1_event, 10);
+
+/**
+ * InputStage is how far a queued message has got while it is written to
+ * the terminal. The daemon saves the stage before every write, so after a
+ * restart it knows what the terminal may hold.
+ *
+ * @generated from enum remoteagent.v1.InputStage
+ */
+export enum InputStage {
+  /**
+   * @generated from enum value: INPUT_STAGE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Waiting for the input box.
+   *
+   * @generated from enum value: INPUT_STAGE_WAITING = 1;
+   */
+  WAITING = 1,
+
+  /**
+   * Pasting the image files one by one.
+   *
+   * @generated from enum value: INPUT_STAGE_PASTING_IMAGES = 2;
+   */
+  PASTING_IMAGES = 2,
+
+  /**
+   * Every image shows as "[Image #N]" in the input box.
+   *
+   * @generated from enum value: INPUT_STAGE_IMAGES_RECOGNIZED = 3;
+   */
+  IMAGES_RECOGNIZED = 3,
+
+  /**
+   * The text and Enter were written; waiting for the CLI to record it.
+   *
+   * @generated from enum value: INPUT_STAGE_SUBMITTING = 4;
+   */
+  SUBMITTING = 4,
+}
+
+/**
+ * Describes the enum remoteagent.v1.InputStage.
+ */
+export const InputStageSchema: GenEnum<InputStage> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_event, 11);
 

@@ -129,4 +129,78 @@ public class ClientServiceClient(
     ),
   )
 
+
+  /**
+   *  GetImage returns the display copy of an image in a session.
+   */
+  override suspend fun getImage(request: GetImageRequest, headers: Headers): ResponseMessage<GetImageResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/GetImage",
+      io.github.lewin671.remoteagent.proto.GetImageRequest::class,
+      io.github.lewin671.remoteagent.proto.GetImageResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  ListDevices lists the account's devices, machines and clients.
+   */
+  override suspend fun listDevices(request: ListDevicesRequest, headers: Headers): ResponseMessage<ListDevicesResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/ListDevices",
+      io.github.lewin671.remoteagent.proto.ListDevicesRequest::class,
+      io.github.lewin671.remoteagent.proto.ListDevicesResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  PutDeviceMeta replaces a client device's sealed metadata if its
+   *  revision is still the expected one.
+   */
+  override suspend fun putDeviceMeta(request: PutDeviceMetaRequest, headers: Headers): ResponseMessage<PutDeviceMetaResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/PutDeviceMeta",
+      io.github.lewin671.remoteagent.proto.PutDeviceMetaRequest::class,
+      io.github.lewin671.remoteagent.proto.PutDeviceMetaResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  Account preference objects, stored sealed and replaced with a check
+   *  of the expected revision.
+   */
+  override suspend fun getAccountPrefs(request: GetAccountPrefsRequest, headers: Headers): ResponseMessage<GetAccountPrefsResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/GetAccountPrefs",
+      io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest::class,
+      io.github.lewin671.remoteagent.proto.GetAccountPrefsResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun putAccountPrefs(request: PutAccountPrefsRequest, headers: Headers): ResponseMessage<PutAccountPrefsResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/PutAccountPrefs",
+      io.github.lewin671.remoteagent.proto.PutAccountPrefsRequest::class,
+      io.github.lewin671.remoteagent.proto.PutAccountPrefsResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

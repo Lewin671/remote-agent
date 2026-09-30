@@ -11,11 +11,21 @@ public interface UserMessageOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @return The text.
    */
   java.lang.String getText();
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @return The bytes for text.
    */
@@ -24,11 +34,50 @@ public interface UserMessageOrBuilder extends
 
   /**
    * <pre>
-   * Number of images attached to the message.
+   * Number of images attached to the message. Deprecated: use images;
+   * still set for clients older than v2.
    * </pre>
    *
-   * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
+   * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
+   *     See remoteagent/v1/event.proto;l=198
    * @return The imageCount.
    */
-  int getImageCount();
+  @java.lang.Deprecated int getImageCount();
+
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> 
+      getImagesList();
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.ImageRef getImages(int index);
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  int getImagesCount();
+
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @return The requestId.
+   */
+  java.lang.String getRequestId();
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @return The bytes for requestId.
+   */
+  com.google.protobuf.ByteString
+      getRequestIdBytes();
 }

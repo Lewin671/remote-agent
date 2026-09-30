@@ -42,6 +42,11 @@ public  final class Command extends
     LIST_DIRECTORIES(22),
     GET_SETTINGS(23),
     UPDATE_SETTINGS(24),
+    BEGIN_IMAGE_UPLOAD(25),
+    PUT_IMAGE_CHUNK(26),
+    GET_IMAGE_UPLOAD_STATUS(27),
+    COMPLETE_IMAGE_UPLOAD(28),
+    ABORT_IMAGE_UPLOAD(29),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -74,6 +79,11 @@ public  final class Command extends
         case 22: return LIST_DIRECTORIES;
         case 23: return GET_SETTINGS;
         case 24: return UPDATE_SETTINGS;
+        case 25: return BEGIN_IMAGE_UPLOAD;
+        case 26: return PUT_IMAGE_CHUNK;
+        case 27: return GET_IMAGE_UPLOAD_STATUS;
+        case 28: return COMPLETE_IMAGE_UPLOAD;
+        case 29: return ABORT_IMAGE_UPLOAD;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -999,6 +1009,266 @@ public  final class Command extends
    */
   private void clearUpdateSettings() {
     if (kindCase_ == 24) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int BEGIN_IMAGE_UPLOAD_FIELD_NUMBER = 25;
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasBeginImageUpload() {
+    return kindCase_ == 25;
+  }
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.BeginImageUploadRequest getBeginImageUpload() {
+    if (kindCase_ == 25) {
+       return (io.github.lewin671.remoteagent.proto.BeginImageUploadRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBeginImageUpload(io.github.lewin671.remoteagent.proto.BeginImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 25;
+  }
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeBeginImageUpload(io.github.lewin671.remoteagent.proto.BeginImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 25 &&
+        kind_ != io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.newBuilder((io.github.lewin671.remoteagent.proto.BeginImageUploadRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 25;
+  }
+  /**
+   * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+   */
+  private void clearBeginImageUpload() {
+    if (kindCase_ == 25) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int PUT_IMAGE_CHUNK_FIELD_NUMBER = 26;
+  /**
+   * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPutImageChunk() {
+    return kindCase_ == 26;
+  }
+  /**
+   * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.PutImageChunkRequest getPutImageChunk() {
+    if (kindCase_ == 26) {
+       return (io.github.lewin671.remoteagent.proto.PutImageChunkRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.PutImageChunkRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPutImageChunk(io.github.lewin671.remoteagent.proto.PutImageChunkRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePutImageChunk(io.github.lewin671.remoteagent.proto.PutImageChunkRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 26 &&
+        kind_ != io.github.lewin671.remoteagent.proto.PutImageChunkRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.PutImageChunkRequest.newBuilder((io.github.lewin671.remoteagent.proto.PutImageChunkRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+   */
+  private void clearPutImageChunk() {
+    if (kindCase_ == 26) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int GET_IMAGE_UPLOAD_STATUS_FIELD_NUMBER = 27;
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasGetImageUploadStatus() {
+    return kindCase_ == 27;
+  }
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest getGetImageUploadStatus() {
+    if (kindCase_ == 27) {
+       return (io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGetImageUploadStatus(io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeGetImageUploadStatus(io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 27 &&
+        kind_ != io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder((io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+   */
+  private void clearGetImageUploadStatus() {
+    if (kindCase_ == 27) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int COMPLETE_IMAGE_UPLOAD_FIELD_NUMBER = 28;
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCompleteImageUpload() {
+    return kindCase_ == 28;
+  }
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest getCompleteImageUpload() {
+    if (kindCase_ == 28) {
+       return (io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCompleteImageUpload(io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 28;
+  }
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeCompleteImageUpload(io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 28 &&
+        kind_ != io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.newBuilder((io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 28;
+  }
+  /**
+   * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+   */
+  private void clearCompleteImageUpload() {
+    if (kindCase_ == 28) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int ABORT_IMAGE_UPLOAD_FIELD_NUMBER = 29;
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAbortImageUpload() {
+    return kindCase_ == 29;
+  }
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AbortImageUploadRequest getAbortImageUpload() {
+    if (kindCase_ == 29) {
+       return (io.github.lewin671.remoteagent.proto.AbortImageUploadRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAbortImageUpload(io.github.lewin671.remoteagent.proto.AbortImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 29;
+  }
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAbortImageUpload(io.github.lewin671.remoteagent.proto.AbortImageUploadRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 29 &&
+        kind_ != io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.newBuilder((io.github.lewin671.remoteagent.proto.AbortImageUploadRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 29;
+  }
+  /**
+   * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+   */
+  private void clearAbortImageUpload() {
+    if (kindCase_ == 29) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -1965,6 +2235,246 @@ public  final class Command extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasBeginImageUpload() {
+      return instance.hasBeginImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.BeginImageUploadRequest getBeginImageUpload() {
+      return instance.getBeginImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    public Builder setBeginImageUpload(io.github.lewin671.remoteagent.proto.BeginImageUploadRequest value) {
+      copyOnWrite();
+      instance.setBeginImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    public Builder setBeginImageUpload(
+        io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setBeginImageUpload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    public Builder mergeBeginImageUpload(io.github.lewin671.remoteagent.proto.BeginImageUploadRequest value) {
+      copyOnWrite();
+      instance.mergeBeginImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.BeginImageUploadRequest begin_image_upload = 25 [json_name = "beginImageUpload"];</code>
+     */
+    public Builder clearBeginImageUpload() {
+      copyOnWrite();
+      instance.clearBeginImageUpload();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPutImageChunk() {
+      return instance.hasPutImageChunk();
+    }
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.PutImageChunkRequest getPutImageChunk() {
+      return instance.getPutImageChunk();
+    }
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    public Builder setPutImageChunk(io.github.lewin671.remoteagent.proto.PutImageChunkRequest value) {
+      copyOnWrite();
+      instance.setPutImageChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    public Builder setPutImageChunk(
+        io.github.lewin671.remoteagent.proto.PutImageChunkRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPutImageChunk(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    public Builder mergePutImageChunk(io.github.lewin671.remoteagent.proto.PutImageChunkRequest value) {
+      copyOnWrite();
+      instance.mergePutImageChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PutImageChunkRequest put_image_chunk = 26 [json_name = "putImageChunk"];</code>
+     */
+    public Builder clearPutImageChunk() {
+      copyOnWrite();
+      instance.clearPutImageChunk();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasGetImageUploadStatus() {
+      return instance.hasGetImageUploadStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest getGetImageUploadStatus() {
+      return instance.getGetImageUploadStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    public Builder setGetImageUploadStatus(io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest value) {
+      copyOnWrite();
+      instance.setGetImageUploadStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    public Builder setGetImageUploadStatus(
+        io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setGetImageUploadStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    public Builder mergeGetImageUploadStatus(io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest value) {
+      copyOnWrite();
+      instance.mergeGetImageUploadStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetImageUploadStatusRequest get_image_upload_status = 27 [json_name = "getImageUploadStatus"];</code>
+     */
+    public Builder clearGetImageUploadStatus() {
+      copyOnWrite();
+      instance.clearGetImageUploadStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCompleteImageUpload() {
+      return instance.hasCompleteImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest getCompleteImageUpload() {
+      return instance.getCompleteImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    public Builder setCompleteImageUpload(io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest value) {
+      copyOnWrite();
+      instance.setCompleteImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    public Builder setCompleteImageUpload(
+        io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCompleteImageUpload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    public Builder mergeCompleteImageUpload(io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest value) {
+      copyOnWrite();
+      instance.mergeCompleteImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.CompleteImageUploadRequest complete_image_upload = 28 [json_name = "completeImageUpload"];</code>
+     */
+    public Builder clearCompleteImageUpload() {
+      copyOnWrite();
+      instance.clearCompleteImageUpload();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAbortImageUpload() {
+      return instance.hasAbortImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AbortImageUploadRequest getAbortImageUpload() {
+      return instance.getAbortImageUpload();
+    }
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    public Builder setAbortImageUpload(io.github.lewin671.remoteagent.proto.AbortImageUploadRequest value) {
+      copyOnWrite();
+      instance.setAbortImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    public Builder setAbortImageUpload(
+        io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAbortImageUpload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    public Builder mergeAbortImageUpload(io.github.lewin671.remoteagent.proto.AbortImageUploadRequest value) {
+      copyOnWrite();
+      instance.mergeAbortImageUpload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AbortImageUploadRequest abort_image_upload = 29 [json_name = "abortImageUpload"];</code>
+     */
+    public Builder clearAbortImageUpload() {
+      copyOnWrite();
+      instance.clearAbortImageUpload();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Command)
   }
   @java.lang.Override
@@ -2000,12 +2510,18 @@ public  final class Command extends
             io.github.lewin671.remoteagent.proto.ListDirectoriesRequest.class,
             io.github.lewin671.remoteagent.proto.GetSettingsRequest.class,
             io.github.lewin671.remoteagent.proto.UpdateSettingsRequest.class,
+            io.github.lewin671.remoteagent.proto.BeginImageUploadRequest.class,
+            io.github.lewin671.remoteagent.proto.PutImageChunkRequest.class,
+            io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.class,
+            io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.class,
+            io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0011\u0001\u0000\u0001\u0018\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0016\u0001\u0000\u0001\u001d\u0016\u0000\u0000\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017" +
-              "<\u0000\u0018<\u0000";
+              "<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/envelope.proto.
  */
 export const file_remoteagent_v1_envelope: GenFile = /*@__PURE__*/
-  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEiPQoIRW52ZWxvcGUSDgoGaGVhZGVyGAEgASgMEg0KBW5vbmNlGAIgASgMEhIKCmNpcGhlcnRleHQYAyABKAwisgEKBkhlYWRlchIPCgd2ZXJzaW9uGAEgASgNEikKBGtpbmQYAiABKA4yGy5yZW1vdGVhZ2VudC52MS5QYXlsb2FkS2luZBISCgptYWNoaW5lX2lkGAMgASgJEhIKCnNlc3Npb25faWQYBCABKAkSCwoDc2VxGAUgASgEEhIKCnJlcXVlc3RfaWQYBiABKAkSEwoLZGVhZGxpbmVfbXMYByABKAMSDgoGc2VuZGVyGAggASgJKtACCgtQYXlsb2FkS2luZBIcChhQQVlMT0FEX0tJTkRfVU5TUEVDSUZJRUQQABIWChJQQVlMT0FEX0tJTkRfRVZFTlQQARIdChlQQVlMT0FEX0tJTkRfU0VTU0lPTl9NRVRBEAISHAoYUEFZTE9BRF9LSU5EX1NFU1NJT05fS0VZEAMSHQoZUEFZTE9BRF9LSU5EX01BQ0hJTkVfTUVUQRAEEhgKFFBBWUxPQURfS0lORF9DT01NQU5EEAUSHwobUEFZTE9BRF9LSU5EX0NPTU1BTkRfUkVTVUxUEAYSIAocUEFZTE9BRF9LSU5EX1RFUk1JTkFMX09VVFBVVBAHEh8KG1BBWUxPQURfS0lORF9URVJNSU5BTF9JTlBVVBAIEhgKFFBBWUxPQURfS0lORF9QQUlSSU5HEAkSFwoTUEFZTE9BRF9LSU5EX05PVElGWRAKYgZwcm90bzM");
+  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEiUAoIRW52ZWxvcGUSDgoGaGVhZGVyGAEgASgMEg0KBW5vbmNlGAIgASgMEhIKCmNpcGhlcnRleHQYAyABKAwSEQoJc2lnbmF0dXJlGAQgASgMIrIBCgZIZWFkZXISDwoHdmVyc2lvbhgBIAEoDRIpCgRraW5kGAIgASgOMhsucmVtb3RlYWdlbnQudjEuUGF5bG9hZEtpbmQSEgoKbWFjaGluZV9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEgsKA3NlcRgFIAEoBBISCgpyZXF1ZXN0X2lkGAYgASgJEhMKC2RlYWRsaW5lX21zGAcgASgDEg4KBnNlbmRlchgIIAEoCSqmAwoLUGF5bG9hZEtpbmQSHAoYUEFZTE9BRF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSUEFZTE9BRF9LSU5EX0VWRU5UEAESHQoZUEFZTE9BRF9LSU5EX1NFU1NJT05fTUVUQRACEhwKGFBBWUxPQURfS0lORF9TRVNTSU9OX0tFWRADEh0KGVBBWUxPQURfS0lORF9NQUNISU5FX01FVEEQBBIYChRQQVlMT0FEX0tJTkRfQ09NTUFORBAFEh8KG1BBWUxPQURfS0lORF9DT01NQU5EX1JFU1VMVBAGEiAKHFBBWUxPQURfS0lORF9URVJNSU5BTF9PVVRQVVQQBxIfChtQQVlMT0FEX0tJTkRfVEVSTUlOQUxfSU5QVVQQCBIYChRQQVlMT0FEX0tJTkRfUEFJUklORxAJEhcKE1BBWUxPQURfS0lORF9OT1RJRlkQChIWChJQQVlMT0FEX0tJTkRfSU1BR0UQCxIeChpQQVlMT0FEX0tJTkRfQUNDT1VOVF9QUkVGUxAMEhwKGFBBWUxPQURfS0lORF9ERVZJQ0VfTUVUQRANYgZwcm90bzM");
 
 /**
  * Envelope is the unit of end-to-end encrypted data. The server stores and
@@ -41,6 +41,22 @@ export type Envelope = Message<"remoteagent.v1.Envelope"> & {
    * @generated from field: bytes ciphertext = 3;
    */
   ciphertext: Uint8Array;
+
+  /**
+   * Ed25519 signature by the sending device's key, so that a daemon can
+   * tell which device sent a command even though the server is not
+   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+   * and from clients older than v2. It signs the bytes as transmitted:
+   *   "remote-agent/v1/envelope-signature\x00"
+   *   || uint32be(len(header)) || header
+   *   || uint32be(len(nonce)) || nonce
+   *   || uint32be(len(ciphertext)) || ciphertext
+   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+   * header's sender must be the ID of the signing device.
+   *
+   * @generated from field: bytes signature = 4;
+   */
+  signature: Uint8Array;
 };
 
 /**
@@ -82,14 +98,19 @@ export type Header = Message<"remoteagent.v1.Header"> & {
 
   /**
    * Event sequence number for EVENT; revision for SESSION_META and
-   * MACHINE_META, so that an older copy is never shown over a newer one.
+   * MACHINE_META, so that an older copy is never shown over a newer one;
+   * the new revision for ACCOUNT_PREFS and DEVICE_META (the expected
+   * revision plus one), so that the server cannot pass a copy off as
+   * another revision.
    *
    * @generated from field: uint64 seq = 5;
    */
   seq: bigint;
 
   /**
-   * Client-chosen ID for COMMAND and COMMAND_RESULT.
+   * Client-chosen ID for COMMAND and COMMAND_RESULT; the image ID for
+   * IMAGE; the object ID for ACCOUNT_PREFS; the described device's ID for
+   * DEVICE_META.
    *
    * @generated from field: string request_id = 6;
    */
@@ -200,6 +221,32 @@ export enum PayloadKind {
    * @generated from enum value: PAYLOAD_KIND_NOTIFY = 10;
    */
   NOTIFY = 10,
+
+  /**
+   * An ImagePayload, the display copy of an image in a session, sealed
+   * with the session key; the header's request_id is the image ID.
+   *
+   * @generated from enum value: PAYLOAD_KIND_IMAGE = 11;
+   */
+  IMAGE = 11,
+
+  /**
+   * An account preferences object (ProjectPrefs), sealed with the
+   * account-prefs key; the header's request_id is the object ID and seq
+   * its revision.
+   *
+   * @generated from enum value: PAYLOAD_KIND_ACCOUNT_PREFS = 12;
+   */
+  ACCOUNT_PREFS = 12,
+
+  /**
+   * A DeviceMeta describing a client device, sealed with the device-meta
+   * key; the header's request_id is the ID of the device described and
+   * seq the metadata's revision.
+   *
+   * @generated from enum value: PAYLOAD_KIND_DEVICE_META = 13;
+   */
+  DEVICE_META = 13,
 }
 
 /**

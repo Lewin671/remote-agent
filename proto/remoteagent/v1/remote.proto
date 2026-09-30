@@ -27,6 +27,27 @@ message MachineMeta {
   // starting a session. Empty from daemons older than Claude Code support,
   // which only run Codex.
   repeated AgentInfo agents = 9;
+  // What this daemon supports beyond the base protocol. Absent from
+  // daemons older than v2: a client then offers none of it and says the
+  // computer needs updating.
+  MachineCapabilities capabilities = 10;
+}
+
+message MachineCapabilities {
+  // Images in the session carry ImageRefs and display copies (GetImage).
+  bool session_images = 1;
+  // The image upload commands, and image IDs in Send and CreateSession.
+  bool image_upload = 2;
+  int32 max_images_per_message = 3;
+  // Largest file BeginImageUpload accepts.
+  int64 max_upload_bytes = 4;
+  // Largest data in one PutImageChunk.
+  int32 max_chunk_bytes = 5;
+  // Formats BeginImageUpload accepts.
+  repeated ImageFormat upload_formats = 6;
+  // Commands are checked against Envelope.signature and events carry
+  // their Origin.
+  bool command_signatures = 7;
 }
 
 message AgentInfo {
@@ -60,6 +81,11 @@ message Command {
     ListDirectoriesRequest list_directories = 22;
     GetSettingsRequest get_settings = 23;
     UpdateSettingsRequest update_settings = 24;
+    BeginImageUploadRequest begin_image_upload = 25;
+    PutImageChunkRequest put_image_chunk = 26;
+    GetImageUploadStatusRequest get_image_upload_status = 27;
+    CompleteImageUploadRequest complete_image_upload = 28;
+    AbortImageUploadRequest abort_image_upload = 29;
   }
 }
 
@@ -89,6 +115,11 @@ message CommandResult {
     ListDirectoriesResponse list_directories = 32;
     GetSettingsResponse get_settings = 33;
     UpdateSettingsResponse update_settings = 34;
+    BeginImageUploadResponse begin_image_upload = 35;
+    PutImageChunkResponse put_image_chunk = 36;
+    GetImageUploadStatusResponse get_image_upload_status = 37;
+    CompleteImageUploadResponse complete_image_upload = 38;
+    AbortImageUploadResponse abort_image_upload = 39;
   }
 }
 
@@ -167,4 +198,49 @@ message NotifyApproval {
   // For a request that is not a command (e.g. Write): its input as JSON,
   // shortened. Daemons before this field put it in command.
   string tool_input = 7;
+}
+
+// ImagePayload is the content of an IMAGE envelope: the display copy of an
+// image in a session, re-encoded by the daemon (long side at most 2048,
+// the whole envelope at most 1 MiB). A client checks that data starts
+// with the format's signature before showing it.
+message ImagePayload {
+  ImageFormat format = 1;
+  int32 width = 2;
+  int32 height = 3;
+  bytes data = 4;
+}
+
+// DeviceMeta is the content of a DEVICE_META envelope: what the account's
+// clients call a client device. Machines describe themselves in
+// MachineMeta instead.
+message DeviceMeta {
+  // Name the user gave the device, e.g. "Pixel".
+  string name = 1;
+  // "web", "android", ...
+  string platform = 2;
+  // What the device says it runs on, e.g. "Chrome 140 on macOS".
+  string description = 3;
+}
+
+// ProjectPrefs is the content of the ACCOUNT_PREFS object "project-prefs":
+// the account's pinned and hidden projects. A project is its absolute
+// path, as in the client's grouping.
+message ProjectPrefs {
+  // 1 for this layout.
+  int32 schema = 1;
+  // Pinned projects in the order they were pinned.
+  repeated ProjectPref pinned = 2;
+  // Projects removed from the project list.
+  repeated ProjectPref hidden = 3;
+  // IDs of the latest operations applied (at most 64, newest last), so a
+  // client whose write reply was lost can tell whether its operation is
+  // in.
+  repeated string recent_ops = 4;
+}
+
+message ProjectPref {
+  string path = 1;
+  // Unix milliseconds when it was pinned or hidden.
+  int64 since_ms = 2;
 }

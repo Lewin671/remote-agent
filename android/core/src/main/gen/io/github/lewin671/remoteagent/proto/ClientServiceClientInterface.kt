@@ -44,4 +44,28 @@ public interface ClientServiceClientInterface {
    *  SetPushSubscription is the same for Web Push.
    */
   public suspend fun setPushTarget(request: SetPushTargetRequest, headers: Headers = emptyMap()): ResponseMessage<SetPushTargetResponse>
+
+  /**
+   *  GetImage returns the display copy of an image in a session.
+   */
+  public suspend fun getImage(request: GetImageRequest, headers: Headers = emptyMap()): ResponseMessage<GetImageResponse>
+
+  /**
+   *  ListDevices lists the account's devices, machines and clients.
+   */
+  public suspend fun listDevices(request: ListDevicesRequest, headers: Headers = emptyMap()): ResponseMessage<ListDevicesResponse>
+
+  /**
+   *  PutDeviceMeta replaces a client device's sealed metadata if its
+   *  revision is still the expected one.
+   */
+  public suspend fun putDeviceMeta(request: PutDeviceMetaRequest, headers: Headers = emptyMap()): ResponseMessage<PutDeviceMetaResponse>
+
+  /**
+   *  Account preference objects, stored sealed and replaced with a check
+   *  of the expected revision.
+   */
+  public suspend fun getAccountPrefs(request: GetAccountPrefsRequest, headers: Headers = emptyMap()): ResponseMessage<GetAccountPrefsResponse>
+
+  public suspend fun putAccountPrefs(request: PutAccountPrefsRequest, headers: Headers = emptyMap()): ResponseMessage<PutAccountPrefsResponse>
 }

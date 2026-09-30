@@ -8,6 +8,7 @@
 package e2e
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ed25519"
@@ -15,6 +16,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -32,6 +34,9 @@ const Version = 1
 const (
 	RegisterContext = "remote-agent/v1/register\x00"
 	LoginContext    = "remote-agent/v1/login\x00"
+	// EnvelopeContext starts what a device signs over an envelope
+	// (Envelope.signature); see SignedEnvelopeBytes.
+	EnvelopeContext = "remote-agent/v1/envelope-signature\x00"
 )
 
 // KeySize is the size of the root key and of every derived key.
@@ -51,6 +56,10 @@ type Keys struct {
 	// Notify seals push content for the Android app, which opens it in
 	// the background without unwrapping the root key.
 	Notify []byte
+	// Prefs seals account preference objects (project pins and hides).
+	Prefs []byte
+	// DeviceMeta seals client device metadata (names).
+	DeviceMeta []byte
 }
 
 // Derive computes the keys of the account with root key root.
@@ -77,6 +86,12 @@ func Derive(root []byte) (*Keys, error) {
 		return nil, err
 	}
 	if k.Notify, err = derive("notify"); err != nil {
+		return nil, err
+	}
+	if k.Prefs, err = derive("account-prefs"); err != nil {
+		return nil, err
+	}
+	if k.DeviceMeta, err = derive("device-meta"); err != nil {
 		return nil, err
 	}
 	return k, nil
@@ -264,4 +279,64 @@ func SignLogin(device ed25519.PrivateKey, challenge []byte) []byte {
 func VerifyLogin(device ed25519.PublicKey, challenge, sig []byte) bool {
 	return len(device) == ed25519.PublicKeySize &&
 		ed25519.Verify(device, append([]byte(LoginContext), challenge...), sig)
+}
+
+// SignedEnvelopeBytes is what a device signs over an envelope: the context,
+// then the header, nonce and ciphertext exactly as transmitted, each
+// preceded by its length as a 4-byte big-endian number.
+func SignedEnvelopeBytes(env *pb.Envelope) []byte {
+	n := len(EnvelopeContext) + 12 + len(env.Header) + len(env.Nonce) + len(env.Ciphertext)
+	b := make([]byte, 0, n)
+	b = append(b, EnvelopeContext...)
+	for _, part := range [][]byte{env.Header, env.Nonce, env.Ciphertext} {
+		b = binary.BigEndian.AppendUint32(b, uint32(len(part)))
+		b = append(b, part...)
+	}
+	return b
+}
+
+// SignEnvelope sets env's signature by the device key.
+func SignEnvelope(device ed25519.PrivateKey, env *pb.Envelope) {
+	env.Signature = ed25519.Sign(device, SignedEnvelopeBytes(env))
+}
+
+// VerifyEnvelope checks env's signature against a device's public key.
+func VerifyEnvelope(device ed25519.PublicKey, env *pb.Envelope) bool {
+	return env != nil && len(device) == ed25519.PublicKeySize && len(env.Signature) == ed25519.SignatureSize &&
+		ed25519.Verify(device, SignedEnvelopeBytes(env), env.Signature)
+}
+
+// Errors from VerifySender. They never include content.
+var (
+	ErrUnsigned     = errors.New("e2e: the envelope is not signed")
+	ErrRegistration = errors.New("e2e: the sender's registration is not signed by the account")
+	ErrSignature    = errors.New("e2e: the envelope's signature does not verify")
+)
+
+// VerifySender checks who sent env: registration must carry the account's
+// signature and name the device in the header's sender, whose key must
+// have signed env. It returns the device ID. An envelope without a
+// signature gives ErrUnsigned; the caller decides whether to accept it as
+// unverified.
+func VerifySender(account ed25519.PublicKey, env *pb.Envelope, sender string, registration, regSig []byte) (string, error) {
+	if len(env.GetSignature()) == 0 {
+		return "", ErrUnsigned
+	}
+	if !VerifyRegistration(account, registration, regSig) {
+		return "", ErrRegistration
+	}
+	reg := &pb.DeviceRegistration{}
+	if proto.Unmarshal(registration, reg) != nil || len(reg.DevicePublicKey) != ed25519.PublicKeySize ||
+		!bytes.Equal(reg.AccountPublicKey, account) {
+		return "", ErrRegistration
+	}
+	pub := ed25519.PublicKey(reg.DevicePublicKey)
+	id := DeviceID(pub)
+	if id != sender {
+		return "", ErrSignature
+	}
+	if !VerifyEnvelope(pub, env) {
+		return "", ErrSignature
+	}
+	return id, nil
 }

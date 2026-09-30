@@ -67,6 +67,21 @@ public interface LocalServiceClientInterface {
 
   public suspend fun updateSettings(request: UpdateSettingsRequest, headers: Headers = emptyMap()): ResponseMessage<UpdateSettingsResponse>
 
+  /**
+   *  Image upload: a client sends each image to the machine in chunks,
+   *  before the Send or CreateSession that uses it. These are machine
+   *  commands (no session). A transfer belongs to the device that began it.
+   */
+  public suspend fun beginImageUpload(request: BeginImageUploadRequest, headers: Headers = emptyMap()): ResponseMessage<BeginImageUploadResponse>
+
+  public suspend fun putImageChunk(request: PutImageChunkRequest, headers: Headers = emptyMap()): ResponseMessage<PutImageChunkResponse>
+
+  public suspend fun getImageUploadStatus(request: GetImageUploadStatusRequest, headers: Headers = emptyMap()): ResponseMessage<GetImageUploadStatusResponse>
+
+  public suspend fun completeImageUpload(request: CompleteImageUploadRequest, headers: Headers = emptyMap()): ResponseMessage<CompleteImageUploadResponse>
+
+  public suspend fun abortImageUpload(request: AbortImageUploadRequest, headers: Headers = emptyMap()): ResponseMessage<AbortImageUploadResponse>
+
   public suspend fun resolveApproval(request: ResolveApprovalRequest, headers: Headers = emptyMap()): ResponseMessage<ResolveApprovalResponse>
 
   public suspend fun answerQuestion(request: AnswerQuestionRequest, headers: Headers = emptyMap()): ResponseMessage<AnswerQuestionResponse>

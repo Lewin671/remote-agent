@@ -16,10 +16,17 @@ public  final class UserMessage extends
     UserMessageOrBuilder {
   private UserMessage() {
     text_ = "";
+    images_ = emptyProtobufList();
+    requestId_ = "";
   }
   public static final int TEXT_FIELD_NUMBER = 1;
   private java.lang.String text_;
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @return The text.
    */
@@ -28,6 +35,11 @@ public  final class UserMessage extends
     return text_;
   }
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @return The bytes for text.
    */
@@ -37,6 +49,11 @@ public  final class UserMessage extends
     return com.google.protobuf.ByteString.copyFromUtf8(text_);
   }
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @param value The text to set.
    */
@@ -48,6 +65,11 @@ public  final class UserMessage extends
     text_ = value;
   }
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    */
   private void clearText() {
@@ -55,6 +77,11 @@ public  final class UserMessage extends
     text_ = getDefaultInstance().getText();
   }
   /**
+   * <pre>
+   * The message as the CLI recorded it, including the CLI's "[Image #N]"
+   * placeholders; ImageRef.cli_index ties each to its image.
+   * </pre>
+   *
    * <code>string text = 1 [json_name = "text"];</code>
    * @param value The bytes for text to set.
    */
@@ -69,22 +96,26 @@ public  final class UserMessage extends
   private int imageCount_;
   /**
    * <pre>
-   * Number of images attached to the message.
+   * Number of images attached to the message. Deprecated: use images;
+   * still set for clients older than v2.
    * </pre>
    *
-   * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
+   * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
+   *     See remoteagent/v1/event.proto;l=198
    * @return The imageCount.
    */
   @java.lang.Override
-  public int getImageCount() {
+  @java.lang.Deprecated public int getImageCount() {
     return imageCount_;
   }
   /**
    * <pre>
-   * Number of images attached to the message.
+   * Number of images attached to the message. Deprecated: use images;
+   * still set for clients older than v2.
    * </pre>
    *
-   * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
    * @param value The imageCount to set.
    */
   private void setImageCount(int value) {
@@ -93,14 +124,185 @@ public  final class UserMessage extends
   }
   /**
    * <pre>
-   * Number of images attached to the message.
+   * Number of images attached to the message. Deprecated: use images;
+   * still set for clients older than v2.
    * </pre>
    *
-   * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
    */
   private void clearImageCount() {
 
     imageCount_ = 0;
+  }
+
+  public static final int IMAGES_FIELD_NUMBER = 3;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> images_;
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
+    return images_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.ImageRefOrBuilder> 
+      getImagesOrBuilderList() {
+    return images_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public int getImagesCount() {
+    return images_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
+    return images_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.ImageRefOrBuilder getImagesOrBuilder(
+      int index) {
+    return images_.get(index);
+  }
+  private void ensureImagesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> tmp = images_;
+    if (!tmp.isModifiable()) {
+      images_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImages(
+      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImages(
+      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  private void addAllImages(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
+    ensureImagesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, images_);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  private void clearImages() {
+    images_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+   */
+  private void removeImages(int index) {
+    ensureImagesIsMutable();
+    images_.remove(index);
+  }
+
+  public static final int REQUEST_ID_FIELD_NUMBER = 4;
+  private java.lang.String requestId_;
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @return The requestId.
+   */
+  @java.lang.Override
+  public java.lang.String getRequestId() {
+    return requestId_;
+  }
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @return The bytes for requestId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRequestIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(requestId_);
+  }
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @param value The requestId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRequestId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    requestId_ = value;
+  }
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   */
+  private void clearRequestId() {
+
+    requestId_ = getDefaultInstance().getRequestId();
+  }
+  /**
+   * <pre>
+   * The Send request that submitted this message, when the daemon matched
+   * it; the event's origin says who sent it.
+   * </pre>
+   *
+   * <code>string request_id = 4 [json_name = "requestId"];</code>
+   * @param value The bytes for requestId to set.
+   */
+  private void setRequestIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    requestId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.UserMessage parseFrom(
@@ -201,6 +403,11 @@ public  final class UserMessage extends
 
 
     /**
+     * <pre>
+     * The message as the CLI recorded it, including the CLI's "[Image #N]"
+     * placeholders; ImageRef.cli_index ties each to its image.
+     * </pre>
+     *
      * <code>string text = 1 [json_name = "text"];</code>
      * @return The text.
      */
@@ -209,6 +416,11 @@ public  final class UserMessage extends
       return instance.getText();
     }
     /**
+     * <pre>
+     * The message as the CLI recorded it, including the CLI's "[Image #N]"
+     * placeholders; ImageRef.cli_index ties each to its image.
+     * </pre>
+     *
      * <code>string text = 1 [json_name = "text"];</code>
      * @return The bytes for text.
      */
@@ -218,6 +430,11 @@ public  final class UserMessage extends
       return instance.getTextBytes();
     }
     /**
+     * <pre>
+     * The message as the CLI recorded it, including the CLI's "[Image #N]"
+     * placeholders; ImageRef.cli_index ties each to its image.
+     * </pre>
+     *
      * <code>string text = 1 [json_name = "text"];</code>
      * @param value The text to set.
      * @return This builder for chaining.
@@ -229,6 +446,11 @@ public  final class UserMessage extends
       return this;
     }
     /**
+     * <pre>
+     * The message as the CLI recorded it, including the CLI's "[Image #N]"
+     * placeholders; ImageRef.cli_index ties each to its image.
+     * </pre>
+     *
      * <code>string text = 1 [json_name = "text"];</code>
      * @return This builder for chaining.
      */
@@ -238,6 +460,11 @@ public  final class UserMessage extends
       return this;
     }
     /**
+     * <pre>
+     * The message as the CLI recorded it, including the CLI's "[Image #N]"
+     * placeholders; ImageRef.cli_index ties each to its image.
+     * </pre>
+     *
      * <code>string text = 1 [json_name = "text"];</code>
      * @param value The bytes for text to set.
      * @return This builder for chaining.
@@ -251,41 +478,226 @@ public  final class UserMessage extends
 
     /**
      * <pre>
-     * Number of images attached to the message.
+     * Number of images attached to the message. Deprecated: use images;
+     * still set for clients older than v2.
      * </pre>
      *
-     * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
+     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
+     *     See remoteagent/v1/event.proto;l=198
      * @return The imageCount.
      */
     @java.lang.Override
-    public int getImageCount() {
+    @java.lang.Deprecated public int getImageCount() {
       return instance.getImageCount();
     }
     /**
      * <pre>
-     * Number of images attached to the message.
+     * Number of images attached to the message. Deprecated: use images;
+     * still set for clients older than v2.
      * </pre>
      *
-     * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
+     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
+     *     See remoteagent/v1/event.proto;l=198
      * @param value The imageCount to set.
      * @return This builder for chaining.
      */
-    public Builder setImageCount(int value) {
+    @java.lang.Deprecated public Builder setImageCount(int value) {
       copyOnWrite();
       instance.setImageCount(value);
       return this;
     }
     /**
      * <pre>
-     * Number of images attached to the message.
+     * Number of images attached to the message. Deprecated: use images;
+     * still set for clients older than v2.
      * </pre>
      *
-     * <code>int32 image_count = 2 [json_name = "imageCount"];</code>
+     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
+     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
+     *     See remoteagent/v1/event.proto;l=198
      * @return This builder for chaining.
      */
-    public Builder clearImageCount() {
+    @java.lang.Deprecated public Builder clearImageCount() {
       copyOnWrite();
       instance.clearImageCount();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getImagesList());
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public int getImagesCount() {
+      return instance.getImagesCount();
+    }/**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
+      return instance.getImages(index);
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder setImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.setImages(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder setImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.addImages(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.addImages(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImages(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder addAllImages(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
+      copyOnWrite();
+      instance.addAllImages(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder clearImages() {
+      copyOnWrite();
+      instance.clearImages();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
+     */
+    public Builder removeImages(int index) {
+      copyOnWrite();
+      instance.removeImages(index);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * The Send request that submitted this message, when the daemon matched
+     * it; the event's origin says who sent it.
+     * </pre>
+     *
+     * <code>string request_id = 4 [json_name = "requestId"];</code>
+     * @return The requestId.
+     */
+    @java.lang.Override
+    public java.lang.String getRequestId() {
+      return instance.getRequestId();
+    }
+    /**
+     * <pre>
+     * The Send request that submitted this message, when the daemon matched
+     * it; the event's origin says who sent it.
+     * </pre>
+     *
+     * <code>string request_id = 4 [json_name = "requestId"];</code>
+     * @return The bytes for requestId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRequestIdBytes() {
+      return instance.getRequestIdBytes();
+    }
+    /**
+     * <pre>
+     * The Send request that submitted this message, when the daemon matched
+     * it; the event's origin says who sent it.
+     * </pre>
+     *
+     * <code>string request_id = 4 [json_name = "requestId"];</code>
+     * @param value The requestId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRequestId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setRequestId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The Send request that submitted this message, when the daemon matched
+     * it; the event's origin says who sent it.
+     * </pre>
+     *
+     * <code>string request_id = 4 [json_name = "requestId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRequestId() {
+      copyOnWrite();
+      instance.clearRequestId();
+      return this;
+    }
+    /**
+     * <pre>
+     * The Send request that submitted this message, when the daemon matched
+     * it; the event's origin says who sent it.
+     * </pre>
+     *
+     * <code>string request_id = 4 [json_name = "requestId"];</code>
+     * @param value The bytes for requestId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRequestIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRequestIdBytes(value);
       return this;
     }
 
@@ -307,10 +719,13 @@ public  final class UserMessage extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "text_",
             "imageCount_",
+            "images_",
+            io.github.lewin671.remoteagent.proto.ImageRef.class,
+            "requestId_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0004" +
-              "";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0208\u0002\u0004" +
+              "\u0003\u001b\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

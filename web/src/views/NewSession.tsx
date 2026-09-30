@@ -28,7 +28,7 @@ import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../sto
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote } from "../remote";
 
-type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
+type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "imageIds">;
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";

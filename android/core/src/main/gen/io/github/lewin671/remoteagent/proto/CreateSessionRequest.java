@@ -20,6 +20,7 @@ public  final class CreateSessionRequest extends
     prompt_ = "";
     model_ = "";
     effort_ = "";
+    imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int CWD_FIELD_NUMBER = 1;
   private java.lang.String cwd_;
@@ -606,6 +607,146 @@ java.lang.String defaultValue) {
   private void clearAgent() {
 
     agent_ = 0;
+  }
+
+  public static final int IMAGE_IDS_FIELD_NUMBER = 9;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> imageIds_;
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @return A list containing the imageIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getImageIdsList() {
+    return imageIds_;
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @return The count of imageIds.
+   */
+  @java.lang.Override
+  public int getImageIdsCount() {
+    return imageIds_.size();
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getImageIds(int index) {
+    return imageIds_.get(index);
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the imageIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getImageIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        imageIds_.get(index));
+  }
+  private void ensureImageIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        imageIds_;  if (!tmp.isModifiable()) {
+      imageIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The imageIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageIdsIsMutable();
+    imageIds_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param value The imageIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImageIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageIdsIsMutable();
+    imageIds_.add(value);
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param values The imageIds to add.
+   */
+  private void addAllImageIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureImageIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, imageIds_);
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   */
+  private void clearImageIds() {
+    imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Images for the first message, IDs from CompleteImageUpload (at most
+   * 6). The prompt may be empty when there are images.
+   * </pre>
+   *
+   * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+   * @param value The bytes of the imageIds to add.
+   */
+  private void addImageIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureImageIdsIsMutable();
+    imageIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.proto.CreateSessionRequest parseFrom(
@@ -1314,6 +1455,143 @@ java.lang.String defaultValue) {
       return this;
     }
 
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @return A list containing the imageIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getImageIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getImageIdsList());
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @return The count of imageIds.
+     */
+    @java.lang.Override
+    public int getImageIdsCount() {
+      return instance.getImageIdsCount();
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param index The index of the element to return.
+     * @return The imageIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getImageIds(int index) {
+      return instance.getImageIds(index);
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the imageIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getImageIdsBytes(int index) {
+      return instance.getImageIdsBytes(index);
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The imageIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setImageIds(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param value The imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addImageIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addImageIds(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param values The imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllImageIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllImageIds(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearImageIds() {
+      copyOnWrite();
+      instance.clearImageIds();
+      return this;
+    }
+    /**
+     * <pre>
+     * Images for the first message, IDs from CompleteImageUpload (at most
+     * 6). The prompt may be empty when there are images.
+     * </pre>
+     *
+     * <code>repeated string image_ids = 9 [json_name = "imageIds"];</code>
+     * @param value The bytes of the imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addImageIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addImageIdsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CreateSessionRequest)
   }
   @java.lang.Override
@@ -1339,10 +1617,11 @@ java.lang.String defaultValue) {
             "effort_",
             "mode_",
             "agent_",
+            "imageIds_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0001\u0001\u0000\u0001\u0208\u0002\u021a\u00032\u0004" +
-              "\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0001\u0002\u0000\u0001\u0208\u0002\u021a\u00032\u0004" +
+              "\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f\t\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

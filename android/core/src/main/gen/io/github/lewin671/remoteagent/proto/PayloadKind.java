@@ -100,6 +100,35 @@ public enum PayloadKind
    * <code>PAYLOAD_KIND_NOTIFY = 10;</code>
    */
   PAYLOAD_KIND_NOTIFY(10),
+  /**
+   * <pre>
+   * An ImagePayload, the display copy of an image in a session, sealed
+   * with the session key; the header's request_id is the image ID.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_IMAGE = 11;</code>
+   */
+  PAYLOAD_KIND_IMAGE(11),
+  /**
+   * <pre>
+   * An account preferences object (ProjectPrefs), sealed with the
+   * account-prefs key; the header's request_id is the object ID and seq
+   * its revision.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_ACCOUNT_PREFS = 12;</code>
+   */
+  PAYLOAD_KIND_ACCOUNT_PREFS(12),
+  /**
+   * <pre>
+   * A DeviceMeta describing a client device, sealed with the device-meta
+   * key; the header's request_id is the ID of the device described and
+   * seq the metadata's revision.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_DEVICE_META = 13;</code>
+   */
+  PAYLOAD_KIND_DEVICE_META(13),
   UNRECOGNIZED(-1),
   ;
 
@@ -188,6 +217,35 @@ public enum PayloadKind
    * <code>PAYLOAD_KIND_NOTIFY = 10;</code>
    */
   public static final int PAYLOAD_KIND_NOTIFY_VALUE = 10;
+  /**
+   * <pre>
+   * An ImagePayload, the display copy of an image in a session, sealed
+   * with the session key; the header's request_id is the image ID.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_IMAGE = 11;</code>
+   */
+  public static final int PAYLOAD_KIND_IMAGE_VALUE = 11;
+  /**
+   * <pre>
+   * An account preferences object (ProjectPrefs), sealed with the
+   * account-prefs key; the header's request_id is the object ID and seq
+   * its revision.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_ACCOUNT_PREFS = 12;</code>
+   */
+  public static final int PAYLOAD_KIND_ACCOUNT_PREFS_VALUE = 12;
+  /**
+   * <pre>
+   * A DeviceMeta describing a client device, sealed with the device-meta
+   * key; the header's request_id is the ID of the device described and
+   * seq the metadata's revision.
+   * </pre>
+   *
+   * <code>PAYLOAD_KIND_DEVICE_META = 13;</code>
+   */
+  public static final int PAYLOAD_KIND_DEVICE_META_VALUE = 13;
 
 
   @java.lang.Override
@@ -222,6 +280,9 @@ public enum PayloadKind
       case 8: return PAYLOAD_KIND_TERMINAL_INPUT;
       case 9: return PAYLOAD_KIND_PAIRING;
       case 10: return PAYLOAD_KIND_NOTIFY;
+      case 11: return PAYLOAD_KIND_IMAGE;
+      case 12: return PAYLOAD_KIND_ACCOUNT_PREFS;
+      case 13: return PAYLOAD_KIND_DEVICE_META;
       default: return null;
     }
   }

@@ -74,6 +74,39 @@ public interface ServerFrameOrBuilder extends
   io.github.lewin671.remoteagent.proto.MachineRemoved getMachineRemoved();
 
   /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   * @return Whether the accountPrefsUpdated field is set.
+   */
+  boolean hasAccountPrefsUpdated();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsUpdated account_prefs_updated = 7 [json_name = "accountPrefsUpdated"];</code>
+   * @return The accountPrefsUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsUpdated getAccountPrefsUpdated();
+
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   * @return Whether the deviceUpdated field is set.
+   */
+  boolean hasDeviceUpdated();
+  /**
+   * <code>.remoteagent.v1.DeviceUpdated device_updated = 8 [json_name = "deviceUpdated"];</code>
+   * @return The deviceUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.DeviceUpdated getDeviceUpdated();
+
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   * @return Whether the deviceRemoved field is set.
+   */
+  boolean hasDeviceRemoved();
+  /**
+   * <code>.remoteagent.v1.DeviceRemoved device_removed = 9 [json_name = "deviceRemoved"];</code>
+   * @return The deviceRemoved.
+   */
+  io.github.lewin671.remoteagent.proto.DeviceRemoved getDeviceRemoved();
+
+  /**
    * <pre>
    * To daemons.
    * </pre>

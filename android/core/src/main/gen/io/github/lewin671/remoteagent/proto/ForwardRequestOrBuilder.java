@@ -24,7 +24,8 @@ public interface ForwardRequestOrBuilder extends
 
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>
@@ -33,7 +34,8 @@ public interface ForwardRequestOrBuilder extends
   boolean hasCommand();
   /**
    * <pre>
-   * COMMAND envelope.
+   * COMMAND envelope. Its header's sender must be the calling device, or
+   * the server refuses it.
    * </pre>
    *
    * <code>.remoteagent.v1.Envelope command = 2 [json_name = "command"];</code>

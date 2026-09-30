@@ -22,6 +22,8 @@ public  final class InputState extends
   private InputState() {
     requestId_ = "";
     reason_ = "";
+    text_ = "";
+    imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int REQUEST_ID_FIELD_NUMBER = 1;
   private java.lang.String requestId_;
@@ -119,7 +121,9 @@ public  final class InputState extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -133,7 +137,9 @@ public  final class InputState extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -148,7 +154,9 @@ public  final class InputState extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -165,7 +173,9 @@ public  final class InputState extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -178,7 +188,9 @@ public  final class InputState extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -189,6 +201,236 @@ public  final class InputState extends
     checkByteStringIsUtf8(value);
     reason_ = value.toStringUtf8();
 
+  }
+
+  public static final int STAGE_FIELD_NUMBER = 4;
+  private int stage_;
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @return The enum numeric value on the wire for stage.
+   */
+  @java.lang.Override
+  public int getStageValue() {
+    return stage_;
+  }
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @return The stage.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.InputStage getStage() {
+    io.github.lewin671.remoteagent.proto.InputStage result = io.github.lewin671.remoteagent.proto.InputStage.forNumber(stage_);
+    return result == null ? io.github.lewin671.remoteagent.proto.InputStage.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @param value The enum numeric value on the wire for stage to set.
+   */
+  private void setStageValue(int value) {
+      stage_ = value;
+  }
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @param value The stage to set.
+   */
+  private void setStage(io.github.lewin671.remoteagent.proto.InputStage value) {
+    stage_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   */
+  private void clearStage() {
+
+    stage_ = 0;
+  }
+
+  public static final int TEXT_FIELD_NUMBER = 5;
+  private java.lang.String text_;
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @return The text.
+   */
+  @java.lang.Override
+  public java.lang.String getText() {
+    return text_;
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @return The bytes for text.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(text_);
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @param value The text to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    text_ = value;
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   */
+  private void clearText() {
+
+    text_ = getDefaultInstance().getText();
+  }
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @param value The bytes for text to set.
+   */
+  private void setTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    text_ = value.toStringUtf8();
+
+  }
+
+  public static final int IMAGE_IDS_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> imageIds_;
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @return A list containing the imageIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getImageIdsList() {
+    return imageIds_;
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @return The count of imageIds.
+   */
+  @java.lang.Override
+  public int getImageIdsCount() {
+    return imageIds_.size();
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getImageIds(int index) {
+    return imageIds_.get(index);
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the imageIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getImageIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        imageIds_.get(index));
+  }
+  private void ensureImageIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        imageIds_;  if (!tmp.isModifiable()) {
+      imageIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The imageIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageIdsIsMutable();
+    imageIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param value The imageIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImageIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImageIdsIsMutable();
+    imageIds_.add(value);
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param values The imageIds to add.
+   */
+  private void addAllImageIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureImageIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, imageIds_);
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   */
+  private void clearImageIds() {
+    imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param value The bytes of the imageIds to add.
+   */
+  private void addImageIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureImageIdsIsMutable();
+    imageIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.proto.InputState parseFrom(
@@ -392,7 +634,9 @@ public  final class InputState extends
      * <pre>
      * Why a message was CANCELED when the user did not cancel it: "exited",
      * the session ended before it was written. Empty for the user's own
-     * cancel.
+     * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+     * "input_changed" (the input box held something else), "timeout",
+     * "restarted" (the daemon stopped while writing), "write_failed".
      * </pre>
      *
      * <code>string reason = 3 [json_name = "reason"];</code>
@@ -406,7 +650,9 @@ public  final class InputState extends
      * <pre>
      * Why a message was CANCELED when the user did not cancel it: "exited",
      * the session ended before it was written. Empty for the user's own
-     * cancel.
+     * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+     * "input_changed" (the input box held something else), "timeout",
+     * "restarted" (the daemon stopped while writing), "write_failed".
      * </pre>
      *
      * <code>string reason = 3 [json_name = "reason"];</code>
@@ -421,7 +667,9 @@ public  final class InputState extends
      * <pre>
      * Why a message was CANCELED when the user did not cancel it: "exited",
      * the session ended before it was written. Empty for the user's own
-     * cancel.
+     * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+     * "input_changed" (the input box held something else), "timeout",
+     * "restarted" (the daemon stopped while writing), "write_failed".
      * </pre>
      *
      * <code>string reason = 3 [json_name = "reason"];</code>
@@ -438,7 +686,9 @@ public  final class InputState extends
      * <pre>
      * Why a message was CANCELED when the user did not cancel it: "exited",
      * the session ended before it was written. Empty for the user's own
-     * cancel.
+     * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+     * "input_changed" (the input box held something else), "timeout",
+     * "restarted" (the daemon stopped while writing), "write_failed".
      * </pre>
      *
      * <code>string reason = 3 [json_name = "reason"];</code>
@@ -453,7 +703,9 @@ public  final class InputState extends
      * <pre>
      * Why a message was CANCELED when the user did not cancel it: "exited",
      * the session ended before it was written. Empty for the user's own
-     * cancel.
+     * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+     * "input_changed" (the input box held something else), "timeout",
+     * "restarted" (the daemon stopped while writing), "write_failed".
      * </pre>
      *
      * <code>string reason = 3 [json_name = "reason"];</code>
@@ -464,6 +716,238 @@ public  final class InputState extends
         com.google.protobuf.ByteString value) {
       copyOnWrite();
       instance.setReasonBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * With QUEUED, and on later updates while it is being written.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+     * @return The enum numeric value on the wire for stage.
+     */
+    @java.lang.Override
+    public int getStageValue() {
+      return instance.getStageValue();
+    }
+    /**
+     * <pre>
+     * With QUEUED, and on later updates while it is being written.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+     * @param value The stage to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStageValue(int value) {
+      copyOnWrite();
+      instance.setStageValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With QUEUED, and on later updates while it is being written.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+     * @return The stage.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.InputStage getStage() {
+      return instance.getStage();
+    }
+    /**
+     * <pre>
+     * With QUEUED, and on later updates while it is being written.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+     * @param value The enum numeric value on the wire for stage to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStage(io.github.lewin671.remoteagent.proto.InputStage value) {
+      copyOnWrite();
+      instance.setStage(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * With QUEUED, and on later updates while it is being written.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStage() {
+      copyOnWrite();
+      instance.clearStage();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Set with the first QUEUED state: what was accepted, so that every
+     * client can show the shared queue. image_ids are the upload IDs.
+     * </pre>
+     *
+     * <code>string text = 5 [json_name = "text"];</code>
+     * @return The text.
+     */
+    @java.lang.Override
+    public java.lang.String getText() {
+      return instance.getText();
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state: what was accepted, so that every
+     * client can show the shared queue. image_ids are the upload IDs.
+     * </pre>
+     *
+     * <code>string text = 5 [json_name = "text"];</code>
+     * @return The bytes for text.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getTextBytes() {
+      return instance.getTextBytes();
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state: what was accepted, so that every
+     * client can show the shared queue. image_ids are the upload IDs.
+     * </pre>
+     *
+     * <code>string text = 5 [json_name = "text"];</code>
+     * @param value The text to set.
+     * @return This builder for chaining.
+     */
+    public Builder setText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setText(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state: what was accepted, so that every
+     * client can show the shared queue. image_ids are the upload IDs.
+     * </pre>
+     *
+     * <code>string text = 5 [json_name = "text"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearText() {
+      copyOnWrite();
+      instance.clearText();
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with the first QUEUED state: what was accepted, so that every
+     * client can show the shared queue. image_ids are the upload IDs.
+     * </pre>
+     *
+     * <code>string text = 5 [json_name = "text"];</code>
+     * @param value The bytes for text to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @return A list containing the imageIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getImageIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getImageIdsList());
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @return The count of imageIds.
+     */
+    @java.lang.Override
+    public int getImageIdsCount() {
+      return instance.getImageIdsCount();
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param index The index of the element to return.
+     * @return The imageIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getImageIds(int index) {
+      return instance.getImageIds(index);
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the imageIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getImageIdsBytes(int index) {
+      return instance.getImageIdsBytes(index);
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The imageIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setImageIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setImageIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param value The imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addImageIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addImageIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param values The imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllImageIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllImageIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearImageIds() {
+      copyOnWrite();
+      instance.clearImageIds();
+      return this;
+    }
+    /**
+     * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+     * @param value The bytes of the imageIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addImageIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addImageIdsBytes(value);
       return this;
     }
 
@@ -486,10 +970,13 @@ public  final class InputState extends
             "requestId_",
             "status_",
             "reason_",
+            "stage_",
+            "text_",
+            "imageIds_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0208\u0004\f\u0005\u0208\u0006\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -15,6 +15,9 @@ public  final class ForwardCall extends
     // @@protoc_insertion_point(message_implements:remoteagent.v1.ForwardCall)
     ForwardCallOrBuilder {
   private ForwardCall() {
+    senderDeviceId_ = "";
+    senderRegistration_ = com.google.protobuf.ByteString.EMPTY;
+    senderRegistrationSignature_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -101,6 +104,148 @@ public  final class ForwardCall extends
   private void clearCommand() {
     command_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int SENDER_DEVICE_ID_FIELD_NUMBER = 3;
+  private java.lang.String senderDeviceId_;
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @return The senderDeviceId.
+   */
+  @java.lang.Override
+  public java.lang.String getSenderDeviceId() {
+    return senderDeviceId_;
+  }
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @return The bytes for senderDeviceId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSenderDeviceIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(senderDeviceId_);
+  }
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @param value The senderDeviceId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSenderDeviceId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    senderDeviceId_ = value;
+  }
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   */
+  private void clearSenderDeviceId() {
+
+    senderDeviceId_ = getDefaultInstance().getSenderDeviceId();
+  }
+  /**
+   * <pre>
+   * The logged-in device that called Forward, and its registration with
+   * the account's signature as stored at RegisterDevice. The daemon checks
+   * the registration against the account key and the envelope's
+   * signature against the device key, so a server cannot make up a
+   * sender; without a signature the sender is unverified.
+   * </pre>
+   *
+   * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+   * @param value The bytes for senderDeviceId to set.
+   */
+  private void setSenderDeviceIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    senderDeviceId_ = value.toStringUtf8();
+
+  }
+
+  public static final int SENDER_REGISTRATION_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString senderRegistration_;
+  /**
+   * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+   * @return The senderRegistration.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSenderRegistration() {
+    return senderRegistration_;
+  }
+  /**
+   * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+   * @param value The senderRegistration to set.
+   */
+  private void setSenderRegistration(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    senderRegistration_ = value;
+  }
+  /**
+   * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+   */
+  private void clearSenderRegistration() {
+
+    senderRegistration_ = getDefaultInstance().getSenderRegistration();
+  }
+
+  public static final int SENDER_REGISTRATION_SIGNATURE_FIELD_NUMBER = 5;
+  private com.google.protobuf.ByteString senderRegistrationSignature_;
+  /**
+   * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+   * @return The senderRegistrationSignature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSenderRegistrationSignature() {
+    return senderRegistrationSignature_;
+  }
+  /**
+   * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+   * @param value The senderRegistrationSignature to set.
+   */
+  private void setSenderRegistrationSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    senderRegistrationSignature_ = value;
+  }
+  /**
+   * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+   */
+  private void clearSenderRegistrationSignature() {
+
+    senderRegistrationSignature_ = getDefaultInstance().getSenderRegistrationSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.ForwardCall parseFrom(
@@ -287,6 +432,151 @@ public  final class ForwardCall extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The logged-in device that called Forward, and its registration with
+     * the account's signature as stored at RegisterDevice. The daemon checks
+     * the registration against the account key and the envelope's
+     * signature against the device key, so a server cannot make up a
+     * sender; without a signature the sender is unverified.
+     * </pre>
+     *
+     * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+     * @return The senderDeviceId.
+     */
+    @java.lang.Override
+    public java.lang.String getSenderDeviceId() {
+      return instance.getSenderDeviceId();
+    }
+    /**
+     * <pre>
+     * The logged-in device that called Forward, and its registration with
+     * the account's signature as stored at RegisterDevice. The daemon checks
+     * the registration against the account key and the envelope's
+     * signature against the device key, so a server cannot make up a
+     * sender; without a signature the sender is unverified.
+     * </pre>
+     *
+     * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+     * @return The bytes for senderDeviceId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSenderDeviceIdBytes() {
+      return instance.getSenderDeviceIdBytes();
+    }
+    /**
+     * <pre>
+     * The logged-in device that called Forward, and its registration with
+     * the account's signature as stored at RegisterDevice. The daemon checks
+     * the registration against the account key and the envelope's
+     * signature against the device key, so a server cannot make up a
+     * sender; without a signature the sender is unverified.
+     * </pre>
+     *
+     * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+     * @param value The senderDeviceId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSenderDeviceId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setSenderDeviceId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The logged-in device that called Forward, and its registration with
+     * the account's signature as stored at RegisterDevice. The daemon checks
+     * the registration against the account key and the envelope's
+     * signature against the device key, so a server cannot make up a
+     * sender; without a signature the sender is unverified.
+     * </pre>
+     *
+     * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSenderDeviceId() {
+      copyOnWrite();
+      instance.clearSenderDeviceId();
+      return this;
+    }
+    /**
+     * <pre>
+     * The logged-in device that called Forward, and its registration with
+     * the account's signature as stored at RegisterDevice. The daemon checks
+     * the registration against the account key and the envelope's
+     * signature against the device key, so a server cannot make up a
+     * sender; without a signature the sender is unverified.
+     * </pre>
+     *
+     * <code>string sender_device_id = 3 [json_name = "senderDeviceId"];</code>
+     * @param value The bytes for senderDeviceId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSenderDeviceIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSenderDeviceIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+     * @return The senderRegistration.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSenderRegistration() {
+      return instance.getSenderRegistration();
+    }
+    /**
+     * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+     * @param value The senderRegistration to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSenderRegistration(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSenderRegistration(value);
+      return this;
+    }
+    /**
+     * <code>bytes sender_registration = 4 [json_name = "senderRegistration"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSenderRegistration() {
+      copyOnWrite();
+      instance.clearSenderRegistration();
+      return this;
+    }
+
+    /**
+     * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+     * @return The senderRegistrationSignature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSenderRegistrationSignature() {
+      return instance.getSenderRegistrationSignature();
+    }
+    /**
+     * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+     * @param value The senderRegistrationSignature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSenderRegistrationSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSenderRegistrationSignature(value);
+      return this;
+    }
+    /**
+     * <code>bytes sender_registration_signature = 5 [json_name = "senderRegistrationSignature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSenderRegistrationSignature() {
+      copyOnWrite();
+      instance.clearSenderRegistrationSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardCall)
   }
   @java.lang.Override
@@ -306,10 +596,13 @@ public  final class ForwardCall extends
             "bitField0_",
             "callId_",
             "command_",
+            "senderDeviceId_",
+            "senderRegistration_",
+            "senderRegistrationSignature_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
-              "\u0000";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0003\u0208\u0004\n\u0005\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

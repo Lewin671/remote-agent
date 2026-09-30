@@ -187,6 +187,17 @@ service ClientService {
   // target per type: Web Push and FCM can be set side by side.
   // SetPushSubscription is the same for Web Push.
   rpc SetPushTarget(SetPushTargetRequest) returns (SetPushTargetResponse);
+  // GetImage returns the display copy of an image in a session.
+  rpc GetImage(GetImageRequest) returns (GetImageResponse);
+  // ListDevices lists the account's devices, machines and clients.
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  // PutDeviceMeta replaces a client device's sealed metadata if its
+  // revision is still the expected one.
+  rpc PutDeviceMeta(PutDeviceMetaRequest) returns (PutDeviceMetaResponse);
+  // Account preference objects, stored sealed and replaced with a check
+  // of the expected revision.
+  rpc GetAccountPrefs(GetAccountPrefsRequest) returns (GetAccountPrefsResponse);
+  rpc PutAccountPrefs(PutAccountPrefsRequest) returns (PutAccountPrefsResponse);
 }
 
 message Machine {
@@ -243,7 +254,8 @@ message GetEventsResponse {
 
 message ForwardRequest {
   string machine_id = 1;
-  // COMMAND envelope.
+  // COMMAND envelope. Its header's sender must be the calling device, or
+  // the server refuses it.
   Envelope command = 2;
 }
 
@@ -262,6 +274,10 @@ service MachineService {
   rpc ListSessionHeads(ListSessionHeadsRequest) returns (ListSessionHeadsResponse);
   // Notify asks the server to push a notification with generic text.
   rpc Notify(NotifyRequest) returns (NotifyResponse);
+  // PutImage stores the display copy of an image in one of the machine's
+  // sessions. Storing an image ID again is a no-op. Fails with
+  // "resource_exhausted" when the account's image quota is full.
+  rpc PutImage(PutImageRequest) returns (PutImageResponse);
 }
 
 message PutMachineRequest {
@@ -327,6 +343,9 @@ message ServerFrame {
     SessionUpdated session_updated = 3;
     MachineUpdated machine_updated = 4;
     MachineRemoved machine_removed = 6;
+    AccountPrefsUpdated account_prefs_updated = 7;
+    DeviceUpdated device_updated = 8;
+    DeviceRemoved device_removed = 9;
     // To daemons.
     ForwardCall forward_call = 5;
   }
@@ -360,6 +379,14 @@ message ForwardCall {
   // Server-chosen ID matching the reply to the call.
   uint64 call_id = 1;
   Envelope command = 2;
+  // The logged-in device that called Forward, and its registration with
+  // the account's signature as stored at RegisterDevice. The daemon checks
+  // the registration against the account key and the envelope's
+  // signature against the device key, so a server cannot make up a
+  // sender; without a signature the sender is unverified.
+  string sender_device_id = 3;
+  bytes sender_registration = 4;
+  bytes sender_registration_signature = 5;
 }
 
 message ForwardReply {
@@ -444,3 +471,118 @@ message SetPushTargetResponse {
 }
 
 message NotifyResponse {}
+
+message GetImageRequest {
+  string session_id = 1;
+  string image_id = 2;
+}
+
+message GetImageResponse {
+  // IMAGE envelope; absent when expired.
+  Envelope image = 1;
+  // The image was stored but its retention ran out; only the preview in
+  // the event is left. An image never stored fails with "not_found".
+  bool expired = 2;
+  // Unix milliseconds when the server deletes the image.
+  int64 expires_ms = 3;
+}
+
+message PutImageRequest {
+  string session_id = 1;
+  string image_id = 2;
+  // IMAGE envelope, at most 1 MiB.
+  Envelope image = 3;
+}
+
+message PutImageResponse {
+  // Unix milliseconds when the server deletes the image.
+  int64 expires_ms = 1;
+}
+
+message Device {
+  string id = 1;
+  DeviceKind kind = 2;
+  int64 created_ms = 3;
+  // DEVICE_META envelope for a client, absent until one names it.
+  Envelope meta = 4;
+  // Revision of meta, 0 without one.
+  uint64 meta_revision = 5;
+}
+
+message ListDevicesRequest {}
+
+message ListDevicesResponse {
+  repeated Device devices = 1;
+  // The calling device.
+  string current_device_id = 2;
+}
+
+message PutDeviceMetaRequest {
+  string device_id = 1;
+  // The revision the change is based on, 0 for a device without
+  // metadata. The envelope's header seq must be this plus one.
+  uint64 expected_revision = 2;
+  // DEVICE_META envelope.
+  Envelope meta = 3;
+}
+
+message PutDeviceMetaResponse {
+  // False when the stored revision was not the expected one; device is
+  // then what is stored, for the client to redo its change on. A retry
+  // of a write that went through (same envelope) counts as applied.
+  bool applied = 1;
+  Device device = 2;
+}
+
+// AccountPrefsObject is a sealed account preferences object. The server
+// sees only its ID, revision and size.
+message AccountPrefsObject {
+  // "project-prefs" holds a ProjectPrefs.
+  string object_id = 1;
+  // 0 while the object does not exist.
+  uint64 revision = 2;
+  // ACCOUNT_PREFS envelope; absent at revision 0.
+  Envelope envelope = 3;
+  int64 updated_ms = 4;
+}
+
+message GetAccountPrefsRequest {
+  string object_id = 1;
+}
+
+message GetAccountPrefsResponse {
+  AccountPrefsObject object = 1;
+}
+
+message PutAccountPrefsRequest {
+  string object_id = 1;
+  // The revision the change is based on, 0 to create the object. The
+  // envelope's header seq must be this plus one.
+  uint64 expected_revision = 2;
+  Envelope envelope = 3;
+}
+
+message PutAccountPrefsResponse {
+  // False when the stored revision was not the expected one; object is
+  // then what is stored, and the client redoes its operation (pin, hide,
+  // restore; never a toggle) on it. A retry of a write that went through
+  // (same envelope) counts as applied.
+  bool applied = 1;
+  AccountPrefsObject object = 2;
+}
+
+// AccountPrefsUpdated is pushed to clients after an object changed.
+message AccountPrefsUpdated {
+  AccountPrefsObject object = 1;
+}
+
+// DeviceUpdated is pushed to clients when a device registers or its
+// metadata changes.
+message DeviceUpdated {
+  Device device = 1;
+}
+
+// DeviceRemoved is pushed to clients when a device was removed.
+message DeviceRemoved {
+  string device_id = 1;
+}

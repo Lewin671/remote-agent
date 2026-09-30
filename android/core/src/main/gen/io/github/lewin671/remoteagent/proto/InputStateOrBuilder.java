@@ -37,7 +37,9 @@ public interface InputStateOrBuilder extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -48,7 +50,9 @@ public interface InputStateOrBuilder extends
    * <pre>
    * Why a message was CANCELED when the user did not cancel it: "exited",
    * the session ended before it was written. Empty for the user's own
-   * cancel.
+   * cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+   * "input_changed" (the input box held something else), "timeout",
+   * "restarted" (the daemon stopped while writing), "write_failed".
    * </pre>
    *
    * <code>string reason = 3 [json_name = "reason"];</code>
@@ -56,4 +60,70 @@ public interface InputStateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getReasonBytes();
+
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @return The enum numeric value on the wire for stage.
+   */
+  int getStageValue();
+  /**
+   * <pre>
+   * With QUEUED, and on later updates while it is being written.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.InputStage stage = 4 [json_name = "stage"];</code>
+   * @return The stage.
+   */
+  io.github.lewin671.remoteagent.proto.InputStage getStage();
+
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @return The text.
+   */
+  java.lang.String getText();
+  /**
+   * <pre>
+   * Set with the first QUEUED state: what was accepted, so that every
+   * client can show the shared queue. image_ids are the upload IDs.
+   * </pre>
+   *
+   * <code>string text = 5 [json_name = "text"];</code>
+   * @return The bytes for text.
+   */
+  com.google.protobuf.ByteString
+      getTextBytes();
+
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @return A list containing the imageIds.
+   */
+  java.util.List<java.lang.String>
+      getImageIdsList();
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @return The count of imageIds.
+   */
+  int getImageIdsCount();
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  java.lang.String getImageIds(int index);
+  /**
+   * <code>repeated string image_ids = 6 [json_name = "imageIds"];</code>
+   * @param index The index of the element to return.
+   * @return The imageIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getImageIdsBytes(int index);
 }

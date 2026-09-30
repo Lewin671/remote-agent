@@ -14,6 +14,11 @@ message Event {
   google.protobuf.Timestamp time = 3;
   // Codex turn the event belongs to, if any.
   string turn_id = 4;
+  // Who caused the event, when the daemon knows: set on InputState,
+  // UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
+  // SettingsChanged and an interrupted TurnEnded. Absent from daemons
+  // older than v2 and when unknown.
+  Origin origin = 5;
 
   oneof kind {
     UserMessage user_message = 10;
@@ -33,7 +38,133 @@ message Event {
     PlanProposed plan_proposed = 24;
     SettingsChanged settings_changed = 25;
     ToolStarted tool_started = 26;
+    ImageGenerated image_generated = 27;
+    PlanAnswered plan_answered = 28;
   }
+}
+
+// OriginKind says where an action came from.
+enum OriginKind {
+  ORIGIN_KIND_UNSPECIFIED = 0;
+  // A client device whose command carried a valid signature by its
+  // device key, registered with the account key (Envelope.signature).
+  // device_id names it.
+  ORIGIN_KIND_CLIENT = 1;
+  // A client command without a signature, e.g. from a client older than
+  // v2. device_id is the device the server says sent it, which is not
+  // proof: show it as "another client", not by name.
+  ORIGIN_KIND_UNVERIFIED_CLIENT = 2;
+  // The computer: typed in the local terminal, or sent with the local
+  // remote-agent command.
+  ORIGIN_KIND_LOCAL = 3;
+  // The CLI or the daemon on its own, e.g. Claude Code answering a
+  // finished background task, or an approval timing out.
+  ORIGIN_KIND_SYSTEM = 4;
+}
+
+// Origin is the source of an action. A client shows a device by name only
+// for ORIGIN_KIND_CLIENT, resolving device_id through ListDevices; a device
+// no longer listed shows as a short ID.
+message Origin {
+  OriginKind kind = 1;
+  string device_id = 2;
+  // The command's request ID, for ORIGIN_KIND_CLIENT and
+  // ORIGIN_KIND_UNVERIFIED_CLIENT.
+  string request_id = 3;
+}
+
+enum ImageFormat {
+  IMAGE_FORMAT_UNSPECIFIED = 0;
+  IMAGE_FORMAT_PNG = 1;
+  IMAGE_FORMAT_JPEG = 2;
+  IMAGE_FORMAT_WEBP = 3;
+  IMAGE_FORMAT_GIF = 4;
+}
+
+// ImageSource says how an image entered the session.
+enum ImageSource {
+  IMAGE_SOURCE_UNSPECIFIED = 0;
+  // Part of a user message: pasted in the terminal, or sent from a client
+  // (then ImageRef.upload_id is set).
+  IMAGE_SOURCE_USER = 1;
+  // Returned by a tool the agent called: Claude Code's Read, Codex's
+  // view_image, a browser screenshot.
+  IMAGE_SOURCE_TOOL = 2;
+  // Made by the agent (Codex image generation).
+  IMAGE_SOURCE_GENERATED = 3;
+}
+
+// ImageSync says whether the image's display copy can be fetched with
+// GetImage.
+enum ImageSync {
+  IMAGE_SYNC_UNSPECIFIED = 0;
+  // The display copy was uploaded before this event. GetImage may still
+  // report it expired later.
+  IMAGE_SYNC_SYNCED = 1;
+  // No display copy: it could not be made or uploaded (too large, not
+  // decodable, account quota full, upload kept failing). The preview is
+  // all there is; the original stays in the CLI's record on the computer.
+  IMAGE_SYNC_PREVIEW_ONLY = 2;
+  // Not even a preview: only what else the ref says (path, size) is known.
+  IMAGE_SYNC_NAME_ONLY = 3;
+}
+
+// ImageRef is one appearance of an image in a session. The same picture
+// appearing twice gets two refs that may share image_id (and so one
+// display copy), each with its own index, path and source.
+message ImageRef {
+  // Random 128-bit hex ID, never derived from the content, under which the
+  // display copy is stored (GetImage). Empty with IMAGE_SYNC_NAME_ONLY.
+  string image_id = 1;
+  ImageSource source = 2;
+  ImageSync sync = 3;
+  // N of the CLI's "[Image #N]" placeholder in the message text, 0 if the
+  // image has none (tool results, generated images).
+  int32 cli_index = 4;
+  // Where the image is on the computer, if the CLI recorded it: the file a
+  // tool read, a pasted file, a generated image's saved copy.
+  string path = 5;
+  // Format and pixel size of the image as the CLI recorded it; bytes is
+  // its encoded size.
+  ImageFormat format = 6;
+  int32 width = 7;
+  int32 height = 8;
+  int64 bytes = 9;
+  // The size of the picture before the CLI shrank it, when the CLI says
+  // (Claude Code does for Read); 0 when unknown or the same as width and
+  // height.
+  int32 original_width = 10;
+  int32 original_height = 11;
+  // Size of the display copy (long side at most 2048), 0 without one.
+  int32 display_width = 12;
+  int32 display_height = 13;
+  // Preview (long side at most 320) embedded in the event, so a list can
+  // draw it without fetching anything; JPEG, or PNG when transparent.
+  // Empty with IMAGE_SYNC_NAME_ONLY and when an oversized event had to
+  // drop it.
+  bytes preview = 14;
+  ImageFormat preview_format = 15;
+  int32 preview_width = 16;
+  int32 preview_height = 17;
+  // For an image sent from a client: the image ID CompleteImageUpload
+  // returned, so the sender can match its local thumbnail.
+  string upload_id = 18;
+}
+
+// ImageGenerated is an image the agent made (Codex's image generation).
+message ImageGenerated {
+  // The CLI's ID for the generation call.
+  string call_id = 1;
+  // The prompt as the CLI rewrote it, if recorded.
+  string revised_prompt = 2;
+  repeated ImageRef images = 3;
+}
+
+// PlanAnswered records an answer to the CLI's plan prompt sent through
+// remote-agent; the event's origin says by whom.
+message PlanAnswered {
+  // A PlanChoice value (local.proto).
+  int32 choice = 1;
 }
 
 // ToolStarted says the model called a tool; its ToolCall event follows when
@@ -60,9 +191,16 @@ enum Agent {
 }
 
 message UserMessage {
+  // The message as the CLI recorded it, including the CLI's "[Image #N]"
+  // placeholders; ImageRef.cli_index ties each to its image.
   string text = 1;
-  // Number of images attached to the message.
-  int32 image_count = 2;
+  // Number of images attached to the message. Deprecated: use images;
+  // still set for clients older than v2.
+  int32 image_count = 2 [deprecated = true];
+  repeated ImageRef images = 3;
+  // The Send request that submitted this message, when the daemon matched
+  // it; the event's origin says who sent it.
+  string request_id = 4;
 }
 
 message AgentMessage {
@@ -106,6 +244,8 @@ message ToolCall {
   // a shell call, else the input as compact JSON), however long; it ties
   // the call to its approval request.
   string input_digest = 11;
+  // Images the call returned, e.g. a file Claude Code read or a screenshot.
+  repeated ImageRef images = 12;
 }
 
 message TurnStarted {}
@@ -292,6 +432,29 @@ enum InputStatus {
   INPUT_STATUS_UNCONFIRMED = 3;
   // Removed from the queue before it was written.
   INPUT_STATUS_CANCELED = 4;
+  // Not submitted: something failed before Enter (e.g. the CLI did not
+  // turn an image into "[Image #N]"), and the input box was verified to be
+  // empty again. Nothing is retried automatically.
+  INPUT_STATUS_FAILED = 5;
+  // Not submitted, and remote-agent could not verify that the input box is
+  // back to what it was: part of the message may still be in it. It is
+  // neither submitted nor retried; the user sorts it out in the terminal.
+  INPUT_STATUS_NEEDS_TERMINAL = 6;
+}
+
+// InputStage is how far a queued message has got while it is written to
+// the terminal. The daemon saves the stage before every write, so after a
+// restart it knows what the terminal may hold.
+enum InputStage {
+  INPUT_STAGE_UNSPECIFIED = 0;
+  // Waiting for the input box.
+  INPUT_STAGE_WAITING = 1;
+  // Pasting the image files one by one.
+  INPUT_STAGE_PASTING_IMAGES = 2;
+  // Every image shows as "[Image #N]" in the input box.
+  INPUT_STAGE_IMAGES_RECOGNIZED = 3;
+  // The text and Enter were written; waiting for the CLI to record it.
+  INPUT_STAGE_SUBMITTING = 4;
 }
 
 // InputState tracks a message sent with Send. The text itself appears in
@@ -301,6 +464,14 @@ message InputState {
   InputStatus status = 2;
   // Why a message was CANCELED when the user did not cancel it: "exited",
   // the session ended before it was written. Empty for the user's own
-  // cancel.
+  // cancel. For FAILED and NEEDS_TERMINAL a code: "image_not_recognized",
+  // "input_changed" (the input box held something else), "timeout",
+  // "restarted" (the daemon stopped while writing), "write_failed".
   string reason = 3;
+  // With QUEUED, and on later updates while it is being written.
+  InputStage stage = 4;
+  // Set with the first QUEUED state: what was accepted, so that every
+  // client can show the shared queue. image_ids are the upload IDs.
+  string text = 5;
+  repeated string image_ids = 6;
 }

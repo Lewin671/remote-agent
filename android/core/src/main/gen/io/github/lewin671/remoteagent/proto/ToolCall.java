@@ -26,6 +26,7 @@ public  final class ToolCall extends
     status_ = "";
     itemType_ = "";
     inputDigest_ = "";
+    images_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -620,6 +621,147 @@ public  final class ToolCall extends
     checkByteStringIsUtf8(value);
     inputDigest_ = value.toStringUtf8();
 
+  }
+
+  public static final int IMAGES_FIELD_NUMBER = 12;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> images_;
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
+    return images_;
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.ImageRefOrBuilder> 
+      getImagesOrBuilderList() {
+    return images_;
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public int getImagesCount() {
+    return images_.size();
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
+    return images_.get(index);
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.ImageRefOrBuilder getImagesOrBuilder(
+      int index) {
+    return images_.get(index);
+  }
+  private void ensureImagesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> tmp = images_;
+    if (!tmp.isModifiable()) {
+      images_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImages(
+      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.add(value);
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addImages(
+      int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+    value.getClass();  // minimal bytecode null check
+    ensureImagesIsMutable();
+    images_.add(index, value);
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  private void addAllImages(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
+    ensureImagesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, images_);
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  private void clearImages() {
+    images_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Images the call returned, e.g. a file Claude Code read or a screenshot.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+   */
+  private void removeImages(int index) {
+    ensureImagesIsMutable();
+    images_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.ToolCall parseFrom(
@@ -1334,6 +1476,156 @@ public  final class ToolCall extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.ImageRef> getImagesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getImagesList());
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public int getImagesCount() {
+      return instance.getImagesCount();
+    }/**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ImageRef getImages(int index) {
+      return instance.getImages(index);
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder setImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.setImages(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder setImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder addImages(io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.addImages(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef value) {
+      copyOnWrite();
+      instance.addImages(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImages(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder addImages(
+        int index, io.github.lewin671.remoteagent.proto.ImageRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.addImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder addAllImages(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ImageRef> values) {
+      copyOnWrite();
+      instance.addAllImages(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder clearImages() {
+      copyOnWrite();
+      instance.clearImages();
+      return this;
+    }
+    /**
+     * <pre>
+     * Images the call returned, e.g. a file Claude Code read or a screenshot.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
+     */
+    public Builder removeImages(int index) {
+      copyOnWrite();
+      instance.removeImages(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolCall)
   }
   @java.lang.Override
@@ -1362,11 +1654,13 @@ public  final class ToolCall extends
             "durationMs_",
             "itemType_",
             "inputDigest_",
+            "images_",
+            io.github.lewin671.remoteagent.proto.ImageRef.class,
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002" +
-              "\n\u0208\u000b\u0208";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003\u0208" +
+              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002\n\u0208\u000b" +
+              "\u0208\f\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

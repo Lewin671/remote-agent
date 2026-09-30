@@ -23,6 +23,7 @@ public  final class Envelope extends
     header_ = com.google.protobuf.ByteString.EMPTY;
     nonce_ = com.google.protobuf.ByteString.EMPTY;
     ciphertext_ = com.google.protobuf.ByteString.EMPTY;
+    signature_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int HEADER_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString header_;
@@ -145,6 +146,72 @@ public  final class Envelope extends
   private void clearCiphertext() {
 
     ciphertext_ = getDefaultInstance().getCiphertext();
+  }
+
+  public static final int SIGNATURE_FIELD_NUMBER = 4;
+  private com.google.protobuf.ByteString signature_;
+  /**
+   * <pre>
+   * Ed25519 signature by the sending device's key, so that a daemon can
+   * tell which device sent a command even though the server is not
+   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+   * and from clients older than v2. It signs the bytes as transmitted:
+   * "remote-agent/v1/envelope-signature&#92;x00"
+   * || uint32be(len(header)) || header
+   * || uint32be(len(nonce)) || nonce
+   * || uint32be(len(ciphertext)) || ciphertext
+   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+   * header's sender must be the ID of the signing device.
+   * </pre>
+   *
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
+   * @return The signature.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSignature() {
+    return signature_;
+  }
+  /**
+   * <pre>
+   * Ed25519 signature by the sending device's key, so that a daemon can
+   * tell which device sent a command even though the server is not
+   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+   * and from clients older than v2. It signs the bytes as transmitted:
+   * "remote-agent/v1/envelope-signature&#92;x00"
+   * || uint32be(len(header)) || header
+   * || uint32be(len(nonce)) || nonce
+   * || uint32be(len(ciphertext)) || ciphertext
+   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+   * header's sender must be the ID of the signing device.
+   * </pre>
+   *
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
+   * @param value The signature to set.
+   */
+  private void setSignature(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    signature_ = value;
+  }
+  /**
+   * <pre>
+   * Ed25519 signature by the sending device's key, so that a daemon can
+   * tell which device sent a command even though the server is not
+   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+   * and from clients older than v2. It signs the bytes as transmitted:
+   * "remote-agent/v1/envelope-signature&#92;x00"
+   * || uint32be(len(header)) || header
+   * || uint32be(len(nonce)) || nonce
+   * || uint32be(len(ciphertext)) || ciphertext
+   * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+   * header's sender must be the ID of the signing device.
+   * </pre>
+   *
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
+   */
+  private void clearSignature() {
+
+    signature_ = getDefaultInstance().getSignature();
   }
 
   public static io.github.lewin671.remoteagent.proto.Envelope parseFrom(
@@ -375,6 +442,73 @@ public  final class Envelope extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Ed25519 signature by the sending device's key, so that a daemon can
+     * tell which device sent a command even though the server is not
+     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+     * and from clients older than v2. It signs the bytes as transmitted:
+     * "remote-agent/v1/envelope-signature&#92;x00"
+     * || uint32be(len(header)) || header
+     * || uint32be(len(nonce)) || nonce
+     * || uint32be(len(ciphertext)) || ciphertext
+     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+     * header's sender must be the ID of the signing device.
+     * </pre>
+     *
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
+     * @return The signature.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSignature() {
+      return instance.getSignature();
+    }
+    /**
+     * <pre>
+     * Ed25519 signature by the sending device's key, so that a daemon can
+     * tell which device sent a command even though the server is not
+     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+     * and from clients older than v2. It signs the bytes as transmitted:
+     * "remote-agent/v1/envelope-signature&#92;x00"
+     * || uint32be(len(header)) || header
+     * || uint32be(len(nonce)) || nonce
+     * || uint32be(len(ciphertext)) || ciphertext
+     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+     * header's sender must be the ID of the signing device.
+     * </pre>
+     *
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
+     * @param value The signature to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSignature(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSignature(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Ed25519 signature by the sending device's key, so that a daemon can
+     * tell which device sent a command even though the server is not
+     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
+     * and from clients older than v2. It signs the bytes as transmitted:
+     * "remote-agent/v1/envelope-signature&#92;x00"
+     * || uint32be(len(header)) || header
+     * || uint32be(len(nonce)) || nonce
+     * || uint32be(len(ciphertext)) || ciphertext
+     * (see internal/e2e SignEnvelope and testdata/v2-vectors.json). The
+     * header's sender must be the ID of the signing device.
+     * </pre>
+     *
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSignature() {
+      copyOnWrite();
+      instance.clearSignature();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Envelope)
   }
   @java.lang.Override
@@ -394,10 +528,11 @@ public  final class Envelope extends
             "header_",
             "nonce_",
             "ciphertext_",
+            "signature_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
-              "\n";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\n\u0002\n\u0003" +
+              "\n\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

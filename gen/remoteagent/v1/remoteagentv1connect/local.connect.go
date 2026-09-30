@@ -74,6 +74,21 @@ const (
 	// LocalServiceUpdateSettingsProcedure is the fully-qualified name of the LocalService's
 	// UpdateSettings RPC.
 	LocalServiceUpdateSettingsProcedure = "/remoteagent.v1.LocalService/UpdateSettings"
+	// LocalServiceBeginImageUploadProcedure is the fully-qualified name of the LocalService's
+	// BeginImageUpload RPC.
+	LocalServiceBeginImageUploadProcedure = "/remoteagent.v1.LocalService/BeginImageUpload"
+	// LocalServicePutImageChunkProcedure is the fully-qualified name of the LocalService's
+	// PutImageChunk RPC.
+	LocalServicePutImageChunkProcedure = "/remoteagent.v1.LocalService/PutImageChunk"
+	// LocalServiceGetImageUploadStatusProcedure is the fully-qualified name of the LocalService's
+	// GetImageUploadStatus RPC.
+	LocalServiceGetImageUploadStatusProcedure = "/remoteagent.v1.LocalService/GetImageUploadStatus"
+	// LocalServiceCompleteImageUploadProcedure is the fully-qualified name of the LocalService's
+	// CompleteImageUpload RPC.
+	LocalServiceCompleteImageUploadProcedure = "/remoteagent.v1.LocalService/CompleteImageUpload"
+	// LocalServiceAbortImageUploadProcedure is the fully-qualified name of the LocalService's
+	// AbortImageUpload RPC.
+	LocalServiceAbortImageUploadProcedure = "/remoteagent.v1.LocalService/AbortImageUpload"
 	// LocalServiceResolveApprovalProcedure is the fully-qualified name of the LocalService's
 	// ResolveApproval RPC.
 	LocalServiceResolveApprovalProcedure = "/remoteagent.v1.LocalService/ResolveApproval"
@@ -114,6 +129,14 @@ type LocalServiceClient interface {
 	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+	// Image upload: a client sends each image to the machine in chunks,
+	// before the Send or CreateSession that uses it. These are machine
+	// commands (no session). A transfer belongs to the device that began it.
+	BeginImageUpload(context.Context, *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error)
+	PutImageChunk(context.Context, *connect.Request[v1.PutImageChunkRequest]) (*connect.Response[v1.PutImageChunkResponse], error)
+	GetImageUploadStatus(context.Context, *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error)
+	CompleteImageUpload(context.Context, *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error)
+	AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest]) (*connect.ServerStreamForClient[v1.WatchEventsResponse], error)
@@ -229,6 +252,36 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("UpdateSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		beginImageUpload: connect.NewClient[v1.BeginImageUploadRequest, v1.BeginImageUploadResponse](
+			httpClient,
+			baseURL+LocalServiceBeginImageUploadProcedure,
+			connect.WithSchema(localServiceMethods.ByName("BeginImageUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		putImageChunk: connect.NewClient[v1.PutImageChunkRequest, v1.PutImageChunkResponse](
+			httpClient,
+			baseURL+LocalServicePutImageChunkProcedure,
+			connect.WithSchema(localServiceMethods.ByName("PutImageChunk")),
+			connect.WithClientOptions(opts...),
+		),
+		getImageUploadStatus: connect.NewClient[v1.GetImageUploadStatusRequest, v1.GetImageUploadStatusResponse](
+			httpClient,
+			baseURL+LocalServiceGetImageUploadStatusProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetImageUploadStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		completeImageUpload: connect.NewClient[v1.CompleteImageUploadRequest, v1.CompleteImageUploadResponse](
+			httpClient,
+			baseURL+LocalServiceCompleteImageUploadProcedure,
+			connect.WithSchema(localServiceMethods.ByName("CompleteImageUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		abortImageUpload: connect.NewClient[v1.AbortImageUploadRequest, v1.AbortImageUploadResponse](
+			httpClient,
+			baseURL+LocalServiceAbortImageUploadProcedure,
+			connect.WithSchema(localServiceMethods.ByName("AbortImageUpload")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveApproval: connect.NewClient[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse](
 			httpClient,
 			baseURL+LocalServiceResolveApprovalProcedure,
@@ -258,26 +311,31 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // localServiceClient implements LocalServiceClient.
 type localServiceClient struct {
-	createSession   *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	listSessions    *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	getSession      *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	send            *connect.Client[v1.SendRequest, v1.SendResponse]
-	interrupt       *connect.Client[v1.InterruptRequest, v1.InterruptResponse]
-	stopSession     *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
-	resumeSession   *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
-	cancelInput     *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
-	setModel        *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
-	listModels      *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
-	setApprovalMode *connect.Client[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse]
-	compact         *connect.Client[v1.CompactRequest, v1.CompactResponse]
-	answerPlan      *connect.Client[v1.AnswerPlanRequest, v1.AnswerPlanResponse]
-	listDirectories *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
-	getSettings     *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
-	updateSettings  *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
-	resolveApproval *connect.Client[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse]
-	answerQuestion  *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
-	watchEvents     *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
-	hook            *connect.Client[v1.HookRequest, v1.HookResponse]
+	createSession        *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	listSessions         *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	getSession           *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	send                 *connect.Client[v1.SendRequest, v1.SendResponse]
+	interrupt            *connect.Client[v1.InterruptRequest, v1.InterruptResponse]
+	stopSession          *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
+	resumeSession        *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
+	cancelInput          *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
+	setModel             *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
+	listModels           *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
+	setApprovalMode      *connect.Client[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse]
+	compact              *connect.Client[v1.CompactRequest, v1.CompactResponse]
+	answerPlan           *connect.Client[v1.AnswerPlanRequest, v1.AnswerPlanResponse]
+	listDirectories      *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
+	getSettings          *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	updateSettings       *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
+	beginImageUpload     *connect.Client[v1.BeginImageUploadRequest, v1.BeginImageUploadResponse]
+	putImageChunk        *connect.Client[v1.PutImageChunkRequest, v1.PutImageChunkResponse]
+	getImageUploadStatus *connect.Client[v1.GetImageUploadStatusRequest, v1.GetImageUploadStatusResponse]
+	completeImageUpload  *connect.Client[v1.CompleteImageUploadRequest, v1.CompleteImageUploadResponse]
+	abortImageUpload     *connect.Client[v1.AbortImageUploadRequest, v1.AbortImageUploadResponse]
+	resolveApproval      *connect.Client[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse]
+	answerQuestion       *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
+	watchEvents          *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
+	hook                 *connect.Client[v1.HookRequest, v1.HookResponse]
 }
 
 // CreateSession calls remoteagent.v1.LocalService.CreateSession.
@@ -360,6 +418,31 @@ func (c *localServiceClient) UpdateSettings(ctx context.Context, req *connect.Re
 	return c.updateSettings.CallUnary(ctx, req)
 }
 
+// BeginImageUpload calls remoteagent.v1.LocalService.BeginImageUpload.
+func (c *localServiceClient) BeginImageUpload(ctx context.Context, req *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error) {
+	return c.beginImageUpload.CallUnary(ctx, req)
+}
+
+// PutImageChunk calls remoteagent.v1.LocalService.PutImageChunk.
+func (c *localServiceClient) PutImageChunk(ctx context.Context, req *connect.Request[v1.PutImageChunkRequest]) (*connect.Response[v1.PutImageChunkResponse], error) {
+	return c.putImageChunk.CallUnary(ctx, req)
+}
+
+// GetImageUploadStatus calls remoteagent.v1.LocalService.GetImageUploadStatus.
+func (c *localServiceClient) GetImageUploadStatus(ctx context.Context, req *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error) {
+	return c.getImageUploadStatus.CallUnary(ctx, req)
+}
+
+// CompleteImageUpload calls remoteagent.v1.LocalService.CompleteImageUpload.
+func (c *localServiceClient) CompleteImageUpload(ctx context.Context, req *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error) {
+	return c.completeImageUpload.CallUnary(ctx, req)
+}
+
+// AbortImageUpload calls remoteagent.v1.LocalService.AbortImageUpload.
+func (c *localServiceClient) AbortImageUpload(ctx context.Context, req *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error) {
+	return c.abortImageUpload.CallUnary(ctx, req)
+}
+
 // ResolveApproval calls remoteagent.v1.LocalService.ResolveApproval.
 func (c *localServiceClient) ResolveApproval(ctx context.Context, req *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {
 	return c.resolveApproval.CallUnary(ctx, req)
@@ -407,6 +490,14 @@ type LocalServiceHandler interface {
 	ListDirectories(context.Context, *connect.Request[v1.ListDirectoriesRequest]) (*connect.Response[v1.ListDirectoriesResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+	// Image upload: a client sends each image to the machine in chunks,
+	// before the Send or CreateSession that uses it. These are machine
+	// commands (no session). A transfer belongs to the device that began it.
+	BeginImageUpload(context.Context, *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error)
+	PutImageChunk(context.Context, *connect.Request[v1.PutImageChunkRequest]) (*connect.Response[v1.PutImageChunkResponse], error)
+	GetImageUploadStatus(context.Context, *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error)
+	CompleteImageUpload(context.Context, *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error)
+	AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest], *connect.ServerStream[v1.WatchEventsResponse]) error
@@ -518,6 +609,36 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("UpdateSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceBeginImageUploadHandler := connect.NewUnaryHandler(
+		LocalServiceBeginImageUploadProcedure,
+		svc.BeginImageUpload,
+		connect.WithSchema(localServiceMethods.ByName("BeginImageUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServicePutImageChunkHandler := connect.NewUnaryHandler(
+		LocalServicePutImageChunkProcedure,
+		svc.PutImageChunk,
+		connect.WithSchema(localServiceMethods.ByName("PutImageChunk")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceGetImageUploadStatusHandler := connect.NewUnaryHandler(
+		LocalServiceGetImageUploadStatusProcedure,
+		svc.GetImageUploadStatus,
+		connect.WithSchema(localServiceMethods.ByName("GetImageUploadStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceCompleteImageUploadHandler := connect.NewUnaryHandler(
+		LocalServiceCompleteImageUploadProcedure,
+		svc.CompleteImageUpload,
+		connect.WithSchema(localServiceMethods.ByName("CompleteImageUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceAbortImageUploadHandler := connect.NewUnaryHandler(
+		LocalServiceAbortImageUploadProcedure,
+		svc.AbortImageUpload,
+		connect.WithSchema(localServiceMethods.ByName("AbortImageUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceResolveApprovalHandler := connect.NewUnaryHandler(
 		LocalServiceResolveApprovalProcedure,
 		svc.ResolveApproval,
@@ -576,6 +697,16 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceGetSettingsHandler.ServeHTTP(w, r)
 		case LocalServiceUpdateSettingsProcedure:
 			localServiceUpdateSettingsHandler.ServeHTTP(w, r)
+		case LocalServiceBeginImageUploadProcedure:
+			localServiceBeginImageUploadHandler.ServeHTTP(w, r)
+		case LocalServicePutImageChunkProcedure:
+			localServicePutImageChunkHandler.ServeHTTP(w, r)
+		case LocalServiceGetImageUploadStatusProcedure:
+			localServiceGetImageUploadStatusHandler.ServeHTTP(w, r)
+		case LocalServiceCompleteImageUploadProcedure:
+			localServiceCompleteImageUploadHandler.ServeHTTP(w, r)
+		case LocalServiceAbortImageUploadProcedure:
+			localServiceAbortImageUploadHandler.ServeHTTP(w, r)
 		case LocalServiceResolveApprovalProcedure:
 			localServiceResolveApprovalHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerQuestionProcedure:
@@ -655,6 +786,26 @@ func (UnimplementedLocalServiceHandler) GetSettings(context.Context, *connect.Re
 
 func (UnimplementedLocalServiceHandler) UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.UpdateSettings is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) BeginImageUpload(context.Context, *connect.Request[v1.BeginImageUploadRequest]) (*connect.Response[v1.BeginImageUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.BeginImageUpload is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) PutImageChunk(context.Context, *connect.Request[v1.PutImageChunkRequest]) (*connect.Response[v1.PutImageChunkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.PutImageChunk is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetImageUploadStatus(context.Context, *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.GetImageUploadStatus is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) CompleteImageUpload(context.Context, *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.CompleteImageUpload is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.AbortImageUpload is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {
