@@ -234,6 +234,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // effective default the machine reports. Full access, or a default
   // nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
+  const modeText = cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）";
   return {
     remote,
     frozen: current.frozen,
@@ -252,7 +253,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     attachWhy: attachBlocked(remote, machine),
     machine,
     info,
-    line: [agentName(cfg.agent), cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）", machineName(machine), describeParts(cfg, machine, info).model].join(" · "),
+    line: [agentName(cfg.agent), modeText, machineName(machine), describeParts(cfg, machine, info).model].join(" · "),
+    modeText,
     create,
     busy,
     error,
@@ -550,7 +552,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
         <div className="list">
           <button className="mi" onClick={() => set({ model: "", effort: "" })}>
             <div className="mt">
-              默认模型<div className="md">用 {machineName(machine)} 的新会话默认设置</div>
+              默认模型<div className="md">用 {machineName(machine)} 的新项目默认设置</div>
             </div>
             {!cfg.model && <span className="ck">✓</span>}
           </button>
@@ -581,7 +583,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
     body = (
       <div className="list">
         {[
-          { mode: ApprovalMode.UNSPECIFIED, name: "默认", desc: def.mode ? `${machineName(machine)} 的默认：${modeName(def.mode)}` : `跟随 ${agentName(cfg.agent)} 自己的配置` },
+          { mode: ApprovalMode.UNSPECIFIED, name: "默认", desc: `跟随 ${agentName(cfg.agent)} 自己的配置` },
           { mode: ApprovalMode.ASK, name: "询问", desc: "需要审批时由你确认，超时拒绝" },
           noAuto
             ? { mode: ApprovalMode.AUTO, name: "自动", desc: "Haiku 没有自动模式", off: true }
@@ -646,7 +648,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             <button className="sr" onClick={() => setPick("mode")}>
               <span className="lbl">审批</span>
               <span className="v">
-                <em>{modeName(cfg.mode || def.mode) || "默认"}</em>
+                <em>{ns.modeText}</em>
               </span>
             </button>
           </div>

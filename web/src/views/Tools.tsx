@@ -2,25 +2,26 @@
 import { useState } from "react";
 import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
 import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
-import { clock, decisionText, toolClock, toolName as toolKindName, toolsSummary, type Derived, type RunningTool } from "../model";
+import { clock, decisionText, toolClock, toolsSummary, type Derived, type RunningTool } from "../model";
 import type { Remote } from "../remote";
 import { useNow } from "../ui";
 import { ImageStrip } from "./Images";
 
 export type Short = { text: (title: string) => string; path: (path: string) => string };
 export const asIs: Short = { text: (x) => x, path: (x) => x };
-export function toolTitle(t: Pick<ToolCall, "kind" | "title" | "itemType">, short: Short): string {
-  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short.path(t.title) : short.text(t.title || t.itemType);
+export function toolTitle(t: Pick<ToolCall, "kind" | "title">, short: Short): string {
+  return t.kind === ToolKind.FILE_CHANGE ? "编辑 " + short.path(t.title || "文件") : short.text(t.title || (t.kind === ToolKind.COMMAND ? "命令" : "工具"));
 }
-export function commandOf(t: Pick<RunningTool, "input" | "title" | "itemType">): string {
+export function commandOf(t: Pick<RunningTool, "input" | "title" | "kind">): string {
   if (t.input) {
     try { const v = JSON.parse(t.input); if (v && typeof v.command === "string") return v.command; } catch { return t.input; }
   }
-  return t.title || t.itemType;
+  return t.title || (t.kind === ToolKind.COMMAND ? "命令" : "工具");
 }
 export function awaitingApproval(t: RunningTool, approvals: Iterable<ApprovalRequested>): boolean {
-  if (!t.inputDigest) return false;
-  for (const a of approvals) if (a.inputDigest === t.inputDigest) return true;
+  for (const a of approvals) {
+    if (t.inputDigest ? a.inputDigest === t.inputDigest : !!a.command && (a.command === t.input || a.command === t.title)) return true;
+  }
   return false;
 }
 export function ActiveTool({ tool, d, unsettled, remote }: { tool: RunningTool; d: Derived; unsettled?: boolean; aborted?: boolean; remote: Remote }) {
@@ -40,5 +41,5 @@ export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short })
   return <><button className="tool single tgrp" onClick={() => setOpen((x) => !x)} aria-expanded={open}><span className="ok">✓</span><span>{toolsSummary(calls)}</span><span className="muted">{open ? "⌃" : "⌄"}</span></button>{open && <div className="grpbody">{calls.map((t, i) => <div className="tool single" key={i}><code>{toolTitle(t, short)}</code></div>)}</div>}<ImageStrip refs={images} className="under-tool" /></>;
 }
 export function BackgroundTool({ call, short }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
-  return <div className="tool single"><span className="sp faint" aria-label="后台运行" /><code>{toolTitle(call, short)}</code><span className="muted">{toolKindName(call)} · 后台运行</span></div>;
+  return <div className="tool single"><span className="sp faint" aria-label="后台运行" /><code>{toolTitle(call, short)}</code><span className="muted">后台运行</span></div>;
 }

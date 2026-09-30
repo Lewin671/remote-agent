@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, SendMode, SessionStatus } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, ApprovalRequestedSchema, EventSchema, InputStatus, SendMode, SessionStatus, ToolCallSchema, ToolKind } from "./gen/remoteagent/v1/event_pb";
 import { alwaysText, decisionText, derive, phaseOf, queuedIds } from "./model";
 import { DemoRemote, ANDROID, ME } from "./dev/demo";
 import { ApprovalActions } from "./views/Dock";
@@ -11,7 +11,7 @@ import { Home } from "./views/Home";
 import { SessionPage } from "./views/Session";
 import { useNewSession } from "./views/NewSession";
 import { switchMachine } from "./model";
-import { ToolGroup, ToolRow } from "./views/Tools";
+import { ActiveTool, BackgroundTool, ToolGroup, ToolRow } from "./views/Tools";
 import { PendingBubbles } from "./views/Queue";
 import type { CommandKind } from "./remote";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -117,6 +117,45 @@ it("renders tool one-liners and a folded run without output", () => {
   expect(host.textContent).toContain("退出码 1");
   expect(host.textContent).toContain("运行了 2 条命令");
   expect(host.querySelector(".toolout")).toBeNull();
+});
+
+it("shows waiting approval only on its matching running tool", () => {
+  const r = demo();
+  const d = derive([]);
+  const base = { since: Date.now() - 15_000, callId: "one", kind: ToolKind.COMMAND, itemType: "CommandExecution", seq: 1n };
+  const codex = { ...base, title: "go test ./...", input: "", inputDigest: "" };
+  d.approvals.set("other", create(ApprovalRequestedSchema, { approvalId: "other", command: "go build ./..." }));
+  mount(<ActiveTool tool={codex} d={d} remote={r} />);
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  d.approvals.set("codex", create(ApprovalRequestedSchema, { approvalId: "codex", command: codex.title }));
+  act(() => root!.render(<ActiveTool tool={codex} d={d} remote={r} />));
+  expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");
+  d.approvals.delete("codex");
+  act(() => root!.render(<ActiveTool tool={{ ...codex, title: "命令", input: "go test ./..." }} d={d} remote={r} />));
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  d.approvals.set("codex-input", create(ApprovalRequestedSchema, { approvalId: "codex-input", command: "go test ./..." }));
+  act(() => root!.render(<ActiveTool tool={{ ...codex, title: "命令", input: "go test ./..." }} d={d} remote={r} />));
+  expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");
+
+  const claude = { ...base, title: "npm test", input: '{"command":"npm test"}', inputDigest: "digest-one" };
+  d.approvals.set("wrong-digest", create(ApprovalRequestedSchema, { approvalId: "wrong-digest", command: "npm test", inputDigest: "digest-two" }));
+  act(() => root!.render(<ActiveTool tool={claude} d={d} remote={r} />));
+  expect(host.querySelector(".tool .muted")?.textContent).toMatch(/^0:1[0-9]$/);
+  d.approvals.set("claude", create(ApprovalRequestedSchema, { approvalId: "claude", inputDigest: "digest-one" }));
+  act(() => root!.render(<ActiveTool tool={claude} d={d} remote={r} />));
+  expect(host.querySelector(".tool .muted")?.textContent).toBe("等待审批");
+});
+
+it("shows background status without raw item types", () => {
+  const r = demo();
+  const short = { text: (x: string) => x, path: (x: string) => x };
+  const call = create(ToolCallSchema, { title: "go test", itemType: "ToolCall", kind: ToolKind.COMMAND });
+  mount(<BackgroundTool call={call} short={short} remote={r} />);
+  expect(host.querySelector(".tool .muted")?.textContent).toBe("后台运行");
+  expect(host.textContent).not.toContain("ToolCall");
+  act(() => root!.render(<BackgroundTool call={create(ToolCallSchema, { itemType: "CommandExecution", kind: ToolKind.COMMAND })} short={short} remote={r} />));
+  expect(host.textContent).toContain("命令");
+  expect(host.textContent).not.toContain("CommandExecution");
 });
 
 it("caps home running and other projects at five", () => {

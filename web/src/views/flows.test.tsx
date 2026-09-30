@@ -783,6 +783,23 @@ it("names a new project's default model as Codex does, even when /model hides it
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
   await fromMenu("新会话设置 ›");
   await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
+});
+
+it("shows the effective approval mode in project settings while keeping the default choice", async () => {
+  const r = demo();
+  // Codex reports its effective mode, with no explicit new-project override.
+  (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
+  r.draftMachines.set("/Users/me/Code/new", "mac");
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("自动"));
+  await fromMenu("新会话设置 ›");
+  expect(setting("审批")).toBe("自动");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("审批")));
+  const defaultOption = [...document.querySelectorAll<HTMLButtonElement>(".mi")].find((b) => b.textContent?.includes("跟随 Codex 自己的配置"));
+  expect(defaultOption?.textContent).toContain("默认");
+  expect(defaultOption?.querySelector(".ck")?.textContent).toBe("✓");
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
