@@ -306,7 +306,7 @@ export function PlanButtons({ remote, sid, full }: { remote: Remote; sid: string
     <>
       <div className="btns">
         <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
-          {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : "继续规划…"}
+          {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : "继续规划"}
         </button>
         <button className="btn pri" disabled={!!b} onClick={() => void plan.answer(PlanChoice.IMPLEMENT)}>
           {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : "批准执行"}
@@ -346,6 +346,12 @@ function PlanDock({ remote, sid, plan, more, onFull }: { remote: Remote; sid: st
         <div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>
       </div>
       <PlanButtons remote={remote} sid={sid} />
+      {/* Claude Code leaves plan mode for manual approval of edits. */}
+      {agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
+        <div className="foot">
+          <span>批准后使用询问模式</span>
+        </div>
+      )}
     </div>
   );
 }
