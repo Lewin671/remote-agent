@@ -201,7 +201,7 @@ Codex 能做的，Claude Code 都能做：本地 `remote-agent claude`、远程�
 
 C1–C3 已完成。C3 的验收在本机用真实的 Claude Code 2.1.284（haiku）手动走了一遍，全部通过（2026-09-29）：send 和本地草稿时排队、`events --follow` 按顺序输出一轮、approve / deny 附理由 / 超时拒绝、终端里先答时收回卡片、interrupt、单问 / 两问 / 多选提问的远程回答和本地先答、计划的远程批准、切换模型和审批模式（不可用的模式报错并回到原模式）、压缩、stop 后 resume 接着同一段对话、重启 daemon 后序号接着走；`remote-agent doctor claude` 全部通过。Codex 这边 `scripts/acceptance.sh` 照常通过。还没有 Claude Code 版的 `scripts/acceptance.sh`。
 
-C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`full_access_unavailable`；`Question.multi_select` 和 `AnswerQuestionRequest.options`；`APPROVAL_DECISION_TERMINAL`；`TurnContext.permission_mode`；`MachineMeta.agents`；`ListModelsRequest.agent`；`DaemonSettings.claude`。Claude Code 不支持计划的「清空上下文再执行」，没有账户额度，haiku 没有推理强度，也没有 auto 模式。
+C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`full_access_unavailable`；`Question.multi_select` 和 `AnswerQuestionRequest.options`；`APPROVAL_DECISION_TERMINAL`；`TurnContext.permission_mode`；`MachineMeta.agents`；`ListModelsRequest.agent`；`DaemonSettings.claude`。Claude Code 不支持计划的「清空上下文再执行」，当前还未采集账户额度（v2 设计见 [账户额度](architecture.md#账户额度)），haiku 没有推理强度，也没有 auto 模式。
 
 ## W 网页按 v1 改版
 
@@ -221,6 +221,7 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 - 新建卡片直接选择 CLI；机器与审批模式完整显示；输入期间配置稳定，切换 CLI 验证模型、强度和模式。
 - 统一输入区、独立中断入口、键盘精简设置行、上下文与模型面板、队列完整查看和取消反馈。
 - Claude Code 多选与长问题、计划操作差异、不可用模式、按 CLI 的设备默认设置、终端左右方向键。
+- 设备页按 CLI 展示账户额度（[architecture · 账户额度](architecture.md#账户额度)）；补采集、加密元数据与各端状态。验收：两个 CLI 可同时展示；单个窗口缺失、首次响应前、API 计费、读取失败、离线、重置时间已过和换账户时不误报为 0% 或可用；重新读取不发模型消息、不改终端输入。
 - 工具开始即显示、调用耗时与输入区固定摘要、并行和失败结果、断线冻结与后台状态；检查实际部署的开始事件是否及时到达。验收用一个耗时 Bash 调用，在结果返回前能看到命令；不承诺聊天中间输出流。
 - 项目常用、隐藏、撤销与恢复；隐藏项目的活动会话、审批提醒和通知入口仍可用；偏好在账户内加密同步；补账户偏好对象、修订检查与并发单项更新，断线时暂停修改。
 - 设备目录区分机器与客户端，补齐客户端加密元数据和设备目录接口；消息、队列与处理来源需要内层事件字段，现有协议不能直接提供完整的 v2 来源展示。来源缺失时降级为通用文案。
@@ -255,6 +256,8 @@ C4 要用到的协议变化：`Session.agent`、`mode`、`permission_mode`、`fu
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
 
 **Claude Code 待实测**
+
+- 额度采集：验证按会话注入 statusLine 或包装已有命令的可行性、保留原输出与退出行为、全局配置不被修改、不会影响 tmux 输入判定；在当前版本核对 5 小时 / 7 天字段、首次响应前与重置后的缺失、套餐和 API 登录方式的识别、账户变更与多会话归属、来源更新时间、失败反馈和本机重读。未验证前不能把官方 schema 当成已实现能力。
 
 - auto 模式下被分类器拦下的请求会不会弹权限框、触发 `PermissionRequest`（分类器放行的不触发，已实测；拦下的情况没能复现）
 - 以 bypass 启动时的风险确认弹窗（本机设置跳过了它）

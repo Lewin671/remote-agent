@@ -657,7 +657,7 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA 设计稿 · v2 · 2026-09-29 · 上一版 <a href="client-v1.html">v1</a></div>
+    <div class="sub">PWA 设计稿 · v2 · 2026-09-30 · 上一版 <a href="client-v1.html">v1</a></div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
@@ -666,6 +666,7 @@
 <div class="note">
   <h4>相对 v1 的改动</h4>
   <ul>
+    <li>设备页加入 Claude Code 额度入口；额度详情按 CLI 展示用量、重置与更新时间，补齐未获取、部分缺失、过期、读取失败和 API 计费状态。</li>
     <li>加入 Claude Code：新建卡片直接选择 CLI，列表和会话页显示 CLI；模型、推理强度、模式和计划操作按 CLI 能力显示。</li>
     <li>统一消息输入区：多行正文、模式、模型、上下文和发送放在同一块；运行中有独立中断入口，键盘弹出时只收起次要设置。</li>
     <li>队列默认显示数量和等待原因，点开查看全文和取消单条；补画取消中、失败和已经送入终端的状态。</li>
@@ -678,7 +679,7 @@
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#input">输入与队列</a><a href="#tools">工具执行</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -2811,6 +2812,7 @@ git status --short gen/</pre>
           <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62% · 14:10 重置</span></div><div class="bar"><i style="width:62%"></i></div></div>
           <div class="row col"><div style="display:flex"><span>本周</span><span class="v">已用 34% · 周四 10:00 重置</span></div><div class="bar"><i style="width:34%"></i></div></div>
         </div>
+        <div class="grp"><div class="row">Claude Code 额度<span class="v">5 小时已用 28% ›</span></div><a class="row" href="#quota">查看全部额度<span class="v">›</span></a></div>
         <div class="grp"><div class="row">Codex 版本<span class="v"><span class="warn-text">未验证 ·</span> 示例版本</span></div><div class="row">Claude Code 版本<span class="v">示例版本</span></div></div>
         <div class="glabel">Codex · 新会话默认设置</div>
         <div class="grp">
@@ -2826,7 +2828,93 @@ git status --short gen/</pre>
         </div>
       </div>
     </div>
-    <div class="cap">设置 › 设备：Codex 额度、已安装 CLI 版本、两套新会话默认值；Claude Code 不显示账户额度，未安装的 CLI 不显示设置</div>
+    <div class="cap">设置 › 设备：Codex 额度和 Claude Code 额度入口、已安装 CLI 版本、两套新会话默认值；点「查看全部额度」进入额度详情，未安装的 CLI 不显示设置</div>
+  </div>
+</div>
+
+<h2 id="quota">账户额度</h2>
+<div class="note" style="margin:0 0 20px">设置 › 设备 › 查看全部额度。分开显示这台机器上各 CLI 登录账户的额度；上下文仍在会话设置中。数值与时间都是示例；数据来源、状态规则见 <a href="../architecture.md#账户额度">architecture.md · 账户额度</a>，采集待验证项见 <a href="../plan.md#待确认">plan.md</a>。</div>
+<div class="screens">
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度</b><span>MacBook · 最近收到 9:40</span></span></div>
+      <div class="body">
+        <div class="glabel">Codex · Pro Lite</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62%</span></div><div class="bar"><i style="width:62%"></i></div><div class="hint">14:10 重置 · 最近收到 9:40</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34%</span></div><div class="bar"><i style="width:34%"></i></div><div class="hint">周四 10:00 重置 · 最近收到 9:40</div></div>
+        </div>
+        <div class="glabel">Claude Code</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 28%</span></div><div class="bar"><i style="width:28%"></i></div><div class="hint">13:20 重置 · 最近收到 9:38</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 46%</span></div><div class="bar"><i style="width:46%"></i></div><div class="hint">周五 18:00 重置 · 最近收到 9:38</div></div>
+        </div>
+        <div class="pad small muted">额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
+      </div>
+    </div>
+    <div class="cap">正常：按 CLI 分组；套餐只有读到时才显示，重置时间按客户端时区显示</div>
+  </div>
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度</b><span>MacBook · Claude Code</span></span></div>
+      <div class="body">
+        <div class="glabel">Claude Code</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v warn-text">已用 92%</span></div><div class="bar"><i style="width:92%;background:var(--orange)"></i></div><div class="hint">13:20 重置 · 最近收到 9:40</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">未获取</span></div><div class="hint">没有收到这项额度数据</div></div>
+        </div>
+        <div class="pad"><div class="banner warn">5 小时额度即将用尽</div><div class="hint">只有 5 小时用量可用；7 天额度暂时未知。</div></div>
+        <div class="grp"><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+      </div>
+    </div>
+    <div class="cap">部分缺失：缺哪项就标哪项；80% 起用橙色，100% 标「已用尽」，不自动切换 CLI、模型或阻止发送</div>
+  </div>
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度</b><span>MacBook · 离线</span></span></div>
+      <div class="body">
+        <div class="pad"><div class="banner warn">机器离线，显示上次记录</div></div>
+        <div class="glabel">Claude Code · 上次记录</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">上次已用 92%</span></div><div class="bar"><i style="width:92%;background:var(--gray)"></i></div><div class="hint">最近收到 昨天 9:40</div></div>
+          <div class="row col"><div style="display:flex"><span>重置时间已过</span><span class="v">等待更新</span></div><div class="hint">不能据此确认额度已经恢复</div></div>
+        </div>
+        <div class="grp"><div class="row muted">重新读取<span class="v">机器离线</span></div></div>
+      </div>
+    </div>
+    <div class="cap">离线、过期：保留上次记录，重置时间过去后等待更新；重新读取置灰</div>
+  </div>
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度</b><span>MacBook · 在线</span></span></div>
+      <div class="body">
+        <div class="pad"><div class="banner err">没能读取 Claude Code 额度</div></div>
+        <div class="glabel">Claude Code · 上次记录</div>
+        <div class="grp"><div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">上次已用 28%</span></div><div class="bar"><i style="width:28%;background:var(--gray)"></i></div><div class="hint">最近成功收到 9:20</div></div></div>
+        <div class="grp"><div class="row">重新读取<span class="v">›</span></div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        <div class="pad small muted">重新读取电脑上已有的额度记录，不会发消息消耗额度。</div>
+      </div>
+    </div>
+    <div class="cap">读取失败：保留带时间的上次记录；重新读取不保证从服务商获取新用量，终端入口只打开视图</div>
+  </div>
+  <div>
+    <div class="phone gray">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>账户额度 · 状态示例</b><span>Claude Code</span></span></div>
+      <div class="body">
+        <div class="glabel">尚未收到数据</div>
+        <div class="grp"><div class="row col"><b>暂未获取额度</b><div class="hint">等待 Claude Code 返回额度数据</div></div><div class="row">去终端查看 /usage<span class="v">›</span></div></div>
+        <div class="glabel">已确认 API 计费</div>
+        <div class="grp"><div class="row col"><b>API 计费</b><div class="hint">此处不提供订阅额度，请到服务商控制台查看用量和账单。</div></div></div>
+        <div class="glabel">当前版本或来源不支持</div>
+        <div class="grp"><div class="row col"><b>暂不支持读取额度</b><div class="hint">可在本机 Claude Code 中查看 /usage</div></div><div class="row">去终端<span class="v">›</span></div></div>
+      </div>
+    </div>
+    <div class="cap">三种独立状态：缺少额度字段不能推断为 API 计费，也不能显示为 0%；没有会话时终端入口提示先选择或打开会话</div>
   </div>
 </div>
 
@@ -3414,7 +3502,7 @@ git status --short gen/</pre>
         <div class="glabel">电脑 <a href="#devices" style="float:right">全部设备 ›</a></div>
         <div class="grp">
 
-          <div class="row"><span class="ico" style="background:#5b8def">⌘</span>MacBook<span class="v"><span class="dot idle"></span>在线 · 已用 34% ›</span></div>
+          <div class="row"><span class="ico" style="background:#5b8def">⌘</span>MacBook<span class="v"><span class="dot idle"></span>在线 · Codex 7 天已用 34% ›</span></div>
           <div class="row"><span class="ico" style="background:#5b8def">⌘</span>iMac<span class="v"><span class="dot off"></span>2 小时前 ›</span></div>
           <div class="row" style="color:var(--blue)">＋ 添加设备</div>
         </div>
