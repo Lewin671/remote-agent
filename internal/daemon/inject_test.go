@@ -173,8 +173,9 @@ func TestSendWithImagesLeavesForeignText(t *testing.T) {
 	}
 }
 
-// After a restart in the middle of pasting, what was pasted is cleared and
-// the message is not written again.
+// After a restart in the middle of pasting, the hold was released and the
+// user may have typed or pasted meanwhile: nothing is deleted, the message
+// is not written again and needs the terminal.
 func TestRestartWhilePastingImages(t *testing.T) {
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.png")
@@ -184,11 +185,11 @@ func TestRestartWhilePastingImages(t *testing.T) {
 	// The first image was taken, the daemon stopped before saving it.
 	h.term.setScreen(composerScreen("[Image #1]"))
 	runInjector(t, h)
-	eventually(t, "failed", func() bool {
+	eventually(t, "needs terminal", func() bool {
 		st := inputStates(h, "r1")
-		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_FAILED && st[len(st)-1].Reason == "restarted"
+		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL && st[len(st)-1].Reason == "restarted"
 	})
-	if w := h.term.written(); len(w) != 1 || w[0] != "\x15" {
+	if w := h.term.written(); len(w) != 0 {
 		t.Fatalf("writes %q", w)
 	}
 }

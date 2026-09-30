@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -43,5 +44,21 @@ func TestCreateRefusesDuplicateImages(t *testing.T) {
 	}
 	if len(h.d.sessions) != 0 {
 		t.Fatal("a session was created")
+	}
+}
+
+// G2: a placeholder on the first line and the user's draft on the next is
+// not the message's to clear: Ctrl-U would delete a line of the draft.
+func TestClearLeavesMultilineDrafts(t *testing.T) {
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	h.term.setScreen("\x1b[1m›\x1b[0m [Image #1]\n  my draft\n\n  GPT-6-Sol medium · /w\n")
+	c, _ := h.term.Control()
+	c.Hold(time.Second)
+	if h.s.clearPasted(c, input{Images: imgs}, []int32{1}, "GPT-6-Sol medium · /w", false, false) {
+		t.Fatal("cleared a box holding a draft line")
+	}
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("wrote %q", w)
 	}
 }

@@ -153,10 +153,13 @@ type Controller interface {
 	Analyze(styled string) Screen
 	// Paste is what to write to submit text.
 	Paste(text string) []byte
-	// ComposerText is the text in the input box, as shown, "" when it is
-	// empty; ok is false when no input box shows. Placeholders such as
-	// "[Image #1]" are part of it.
-	ComposerText(styled string) (text string, ok bool)
+	// ComposerText is the whole text in the input box, as shown, lines
+	// joined with "\n", "" when it is empty. footer is the status line
+	// Screen reported while the input box was empty, for CLIs that need it
+	// to find where the box ends. ok is false when the box does not show or
+	// cannot be read whole: callers must then not act on its content.
+	// Placeholders such as "[Image #1]" are part of it.
+	ComposerText(styled, footer string) (text string, ok bool)
 	// ClearInput is what to write to empty an input box that holds one
 	// line. It must be harmless in an empty box and never interrupt a
 	// running turn or quit the CLI (Ctrl-C and Esc do).

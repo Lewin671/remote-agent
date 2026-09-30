@@ -242,6 +242,9 @@ func (s *session) inject(in input) (inputOutcome, error) {
 		return notWritten, nil
 	}
 	s.noteWait(scr)
+	// The status line under the empty input box tells where the box ends
+	// once it holds several lines.
+	footer := scr.Footer
 	var got []int32
 	if len(in.Images) > 0 {
 		if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_PASTING_IMAGES, nil); err != nil {
@@ -252,22 +255,22 @@ func (s *session) inject(in input) (inputOutcome, error) {
 		}
 		for _, im := range in.Images {
 			if l.left() < imageWait {
-				return s.abandon(c, in, got, false, "timeout"), nil
+				return s.abandon(c, in, got, footer, false, "timeout"), nil
 			}
 			if err := c.Write(agent.PastePath(im.Path)); err != nil {
-				return s.abandon(c, in, got, false, "write_failed"), err
+				return s.abandon(c, in, got, footer, false, "write_failed"), err
 			}
-			n, reason := s.waitPlaceholder(got, im.Path)
+			n, reason := s.waitPlaceholder(got, im.Path, footer)
 			if reason != "" {
-				return s.abandon(c, in, got, false, reason), nil
+				return s.abandon(c, in, got, footer, false, reason), nil
 			}
 			got = append(got, n)
 			if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_PASTING_IMAGES, got); err != nil {
-				return s.abandon(c, in, got, false, "write_failed"), err
+				return s.abandon(c, in, got, footer, false, "write_failed"), err
 			}
 		}
 		if err := s.setStage(in.RequestID, pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED, got); err != nil {
-			return s.abandon(c, in, got, false, "write_failed"), err
+			return s.abandon(c, in, got, footer, false, "write_failed"), err
 		}
 		in.Indexes = got
 	}
@@ -277,7 +280,7 @@ func (s *session) inject(in input) (inputOutcome, error) {
 			return notWritten, nil
 		}
 		if len(got) > 0 {
-			return s.abandon(c, in, got, false, "write_failed"), err
+			return s.abandon(c, in, got, footer, false, "write_failed"), err
 		}
 		return notWritten, err
 	}
@@ -293,13 +296,16 @@ func (s *session) inject(in input) (inputOutcome, error) {
 // waitPlaceholder waits for the input box to show one more image
 // placeholder than it did, and nothing else, after a file path was pasted.
 // It returns the new placeholder's N, or why not.
-func (s *session) waitPlaceholder(before []int32, path string) (int32, string) {
+func (s *session) waitPlaceholder(before []int32, path, footer string) (int32, string) {
 	deadline := time.Now().Add(imageWait)
 	var pathSince time.Time
 	for {
 		styled, err := s.term.Capture()
 		if err == nil {
-			text, ok := s.ag.ComposerText(styled)
+			text, ok := s.ag.ComposerText(styled, footer)
+			// Only what was pasted is there, with no line breaks of its
+			// own: lines are a narrow terminal wrapping it.
+			text = strings.ReplaceAll(text, "\n", "")
 			nums := agent.ImagePlaceholders(text)
 			rest, _ := agent.StripPlaceholders(text, nums)
 			rest = strings.TrimSpace(rest)
@@ -336,9 +342,9 @@ func (s *session) waitPlaceholder(before []int32, path string) (int32, string) {
 // the message FAILED, or NEEDS_TERMINAL when the input box could not be
 // verified to be back to empty. extra allows placeholders that were not
 // yet recorded (after a restart). The caller still holds local input.
-func (s *session) abandon(c control, in input, got []int32, extra bool, reason string) inputOutcome {
+func (s *session) abandon(c control, in input, got []int32, footer string, extra bool, reason string) inputOutcome {
 	status := pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
-	if s.clearPasted(c, in, got, extra, reason == "timeout") {
+	if s.clearPasted(c, in, got, footer, extra, reason == "timeout") {
 		status = pb.InputStatus_INPUT_STATUS_FAILED
 	}
 	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", reason, "status", status.String())
@@ -350,13 +356,18 @@ func (s *session) abandon(c control, in input, got []int32, extra bool, reason s
 // placeholders and file paths, and reports whether it is verified empty
 // afterwards. After a timeout an empty box does not count: the CLI may
 // still be converting an image and add its placeholder later.
-func (s *session) clearPasted(c control, in input, got []int32, extra, timedOut bool) bool {
+func (s *session) clearPasted(c control, in input, got []int32, footer string, extra, timedOut bool) bool {
 	styled, err := s.term.Capture()
 	if err != nil {
 		return false
 	}
-	text, ok := s.ag.ComposerText(styled)
+	text, ok := s.ag.ComposerText(styled, footer)
 	if !ok {
+		return false
+	}
+	// A line break is not something this message pasted: Ctrl-U deletes
+	// one line only, and another line may be the user's.
+	if strings.Contains(text, "\n") {
 		return false
 	}
 	if text == "" {
@@ -386,7 +397,7 @@ func (s *session) clearPasted(c control, in input, got []int32, extra, timedOut 
 	for time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
 		if styled, err := s.term.Capture(); err == nil {
-			if text, ok := s.ag.ComposerText(styled); ok && text == "" {
+			if text, ok := s.ag.ComposerText(styled, footer); ok && text == "" {
 				return !timedOut
 			}
 		}
@@ -411,7 +422,7 @@ func (s *session) recoverPaste(in input) (inputOutcome, error) {
 	}
 	defer l.end()
 	time.Sleep(settle)
-	return s.abandon(c, in, in.Indexes, true, "restarted"), nil
+	return s.abandon(c, in, in.Indexes, "", true, "restarted"), nil
 }
 
 // setStage saves how far the head message has got and reports it.

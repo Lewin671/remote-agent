@@ -343,8 +343,10 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 
 func (a *Adapter) Paste(text string) []byte { return agent.PasteBytes(text) }
 
-func (a *Adapter) ComposerText(styled string) (string, bool) { return ComposerText(styled) }
-func (a *Adapter) ClearInput() []byte                        { return []byte(agent.KeyClearLine) }
+func (a *Adapter) ComposerText(styled, footer string) (string, bool) {
+	return ComposerText(styled, footer)
+}
+func (a *Adapter) ClearInput() []byte { return []byte(agent.KeyClearLine) }
 
 // Interrupt is Esc; never Ctrl-C, which clears the input box and, pressed
 // again, quits Codex.

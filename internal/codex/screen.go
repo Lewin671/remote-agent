@@ -190,10 +190,13 @@ func startsDim(s string) bool {
 	return rest != "" && st.dim
 }
 
-// ComposerText is the text in the input box: the prompt line and the lines
-// under it up to the blank line before the status line. ok is false when
-// no input box shows or a popup covers it.
-func ComposerText(styled string) (string, bool) {
+// ComposerText is the text in the input box, its lines joined with "\n":
+// the prompt line and every line under it down to the status line. footer
+// is the status line as seen while the input box was empty, which is the
+// only safe way to tell where a draft of several lines ends: its lines are
+// indented like the status line, and may be blank. ok is false when no
+// input box shows, a popup covers it, or the status line is not found.
+func ComposerText(styled, footer string) (string, bool) {
 	lines := strings.Split(strings.TrimRight(styled, "\n"), "\n")
 	for len(lines) > 0 && strings.TrimSpace(StripANSI(lines[len(lines)-1])) == "" {
 		lines = lines[:len(lines)-1]
@@ -208,6 +211,10 @@ func ComposerText(styled string) (string, bool) {
 	if scr.DraftEmpty {
 		return "", true
 	}
+	footer = strings.TrimSpace(footer)
+	if footer == "" {
+		return "", false
+	}
 	composer := -1
 	for i, l := range lines {
 		if st, rest := leadingStyle(l, false); strings.HasPrefix(rest, promptMark) && st.bold && !st.dim && !st.reverse {
@@ -221,10 +228,10 @@ func ComposerText(styled string) (string, bool) {
 	parts := []string{strings.TrimSpace(StripANSI(strings.TrimPrefix(rest, promptMark)))}
 	for _, l := range lines[composer+1:] {
 		t := strings.TrimSpace(StripANSI(l))
-		if t == "" || t == scr.Footer {
-			break
+		if t == footer {
+			return strings.TrimSpace(strings.Join(parts, "\n")), true
 		}
 		parts = append(parts, t)
 	}
-	return strings.TrimSpace(strings.Join(parts, "\n")), true
+	return "", false
 }

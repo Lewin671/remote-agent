@@ -465,10 +465,10 @@ func applySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext 
 	return ctx
 }
 
-func (a *Adapter) Analyze(styled string) agent.Screen        { return AnalyzeScreen(styled) }
-func (a *Adapter) Paste(text string) []byte                  { return agent.PasteBytes(text) }
-func (a *Adapter) ComposerText(styled string) (string, bool) { return ComposerText(styled) }
-func (a *Adapter) ClearInput() []byte                        { return []byte(agent.KeyClearLine) }
+func (a *Adapter) Analyze(styled string) agent.Screen           { return AnalyzeScreen(styled) }
+func (a *Adapter) Paste(text string) []byte                     { return agent.PasteBytes(text) }
+func (a *Adapter) ComposerText(styled, _ string) (string, bool) { return ComposerText(styled) }
+func (a *Adapter) ClearInput() []byte                           { return []byte(agent.KeyClearLine) }
 
 // Interrupt is Esc. Only sent while a turn runs: pressed twice in an idle
 // input box it opens the rewind menu.
