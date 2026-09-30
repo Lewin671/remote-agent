@@ -733,3 +733,24 @@ it("names a new project's default model as Codex does, even when /model hides it
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
   await vi.waitFor(() => expect(host.querySelector(".newbox .cfg em")!.textContent).toContain("GPT-6.1-Sol low"), { timeout: 3000 });
 });
+
+it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
+  const r = demo();
+  const popup = (agent: Agent) => (
+    <Dock
+      remote={r}
+      sid="s-popup"
+      items={[{ kind: "popup", id: "popup", title: "trust folder" }]}
+      agent={agent}
+      collapsed={false}
+      onExpand={() => undefined}
+      onDetail={() => undefined}
+      onPlan={() => undefined}
+      onTerminal={() => undefined}
+    />
+  );
+  mount(popup(Agent.CLAUDE));
+  expect(host.textContent).toContain("默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎");
+  act(() => root!.render(popup(Agent.CODEX)));
+  expect(host.textContent).not.toContain("No, exit");
+});

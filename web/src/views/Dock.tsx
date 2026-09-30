@@ -357,6 +357,14 @@ function PopupDock({ title, agent, more, onTerminal }: { title: string; agent: A
       {title && (
         <div className="dscroll">
           <div className="q light">{title}</div>
+          {/* Claude Code's trust prompt starts on "No, exit": Enter alone
+              ends the session (claude-code-notes §1). Trusting stays the
+              user's choice, made in the terminal. */}
+          {agent === Agent.CLAUDE && /trust/i.test(title) && (
+            <div className="desc">
+              默认选中的是 <b>No, exit</b>。按 ↓ 选中 <b>Yes, I trust this folder</b> 再按 ⏎
+            </div>
+          )}
         </div>
       )}
       <div className="btns">
