@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent
 
 import android.app.Application
+import android.app.NotificationManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.util.Log
@@ -123,6 +124,8 @@ class RaApp : Application() {
         _remote.value?.close()
         _remote.value = null
         AccountMemory.clear()
+        // Notifications may show the old account's approvals in full.
+        getSystemService(NotificationManager::class.java).cancelAll()
         withContext(Dispatchers.IO) {
             vault.clear()
             db.clearAllTables()
