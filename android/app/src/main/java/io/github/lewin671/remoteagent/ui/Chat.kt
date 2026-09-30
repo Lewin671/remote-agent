@@ -222,7 +222,8 @@ fun buildChat(
         if (decided != null) {
             // Kept out of a fold so that its decision stays in sight.
             flushRun()
-            out += ChatItem.Tool(k, t, decided.first, decided.second, seq = callEvent.seq)
+            // The approval is said next to it; whether it went to the background still shows.
+            out += ChatItem.Tool(k, t, decided.first, decided.second, background = background, seq = callEvent.seq)
         } else if (background) {
             flushRun()
             out += ChatItem.Tool(k, t, background = true, seq = callEvent.seq)
@@ -374,7 +375,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             Text(item.text, style = MaterialTheme.typography.bodyMedium, color = p.muted)
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
-            if (item.background) BackgroundRow(item.call, cwd, home)
+            if (item.background) BackgroundRow(item.call, cwd, home, item.decision)
             else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
             // A tool's images sit right under it, e.g. the file Claude Code read.
             val chat = LocalChat.current
@@ -503,13 +504,14 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
 
 /** A call that returned while its command went on in the background: not a success, its end is not known. */
 @Composable
-private fun BackgroundRow(t: ToolCall, cwd: String, home: String) {
+private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: String = "") {
     val p = pal
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(p.soft, RoundedCornerShape(12.dp)).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("◌", color = p.muted, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.width(8.dp))
-            Text("后台命令 · 状态待确认", style = MaterialTheme.typography.titleSmall, color = p.fg2)
+            Text("后台命令 · 状态待确认", style = MaterialTheme.typography.titleSmall, color = p.fg2, modifier = Modifier.weight(1f))
+            if (decision.isNotEmpty()) Text(decision, style = MaterialTheme.typography.bodySmall, color = p.muted)
         }
         Text(toolTitle(t, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("调用已返回，命令转到了后台；它什么时候结束这里不知道。请到终端确认。", style = MaterialTheme.typography.bodySmall, color = p.muted)
