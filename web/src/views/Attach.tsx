@@ -128,7 +128,14 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
             ))}
           </div>
           <div className="att-meta">
-            <button className={"orig" + (tray.original ? " on" : "")} role="switch" aria-checked={tray.original} onClick={() => tray.setOriginal(!tray.original)}>
+            <button
+              className={"orig" + (tray.original ? " on" : "")}
+              role="switch"
+              aria-checked={tray.original}
+              disabled={!tray.canSwitchOriginal()}
+              title={tray.canSwitchOriginal() ? undefined : "放回的图片没有原始文件，不能切换原图"}
+              onClick={() => tray.setOriginal(!tray.original)}
+            >
               <i />
               原图{tray.original && tray.totalBytes() > 0 ? ` · 共 ${mb(tray.totalBytes())}` : ""}
             </button>

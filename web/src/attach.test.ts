@@ -135,4 +135,18 @@ describe("putting a message's images back (review W2, W4)", () => {
     expect(tray.items.length).toBe(5);
   });
 
+  it("never prepares again an image it has no bytes for", async () => {
+    const { tray, prepare } = setup();
+    expect(tray.restore([{ imageId: "remote-1" }])).toBe(true);
+    expect(tray.ready()).toBe(true);
+    expect(tray.canSwitchOriginal()).toBe(false);
+    tray.setOriginal(true);
+    expect(tray.original).toBe(false);
+    expect(tray.imageIds()).toEqual(["remote-1"]);
+    // Another machine cannot get it: it says so rather than sending nothing.
+    tray.retarget("vps");
+    await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
+    expect(tray.items[0].error).toContain("重新选择");
+    expect(prepare).not.toHaveBeenCalled();
+  });
 });
