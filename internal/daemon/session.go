@@ -65,6 +65,11 @@ type session struct {
 	planOpen    bool
 	driving     bool            // a control operation is using the terminal's menus
 	seenModes   map[string]bool // permission modes the screen has shown
+	// openCalls counts calls started and not completed, and doneCalls
+	// holds calls completed lately, by input digest, to tie them to
+	// approval requests.
+	openCalls map[string]int
+	doneCalls map[string]time.Time
 	// Why queued input is not being written, and since when.
 	waitReason string
 	waitSince  time.Time
@@ -121,6 +126,8 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		parser:    ag.NewParser(),
 		meta:      m,
 		approvals: map[string]*approval{},
+		openCalls: map[string]int{},
+		doneCalls: map[string]time.Time{},
 		questions: map[string]*pb.QuestionAsked{},
 		wake:      make(chan struct{}, 1),
 		done:      make(chan struct{}),
@@ -333,6 +340,11 @@ func (s *session) readRollout() {
 				// A request still waiting was answered in the terminal
 				// (or interrupted there) since the turn is over.
 				s.retractApprovals()
+			}
+			if t := e.GetToolStarted(); t != nil && t.InputDigest != "" {
+				s.mu.Lock()
+				s.openCalls[t.InputDigest]++
+				s.mu.Unlock()
 			}
 			if c := e.GetToolCall(); c != nil {
 				// Its call ran: allowed in the terminal before the
@@ -974,6 +986,12 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		s.mu.Unlock()
 		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}
+	if s.ranBefore(a) {
+		// Answered in the terminal and run before this request reached
+		// the daemon: there is nothing left to ask.
+		s.mu.Unlock()
+		return nil, nil
+	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
 	defer func() {
@@ -1122,12 +1140,30 @@ func (s *session) retractFor(c *pb.ToolCall) {
 		return
 	}
 	s.mu.Lock()
+	if s.openCalls[c.InputDigest] > 0 {
+		s.openCalls[c.InputDigest]--
+		if s.openCalls[c.InputDigest] == 0 {
+			delete(s.openCalls, c.InputDigest)
+		}
+	}
 	var match *approval
 	n := 0
 	for _, a := range s.approvals {
 		if !a.claimed && a.tool == c.ItemType && a.digest == c.InputDigest {
 			match = a
 			n++
+		}
+	}
+	if n == 0 {
+		// Its request may still be on its way: remember the call a while.
+		now := time.Now()
+		for d, t := range s.doneCalls {
+			if now.Sub(t) > doneFor {
+				delete(s.doneCalls, d)
+			}
+		}
+		if len(s.doneCalls) < 200 {
+			s.doneCalls[c.InputDigest] = now
 		}
 	}
 	if n != 1 {
@@ -1138,6 +1174,25 @@ func (s *session) retractFor(c *pb.ToolCall) {
 	delete(s.approvals, match.id)
 	s.mu.Unlock()
 	match.decision <- decision{terminal: true}
+}
+
+// doneFor is how long a completed call is remembered for a request that
+// arrives after it (the hook starts a process and dials the daemon).
+const doneFor = 30 * time.Second
+
+// ranBefore reports, and forgets, whether the call a request is for has
+// already completed: one with its digest completed lately and none with
+// it is still running. Callers hold s.mu.
+func (s *session) ranBefore(a *approval) bool {
+	if a.digest == "" {
+		return false
+	}
+	t, ok := s.doneCalls[a.digest]
+	if !ok || time.Since(t) > doneFor || s.openCalls[a.digest] > 0 {
+		return false
+	}
+	delete(s.doneCalls, a.digest)
+	return true
 }
 
 // promptKey is text a permission prompt shows for a tool call: the start

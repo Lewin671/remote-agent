@@ -429,3 +429,33 @@ func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
 		h.s.log.Close()
 	}
 }
+
+// Answered in the terminal and run before the hook's request reached the
+// daemon: the request gets no card (review C8, completion first).
+func TestClaudeApprovalAfterItsCallCompleted(t *testing.T) {
+	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
+	path := filepath.Join(h.dir, "rollout.jsonl")
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
+		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"touch /w/fast"}}]}}`,
+		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
+	h.s.bindRollout("cc-1", path)
+	out := make(chan []byte, 1)
+	go func() {
+		b, _ := h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/fast","description":"x"}`))
+		out <- b
+	}()
+	select {
+	case b := <-out:
+		if b != nil {
+			t.Fatalf("hook printed %s", b)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("a card waits for a call that already ran")
+	}
+	// A later request with the same input, whose call has not run, gets
+	// its card.
+	h.writeRollout(`{"type":"assistant","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"touch /w/fast"}}]}}`)
+	go h.s.hook(context.Background(), claudePermission("Bash", `{"command":"touch /w/fast","description":"x"}`))
+	eventually(t, "the second card", func() bool { return h.s.info().PendingApprovals == 1 })
+	h.s.retractApprovals()
+}
