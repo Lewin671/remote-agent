@@ -280,6 +280,8 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
         DockTitle("终端里有弹窗")
         Text("${agentName(s.agent())} 在等你", style = MaterialTheme.typography.bodyMedium, color = p.muted)
         if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.titleSmall)
+        val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
+        if (hint.isNotEmpty()) Text(hint, style = MaterialTheme.typography.bodyMedium, color = p.orangeInk)
         Button(onClick = onTerminal, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("去终端处理") }
     }
 }

@@ -135,4 +135,12 @@ class ModelTest {
         assertEquals(emptySet<Long>(), derive(events, Agent.AGENT_CLAUDE).typedLocally)
         assertEquals(setOf(1L), derive(events, Agent.AGENT_CODEX).typedLocally)
     }
+
+    @Test
+    fun warnsAboutClaudeCodesTrustDialogOnly() {
+        assertEquals("默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎", popupHint(Agent.AGENT_CLAUDE, "trust folder"))
+        assertEquals("", popupHint(Agent.AGENT_CODEX, "trust folder"))
+        assertEquals("", popupHint(Agent.AGENT_UNSPECIFIED, "trust folder"))
+        assertEquals("", popupHint(Agent.AGENT_CLAUDE, "hooks review"))
+    }
 }

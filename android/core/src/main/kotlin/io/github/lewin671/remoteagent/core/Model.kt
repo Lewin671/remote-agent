@@ -112,6 +112,14 @@ fun statusOf(s: SessionView, machine: MachineView?): Status {
     return Status.IDLE
 }
 
+/**
+ * A hint for a popup in the terminal. Claude Code's trust dialog has its
+ * cursor on "No, exit", so Enter alone ends the session
+ * (claude-code-notes.md §1); Codex's needs none. Same text as the web.
+ */
+fun popupHint(agent: Agent, detail: String): String =
+    if (effectiveAgent(agent) == Agent.AGENT_CLAUDE && detail == "trust folder") "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎" else ""
+
 fun needsAttention(s: SessionView, machine: MachineView?): Boolean = statusOf(s, machine).tone == Tone.WAIT
 
 /** The session's title; without one, "<folder> · <start time>". */
