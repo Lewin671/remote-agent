@@ -149,7 +149,7 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 		}
 		return one(m.TurnID, &pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}), nil
 	case "task_complete":
-		flushed := p.flushView()
+		flushed := append(p.flushView(), p.runningCells()...)
 		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
@@ -162,7 +162,7 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED, DurationMs: m.DurationMS,
 		}}})...), nil
 	case "turn_aborted":
-		flushed := p.flushView()
+		flushed := append(p.flushView(), p.runningCells()...)
 		p.endCalls()
 		var m struct {
 			TurnID     string `json:"turn_id"`
@@ -930,6 +930,25 @@ func (p *Parser) callOutput(callID string, raw json.RawMessage) []*pb.Event {
 		p.current = ""
 	}
 	return evs
+}
+
+// runningCells reports, when a turn ends, the calls whose exec cell
+// yielded and never finished: they go on in the background.
+func (p *Parser) runningCells() []*pb.Event {
+	var out []*pb.Event
+	done := map[string]bool{}
+	for _, callID := range p.cells {
+		oc := p.calls[callID]
+		if oc == nil || oc.reported || done[callID] {
+			continue
+		}
+		done[callID] = true
+		out = append(out, one("", &pb.Event{Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{
+			CallId: callID, Kind: pb.ToolKind_TOOL_KIND_OTHER, Title: oc.title, Status: "running", ItemType: "ToolCall",
+			Background: pb.ToolBackground_TOOL_BACKGROUND_STILL_RUNNING,
+		}}})...)
+	}
+	return out
 }
 
 // endCalls forgets the calls of an ended turn.

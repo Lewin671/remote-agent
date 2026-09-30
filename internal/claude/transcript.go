@@ -496,6 +496,7 @@ func (p *Parser) toolResult(b block, structured json.RawMessage) []*pb.Event {
 	if b.IsError {
 		tc.Status = "failed"
 	}
+	tc.Background, tc.BackgroundId = background(structured)
 	tc.Output, tc.OutputTruncated = truncate(resultText(b.Content))
 	var inner []block
 	if json.Unmarshal(b.Content, &inner) == nil {
@@ -744,4 +745,32 @@ func truncate(s string) (string, bool) {
 		cut--
 	}
 	return s[:cut], true
+}
+
+// background tells from a tool's structured result whether it went on in
+// the background: a Bash call with a background task (asked for, moved
+// after its timeout, or by the user), or a subagent launched async.
+func background(structured json.RawMessage) (pb.ToolBackground, string) {
+	var r struct {
+		BackgroundTaskID   string `json:"backgroundTaskId"`
+		BackgroundedByUser bool   `json:"backgroundedByUser"`
+		TimedOutAfterMs    int64  `json:"timedOutAfterMs"`
+		IsAsync            bool   `json:"isAsync"`
+		Status             string `json:"status"`
+		AgentID            string `json:"agentId"`
+	}
+	if json.Unmarshal(structured, &r) != nil {
+		return pb.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED, ""
+	}
+	switch {
+	case r.BackgroundTaskID != "" && r.BackgroundedByUser:
+		return pb.ToolBackground_TOOL_BACKGROUND_BY_USER, r.BackgroundTaskID
+	case r.BackgroundTaskID != "" && r.TimedOutAfterMs > 0:
+		return pb.ToolBackground_TOOL_BACKGROUND_TIMED_OUT, r.BackgroundTaskID
+	case r.BackgroundTaskID != "":
+		return pb.ToolBackground_TOOL_BACKGROUND_REQUESTED, r.BackgroundTaskID
+	case r.IsAsync || r.Status == "async_launched":
+		return pb.ToolBackground_TOOL_BACKGROUND_REQUESTED, r.AgentID
+	}
+	return pb.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED, ""
 }

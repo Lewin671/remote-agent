@@ -27,6 +27,7 @@ public  final class ToolCall extends
     itemType_ = "";
     inputDigest_ = "";
     images_ = emptyProtobufList();
+    backgroundId_ = "";
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -762,6 +763,151 @@ public  final class ToolCall extends
   private void removeImages(int index) {
     ensureImagesIsMutable();
     images_.remove(index);
+  }
+
+  public static final int BACKGROUND_FIELD_NUMBER = 13;
+  private int background_;
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @return The enum numeric value on the wire for background.
+   */
+  @java.lang.Override
+  public int getBackgroundValue() {
+    return background_;
+  }
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @return The background.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ToolBackground getBackground() {
+    io.github.lewin671.remoteagent.proto.ToolBackground result = io.github.lewin671.remoteagent.proto.ToolBackground.forNumber(background_);
+    return result == null ? io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @param value The enum numeric value on the wire for background to set.
+   */
+  private void setBackgroundValue(int value) {
+      background_ = value;
+  }
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @param value The background to set.
+   */
+  private void setBackground(io.github.lewin671.remoteagent.proto.ToolBackground value) {
+    background_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   */
+  private void clearBackground() {
+
+    background_ = 0;
+  }
+
+  public static final int BACKGROUND_ID_FIELD_NUMBER = 14;
+  private java.lang.String backgroundId_;
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @return The backgroundId.
+   */
+  @java.lang.Override
+  public java.lang.String getBackgroundId() {
+    return backgroundId_;
+  }
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @return The bytes for backgroundId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getBackgroundIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(backgroundId_);
+  }
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @param value The backgroundId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBackgroundId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    backgroundId_ = value;
+  }
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   */
+  private void clearBackgroundId() {
+
+    backgroundId_ = getDefaultInstance().getBackgroundId();
+  }
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @param value The bytes for backgroundId to set.
+   */
+  private void setBackgroundIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    backgroundId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.ToolCall parseFrom(
@@ -1626,6 +1772,156 @@ public  final class ToolCall extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set when the call went on in the background: this event is then its
+     * start, not its completion, and no later event reliably says when it
+     * ends (show "background, status unknown").
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+     * @return The enum numeric value on the wire for background.
+     */
+    @java.lang.Override
+    public int getBackgroundValue() {
+      return instance.getBackgroundValue();
+    }
+    /**
+     * <pre>
+     * Set when the call went on in the background: this event is then its
+     * start, not its completion, and no later event reliably says when it
+     * ends (show "background, status unknown").
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+     * @param value The background to set.
+     * @return This builder for chaining.
+     */
+    public Builder setBackgroundValue(int value) {
+      copyOnWrite();
+      instance.setBackgroundValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set when the call went on in the background: this event is then its
+     * start, not its completion, and no later event reliably says when it
+     * ends (show "background, status unknown").
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+     * @return The background.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ToolBackground getBackground() {
+      return instance.getBackground();
+    }
+    /**
+     * <pre>
+     * Set when the call went on in the background: this event is then its
+     * start, not its completion, and no later event reliably says when it
+     * ends (show "background, status unknown").
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+     * @param value The enum numeric value on the wire for background to set.
+     * @return This builder for chaining.
+     */
+    public Builder setBackground(io.github.lewin671.remoteagent.proto.ToolBackground value) {
+      copyOnWrite();
+      instance.setBackground(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set when the call went on in the background: this event is then its
+     * start, not its completion, and no later event reliably says when it
+     * ends (show "background, status unknown").
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearBackground() {
+      copyOnWrite();
+      instance.clearBackground();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * The CLI's ID for the background work (Claude Code's task or agent
+     * ID), when it gives one.
+     * </pre>
+     *
+     * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+     * @return The backgroundId.
+     */
+    @java.lang.Override
+    public java.lang.String getBackgroundId() {
+      return instance.getBackgroundId();
+    }
+    /**
+     * <pre>
+     * The CLI's ID for the background work (Claude Code's task or agent
+     * ID), when it gives one.
+     * </pre>
+     *
+     * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+     * @return The bytes for backgroundId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getBackgroundIdBytes() {
+      return instance.getBackgroundIdBytes();
+    }
+    /**
+     * <pre>
+     * The CLI's ID for the background work (Claude Code's task or agent
+     * ID), when it gives one.
+     * </pre>
+     *
+     * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+     * @param value The backgroundId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setBackgroundId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setBackgroundId(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The CLI's ID for the background work (Claude Code's task or agent
+     * ID), when it gives one.
+     * </pre>
+     *
+     * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearBackgroundId() {
+      copyOnWrite();
+      instance.clearBackgroundId();
+      return this;
+    }
+    /**
+     * <pre>
+     * The CLI's ID for the background work (Claude Code's task or agent
+     * ID), when it gives one.
+     * </pre>
+     *
+     * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+     * @param value The bytes for backgroundId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setBackgroundIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setBackgroundIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolCall)
   }
   @java.lang.Override
@@ -1656,11 +1952,13 @@ public  final class ToolCall extends
             "inputDigest_",
             "images_",
             io.github.lewin671.remoteagent.proto.ImageRef.class,
+            "background_",
+            "backgroundId_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003\u0208" +
-              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002\n\u0208\u000b" +
-              "\u0208\f\u001b";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0001\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002" +
+              "\n\u0208\u000b\u0208\f\u001b\r\f\u000e\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

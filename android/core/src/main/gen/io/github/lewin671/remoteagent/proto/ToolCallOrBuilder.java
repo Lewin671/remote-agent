@@ -205,4 +205,49 @@ public interface ToolCallOrBuilder extends
    * <code>repeated .remoteagent.v1.ImageRef images = 12 [json_name = "images"];</code>
    */
   int getImagesCount();
+
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @return The enum numeric value on the wire for background.
+   */
+  int getBackgroundValue();
+  /**
+   * <pre>
+   * Set when the call went on in the background: this event is then its
+   * start, not its completion, and no later event reliably says when it
+   * ends (show "background, status unknown").
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ToolBackground background = 13 [json_name = "background"];</code>
+   * @return The background.
+   */
+  io.github.lewin671.remoteagent.proto.ToolBackground getBackground();
+
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @return The backgroundId.
+   */
+  java.lang.String getBackgroundId();
+  /**
+   * <pre>
+   * The CLI's ID for the background work (Claude Code's task or agent
+   * ID), when it gives one.
+   * </pre>
+   *
+   * <code>string background_id = 14 [json_name = "backgroundId"];</code>
+   * @return The bytes for backgroundId.
+   */
+  com.google.protobuf.ByteString
+      getBackgroundIdBytes();
 }

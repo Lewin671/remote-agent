@@ -1,6 +1,7 @@
 package codex
 
 import (
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"testing"
 )
 
@@ -46,5 +47,17 @@ func TestCallsPairByID(t *testing.T) {
 	}
 	if len(ends) != 3 || ends[0] != "c1:completed" || ends[1] != "c2:completed" || ends[2] != "c3:failed" {
 		t.Fatalf("ends %v", ends)
+	}
+}
+
+// An exec cell still running when the turn ends is reported as gone to
+// the background.
+func TestYieldedExecAtTurnEnd(t *testing.T) {
+	p := NewParser()
+	p.Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"tools.exec_command({cmd:\"npm run dev\"})"}}`))
+	p.Parse([]byte(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 3"}}`))
+	evs, _ := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"task_complete","turn_id":"t"}}`))
+	if len(evs) != 2 || evs[0].GetToolCall().GetBackground() != pb.ToolBackground_TOOL_BACKGROUND_STILL_RUNNING || evs[0].GetToolCall().CallId != "c1" {
+		t.Fatalf("events %v", evs)
 	}
 }

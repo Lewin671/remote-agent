@@ -40,3 +40,25 @@ func TestImages(t *testing.T) {
 		t.Fatalf("ref %v", r)
 	}
 }
+
+func TestBackgroundCalls(t *testing.T) {
+	for _, c := range []struct {
+		result string
+		want   pb.ToolBackground
+		id     string
+	}{
+		{`{"stdout":"","backgroundTaskId":"b1"}`, pb.ToolBackground_TOOL_BACKGROUND_REQUESTED, "b1"},
+		{`{"stdout":"","backgroundTaskId":"b2","timedOutAfterMs":60000}`, pb.ToolBackground_TOOL_BACKGROUND_TIMED_OUT, "b2"},
+		{`{"stdout":"","backgroundTaskId":"b3","backgroundedByUser":true}`, pb.ToolBackground_TOOL_BACKGROUND_BY_USER, "b3"},
+		{`{"isAsync":true,"status":"async_launched","agentId":"a1"}`, pb.ToolBackground_TOOL_BACKGROUND_REQUESTED, "a1"},
+		{`{"stdout":"done"}`, pb.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED, ""},
+	} {
+		p := NewParser()
+		p.Parse([]byte(`{"type":"assistant","message":{"id":"m","model":"claude-haiku-4-5","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"sleep 99"}}]}}`))
+		evs, _ := p.Parse([]byte(`{"type":"user","message":{"role":"user","content":[{"tool_use_id":"t1","type":"tool_result","content":"x"}]},"toolUseResult":` + c.result + `}`))
+		tc := evs[0].GetToolCall()
+		if tc.Background != c.want || tc.BackgroundId != c.id {
+			t.Fatalf("%s: %v %q", c.result, tc.Background, tc.BackgroundId)
+		}
+	}
+}

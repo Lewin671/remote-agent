@@ -248,6 +248,28 @@ message ToolCall {
   string input_digest = 11;
   // Images the call returned, e.g. a file Claude Code read or a screenshot.
   repeated ImageRef images = 12;
+  // Set when the call went on in the background: this event is then its
+  // start, not its completion, and no later event reliably says when it
+  // ends (show "background, status unknown").
+  ToolBackground background = 13;
+  // The CLI's ID for the background work (Claude Code's task or agent
+  // ID), when it gives one.
+  string background_id = 14;
+}
+
+enum ToolBackground {
+  // Not in the background: the call ended.
+  TOOL_BACKGROUND_UNSPECIFIED = 0;
+  // The model asked for it (Claude Code's run_in_background, an async
+  // subagent).
+  TOOL_BACKGROUND_REQUESTED = 1;
+  // The CLI moved it to the background when it outran its timeout.
+  TOOL_BACKGROUND_TIMED_OUT = 2;
+  // The user moved it to the background in the terminal (Claude Code's
+  // Ctrl+B).
+  TOOL_BACKGROUND_BY_USER = 3;
+  // The turn ended while it still ran (a Codex exec cell that yielded).
+  TOOL_BACKGROUND_STILL_RUNNING = 4;
 }
 
 message TurnStarted {}
