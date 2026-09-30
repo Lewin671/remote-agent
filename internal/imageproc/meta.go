@@ -124,7 +124,7 @@ func orient(img image.Image, o int) image.Image {
 // was taken (EXIF, XMP, text chunks) from an image a client sent, keeping
 // its pixels. A JPEG whose EXIF turns it is re-encoded upright instead, at
 // high quality, since dropping the orientation alone would leave it on
-// its side. GIFs are left as they are.
+// its side.
 func StripMetadata(b []byte) ([]byte, error) {
 	switch Sniff(b) {
 	case pb.ImageFormat_IMAGE_FORMAT_JPEG:
@@ -145,7 +145,7 @@ func StripMetadata(b []byte) ([]byte, error) {
 	case pb.ImageFormat_IMAGE_FORMAT_WEBP:
 		return stripWebP(b)
 	case pb.ImageFormat_IMAGE_FORMAT_GIF:
-		return b, nil
+		return stripGIF(b)
 	}
 	return nil, ErrFormat
 }
@@ -239,4 +239,77 @@ func stripWebP(b []byte) ([]byte, error) {
 	}
 	binary.LittleEndian.PutUint32(out[4:], uint32(len(out)-8))
 	return out, nil
+}
+
+// stripGIF drops comment extensions and application extensions (which
+// carry XMP) other than the looping one, keeping every frame.
+func stripGIF(b []byte) ([]byte, error) {
+	if len(b) < 13 {
+		return nil, errCorrupt
+	}
+	i := 13
+	if b[10]&0x80 != 0 {
+		i += 3 << (b[10]&7 + 1)
+	}
+	if i > len(b) {
+		return nil, errCorrupt
+	}
+	out := append([]byte(nil), b[:i]...)
+	// subBlocks returns the end of the data sub-blocks starting at j.
+	subBlocks := func(j int) (int, error) {
+		for {
+			if j >= len(b) {
+				return 0, errCorrupt
+			}
+			n := int(b[j])
+			j++
+			if n == 0 {
+				return j, nil
+			}
+			j += n
+		}
+	}
+	for i < len(b) {
+		switch b[i] {
+		case 0x3B: // trailer
+			return append(out, 0x3B), nil
+		case 0x21: // extension
+			if i+2 > len(b) {
+				return nil, errCorrupt
+			}
+			end, err := subBlocks(i + 2)
+			if err != nil {
+				return nil, err
+			}
+			keep := true
+			switch b[i+1] {
+			case 0xFE:
+				keep = false
+			case 0xFF:
+				id := b[i+2 : min(i+3+11, len(b))]
+				keep = bytes.HasPrefix(id[1:], []byte("NETSCAPE2.0")) || bytes.HasPrefix(id[1:], []byte("ANIMEXTS1.0"))
+			}
+			if keep {
+				out = append(out, b[i:end]...)
+			}
+			i = end
+		case 0x2C: // image
+			j := i + 10
+			if j > len(b) {
+				return nil, errCorrupt
+			}
+			if b[i+9]&0x80 != 0 {
+				j += 3 << (b[i+9]&7 + 1)
+			}
+			end, err := subBlocks(j + 1) // after the LZW code size
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, b[i:end]...)
+			i = end
+		default:
+			return nil, errCorrupt
+		}
+	}
+	return nil, errCorrupt
 }

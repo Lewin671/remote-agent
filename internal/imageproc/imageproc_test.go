@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"image"
 	"image/color"
+	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"math/rand/v2"
@@ -176,5 +177,41 @@ func TestLimits(t *testing.T) {
 	}
 	if _, _, err := Decode(b[:len(b)/2], DefaultLimits); err == nil {
 		t.Fatal("truncated image accepted")
+	}
+}
+
+// G9: a GIF's comment and application extensions (XMP) go; frames and the
+// looping extension stay.
+func TestStripGIF(t *testing.T) {
+	pal := color.Palette{color.Black, color.White}
+	var buf bytes.Buffer
+	g := &gif.GIF{Image: []*image.Paletted{image.NewPaletted(image.Rect(0, 0, 4, 4), pal), image.NewPaletted(image.Rect(0, 0, 4, 4), pal)}, Delay: []int{1, 1}}
+	if err := gif.EncodeAll(&buf, g); err != nil {
+		t.Fatal(err)
+	}
+	b := buf.Bytes()
+	// After the header, screen descriptor and global color table.
+	at := 13
+	if b[10]&0x80 != 0 {
+		at += 3 << (b[10]&7 + 1)
+	}
+	comment := append([]byte{0x21, 0xFE, 8}, "GPS here"...)
+	comment = append(comment, 0)
+	xmp := append([]byte{0x21, 0xFF, 11}, "XMP DataXMP"...)
+	xmp = append(xmp, 5, 'w', 'h', 'e', 'r', 'e', 0)
+	withMeta := append(append(append(append([]byte(nil), b[:at]...), comment...), xmp...), b[at:]...)
+	clean, err := StripMetadata(withMeta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(clean, []byte("GPS here")) || bytes.Contains(clean, []byte("XMP DataXMP")) {
+		t.Fatal("metadata left")
+	}
+	if !bytes.Contains(clean, []byte("NETSCAPE2.0")) {
+		t.Fatal("looping extension dropped")
+	}
+	got, err := gif.DecodeAll(bytes.NewReader(clean))
+	if err != nil || len(got.Image) != 2 {
+		t.Fatalf("frames: %v", err)
 	}
 }
