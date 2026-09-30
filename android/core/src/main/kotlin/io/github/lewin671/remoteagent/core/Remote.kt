@@ -628,8 +628,10 @@ class Remote(
      * failures are retried with the same request ID, which the daemon runs at
      * most once; when the outcome stays unknown the error says so.
      */
-    suspend fun forward(p: PreparedCommand): CommandResult {
-        if (clock() >= p.deadlineMs) throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
+    suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult {
+        // A command whose outcome is unknown is sent even when expired: the
+        // daemon may still have its result in its log.
+        if (!retryOfUnknown && clock() >= p.deadlineMs) throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
         var attempt = 0
         while (true) {
             try {

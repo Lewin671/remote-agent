@@ -33,13 +33,35 @@ class AttemptTest {
     }
 
     @Test
-    fun anExpiredUnknownStaysUnknown() {
+    fun anExpiredUnknownStaysUnknownAndIsNotRenewed() {
         val a = Attempt()
-        a.next(::make)
+        val first = a.next(::make)
         a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
-        a.next(::make)
-        val e = a.settle(CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")) as CommandException
+        assertSame(first, a.next(::make))
+        // The retry comes back expired: still unknown, and never sealed again.
+        val e = a.settle(CommandException("deadline_exceeded", "the command expired before it reached the machine")) as CommandException
         assertEquals(CommandException.UNKNOWN, e.code)
+        assertTrue(a.frozen && a.expired)
+        repeat(2) {
+            try {
+                a.next(::make)
+                org.junit.Assert.fail("an expired unknown command was sent again")
+            } catch (x: CommandException) {
+                assertTrue(x.unknown)
+            }
+        }
+        assertEquals(1, n)
+        // Only giving up frees it.
+        a.abandon()
+        assertNotSame(first, a.next(::make))
+    }
+
+    @Test
+    fun anExpiryWithoutAnUnknownOutcomeIsDefinite() {
+        val a = Attempt()
+        val first = a.next(::make)
+        a.settle(CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出"))
         assertFalse(a.frozen)
+        assertNotSame(first, a.next(::make))
     }
 }

@@ -174,16 +174,19 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                     // sent again, as it was: the daemon then answers from its
                     // log instead of starting a second session.
                     val start = Starts.of(key)
-                    val prepared = start.attempt.next {
-                        start.prompt = text.trim()
-                        remote.prepare(cfg.machineId, "", remote.cmd {
-                            createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
-                                .setModel(cfg.model).setEffort(cfg.effort).setMode(cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).build()
-                        })
-                    }
+                    // Other content is a new start; the unknown one is given up.
+                    if (start.attempt.frozen && text.trim() != start.prompt) start.attempt.abandon()
                     act.run({
                         try {
-                            remote.forward(prepared).also { start.attempt.settle() }
+                            val retry = start.attempt.frozen
+                            val prepared = start.attempt.next {
+                                start.prompt = text.trim()
+                                remote.prepare(cfg.machineId, "", remote.cmd {
+                                    createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(text.trim()).setAgent(cfg.agent)
+                                        .setModel(cfg.model).setEffort(cfg.effort).setMode(cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).build()
+                                })
+                            }
+                            remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
                         } catch (e: Exception) {
                             throw start.attempt.settle(e) ?: e
                         }
@@ -210,9 +213,12 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
         val frozen = Starts.of(key)
         if (!act.running && frozen.attempt.frozen) {
             Text(
-                "上次的启动结果不确定。再点 ↑ 会重发同一个请求（「${frozen.prompt.take(40)}」），电脑收到过就不会再启动一次",
+                if (frozen.attempt.expired) "不确定「${frozen.prompt.take(40)}」有没有启动，它已过期，不会再重发。请先看看进行中的会话"
+                else "上次的启动结果不确定。再点 ↑ 会重发同一个请求（「${frozen.prompt.take(40)}」），电脑收到过就不会再启动一次",
                 color = p.orangeInk, style = MaterialTheme.typography.bodySmall,
             )
+            var gaveUp by remember { mutableStateOf(0) }
+            TextButton(onClick = { frozen.attempt.abandon(); act.error = ""; gaveUp++ }) { Text("放弃这次启动") }
         }
     }
     val c = config
