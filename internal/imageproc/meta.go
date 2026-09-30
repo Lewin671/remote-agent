@@ -153,17 +153,31 @@ func StripMetadata(b []byte) ([]byte, error) {
 var errCorrupt = errors.New("imageproc: malformed image")
 
 // stripJPEG drops APP1 (EXIF, XMP), APP3 to APP13, APP15 and comments,
-// and APP2 unless it is an ICC profile; JFIF, ICC and Adobe segments stay.
+// and APP2 unless it is an ICC profile, wherever they are: before the
+// first scan, between the scans of a progressive JPEG or before EOI.
+// Anything after EOI goes too. JFIF, ICC and Adobe segments, tables,
+// scans and their entropy-coded data stay byte for byte.
 func stripJPEG(b []byte) ([]byte, error) {
 	out := append([]byte(nil), b[:2]...)
 	i := 2
 	for {
-		if i+4 > len(b) || b[i] != 0xFF {
+		if i+2 > len(b) || b[i] != 0xFF {
 			return nil, errCorrupt
 		}
 		marker := b[i+1]
-		if marker == 0xDA {
-			return append(out, b[i:]...), nil
+		switch {
+		case marker == 0xFF: // fill byte
+			i++
+			continue
+		case marker == 0xD9: // EOI
+			return append(out, 0xFF, 0xD9), nil
+		case marker >= 0xD0 && marker <= 0xD7 || marker == 0x01: // no length
+			out = append(out, b[i:i+2]...)
+			i += 2
+			continue
+		}
+		if i+4 > len(b) {
+			return nil, errCorrupt
 		}
 		n := int(binary.BigEndian.Uint16(b[i+2:]))
 		if n < 2 || i+2+n > len(b) {
@@ -176,6 +190,23 @@ func stripJPEG(b []byte) ([]byte, error) {
 			out = append(out, seg...)
 		}
 		i += 2 + n
+		if marker != 0xDA {
+			continue
+		}
+		// Entropy-coded data follows a scan header, up to the next marker
+		// that is neither a stuffed 0xFF nor a restart marker.
+		j := i
+		for {
+			if j+1 >= len(b) {
+				return nil, errCorrupt
+			}
+			if b[j] == 0xFF && b[j+1] != 0x00 && !(b[j+1] >= 0xD0 && b[j+1] <= 0xD7) {
+				break
+			}
+			j++
+		}
+		out = append(out, b[i:j]...)
+		i = j
 	}
 }
 

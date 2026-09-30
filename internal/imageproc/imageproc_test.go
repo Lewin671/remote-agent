@@ -249,3 +249,45 @@ func TestProcessIsBounded(t *testing.T) {
 		t.Fatalf("%d images encoded at once", most)
 	}
 }
+
+// seg is a JPEG marker segment with its length.
+func seg(marker byte, payload []byte) []byte {
+	b := []byte{0xFF, marker}
+	b = binary.BigEndian.AppendUint16(b, uint16(len(payload)+2))
+	return append(b, payload...)
+}
+
+// Metadata after the first scan goes too: a comment before EOI, an APP1
+// between scans, anything after EOI. Scans, tables and restart markers of
+// a multi-scan (progressive-like) stream stay as they are.
+func TestStripJPEGAfterScans(t *testing.T) {
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, noise(64, 48, false), &jpeg.Options{Quality: 80})
+	b := buf.Bytes()
+	eoi := len(b) - 2
+	// A second scan: a table, a scan header and entropy data with a
+	// stuffed 0xFF and a restart marker, as progressive JPEGs have.
+	scan2 := append(seg(0xC4, []byte{0x10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5}), seg(0xDA, []byte{1, 1, 0x11, 1, 63, 0x10})...)
+	scan2 = append(scan2, 0x12, 0xFF, 0x00, 0x34, 0xFF, 0xD3, 0x56)
+	gps := seg(0xE1, append([]byte("Exif\x00\x00"), "GPS-AFTER-SCAN"...))
+	com := seg(0xFE, []byte("GPS-IN-COMMENT"))
+	in := append(append(append(append(append([]byte(nil), b[:eoi]...), gps...), scan2...), com...), 0xFF, 0xD9)
+	in = append(in, "TRAILING-GPS"...)
+	clean, err := StripMetadata(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{"GPS-AFTER-SCAN", "GPS-IN-COMMENT", "TRAILING-GPS"} {
+		if bytes.Contains(clean, []byte(s)) {
+			t.Fatalf("%s left", s)
+		}
+	}
+	want := append(append(append([]byte(nil), b[:eoi]...), scan2...), 0xFF, 0xD9)
+	if !bytes.Equal(clean, want) {
+		t.Fatal("scans or tables changed")
+	}
+	// A plain JPEG comes out unchanged and decodable.
+	if clean, _ := StripMetadata(b); !bytes.Equal(clean, b) {
+		t.Fatal("clean JPEG changed")
+	}
+}
