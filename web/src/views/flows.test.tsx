@@ -847,10 +847,10 @@ describe("a new-session draft", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
   const capture = (r: DemoRemote) => {
-    const sent: { cwd?: string; agent?: number; mode?: number }[] = [];
+    const sent: { cwd?: string; agent?: number; mode?: number; confirm?: boolean }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case === "createSession") {
-        sent.push({ cwd: cmd.value.cwd, agent: cmd.value.agent, mode: cmd.value.mode });
+        sent.push({ cwd: cmd.value.cwd, agent: cmd.value.agent, mode: cmd.value.mode, confirm: cmd.value.confirmFullAccess });
         throw new CommandError("failed_precondition", "stop here");
       }
       void slot;
@@ -897,7 +897,8 @@ describe("a new-session draft", () => {
   it("asks before starting in full access that is only the machine's default", async () => {
     const r = demo();
     const sent = capture(r);
-    (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6-astra", defaultMode: ApprovalMode.FULL_ACCESS });
+    // The machine reports Codex's default as full access.
+    r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
     await vi.waitFor(() => expect(host.querySelector(".newbox .cfg-main")!.textContent).toContain("完全放行"), { timeout: 3000 });
@@ -907,7 +908,8 @@ describe("a new-session draft", () => {
     expect(sent).toHaveLength(0);
     await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
     await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0].mode).toBe(ApprovalMode.FULL_ACCESS);
+    // Left to the default, sent as confirmed.
+    expect(sent[0]).toMatchObject({ mode: ApprovalMode.UNSPECIFIED, confirm: true });
   });
 });
 
@@ -995,16 +997,14 @@ describe("the queue in full (v2)", () => {
 describe("switching a new session's CLI (v2)", () => {
   it("keeps the draft, and asks again when the new CLI's default is full access", async () => {
     const r = demo();
-    (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, {
-      approvalTimeoutSeconds: 600,
-      defaultModel: "gpt-6-astra",
-      defaultMode: ApprovalMode.AUTO,
-      claude: { model: "sonnet", effort: "high", mode: ApprovalMode.FULL_ACCESS },
-    });
-    const sent: { agent?: number; mode?: number; prompt?: string }[] = [];
+    // The machine reports Claude Code's own default as full access.
+    const claude = r.machines.get("mac")!.meta!.agents[1];
+    claude.defaultMode = ApprovalMode.FULL_ACCESS;
+    claude.defaultModeSource = 2;
+    const sent: { agent?: number; mode?: number; prompt?: string; confirm?: boolean }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case === "createSession") {
-        sent.push({ agent: cmd.value.agent, mode: cmd.value.mode, prompt: cmd.value.prompt });
+        sent.push({ agent: cmd.value.agent, mode: cmd.value.mode, prompt: cmd.value.prompt, confirm: cmd.value.confirmFullAccess });
         throw new CommandError("failed_precondition", "stop here");
       }
       void slot;
@@ -1026,7 +1026,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(sent).toHaveLength(0);
     await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
     await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.FULL_ACCESS, prompt: "加限流" });
+    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, confirm: true, prompt: "加限流" });
   });
 });
 
@@ -1464,4 +1464,29 @@ it("marks a quota window as waiting for an update once its reset time passes (re
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("asks and sends again confirmed when the daemon finds the folder starts in full access", async () => {
+  const r = demo();
+  const sent: { id: string; confirm?: boolean }[] = [];
+  r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push({ id: slot!.requestId, confirm: cmd.value.confirmFullAccess });
+      if (!cmd.value.confirmFullAccess) throw new CommandError("failed_precondition", "codex starts in full access here by default; confirm it or choose another mode");
+      throw new CommandError("failed_precondition", "stop here");
+    }
+    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+  };
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(button("↑"));
+  await vi.waitFor(() => expect(host.textContent).toContain("切到完全放行？"));
+  await click(host.querySelector<HTMLButtonElement>(".alert .btn.danger")!);
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1].confirm).toBe(true);
+  expect(sent[1].id).not.toBe(sent[0].id);
 });

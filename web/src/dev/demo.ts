@@ -35,7 +35,7 @@ import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResu
 import { CommandError, Remote, type CommandKind, type History, type RequestSlot, type SessionView, type TermConn } from "../remote";
 import { applyOp, emptyPrefs, type PrefsSnapshot } from "../prefs";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { DeviceMetaSchema, type ProjectPrefs } from "../gen/remoteagent/v1/remote_pb";
+import { DefaultModeSource, DeviceMetaSchema, type ProjectPrefs } from "../gen/remoteagent/v1/remote_pb";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
 type EventInit = MessageInitShape<typeof EventSchema>;
@@ -550,8 +550,8 @@ export class DemoRemote extends Remote {
         primaryLimit: { usedPercent: 62, windowMinutes: 300n, resetsAt: BigInt(Math.floor((now + 3 * 60 * min) / 1000)) },
         secondaryLimit: { usedPercent: 34, windowMinutes: 10080n, resetsAt: BigInt(Math.floor((now + 3 * 24 * 60 * min) / 1000)) },
         agents: [
-          { agent: Agent.CODEX, version: "0.71.0", verified: false },
-          { agent: Agent.CLAUDE, version: "2.3.1", verified: true },
+          { agent: Agent.CODEX, version: "0.71.0", verified: false, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS },
+          { agent: Agent.CLAUDE, version: "2.3.1", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS, defaultModeVaries: true },
         ],
         capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true },
       });

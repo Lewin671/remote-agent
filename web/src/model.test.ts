@@ -3,7 +3,8 @@ import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
-import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
+import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
+import { CommandError } from "./remote";
 import {
   agentName,
   agentOf,
@@ -14,7 +15,11 @@ import {
   dockItems,
   findModel,
   modelLabel,
+  defaultModeOf,
   inheritConfig,
+  modeLabel,
+  needsFullConfirm,
+  refusedForFullAccess,
   inputFailure,
   newConfigIssue,
   switchAgent,
@@ -817,4 +822,35 @@ it("leaves the CLI's image placeholders out of titles and previews", () => {
   expect(titleOf(sess({ title: "[Image #1] 图里是什么图案？" }))).toBe("图里是什么图案？");
   expect(plain("[Image #1][Image #2] 看这两张")).toBe("看这两张");
   expect(plain("比较 [Image #1] 和 [Image #2]")).toBe("比较 图 1 和 图 2");
+});
+
+describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
+  const machine = (info: object) => ({ id: "m1", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, info as never)] }) });
+  const claudeFull = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.FULL_ACCESS, defaultModeSource: DefaultModeSource.CLI_CONFIG, defaultModeVaries: true });
+  const codexAuto = machine({ agent: Agent.CODEX, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS });
+  const old = machine({ agent: Agent.CODEX });
+  const acceptEdits = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.UNSPECIFIED, defaultModeSource: DefaultModeSource.CLI_CONFIG });
+
+  it("names the mode a start will really use", () => {
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：完全放行（项目设置可能不同）");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe("默认：自动");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(old, Agent.CODEX), Agent.CODEX)).toBe("默认模式（不确定，可能是完全放行）");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
+    expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
+  });
+
+  it("asks before a start in full access, or in a default nobody knows", () => {
+    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE))).toBe(true);
+    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(old, Agent.CODEX))).toBe(true);
+    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX))).toBe(false);
+    expect(needsFullConfirm(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE))).toBe(false);
+    expect(needsFullConfirm(ApprovalMode.FULL_ACCESS, defaultModeOf(codexAuto, Agent.CODEX))).toBe(true);
+    expect(needsFullConfirm(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE))).toBe(false);
+  });
+
+  it("recognizes the daemon refusing an unconfirmed start in full access", () => {
+    expect(refusedForFullAccess(new CommandError("failed_precondition", "claude starts in full access here by default; confirm it or choose another mode"))).toBe(true);
+    expect(refusedForFullAccess(new CommandError("failed_precondition", "no such folder"))).toBe(false);
+    expect(refusedForFullAccess(new CommandError("unknown", "full access"))).toBe(false);
+  });
 });

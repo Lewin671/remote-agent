@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, ago, exited, findModel, machineAgents, modelLabel, machineName, modeName, projects, shortPath } from "../model";
+import { agentName, agentOf, ago, defaultModeOf, exited, findModel, machineAgents, modelLabel, machineName, modeLabel, modeName, projects, shortPath } from "../model";
 import { quotaRow } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
@@ -691,6 +691,9 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
                   <button className="row" onClick={() => setPick({ agent: a, what: "mode" })}>
                     审批模式<span className="v">{modeName(def.mode) || follow} ›</span>
                   </button>
+                  {!def.mode && (
+                    <div className="row help">不指定时实际用：{modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(m, a), a).replace(/^默认：/, "")}</div>
+                  )}
                 </div>
               </div>
             );

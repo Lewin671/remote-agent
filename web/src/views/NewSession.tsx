@@ -18,6 +18,10 @@ import {
   switchMachine,
   machineName,
   modeName,
+  defaultModeOf,
+  modeLabel,
+  needsFullConfirm,
+  refusedForFullAccess,
   projectName,
   projects,
   shortPath,
@@ -32,7 +36,7 @@ import { loadProjectConfig, saveProjectConfig, clearProjectConfig } from "../sto
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
 import { errorText, type MachineView, type Remote, type SessionView } from "../remote";
 
-type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env" | "confirmFullAccess">;
+type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
 import { FullAccessAlert } from "../sheets";
 import { Avatar, Banner, Dot, Sheet } from "../ui";
@@ -86,7 +90,7 @@ export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: 
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
   const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " · " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
-  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, mode: modeName(cfg.mode || def.mode) || "默认审批" };
+  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
 }
 
 /** The configuration in one line: machine, CLI, model and effort, mode. */
@@ -149,29 +153,35 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others; the page's own view of the settings may
   // change as the started session's record arrives.
-  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
+  const payloadFor = (prompt: string, mode?: ApprovalMode, confirmFullAccess = false): StartPayload => {
     const pending = current.payload;
     const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent };
     // The images are part of what is started: other images, another start.
-    return { machineId: c.machineId, req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent, imageIds: tray.imageIds() } };
+    return {
+      machineId: c.machineId,
+      req: { cwd: c.cwd, prompt: prompt.trim(), model: c.model, effort: c.effort, mode: c.mode, agent: c.agent, imageIds: tray.imageIds(), confirmFullAccess: pending && !override ? pending.req.confirmFullAccess : confirmFullAccess },
+    };
   };
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
-  const changes = (prompt: string, mode?: ApprovalMode): boolean => {
+  const changes = (prompt: string, mode?: ApprovalMode, confirm = false): boolean => {
     const pending = current.payload;
-    return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
+    return !!pending && JSON.stringify(payloadFor(prompt, mode, confirm)) !== JSON.stringify(pending);
   };
+  // The daemon refused the last start: the folder's default is full access.
+  const [refused, setRefused] = useState(false);
   // Images for the first message go to the chosen machine; a new machine
   // gets them again (the tray keeps them prepared).
   const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
-  const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
+  const create = async (prompt: string, mode?: ApprovalMode, terminal = false, confirmFullAccess = false) => {
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
-    if (changes(prompt, mode)) abandon();
+    if (changes(prompt, mode, confirmFullAccess)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = current.next(payloadFor(prompt, mode));
+    const { payload, slot } = current.next(payloadFor(prompt, mode, confirmFullAccess));
     setBusy(true);
     setError("");
+    setRefused(false);
     try {
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
       current.settle();
@@ -190,6 +200,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       return true;
     } catch (e) {
       current.settle(e);
+      // Refused before anything ran: ask, then send a new request.
+      if (refusedForFullAccess(e)) {
+        current.abandon();
+        setRefused(true);
+        return false;
+      }
       setError(errorText(e));
       return false;
     } finally {
@@ -208,10 +224,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const latch = () => {
     if (!override && !held) setLatched({ key, config: cfg });
   };
-  // The mode the start will run in: the one chosen, else the machine's
-  // default for this CLI; undefined while that default is not known.
-  const def = defaultsOf(info.settings, cfg.agent);
-  const effectiveMode = cfg.mode || (info.settings ? def.mode : undefined);
+  // The mode the start will run in: the one chosen, else the CLI's
+  // effective default the machine reports. Full access, or a default
+  // nobody knows, is confirmed first.
+  const dm = defaultModeOf(machine, cfg.agent);
   return {
     remote,
     frozen: current.frozen,
@@ -222,10 +238,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     cfg,
     setCfg,
     latch,
-    effectiveMode,
+    needConfirm: needsFullConfirm(cfg.mode, dm),
+    refused,
+    clearRefused: () => setRefused(false),
     fullConfirmed: fullConfirmed === confirmKey,
     confirmFull: () => setFullConfirmed(confirmKey),
-    issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, effectiveMode ?? ApprovalMode.UNSPECIFIED),
+    issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, cfg.mode || dm.mode),
     parts: describeParts(cfg, machine, info),
     tray,
     attachWhy: attachBlocked(remote, machine),
@@ -264,6 +282,10 @@ export function NewBox({
 }) {
   const [text, setText] = useState("");
   const [askFull, setAskFull] = useState<"" | "send" | "terminal">("");
+  // The daemon found this folder's default is full access: ask, and send
+  // the start again confirmed.
+  const lastTerminal = useRef(false);
+  const refusedAsk = ns.refused;
   const [config, setConfig] = useState<"" | "main" | Pick>("");
   const [cli, setCli] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -271,12 +293,10 @@ export function NewBox({
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
-  // The machine's default mode is still being read: nothing to confirm yet.
-  const modePending = !ns.cfg.mode && ns.effectiveMode === undefined && ns.info.loading;
-  const [modeUnknown, setModeUnknown] = useState(false);
-  const cannot = ns.busy || !!ns.blocked || modePending || !!ns.issue;
-  const submit = async (confirmed = false, terminal = false) => {
+  const cannot = ns.busy || !!ns.blocked || !!ns.issue;
+  const submit = async (confirmed = false, terminal = false, force = false) => {
     const prompt = terminal ? "" : text;
+    lastTerminal.current = terminal;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request. Chosen images must all be on the
     // machine first.
@@ -284,13 +304,11 @@ export function NewBox({
     if (!terminal && ns.tray.items.length && !ns.tray.ready()) return;
     // Retrying an unknown start sends it as it was.
     const retry = ns.frozen && !ns.changes(prompt);
-    if (!retry) {
-      if (ns.effectiveMode === undefined) return setModeUnknown(true);
-      // Full access, chosen or the machine's default, is confirmed for
-      // each start; then it is sent as chosen, not left to the default.
-      if (ns.effectiveMode === ApprovalMode.FULL_ACCESS && !ns.fullConfirmed && !confirmed) return setAskFull(terminal ? "terminal" : "send");
-    }
-    const ok = await ns.create(prompt.trim(), !retry && ns.effectiveMode === ApprovalMode.FULL_ACCESS ? ApprovalMode.FULL_ACCESS : undefined, terminal);
+    // Full access, chosen or the CLI's default (or a default nobody knows),
+    // is confirmed for each start; a default is then sent as confirmed.
+    if (!retry && ns.needConfirm && !ns.fullConfirmed && !confirmed) return setAskFull(terminal ? "terminal" : "send");
+    const confirm = force || (!retry && ns.needConfirm && !ns.cfg.mode);
+    const ok = await ns.create(prompt.trim(), undefined, terminal, confirm);
     if (ok && !terminal) setText("");
   };
   const agent = agentName(ns.cfg.agent);
@@ -386,11 +404,7 @@ export function NewBox({
         </Banner>
       )}
       {ns.configError && <Banner kind="warn">{ns.configError}</Banner>}
-      {modeUnknown && ns.effectiveMode === undefined && (
-        <Banner kind="warn" action="重试" onAction={() => (setModeUnknown(false), ns.info.retry())}>
-          没能读取 {machineName(ns.machine)} 的默认审批模式，在「更改」里选一种再开始
-        </Banner>
-      )}
+
     </>
   );
   const onlyTerm = !text && !images && (
@@ -483,15 +497,20 @@ export function NewBox({
   return (
     <>
       {body}
-      {askFull && (
+      {(askFull || refusedAsk) && (
         <FullAccessAlert
           forNew
-          onCancel={() => setAskFull("")}
-          onOk={() => {
-            const terminal = askFull === "terminal";
+          onCancel={() => {
             setAskFull("");
+            ns.clearRefused();
+          }}
+          onOk={() => {
+            const terminal = askFull ? askFull === "terminal" : lastTerminal.current;
+            const force = refusedAsk;
+            setAskFull("");
+            ns.clearRefused();
             ns.confirmFull();
-            void submit(true, terminal);
+            void submit(true, terminal, force);
           }}
         />
       )}

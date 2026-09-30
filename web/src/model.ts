@@ -7,7 +7,7 @@ import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
 import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SessionStatus, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
 import type { Session } from "./gen/remoteagent/v1/local_pb";
-import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
+import { DefaultModeSource, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
 // The parts of Remote's views the rules need; kept structural so tests can
 // build them without a Remote.
@@ -472,6 +472,45 @@ export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
 export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode): string {
   if (agent === Agent.CLAUDE && mode === ApprovalMode.AUTO && /haiku/i.test(model)) return "Haiku 没有自动模式，换一种审批模式再开始";
   return "";
+}
+
+/** The mode a CLI gives a session started without one on a machine, as the
+ * daemon reads it (AgentInfo.default_mode): its settings, else the CLI's
+ * own configuration. mode UNSPECIFIED with known is a mode outside the four
+ * (accept edits); not known is an older daemon or an unreadable config. */
+export interface DefaultMode {
+  mode: ApprovalMode;
+  known: boolean;
+  varies: boolean; // the folder's project settings may change it (Claude Code)
+}
+
+export function defaultModeOf(m: MachineLike | undefined, agent: Agent): DefaultMode {
+  const want = agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
+  const info = m?.meta?.agents.find((a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) === want);
+  const known = !!info && (info.defaultModeSource === DefaultModeSource.DAEMON_SETTINGS || info.defaultModeSource === DefaultModeSource.CLI_CONFIG);
+  return { mode: known ? info!.defaultMode : ApprovalMode.UNSPECIFIED, known, varies: !!info?.defaultModeVaries };
+}
+
+/** The mode a new session will start in, as the card writes it. */
+export function modeLabel(chosen: ApprovalMode, d: DefaultMode, agent: Agent): string {
+  if (chosen) return modeName(chosen);
+  const base = !d.known ? "默认模式（不确定，可能是完全放行）" : d.mode ? `默认：${modeName(d.mode)}` : `默认：${agentName(agent)} 自己的模式`;
+  return base + (d.varies ? "（项目设置可能不同）" : "");
+}
+
+/** Whether a start must be confirmed first: full access chosen, or left to
+ * a default that is full access or that nobody knows (architecture §7). */
+export function needsFullConfirm(chosen: ApprovalMode, d: DefaultMode): boolean {
+  if (chosen) return chosen === ApprovalMode.FULL_ACCESS;
+  return !d.known || d.mode === ApprovalMode.FULL_ACCESS;
+}
+
+/** The daemon refused a start because the folder's default is full access
+ * and it was not confirmed; nothing ran, so asking and sending a new
+ * request is safe. */
+export function refusedForFullAccess(e: unknown): boolean {
+  const x = e as { code?: string; message?: string } | undefined;
+  return x?.code === "failed_precondition" && /full access/i.test(x.message ?? "");
 }
 
 // --- events ---
