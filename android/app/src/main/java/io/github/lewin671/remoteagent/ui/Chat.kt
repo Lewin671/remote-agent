@@ -68,6 +68,17 @@ fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String {
     return shortenPaths(t.title.ifEmpty { t.itemType }, cwd, home)
 }
 
+/**
+ * What a call's details show as its input: the tool's input, or else the
+ * title as the CLI wrote it when the row shortened its paths (a command's
+ * input is often its title). Empty when there is nothing more to show.
+ */
+fun toolRaw(t: ToolCall, cwd: String, home: String): String {
+    if (t.input.isNotEmpty() && t.input != t.title) return t.input
+    val asIs = if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 " + t.title else t.title.ifEmpty { t.itemType }
+    return if (asIs != toolTitle(t, cwd, home)) t.title.ifEmpty { t.itemType } else ""
+}
+
 /** "运行了 3 条命令" and the like, for a folded run. */
 fun toolsSummary(calls: List<ToolCall>): String = when {
     calls.all { it.kind == ToolKind.TOOL_KIND_COMMAND } -> "运行了 ${calls.size} 条命令"
@@ -349,7 +360,8 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
         }
         if (open) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
-                if (t.input.isNotEmpty() && t.input != t.title) CodeBlock(t.input, maxLines = 30)
+                val raw = toolRaw(t, cwd, home)
+                if (raw.isNotEmpty()) CodeBlock(raw, maxLines = 30)
                 if (out.isNotEmpty()) CodeBlock(out + if (t.outputTruncated) "\n…（已截断）" else "", maxLines = 40)
             }
         } else if (!ok && out.isNotEmpty()) {

@@ -167,4 +167,17 @@ class ChatTest {
         assertEquals("b", (items[1] as ChatItem.Tool).call.title)
         assertEquals("完成了 2 个工具调用", toolsSummary((items[2] as ChatItem.Tools).calls))
     }
+
+    @Test
+    fun detailsKeepTheOriginalCommand() {
+        val c = ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("ls -la /Users/me/Code/foo/").setInput("ls -la /Users/me/Code/foo/").build()
+        assertEquals("ls -la .", toolTitle(c, "/Users/me/Code/foo", "/Users/me"))
+        // The row is shortened; the details show the command as it ran.
+        assertEquals("ls -la /Users/me/Code/foo/", toolRaw(c, "/Users/me/Code/foo", "/Users/me"))
+        // Nothing was shortened and the input is the title: nothing more to show.
+        val same = c.toBuilder().setTitle("go test ./...").setInput("go test ./...").build()
+        assertEquals("", toolRaw(same, "/Users/me/Code/foo", "/Users/me"))
+        val other = same.toBuilder().setInput("{\"command\":\"go test ./...\",\"timeout\":60}").build()
+        assertEquals(other.input, toolRaw(other, "", ""))
+    }
 }
