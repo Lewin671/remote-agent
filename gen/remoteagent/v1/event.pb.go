@@ -2176,9 +2176,13 @@ func (x *SessionState) GetDetail() string {
 // InputState tracks a message sent with Send. The text itself appears in
 // the UserMessage event once Codex records it.
 type InputState struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Status        InputStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=remoteagent.v1.InputStatus" json:"status,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status    InputStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=remoteagent.v1.InputStatus" json:"status,omitempty"`
+	// Why a message was CANCELED when the user did not cancel it: "exited",
+	// the session ended before it was written. Empty for the user's own
+	// cancel.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2225,6 +2229,13 @@ func (x *InputState) GetStatus() InputStatus {
 		return x.Status
 	}
 	return InputStatus_INPUT_STATUS_UNSPECIFIED
+}
+
+func (x *InputState) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
 }
 
 var File_remoteagent_v1_event_proto protoreflect.FileDescriptor
@@ -2372,12 +2383,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"]\n" +
 	"\fSessionState\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.remoteagent.v1.SessionStatusR\x06status\x12\x16\n" +
-	"\x06detail\x18\x02 \x01(\tR\x06detail\"`\n" +
+	"\x06detail\x18\x02 \x01(\tR\x06detail\"x\n" +
 	"\n" +
 	"InputState\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x123\n" +
-	"\x06status\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.InputStatusR\x06status*A\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.InputStatusR\x06status\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason*A\n" +
 	"\x05Agent\x12\x15\n" +
 	"\x11AGENT_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vAGENT_CODEX\x10\x01\x12\x10\n" +

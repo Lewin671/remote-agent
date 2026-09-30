@@ -299,4 +299,8 @@ enum InputStatus {
 message InputState {
   string request_id = 1;
   InputStatus status = 2;
+  // Why a message was CANCELED when the user did not cancel it: "exited",
+  // the session ended before it was written. Empty for the user's own
+  // cancel.
+  string reason = 3;
 }

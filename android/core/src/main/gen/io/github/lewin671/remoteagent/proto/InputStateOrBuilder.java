@@ -32,4 +32,28 @@ public interface InputStateOrBuilder extends
    * @return The status.
    */
   io.github.lewin671.remoteagent.proto.InputStatus getStatus();
+
+  /**
+   * <pre>
+   * Why a message was CANCELED when the user did not cancel it: "exited",
+   * the session ended before it was written. Empty for the user's own
+   * cancel.
+   * </pre>
+   *
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  java.lang.String getReason();
+  /**
+   * <pre>
+   * Why a message was CANCELED when the user did not cancel it: "exited",
+   * the session ended before it was written. Empty for the user's own
+   * cancel.
+   * </pre>
+   *
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  com.google.protobuf.ByteString
+      getReasonBytes();
 }
