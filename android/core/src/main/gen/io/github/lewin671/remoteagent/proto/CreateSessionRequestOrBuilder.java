@@ -247,4 +247,17 @@ java.lang.String defaultValue);
    */
   com.google.protobuf.ByteString
       getImageIdsBytes(int index);
+
+  /**
+   * <pre>
+   * The user confirmed starting in full access. Without it, a session
+   * whose mode is left unspecified is refused ("failed_precondition")
+   * when the default it would get in this folder is FULL_ACCESS
+   * (AgentInfo.default_mode, project settings included).
+   * </pre>
+   *
+   * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+   * @return The confirmFullAccess.
+   */
+  boolean getConfirmFullAccess();
 }

@@ -145,6 +145,197 @@ public  final class AgentInfo extends
     verified_ = false;
   }
 
+  public static final int DEFAULT_MODE_FIELD_NUMBER = 4;
+  private int defaultMode_;
+  /**
+   * <pre>
+   * The approval mode a session started without one gets: the daemon's
+   * default for this CLI if set (DaemonSettings), else the CLI's own
+   * configuration as the daemon reads it (Claude Code:
+   * permissions.defaultMode in managed and user settings; Codex:
+   * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+   * with the selected profile). UNSPECIFIED with a known source is a mode
+   * outside the four, such as Claude Code's accept edits. A client asks
+   * for confirmation before starting a session in FULL_ACCESS, and also
+   * when the source is unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+   * @return The enum numeric value on the wire for defaultMode.
+   */
+  @java.lang.Override
+  public int getDefaultModeValue() {
+    return defaultMode_;
+  }
+  /**
+   * <pre>
+   * The approval mode a session started without one gets: the daemon's
+   * default for this CLI if set (DaemonSettings), else the CLI's own
+   * configuration as the daemon reads it (Claude Code:
+   * permissions.defaultMode in managed and user settings; Codex:
+   * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+   * with the selected profile). UNSPECIFIED with a known source is a mode
+   * outside the four, such as Claude Code's accept edits. A client asks
+   * for confirmation before starting a session in FULL_ACCESS, and also
+   * when the source is unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+   * @return The defaultMode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ApprovalMode getDefaultMode() {
+    io.github.lewin671.remoteagent.proto.ApprovalMode result = io.github.lewin671.remoteagent.proto.ApprovalMode.forNumber(defaultMode_);
+    return result == null ? io.github.lewin671.remoteagent.proto.ApprovalMode.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * The approval mode a session started without one gets: the daemon's
+   * default for this CLI if set (DaemonSettings), else the CLI's own
+   * configuration as the daemon reads it (Claude Code:
+   * permissions.defaultMode in managed and user settings; Codex:
+   * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+   * with the selected profile). UNSPECIFIED with a known source is a mode
+   * outside the four, such as Claude Code's accept edits. A client asks
+   * for confirmation before starting a session in FULL_ACCESS, and also
+   * when the source is unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+   * @param value The enum numeric value on the wire for defaultMode to set.
+   */
+  private void setDefaultModeValue(int value) {
+      defaultMode_ = value;
+  }
+  /**
+   * <pre>
+   * The approval mode a session started without one gets: the daemon's
+   * default for this CLI if set (DaemonSettings), else the CLI's own
+   * configuration as the daemon reads it (Claude Code:
+   * permissions.defaultMode in managed and user settings; Codex:
+   * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+   * with the selected profile). UNSPECIFIED with a known source is a mode
+   * outside the four, such as Claude Code's accept edits. A client asks
+   * for confirmation before starting a session in FULL_ACCESS, and also
+   * when the source is unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+   * @param value The defaultMode to set.
+   */
+  private void setDefaultMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
+    defaultMode_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * The approval mode a session started without one gets: the daemon's
+   * default for this CLI if set (DaemonSettings), else the CLI's own
+   * configuration as the daemon reads it (Claude Code:
+   * permissions.defaultMode in managed and user settings; Codex:
+   * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+   * with the selected profile). UNSPECIFIED with a known source is a mode
+   * outside the four, such as Claude Code's accept edits. A client asks
+   * for confirmation before starting a session in FULL_ACCESS, and also
+   * when the source is unknown.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+   */
+  private void clearDefaultMode() {
+
+    defaultMode_ = 0;
+  }
+
+  public static final int DEFAULT_MODE_SOURCE_FIELD_NUMBER = 5;
+  private int defaultModeSource_;
+  /**
+   * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+   * @return The enum numeric value on the wire for defaultModeSource.
+   */
+  @java.lang.Override
+  public int getDefaultModeSourceValue() {
+    return defaultModeSource_;
+  }
+  /**
+   * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+   * @return The defaultModeSource.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DefaultModeSource getDefaultModeSource() {
+    io.github.lewin671.remoteagent.proto.DefaultModeSource result = io.github.lewin671.remoteagent.proto.DefaultModeSource.forNumber(defaultModeSource_);
+    return result == null ? io.github.lewin671.remoteagent.proto.DefaultModeSource.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+   * @param value The enum numeric value on the wire for defaultModeSource to set.
+   */
+  private void setDefaultModeSourceValue(int value) {
+      defaultModeSource_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+   * @param value The defaultModeSource to set.
+   */
+  private void setDefaultModeSource(io.github.lewin671.remoteagent.proto.DefaultModeSource value) {
+    defaultModeSource_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+   */
+  private void clearDefaultModeSource() {
+
+    defaultModeSource_ = 0;
+  }
+
+  public static final int DEFAULT_MODE_VARIES_FIELD_NUMBER = 6;
+  private boolean defaultModeVaries_;
+  /**
+   * <pre>
+   * Project settings in the session's folder may give another default
+   * (Claude Code's .claude/settings.json and settings.local.json). The
+   * daemon checks the folder when the session is created; see
+   * CreateSessionRequest.confirm_full_access.
+   * </pre>
+   *
+   * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+   * @return The defaultModeVaries.
+   */
+  @java.lang.Override
+  public boolean getDefaultModeVaries() {
+    return defaultModeVaries_;
+  }
+  /**
+   * <pre>
+   * Project settings in the session's folder may give another default
+   * (Claude Code's .claude/settings.json and settings.local.json). The
+   * daemon checks the folder when the session is created; see
+   * CreateSessionRequest.confirm_full_access.
+   * </pre>
+   *
+   * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+   * @param value The defaultModeVaries to set.
+   */
+  private void setDefaultModeVaries(boolean value) {
+    
+    defaultModeVaries_ = value;
+  }
+  /**
+   * <pre>
+   * Project settings in the session's folder may give another default
+   * (Claude Code's .claude/settings.json and settings.local.json). The
+   * daemon checks the folder when the session is created; see
+   * CreateSessionRequest.confirm_full_access.
+   * </pre>
+   *
+   * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+   */
+  private void clearDefaultModeVaries() {
+
+    defaultModeVaries_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.AgentInfo parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -377,6 +568,207 @@ public  final class AgentInfo extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The approval mode a session started without one gets: the daemon's
+     * default for this CLI if set (DaemonSettings), else the CLI's own
+     * configuration as the daemon reads it (Claude Code:
+     * permissions.defaultMode in managed and user settings; Codex:
+     * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+     * with the selected profile). UNSPECIFIED with a known source is a mode
+     * outside the four, such as Claude Code's accept edits. A client asks
+     * for confirmation before starting a session in FULL_ACCESS, and also
+     * when the source is unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+     * @return The enum numeric value on the wire for defaultMode.
+     */
+    @java.lang.Override
+    public int getDefaultModeValue() {
+      return instance.getDefaultModeValue();
+    }
+    /**
+     * <pre>
+     * The approval mode a session started without one gets: the daemon's
+     * default for this CLI if set (DaemonSettings), else the CLI's own
+     * configuration as the daemon reads it (Claude Code:
+     * permissions.defaultMode in managed and user settings; Codex:
+     * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+     * with the selected profile). UNSPECIFIED with a known source is a mode
+     * outside the four, such as Claude Code's accept edits. A client asks
+     * for confirmation before starting a session in FULL_ACCESS, and also
+     * when the source is unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+     * @param value The defaultMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultModeValue(int value) {
+      copyOnWrite();
+      instance.setDefaultModeValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The approval mode a session started without one gets: the daemon's
+     * default for this CLI if set (DaemonSettings), else the CLI's own
+     * configuration as the daemon reads it (Claude Code:
+     * permissions.defaultMode in managed and user settings; Codex:
+     * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+     * with the selected profile). UNSPECIFIED with a known source is a mode
+     * outside the four, such as Claude Code's accept edits. A client asks
+     * for confirmation before starting a session in FULL_ACCESS, and also
+     * when the source is unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+     * @return The defaultMode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ApprovalMode getDefaultMode() {
+      return instance.getDefaultMode();
+    }
+    /**
+     * <pre>
+     * The approval mode a session started without one gets: the daemon's
+     * default for this CLI if set (DaemonSettings), else the CLI's own
+     * configuration as the daemon reads it (Claude Code:
+     * permissions.defaultMode in managed and user settings; Codex:
+     * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+     * with the selected profile). UNSPECIFIED with a known source is a mode
+     * outside the four, such as Claude Code's accept edits. A client asks
+     * for confirmation before starting a session in FULL_ACCESS, and also
+     * when the source is unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+     * @param value The enum numeric value on the wire for defaultMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
+      copyOnWrite();
+      instance.setDefaultMode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The approval mode a session started without one gets: the daemon's
+     * default for this CLI if set (DaemonSettings), else the CLI's own
+     * configuration as the daemon reads it (Claude Code:
+     * permissions.defaultMode in managed and user settings; Codex:
+     * approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+     * with the selected profile). UNSPECIFIED with a known source is a mode
+     * outside the four, such as Claude Code's accept edits. A client asks
+     * for confirmation before starting a session in FULL_ACCESS, and also
+     * when the source is unknown.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.ApprovalMode default_mode = 4 [json_name = "defaultMode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultMode() {
+      copyOnWrite();
+      instance.clearDefaultMode();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+     * @return The enum numeric value on the wire for defaultModeSource.
+     */
+    @java.lang.Override
+    public int getDefaultModeSourceValue() {
+      return instance.getDefaultModeSourceValue();
+    }
+    /**
+     * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+     * @param value The defaultModeSource to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultModeSourceValue(int value) {
+      copyOnWrite();
+      instance.setDefaultModeSourceValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+     * @return The defaultModeSource.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DefaultModeSource getDefaultModeSource() {
+      return instance.getDefaultModeSource();
+    }
+    /**
+     * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+     * @param value The enum numeric value on the wire for defaultModeSource to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultModeSource(io.github.lewin671.remoteagent.proto.DefaultModeSource value) {
+      copyOnWrite();
+      instance.setDefaultModeSource(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DefaultModeSource default_mode_source = 5 [json_name = "defaultModeSource"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultModeSource() {
+      copyOnWrite();
+      instance.clearDefaultModeSource();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Project settings in the session's folder may give another default
+     * (Claude Code's .claude/settings.json and settings.local.json). The
+     * daemon checks the folder when the session is created; see
+     * CreateSessionRequest.confirm_full_access.
+     * </pre>
+     *
+     * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+     * @return The defaultModeVaries.
+     */
+    @java.lang.Override
+    public boolean getDefaultModeVaries() {
+      return instance.getDefaultModeVaries();
+    }
+    /**
+     * <pre>
+     * Project settings in the session's folder may give another default
+     * (Claude Code's .claude/settings.json and settings.local.json). The
+     * daemon checks the folder when the session is created; see
+     * CreateSessionRequest.confirm_full_access.
+     * </pre>
+     *
+     * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+     * @param value The defaultModeVaries to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultModeVaries(boolean value) {
+      copyOnWrite();
+      instance.setDefaultModeVaries(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Project settings in the session's folder may give another default
+     * (Claude Code's .claude/settings.json and settings.local.json). The
+     * daemon checks the folder when the session is created; see
+     * CreateSessionRequest.confirm_full_access.
+     * </pre>
+     *
+     * <code>bool default_mode_varies = 6 [json_name = "defaultModeVaries"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultModeVaries() {
+      copyOnWrite();
+      instance.clearDefaultModeVaries();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.AgentInfo)
   }
   @java.lang.Override
@@ -396,10 +788,13 @@ public  final class AgentInfo extends
             "agent_",
             "version_",
             "verified_",
+            "defaultMode_",
+            "defaultModeSource_",
+            "defaultModeVaries_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0007\u0004\f\u0005\f\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

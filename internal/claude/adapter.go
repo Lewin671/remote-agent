@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -262,6 +263,57 @@ func (a *Adapter) FullAccess(args []string) bool {
 		mode = a.defaultMode()
 	}
 	return mode == "bypassPermissions"
+}
+
+// managedSettings is where an administrator's settings for Claude Code
+// live; they override all others.
+var managedSettings = func() string {
+	if runtime.GOOS == "darwin" {
+		return "/Library/Application Support/ClaudeCode/managed-settings.json"
+	}
+	return "/etc/claude-code/managed-settings.json"
+}()
+
+// settingsMode reads permissions.defaultMode from a settings file. A
+// missing file is no answer and no error.
+func settingsMode(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var st struct {
+		Permissions struct {
+			DefaultMode string `json:"defaultMode"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(b, &st); err != nil {
+		return "", err
+	}
+	return st.Permissions.DefaultMode, nil
+}
+
+// DefaultMode follows Claude Code's settings precedence: managed settings,
+// then the project's local and shared settings in cwd, then the user's.
+// Without any it is manual (ASK).
+func (a *Adapter) DefaultMode(cwd string) (pb.ApprovalMode, bool, bool) {
+	files := []string{managedSettings}
+	if cwd != "" {
+		files = append(files, filepath.Join(cwd, ".claude", "settings.local.json"), filepath.Join(cwd, ".claude", "settings.json"))
+	}
+	files = append(files, filepath.Join(a.home, "settings.json"))
+	for _, f := range files {
+		m, err := settingsMode(f)
+		if err != nil {
+			return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, false, true
+		}
+		if m != "" {
+			return modeOf(m), true, true
+		}
+	}
+	return pb.ApprovalMode_APPROVAL_MODE_ASK, true, true
 }
 
 // defaultMode is permissions.defaultMode in ~/.claude/settings.json.

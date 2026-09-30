@@ -154,6 +154,24 @@ func writeFileAtomic(path string, b []byte) error {
 
 // sessionArgs turns a create request's choices, or the daemon's defaults
 // for the CLI, into its arguments.
+// defaultMode is the approval mode a session of ag started in cwd without
+// one gets: the daemon's default for the CLI, else the CLI's own.
+func (d *Daemon) defaultMode(ag agent.Adapter, cwd string) (pb.ApprovalMode, pb.DefaultModeSource, bool) {
+	st := d.settings()
+	def := st.DefaultMode
+	if ag.Kind() == pb.Agent_AGENT_CLAUDE {
+		def = st.GetClaude().GetMode()
+	}
+	if def != pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+		return def, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS, false
+	}
+	m, known, varies := ag.DefaultMode(cwd)
+	if !known {
+		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED, varies
+	}
+	return m, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG, varies
+}
+
 func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]string, error) {
 	st := d.settings()
 	model, effort, mode := req.Model, req.Effort, req.Mode

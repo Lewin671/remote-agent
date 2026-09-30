@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/claude"
+	"github.com/Lewin671/remote-agent/internal/codex"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -242,5 +245,57 @@ func TestUploadErrorsLogNoPaths(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), "secret.png") || strings.Contains(err.Error(), "secret.png") {
 		t.Fatalf("path logged: %s", buf.String())
+	}
+}
+
+// A client starting a session whose default here is full access must
+// confirm it; the machine metadata says what the default is.
+func TestFullAccessDefaultNeedsConfirmation(t *testing.T) {
+	h := newHarness(t, Config{ClaudeBin: "/bin/true"})
+	claudeHome := t.TempDir()
+	h.d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", claudeHome)
+	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{"permissions":{"defaultMode":"bypassPermissions"}}`), 0o600)
+	var info *pb.AgentInfo
+	for _, a := range h.d.MachineMeta().Agents {
+		if a.Agent == pb.Agent_AGENT_CLAUDE {
+			info = a
+		}
+	}
+	if info == nil || info.DefaultMode != pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS || info.DefaultModeSource != pb.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG || !info.DefaultModeVaries {
+		t.Fatalf("agent info %v", info)
+	}
+	client := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d"}
+	_, err := h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Agent: pb.Agent_AGENT_CLAUDE, Prompt: "x"}, client)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("unconfirmed full access: %v", err)
+	}
+	// A project's own settings count too.
+	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{}`), 0o600)
+	os.MkdirAll(filepath.Join(h.dir, ".claude"), 0o700)
+	os.WriteFile(filepath.Join(h.dir, ".claude", "settings.local.json"), []byte(`{"permissions":{"defaultMode":"bypassPermissions"}}`), 0o600)
+	_, err = h.d.createBy(&pb.CreateSessionRequest{Cwd: h.dir, Agent: pb.Agent_AGENT_CLAUDE, Prompt: "x"}, client)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("project full access: %v", err)
+	}
+	// An unreadable configuration is reported as unknown.
+	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{broken`), 0o600)
+	if m, src, _ := h.d.defaultMode(h.d.agents[pb.Agent_AGENT_CLAUDE], ""); src != pb.DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED || m != pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+		t.Fatalf("broken settings: %v %v", m, src)
+	}
+}
+
+func TestCodexDefaultMode(t *testing.T) {
+	home := t.TempDir()
+	a := codex.New("/bin/true", home, filepath.Join(home, "history.jsonl"))
+	if m, known, _ := a.DefaultMode(""); !known || m != pb.ApprovalMode_APPROVAL_MODE_ASK {
+		t.Fatalf("no config: %v %v", m, known)
+	}
+	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model = \"x\"\nprofile = \"yolo\"\n\n[profiles.yolo]\napproval_policy = \"never\"\nsandbox_mode = \"danger-full-access\" # all\n"), 0o600)
+	if m, known, _ := a.DefaultMode(""); !known || m != pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
+		t.Fatalf("profile: %v %v", m, known)
+	}
+	os.WriteFile(filepath.Join(home, "config.toml"), []byte("approvals_reviewer = \"auto_review\"\n"), 0o600)
+	if m, _, _ := a.DefaultMode(""); m != pb.ApprovalMode_APPROVAL_MODE_AUTO {
+		t.Fatalf("auto: %v", m)
 	}
 }

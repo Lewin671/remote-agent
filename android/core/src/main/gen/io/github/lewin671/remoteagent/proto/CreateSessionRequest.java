@@ -749,6 +749,53 @@ java.lang.String defaultValue) {
     imageIds_.add(value.toStringUtf8());
   }
 
+  public static final int CONFIRM_FULL_ACCESS_FIELD_NUMBER = 10;
+  private boolean confirmFullAccess_;
+  /**
+   * <pre>
+   * The user confirmed starting in full access. Without it, a session
+   * whose mode is left unspecified is refused ("failed_precondition")
+   * when the default it would get in this folder is FULL_ACCESS
+   * (AgentInfo.default_mode, project settings included).
+   * </pre>
+   *
+   * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+   * @return The confirmFullAccess.
+   */
+  @java.lang.Override
+  public boolean getConfirmFullAccess() {
+    return confirmFullAccess_;
+  }
+  /**
+   * <pre>
+   * The user confirmed starting in full access. Without it, a session
+   * whose mode is left unspecified is refused ("failed_precondition")
+   * when the default it would get in this folder is FULL_ACCESS
+   * (AgentInfo.default_mode, project settings included).
+   * </pre>
+   *
+   * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+   * @param value The confirmFullAccess to set.
+   */
+  private void setConfirmFullAccess(boolean value) {
+    
+    confirmFullAccess_ = value;
+  }
+  /**
+   * <pre>
+   * The user confirmed starting in full access. Without it, a session
+   * whose mode is left unspecified is refused ("failed_precondition")
+   * when the default it would get in this folder is FULL_ACCESS
+   * (AgentInfo.default_mode, project settings included).
+   * </pre>
+   *
+   * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+   */
+  private void clearConfirmFullAccess() {
+
+    confirmFullAccess_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.CreateSessionRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1592,6 +1639,55 @@ java.lang.String defaultValue) {
       return this;
     }
 
+    /**
+     * <pre>
+     * The user confirmed starting in full access. Without it, a session
+     * whose mode is left unspecified is refused ("failed_precondition")
+     * when the default it would get in this folder is FULL_ACCESS
+     * (AgentInfo.default_mode, project settings included).
+     * </pre>
+     *
+     * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+     * @return The confirmFullAccess.
+     */
+    @java.lang.Override
+    public boolean getConfirmFullAccess() {
+      return instance.getConfirmFullAccess();
+    }
+    /**
+     * <pre>
+     * The user confirmed starting in full access. Without it, a session
+     * whose mode is left unspecified is refused ("failed_precondition")
+     * when the default it would get in this folder is FULL_ACCESS
+     * (AgentInfo.default_mode, project settings included).
+     * </pre>
+     *
+     * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+     * @param value The confirmFullAccess to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConfirmFullAccess(boolean value) {
+      copyOnWrite();
+      instance.setConfirmFullAccess(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The user confirmed starting in full access. Without it, a session
+     * whose mode is left unspecified is refused ("failed_precondition")
+     * when the default it would get in this folder is FULL_ACCESS
+     * (AgentInfo.default_mode, project settings included).
+     * </pre>
+     *
+     * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConfirmFullAccess() {
+      copyOnWrite();
+      instance.clearConfirmFullAccess();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CreateSessionRequest)
   }
   @java.lang.Override
@@ -1618,10 +1714,11 @@ java.lang.String defaultValue) {
             "mode_",
             "agent_",
             "imageIds_",
+            "confirmFullAccess_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0000\u0001\t\t\u0001\u0002\u0000\u0001\u0208\u0002\u021a\u00032\u0004" +
-              "\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f\t\u021a";
+              "\u0000\n\u0000\u0000\u0001\n\n\u0001\u0002\u0000\u0001\u0208\u0002\u021a\u00032\u0004" +
+              "\u0208\u0005\u0208\u0006\u0208\u0007\f\b\f\t\u021a\n\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

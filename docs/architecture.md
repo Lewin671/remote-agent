@@ -226,7 +226,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
 - **Codex 的计划模式**：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会先关掉计划模式再切权限
 - **以 CLI 为准**：客户端只发「切换」指令，显示的是从 rollout、transcript 或屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端切到了这 4 种以外的模式（如 accept edits），照实显示
-- **完全放行要二次确认**；新会话的默认模式在 daemon 的设置里指定，没指定就沿用 CLI 自己的配置（第 13 节）
+- **完全放行要二次确认**；新会话的默认模式在 daemon 的设置里指定，没指定就沿用 CLI 自己的配置（第 13 节）。沿用 CLI 配置时，客户端事先不知道它是什么，所以 daemon 把每个 CLI 实际生效的默认模式读出来放进机器元数据（`AgentInfo.default_mode`，只读配置、不改任何文件）：Claude Code 按它的优先级读托管设置、项目的 `.claude/settings.local.json` 和 `settings.json`、用户的 `~/.claude/settings.json` 里的 `permissions.defaultMode`，都没有就是 manual；Codex 读 `config.toml` 顶层和所选 profile 的 `approval_policy`、`sandbox_mode`、`approvals_reviewer`，没写的按 Codex 的默认值。读不出来就标为未知。客户端在默认是完全放行或未知时要求确认；daemon 也会兜底：客户端没指定模式、也没带确认（`confirm_full_access`），而这个目录下的默认会是完全放行（项目设置也算）时，拒绝新建。电脑上的本地命令不受这条限制，那是用户自己的配置
 
 ## 8. 项目标识
 

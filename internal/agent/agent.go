@@ -66,6 +66,11 @@ type Launcher interface {
 	// FullAccess reports whether a session started with args can be
 	// switched to FULL_ACCESS.
 	FullAccess(args []string) bool
+	// DefaultMode is the approval mode the CLI's own configuration gives a
+	// session started in cwd without one ("" for the machine-wide
+	// default). known is false when the configuration could not be read;
+	// varies, when settings in a session's folder may change it.
+	DefaultMode(cwd string) (mode pb.ApprovalMode, known, varies bool)
 	// Argv is the command line after the executable that starts or resumes
 	// a session. It may write files the CLI reads into l.Dir and set
 	// l.SessionID when the adapter chooses the CLI's session ID.

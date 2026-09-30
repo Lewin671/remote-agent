@@ -115,6 +115,11 @@ message CreateSessionRequest {
   // Images for the first message, IDs from CompleteImageUpload (at most
   // 6). The prompt may be empty when there are images.
   repeated string image_ids = 9;
+  // The user confirmed starting in full access. Without it, a session
+  // whose mode is left unspecified is refused ("failed_precondition")
+  // when the default it would get in this folder is FULL_ACCESS
+  // (AgentInfo.default_mode, project settings included).
+  bool confirm_full_access = 10;
 }
 
 message CreateSessionResponse {

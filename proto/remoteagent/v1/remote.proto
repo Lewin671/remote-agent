@@ -55,6 +55,29 @@ message AgentInfo {
   string version = 2;
   // Whether this remote-agent has been checked against that version.
   bool verified = 3;
+  // The approval mode a session started without one gets: the daemon's
+  // default for this CLI if set (DaemonSettings), else the CLI's own
+  // configuration as the daemon reads it (Claude Code:
+  // permissions.defaultMode in managed and user settings; Codex:
+  // approval_policy, sandbox_mode and approvals_reviewer in config.toml,
+  // with the selected profile). UNSPECIFIED with a known source is a mode
+  // outside the four, such as Claude Code's accept edits. A client asks
+  // for confirmation before starting a session in FULL_ACCESS, and also
+  // when the source is unknown.
+  ApprovalMode default_mode = 4;
+  DefaultModeSource default_mode_source = 5;
+  // Project settings in the session's folder may give another default
+  // (Claude Code's .claude/settings.json and settings.local.json). The
+  // daemon checks the folder when the session is created; see
+  // CreateSessionRequest.confirm_full_access.
+  bool default_mode_varies = 6;
+}
+
+enum DefaultModeSource {
+  // Not known: an older daemon, or the configuration could not be read.
+  DEFAULT_MODE_SOURCE_UNSPECIFIED = 0;
+  DEFAULT_MODE_SOURCE_DAEMON_SETTINGS = 1;
+  DEFAULT_MODE_SOURCE_CLI_CONFIG = 2;
 }
 
 // Command is what a client asks a daemon to do. The session operations
