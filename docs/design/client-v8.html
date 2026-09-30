@@ -826,7 +826,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接、等待事项和输入菜单可点击。</div>
 
 <div class="note">
-  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>插入这一轮（steer）和排队（queue）的消息，只要 Agent 还没收到都能取消；Codex 的插入一写进终端就送达，气泡随即变成普通消息，不再显示取消。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>审批对齐 CLI 原生审批框的三项：「不允许 / 允许」并排，下一行蓝字「允许，…以后不再问」（按 CLI 写出前缀、目录或自动接受编辑）；点「不允许」就地写一句说明，也可不写。去掉单独的「附理由拒绝」流程和按钮下方的规则说明。</li><li>会话导航栏只留标题和状态（完全放行仍用红字跟在状态后），CLI、项目、机器和目录移进 ⋯ 菜单顶部。</li><li>工具只用一行表示：运行中写计时，失败写退出码，完成的折成一行；去掉工具详情页、输出、输入框上方的工具摘要和跳转终端的入口。</li><li>宽屏主页的主区域只放新建任务并居中：项目选择并入标题，设置摘要在输入框下方；需要处理只留在侧栏。侧栏的「新会话」改成和手机一样的新建图标，项目行的进行中数量改为灰字。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
+  <h4>相对 v7 的改动</h4><ul><li>新会话的 CLI、机器、模型和审批模式改为项目设置：项目页标题下显示一行摘要，点开或从导航栏 ⋯ 进入「项目设置」；去掉「新会话设置」。</li><li>项目页和宽屏新建区的「＋」只用来添加图片；会话里的「＋」不变。</li><li>目录不再是可改的设置，它就是项目本身；换目录从主页右上角的新建按钮选别的项目或新项目。</li><li>项目默认是完全放行时，新建不再二次确认，设置摘要用红字标出；会话中途切到完全放行仍需确认。</li><li>运行中去掉输入框上方的「排队 N 条」和「中断」这一行。输入框空着时发送位是 ■ 中断；打字后变回 ↑，点一下插入这一轮（steer），长按选这一轮结束后再发（queue）；有草稿时中断从 ⋯ 菜单。排队的消息作为待发气泡留在对话末尾，就地取消，中断后暂停等你决定，去掉独立的队列页。</li><li>主页右上角的圆形「＋」改成新建图标（方框加笔），不带底色和文字；「＋」只表示往消息里添加东西。</li><li>插入这一轮（steer）和排队（queue）的消息，只要 Agent 还没收到都能取消；Codex 的插入一写进终端就送达，气泡随即变成普通消息，不再显示取消。</li><li>待发气泡正文最多 4 行、点开看全文，说明行放不下时省略说明而保留操作；所有消息气泡里的长路径可在任意位置换行。</li><li>审批对齐 CLI 原生审批框的三项：「不允许 / 允许」并排，下一行蓝字「允许，…以后不再问」（按 CLI 写出前缀、目录或自动接受编辑）；点「不允许」就地写一句说明，也可不写。去掉单独的「附理由拒绝」流程和按钮下方的规则说明。</li><li>会话导航栏只留标题和状态，状态后面总是跟着审批模式（询问、自动、计划，完全放行用红字），CLI、项目、机器和目录移进 ⋯ 菜单顶部。</li><li>工具只用一行表示：运行中写计时，失败写退出码，完成的折成一行；去掉工具详情页、输出、输入框上方的工具摘要和跳转终端的入口。</li><li>宽屏主页的主区域只放新建任务并居中：项目选择并入标题，设置摘要在输入框下方；需要处理只留在侧栏。侧栏的「新会话」改成和手机一样的新建图标，项目行的进行中数量改为灰字。</li><li>补齐内容多和大字号的规则与状态：主页进行中最多列 5 个，项目多时选项目弹层有搜索，排队超过 3 条时折叠，聊天往上翻时读取更早的记录；200% 字号下导航栏标题可两行，卡片两端换行，设置标签不折字。</li><li>完全放行不再在输入框里加一行红字：会话里写在导航栏第二行的状态后面，新建时写在项目设置摘要里；输入框始终是一行胶囊。</li><li>设备页 CLI 默认设置改称「新项目默认设置」；项目设置里也可以设为常用或从列表移除。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -933,7 +933,7 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">给登录接口加限流</span></b><span><span class="dot run"></span>启动中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">给登录接口加限流</span></b><span><span class="dot run"></span>启动中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="sep">9:41 · ~/Code/foo</div>
@@ -1018,7 +1018,7 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中 · 自动</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
@@ -1043,7 +1043,7 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重构 API 层</span></b><span><span class="dot wait"></span>等待审批</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重构 API 层</span></b><span><span class="dot wait"></span>等待审批 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>把 handler 拆到单独的包里</div><small>MacBook 终端</small></div>
@@ -1064,7 +1064,7 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重构 API 层</span></b><span><span class="dot wait"></span>等待审批</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重构 API 层</span></b><span><span class="dot wait"></span>等待审批 · 询问</span></span><span class="more">⋯</span></div>
       <div class="body chat">
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
@@ -1098,7 +1098,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">升级依赖</span></b><span><span class="dot wait"></span>等你回答</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">升级依赖</span></b><span><span class="dot wait"></span>等你回答 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>把依赖都升级到最新的版本</div></div>
@@ -1120,7 +1120,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">拆分订单服务</span></b><span><span class="dot wait"></span>计划待批准</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">拆分订单服务</span></b><span><span class="dot wait"></span>计划待批准 · 计划</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="sysline">iMac 终端把模式切到了 <b>计划</b></div>
@@ -1140,7 +1140,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">billing · 11:25</span></b><span><span class="dot wait"></span>终端里有弹窗</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">billing · 11:25</span></b><span><span class="dot wait"></span>终端里有弹窗 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端<span class="n">●</span></div></div></div>
       <div class="body chat">
         <div class="sep">11:25 · ~/Code/billing</div>
@@ -1158,7 +1158,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone" style="background:#0d1117">
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中 · 询问</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
       <div class="ttool">电脑上 120×40<b>⤢ 适配我的屏幕</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
@@ -1191,7 +1191,7 @@ git status --short gen/</pre>
   <div>
     <div class="phone" style="background:#0d1117">
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">billing · 11:25</span></b><span style="color:#9da7b3"><span class="dot wait"></span>终端里有弹窗</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">billing · 11:25</span></b><span style="color:#9da7b3"><span class="dot wait"></span>终端里有弹窗 · 询问</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
       <div class="ttool">已适配这块屏幕 · 42×30<b>还原</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
@@ -1211,7 +1211,7 @@ git status --short gen/</pre>
   </div>
 </div>
 
-<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送（运行中是插入这一轮），Alt+Enter 在运行中排到这一轮结束后发，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。读数只在菜单里显示，高占用在「＋」旁显示橙点。退出设置或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span>空闲</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
+<h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文从一行起步，最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送（运行中是插入这一轮），Alt+Enter 在运行中排到这一轮结束后发，中文输入法组词期间不发送。模式只改当前会话，模式、模型和上下文从「＋」打开会话设置；上下文未知时省略，不显示 0%。读数只在菜单里显示，高占用在「＋」旁显示橙点。退出设置或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span>空闲 · 询问</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
 先给我一个方案。</div>
 <div class="controls">
 <details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：
@@ -1240,7 +1240,7 @@ GPT-6-Astra · medium ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">修复登录超时</span></b><span>运行中</span>
+<span class="tname">修复登录超时</span></b><span>运行中 · 自动</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -1283,7 +1283,7 @@ GPT-6-Astra · medium ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span></b><span>运行中</span>
+<span class="tname">重构订单模块</span></b><span>运行中 · 询问</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -1428,7 +1428,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">修复登录超时</span></b><span>运行中</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending canceling"><div><span class="clamp">更新 README 的配置说明。</span></div><small><span class="pt">正在取消…</span></small></div><div class="me pending fail"><div><span class="clamp">最后汇总改动，不要提交。</span></div><small><span class="pt">取消没成功，仍在排队</span><b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">还没送到 Agent 的消息（插入这一轮或排队）：按顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
+<span class="tname">修复登录超时</span></b><span>运行中 · 自动</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在补充限流测试。</div><div class="me pending"><div><span class="clamp">检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</span></div><small><span class="pt">排队 · 这一轮结束后发 · 第 1 条</span><b>取消</b></small></div><div class="me pending canceling"><div><span class="clamp">更新 README 的配置说明。</span></div><small><span class="pt">正在取消…</span></small></div><div class="me pending fail"><div><span class="clamp">最后汇总改动，不要提交。</span></div><small><span class="pt">取消没成功，仍在排队</span><b>重试</b></small></div></div><div class="toast">上一条已送入终端，不能取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：自动 ▾</div><div>模型：GPT-6-Astra · medium ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">还没送到 Agent 的消息（插入这一轮或排队）：按顺序留在对话末尾，写明等什么；每条就地取消，显示取消中和失败；送进终端后变成普通消息。不另开队列页，不提供重新排序</div>
 </div>
 <div>
 <div class="phone">
@@ -1445,7 +1445,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">修复登录超时</span></b><span>空闲</span>
+<span class="tname">修复登录超时</span></b><span>空闲 · 询问</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -1501,7 +1501,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">对账脚本</span></b><span><span class="dot off"></span>电脑离线</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">对账脚本</span></b><span><span class="dot off"></span>电脑离线 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="dis">终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>把 3 月的对账结果导出成 CSV</div></div>
@@ -1519,7 +1519,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中 · 自动</span></span><span class="more">⋯</span></div>
       <div class="connbar">◌ 连接断了，正在重连 · 内容可能不是最新的</div>
       <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
@@ -1551,7 +1551,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone" style="background:#0d1117">
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff">‹</span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中 · 询问</span></span><span class="more" style="color:#79c0ff">⋯</span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
       <div class="term"><span class="d">• Edited auth/login.go (+14 -6)</span>
 <span class="d">• Running go test ./auth/...</span><div class="tstate"><b>终端连接断开了</b><p>下面是断开前的画面。会话还在运行，聊天照常更新。</p><div class="btns"><div class="btn">重新连接</div></div><span class="det">查看详情</span></div></div>
@@ -1659,7 +1659,7 @@ GPT-6-Astra · medium ▾
   <div class="st">
     <div class="st-h">大字号 · 200%</div>
     <div class="big2x">
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时的问题</span></b><span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时的问题</span></b><span>运行中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="todo" style="margin:8px 0 0"><div class="k"><span>● 请求执行</span><span>剩 8 分钟</span></div><div class="t"><span>重构 API 层</span><a>查看会话 ›</a></div></div>
       <div class="setrows"><div class="sr"><span class="lbl">机器</span><span class="v">MacBook</span></div><div class="sr"><span class="lbl">模型</span><span class="v">GPT-6-Astra · medium</span></div></div>
     </div>
@@ -1882,7 +1882,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span><span class="dot run"></span>运行中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="body chat">
         <div class="me"><div>跑一遍库存集成测试</div></div>
         <div class="ai">测试需要启动数据库，可能要等一会儿。</div>
@@ -1897,7 +1897,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span><span class="dot run"></span>运行中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="body chat">
         <div class="me"><div>并行检查测试和构建</div></div>
         <div class="tool grp"><span class="ok">✓</span><b>运行了 3 条命令</b><span class="muted"><i class="exp">›</i></span></div>
@@ -1912,7 +1912,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">验证库存回滚</span></b><span>空闲 · 询问</span></span><span class="more">⋯</span></div>
       <div class="connbar">连接断了，正在重连</div>
       <div class="body chat">
         <div class="tool"><span class="sp" style="animation:none">◌</span><code>go test ./...</code><span class="muted">等待同步</span></div>
@@ -1933,7 +1933,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">调整空状态</span></b><span><span class="dot idle"></span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">调整空状态</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="me"><span class="pics"><i class="pic port empty"></i></span><div>参考这张改一下空状态</div><small>MacBook 终端</small></div>
@@ -1949,7 +1949,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot idle"></span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot idle"></span>空闲 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="me"><span class="pics"><i class="pic land web"><span class="n">1</span></i><i class="pic port ui"><span class="n">2</span></i></span><div><span class="ichip">图 1</span>电脑上，<span class="ichip">图 2</span>手机上，为什么手机上这么挤？</div><small>MacBook 终端</small></div>
@@ -1965,7 +1965,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">空状态插画</span></b><span><span class="dot idle"></span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">空状态插画</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>生成一张空状态插画，风格和现在的图标一致</div></div>
@@ -2036,7 +2036,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot idle"></span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot idle"></span>空闲 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="ai">单列布局改好了，测试也通过了。</div>
@@ -2050,7 +2050,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot run"></span>运行中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +12 −9</code></div>
@@ -2066,7 +2066,7 @@ GPT-6-Astra · medium ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot run"></span>运行中</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span></b><span><span class="dot run"></span>运行中 · 询问</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div>聊天</div><div class="on">终端</div></div></div>
       <div class="term">❯ [Image #3] [Image #4]这两个页面底部的
   按钮都点不到
@@ -2294,7 +2294,7 @@ GPT-6-Astra · medium ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">梳理登录流程</span></b><span>等你回答</span>
+<span class="tname">梳理登录流程</span></b><span>等你回答 · 询问</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -2419,7 +2419,7 @@ GPT-6-Astra · medium ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">拆分订单服务</span></b><span>计划待批准</span>
+<span class="tname">拆分订单服务</span></b><span>计划待批准 · 计划</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -2644,7 +2644,7 @@ Sonnet · high ▾
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重写支付模块</span></b><span><span class="dot idle"></span>空闲</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">重写支付模块</span></b><span><span class="dot idle"></span>空闲 · 自动</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="tool"><span class="ok">✓</span><code>编辑 9 个文件  +412 −288</code></div>
@@ -3121,7 +3121,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span></b><span>运行中</span>
+<span class="tname">重构订单模块</span></b><span>运行中 · 计划</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -3174,7 +3174,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span></b><span>运行中</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div><span class="clamp">补充库存回滚测试。</span></div><small><span class="pt">排队 · 本客户端</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README。</span></div><small><span class="pt">排队 · Android · b71c</span><b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
+<span class="tname">重构订单模块</span></b><span>运行中 · 询问</span></span><span class="more">⋯</span></div><div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end"><div class="ai">正在拆分库存接口。</div><div class="me pending"><div><span class="clamp">补充库存回滚测试。</span></div><small><span class="pt">排队 · 本客户端</span><b>取消</b></small></div><div class="me pending"><div><span class="clamp">最后检查 README。</span></div><small><span class="pt">排队 · Android · b71c</span><b>取消</b></small></div></div><div class="toast">上一条已在另一客户端取消</div><div class="compose-card"><div class="draft">消息</div><div class="controls"><details class="compose-menu"><summary aria-label="附件与会话设置">＋</summary><div class="compose-pop"><div>添加图片</div><div>模式：询问 ▾</div><div>模型：Sonnet · high ▾</div></div></details><span class="go44 stop" aria-label="中断这一轮"></span></div></div></div><div class="cap">多端排队：各端看到同一组待发气泡，按 daemon 接受的顺序排列并写明来源；任一端都能取消，取消和送达状态同步，未发送的草稿只属于各自客户端</div>
 </div>
 <div>
 <div class="phone">
@@ -3191,7 +3191,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">重构订单模块</span></b><span>空闲</span>
+<span class="tname">重构订单模块</span></b><span>空闲 · 询问</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -3236,7 +3236,7 @@ Sonnet · high ▾
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">终端</span></b><span>运行中</span>
+<span class="tname">终端</span></b><span>运行中 · 询问</span>
 </span>
 <span class="more">⋯</span>
 </div>
@@ -3477,7 +3477,7 @@ Sonnet · high ▾
     </div>
     <div class="dm">
       <div class="dh">
-        <div class="r1"><span class="dot wait"></span><b>重构 API 层</b><span class="muted">等待审批</span><span class="mr">⋯</span></div>
+        <div class="r1"><span class="dot wait"></span><b>重构 API 层</b><span class="muted">等待审批 · 询问</span><span class="mr">⋯</span></div>
         <div class="r2"><div class="seg"><div>聊天</div><div>终端</div><div class="split-choice on">并排</div></div></div>
       </div>
       <div class="ds">
