@@ -299,3 +299,21 @@ func TestCodexDefaultMode(t *testing.T) {
 		t.Fatalf("auto: %v", m)
 	}
 }
+
+// V3: a second interrupt that fails leaves the first one's origin.
+func TestFailedInterruptKeepsEarlierOrigin(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.running = true
+	a := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "a"}
+	b := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "b"}
+	if _, err := h.s.interruptBy(a); err != nil {
+		t.Fatal(err)
+	}
+	h.term.failWrites = true
+	if _, err := h.s.interruptBy(b); err == nil {
+		t.Fatal("write did not fail")
+	}
+	if h.s.interruptedBy.GetDeviceId() != "a" {
+		t.Fatalf("origin %v", h.s.interruptedBy)
+	}
+}
