@@ -89,3 +89,24 @@ class RunningToolsTest {
         assertEquals("后台工作 · 去终端确认", toolSummary(bg, Agent.AGENT_CLAUDE, 10_000, 0))
     }
 }
+
+class BackgroundFieldTest {
+    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
+
+    @Test
+    fun theDaemonsBackgroundFieldMakesTheRowUnconfirmedWithItsReason() {
+        val events = listOf(
+            ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance())),
+            ev(2, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c").setTitle("sleep 100").setKind(ToolKind.TOOL_KIND_COMMAND))),
+            ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_COMPLETED))),
+            ev(4, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("c").setTitle("sleep 100").setStatus("running").setKind(ToolKind.TOOL_KIND_COMMAND)
+                .setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING))),
+        )
+        val items = buildChat(events, derive(events, Agent.AGENT_CODEX), "M")
+        val tool = items.filterIsInstance<ChatItem.Tool>().single()
+        assertEquals("e2", tool.key)
+        assertTrue(tool.background)
+        assertTrue(items.none { it is ChatItem.Running })
+        assertTrue(backgroundNote(tool.call).startsWith("本轮结束时仍在运行"))
+    }
+}

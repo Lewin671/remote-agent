@@ -520,6 +520,12 @@ private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: Stri
             if (decision.isNotEmpty()) Text(decision, style = MaterialTheme.typography.bodySmall, color = p.muted)
         }
         Text(toolTitle(t, cwd, home).lines().first(), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text("调用已返回，命令转到了后台；它什么时候结束这里不知道。请到终端确认。", style = MaterialTheme.typography.bodySmall, color = p.muted)
+        Text(backgroundNote(t), style = MaterialTheme.typography.bodySmall, color = p.muted)
     }
 }
+
+/** What a background call's row says: how it got there, when the daemon says, and that its end is not known. */
+fun backgroundNote(t: ToolCall): String =
+    io.github.lewin671.remoteagent.core.backgroundReason(t.background).ifEmpty { "调用已返回，命令转到了后台" } +
+        "；它什么时候结束这里不知道。请到终端确认。"
+

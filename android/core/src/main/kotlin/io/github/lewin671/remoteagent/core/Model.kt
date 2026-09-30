@@ -306,13 +306,25 @@ class RunningTool(
 fun backgroundInput(input: String): Boolean = Regex("\"run_in_background\"\\s*:\\s*true").containsMatchIn(input)
 
 /**
- * The call returned while its command went on in the background. Claude
- * Code's Bash says so in its result, also when it backgrounds a long
- * command on its own (claude-code-notes, 2.1.284: the input is then just
- * the command); an input asking for it counts too.
+ * The call went on in the background: this event is its start, not its
+ * end. A v2 daemon says so (ToolCall.background); an older one only lets
+ * Claude Code's result say it (claude-code-notes: a Bash call it moved to
+ * the background returns "Command running in background with ID:"), or an
+ * input asking for it.
  */
 fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean =
-    backgroundInput(c.input) || c.output.startsWith("Command running in background with ID:")
+    c.background != io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_UNSPECIFIED &&
+        c.background != io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED ||
+        backgroundInput(c.input) || c.output.startsWith("Command running in background with ID:")
+
+/** How a call got to the background, in words; empty when not known. */
+fun backgroundReason(b: io.github.lewin671.remoteagent.proto.ToolBackground): String = when (b) {
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED -> "按模型的要求转到后台"
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT -> "运行超时后转到后台"
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_BY_USER -> "在终端里被转到后台"
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING -> "本轮结束时仍在运行"
+    else -> ""
+}
 
 /**
  * A tool whose end is not known (architecture §13, 工具执行反馈): its call

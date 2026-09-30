@@ -125,6 +125,13 @@ class ToolIdsTest {
     }
 
     @Test
+    fun theDaemonSaysACallWentToTheBackground() {
+        val d = derive(listOf(turn, start(2, "c1", "npm run dev"), call(3, "c1", io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED)), Agent.AGENT_CLAUDE)
+        assertEquals(1, d.background.size)
+        assertTrue(d.background[0].returned)
+    }
+
+    @Test
     fun aStillRunningExecAfterTheTurnIsItsStartNotANewTool() {
         val d = derive(
             listOf(
@@ -137,5 +144,6 @@ class ToolIdsTest {
         assertEquals(4L, d.completedAt[2])
         assertFalse(2L in d.unfinished)
         assertFalse(2L in d.noResult)
+        assertEquals(1, d.background.size)
     }
 }
