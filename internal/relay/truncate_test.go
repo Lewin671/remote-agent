@@ -102,3 +102,18 @@ func TestFitEventDropsPreviewsFirst(t *testing.T) {
 		t.Fatal("the logged event was changed")
 	}
 }
+
+// G14: a queued message's long text is cut, not the whole state dropped.
+func TestFitEventKeepsInputState(t *testing.T) {
+	e := &pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: "r1", Status: pb.InputStatus_INPUT_STATUS_QUEUED, Text: strings.Repeat("x", 800<<10), ImageIds: []string{"a", "b"},
+	}}}
+	st := fitEvent(e).GetInputState()
+	if st == nil || st.RequestId != "r1" || len(st.ImageIds) != 2 || len(st.Text) >= 800<<10 || proto.Size(fitEvent(e)) > maxEventBytes {
+		t.Fatalf("got %v", fitEvent(e).Kind)
+	}
+	g := &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: "c", RevisedPrompt: strings.Repeat("p", 900<<10), Images: []*pb.ImageRef{{ImageId: "i"}}}}}
+	if got := fitEvent(g).GetImageGenerated(); got == nil || len(got.Images) != 1 || got.CallId != "c" {
+		t.Fatalf("generated: %v", fitEvent(g).Kind)
+	}
+}

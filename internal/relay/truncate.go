@@ -52,6 +52,12 @@ func fitEvent(e *pb.Event) *pb.Event {
 				k.ToolCall.OutputTruncated = true
 			}
 		}()
+	case *pb.Event_InputState:
+		fields = []*string{&k.InputState.Text}
+	case *pb.Event_ImageGenerated:
+		fields = []*string{&k.ImageGenerated.RevisedPrompt}
+	case *pb.Event_PlanProposed:
+		fields = []*string{&k.PlanProposed.Text}
 	case *pb.Event_ApprovalRequested:
 		fields = []*string{&k.ApprovalRequested.ToolInputJson, &k.ApprovalRequested.Command, &k.ApprovalRequested.Description}
 	}
