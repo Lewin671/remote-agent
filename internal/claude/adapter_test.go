@@ -267,50 +267,58 @@ func (f *fakeClaude) Write(b []byte) error {
 	return nil
 }
 
+// Facts the daemon passes: what is known of the modes on offer.
+var (
+	factsHaiku   = agent.ModeFacts{Model: "claude-haiku-4-5-20251001"}                   // no bypass, no auto
+	factsSonnet  = agent.ModeFacts{FullAccess: true, Model: "claude-sonnet-5-5"}         // everything
+	factsUnknown = agent.ModeFacts{FullAccess: true}                                     // auto not known
+	factsBypass  = agent.ModeFacts{FullAccess: true, Model: "claude-haiku-4-5-20251001"} // bypass, no auto
+)
+
 func TestSetMode(t *testing.T) {
 	a := New("claude", "")
 	f := &fakeClaude{noBypass: true, noAuto: true}
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false); err != nil || cycle[f.mode] != "plan" {
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, factsHaiku); err != nil || cycle[f.mode] != "plan" {
 		t.Fatalf("plan: %v %s", err, cycle[f.mode])
 	}
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); err != nil || cycle[f.mode] != "default" {
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, factsHaiku); err != nil || cycle[f.mode] != "default" {
 		t.Fatalf("ask: %v %s", err, cycle[f.mode])
 	}
-	// Bypass is not on offer: a full turn, then back where it was.
-	err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, false)
-	if !errors.Is(err, agent.ErrUnsupported) || cycle[f.mode] != "default" {
-		t.Fatalf("bypass: %v %s", err, cycle[f.mode])
+	// Known not to be on offer: refused without a key.
+	n := len(f.writes)
+	for _, m := range []pb.ApprovalMode{pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, pb.ApprovalMode_APPROVAL_MODE_AUTO} {
+		if err := a.SetMode(f, m, false, factsHaiku); !errors.Is(err, agent.ErrUnsupported) || len(f.writes) != n || cycle[f.mode] != "default" {
+			t.Fatalf("%v: %v %q", m, err, f.writes[n:])
+		}
 	}
 	// Idle, Plan is entered with /plan, passing no other mode.
 	f = &fakeClaude{}
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false); err != nil || cycle[f.mode] != "plan" || strings.Join(f.writes, "|") != "/plan|\r" {
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, factsSonnet); err != nil || cycle[f.mode] != "plan" || strings.Join(f.writes, "|") != "/plan|\r" {
 		t.Fatalf("/plan: %v %q", err, f.writes)
 	}
 	// While a turn runs, never pass through a looser mode (review C1).
 	for _, c := range []struct {
-		from string
-		to   pb.ApprovalMode
-		ok   bool
+		from  string
+		to    pb.ApprovalMode
+		facts agent.ModeFacts
+		ok    bool
 	}{
-		{"plan", pb.ApprovalMode_APPROVAL_MODE_ASK, false},        // via bypass and auto
-		{"default", pb.ApprovalMode_APPROVAL_MODE_PLAN, false},    // via accept edits
-		{"acceptEdits", pb.ApprovalMode_APPROVAL_MODE_PLAN, true}, // next
-		{"auto", pb.ApprovalMode_APPROVAL_MODE_ASK, true},         // next
-		{"bypassPermissions", pb.ApprovalMode_APPROVAL_MODE_AUTO, true},
-		{"default", pb.ApprovalMode_APPROVAL_MODE_AUTO, false}, // via bypass, or back via it
-		{"plan", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsSonnet, false},        // via bypass and auto
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsHaiku, true},          // neither on offer: next
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsUnknown, false},       // via bypass
+		{"default", pb.ApprovalMode_APPROVAL_MODE_PLAN, factsSonnet, false},    // via accept edits
+		{"acceptEdits", pb.ApprovalMode_APPROVAL_MODE_PLAN, factsSonnet, true}, // next
+		{"auto", pb.ApprovalMode_APPROVAL_MODE_ASK, factsSonnet, true},         // next
+		{"bypassPermissions", pb.ApprovalMode_APPROVAL_MODE_AUTO, factsSonnet, true},
+		{"default", pb.ApprovalMode_APPROVAL_MODE_AUTO, factsSonnet, false}, // via bypass
+		{"plan", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, factsSonnet, true},
 	} {
-		f = &fakeClaude{}
+		f = &fakeClaude{noBypass: !c.facts.FullAccess, noAuto: c.facts.Model != "claude-sonnet-5-5"}
 		f.mode = index(c.from)
-		err := a.SetMode(f, c.to, true)
+		err := a.SetMode(f, c.to, true, c.facts)
 		if c.ok != (err == nil) || !c.ok && (!errors.Is(err, agent.ErrBusy) || len(f.writes) != 0) {
-			t.Errorf("running %s → %v: %v %q", c.from, c.to, err, f.writes)
+			t.Errorf("running %s → %v with %v: %v %q", c.from, c.to, c.facts, err, f.writes)
 		}
-	}
-	f = &fakeClaude{}
-	f.mode = index("plan")
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); err != nil || cycle[f.mode] != "default" {
-		t.Fatalf("idle: %v %s", err, cycle[f.mode])
 	}
 }
 
@@ -501,43 +509,57 @@ func TestResumeDoesNotTakeUpALaterBypassDefault(t *testing.T) {
 	}
 }
 
-// Idle, a way through looser modes is taken in bursts: too few presses
-// land in a mode then known to be on offer, and a second burst goes on.
-// With background work showing it is refused (review C1).
+// Idle, a way through looser modes is taken in one write of all its
+// presses, counted from what is known to be on offer (review C1). Only
+// when auto is not known and turns out to be on offer do the missing
+// presses follow in a second write. With background work showing it is
+// refused.
 func TestSetModeIdleBurst(t *testing.T) {
 	a := New("claude", "")
-	f := &fakeClaude{noAuto: true}
-	f.mode = index("plan")
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); err != nil || cycle[f.mode] != "default" {
-		t.Fatalf("plan → ask: %v %s", err, cycle[f.mode])
-	}
-	// plan → bypass (assumed not on offer: 1 press) → then 1 more.
-	if w := strings.Join(f.writes, "|"); w != agent.KeyBTab+"|"+agent.KeyBTab {
-		t.Fatalf("keys %q", f.writes)
-	}
-	// Everything on offer: auto from default goes through bypass at once.
-	f = &fakeClaude{}
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_AUTO, false); err != nil || cycle[f.mode] != "auto" {
-		t.Fatalf("default → auto: %v %s", err, cycle[f.mode])
-	}
-	// Auto not on offer: back where it started.
-	f = &fakeClaude{noAuto: true}
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_AUTO, false); !errors.Is(err, agent.ErrUnsupported) || cycle[f.mode] != "default" {
-		t.Fatalf("auto unavailable: %v %s", err, cycle[f.mode])
+	bt := func(n int) string { return strings.Repeat(agent.KeyBTab, n) }
+	for _, c := range []struct {
+		name   string
+		f      *fakeClaude
+		from   string
+		to     pb.ApprovalMode
+		facts  agent.ModeFacts
+		writes []string
+		end    string
+		err    error
+	}{
+		{"haiku with bypass: plan → ask", &fakeClaude{noAuto: true}, "plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsBypass, []string{bt(2)}, "default", nil},
+		{"sonnet: default → auto", &fakeClaude{}, "default", pb.ApprovalMode_APPROVAL_MODE_AUTO, factsSonnet, []string{bt(4)}, "auto", nil},
+		{"sonnet: plan → ask", &fakeClaude{}, "plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsSonnet, []string{bt(3)}, "default", nil},
+		{"auto unknown, on offer: plan → ask", &fakeClaude{}, "plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsUnknown, []string{bt(2), bt(1)}, "default", nil},
+		{"auto unknown, not on offer: plan → ask", &fakeClaude{noAuto: true}, "plan", pb.ApprovalMode_APPROVAL_MODE_ASK, factsUnknown, []string{bt(2)}, "default", nil},
+		{"auto unknown, not on offer: default → auto", &fakeClaude{noAuto: true}, "default", pb.ApprovalMode_APPROVAL_MODE_AUTO, factsUnknown, []string{bt(4)}, "default", agent.ErrUnsupported},
+	} {
+		c.f.mode = index(c.from)
+		err := a.SetMode(c.f, c.to, false, c.facts)
+		if !errors.Is(err, c.err) || (c.err == nil) != (err == nil) || strings.Join(c.f.writes, "|") != strings.Join(c.writes, "|") || cycle[c.f.mode] != c.end {
+			t.Errorf("%s: %v, writes %q, ends in %s", c.name, err, c.f.writes, cycle[c.f.mode])
+		}
 	}
 	// Background work: refused, nothing pressed.
 	for _, bg := range []string{" · 1 shell", "\n  ⏺ main\n  ◯ general-purpose  sleep  6s"} {
-		f = &fakeClaude{background: bg}
+		f := &fakeClaude{background: bg}
 		f.mode = index("plan")
-		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false); !errors.Is(err, agent.ErrBackground) || len(f.writes) != 0 {
+		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, factsSonnet); !errors.Is(err, agent.ErrBackground) || len(f.writes) != 0 {
 			t.Fatalf("background %q: %v %q", bg, err, f.writes)
 		}
 	}
 	// A safe way needs no burst and ignores background work.
-	f = &fakeClaude{background: " · 1 shell"}
+	f := &fakeClaude{background: " · 1 shell"}
 	f.mode = index("acceptEdits")
-	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, true); err != nil || cycle[f.mode] != "plan" {
+	if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_PLAN, true, factsSonnet); err != nil || cycle[f.mode] != "plan" {
 		t.Fatalf("safe way: %v %s", err, cycle[f.mode])
+	}
+	// The screen's note settles auto even with no model known.
+	if o := offered(factsUnknown, "   Haiku 4.5  │  w   auto mode unavailable for this model"); o["auto"] {
+		t.Fatal("the note was not read")
+	}
+	if o := offered(agent.ModeFacts{Seen: []string{"auto"}, Model: "haiku"}, ""); !o["auto"] {
+		t.Fatal("a mode seen on the screen is on offer")
 	}
 }
 

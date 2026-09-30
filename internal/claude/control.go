@@ -3,7 +3,9 @@ package claude
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -301,17 +303,43 @@ var cycle = []string{"default", "acceptEdits", "plan", "bypassPermissions", "aut
 var looseness = map[string]int{"plan": 0, "default": 1, "acceptEdits": 2, "auto": 3, "bypassPermissions": 4}
 
 // crosses reports whether cycling from one mode to another passes a mode
-// looser than limit on the way.
-func crosses(from, to string, limit int) bool {
+// looser than limit on the way. Modes known not to be on offer are
+// skipped, as Shift+Tab skips them; others may be on offer.
+func crosses(from, to string, limit int, offer map[string]bool) bool {
 	for i := index(from) + 1; ; i++ {
 		m := cycle[i%len(cycle)]
 		if m == to {
 			return false
 		}
+		if on, known := offer[m]; known && !on {
+			continue
+		}
 		if looseness[m] > limit {
 			return true
 		}
 	}
+}
+
+// offered is which of the modes not always on offer, bypass and auto, the
+// session offers, as far as known: bypass from the session's launch-time
+// capability, auto from the screen (it has shown auto, or says "auto mode
+// unavailable for this model") or else the model (haiku has none,
+// claude-code-notes §5). A mode missing from the map is not known.
+func offered(facts agent.ModeFacts, plain string) map[string]bool {
+	offer := map[string]bool{"default": true, "acceptEdits": true, "plan": true, "bypassPermissions": facts.FullAccess}
+	model := strings.ToLower(facts.Model)
+	switch {
+	case slices.Contains(facts.Seen, "auto"):
+		offer["auto"] = true
+	case strings.Contains(plain, "auto mode unavailable for this model"), strings.Contains(model, "haiku"):
+		offer["auto"] = false
+	case strings.HasPrefix(model, "claude-") || model == "sonnet" || model == "opus" || model == "fable":
+		offer["auto"] = true
+	}
+	if slices.Contains(facts.Seen, "bypassPermissions") {
+		offer["bypassPermissions"] = true
+	}
+	return offer
 }
 
 // SetMode switches the permission mode. Plan, while idle, is /plan, which
@@ -327,7 +355,7 @@ func crosses(from, to string, limit int) bool {
 // way through looser modes is taken, but only with no background work on
 // the screen, and with the presses sent at once (burst), shortening the
 // moment (architecture §16).
-func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) error {
+func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) error {
 	want, ok := permissionModes[mode]
 	if !ok {
 		return fmt.Errorf("unknown approval mode %v", mode)
@@ -335,6 +363,17 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) erro
 	scr, err := readyComposer(t)
 	if err != nil {
 		return err
+	}
+	styled, err := t.Capture()
+	if err != nil {
+		return err
+	}
+	offer := offered(facts, plainText(styled))
+	if on, known := offer[want]; known && !on {
+		if mode == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
+			return fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported)
+		}
+		return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
 	}
 	start := scr.Mode
 	if start == "" {
@@ -344,21 +383,19 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) erro
 		return nil
 	}
 	limit := looseness[want]
-	if running && (crosses(start, want, limit) || (want == "auto" || want == "bypassPermissions") && crosses(want, start, limit)) {
+	_, wantKnown := offer[want]
+	risky := crosses(start, want, limit, offer) || !wantKnown && crosses(want, start, limit, offer)
+	if running && risky {
 		return agent.ErrBusy
 	}
 	if want == "plan" && !running {
 		return enterPlan(t)
 	}
-	if crosses(start, want, limit) || (want == "auto" || want == "bypassPermissions") && crosses(want, start, limit) {
-		styled, err := t.Capture()
-		if err != nil {
-			return err
-		}
+	if risky {
 		if bg := BackgroundWork(styled); bg != "" {
 			return fmt.Errorf("%w (%s), and switching to %s passes a looser mode on the way; try again when it has finished", agent.ErrBackground, bg, want)
 		}
-		return burst(t, start, want)
+		return burst(t, start, want, offer)
 	}
 	press := func() (string, error) {
 		before, _, err := screenNow(t)
@@ -410,26 +447,30 @@ func enterPlan(t agent.Term) error {
 	return err
 }
 
-// burst goes from one mode to another with all the Shift+Tabs sent at
-// once, without reading the screen in between. Which of bypass and auto
-// are on offer is not known beforehand, so it assumes neither but the
-// target: pressing too few lands in one of them, which is then known to
-// be on offer, and a second burst goes on from there; pressing too many
-// cannot happen. If the target is not on offer, it goes back.
-func burst(t agent.Term, start, want string) error {
-	offered := map[string]bool{"default": true, "acceptEdits": true, "plan": true, start: true, want: true}
-	cur := start
-	for try := 0; try < 3; try++ {
+// burst goes from one mode to another with all the Shift+Tabs written at
+// once, without reading the screen in between, then checks the mode.
+// The presses are counted from what offer knows. When whether auto is on
+// offer is not known, it is counted as not: pressing too few can land on
+// it, which then shows it is on offer, and the missing presses follow at
+// once (architecture §16); pressing too many cannot happen. A target that
+// turns out not to be on offer is left for the mode it started in.
+func burst(t agent.Term, start, want string, offer map[string]bool) error {
+	count := func(from string) int {
 		n := 0
-		for i := index(cur) + 1; ; i++ {
+		for i := index(from) + 1; ; i++ {
 			m := cycle[i%len(cycle)]
-			if offered[m] {
+			if offer[m] || m == want {
 				n++
 			}
 			if m == want {
-				break
+				return n
 			}
 		}
+	}
+	cur := start
+	for try := 0; try < 3; try++ {
+		n := count(cur)
+		slog.Info("switching the permission mode in one write", "from", cur, "to", want, "presses", n)
 		if err := t.Write([]byte(strings.Repeat(agent.KeyBTab, n))); err != nil {
 			return err
 		}
@@ -440,18 +481,20 @@ func burst(t agent.Term, start, want string) error {
 		if m == want {
 			return nil
 		}
-		if offered[m] {
-			// The target was skipped: it is not on offer.
-			delete(offered, want)
-			if start == "plan" {
-				_ = enterPlan(t)
-			} else if m != start {
-				_ = burst(t, m, start)
-			}
-			return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
+		if _, known := offer[m]; !known || !offer[m] {
+			// Counted as not on offer, but it is: go on at once.
+			offer[m] = true
+			cur = m
+			continue
 		}
-		offered[m] = true
-		cur = m
+		// The target was skipped: it is not on offer.
+		if start == "plan" {
+			_ = enterPlan(t)
+		} else if m != start {
+			offer[want] = false
+			_ = burst(t, m, start, offer)
+		}
+		return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
 	}
 	return errors.New("the permission mode did not settle")
 }

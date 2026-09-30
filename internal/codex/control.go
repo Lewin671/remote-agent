@@ -260,7 +260,7 @@ var permissionLevels = map[pb.ApprovalMode]int{
 // SetMode switches the permission level or Plan mode. Choosing Plan turns
 // Plan mode on and leaves permissions alone; any other mode turns Plan
 // mode off first. Both work while a turn runs and apply from the next.
-func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool) error {
+func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ agent.ModeFacts) error {
 	level, isLevel := permissionLevels[mode]
 	if !isLevel && mode != pb.ApprovalMode_APPROVAL_MODE_PLAN {
 		return fmt.Errorf("unknown approval mode %v", mode)

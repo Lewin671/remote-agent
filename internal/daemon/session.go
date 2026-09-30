@@ -63,7 +63,8 @@ type session struct {
 	prevScreen  agent.Screen
 	sawComposer bool
 	planOpen    bool
-	driving     bool // a control operation is using the terminal's menus
+	driving     bool            // a control operation is using the terminal's menus
+	seenModes   map[string]bool // permission modes the screen has shown
 	// Why queued input is not being written, and since when.
 	waitReason string
 	waitSince  time.Time
@@ -338,6 +339,12 @@ func (s *session) checkScreen() bool {
 	}
 	s.planOpen = scr.PlanOpen
 	retract := s.watchApprovals(scr, styled)
+	if scr.Mode != "" {
+		if s.seenModes == nil {
+			s.seenModes = map[string]bool{}
+		}
+		s.seenModes[scr.Mode] = true
+	}
 	var modeSeen *pb.TurnContext
 	if scr.Mode != "" && (s.context == nil || s.context.PermissionMode != scr.Mode) {
 		// Switched in the terminal; the transcript records it only with

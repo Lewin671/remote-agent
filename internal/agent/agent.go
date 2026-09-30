@@ -143,12 +143,23 @@ type Controller interface {
 	SetModel(t Term, model, effort string) error
 	// SetMode switches the approval mode. running tells whether a turn is
 	// in progress.
-	SetMode(t Term, mode pb.ApprovalMode, running bool) error
+	SetMode(t Term, mode pb.ApprovalMode, running bool, facts ModeFacts) error
 	// Compact starts compacting the context; started reports whether the
 	// CLI has recorded a turn start meanwhile.
 	Compact(t Term, started func() bool) error
 	// AnswerPlan answers the CLI's prompt about a proposed plan.
 	AnswerPlan(t Term, choice pb.PlanChoice) error
+}
+
+// ModeFacts is what the daemon knows about a session that tells which
+// modes its CLI offers.
+type ModeFacts struct {
+	// FullAccess: the session could switch to full access at launch.
+	FullAccess bool
+	// Model is the session's model as last recorded.
+	Model string
+	// Seen are the modes the screen has shown in this session.
+	Seen []string
 }
 
 // Screen is what the daemon needs to know from the terminal.
