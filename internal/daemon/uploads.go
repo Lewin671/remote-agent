@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -421,6 +422,29 @@ func (u *uploads) take(ids []string, device, sessionID string) ([]queuedImage, e
 	if err := os.MkdirAll(u.sessionDir(sessionID), 0o700); err != nil {
 		return nil, err
 	}
+	// Ownership is saved before a file moves, so that a crash between
+	// the two leaves a record reconcile can finish; unsaved ownership
+	// fails the call before anything moves.
+	var claimed []*transfer
+	release := func() {
+		for _, t := range claimed {
+			t.Session = ""
+			if err := u.save(t); err != nil {
+				slog.Error("save transfer", "transfer", t.ID, "err", errClass(err))
+			}
+		}
+	}
+	for _, t := range ts {
+		if t.Session == "" {
+			t.Session = sessionID
+			if err := u.save(t); err != nil {
+				t.Session = ""
+				release()
+				return nil, err
+			}
+			claimed = append(claimed, t)
+		}
+	}
 	var out []queuedImage
 	var moved []*transfer
 	undo := func() {
@@ -428,11 +452,12 @@ func (u *uploads) take(ids []string, device, sessionID string) ([]queuedImage, e
 			name := t.ImageID + "." + imageproc.Ext(t.Format)
 			_ = os.Rename(filepath.Join(u.sessionDir(sessionID), name), u.pending(name))
 		}
+		release()
 	}
 	for _, t := range ts {
 		name := t.ImageID + "." + imageproc.Ext(t.Format)
 		dst := filepath.Join(u.sessionDir(sessionID), name)
-		if t.Session == "" {
+		if slices.Contains(claimed, t) {
 			if err := os.Rename(u.pending(name), dst); err != nil {
 				undo()
 				return nil, err
@@ -445,12 +470,7 @@ func (u *uploads) take(ids []string, device, sessionID string) ([]queuedImage, e
 		out = append(out, queuedImage{ID: t.ImageID, Path: dst})
 	}
 	syncDir(u.sessionDir(sessionID))
-	for _, t := range moved {
-		t.Session = sessionID
-		if err := u.save(t); err != nil {
-			slog.Error("save transfer", "transfer", t.ID, "err", err)
-		}
-	}
+	syncDir(filepath.Join(u.dir, "pending"))
 	return out, nil
 }
 
@@ -476,6 +496,33 @@ func (u *uploads) check(ids []string, device string) error {
 		}
 	}
 	return nil
+}
+
+// reconcile finishes moves a crash cut short: an image recorded as a
+// session's but still in pending moves into the session's folder. It runs
+// when the daemon starts.
+func (u *uploads) reconcile() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	entries, _ := os.ReadDir(filepath.Join(u.dir, "partial"))
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		t, err := u.load(strings.TrimSuffix(e.Name(), ".json"))
+		if err != nil || t.Session == "" || t.ImageID == "" {
+			continue
+		}
+		name := t.ImageID + "." + imageproc.Ext(t.Format)
+		if _, err := os.Stat(u.pending(name)); err != nil {
+			continue
+		}
+		if err := os.MkdirAll(u.sessionDir(t.Session), 0o700); err == nil {
+			if err := os.Rename(u.pending(name), filepath.Join(u.sessionDir(t.Session), name)); err != nil {
+				slog.Error("finish image move", "image", t.ImageID, "err", errClass(err))
+			}
+		}
+	}
 }
 
 // untake returns images of a message that was not accepted after all to
@@ -548,4 +595,18 @@ func (u *uploads) gcLoop(stop <-chan struct{}) {
 		case <-t.C:
 		}
 	}
+}
+
+// errClass describes an error for the log without the file paths that
+// os errors carry.
+func errClass(err error) string {
+	var pe *os.PathError
+	if errors.As(err, &pe) {
+		return pe.Op + ": " + pe.Err.Error()
+	}
+	var le *os.LinkError
+	if errors.As(err, &le) {
+		return le.Op + ": " + le.Err.Error()
+	}
+	return err.Error()
 }

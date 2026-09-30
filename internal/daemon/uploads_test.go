@@ -157,3 +157,37 @@ func completeUpload(t *testing.T, u *uploads, device string) *pb.ImageUploadStat
 	}
 	return st
 }
+
+// G10: which session an image moved to is on disk before the move, and a
+// move cut short by a crash is finished on start; if the ownership cannot
+// be saved, nothing moves and the call fails.
+func TestImageMovesAreRecoverable(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	u := newUploads()
+	st := completeUpload(t, u, "d")
+	name := st.ImageId + ".png"
+
+	os.Chmod(filepath.Join(u.dir, "partial"), 0o500)
+	_, err := u.take([]string{st.ImageId}, "d", "s1")
+	os.Chmod(filepath.Join(u.dir, "partial"), 0o700)
+	if err == nil {
+		t.Skip("directory writable despite chmod")
+	}
+	if _, err := os.Stat(u.pending(name)); err != nil {
+		t.Fatal("image moved although its owner was not saved")
+	}
+
+	// A crash after the ownership was saved, before the file moved.
+	u.mu.Lock()
+	tr := u.byImage(st.ImageId)
+	tr.Session = "s1"
+	u.save(tr)
+	u.mu.Unlock()
+	u.reconcile()
+	if _, err := os.Stat(filepath.Join(u.sessionDir("s1"), name)); err != nil {
+		t.Fatalf("move not finished: %v", err)
+	}
+	if imgs, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil || len(imgs) != 1 {
+		t.Fatalf("take after recovery: %v", err)
+	}
+}
