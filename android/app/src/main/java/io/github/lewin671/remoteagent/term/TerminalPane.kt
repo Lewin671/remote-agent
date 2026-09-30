@@ -70,15 +70,29 @@ private fun fitFont(width: Float, cols: Int): Int {
     return size
 }
 
-// Special keys for phones, as in the design.
-private val keys = listOf(
-    "esc" to "\u001b",
-    "tab" to "\t",
-    "^C" to "\u0003",
-    "↑" to "\u001b[A",
-    "↓" to "\u001b[B",
-    "⏎" to "\r",
+/**
+ * The key bar's keys (client-v2): the arrows and Enter on the first row with
+ * Esc, Tab and Ctrl+C next to the keyboard toggle on the second; none hidden
+ * in a scrolling row. An arrow is a letter sent as ESC [ x, or ESC O x when
+ * the program asked for application cursor keys, as a keyboard would.
+ */
+internal sealed interface Key {
+    val label: String
+
+    data class Text(override val label: String, val seq: String) : Key
+    data class Arrow(override val label: String, val letter: Char) : Key
+}
+
+internal val keyRows: List<List<Key>> = listOf(
+    listOf(Key.Text("Esc", "\u001b"), Key.Arrow("←", 'D'), Key.Arrow("↑", 'A'), Key.Arrow("↓", 'B'), Key.Arrow("→", 'C'), Key.Text("↵", "\r")),
+    listOf(Key.Text("Tab", "\t"), Key.Text("Ctrl+C", "\u0003")),
 )
+
+/** What a key sends; [appCursor] is the terminal's application cursor keys mode. */
+internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
+    is Key.Text -> k.seq
+    is Key.Arrow -> (if (appCursor) "\u001bO" else "\u001b[") + k.letter
+}
 
 /**
  * The live terminal of a session with its toolbar and key bar. The font is
@@ -96,6 +110,13 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()
     val fitted by term.fitted.collectAsState()
+    val resized by term.resizedElsewhere.collectAsState()
+    LaunchedEffect(resized) {
+        if (resized) {
+            kotlinx.coroutines.delay(10_000)
+            term.dismissResized()
+        }
+    }
     val density = LocalDensity.current
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     val p = pal
@@ -118,6 +139,15 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             )
             if (state == RemoteTerminal.State.Live) {
                 TextButton(onClick = { term.toggleFit() }) { Text(if (fitted) "还原" else "⤢ 适配我的屏幕") }
+            }
+        }
+        if (resized) {
+            Column(Modifier.fillMaxWidth().background(p.orangeSoft).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text("远端尺寸已变化", style = MaterialTheme.typography.titleSmall, color = p.orangeInk)
+                Text(
+                    "窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。",
+                    style = MaterialTheme.typography.bodySmall, color = p.orangeInk,
+                )
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(Color.Black)) {
@@ -201,7 +231,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 }
             }
         }
-        KeyBar(enabled = state == RemoteTerminal.State.Live, onKey = { term.sendText(it) }, onKeyboard = {
+        KeyBar(enabled = state == RemoteTerminal.State.Live, onKey = { term.sendText(keySequence(it, term.session.emulator?.isCursorKeysApplicationMode == true)) }, onKeyboard = {
             val v = term.view ?: return@KeyBar
             val imm = v.context.getSystemService(InputMethodManager::class.java)
             if (imeVisible) imm.hideSoftInputFromWindow(v.windowToken, 0) else {
@@ -213,13 +243,16 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
 }
 
 @Composable
-private fun KeyBar(enabled: Boolean, onKey: (String) -> Unit, onKeyboard: () -> Unit) {
+private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit) {
     val p = pal
-    Row(Modifier.fillMaxWidth().background(p.soft).height(44.dp)) {
-        for ((label, seq) in keys) {
-            KeyButton(label, enabled, Modifier.weight(1f)) { onKey(seq) }
+    Column(Modifier.fillMaxWidth().background(p.soft)) {
+        Row(Modifier.fillMaxWidth().height(44.dp)) {
+            for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
         }
-        KeyButton("⌨", true, Modifier.weight(1f), onKeyboard)
+        Row(Modifier.fillMaxWidth().height(44.dp)) {
+            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
+            KeyButton("⌨ 键盘", true, Modifier.weight(1f), onKeyboard)
+        }
     }
 }
 
@@ -229,10 +262,10 @@ private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, onCli
     TextButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(44.dp).width(37.dp),
+        modifier = modifier.height(44.dp),
         shape = MaterialTheme.shapes.small,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
-        Text(label, fontFamily = FontFamily.Monospace, color = if (enabled) p.fg else p.faint)
+        Text(label, fontFamily = FontFamily.Monospace, color = if (enabled) p.fg else p.faint, maxLines = 1)
     }
 }

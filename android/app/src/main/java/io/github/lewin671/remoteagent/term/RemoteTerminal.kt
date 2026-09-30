@@ -46,8 +46,17 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     /** The tmux window's size, from the latest snapshot. */
     private val _size = MutableStateFlow(0 to 0)
     val size: StateFlow<Pair<Int, Int>> = _size
+    private val fit = FitTracker()
     private val _fitted = MutableStateFlow(false)
     val fitted: StateFlow<Boolean> = _fitted
+
+    /** The window changed size without this screen asking: another screen fitted it or the computer's terminal was resized. */
+    private val _resizedElsewhere = MutableStateFlow(false)
+    val resizedElsewhere: StateFlow<Boolean> = _resizedElsewhere
+
+    fun dismissResized() {
+        _resizedElsewhere.value = false
+    }
 
     /** Columns and rows the view has room for at a readable size, for "fit". */
     var fitSize: Pair<Int, Int> = 0 to 0
@@ -70,6 +79,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         val gen = ++generation
         backlog.set(0)
         _state.value = State.Connecting
+        fit.reset()
         _fitted.value = false
         job = scope.launch {
             try {
@@ -110,6 +120,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 val s = f.snapshot
                 session.snapshot(s.cols, s.rows, s.data.toByteArray())
                 _size.value = s.cols to s.rows
+                if (fit.onSnapshot(s.cols to s.rows)) _resizedElsewhere.value = true
+                _fitted.value = fit.fitted
                 _state.value = State.Live
             }
             TerminalFrame.KindCase.OUTPUT -> {
@@ -133,13 +145,15 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         val c = conn ?: return
         if (_fitted.value) {
             c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setFit(false)).build())
-            _fitted.value = false
+            fit.release()
         } else {
             val (cols, rows) = fitSize
             if (cols < 10 || rows < 5) return
             c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setCols(cols).setRows(rows).setFit(true)).build())
-            _fitted.value = true
+            fit.request(cols to rows)
         }
+        _resizedElsewhere.value = false
+        _fitted.value = fit.fitted
     }
 
     fun close() {
@@ -219,5 +233,63 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         }
 
         fun redact(m: String?): String = "terminal: emulator message of ${m?.length ?: 0} chars"
+    }
+}
+
+/**
+ * Whether the shared tmux window is fitted to this screen (architecture §9):
+ * only while the latest snapshot has the size this screen asked for. Once
+ * another screen or the computer changes it, it no longer is, whatever this
+ * screen did before.
+ */
+class FitTracker {
+    private var requested: Pair<Int, Int>? = null
+    private var confirmed = false
+    private var last: Pair<Int, Int>? = null
+    private var releasing = false
+
+    /** Shown as fitted: asked for, and not changed since by anyone else. */
+    val fitted: Boolean get() = requested != null
+
+    fun request(size: Pair<Int, Int>) {
+        requested = size
+        confirmed = false
+        releasing = false
+    }
+
+    /** Let the window follow the attached terminals again; the next size change is ours. */
+    fun release() {
+        requested = null
+        confirmed = false
+        releasing = true
+    }
+
+    fun reset() {
+        requested = null
+        confirmed = false
+        last = null
+        releasing = false
+    }
+
+    /** A new snapshot's size; true when it changed without this screen asking. */
+    fun onSnapshot(size: Pair<Int, Int>): Boolean {
+        val before = last
+        last = size
+        val r = requested
+        if (r != null) {
+            if (size == r) {
+                confirmed = true
+                return false
+            }
+            // A snapshot in flight before the resize took effect.
+            if (!confirmed) return false
+            requested = null
+            return true
+        }
+        if (releasing) {
+            if (before != null && size != before) releasing = false
+            return false
+        }
+        return before != null && size != before
     }
 }
