@@ -792,11 +792,23 @@ export class Remote {
 
   /** Sends text, and images uploaded to the machine, to a session; its
    * progress shows in outbox(sid). */
-  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []) {
+  send(sid: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []): string {
     const o: Outgoing = { sendId: newRequestID(), ...newSlot(), text, imageIds, thumbs, status: "sending" };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
     void this.deliver(sid, o);
+    return o.sendId;
+  }
+
+  // Messages the daemon failed to write, by request ID, and the new
+  // message sent in their place: each is sent again once at most.
+  replaced = new Map<string, string>();
+
+  /** Sends a message that failed before Enter again, as a new message,
+   * once: pressing retry again, or after the new one went, does nothing. */
+  resend(sid: string, failedId: string, text: string, imageIds: string[] = [], thumbs: Blob[] = []) {
+    if (this.replaced.has(failedId)) return;
+    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs));
   }
 
   /** Sends a message that could not be confirmed again, with the same

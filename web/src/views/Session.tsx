@@ -693,7 +693,11 @@ function Row({
             <div>{text || "一条消息"}</div>
             <small>
               没能发送：{why}
-              {mine && text && <button onClick={() => remote.send(sid, text, images)}>重试</button>}
+              {mine && text && (
+                <button disabled={remote.replaced.has(k.value.requestId)} onClick={() => remote.resend(sid, k.value.requestId, text, images)}>
+                  {remote.replaced.has(k.value.requestId) ? "已重新发送" : "重试"}
+                </button>
+              )}
               {text && <button onClick={() => onRestore(text)}>放回输入框</button>}
             </small>
           </div>

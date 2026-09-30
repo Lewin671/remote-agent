@@ -1284,3 +1284,19 @@ it("keeps a submitted message in view until the CLI records it", async () => {
   expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("运行中插一句")).length).toBe(1);
   expect(host.textContent).not.toContain("已送入终端");
 });
+
+it("sends a failed message again only once, however often retry is pressed", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-msg")!;
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const before = r.outbox("s-msg").length;
+  const failed = () => [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
+  const retry = () => button("重试", failed());
+  await act(async () => {
+    retry()!.click();
+    retry()?.click();
+  });
+  expect(r.outbox("s-msg").length).toBe(before + 1);
+  // Once replaced, the failed row offers no second retry.
+  expect(retry()?.disabled ?? true).toBe(true);
+});
