@@ -370,7 +370,7 @@ describe("approval modes", () => {
   });
 
   it("shows a Claude Code mode outside the four by its own name", () => {
-    expect(modeOf(sess({ agent: Agent.CLAUDE, permissionMode: "acceptEdits" }))).toEqual({ cls: "", text: "acceptEdits", mode: ApprovalMode.UNSPECIFIED });
+    expect(modeOf(sess({ agent: Agent.CLAUDE, permissionMode: "acceptEdits" }))).toEqual({ cls: "", text: "accept edits", mode: ApprovalMode.UNSPECIFIED });
   });
 
   it("falls back to Codex's approval fields for older daemons", () => {
@@ -394,7 +394,7 @@ describe("approval modes", () => {
       ),
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [2n, "模式切到了 acceptEdits"],
+      [2n, "模式切到了 accept edits"],
       [5n, "模式切到了 计划"],
     ]);
   });
@@ -620,7 +620,7 @@ describe("events", () => {
       Agent.CLAUDE,
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [3n, "模式切到了 acceptEdits"],
+      [3n, "模式切到了 accept edits"],
       [5n, "模型切到了 claude-opus-5-5"],
     ]);
   });

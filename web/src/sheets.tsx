@@ -2,17 +2,18 @@
 // model, reasoning effort and context use.
 
 import { useEffect, useState } from "react";
-import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet } from "./ui";
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
+  const claude = agent === Agent.CLAUDE;
   return [
-    { mode: ApprovalMode.ASK, name: "询问", desc: "需要审批时由你确认，超时拒绝" },
+    { mode: ApprovalMode.ASK, name: "询问", desc: claude ? "需要权限时由你确认" : "需要审批时由你确认，超时拒绝" },
     { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(agent)} 自己判断，拿不准的在对话里问你` },
-    { mode: ApprovalMode.PLAN, name: "计划", desc: "只读和出计划，你批准后才开始改" },
+    { mode: ApprovalMode.PLAN, name: "计划", desc: claude ? "先出方案，再批准执行" : "只读和出计划，你批准后才开始改" },
     { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
   ];
 }
@@ -34,8 +35,8 @@ export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; 
 
 /** Why a session cannot switch to mode, or "" if it can. */
 export function unavailable(s: SessionView, mode: ApprovalMode): string {
-  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "这个会话启动时没有允许完全放行，Claude Code 切不过去；要用就新建会话时选它";
-  if (mode === ApprovalMode.AUTO && noAutoMode(s)) return "Haiku 没有自动模式";
+  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "本会话启动时未启用；需要时新建会话选择";
+  if (mode === ApprovalMode.AUTO && noAutoMode(s)) return "当前 Haiku 模型不支持";
   return "";
 }
 
@@ -69,7 +70,8 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     );
   return (
     <Sheet onClose={onClose}>
-      <h4>审批模式</h4>
+      <h4>{agentOf(s) === Agent.CLAUDE ? "Claude Code · 审批模式" : "审批模式"}</h4>
+      {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
           const why = unavailable(s, m.mode);
@@ -89,7 +91,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
           );
         })}
       </div>
-      {!cur && mode && <div className="hint">现在是 {agentName(agentOf(s))} 的 {mode.text} 模式，不在这四种里；选一种就会切过去</div>}
+      {agentOf(s) === Agent.CLAUDE && <div className="hint">照实显示终端中的模式；不提供切到 accept edits 的按钮。</div>}
       {error && (
         <Banner kind="err" action="去终端" onAction={onClose}>
           没能切换：{error}
@@ -155,11 +157,9 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   // Some models have no effort levels at all (Claude Code's haiku).
   const noEffort = !!cur && cur.efforts.length === 0;
   const offered = cur?.efforts.length ? cur.efforts : efforts;
-  const at = Math.max(0, offered.indexOf(effort));
-  const pos = (i: number) => `${(i / Math.max(1, offered.length - 1)) * 100}%`;
   return (
     <Sheet onClose={onClose}>
-      <h4>会话设置</h4>
+      <h4>{agent === Agent.CLAUDE ? "Claude Code · 会话设置" : "会话设置"}</h4>
       {pct !== undefined && (
         <div className="ctxbox">
           <div className={"ring big" + (pct > CONTEXT_WARN ? " warn" : "")} style={{ ["--p" as string]: pct }} />
@@ -186,7 +186,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
             <div className="mt">
               {m.displayName || m.slug}
-              {m.efforts.length > 0 && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
+              {m.efforts.length === 0 ? <small>无推理强度</small> : agent !== Agent.CLAUDE && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
             </div>
             {m === cur && <span className="ck">✓</span>}
           </button>
@@ -202,17 +202,9 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
         <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
       ) : (
         <>
-      <div className={"slider" + (locked || !cur ? " dis" : "")}>
-        <div className="track" />
-        <div className="fill" style={{ width: pos(at) }} />
-        {offered.map((e, i) => (
-          <button key={e} className="tick" style={{ left: pos(i) }} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)} aria-label={e} />
-        ))}
-        <div className="knob" style={{ left: pos(at) }} />
-      </div>
-      <div className="slabels">
+      <div className={"effort-grid" + (locked || !cur ? " dis" : "")}>
         {offered.map((e) => (
-          <button key={e} className={e === effort ? "on" : ""} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)}>
+          <button key={e} className={e === effort ? "on" : ""} aria-pressed={e === effort} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)}>
             {e}
           </button>
         ))}

@@ -306,7 +306,7 @@ export function tailPath(p: string, max = 28): string {
  * outside them, such as acceptEdits, keeps its own name (architecture §7:
  * shown as the CLI has it). */
 export function permissionModeName(pm: string): string {
-  return ({ default: "询问", auto: "自动", plan: "计划", bypassPermissions: "完全放行" } as Record<string, string>)[pm] ?? pm;
+  return ({ default: "询问", auto: "自动", plan: "计划", bypassPermissions: "完全放行", acceptEdits: "accept edits" } as Record<string, string>)[pm] ?? pm;
 }
 
 /** The approval mode named from turn-context fields: Claude Code's

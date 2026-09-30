@@ -220,12 +220,14 @@ it("greys out modes a Claude Code session cannot switch to, and effort for haiku
   const s = r.sessions.get("s-claude-idle")!;
   mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
   expect(button(/^完全放行/)?.disabled).toBe(true);
-  expect(host.textContent).toContain("启动时没有允许完全放行");
+  expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
+  expect(host.textContent).toContain("当前 Haiku 模型不支持");
   expect(button(/^自动/)?.disabled).toBe(true);
   expect(button(/^询问/)?.disabled).toBe(false);
   // acceptEdits is none of the four: nothing is ticked, and it says so.
   expect(host.querySelector(".ck")).toBeNull();
-  expect(host.textContent).toContain("acceptEdits");
+  expect(host.textContent).toContain("当前：accept edits（在终端设置）");
+  expect(host.textContent).toContain("不提供切到 accept edits 的按钮");
   act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
   await vi.waitFor(() => expect(host.textContent).toContain("Haiku 没有推理强度可调"), { timeout: 3000 });
   expect(host.querySelector(".slider")).toBeNull();

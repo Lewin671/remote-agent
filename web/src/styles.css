@@ -368,9 +368,11 @@ a { color: var(--blue); }
 .tstate p { color: #9da7b3; font-size: 13px; margin: 6px 0 14px; }
 .tstate .btn { background: #2f6feb; color: #fff; }
 .tstate .det { display: block; margin: 10px auto 0; color: #79c0ff; font-size: 12px; min-height: 28px; word-break: break-all; }
-/* The key bar is the one exception to 44 wide: seven keys side by side. */
-.keys { display: flex; gap: 5px; padding: 8px 8px max(12px, env(safe-area-inset-bottom)); background: #161b22; flex: none; }
-.keys button { flex: 1; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 13px; height: 44px; display: flex; align-items: center; justify-content: center; }
+/* The key bar: two rows, every key at least 44×44. */
+.keys { display: block; padding: 6px 8px max(12px, env(safe-area-inset-bottom)); background: #161b22; flex: none; }
+.keyrow { display: flex; gap: 4px; }
+.keyrow + .keyrow { margin-top: 4px; }
+.keys button { flex: 1; min-width: 44px; background: #2d333b; color: #e6edf3; border-radius: 7px; font-size: 13px; height: 44px; display: flex; align-items: center; justify-content: center; }
 .keys.off { opacity: .4; }
 
 /* ---------- sheets and dialogs ---------- */
@@ -647,3 +649,8 @@ a { color: var(--blue); }
 .queue-entry.canceling { opacity: .5; }
 .toast.plain { margin: 8px 12px max(12px, env(safe-area-inset-bottom)); padding: 8px 10px; border-radius: 12px; background: var(--soft); color: var(--fg); font-size: 13px; display: flex; align-items: center; gap: 8px; min-height: 44px; text-align: left; }
 .toast.plain b, .toast.plain .link { margin-left: auto; color: var(--blue); min-height: 44px; display: flex; align-items: center; }
+.effort-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.effort-grid button { min-height: 44px; border-radius: 10px; background: var(--soft); font-size: 13px; text-align: center; }
+.effort-grid button.on { background: var(--blue-soft); color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); font-weight: 600; }
+.effort-grid button:disabled { opacity: .45; }
+.hint.top { margin: -4px 0 8px; }

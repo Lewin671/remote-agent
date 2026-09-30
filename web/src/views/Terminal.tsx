@@ -14,14 +14,19 @@ function charRatio(): number {
   return ctx.measureText("M").width / 100;
 }
 
-// Special keys for phones, as in the mockup.
-const keys: [string, string][] = [
-  ["esc", "\x1b"],
-  ["tab", "\t"],
-  ["^C", "\x03"],
-  ["↑", "\x1b[A"],
-  ["↓", "\x1b[B"],
-  ["⏎", "\r"],
+// Special keys for phones, in two rows as in the mockup: the arrows and
+// Enter first, then Tab, Ctrl+C and the keyboard. None hides in a scroll.
+const keys: [string, string, string][] = [
+  ["Esc", "\x1b", "Esc"],
+  ["←", "\x1b[D", "左"],
+  ["↑", "\x1b[A", "上"],
+  ["↓", "\x1b[B", "下"],
+  ["→", "\x1b[C", "右"],
+  ["↵", "\r", "回车"],
+];
+const keys2: [string, string, string][] = [
+  ["Tab", "\t", "Tab"],
+  ["Ctrl+C", "\x03", "Ctrl+C"],
 ];
 
 /** The session's terminal, streamed live. Typing goes to the session like
@@ -32,11 +37,18 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const term = useRef<XTerm>(null);
   const conn = useRef<TermConn | null>(null);
   const size = useRef({ cols: 80, rows: 24 });
+  const dimsSeen = useRef(false);
   const [dims, setDims] = useState<{ cols: number; rows: number }>();
   const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState(false);
   const [fitted, setFitted] = useState(false);
+  // The window is shared: the size this screen was fitted to, as the first
+  // snapshot after fitting showed it. A later snapshot of another size
+  // means the computer or another client changed it, and "fitted" is no
+  // longer true.
+  const fittedTo = useRef<{ cols: number; rows: number } | "pending">(undefined);
+  const [changed, setChanged] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   // Scale the font so the whole width of the tmux window fits.
@@ -77,6 +89,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     setReason("");
     setDetails(false);
     setFitted(false);
+    fittedTo.current = undefined;
+    dimsSeen.current = false;
     remote
       .openTerminal(
         session.id,
@@ -84,8 +98,19 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           const t = term.current;
           if (!t) return;
           switch (f.kind.case) {
-            case "snapshot":
-              size.current = { cols: f.kind.value.cols, rows: f.kind.value.rows };
+            case "snapshot": {
+              const next = { cols: f.kind.value.cols, rows: f.kind.value.rows };
+              const was = size.current;
+              const target = fittedTo.current;
+              if (target === "pending") fittedTo.current = next;
+              else if (dimsSeen.current && (next.cols !== was.cols || next.rows !== was.rows)) {
+                // Resized elsewhere: whatever this screen fitted no longer holds.
+                fittedTo.current = undefined;
+                setFitted(false);
+                setChanged(true);
+              }
+              dimsSeen.current = true;
+              size.current = next;
               setDims(size.current);
               t.resize(f.kind.value.cols, f.kind.value.rows);
               t.reset();
@@ -93,6 +118,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               scale();
               setState("live");
               break;
+            }
             case "output":
               t.write(f.kind.value);
               break;
@@ -130,8 +156,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const toggleFit = () => {
     const el = box.current;
     if (!el) return;
+    setChanged(false);
     if (fitted) {
       conn.current?.send({ kind: { case: "resize", value: { fit: false } } });
+      fittedTo.current = undefined;
       setFitted(false);
       return;
     }
@@ -139,6 +167,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const fs = 12;
     const cols = Math.floor((el.clientWidth - 12) / (fs * charRatio()));
     const rows = Math.floor((el.clientHeight - 12) / (fs * 1.2));
+    fittedTo.current = "pending";
     conn.current?.send({ kind: { case: "resize", value: { cols, rows, fit: true } } });
     setFitted(true);
   };
@@ -148,12 +177,23 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     <div className={"termview" + (compact ? " compact" : "")}>
       <div className="ttool">
         <span>
-          {!live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `电脑上 ${dims?.cols}×${dims?.rows}`}
+          {!live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
         </span>
         {live && <button onClick={toggleFit}>{fitted ? "还原" : wide ? "⤢ 适配" : "⤢ 适配我的屏幕"}</button>}
       </div>
       <div className="term" ref={box} onClick={() => term.current?.focus()}>
         <div ref={host} className={state === "closed" ? "stale" : ""} />
+        {changed && state === "live" && (
+          <div className="tstate">
+            <b>远端尺寸已变化</b>
+            <p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
+            <div className="btns">
+              <button className="btn" onClick={() => setChanged(false)}>
+                知道了
+              </button>
+            </div>
+          </div>
+        )}
         {state === "closed" && (
           <div className="tstate">
             <b>终端连接断开了</b>
@@ -176,14 +216,23 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       </div>
       {!compact && (
         <div className={"keys" + (live ? "" : " off")}>
-          {keys.map(([label, seq]) => (
-            <button key={label} onClick={() => send(seq)} disabled={!live}>
-              {label}
+          <div className="keyrow">
+            {keys.map(([label, seq, name]) => (
+              <button key={label} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="keyrow">
+            {keys2.map(([label, seq, name]) => (
+              <button key={label} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+                {label}
+              </button>
+            ))}
+            <button onClick={() => term.current?.focus()} disabled={!live} aria-label="键盘">
+              ⌨ 键盘
             </button>
-          ))}
-          <button onClick={() => term.current?.focus()} disabled={!live} aria-label="键盘">
-            ⌨
-          </button>
+          </div>
         </div>
       )}
     </div>
