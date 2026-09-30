@@ -183,7 +183,8 @@ a { color: var(--blue); }
 .termmode .segrow { padding-bottom: 6px; }
 .panes { flex: 1; min-height: 0; display: flex; }
 .panes.p-split { display: grid; grid-template-columns: 1fr 1fr; }
-.ccol { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+/* A size container, so the dock can size its content against the column. */
+.ccol { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; container-type: size; }
 .panes.p-split .ccol { border-right: 1px solid var(--line); }
 .tcol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .chatwrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
@@ -242,13 +243,16 @@ a { color: var(--blue); }
 
 /* the dock: above the input, at most 45% of the chat, buttons always in view */
 /* The content scrolls inside the card; the buttons below it never leave
-   the view. Visible overflow keeps the card's automatic minimum height,
-   which beats the 45% cap: in a short chat column the content shrinks to
-   nothing before any button is cut. */
-.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; max-height: 45%; overflow: visible;
+   the view (see .dscroll below for the cap). */
+.dock { flex: none; margin: 0 12px 6px; background: var(--card); border-radius: 16px; padding: 11px 12px; overflow: visible;
   display: flex; flex-direction: column; box-shadow: 0 0 0 1.5px var(--orange), 0 -4px 18px rgba(0,0,0,.08); }
 .dock > * { flex: none; }
-.dock > .dscroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+/* The dock is as tall as its controls plus its content, and only the
+   content is capped: to what is left of 45% of the chat column after the
+   controls (about 96 px), but never below 44 px, so a question's options
+   can still be scrolled. The controls always have their own room, and in a
+   short column the chat area gives way instead of anything overlapping. */
+.dock > .dscroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; max-height: max(44px, calc(45cqh - 96px)); }
 .dockwrap { display: contents; }
 .dockwrap[hidden] { display: none; }
 .dock .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
