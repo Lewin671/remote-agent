@@ -382,8 +382,13 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
                 ) { Icon(Icons.Default.ArrowUpward, "开始", tint = p.card) }
             }
         }
+        // Claude Code records full model IDs; name them as its list does.
+        val models by androidx.compose.runtime.produceState<ListModelsResponse?>(null, c?.machineId, c?.agent, machineOnline) {
+            value = if (c != null && machineOnline) runCatching { remote.listModels(c.machineId, c.agent) }.getOrNull() else null
+        }
         if (c != null) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-            val (l1, l2) = configLines(state, c, settings)
+            val shown = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, c.model) { it.slug } }
+            val (l1, l2) = configLines(state, shown?.let { c.copy(model = it.displayName.ifEmpty { it.slug }) } ?: c, settings)
             Column(Modifier.weight(1f)) {
                 Text(l1, style = MaterialTheme.typography.bodySmall, color = if (c.mode == Mode.FULL) p.red else p.muted)
                 Text(l2, style = MaterialTheme.typography.bodySmall, color = p.muted)

@@ -215,7 +215,7 @@ fun UndoBar(remote: Remote, state: RemoteState) {
             TextButton(onClick = {
                 PrefsChanges.undo = null
                 PrefsChanges.run(remote, PrefsOp.Unhide(key))
-            }, enabled = prefsBlocked(state) == null) { Text("撤销", color = p.blueSoft) }
+            }, enabled = prefsBlocked(state) == null) { Text("撤销", color = p.blueBg) }
         }
     }
 }

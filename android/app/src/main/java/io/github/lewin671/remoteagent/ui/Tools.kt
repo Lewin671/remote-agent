@@ -97,6 +97,19 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     val state = toolState(tool, item.unfinished, ctx.derived, ctx.frozenAt)
     val elapsed = toolElapsed(tool, t, ctx.frozenAt) ?: 0
     val title = toolTitle(tool, cwd, home).lines().first()
+    // The turn completed without this tool's result: say only that.
+    if (item.unfinished && tool.seq in ctx.derived.noResult) {
+        Row(
+            Modifier.fillMaxWidth().clickable { ctx.onTool(tool.seq) }.padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("◌", color = p.faint, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text("未收到工具结果", style = MaterialTheme.typography.bodySmall, color = p.faint)
+        }
+        return
+    }
     if (state == ToolState.RUNNING && elapsed < LONG_MS) {
         Row(
             Modifier.fillMaxWidth().clickable { ctx.onTool(tool.seq) }.padding(horizontal = 16.dp, vertical = 6.dp),

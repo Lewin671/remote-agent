@@ -54,6 +54,15 @@ class ToolsTest {
     }
 
     @Test
+    fun aCompletedTurnWithoutAResultClaimsNoBackground() {
+        // Codex 0.159 records starts like "exec" and "wait" it never completes.
+        val d = derive(listOf(turn, start(2, "exec"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED)))))
+        assertTrue(d.background.isEmpty())
+        assertEquals(setOf(2L), d.noResult)
+        assertEquals(setOf(2L), d.unfinished)
+    }
+
+    @Test
     fun aBackgroundRunIsNotASuccess() {
         val input = """{"command":"npm run dev","run_in_background":true}"""
         val d = derive(listOf(turn, start(2, "npm run dev", "x", input), call(3, "npm run dev", "x", input)), Agent.AGENT_CLAUDE)

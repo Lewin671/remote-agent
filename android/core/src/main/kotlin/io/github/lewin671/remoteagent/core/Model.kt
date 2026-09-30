@@ -360,6 +360,8 @@ class Derived(
     val completedAt: HashMap<Long, Long> = HashMap(),
     /** Seqs of starts the turn ended without a result for. */
     val unfinished: MutableSet<Long> = HashSet(),
+    /** Of those, the ones whose turn completed normally: no result came, nothing more is known. */
+    val noResult: MutableSet<Long> = HashSet(),
     /** User messages typed in the terminal rather than sent from a client. */
     val typedLocally: MutableSet<Long> = HashSet(),
     /** Mode or model changes made in the terminal, by the seq of the turn context that shows them. */
@@ -401,10 +403,14 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
             Event.KindCase.TURN_ENDED -> {
                 d.running = false
                 d.questions.clear()
-                // Still running when the turn ended: whether it ever ends is
-                // not known (an interrupt does not stop background commands).
+                // Still running when an interrupted turn ended: whether it
+                // ever ends is not known (an interrupt does not stop
+                // background commands). A turn that completed without a
+                // tool's result only says no result came: Codex records
+                // some starts it never completes.
+                val aborted = e.turnEnded.outcome == io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED
                 for (t in d.tools) {
-                    d.background += BackgroundTool(t, returned = false)
+                    if (aborted) d.background += BackgroundTool(t, returned = false) else d.noResult += t.seq
                     d.unfinished += t.seq
                 }
                 d.tools.clear()

@@ -85,7 +85,7 @@ class RunningToolsTest {
         assertEquals("Bash · 处理中", toolSummary(one, Agent.AGENT_CLAUDE, 10_000, 0))
         val two = derive(listOf(turn, start(2, "go test", "a"), start(3, "go vet", "b")), Agent.AGENT_CLAUDE)
         assertEquals("2 项处理中", toolSummary(two, Agent.AGENT_CLAUDE, 10_000, 0))
-        val bg = derive(listOf(turn, start(2, "go test", "a"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.getDefaultInstance()))), Agent.AGENT_CLAUDE)
+        val bg = derive(listOf(turn, start(2, "go test", "a"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED)))), Agent.AGENT_CLAUDE)
         assertEquals("后台工作 · 去终端确认", toolSummary(bg, Agent.AGENT_CLAUDE, 10_000, 0))
     }
 }
