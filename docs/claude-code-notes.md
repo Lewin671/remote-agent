@@ -175,6 +175,13 @@
 
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
 
+粘贴图片路径（2.1.284，haiku，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：
+
+- 一次粘贴的内容**只有**一个图片文件的绝对路径时，输入框里变成 `[Image #N]`，效果和在电脑上粘贴图片相同：提交后 transcript 的用户记录带 image 块和 `imagePasteIds`，模型能看到图。路径后面带了文字的不转换，按普通文字处理。编号在会话里一直累加，删掉的不复用
+- 图片在**粘贴时**就读入：粘贴后删掉文件，再提交照样带图
+- 转换是**异步**的：图片路径、文字和回车一次写入时，文字先出现在输入框里，`[Image #N]` 随后追加到末尾，回车被吞掉，消息留在输入框里没有提交。分开写入、等 `[Image #N]` 出现后再写文字和回车，就能正常提交
+- 运行中粘贴图片再回车同样会排队。这时 `queued_command` 附件的 `prompt` 不是字符串，而是 text 块加 image 块的数组，同一条附件带 `imagePasteIds`；`queue-operation` 的 `content` 仍是字符串（`[Image #5]这张图…`）
+
 后台工作（haiku 实测）：
 
 - Bash 的 `run_in_background`：工具结果显示 `Running in the background (↓ to manage)`；这一轮的结束行变成 `✻ Worked for 5s · done 4:54 PM · 1 shell still running`，这一行在命令结束后仍留在屏幕上；**模式行**多出 `· 1 shell`（如 `⏵⏵ accept edits on · 1 shell · ← for agents`），命令结束后消失

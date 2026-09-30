@@ -442,7 +442,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 ## 17. 会话里的图片
 
-客户端显示会话里出现过的图片：用户在电脑上粘贴的、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v2.html](design/client-v2.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
+客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v2.html](design/client-v2.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
 
 - **只取 CLI 已经记下的图**：两个 CLI 都把图片的 base64 内嵌在 rollout 或 transcript 里，daemon 解析时一起拿到，不需要再读磁盘。Agent 在回复里提到的本机文件（比如 `![](out/chart.png)`）daemon 不去读：路径由模型决定，照着读就等于让模型能把本机任意文件送到手机上。想在手机上看这类文件，让 Agent 自己看一眼（`Read`、`view_image`），它就会作为「查看的图」出现
 - **事件只带引用**：`UserMessage`、`ToolCall` 和新的「生成了图片」事件里带图片列表，每张有图片 ID、格式、原始尺寸、原始路径（知道的话）和一张内嵌的预览图。现有的 `UserMessage.image_count` 由这个列表取代
@@ -452,3 +452,15 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **渲染安全**：daemon 统一重新编码成 PNG、JPEG 或 WebP，不转发 SVG 之类可能带脚本的格式；客户端解密后再按文件头核对格式，网页用 `blob:` URL 显示，CSP 只多放行 `img-src blob: data:`
 - **server 能看到的**：图片的数量、密文大小和上传时间，和事件的元数据同一个级别。保存多久、每个账户占多少空间，未定，见 plan.md
 - **保存和分享**：客户端查看大图时可以保存到本机或调系统分享。图片从这一步起离开 App，由用户自己决定
+
+### 从客户端发图片
+
+实测见 [claude-code-notes §10](claude-code-notes.md#10-中断和运行中的输入)、[codex-notes §10](codex-notes.md#10-屏幕和输入)。
+
+- **怎么交给 CLI**：daemon 把图片写成本机文件，把文件路径用 bracketed paste 单独粘进输入框，两个 CLI 都会把它变成 `[Image #N]`，和在电脑上粘贴图片一样，仍然是原生输入。不写系统剪贴板再按粘贴键，因为那会覆盖用户电脑上的剪贴板
+- **客户端先压缩**：选图后在本机解码，缩到长边不超过 2048px，编码成 JPEG（带透明的用 PNG），iPhone 的 HEIC 这类格式也在这一步转掉；加密后的整个信封不超过 1 MiB。这样两个 CLI 都能读，Codex 也不会把几 MB 的原图写进 rollout
+- **先传图、再发消息**：每张图用一条 `Forward` 指令单独发给 daemon，daemon 按文件头核对格式、确认能解码，写到 `~/.remote-agent/uploads/<会话 ID>/<随机名>.jpg`（权限 0600，文件名不含空格，否则 Codex 不认），返回图片 ID；发消息的指令带上这些 ID。和文字消息一样要求机器在线，server 不替用户保存要发的图。消息排队时图片已经在电脑上，不会重传
+- **注入**：沿用现有的输入锁和暂存本地按键，输入框为空才开始。每张图的路径单独粘贴一次，等屏幕上新出现相应数量的 `[Image #N]`，再粘贴正文和回车。Claude Code 是异步转换的，不等的话回车会被吞掉，消息留在输入框里；Codex 不需要等，但按同样的步骤做。等不到占位（比如 CLI 不认这个文件）时，删掉这次写入的内容，消息记为没能发送，不提交半条消息
+- **确认提交**：两个 CLI 记下的正文都带 `[Image #N]` 占位，和发出的正文比对时先去掉占位。Claude Code 运行中排队的消息，`queued_command` 的 `prompt` 是数组
+- **文件保留到会话结束**：Claude Code 在粘贴时就读入图片，Codex 却是提交时才读，而且记录里留着路径，模型之后可能按路径再看。会话结束后删除
+- **显示**：发出去的图由 CLI 写进会话记录，按上面的规则显示，和在电脑上粘贴的图同一条路径；发送中先显示客户端本地的缩略图

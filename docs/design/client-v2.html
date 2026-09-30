@@ -620,6 +620,13 @@
   .viewer .vinfo code { font:12px ui-monospace,Menlo,monospace; color:#d5dade; overflow-wrap:anywhere; }
   .viewer .vact { display:flex; justify-content:space-around; padding:4px 16px 18px; font-size:13px; color:#9ec1ff; flex:none; }
   .viewer .vact span { min-height:44px; display:flex; align-items:center; }
+  .ctl.att { font-size:20px; color:var(--fg2); padding:0; }
+  .att-tray { display:flex; gap:6px; padding:2px 2px 8px; }
+  .att-tray .pic { width:56px; height:56px; }
+  .pic .x { position:absolute; right:3px; top:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
+  .att-tray .pic .ring { width:24px; height:24px; margin:-12px 0 0 -12px; }
+  .drop { position:relative; }
+  .drop::after { content:"松开以添加图片"; position:absolute; inset:0; border:2px dashed var(--blue); border-radius:18px; background:var(--blue-soft); color:var(--blue); font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; }
   .lightbox { position:absolute; inset:34px 0 0; background:rgba(0,0,0,.86); display:grid; grid-template-columns:64px 1fr 64px; grid-template-rows:48px 1fr auto; color:#f2f3f5; }
   .lightbox .lb-top { grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; padding:0 18px; font-size:13px; color:#c3c8ce; }
   .lightbox .lb-top b { color:#f2f3f5; font-size:20px; font-weight:400; }
@@ -659,7 +666,7 @@
     <li>补齐 Claude Code 多选、长问题完整页、计划、不可用模式、设备默认值；终端按键栏加入左右方向键。</li>
     <li>工具调用开始就展示命令与调用耗时；输入区上方保留执行摘要，补画并行、未收到结果、断线和后台工作的状态。</li>
     <li>审批仍是允许 / 拒绝 / 附理由拒绝；命令可展开，连接超时写未收到确认，重试保持原决定。</li>
-    <li>显示会话里的图片：电脑上粘贴的图、Agent 查看的图挂在消息和工具行下面，Codex 生成的图单独成卡片；点开看大图，可保存和分享。只看不传，输入区不加附件按钮。</li>
+    <li>显示会话里的图片：电脑上粘贴的图、Agent 查看的图挂在消息和工具行下面，Codex 生成的图单独成卡片；点开看大图，可保存和分享。输入区加「＋」发图片：选图后先压缩并传到电脑，发出后在电脑终端里就是 <code>[Image #N]</code>。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
@@ -782,7 +789,7 @@
         <div class="me"><div>给登录接口加限流</div><small>已送达电脑，等 Codex 就绪后发出</small></div>
         <div class="sysline">正在 MacBook 上启动 Codex…</div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap"><span class="step">3</span>发送后直接跳进新会话：第一句话已经在聊天里，Codex 启动好就开始干活。项目页的「进行中」里也多了这一条</div>
   </div>
@@ -875,7 +882,7 @@
         <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +18 −7</code></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
       </div>
-      <div class="compose-status"><span class="dot run"></span>运行中<span class="queue-link">排队 1 条 ›</span><span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">11%</span><span class="go44">↑</span></div></div>
+      <div class="compose-status"><span class="dot run"></span>运行中<span class="queue-link">排队 1 条 ›</span><span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">11%</span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">运行中：导航栏第二行写状态、项目和机器；连续完成的工具调用折成一行；输入区上方有独立中断入口，打字时也保留</div>
   </div>
@@ -898,7 +905,7 @@
         <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
         <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">审批停靠在输入框上方，处理后在聊天里留一行「已允许 / 已拒绝」</div>
   </div>
@@ -911,7 +918,7 @@
         <div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div>
       </div>
       <div class="dock mini"><b>请求执行</b><code>go test ./... -count=1</code><span>展开</span></div>
-      <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>设置…</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card slim"><div class="draft typed">顺便看下 lint 有没有报错</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>设置…</em></span><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
     <div class="cap">键盘弹出：停靠区收成一行，输入区保留模式和发送，模型、上下文收进「设置」；完全放行仍用红色提示</div>
@@ -956,7 +963,7 @@ git status --short gen/</pre>
         <div class="foot"><span>都不合适？</span><b>其他回答：去终端 ›</b></div>
       </div>
       <div class="compose-status"><span class="queue-link">排队 1 条 ›</span><span>就绪后发送</span></div>
-      <div class="compose-card"><div class="draft">排队发送，回答后继续</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">排队发送，回答后继续</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">单选提问：点选项即回答，多题逐题前进；Claude Code 多选见下方完整画面；在终端答了，停靠区自动收起</div>
   </div>
@@ -977,7 +984,7 @@ git status --short gen/</pre>
         <div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
         <div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">计划 ▾</span><span class="ctl model"><em>GPT-6-Sol · high ▾</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">计划 ▾</span><span class="ctl model"><em>GPT-6-Sol · high ▾</em></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">计划：同样停靠；全文页里还有「清空上下文后执行」。Codex 批准后按 CLI 实际模式显示；Claude Code 批准后进入询问模式，不提供清空上下文后执行</div>
   </div>
@@ -996,7 +1003,7 @@ git status --short gen/</pre>
         <div class="btns"><div class="btn pri">去终端处理</div></div>
       </div>
       <div class="compose-status"><span class="queue-link">排队 1 条 ›</span><span>就绪后发送</span></div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">其他弹窗：停靠区显示弹窗标题，「终端」标签上加提示点</div>
   </div>
@@ -1058,7 +1065,7 @@ git status --short gen/</pre>
 <h2 id="input">输入区与消息队列</h2><div class="note" style="margin:0 0 20px">输入正文最多增长到约六行，之后内部滚动；Enter 换行，⌘/Ctrl+Enter 发送，中文输入法组词期间不发送。模式只改当前会话，模型和上下文打开同一个设置面板；上下文未知时省略，不显示 0%。键盘弹出时隐藏普通上下文读数，高占用可在「设置」旁显示橙点。退出设置、队列或终端后恢复草稿和阅读位置。</div><div class="screens"><div><div class="phone"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">修复登录超时</span><span class="agent-id">Codex</span></b><span>空闲 · foo · MacBook</span></span><span class="more">⋯</span></div><div class="body chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tool"><span class="ok">✓</span><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。你可以继续追问。</div></div><div class="compose-card"><div class="draft typed">接下来检查登录重试逻辑，
 先给我一个方案。</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>GPT-6-Astra · medium ▾</em>
 </span>
@@ -1111,7 +1118,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">顺便检查 Redis 连接池</div>
 <div class="controls">
-<span class="ctl mode">自动 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span>
 <span class="ctl model">
 <em>GPT-6-Astra · medium ▾</em>
 </span>
@@ -1164,7 +1171,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">库存回滚也保留测试</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -1216,7 +1223,7 @@ git status --short gen/</pre>
 <div class="compose-card slim">
 <div class="draft typed">也检查下并发扣减</div>
 <div class="controls">
-<span class="ctl mode danger">完全放行 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode danger">完全放行 ▾</span>
 <span class="ctl model">
 <em>设置…</em>
 </span>
@@ -1372,7 +1379,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">写好的消息继续留在这里</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>GPT-6-Astra · medium ▾</em>
 </span>
@@ -1435,7 +1442,7 @@ git status --short gen/</pre>
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
         <div class="tool"><span class="sp">◌</span><code>go test ./auth/...</code><span class="muted">12s</span></div>
       </div>
-      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44 off">↑</span></div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44 off">↑</span></div></div>
     </div>
     <div class="cap">和服务器断线：导航栏下一条提示，和会话状态分开；发送和设置类操作暂停，写好的消息留在输入框里，连上后自己点发送</div>
   </div>
@@ -1777,7 +1784,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft">继续输入，不会打断当前工具…</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -1847,7 +1854,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft">继续输入，不会打断当前工具…</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -1954,7 +1961,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">这条草稿保留，重连后再发</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -2010,7 +2017,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft">给 Codex 发下一条消息…</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>GPT-6-Astra · medium ▾</em>
 </span>
@@ -2024,7 +2031,7 @@ git status --short gen/</pre>
 </div>
 <!-- ============================= -->
 <h2 id="images">会话里的图片</h2>
-<div class="note" style="margin:0 0 20px">显示会话里已经出现过的图片：在电脑上粘贴的、Agent 查看的（Claude Code 读取图片文件，Codex 查看图片、浏览器截图）、Codex 生成的。只看不传，输入区没有附件按钮。预览和消息一起到达，按原始比例占位，不会加载完再把内容顶开；点开才下载大图。终端视图不变，Claude Code 在终端里仍显示 <code>[Image #1]</code>。</div>
+<div class="note" style="margin:0 0 20px">显示会话里已经出现过的图片：在电脑上粘贴的、Agent 查看的（Claude Code 读取图片文件，Codex 查看图片、浏览器截图）、Codex 生成的，以及从客户端发出的。预览和消息一起到达，按原始比例占位，不会加载完再把内容顶开；点开才下载大图。终端视图不变，Claude Code 在终端里仍显示 <code>[Image #1]</code>。</div>
 <div class="screens">
 
   <div>
@@ -2038,9 +2045,9 @@ git status --short gen/</pre>
         <div class="pics under-tool"><i class="pic port empty"></i><i class="pic port ui"></i></div>
         <div class="ai">改好了，左边是改前，右边是改后。</div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">18%</span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">18%</span><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap">电脑上粘贴的图放在消息气泡上方；工具组收起时，里面的截图仍露在组下面，标题写张数。输入区和其他会话一样，没有附件按钮</div>
+    <div class="cap">电脑上粘贴的图放在消息气泡上方；工具组收起时，里面的截图仍露在组下面，标题写张数</div>
   </div>
 
   <div>
@@ -2054,7 +2061,7 @@ git status --short gen/</pre>
         <div class="pics under-tool"><i class="pic port ui"></i></div>
         <div class="ai">窄屏下还是两列、间距 8px。我改成单列、间距 16px。</div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">24%</span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">24%</span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">Claude Code 正文里的 <code>[Image #1]</code> 写成「图 1」，和预览角上的编号对应。读取图片文件的工具行下面直接显示那张图</div>
   </div>
@@ -2069,7 +2076,7 @@ git status --short gen/</pre>
         <div class="gen-card"><i class="pic lg gen"></i><div class="meta"><span>生成的图片 · 1536 × 1024</span><b>提示词 ▸</b></div></div>
         <div class="ai">生成好了，放到了 <span class="ref">web/public/empty.png</span>。</div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">9%</span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="ctl context">9%</span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">Codex 生成的图单独成卡片，宽度占满聊天区；点「提示词」展开 Codex 改写后的提示词</div>
   </div>
@@ -2126,6 +2133,91 @@ git status --short gen/</pre>
   </div>
 </div>
 <div class="cap" style="width:auto;text-align:left">宽屏：聊天里的预览放大到 140px 高；点开在会话区上方打开大图，←/→ 切换、Esc 关闭，可以保存和复制</div>
+
+<div class="note" style="margin:32px 0 20px">从客户端发图片：输入区左下角的「＋」打开系统的图片选择（相册、拍照、文件），一次可以选多张；宽屏上也可以拖进输入区或直接粘贴。选好后在本机压缩，并立即传到电脑上，发送时和文字一起交给 CLI，电脑终端里显示为 <code>[Image #N]</code>。发出的图和在电脑上粘贴的图显示方式相同。</div>
+<div class="screens">
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span><span class="agent-id">Claude Code</span></b><span><span class="dot idle"></span>空闲 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="ai">单列布局改好了，测试也通过了。</div>
+        <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +12 −9</code></div>
+      </div>
+      <div class="compose-card"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="ring"></span><span class="x">✕</span></i></div><div class="draft typed">这两个页面底部的按钮都点不到</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">31%</span><span class="go44 off">↑</span></div></div>
+    </div>
+    <div class="cap">选好的图排在输入框上方，可以逐张移除。转圈表示还在传到电脑，全部传完才能发送；文字可以先写</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span><span class="agent-id">Claude Code</span></b><span><span class="dot run"></span>运行中 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat" style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="tool"><span class="ok">✓</span><code>编辑 2 个文件  +12 −9</code></div>
+        <div class="me"><span class="pics"><i class="pic port ui"><span class="n">3</span></i><i class="pic land web"><span class="n">4</span></i></span><div>这两个页面底部的按钮都点不到</div></div>
+        <div class="tool"><span class="ok">✓</span><code>读取 web/src/Layout.tsx</code></div>
+        <div class="ai">两个页面的按钮都被底部导航盖住了，我给内容区加上导航栏的高度。</div>
+      </div>
+      <div class="compose-status"><span class="dot run"></span>运行中<span class="interrupt">■ 中断</span></div><div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 · medium ▾</em></span><span class="ctl context">32%</span><span class="go44">↑</span></div></div>
+    </div>
+    <div class="cap">发出后和电脑上粘贴的图一样显示。角上的编号和终端里的 <code>[Image #N]</code> 一致；正文开头的占位不再重复写出，夹在正文中间的写成「图 N」</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">首页改版</span><span class="agent-id">Claude Code</span></b><span><span class="dot run"></span>运行中 · web · MacBook</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div>聊天</div><div class="on">终端</div></div></div>
+      <div class="term">❯ [Image #3] [Image #4]这两个页面底部的
+  按钮都点不到
+  ⎿  [Image #3]
+  ⎿  [Image #4]
+
+<span class="d">⏺</span> Read(web/src/Layout.tsx)
+  ⎿  Read 48 lines
+
+<span class="d">⏺</span> 两个页面的按钮都被底部导航盖住了，
+  我给内容区加上导航栏的高度。
+
+<span class="b">✻ Working… (12s)</span></div>
+    </div>
+    <div class="cap">电脑终端里看到的是同一条消息：CLI 自己把图片记成 <code>[Image #N]</code>，和在电脑上粘贴的一样</div>
+  </div>
+
+</div>
+
+<div class="stgrid" style="margin-top:28px">
+  <div class="st">
+    <div class="st-h">发图 · 传到电脑中 / 失败</div>
+    <div class="att-tray"><i class="pic land web" style="width:56px"><span class="ring"></span><span class="x">✕</span></i><i class="pic port ui" style="width:56px"><span class="badge">重试</span><span class="x">✕</span></i></div>
+    <div class="st-c">选图后立即压缩并传到电脑。失败的图标出来，点按重试或移除；还有图没传完时发送按钮置灰</div>
+  </div>
+  <div class="st">
+    <div class="st-h">发图 · 没能发送</div>
+    <div class="me fail"><span class="pics"><i class="pic port ui"></i><i class="pic land web"></i></span><div>这两个页面底部的按钮都点不到</div><small>没能发送：Claude Code 没认出第 2 张图<b>重试</b><b>放回输入框</b></small></div>
+    <div class="st-c">CLI 没把图片变成 <code>[Image #N]</code> 时整条不发，电脑的输入框恢复原样；放回输入框后图和文字都还在</div>
+  </div>
+  <div class="st">
+    <div class="st-h">发图 · 机器离线</div>
+    <div class="compose-card" style="margin:0"><div class="draft">消息</div><div class="controls"><span class="ctl att off">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 ▾</em></span><span class="go44 off">↑</span></div></div>
+    <div class="st-c">图要先传到电脑，机器离线时「＋」不可用，点按提示「MacBook 离线，连上后才能添加图片」</div>
+  </div>
+  <div class="st">
+    <div class="st-h">发图 · 排队</div>
+    <div class="compose-status"><span class="queue-link">排队 1 条 · 2 张图 ›</span><span>本轮结束后发送</span></div>
+    <div class="st-c">带图的消息和文字消息一样排队；图已经在电脑上，排队期间不重传。队列里显示缩略图</div>
+  </div>
+  <div class="st">
+    <div class="st-h">宽屏 · 拖入或粘贴</div>
+    <div class="compose-card drop" style="margin:0"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>Sonnet 5.5 ▾</em></span><span class="go44">↑</span></div></div>
+    <div class="st-c">把图片拖到输入区上方时整块高亮；⌘V 粘贴剪贴板里的图片同样加入待发送的图</div>
+  </div>
+</div>
+
 
 <h2 id="cli">Claude Code 与 CLI 能力</h2>
 <div class="screens">
@@ -2348,7 +2440,7 @@ git status --short gen/</pre>
 <div class="compose-card slim">
 <div class="draft">答完后继续…</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>设置…</em>
 </span>
@@ -2461,7 +2553,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft">补充你对计划的要求…</div>
 <div class="controls">
-<span class="ctl mode">计划 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">计划 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -2665,7 +2757,7 @@ git status --short gen/</pre>
         <div class="sep">4 分 12 秒 · 96k tokens</div>
         <div class="me"><div>继续把对账逻辑也迁过去</div></div>
       </div>
-      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Sol · high ▾</em></span><span class="ctl context warn">86%</span><span class="go44">↑</span></div></div>
+      <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">自动 ▾</span><span class="ctl model"><em>GPT-6-Sol · high ▾</em></span><span class="ctl context warn">86%</span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">超过 80%：上下文 chip 变橙，点开会话设置压缩；压缩后在聊天里留一行「上下文已压缩 · 86% → 14%」，chip 恢复正常</div>
   </div>
@@ -3084,7 +3176,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">本机草稿不会被另一端覆盖</div>
 <div class="controls">
-<span class="ctl mode">计划 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">计划 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -3177,7 +3269,7 @@ git status --short gen/</pre>
 <div class="compose-card">
 <div class="draft typed">下一步还要检查超时恢复</div>
 <div class="controls">
-<span class="ctl mode">询问 ▾</span>
+<span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span>
 <span class="ctl model">
 <em>Sonnet · high ▾</em>
 </span>
@@ -3453,7 +3545,7 @@ git status --short gen/</pre>
             <div class="btns"><div class="btn no">拒绝</div><div class="btn pri">允许</div></div>
             <div class="foot"><span>想告诉 Codex 为什么？</span><b>附理由拒绝 ›</b></div>
           </div>
-          <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
+          <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="ctl att">＋</span><span class="ctl mode">询问 ▾</span><span class="ctl model"><em>GPT-6-Astra · medium ▾</em></span><span class="go44">↑</span></div></div>
         </div>
         <div class="tcol">
           <div class="ttool">电脑上 120×40<b>⤢ 适配</b></div>
