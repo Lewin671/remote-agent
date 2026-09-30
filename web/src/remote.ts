@@ -197,6 +197,9 @@ export class Remote {
   // Sessions started here whose record has not arrived yet, and the
   // project whose new-session box should take focus when shown.
   created = new Set<string>();
+  // What the user has typed and not sent, by session. Once sent, the
+  // message is in the outbox.
+  drafts = new Map<string, string>();
   // How each question call is being answered, by call ID: kept here so the
   // docked card and the question page share it.
   private answers = new Map<string, AnswerState>();

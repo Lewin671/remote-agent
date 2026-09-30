@@ -229,6 +229,8 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           asking={d.questions.size > 0}
           onFocus={(v) => setTyping(v)}
           onSend={(text) => remote.send(sid, text)}
+          draft={remote.drafts.get(sid) ?? ""}
+          onDraft={(text) => remote.drafts.set(sid, text)}
           onInterrupt={() => void run("中断", () => remote.command(sid, { case: "interrupt", value: { sessionId: sid } }))}
         />
       )}
@@ -650,8 +652,12 @@ function Composer({
   onFocus,
   onSend,
   onInterrupt,
+  draft,
+  onDraft,
 }: {
   ref: RefObject<HTMLTextAreaElement | null>;
+  draft: string;
+  onDraft: (text: string) => void;
   wide: boolean;
   online: boolean;
   running: boolean;
@@ -660,7 +666,13 @@ function Composer({
   onSend: (text: string) => void;
   onInterrupt: () => void;
 }) {
-  const [text, setText] = useState("");
+  // The draft is the session's, not this input's: it survives opening an
+  // approval, plan or question page and coming back.
+  const [text, setTextState] = useState(draft);
+  const setText = (v: string) => {
+    setTextState(v);
+    onDraft(v);
+  };
   const [slash, setSlash] = useState(false);
   const t = text.trim();
   // While the server is away, nothing is queued behind the user's back:

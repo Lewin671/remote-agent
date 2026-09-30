@@ -458,3 +458,21 @@ it("gives the next question call on the page fresh options", async () => {
   act(() => root!.render(<ClaudeQuestionPage r={r} id="cq2" />));
   expect(button(/^要/)?.disabled).toBe(false);
 });
+
+it("keeps the message being typed when a page opens and closes", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-appr")!;
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    set.call(input(), "顺便看下 lint");
+    input().dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(input().value).toBe("顺便看下 lint");
+  // Open the approval's page, then come back.
+  await click(button("展开全文"));
+  expect(host.textContent).toContain("审批详情");
+  await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
+  expect(input().value).toBe("顺便看下 lint");
+});
