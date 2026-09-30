@@ -1,6 +1,6 @@
 # Android 实测记录
 
-本文记录 Android 客户端依赖的库和系统在实际使用中的表现：connect-kotlin、Termux 终端组件、加密实现、FCM 和模拟器。只写观察到的现象和踩过的坑；App 据此怎么设计见 [architecture.md](architecture.md) 第 15 节，还没测的见 [plan.md](plan.md) 的「待确认」。
+本文记录 Android 客户端依赖的库和系统在实际使用中的表现：connect-kotlin、Termux 终端组件、加密实现、FCM、模拟器和 v2 客户端用到的系统能力（选图、图片方向、保存分享）。只写观察到的现象和踩过的坑；App 据此怎么设计见 [architecture.md](architecture.md) 第 15 节，还没测的见 [plan.md](plan.md) 的「待确认」。
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。
 
@@ -48,3 +48,15 @@
 
 - **默认的 AVD 太慢**：`Medium_Phone` 的配置是 1 个 CPU、2 GB 内存。跑 Android 36 加 Google 服务时 system_server 反复被 watchdog 重启，adb 报 `Can't find service: activity`，debug 包启动要几十秒。用 `-cores 4 -memory 3072` 启动后正常得多，但宿主机内存吃紧（在交换）时仍会卡到 SystemUI、Launcher 报 ANR
 - **debug 包**：Compose 的 debug 包没有预编译，冷启动在慢机器上要十几秒，性能判断以 R8 的包为准
+
+## 6. v2 客户端
+
+模拟器 API 36（google_apis_playstore，arm64），Claude Code 2.1.285、Codex 0.159.0，2026-09-30。
+
+- **工具状态**：Claude Code 自己转到后台的命令只能从结果看出来（[claude-code-notes §10](claude-code-notes.md#10-中断和运行中的输入)），App 据此把它标为「后台命令 · 状态待确认」；Codex 有不配对的工具开始事件（[codex-notes §6](codex-notes.md#6-踩过的坑)），正常结束的一轮里只显示「未收到工具结果」
+- **Photo Picker**：API 36 上是系统的嵌入式选择器，`PickMultipleVisualMedia(n)` 的上限要求 n ≥ 2，只剩一张的名额时改用单选；选中后 `takePersistableUriPermission` 成功，用于切换「原图」时重新读取
+- **图片方向**：`BitmapFactory` 不按 EXIF 转向，按自己读出的方向用 `Matrix` 转正后，带方向 6 的照片在两个 CLI 里都被认作正向；HEIC 等交给 `ImageDecoder`（未用真实 HEIC 验证）
+- **Keystore 包装的文件密钥**：待发图片用进程内 AES-GCM 加密，Keystore 只包装这把密钥；第一次生成密钥的同时写入图片时，旧目录清理不能晚于写入（踩过：刚建的目录被清掉，保存失败）
+- **保存和分享**：API 29 起 `MediaStore` 写入 `Pictures/remote-agent` 不需要权限；分享走 `FileProvider`，文件放在缓存的 `shared/` 下，下次启动删除
+- **adb 测试手段**：模拟器访问本机 server 用 `adb reverse tcp:18080 tcp:18080` 后填 `http://127.0.0.1:18080`，这样 daemon 和手机用的是同一个 server 地址，配对不会报「账户属于另一个服务器」；`input text` 里的括号要避开（shell 语法）
+

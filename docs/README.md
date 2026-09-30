@@ -22,7 +22,7 @@
 | [architecture.md](architecture.md) | 设计 | 部署、报文分层、通信方式、技术决策、接入 Codex、审批、项目标识、会话里的图片 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单、hook、审批模式、弹窗、中断、模型提问 |
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
-| [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器 |
+| [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器、选图和图片 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
 | [design/client-v3.html](design/client-v3.html) | 界面稿 | 当前设计：v2 全部页面及 Android 终端字号调节 |

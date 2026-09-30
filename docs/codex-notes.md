@@ -127,6 +127,8 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 
 对应的做法见 [architecture.md](architecture.md) 第 5、6 节。
 
+- **不配对的工具开始**（0.159.0，GPT-6-Luna low，2026-09-30）：一次 `sleep 40` 的调用之外，daemon 还从 rollout 解析出标题为 `exec`、`wait` 的工具开始事件，之后没有对应的完成记录。客户端在一轮正常结束时把它们显示为「未收到工具结果」（见 [android-notes §6](android-notes.md#6-v2-客户端)）；来源待 Go 侧确认
+
 ## 7. 做实测时的注意事项
 
 - 用独立的 tmux socket（`tmux -L <名字>`），不影响平时用的 tmux，测完 `kill-server`
