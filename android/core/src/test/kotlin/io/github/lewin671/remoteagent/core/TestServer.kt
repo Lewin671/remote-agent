@@ -36,7 +36,6 @@ import okio.ByteString.Companion.toByteString
 import org.junit.Assume
 import java.io.File
 import java.net.ServerSocket
-import java.net.Socket
 import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.LinkedBlockingQueue
@@ -58,11 +57,21 @@ class TestServer(private val dbDir: File = Files.createTempDirectory("ra-server"
         val pb = ProcessBuilder(bin.absolutePath, "-listen", "127.0.0.1:$port", "-db", File(dbDir, "ra.db").absolutePath)
         pb.environment()["RA_SETUP_TOKEN"] = setupToken
         pb.redirectErrorStream(true).redirectOutput(File(dbDir, "server.log"))
-        proc = pb.start()
+        val started = pb.start()
+        proc = started
+        // Ready means this process answers HTTP. A bare TCP connect is not
+        // enough: with no listener yet, a client socket can connect to
+        // itself when the kernel picks the same port for it, and the first
+        // request then fails with "unexpected end of stream".
         val until = System.currentTimeMillis() + 10_000
         while (System.currentTimeMillis() < until) {
+            check(started.isAlive) { "server exited: " + File(dbDir, "server.log").readText().take(500) }
             try {
-                Socket("127.0.0.1", port).close()
+                val c = java.net.URL("$url/").openConnection() as java.net.HttpURLConnection
+                c.connectTimeout = 500
+                c.readTimeout = 500
+                c.responseCode
+                c.disconnect()
                 return
             } catch (e: Exception) {
                 Thread.sleep(50)
