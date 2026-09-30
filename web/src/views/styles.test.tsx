@@ -42,3 +42,14 @@ it("caps a dock's content by the room measured for it, and measures cards out of
   expect(off.pointerEvents).toBe("none");
   expect(off.position).toBe("absolute");
 });
+
+it("scrolls a question page's content, not its buttons", () => {
+  document.body.innerHTML = '<div class="page"><div class="qpage"><div class="dock ask"><div class="dscroll">…</div><div class="btns"><button class="btn pri">提交</button></div></div></div></div>';
+  const page = getComputedStyle(document.querySelector(".qpage")!);
+  expect(page.overflowY === "auto" || page.overflowY === "scroll").toBe(false);
+  expect(page.display).toBe("flex");
+  const content = getComputedStyle(document.querySelector(".qpage .dscroll")!);
+  expect(content.overflowY).toBe("auto");
+  expect(content.flexShrink).toBe("1");
+  expect(getComputedStyle(document.querySelector(".qpage .dock > .btns")!).flexShrink).toBe("0");
+});

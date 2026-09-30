@@ -487,7 +487,9 @@ export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal 
   return (
     <div className="page">
       <NavBar onBack={onBack} title="回答提问" sub={title} />
-      <div className="body pad qpage">
+      {/* The card fills the page: its question and options scroll, its
+          buttons stay at the bottom. */}
+      <div className="qpage">
         <QuestionDock key={q.questionId} remote={remote} sid={sid} q={q} agent={agent} more={0} onTerminal={onTerminal} />
       </div>
     </div>

@@ -255,8 +255,11 @@ a { color: var(--blue); }
 /* The full card while the one-line form shows: laid out, so it can be
    measured, but out of sight and out of reach. */
 .dockwrap.offstage { display: block; position: absolute; left: 0; right: 0; bottom: 0; visibility: hidden; pointer-events: none; }
-.qpage .dock { margin: 8px 0 16px; max-height: none; }
-.qpage .dock > .dscroll { max-height: none; }
+/* The question page: the card fills it, the question and options scroll,
+   and the buttons and footer stay at the bottom like other pages'. */
+.qpage { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 16px; }
+.qpage .dock { flex: 1 1 auto; min-height: 0; margin: 8px 0 max(12px, env(safe-area-inset-bottom)); max-height: none; }
+.qpage .dock > .dscroll { flex: 1 1 auto; min-height: 0; max-height: none; }
 .dock .h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 .dock .h b { color: var(--orange-ink); }
 .dock .h > span { white-space: nowrap; }
