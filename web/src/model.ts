@@ -249,27 +249,40 @@ function samePlace(p: string): string {
   return p.replace(/^\/private(?=\/(?:tmp|var|etc)(?:\/|$))/, "");
 }
 
-/** Absolute paths in a tool title, shortened for display. Only whole path
- * words change (a word starting with / after the start, a space, a quote,
- * =, :, (, [, { or a comma), so other text stays as it is:
+/** Absolute paths in a tool title, shortened for display. Paths are
+ * found as whole tokens: a quoted one is the whole quoted text, spaces and
+ * all; an unquoted one runs to whitespace or a quote. A token must start
+ * with / after the start, a space, =, :, (, [, { or a comma.
  * - under the session folder (cwd): relative to it, the folder itself "."
  * - else under the home folder: ~/…; without home, /Users/<name> and
  *   /home/<name> count as home
- * - anything else unchanged, as written
- * The expanded details keep the original text. */
+ * - anything else, or anything unsure, unchanged as written
+ * A folder only matches when what follows it in the token is /, nothing,
+ * or a :line suffix, so /Users/me/Code/foo[x]/a or "…/foo bar/a" is not
+ * inside /Users/me/Code/foo. macOS's /private/tmp, /private/var and
+ * /private/etc count as /tmp, /var and /etc. The expanded details keep the
+ * original text. */
 export function shortenPaths(text: string, cwd: string, home = ""): string {
   const base = samePlace(cwd).replace(/\/+$/, "");
   const h = samePlace(home).replace(/\/+$/, "");
-  return text.replace(/(^|[\s'"=:([{,])(\/[^\s'"`()[\]{}<>|;&,]*)/g, (all, before: string, path: string) => {
+  // What follows a folder in its token: a subpath, nothing, or :line[:col].
+  const under = (p: string, dir: string): string | undefined => {
+    if (!dir || !p.startsWith(dir)) return undefined;
+    const rest = p.slice(dir.length);
+    return rest === "" || rest[0] === "/" || /^:\d+(:\d+)*$/.test(rest) ? rest : undefined;
+  };
+  const shorten = (path: string): string | undefined => {
     const p = samePlace(path);
-    if (base && p === base) return before + ".";
-    if (base && p.startsWith(base + "/")) return before + p.slice(base.length + 1);
-    if (h && (p === h || p.startsWith(h + "/"))) return before + "~" + p.slice(h.length);
-    if (!h) {
-      const m = /^\/(?:Users|home)\/[^/]+(?=\/|$)/.exec(p);
-      if (m) return before + "~" + p.slice(m[0].length);
-    }
-    return all;
+    const inCwd = under(p, base);
+    if (inCwd !== undefined) return inCwd === "" || inCwd === "/" ? "." : inCwd[0] === "/" ? inCwd.slice(1) : "." + inCwd;
+    const home = h || /^\/(?:Users|home)\/[^/:]+/.exec(p)?.[0] || "";
+    const inHome = under(p, home);
+    return inHome === undefined ? undefined : "~" + inHome;
+  };
+  return text.replace(/(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g, (all, before: string, q: string | undefined, quoted?: string, bare?: string) => {
+    const short = shorten(quoted ?? bare ?? "");
+    if (short === undefined) return all;
+    return quoted !== undefined ? before + q + short + q : before + short;
   });
 }
 

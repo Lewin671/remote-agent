@@ -343,6 +343,16 @@ describe("paths in tool titles", () => {
     ["tail /home/me/app/log.txt", "/srv/app", "", "tail ~/app/log.txt"],
     ["cat /Users/me/notes.md", "", "/Users/me", "cat ~/notes.md"],
     ["/Users/me", "/Users/me/Code/foo", "/Users/me", "~"],
+    // A folder matches only when a /, the token's end or :line follows it.
+    ["Read /Users/me/Code/foo[archive]/a", "/Users/me/Code/foo", "/Users/me", "Read ~/Code/foo[archive]/a"],
+    ['cat "/Users/me/Code/foo bar/a"', "/Users/me/Code/foo", "/Users/me", 'cat "~/Code/foo bar/a"'],
+    ['cat "/Users/me/Code/foo/a b.go"', "/Users/me/Code/foo", "/Users/me", 'cat "a b.go"'],
+    ["ls /Users/me/Code/foo.bak/x", "/Users/me/Code/foo", "/Users/me", "ls ~/Code/foo.bak/x"],
+    ["(cd /Users/me/Code/foo/sub)", "/Users/me/Code/foo", "/Users/me", "(cd sub)"],
+    ["cat /Users/me/Code/foo", "/Users/me/Code/foo", "/Users/me", "cat ."],
+    ["echo /Users/meow/x", "/Users/me/Code/foo", "/Users/me", "echo /Users/meow/x"],
+    ["Read /Users/me/Code/foo[x]", "/Users/me/Code/foo", "", "Read ~/Code/foo[x]"],
+    ["tail /home/me/app:12", "/srv/app", "/home/me", "tail ~/app:12"],
   ];
   it.each(cases)("shows %s in %s as expected", (title, cwd, home, shown) => {
     expect(shortenPaths(title, cwd, home)).toBe(shown);
