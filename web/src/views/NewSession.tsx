@@ -99,7 +99,13 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const inherited = inheritConfig(p, remote.machines, key);
   const [selection, setSelection] = useState<{ key: string; config: NewConfig }>();
   const override = selection?.key === key ? selection.config : loadProjectConfig(remote.account, key);
-  const cfg = override ? { ...override, from: inherited?.from } : inherited ?? freshConfig(remote, key, remote.draftMachines.get(key));
+  // Once a draft is begun its launch settings hold: later activity (a
+  // newer session in the project, a machine coming or going) does not
+  // change where or how the draft will start. Only the user's own choice
+  // does.
+  const [latched, setLatched] = useState<{ key: string; config: NewConfig }>();
+  const held = latched?.key === key ? latched.config : undefined;
+  const cfg = override ? { ...override, from: inherited?.from } : (held ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key)));
   const machine = remote.machines.get(cfg.machineId);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
@@ -158,6 +164,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       // The new session now supplies the project's next launch settings.
       try { clearProjectConfig(remote.account, key); } catch { /* Keep the saved choice if storage is unavailable. */ }
       setSelection(undefined);
+      setLatched(undefined);
       go("s/" + sid);
       return true;
     } catch (e) {
@@ -174,7 +181,11 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     current.abandon();
     setError("");
   };
-  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg, machine, info, line: describe(cfg, machine, info), create, busy, error, configError, blocked };
+  /** Holds the launch settings as they are now, once a draft begins. */
+  const latch = () => {
+    if (!override && !held) setLatched({ key, config: cfg });
+  };
+  return { remote, frozen: current.frozen, expired: current.expired, abandon, changes, p, cfg, setCfg, latch, machine, info, line: describe(cfg, machine, info), create, busy, error, configError, blocked };
 }
 
 export type NewSession = ReturnType<typeof useNewSession>;
@@ -182,7 +193,21 @@ export type NewSession = ReturnType<typeof useNewSession>;
 /** The new-session box: at the bottom of a project page ("box"), at the
  * top of a wide project page ("prompt"), or the wide home ("start", with
  * the project chip leading the configuration line). */
-export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: NewSession; name: string; autoFocus?: boolean; variant?: "box" | "prompt" | "start"; lead?: ReactNode }) {
+export function NewBox({
+  ns,
+  name,
+  autoFocus,
+  variant = "box",
+  lead,
+  onDraft,
+}: {
+  ns: NewSession;
+  name: string;
+  autoFocus?: boolean;
+  variant?: "box" | "prompt" | "start";
+  lead?: ReactNode;
+  onDraft?: () => void;
+}) {
   const [text, setText] = useState("");
   const [config, setConfig] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -209,7 +234,14 @@ export function NewBox({ ns, name, autoFocus, variant = "box", lead }: { ns: New
       rows={variant === "box" ? 1 : 2}
       value={text}
       placeholder={placeholder}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        // A draft begun holds its project and launch settings.
+        if (!text && e.target.value) {
+          ns.latch();
+          onDraft?.();
+        }
+        setText(e.target.value);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();

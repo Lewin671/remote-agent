@@ -401,6 +401,10 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
               name={name}
               autoFocus={focus}
               variant="start"
+              // With no project picked, the box follows the latest project;
+              // once a draft begins it stays on that one, whatever other
+              // projects do meanwhile.
+              onDraft={() => setKey((k) => k ?? pkey)}
               lead={
                 <button className="chip" onClick={() => setPicking("pick")}>
                   <Avatar name={name} size="xs" />

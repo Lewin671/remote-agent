@@ -14,7 +14,7 @@ import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/r
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, PlanPage, QuestionPage } from "./Dock";
-import { Home } from "./Home";
+import { Home, WideHome } from "./Home";
 import { loadProjectConfig } from "../storage";
 import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
@@ -833,4 +833,62 @@ it("names models in switch records as the chips do", async () => {
   const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
   expect(lines).toContain("切换到 Sonnet · medium");
   expect(lines.some((l) => l?.includes("模型切到了 Opus · medium"))).toBe(true);
+});
+
+describe("a new-session draft", () => {
+  const type = async (value: string) =>
+    act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  const capture = (r: DemoRemote) => {
+    const sent: { cwd?: string; agent?: number; mode?: number }[] = [];
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        sent.push({ cwd: cmd.value.cwd, agent: cmd.value.agent, mode: cmd.value.mode });
+        throw new CommandError("failed_precondition", "stop here");
+      }
+      void slot;
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    return sent;
+  };
+  const bump = (r: DemoRemote, sid: string) =>
+    act(() => {
+      r.sessions.get(sid)!.updatedMs = BigInt(Date.now() + 60_000);
+      (r as unknown as { changed(): void }).changed();
+    });
+
+  it("keeps the project it was begun in on the wide home", async () => {
+    const r = demo();
+    const sent = capture(r);
+    mount(<WideHome remote={r} go={() => undefined} />);
+    await vi.waitFor(() => expect(host.textContent).toContain("要 Codex 做什么"));
+    const before = host.querySelector(".opts .chip")!.textContent;
+    await type("加限流");
+    // Another project becomes the latest meanwhile.
+    bump(r, "s-plan");
+    expect(host.querySelector(".opts .chip")!.textContent).toBe(before);
+    await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
+    await click(button("↑"));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].cwd).toBe("/Users/me/Code/foo");
+  });
+
+  it("keeps the launch settings it was begun with", async () => {
+    const r = demo();
+    const sent = capture(r);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    await type("加限流");
+    // The project's Claude Code session becomes its latest meanwhile.
+    bump(r, "s-claude");
+    expect(host.querySelector(".newbox .cfg em")!.textContent).not.toContain("Claude Code");
+    await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
+    await click(button("↑"));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].agent).toBe(Agent.CODEX);
+  });
+
+
 });
