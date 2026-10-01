@@ -37,6 +37,18 @@ export interface TrayItem {
   abort?: () => void;
 }
 
+// One decoder across all drafts. A superseded request waits its turn and
+// checks its generation before allocating a bitmap.
+let preparation = Promise.resolve();
+async function prepareSerial<T>(current: () => boolean, work: () => Promise<T>): Promise<T | undefined> {
+  const previous = preparation;
+  let release!: () => void;
+  preparation = new Promise<void>((resolve) => { release = resolve; });
+  await previous;
+  try { return current() ? await work() : undefined; }
+  finally { release(); }
+}
+
 let keys = 0;
 
 export class Tray {
@@ -185,8 +197,8 @@ export class Tray {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
         set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
-        const p = await this.prepare(item.file, original);
-        if (!current()) return;
+        const p = await prepareSerial(current, () => this.prepare(item.file, original));
+        if (!current() || !p) return;
         set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
       set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, machineId: undefined });

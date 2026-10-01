@@ -150,3 +150,46 @@ describe("putting a message's images back (review W2, W4)", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 });
+
+it("serializes bitmap preparation across drafts and skips superseded queued work", async () => {
+  const releases: (() => void)[] = [];
+  const modes: boolean[] = [];
+  let active = 0;
+  let peak = 0;
+  const prepare = vi.fn(async (_f: Blob, original: boolean) => {
+    modes.push(original);
+    peak = Math.max(peak, ++active);
+    await new Promise<void>((resolve) => releases.push(resolve));
+    active--;
+    return png(original ? 100 : 10);
+  });
+  const upload = vi.fn(async () => "id");
+  const first = new Tray(prepare, upload, () => undefined);
+  const second = new Tray(prepare, upload, () => undefined);
+  first.machineId = second.machineId = "m";
+  first.add([file("a"), file("b")]);
+  await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+  first.setOriginal(true);
+  first.setOriginal(false);
+  first.setOriginal(true);
+  second.add([file("c")]);
+  await Promise.resolve();
+  expect(active).toBe(1);
+  for (let i = 0; i < 4; i++) {
+    await vi.waitFor(() => expect(releases.length).toBe(i + 1));
+    releases[i]();
+  }
+  await vi.waitFor(() => expect(first.ready() && second.ready()).toBe(true));
+  expect(peak).toBe(1);
+  expect(modes).toEqual([false, true, true, false]);
+  // The first in-flight decode finished but never uploaded stale bytes.
+  expect(upload).toHaveBeenCalledTimes(3);
+});
+
+it("continues preparing the next image after a failed decoder", async () => {
+  let n = 0;
+  const tray = new Tray(async () => { if (++n === 1) throw new Error("bad"); return png(); }, async () => "ok", () => undefined);
+  tray.machineId = "m";
+  tray.add([file("bad"), file("good")]);
+  await vi.waitFor(() => expect(tray.items.map((it) => it.state)).toEqual(["failed", "done"]));
+});
