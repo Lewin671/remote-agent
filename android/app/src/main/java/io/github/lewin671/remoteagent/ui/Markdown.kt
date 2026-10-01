@@ -41,6 +41,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.withAnnotation
 import androidx.compose.ui.text.withStyle
@@ -49,7 +55,8 @@ import androidx.compose.ui.unit.sp
 
 // A small Markdown renderer for chat text: headings, paragraphs, lists,
 // quotes, fenced code, tables and rules; inline code, bold, italic and
-// links. Code and tables scroll sideways instead of wrapping. Text is only
+// links. Code stays unwrapped; tables wrap long cells and scroll sideways
+// when needed. Text is only
 // ever rendered as text.
 
 sealed interface Block {
@@ -58,9 +65,58 @@ sealed interface Block {
     data class Code(val lang: String, val text: String) : Block
     data class Item(val ordered: Boolean, val marker: String, val depth: Int, val text: String) : Block
     data class Quote(val text: String) : Block
-    data class Table(val header: List<String>, val rows: List<List<String>>) : Block
+    data class Table(val header: List<String>, val rows: List<List<String>>, val align: List<TableAlign> = emptyList()) : Block
     data object Rule : Block
 }
+
+enum class TableAlign { START, CENTER, END }
+
+private fun escapedAt(text: String, index: Int): Boolean {
+    var at = index - 1
+    var slashes = 0
+    while (at >= 0 && text[at--] == '\\') slashes++
+    return slashes % 2 == 1
+}
+
+/** Pipes escaped or inside a code span do not create extra columns. */
+fun tableCells(line: String): List<String> {
+    var s = line.trim().removePrefix("|")
+    if (s.endsWith("|")) {
+        var slashes = 0
+        var at = s.lastIndex - 1
+        while (at >= 0 && s[at--] == '\\') slashes++
+        if (slashes % 2 == 0) s = s.dropLast(1)
+    }
+    val cells = mutableListOf<String>()
+    val cell = StringBuilder()
+    var codeFence = 0
+    val ticks = Regex("`+").findAll(s).groupingBy { it.value.length }.eachCount().toMutableMap()
+    var i = 0
+    while (i < s.length) {
+        when {
+            s[i] == '\\' && i + 1 < s.length && (s[i + 1] == '|' || s[i + 1] == '\\') -> {
+                if (s[i + 1] == '|') cell.append('|') else cell.append("\\\\")
+                i += 2
+            }
+            s[i] == '`' -> {
+                var end = i + 1
+                while (end < s.length && s[end] == '`') end++
+                val n = end - i
+                ticks[n] = (ticks[n] ?: 1) - 1
+                if (codeFence == 0 && !escapedAt(s, i) && (ticks[n] ?: 0) > 0) codeFence = n else if (codeFence == n) codeFence = 0
+                cell.append(s.substring(i, end)); i = end
+            }
+            s[i] == '|' && codeFence == 0 -> {
+                cells += cell.toString().trim(); cell.clear(); i++
+            }
+            else -> { cell.append(s[i]); i++ }
+        }
+    }
+    cells += cell.toString().trim()
+    return cells
+}
+
+private val tableDivider = Regex(":?-{3,}:?")
 
 fun parseMarkdown(src: String): List<Block> {
     val out = mutableListOf<Block>()
@@ -76,6 +132,8 @@ fun parseMarkdown(src: String): List<Block> {
     while (i < lines.size) {
         val line = lines[i]
         val t = line.trim()
+        val divider = if ('|' in t && i + 1 < lines.size) tableCells(lines[i + 1]) else emptyList()
+        val table = divider.isNotEmpty() && divider.all { tableDivider.matches(it) } && tableCells(t).size == divider.size
         when {
             t.startsWith("```") || t.startsWith("~~~") -> {
                 flush()
@@ -109,17 +167,18 @@ fun parseMarkdown(src: String): List<Block> {
                 out += Block.Quote(q.toString().trim())
                 continue
             }
-            t.startsWith("|") && i + 1 < lines.size && Regex("^\\|?\\s*:?-{2,}").containsMatchIn(lines[i + 1].trim()) -> {
+            table -> {
                 flush()
-                fun cells(s: String) = s.trim().trim('|').split("|").map { it.trim() }
-                val header = cells(t)
+                val header = tableCells(t)
+                val align = divider.map {
+                    when { it.startsWith(":") && it.endsWith(":") -> TableAlign.CENTER; it.endsWith(":") -> TableAlign.END; else -> TableAlign.START }
+                }.takeUnless { values -> values.all { it == TableAlign.START } }.orEmpty()
                 i += 2
                 val rows = mutableListOf<List<String>>()
-                while (i < lines.size && lines[i].trim().startsWith("|")) {
-                    rows += cells(lines[i])
-                    i++
+                while (i < lines.size && '|' in lines[i] && lines[i].isNotBlank()) {
+                    rows += tableCells(lines[i]); i++
                 }
-                out += Block.Table(header, rows)
+                out += Block.Table(header, rows, align)
                 continue
             }
             bullet.matches(line) || ordered.matches(line) -> {
@@ -145,21 +204,35 @@ fun parseMarkdown(src: String): List<Block> {
     return out
 }
 
+/** Next matching whole backtick run, in linear time even for unmatched runs. */
+private fun codeClosers(text: String): Map<Int, Int> {
+    val closers = mutableMapOf<Int, Int>()
+    val next = mutableMapOf<Int, Int>()
+    val runs = Regex("`+").findAll(text).toList()
+    for (run in runs.asReversed()) {
+        next[run.value.length]?.let { closers[run.range.first] = it }
+        next[run.value.length] = run.range.first
+    }
+    return closers
+}
+
 /** Inline formatting: `code`, **bold**, *italic*, [text](url). */
 fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: androidx.compose.ui.graphics.Color): AnnotatedString = buildAnnotatedString {
     var i = 0
     val s = text
+    val closers = codeClosers(s)
     while (i < s.length) {
         val c = s[i]
         when {
+            c == '\\' && i + 1 < s.length && s[i + 1] == '`' && !escapedAt(s, i) -> { append('`'); i += 2 }
             c == '`' -> {
-                val end = s.indexOf('`', i + 1)
-                if (end > i) {
-                    withAnnotation(CODE, "") { withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp)) { append(s.substring(i + 1, end)) } }
-                    i = end + 1
-                } else {
-                    append(c); i++
-                }
+                var openingEnd = i + 1
+                while (openingEnd < s.length && s[openingEnd] == '`') openingEnd++
+                val end = closers[i]
+                if (end != null) {
+                    withAnnotation(CODE, "") { withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp)) { append(s.substring(openingEnd, end)) } }
+                    i = end + (openingEnd - i)
+                } else { append(s.substring(i, openingEnd)); i = openingEnd }
             }
             s.startsWith("**", i) -> {
                 val end = s.indexOf("**", i + 2)
@@ -290,25 +363,88 @@ fun CodeBlock(text: String, maxLines: Int = Int.MAX_VALUE, modifier: Modifier = 
     }
 }
 
+/** Keep compact tables in the viewport without squeezing wide or large-font
+ * tables below a readable width. Numeric columns keep their intrinsic width. */
+fun tableColumnWidths(preferred: List<Int>, viewport: Int, readable: Int): List<Int> {
+    if (preferred.sum() <= viewport) return preferred
+    val floors = preferred.map { minOf(it, readable) }
+    val minimum = floors.sum()
+    if (minimum > viewport) return preferred
+    val capacity = preferred.sum() - minimum
+    val extra = viewport - minimum
+    val widths = preferred.indices.map { i -> floors[i] + ((preferred[i] - floors[i]).toLong() * extra / capacity).toInt() }.toMutableList()
+    var remainder = viewport - widths.sum()
+    for (i in widths.indices) if (remainder > 0 && widths[i] < preferred[i]) { widths[i]++; remainder-- }
+    return widths
+}
+
+private data class TableGrid(val widths: List<Int>, val heights: List<Int>)
+
 @Composable
 private fun TableBlock(t: Block.Table) {
     val p = pal
-    Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-        Column(Modifier.border(1.dp, p.line)) {
-            val all = listOf(t.header) + t.rows
-            val cols = all.maxOf { it.size }
-            for ((ri, row) in all.withIndex()) {
-                Row(if (ri == 0) Modifier.background(p.soft) else Modifier) {
-                    for (ci in 0 until cols) {
-                        Text(
+    val all = remember(t) { listOf(t.header) + t.rows }
+    val columns = t.header.size
+    if (columns == 0) return
+    var grid by remember(t) { mutableStateOf<TableGrid?>(null) }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val viewportWidth = constraints.maxWidth
+        Box(Modifier.horizontalScroll(rememberScrollState())) {
+            Layout(
+                modifier = Modifier.border(1.dp, p.line).drawBehind {
+                    val g = grid ?: return@drawBehind
+                    drawRect(p.soft, size = Size(size.width, g.heights.first().toFloat()))
+                    val stroke = 1.dp.toPx()
+                    var y = 0f
+                    for (height in g.heights.dropLast(1)) {
+                        y += height
+                        drawLine(p.line, Offset(0f, y), Offset(size.width, y), strokeWidth = stroke)
+                    }
+                    var x = 0f
+                    for (width in g.widths.dropLast(1)) {
+                        x += width
+                        val at = if (layoutDirection == LayoutDirection.Rtl) size.width - x else x
+                        drawLine(p.line, Offset(at, 0f), Offset(at, size.height), strokeWidth = stroke)
+                    }
+                },
+                content = {
+                    for ((ri, row) in all.withIndex()) for (ci in 0 until columns) {
+                        val align = when (t.align.getOrNull(ci)) {
+                            TableAlign.CENTER -> TextAlign.Center
+                            TableAlign.END -> TextAlign.Right
+                            else -> TextAlign.Left
+                        }
+                        RichText(
                             inline(row.getOrElse(ci) { "" }, p.chip, p.blue),
-                            Modifier.widthIn(min = 48.dp, max = 240.dp).padding(horizontal = 7.dp, vertical = 3.dp),
-                            style = T.sm, color = p.fg,
-                            fontWeight = if (ri == 0) platformWeight(FontWeight.SemiBold) else null,
+                            style = T.sm.copy(color = p.fg, textAlign = align,
+                                fontWeight = if (ri == 0) platformWeight(FontWeight.SemiBold) else T.sm.fontWeight),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
                         )
                     }
+                },
+            ) { cells, constraints ->
+                // Intrinsic queries are allowed before measuring. Every cell is then
+                // measured once with the same width as the rest of its column.
+                val preferred = List(columns) { ci ->
+                    all.indices.maxOf { ri -> cells[ri * columns + ci].maxIntrinsicWidth(Constraints.Infinity) }
+                        .coerceIn(48.dp.roundToPx(), 240.dp.roundToPx())
                 }
-                if (ri < all.lastIndex) HorizontalDivider(color = p.line)
+                val widths = tableColumnWidths(preferred, viewportWidth, 96.sp.roundToPx())
+                val placed = cells.mapIndexed { i, cell -> cell.measure(Constraints.fixedWidth(widths[i % columns])) }
+                val heights = all.indices.map { ri -> (0 until columns).maxOf { ci -> placed[ri * columns + ci].height } }
+                grid = TableGrid(widths, heights)
+                layout(constraints.constrainWidth(widths.sum()), constraints.constrainHeight(heights.sum())) {
+                    var y = 0
+                    for (ri in all.indices) {
+                        var x = 0
+                        for (ci in 0 until columns) {
+                            val cell = placed[ri * columns + ci]
+                            cell.placeRelative(x, y + (heights[ri] - cell.height) / 2)
+                            x += widths[ci]
+                        }
+                        y += heights[ri]
+                    }
+                }
             }
         }
     }
