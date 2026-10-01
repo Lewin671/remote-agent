@@ -155,7 +155,7 @@ fun NavBar(
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (agent != null) Text(agent, style = ts(12.sp, FontWeight.Medium), color = if (dark) TermColors.dim else p.muted, maxLines = 1)
             }
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) {

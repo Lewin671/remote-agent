@@ -201,7 +201,7 @@ func (s *session) observe(e *pb.Event) {
 		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
 	case *pb.Event_UserMessage:
 		if s.title == "" {
-			s.title = summary(k.UserMessage.Text, 60)
+			s.title = titleFrom(k.UserMessage.Text)
 		}
 	case *pb.Event_AgentMessage:
 		s.preview = summary(k.AgentMessage.Text, 120)
@@ -617,6 +617,38 @@ func summary(text string, n int) string {
 	}
 	return ""
 }
+
+// titleFrom is a session title from its first message: the first
+// clause of the first line, at most titleMax columns wide, where a CJK
+// character takes two columns. A clause ends
+// at CJK punctuation, or at ASCII punctuation followed by a space, so
+// "v0.8.0" and "main.go" stay whole; a break in the first titleMin
+// characters is skipped so that "嗯，" alone is not a title.
+func titleFrom(text string) string {
+	r := []rune(summary(text, 1<<20))
+	for i := titleMin; i < len(r); i++ {
+		if strings.ContainsRune("，。；：！？、", r[i]) ||
+			strings.ContainsRune(",.;:!?", r[i]) && i+1 < len(r) && r[i+1] == ' ' {
+			r = r[:i]
+			break
+		}
+	}
+	w := 0
+	for i, c := range r {
+		if w++; c >= 0x2e80 {
+			w++
+		}
+		if w > titleMax {
+			return string(r[:i]) + "…"
+		}
+	}
+	return string(r)
+}
+
+const (
+	titleMin = 4
+	titleMax = 40
+)
 
 // cancelInput removes a queued message unless it is already being
 // written.
