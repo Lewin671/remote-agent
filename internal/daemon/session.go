@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -623,9 +624,12 @@ func summary(text string, n int) string {
 // character takes two columns. A clause ends
 // at CJK punctuation, or at ASCII punctuation followed by a space, so
 // "v0.8.0" and "main.go" stay whole; a break in the first titleMin
-// characters is skipped so that "嗯，" alone is not a title.
+// characters is skipped so that "嗯，" alone is not a title. The CLI's
+// "[Image #N]" placeholders before the words are not part of it, so a
+// message of images alone gives no title and the next message names
+// the session.
 func titleFrom(text string) string {
-	r := []rune(summary(text, 1<<20))
+	r := []rune(summary(leadingImagesRE.ReplaceAllString(text, ""), 1<<20))
 	for i := titleMin; i < len(r); i++ {
 		if strings.ContainsRune("，。；：！？、", r[i]) ||
 			strings.ContainsRune(",.;:!?", r[i]) && i+1 < len(r) && r[i+1] == ' ' {
@@ -644,6 +648,8 @@ func titleFrom(text string) string {
 	}
 	return string(r)
 }
+
+var leadingImagesRE = regexp.MustCompile(`^(?:\s*\[Image #\d+\])+\s*`)
 
 const (
 	titleMin = 4

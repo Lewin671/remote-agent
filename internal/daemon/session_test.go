@@ -451,14 +451,17 @@ func TestInfoSummarizesTheSession(t *testing.T) {
 
 func TestTitleFromFirstClause(t *testing.T) {
 	for in, want := range map[string]string{
-		"设计稿里面，感觉还是得把项目和会话分开，各种配置跟着项目走":                          "设计稿里面",
-		"嗯，帮我修一下登录超时。谢谢":                                         "嗯，帮我修一下登录超时",
-		"Fix the login timeout, then release v0.8.0":             "Fix the login timeout",
-		"bump main.go to v0.8.0":                                 "bump main.go to v0.8.0",
-		"\n  修复登录超时\n详细说明":                                       "修复登录超时",
-		strings.Repeat("长", 50):                                  strings.Repeat("长", 20) + "…",
-		"Please review the whole authentication module for bugs": "Please review the whole authentication m…",
-		"": "",
+		"设计稿里面，感觉还是得把项目和会话分开，各种配置跟着项目走":                               "设计稿里面",
+		"嗯，帮我修一下登录超时。谢谢":                                              "嗯，帮我修一下登录超时",
+		"Fix the login timeout, then release v0.8.0":                  "Fix the login timeout",
+		"bump main.go to v0.8.0":                                      "bump main.go to v0.8.0",
+		"\n  修复登录超时\n详细说明":                                            "修复登录超时",
+		strings.Repeat("长", 50):                                       strings.Repeat("长", 20) + "…",
+		"Please review the whole authentication module for bugs":      "Please review the whole authentication m…",
+		"[Image #1] [Image #2] [Image #3] [Image #4] [Image #5]帮我处理下": "帮我处理下",
+		"[Image #1]\n看下这张图，哪里不对":                                      "看下这张图",
+		" [Image #1] ": "",
+		"":             "",
 	} {
 		if got := titleFrom(in); got != want {
 			t.Errorf("titleFrom(%q) = %q, want %q", in, got, want)
