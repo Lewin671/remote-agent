@@ -97,6 +97,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       <div className="glabel">外观</div>
       <div className="grp">
         <div className="row">
+          主题
           <ThemePicker />
         </div>
       </div>
