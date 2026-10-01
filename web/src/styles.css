@@ -831,3 +831,10 @@ input.field { margin: 0; }
 /* Wide: settings pages keep a readable column instead of rows as wide as the window. */
 .desk .body.gray, .desk .page.gray > .body { padding-inline: max(0px, calc((100% - 672px) / 2)); }
 .desk .body.gray { padding-top: 12px; }
+
+/* Row margins must participate in virtual height measurement. Browser scroll
+ * anchoring would compete with the virtualizer's measured corrections. */
+.chat { overflow-anchor: none; }
+.history-row, .virtual-history [data-item-index] { display: flow-root; }
+.virtual-history [data-item-index] { min-height: 1px; }
+.virtual-history .history-boundary { min-height: 24px; }

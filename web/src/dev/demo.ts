@@ -545,6 +545,11 @@ export class DemoRemote extends Remote {
       return Object.assign(p, { name: (f as File).name ?? "" });
     };
     r.seed();
+    const history = Math.min(50_000, Math.max(0, Number(q.get("history")) || 0));
+    if (history) r.evs.set("s-run", Array.from({ length: history }, (_, i) => create(EventSchema, {
+      seq: BigInt(i + 1), sessionId: "s-run",
+      kind: { case: "agentMessage", value: { text: `性能示例 ${i + 1}\n\n` + "一段带有 **强调** 和 `代码` 的消息。\n".repeat(i % 5 + 1) } },
+    })));
     return r;
   }
 

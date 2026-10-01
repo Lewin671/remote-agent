@@ -48,6 +48,9 @@ import { PendingBubbles } from "./Queue";
 import { TerminalView } from "./Terminal";
 import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, toolTitle, type Short } from "./Tools";
 
+import { RowState, RememberDetails } from "./RowState";
+import { HistoryRows } from "./HistoryRows";
+
 type Tab = "chat" | "term" | "split";
 
 /** Tracks an element's width, for choices that depend on the space the
@@ -393,12 +396,15 @@ function ChatBody({
 }) {
   const sid = session.id;
   const scroller = useRef<HTMLDivElement>(null);
+  const rowStates = useRef(new Map<string, boolean>());
   // Back from another view, the chat is where it was left.
-  const saved = remote.scroll.get(sid);
+  const [saved] = useState(() => remote.scroll.get(sid));
   const stick = useRef(saved?.stick ?? true);
+  const userScrollAt = useRef(0);
   const [unseen, setUnseen] = useState(0);
-  const seen = useRef(0);
+  const seen = useRef<number | undefined>(undefined);
   const hist = remote.history(sid);
+  const restoringHistory = useRef(!hist.loaded);
   const items = useMemo(() => timeline(events, d), [events, events.length, d]);
   const outbox = remote.outbox(sid);
   const prompt = remote.prompts.get(sid);
@@ -423,13 +429,18 @@ function ChatBody({
   const count = items.length + outbox.length;
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el && saved && !saved.stick) el.scrollTop = saved.top;
+    if (hist.loaded && items.length <= 100 && el && saved && !saved.stick) el.scrollTop = saved.top;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    if (restoringHistory.current) {
+      seen.current = count;
+      if (hist.loaded || hist.error || hist.broken) restoringHistory.current = false;
+    }
+    seen.current ??= count;
     if (stick.current) {
-      el.scrollTop = el.scrollHeight;
+      if (items.length <= 100) el.scrollTop = el.scrollHeight;
       seen.current = count;
       setUnseen(0);
     } else if (count > seen.current) setUnseen(count - seen.current);
@@ -446,30 +457,15 @@ function ChatBody({
   const promptState = promptId ? d.inputs.get(promptId) : undefined;
   const showPrompt = prompt && !events.some((e) => e.kind.case === "userMessage") && promptState !== InputStatus.CANCELED && promptState !== InputStatus.UNCONFIRMED;
 
-  return (
-    <div className="chatwrap">
-      <div
-        className="body chat"
-        ref={scroller}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-          remote.scroll.set(sid, { top: el.scrollTop, stick: stick.current });
-          if (stick.current) {
-            seen.current = count;
-            setUnseen(0);
-          }
-        }}
-      >
+  const header = (<>
         {hist.loaded && <div className="sep">会话从这里开始</div>}
         <div className="sep">
           {started ? hhmm(started) + " · " : ""}
           {shortPath(cwd)}
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
-        {items.map((it) => (
-          <Row key={it.key} it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTerminal={onTerminal} who={who} sid={sid} />
-        ))}
+  </>);
+  const footer = (<>
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
         {hist.error && (
           <Banner kind="err" action="重试" onAction={() => remote.retryEvents(sid)}>
@@ -491,6 +487,35 @@ function ChatBody({
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} />
         ))}
         <PendingBubbles remote={remote} session={session} d={d} />
+  </>);
+
+  return (
+    <div className="chatwrap">
+      <div
+        className="body chat"
+        ref={scroller}
+        onWheel={() => { userScrollAt.current = Date.now(); }}
+        onTouchMove={() => { userScrollAt.current = Date.now(); }}
+        onKeyDown={() => { userScrollAt.current = Date.now(); }}
+        onPointerDown={(e) => { if (e.target === e.currentTarget) userScrollAt.current = Date.now(); }}
+        onPointerMove={(e) => { if (e.buttons) userScrollAt.current = Date.now(); }}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+          // Virtual measurement and pagination also produce scroll events.
+          // Only a user's scroll away turns following off.
+          if (atBottom) stick.current = true;
+          else if (Date.now() - userScrollAt.current < 1000) stick.current = false;
+          remote.scroll.set(sid, { top: el.scrollTop, stick: stick.current });
+          if (stick.current) {
+            seen.current = count;
+            setUnseen(0);
+          }
+        }}
+      >
+        <HistoryRows items={items} scroller={scroller} remote={remote} sid={sid} follow={() => stick.current} loaded={hist.loaded || !!hist.error || hist.broken} header={header} footer={footer}
+          render={(it) => <RowState id={it.key} states={rowStates.current}><Row it={it} d={d} short={short} machine={machine} agent={agent} textOf={textOf} onRestore={onRestore} nameModel={nameModel} remote={remote} onTerminal={onTerminal} who={who} sid={sid} /></RowState>} />
+
       </div>
       {unseen > 0 && (
         <button
@@ -605,12 +630,12 @@ function Row({
       );
     case "reasoning":
       return (
-        <details className="think">
+        <RememberDetails name="details" className="think">
           <summary>
             思考 <Exp />
           </summary>
           <div className="thinktext">{k.value.text}</div>
-        </details>
+        </RememberDetails>
       );
     case "toolCall":
       return <ToolRow t={k.value} short={short} decision={it.decision} resultText={it.decision === ApprovalDecision.ALLOW_ALWAYS && it.approvalId ? alwaysText(d.resolved.get(it.approvalId)?.message ?? "") : undefined} by={it.approvalId && otherThanMe(d.by.get(it.approvalId), who) ? elsewhereLabel(d.by.get(it.approvalId), who.ctx) : undefined} />;
@@ -755,14 +780,14 @@ function Row({
       );
     case "planProposed":
       return (
-        <details className="think">
+        <RememberDetails name="details" className="think">
           <summary>
             计划 <Exp />
           </summary>
           <div className="ai">
             <Markdown text={k.value.text} />
           </div>
-        </details>
+        </RememberDetails>
       );
     case "sessionState": {
       const t = eventTime(e);

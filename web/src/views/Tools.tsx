@@ -1,5 +1,5 @@
 // Tool calls in the chat: one line per call, with finished runs folded.
-import { useState } from "react";
+import { useRowExpanded } from "./RowState";
 import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
 import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
 import { clock, decisionText, toolClock, toolsSummary, type Derived, type RunningTool } from "../model";
@@ -36,9 +36,9 @@ export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; s
   return <><div className="tool single"><span className={ok ? "ok" : "x"}>{ok ? "✓" : "✕"}</span><code>{toolTitle(t, short)}</code>{!ok && t.exitCode !== undefined && <span className="muted">退出码 {t.exitCode}</span>}{decision !== undefined && <span className="muted">{resultText || decisionText(decision)}{by && ` · ${by}`}</span>}</div><ImageStrip refs={t.images} className="under-tool" /></>;
 }
 export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useRowExpanded("tools");
   const images = calls.flatMap((c) => c.images);
-  return <><button className="tool single tgrp" onClick={() => setOpen((x) => !x)} aria-expanded={open}><span className="ok">✓</span><span>{toolsSummary(calls)}</span><span className="muted">{open ? "⌃" : "⌄"}</span></button>{open && <div className="grpbody">{calls.map((t, i) => <div className="tool single" key={i}><code>{toolTitle(t, short)}</code></div>)}</div>}<ImageStrip refs={images} className="under-tool" /></>;
+  return <><button className="tool single tgrp" onClick={() => setOpen(!open)} aria-expanded={open}><span className="ok">✓</span><span>{toolsSummary(calls)}</span><span className="muted">{open ? "⌃" : "⌄"}</span></button>{open && <div className="grpbody">{calls.map((t, i) => <div className="tool single" key={i}><code>{toolTitle(t, short)}</code></div>)}</div>}<ImageStrip refs={images} className="under-tool" /></>;
 }
 export function BackgroundTool({ call, short }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
   return <div className="tool single"><span className="sp faint" aria-label="后台运行" /><code>{toolTitle(call, short)}</code><span className="muted">后台运行</span></div>;

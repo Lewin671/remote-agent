@@ -3,6 +3,7 @@
 // fetches the display copy on demand. Decrypted bytes are shown as blob:
 // URLs, each revoked as soon as nothing shows it.
 
+import { useRowExpanded } from "./RowState";
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { ImageSync } from "../gen/remoteagent/v1/event_pb";
@@ -92,7 +93,7 @@ export function ImageStrip({ refs, numbered, className = "", height }: { refs: I
 /** An image the agent made: full width, with its rewritten prompt. */
 export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) {
   const open = useContext(OpenImage);
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useRowExpanded("image-prompt");
   return (
     <>
       {refs.map((r, i) => (
@@ -101,7 +102,7 @@ export function GenCard({ refs, prompt }: { refs: ImageRef[]; prompt: string }) 
           <div className="meta">
             <span>生成的图片{sizeText(r) && ` · ${sizeText(r)}`}</span>
             {prompt && i === 0 && (
-              <button className="link" onClick={() => setShown((v) => !v)} aria-expanded={shown}>
+              <button className="link" onClick={() => setShown(!shown)} aria-expanded={shown}>
                 提示词 <Exp up={shown} />
               </button>
             )}
