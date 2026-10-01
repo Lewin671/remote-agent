@@ -80,3 +80,112 @@ it("closes a terminal socket even while its handshake is pending", async () => {
   expect(await opening).toBeInstanceOf(Error);
   expect(Socket.all[0].readyState).toBe(3);
 });
+
+it("serializes the main stream and drops a bounded backlog", async () => {
+  vi.stubGlobal("WebSocket", Socket);
+  const r = await probe();
+  vi.spyOn(r as any, "login").mockResolvedValue(undefined);
+  let release!: () => void;
+  const handler = vi.spyOn(r as any, "onFrame").mockImplementation(() => new Promise<void>((resolve) => { release = resolve; }));
+  const { toBinary } = await import("@bufbuild/protobuf");
+  const { ServerFrameSchema } = await import("./gen/remoteagent/v1/relay_pb");
+  const frame = toBinary(ServerFrameSchema, create(ServerFrameSchema, { kind: { case: "ready", value: {} } })).buffer as ArrayBuffer;
+  r.start();
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+  const ws = Socket.all[0]; ws.open(); ws.onmessage?.({ data: frame });
+  await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+  for (let i = 0; i < 1024; i++) ws.onmessage?.({ data: frame });
+  expect(ws.readyState).toBe(3);
+  release();
+  await Promise.resolve(); await Promise.resolve();
+  expect(handler).toHaveBeenCalledTimes(1);
+  r.stop();
+});
+
+it("evicts idle histories while preserving mounted and image-confirmation consumers", async () => {
+  const r = await probe();
+  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  const keep = r.retainHistory("s");
+  for (let i = 0; i < 12; i++) {
+    const id = "idle" + i;
+    r.sessions.set(id, { ...r.sessions.get("s")!, id });
+    r.events(id);
+  }
+  await vi.waitFor(() => expect((r as any).buffers.size).toBe(9));
+  expect((r as any).buffers.has("s")).toBe(true);
+  keep(); keep(); // Releasing twice must not unpin another consumer.
+  await vi.waitFor(() => expect((r as any).buffers.size).toBe(8));
+  const release = r.retainHistory("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  (r as any).outboxes.set("s", [{ sendId: "image", status: "sent", thumbs: [new Blob(["image"])] }]);
+  release();
+  const b = (r as any).buffers.get("s"); b.usedAt = 0;
+  (r as any).trimHistory();
+  expect((r as any).buffers.has("s")).toBe(true);
+  r.recorded("s", ["image"]);
+  (r as any).trimHistory();
+  expect((r as any).buffers.has("s")).toBe(false);
+  clearTimeout((r as any).historyTrim); r.stop();
+});
+
+it("does not put a late fetch into a reclaimed history", async () => {
+  const r = await probe();
+  let finish!: (r: object) => void;
+  const api = vi.fn(() => new Promise<object>((resolve) => { finish = resolve; }));
+  (r as any).api = { getEvents: api };
+  r.events("s");
+  const old = (r as any).buffers.get("s"); old.usedAt = 0;
+  (r as any).trimHistory();
+  finish({ events: [], more: false });
+  await Promise.resolve(); await Promise.resolve();
+  expect((r as any).buffers.has("s")).toBe(false);
+  expect(old.loaded).toBe(false);
+  clearTimeout((r as any).historyTrim); r.stop();
+});
+
+it("counts terminal output until the renderer has consumed it", async () => {
+  vi.stubGlobal("WebSocket", Socket);
+  const r = await probe();
+  const command = vi.fn(async () => create(CommandResultSchema)); r.command = command;
+  let consumed!: () => void;
+  const renderer = vi.fn(() => new Promise<void>((resolve) => { consumed = resolve; }));
+  const closed = vi.fn();
+  const opening = r.openTerminal("s", renderer, closed);
+  const ws = Socket.all[0]; ws.open(); const conn = await opening;
+  const { sealMessage } = await import("./crypto");
+  const { toBinary } = await import("@bufbuild/protobuf");
+  const { EnvelopeSchema, PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { TerminalFrameSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const streamId = (command.mock.calls as any)[0][1].value.streamId;
+  const env = await sealMessage(r.sessions.get("s")!.key, { kind: PayloadKind.TERMINAL_OUTPUT, machineId: "m", sessionId: "s", requestId: streamId, seq: 1n }, TerminalFrameSchema, create(TerminalFrameSchema, { kind: { case: "output", value: new Uint8Array([65]) } }));
+  ws.onmessage?.({ data: toBinary(EnvelopeSchema, env).buffer as ArrayBuffer });
+  await vi.waitFor(() => expect(renderer).toHaveBeenCalledTimes(1));
+  for (let i = 0; i < 512; i++) ws.onmessage?.({ data: new ArrayBuffer(0) });
+  expect(ws.readyState).toBe(3);
+  expect(closed).toHaveBeenCalledTimes(1);
+  consumed(); conn.close(); r.stop();
+});
+
+it("reclaims failed and canceled image histories without deleting retry thumbnails", async () => {
+  const r = await probe();
+  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  const release = r.retainHistory("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const thumb = new Blob(["retry image"]);
+  (r as any).outboxes.set("s", [{ sendId: "failed", status: "failed", thumbs: [thumb] }]);
+  (r as any).buffers.get("s").usedAt = 0;
+  release();
+  (r as any).buffers.get("s").usedAt = 0;
+  (r as any).trimHistory();
+  expect((r as any).buffers.has("s")).toBe(false);
+  expect(r.outbox("s")[0].thumbs![0]).toBe(thumb);
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const { InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  (r as any).outboxes.set("s", [{ sendId: "canceled", status: "sent", thumbs: [thumb] }]);
+  const b = (r as any).buffers.get("s"); b.usedAt = 0; b.inputStatuses = new Map([["canceled", InputStatus.CANCELED]]);
+  (r as any).trimHistory();
+  expect((r as any).buffers.has("s")).toBe(false);
+  expect(r.outbox("s")[0].thumbs![0]).toBe(thumb);
+  r.stop();
+});

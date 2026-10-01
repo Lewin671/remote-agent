@@ -2,7 +2,7 @@
 // last attempt, so "重试" repeats the same command and the daemon answers
 // it once.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { agentOf, derive, type Derived } from "../model";
@@ -11,6 +11,7 @@ import { errorText, newSlot, type AnswerState, type CommandKind, type Remote, ty
 import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
+  useEffect(() => remote.retainHistory(sid), [remote, sid]);
   const events = remote.events(sid);
   const agent = agentOf(remote.sessions.get(sid));
   // The array grows in place; its length tells a change.

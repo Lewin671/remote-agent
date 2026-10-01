@@ -1,7 +1,7 @@
 // The home page (需要处理, 进行中, 项目), its wide-screen form with the
 // sidebar, and the list rows they share.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   agentName,
   agentOf,
@@ -140,7 +140,9 @@ export function SessionRow({
   const machine = remote.machines.get(s.machineId);
   const st = stateOf(s, machine);
   // Waiting sessions preview what they wait for, which is in the events.
-  const pending = st.tone === "wait" && !compact ? pendingOf(remote, s.id) : undefined;
+  const waiting = st.tone === "wait" && !compact;
+  useEffect(() => waiting ? remote.retainHistory(s.id) : undefined, [remote, s.id, waiting]);
+  const pending = waiting ? pendingOf(remote, s.id) : undefined;
   const ended = st.kind === "ended";
   return (
     <button className={`sess ${st.tone}${ended ? " ended" : ""}${selected ? " sel" : ""}${last ? " last" : ""}`} onClick={() => go("s/" + s.id)}>

@@ -120,14 +120,16 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               setDims(size.current);
               t.resize(f.kind.value.cols, f.kind.value.rows);
               t.reset();
-              t.write(f.kind.value.data);
+              const data = f.kind.value.data;
+              const written = new Promise<void>((resolve) => t.write(data, resolve));
               scale();
               setState("live");
-              break;
+              return written;
             }
-            case "output":
-              t.write(f.kind.value);
-              break;
+            case "output": {
+              const data = f.kind.value;
+              return new Promise<void>((resolve) => t.write(data, resolve));
+            }
             case "closed":
               setReason(f.kind.value);
               break;

@@ -25,7 +25,7 @@ import {
   type Keys,
 } from "./crypto";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { Agent, ImageFormat, SendMode, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ImageFormat, InputStatus, SendMode, SessionStatus, type Event } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import { SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -96,6 +96,9 @@ interface EventBuffer {
   error: string;
   // An event did not open; history stops before it.
   broken: boolean;
+  inputStatuses?: Map<string, InputStatus>;
+  bytes?: number;
+  usedAt?: number;
 }
 
 /** How far a session's history got: loading, complete, a fetch that
@@ -290,6 +293,46 @@ export class Remote {
   focusProject = "";
 
   private buffers = new Map<string, EventBuffer>();
+  private historyUsers = new Map<string, number>();
+  private historyTrim?: ReturnType<typeof setTimeout>;
+
+  /** A mounted consumer pins its complete history, including pending sends. */
+  retainHistory(sid: string): () => void {
+    this.historyUsers.set(sid, (this.historyUsers.get(sid) ?? 0) + 1);
+    this.events(sid);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const n = (this.historyUsers.get(sid) ?? 1) - 1;
+      if (n) this.historyUsers.set(sid, n); else this.historyUsers.delete(sid);
+      const b = this.buffers.get(sid);
+      if (b) b.usedAt = Date.now();
+      this.trimHistory();
+    };
+  }
+
+  private trimHistory() {
+    clearTimeout(this.historyTrim);
+    const idle = [...this.buffers].filter(([sid, b]) => !this.historyUsers.has(sid) && !this.outbox(sid).some((o) => {
+      const status = b.inputStatuses?.get(o.sendId);
+      const finished = this.sessions.get(sid)?.info?.status === SessionStatus.EXITED ||
+        (status !== undefined && [InputStatus.CANCELED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL, InputStatus.UNCONFIRMED].includes(status));
+      return o.status === "sending" || (o.status === "sent" && !!o.thumbs?.length && !finished);
+    }))
+      .sort((a, b) => (a[1].usedAt ?? 0) - (b[1].usedAt ?? 0));
+    let bytes = idle.reduce((n, [, b]) => n + (b.bytes ?? 0), 0);
+    let count = idle.length;
+    const now = Date.now();
+    for (const [sid, b] of idle) {
+      if (!this.sessions.has(sid) || count > 8 || bytes > 16 * 1024 * 1024 || now - (b.usedAt ?? now) >= 60_000) {
+        this.buffers.delete(sid);
+        count--; bytes -= b.bytes ?? 0;
+      }
+    }
+    // Deferred trimming also catches histories read once without a mounted consumer.
+    if (!this.closed && this.buffers.size) this.historyTrim = setTimeout(() => this.trimHistory(), 60_000);
+  }
   // Pushes seen per machine, session and machine removal, so that a list
   // fetched before a push cannot undo it.
   private machinePushes = new Map<string, number>();
@@ -347,11 +390,14 @@ export class Remote {
   start() {
     if (!this.closed && this.ws) return;
     this.closed = false;
+    this.trimHistory();
     void this.connect();
   }
 
   stop() {
     this.closed = true;
+    clearTimeout(this.historyTrim);
+    this.historyTrim = undefined;
     this.generation++;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
@@ -392,16 +438,33 @@ export class Remote {
       const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
       ws.send(toBinary(PeerFrameSchema, hello));
     };
+    let processing = Promise.resolve();
+    let queuedBytes = 0;
+    let queuedFrames = 0;
+    let overflow = false;
     ws.onmessage = (m) => {
-      if (this.closed || generation !== this.generation) return;
-      let f;
-      try {
-        f = fromBinary(ServerFrameSchema, new Uint8Array(m.data as ArrayBuffer));
-      } catch {
+      if (this.closed || generation !== this.generation || overflow) return;
+      const data = m.data as ArrayBuffer;
+      queuedBytes += data.byteLength;
+      queuedFrames++;
+      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
+        overflow = true;
         ws.close();
         return;
       }
-      void this.onFrame(f.kind, generation);
+      processing = processing.then(async () => {
+        if (this.closed || generation !== this.generation || overflow) return;
+        let f;
+        try {
+          f = fromBinary(ServerFrameSchema, new Uint8Array(data));
+        } catch {
+          overflow = true;
+          ws.close();
+          return;
+        }
+        await this.onFrame(f.kind, generation);
+      }).catch((e) => { this.report(e); ws.close(); })
+        .finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
     };
     ws.onclose = () => {
       if (this.ws !== ws) return;
@@ -611,8 +674,9 @@ export class Remote {
   /** Events of a session, contiguous from seq 1. Loads them on first use. */
   events(sid: string): Event[] {
     const b = this.buffers.get(sid);
+    if (b) b.usedAt = Date.now();
     if (!b) {
-      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, error: "", broken: false });
+      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, error: "", broken: false, bytes: 0, usedAt: Date.now() });
       void this.fetchEvents(sid);
       return [];
     }
@@ -653,10 +717,10 @@ export class Remote {
       do {
         b.refetch = false;
         for (;;) {
-          if (this.closed || generation !== this.generation) return;
+          if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b) return;
           const before = b.events.length;
           const res = await this.api.getEvents({ sessionId: sid, afterSeq: BigInt(before), limit: 500 });
-          if (this.closed || generation !== this.generation) return;
+          if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b) return;
           await this.ingest(s, res.events, false);
           // An event that does not open stops progress; asking for the
           // same page again would not help.
@@ -672,6 +736,7 @@ export class Remote {
     } finally {
       b.fetching = false;
       if (b.refetch && !this.closed && generation !== this.generation) void this.fetchEvents(sid);
+      this.trimHistory();
       this.changed();
     }
   }
@@ -688,16 +753,23 @@ export class Remote {
           { kind: PayloadKind.EVENT, machineId: s.machineId, sessionId: s.id, seq: se.seq },
           EventSchema,
         );
+        if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
         b.pending.set(se.seq, msg);
+        b.bytes = (b.bytes ?? 0) + se.envelope!.ciphertext.byteLength + 256;
       } catch (e) {
         b.broken = true;
         this.report(e);
         return;
       }
     }
+    if (this.buffers.get(s.id) !== b) return;
     for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
-      b.events.push(b.pending.get(next)!);
+      const event = b.pending.get(next)!;
+      if (event.kind.case === "inputState") {
+        (b.inputStatuses ??= new Map()).set(event.kind.value.requestId, event.kind.value.status);
+      }
+      b.events.push(event);
       b.pending.delete(next);
     }
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
@@ -885,7 +957,7 @@ export class Remote {
 
   /** Joins a session's terminal stream. Frames are sealed with the session
    * key and numbered; each side refuses frames out of order. */
-  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void, onClose: (reason: string) => void): Promise<TermConn> {
+  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void | Promise<void>, onClose: (reason: string) => void): Promise<TermConn> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
     const streamId = newRequestID();
@@ -931,7 +1003,7 @@ export class Remote {
           if (closed) return;
           if (header.seq <= last) throw new Error("终端帧顺序不对");
           last = header.seq;
-          onFrame(msg);
+          await onFrame(msg);
         } catch (e) {
           finish(errorText(e));
           ws.close();
@@ -951,7 +1023,7 @@ export class Remote {
     return {
       send: (frame) => {
         sending = sending.then(async () => {
-          if (ws.readyState !== WebSocket.OPEN) return;
+          if (closed || ws.readyState !== WebSocket.OPEN) return;
           seq++;
           const env = await sealMessage(
             s.key,
