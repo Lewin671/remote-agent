@@ -1710,3 +1710,10 @@ describe("the client-v7 conversation", () => {
     expect(host.querySelector(".navbar .title")!.textContent).toContain("foo");
   });
 });
+
+it("writes a development build's commit once in the settings", async () => {
+  const { versionText } = await import("./Settings");
+  expect(versionText("0.8.2-dev.6098093", "60980937bd64665f")).toBe("0.8.2-dev.6098093");
+  expect(versionText("0.8.2", "60980937bd64665f")).toBe("0.8.2 · 6098093");
+  expect(versionText("0.8.2")).toBe("0.8.2");
+});

@@ -102,7 +102,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       </div>
       <div className="glabel">版本</div>
       <div className="grp">
-        <div className="row">remote-agent<span className="v">{import.meta.env.VITE_PRODUCT_VERSION} · {import.meta.env.VITE_BUILD_COMMIT?.slice(0, 7)}</span></div>
+        <div className="row">remote-agent<span className="v">{versionText(import.meta.env.VITE_PRODUCT_VERSION, import.meta.env.VITE_BUILD_COMMIT)}</span></div>
       </div>
       <div className="glabel">账户</div>
       <div className="grp">
@@ -728,6 +728,13 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
   );
 }
 
+/** The build as the settings show it: a development build's version
+ * already ends in its commit, so the commit is not written twice. */
+export function versionText(version: string, commit?: string): string {
+  const short = commit?.slice(0, 7) ?? "";
+  return !short || version.includes(short) ? version : `${version} · ${short}`;
+}
+
 function ThemePicker() {
   const [theme, set] = useState<Theme>(getTheme);
   const opts: [Theme, string][] = [
@@ -736,10 +743,12 @@ function ThemePicker() {
     ["dark", "暗色"],
   ];
   return (
-    <div className="seg full">
+    <div className="pick" role="radiogroup" aria-label="外观">
       {opts.map(([t, name]) => (
         <button
           key={t}
+          role="radio"
+          aria-checked={t === theme}
           className={t === theme ? "on" : ""}
           onClick={() => {
             setTheme(t);
