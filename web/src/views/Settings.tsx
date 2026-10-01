@@ -773,7 +773,6 @@ function ImageStorageSettings({ remote, id, settings, onSave, online }: { remote
   const free = usage ? usage.reclaimableBytes + usage.cacheBytes : 0n;
   // What is worth a line: sizes that are not zero.
   const parts = usage ? [usage.reclaimableBytes > 0n && `可清理 ${storageSize(usage.reclaimableBytes)}`, usage.reservedBytes > 0n && `正在上传 ${storageSize(usage.reservedBytes)}`].filter(Boolean).join(" · ") : "";
-  const sessions = usage?.sessions.filter((s) => s.bytes > 0n) ?? [];
   return <>
     <div className="glabel">图片存储</div>
     <div className="grp">
@@ -788,12 +787,6 @@ function ImageStorageSettings({ remote, id, settings, onSave, online }: { remote
       <button className="row act" disabled={busy || !online || free === 0n} onClick={() => setClean(true)}>清理…<span className="v">{usage ? (free > 0n ? `可释放 ${storageSize(free)}` : "没有可清理的") : ""}</span></button>
     </div>
     <div className="manage-hint">图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。</div>
-    {sessions.length > 0 && <>
-      <div className="glabel">占用最多的会话</div>
-      <div className="grp">
-        {sessions.slice(0, 5).map((s) => <div className="row" key={s.sessionId}><span className="ell">{remote.sessions.get(s.sessionId)?.info?.title || `会话 ${s.sessionId.slice(-4)}`}</span><span className="v">{storageSize(s.bytes)}</span></div>)}
-      </div>
-    </>}
     {error && <div className="gbanner"><Banner kind="err">{error}</Banner></div>}
     {clean && <Alert title="清理可回收图片？" text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话历史保留；尚未同步的大图会只显示预览。" ok="清理" onCancel={() => setClean(false)} onOk={async () => { setClean(false); await run(settings, true); }} />}
   </>;

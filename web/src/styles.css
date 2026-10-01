@@ -820,5 +820,4 @@ input.field { margin: 0; }
 .sr .lbl { white-space: nowrap; width: auto; min-width: 34px; }
 .sr .v { flex: 1; justify-content: flex-end; white-space: normal; overflow-wrap: anywhere; text-align: right; }
 @media (max-width: 360px) { .sr .v { flex-basis: 100%; } }
-.row .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row.quota-line.warn .v { color: var(--orange-ink); } .row.quota-line.full .v { color: var(--red); }
