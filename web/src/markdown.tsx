@@ -10,16 +10,42 @@ export function safeHref(url: string): string | undefined {
   return /^https?:\/\/[^\s]+$/i.test(url.trim()) ? url.trim() : undefined;
 }
 
+function escapedAt(text: string, index: number): boolean {
+  let slashes = 0;
+  while (index > 0 && text[--index] === "\\") slashes++;
+  return slashes % 2 === 1;
+}
+
 /** Inline Markdown: `code`, **bold**, *italic*, [links](target) and
  * <https://autolinks>. */
 export function Rich({ text }: { text: string }) {
   const parts: ReactNode[] = [];
-  const re = /`([^`\n]+)`|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|\[([^\]\n]+)\]\(([^)\s]+)\)|<(https?:\/\/[^>\s]+)>/g;
+  const runs = [...text.matchAll(/`+/g)];
+  const closers = new Map<number, number>();
+  const next = new Map<number, number>();
+  for (const run of runs.reverse()) {
+    const end = next.get(run[0].length);
+    if (end !== undefined) closers.set(run.index, end);
+    next.set(run[0].length, run.index);
+  }
+  const re = /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|\[([^\]\n]+)\]\(([^)\s]+)\)|<(https?:\/\/[^>\s]+)>/g;
   let last = 0;
-  for (const m of text.matchAll(re)) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index < last) continue;
+    const escapedTick = m[1] !== undefined && escapedAt(text, m.index);
+    if (m.index > last) parts.push(text.slice(last, escapedTick ? m.index - 1 : m.index));
     const key = m.index;
-    if (m[1] !== undefined) parts.push(<code key={key}>{m[1]}</code>);
+    if (m[1] !== undefined) {
+      const end = escapedTick ? undefined : closers.get(m.index);
+      if (end !== undefined) {
+        parts.push(<code key={key}>{text.slice(m.index + m[1].length, end)}</code>);
+        last = end + m[1].length;
+        re.lastIndex = last;
+        continue;
+      }
+      parts.push(m[1]);
+    }
     else if (m[2] !== undefined) parts.push(<b key={key}>{m[2]}</b>);
     else if (m[3] !== undefined) parts.push(<em key={key}>{m[3]}</em>);
     else if (m[4] !== undefined) parts.push(<Link key={key} text={m[4]} target={m[5]} />);
@@ -28,6 +54,11 @@ export function Rich({ text }: { text: string }) {
   }
   if (last < text.length) parts.push(text.slice(last));
   return <>{parts}</>;
+}
+
+function tableCellClass(text: string): string {
+  // Keep short quantities and their units together; long descriptions can wrap.
+  return text.length > 0 && text.length <= 12 ? "mdcell nowrap" : "mdcell";
 }
 
 function Link({ text, target }: { text: string; target: string }) {
@@ -69,15 +100,23 @@ export function tableCells(line: string): string[] {
   if (s.endsWith("|") && !escaped(s.length - 1)) s = s.slice(0, -1);
   const cells: string[] = [];
   let cur = "";
-  let code = false;
+  let code = 0;
+  const ticks = new Map<number, number>();
+  for (const m of s.matchAll(/`+/g)) ticks.set(m[0].length, (ticks.get(m[0].length) ?? 0) + 1);
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (c === "\\" && (s[i + 1] === "|" || s[i + 1] === "\\")) {
       cur += s[i + 1] === "|" ? "|" : "\\\\";
       i++;
     } else if (c === "`") {
-      code = !code;
-      cur += c;
+      let end = i + 1;
+      while (s[end] === "`") end++;
+      const count = end - i;
+      ticks.set(count, (ticks.get(count) ?? 1) - 1);
+      if (!code && !escapedAt(s, i) && (ticks.get(count) ?? 0) > 0) code = count;
+      else if (code === count) code = 0;
+      cur += s.slice(i, end);
+      i = end - 1;
     } else if (c === "|" && !code) {
       cells.push(cur.trim());
       cur = "";
@@ -132,7 +171,7 @@ export function mdBlocks(md: string): Block[] {
       i = j;
       continue;
     }
-    if (line.includes("|") && i + 1 < lines.length && tableSep.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+    if (line.includes("|") && i + 1 < lines.length && tableSep.test(lines[i + 1]) && lines[i + 1].includes("-") && tableCells(line).length === tableCells(lines[i + 1]).length) {
       const head = tableCells(line);
       const align = tableCells(lines[i + 1]).map((c) =>
         c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : undefined,
@@ -286,12 +325,12 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           case "table":
             return (
               <div key={i} className="mdtable">
-                <table>
+                <table className={b.head.length <= 3 ? "compact" : undefined}>
                   <thead>
                     <tr>
                       {b.head.map((c, k) => (
                         <th key={k} style={{ textAlign: b.align[k] }}>
-                          <Rich text={c} />
+                          <div className={tableCellClass(c)}><Rich text={c} /></div>
                         </th>
                       ))}
                     </tr>
@@ -301,7 +340,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
                       <tr key={n}>
                         {b.head.map((_, k) => (
                           <td key={k} style={{ textAlign: b.align[k] }}>
-                            <Rich text={r[k] ?? ""} />
+                            <div className={tableCellClass(r[k] ?? "")}><Rich text={r[k] ?? ""} /></div>
                           </td>
                         ))}
                       </tr>

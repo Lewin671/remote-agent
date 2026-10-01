@@ -79,8 +79,8 @@ describe("blocks", () => {
     ].join("\n");
     expect(mdBlocks(md).map((b) => b.kind)).toEqual(["text", "table", "heading", "code", "rule", "quote", "text"]);
     const out = html(md);
-    expect(out).toContain('<th style="text-align:center">官方说明</th>');
-    expect(out).toContain('<td style="text-align:center">包括 <b>Codex CLI</b></td>');
+    expect(out).toContain('<th style="text-align:center"><div class="mdcell nowrap">官方说明</div></th>');
+    expect(out).toContain('<td style="text-align:center"><div class="mdcell">包括 <b>Codex CLI</b></div></td>');
     expect(out).toContain("<code>a|b</code> 不拆 | 这里也不拆");
     expect(out).toContain("<pre>echo a | wc -l</pre>");
     expect(out).toContain("<blockquote>");
@@ -107,4 +107,37 @@ describe("blocks", () => {
     expect(mdBlocks("> a\n> b").map((b) => b.kind)).toEqual(["quote"]);
     expect(mdBlocks("- a\n\n\n").map((b) => b.kind)).toEqual(["list"]);
   });
+});
+
+it("keeps code pipes in one column and literal unmatched ticks do not swallow columns", () => {
+  expect(tableCells("| ``x`|y`` | z |")).toEqual(["``x`|y``", "z"]);
+  expect(tableCells("| unfinished ` | z |")).toEqual(["unfinished `", "z"]);
+});
+it("does not render mismatched header and separator counts as a table", () => {
+  expect(mdBlocks("| a | b |\n| --- |\n| 1 | 2 |").some((b) => b.kind === "table")).toBe(false);
+});
+it("keeps an empty or short row aligned to its header and preserves inline formatting", () => {
+  const out = html("| label | value | empty |\n| --- | ---: | :---: |\n| long label | **74.33** |\n| `a\\|b` | [docs](https://example.com) | |");
+  expect((out.match(/<td(?: |>)/g) ?? []).length).toBe(6);
+  expect(out).toContain('<td style="text-align:center"><div class="mdcell"></div></td>');
+  expect(out).toContain('<div class="mdcell nowrap"><b>74.33</b></div>');
+  expect(out).toContain('<code>a|b</code>');
+  expect(out).toContain('href="https://example.com"');
+});
+
+it("renders a multi-backtick code cell without losing literal backticks", () => {
+  const out = html("| code | value |\n| --- | --- |\n| ``x`|y`` | z |");
+  expect(out).toContain('<code>x`|y</code>');
+  expect(out).not.toContain('`<code>');
+  expect(renderToStaticMarkup(<Rich text="unfinished `" />)).toBe('unfinished `');
+});
+
+it("does not let escaped backticks swallow neighboring table columns", () => {
+  expect(tableCells("| \\`not code | middle \\` | final |")).toEqual(["\\`not code", "middle \\`", "final"]);
+  expect(renderToStaticMarkup(<Rich text={"\\`not code | middle \\`"} />)).toBe('`not code | middle `');
+});
+
+it("resumes inline formatting after code containing Markdown markers", () => {
+  expect(renderToStaticMarkup(<Rich text={'`**` **bold**'} />)).toBe('<code>**</code> <b>bold</b>');
+  expect(renderToStaticMarkup(<Rich text={'``* ` | **`` **after** [docs](https://example.com)'} />)).toContain('<code>* ` | **</code> <b>after</b>');
 });

@@ -545,6 +545,22 @@ export class DemoRemote extends Remote {
       return Object.assign(p, { name: (f as File).name ?? "" });
     };
     r.seed();
+    if (q.has("tables")) r.evs.set("s-run", [create(EventSchema, {
+      seq: 1n, sessionId: "s-run", kind: { case: "agentMessage", value: { text: [
+        "表格布局测试（示例数值）", "",
+        "| 估值口径 | 每股收益 EPS | 市盈率 |", "| --- | ---: | ---: |",
+        "| 2026 财年实际，GAAP | $74.33 | **14.5 倍** |",
+        "| 2026 财年实际，调整后 | $75.52 | **14.3 倍** |",
+        "| 下季指引中值 ×4 | $152.60 | **7.1 倍** |",
+        "| 第三方列示的 2027 财年预期 | $159.03 | **6.8 倍** |", "",
+        "| 全年调整后 EPS | 比约 $160 的预期低 | 当前价格对应 PE |", "| ---: | ---: | ---: |",
+        "| $120 | 25% | **9.0 倍** |", "| $100 | 37.5% | **10.8 倍** |", "| $80 | 50% | **13.5 倍** |", "",
+        "| 长内容 | 空列 | 链接 |", "| --- | --- | --- |",
+        "| 很长的内容" + "不会把整张表无限撑宽".repeat(8) + " | | [文档](https://example.com) |", "",
+        "| 第一列 | 第二列 | 第三列 | 第四列 | 第五列 | 第六列 |", "| --- | --- | --- | --- | --- | --- |",
+        "| 很长的单元格一 | 很长的单元格二 | 很长的单元格三 | 很长的单元格四 | 很长的单元格五 | 很长的单元格六 |",
+      ].join("\n") } },
+    })]);
     const history = Math.min(50_000, Math.max(0, Number(q.get("history")) || 0));
     if (history) r.evs.set("s-run", Array.from({ length: history }, (_, i) => create(EventSchema, {
       seq: BigInt(i + 1), sessionId: "s-run",

@@ -230,9 +230,12 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .ai .ref { font: 13px var(--mono); color: var(--fg2); overflow-wrap: anywhere; }
 .ai pre { background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 var(--mono); margin: 6px 0; overflow-x: auto; white-space: pre; }
 .ai .mdtable { overflow-x: auto; margin: 6px 0; -webkit-overflow-scrolling: touch; }
-.ai table { border-collapse: collapse; font-size: 13px; }
-.ai th, .ai td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap; }
+.ai table { border-collapse: collapse; font-size: 13px; width: max-content; }
+.ai table.compact { max-width: 100%; }
+.ai th, .ai td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap; vertical-align: middle; }
 .ai th { background: var(--soft); }
+.ai .mdcell { min-width: 34px; max-width: 226px; white-space: normal; overflow-wrap: break-word; }
+.ai .mdcell.nowrap { white-space: nowrap; max-width: none; }
 .ai blockquote { margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--fg2); }
 .ai hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
 .think { font-size: 13px; color: var(--muted); margin: 6px 0; }
