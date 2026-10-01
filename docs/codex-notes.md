@@ -13,7 +13,7 @@ Codex adapter 依赖的行为都是实测出来的，会随 Codex 版本变化�
 | 模型、reasoning effort | rollout 的 `turn_context`：`model`、`effort` | 每轮开始时写一次 |
 | 上下文占用 | rollout 的 `event_msg.token_count`：`info.last_token_usage.total_tokens / info.model_context_window` | 窗口大小以这里为准。`models_cache.json` 里写的是 272k，实际会话报的是 760k |
 | 累计 token | 同上：`info.total_token_usage` | 含 `cached_input_tokens`、`reasoning_output_tokens` |
-| 账户额度 | 同上：`rate_limits.primary`：`used_percent`、`window_minutes`、`resets_at`；另有 `plan_type` | 账号级数据，不属于某个会话 |
+| 账户额度 | 同上：`rate_limits.primary`：`used_percent`、`window_minutes`、`resets_at`；另有 `plan_type` | 账号级数据，不属于某个会话。不是每个套餐都有两个窗口：0.159.2、`prolite` 套餐下客户端只显示出一个 7 天窗口（2026-09-30，由客户端显示推断，未直接核对 rollout 字段），所以客户端只显示上报了的窗口 |
 | 轮次边界 | rollout 的 `event_msg.task_started`；结束是 `task_complete`，**被中断时是 `turn_aborted`**（`reason: "interrupted"`） | 两种结束事件都要处理，否则中断后会一直以为还在运行 |
 | 消息、工具调用 | rollout 的 `response_item`：`message`、`reasoning`、`custom_tool_call`、`custom_tool_call_output` | |
 | 可选模型和档位 | `~/.codex/models_cache.json`：`slug`、`display_name`、`supported_reasoning_levels`、`default_reasoning_level` | 每个模型支持的档位不同 |
