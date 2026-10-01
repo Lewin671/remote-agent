@@ -83,6 +83,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -193,14 +195,15 @@ fun SettingsScreen() {
         GLabel("外观")
         Group(rows = listOf {
             val opts = listOf(ThemeMode.SYSTEM to "自动", ThemeMode.LIGHT to "亮色", ThemeMode.DARK to "暗色")
-            Box(Modifier.padding(horizontal = 14.dp)) {
-                SegTabs(opts.map { it.second }, opts.indexOfFirst { it.first == settings.theme }) { i -> scope.launch { app.prefs.update { it.copy(theme = opts[i].first) } } }
+            Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("主题", style = T.body, color = pal.fg, modifier = Modifier.weight(1f))
+                SegPick(opts.map { it.second }, opts.indexOfFirst { it.first == settings.theme }) { i -> scope.launch { app.prefs.update { it.copy(theme = opts[i].first) } } }
             }
         })
         GLabel("账户")
         Group(rows = listOf(
             { GRow("服务器", remote.account.server.removePrefix("https://")) },
-            { GRow("版本", "${io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME} · ${io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7)}") },
+            { GRow("版本", io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME.let { v -> val c = io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }) },
             { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
             { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
         ))
@@ -213,20 +216,19 @@ fun SettingsScreen() {
     ) { scope.launch { app.logout() } }
 }
 
-/** Underlined choices inside a settings row (外观). */
+/** One setting's few values at the right of its row (主题): a grey capsule with the chosen one raised. */
 @Composable
-fun SegTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+fun SegPick(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     val p = pal
-    Row(Modifier.fillMaxWidth().bottomLine(p.line)) {
+    Row(Modifier.clip(Radii.SM).background(p.chip).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEachIndexed { i, s ->
             val on = i == selected
             Box(
-                Modifier.weight(1f).heightIn(min = 44.dp).then(if (on) Modifier.bottomLine(p.fg2, 0.dp).bottomLine(p.fg2) else Modifier).clickable { onSelect(i) },
+                Modifier.widthIn(min = 56.dp).heightIn(min = 32.dp).clip(RoundedCornerShape(8.dp))
+                    .background(if (on) (if (p.card == Color.White) p.card else p.track) else Color.Transparent)
+                    .selectable(selected = on, role = Role.RadioButton) { onSelect(i) }.padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
-            ) {
-                Text(s, style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted)
-                if (on) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(2.dp).background(p.fg2))
-            }
+            ) { Text(s, style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted) }
         }
     }
 }
