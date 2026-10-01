@@ -118,4 +118,33 @@ class LayoutTest {
         ui.onNodeWithText("CLI").assertIsDisplayed()
         ui.onNodeWithText("审批").performScrollTo().assertIsDisplayed()
     }
+    @Test fun wideSettingsKeepAReadableColumnAndACompactThemePicker() {
+        ui.setContent {
+            RaTheme(ThemeMode.DARK) {
+                // Wider than the emulator's screen: laid out, if not all drawn.
+                Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.soft)) {
+                    Column(Modifier.fillMaxWidth().readableColumn()) {
+                        GLabel("外观")
+                        Group(Modifier.testTag("group"), rows = listOf {
+                            Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(horizontal = 14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text("主题", Modifier.weight(1f))
+                                Box(Modifier.testTag("pick")) { SegPick(listOf("自动", "亮色", "暗色"), 0) {} }
+                            }
+                        })
+                    }
+                }
+            }
+        }
+        val d = ui.density
+        val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
+        val group = ui.onNodeWithTag("group").fetchSemanticsNode().boundsInRoot
+        val pick = ui.onNodeWithTag("pick").fetchSemanticsNode().boundsInRoot
+        with(d) {
+            // 672 dp with the group's 16 dp margins, centred in the frame.
+            assertTrue("group ${group.width.toDp()}", kotlin.math.abs(group.width.toDp().value - 672f) < 1f)
+            assertTrue(kotlin.math.abs((group.left - frame.left) - (frame.right - group.right)) < 2f)
+            assertTrue("pick ${pick.width.toDp()}", pick.width.toDp() < 220.dp && pick.right <= group.right)
+        }
+        ui.onNodeWithText("自动").assertIsSelected()
+    }
 }

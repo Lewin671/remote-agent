@@ -145,7 +145,7 @@ fun SettingsScreen() {
         return
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
-    Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState()).readableColumn()) {
         LargeTitle("设置")
         ConnBanner(state)
         if (push.problem.isNotEmpty()) Banner(push.problem, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.WARN, action = push.action.ifEmpty { null }, onAction = { Push.fix(app, remote) })

@@ -3,6 +3,8 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,10 +263,16 @@ fun PageScaffold(title: String, subtitle: String? = null, gray: Boolean = false,
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
         Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
             NavBar(title, nav.back, subtitle = subtitle, right = action)
-            content()
+            if (gray) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() } else content()
         }
     }
 }
+
+/**
+ * On a wide screen (a tablet, a phone on its side) settings rows keep a
+ * centred column of about 640 dp instead of stretching across the window.
+ */
+fun Modifier.readableColumn(): Modifier = wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 672.dp)
 
 /** A centered empty or loading note on a page. */
 @Composable
