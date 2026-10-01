@@ -12,6 +12,10 @@ import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.UserMessage
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -59,9 +63,9 @@ class RemoteTest {
     private fun user(t: String) = Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText(t))
     private fun agent(t: String) = Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(t))
 
-    private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024): Remote {
+    private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024, historyIdleMs: Long = 60_000, historyIdleCount: Int = 8): Remote {
         val acct = joinWithRoot(root, server.url, http)
-        val r = Remote(acct, http, cache, frameQueue = frameQueue)
+        val r = Remote(acct, http, cache, frameQueue = frameQueue, historyIdleMs = historyIdleMs, historyIdleCount = historyIdleCount)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -76,6 +80,82 @@ class RemoteTest {
 
     private suspend fun Remote.awaitEvents(sid: String, n: Int): SessionEvents =
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
+
+    @Test
+    fun activeHistorySurvivesExpiryAndTheSameFlowReloadsAfterReclamation() = runBlocking<Unit> {
+        val r = client(MemoryCache(), historyIdleMs = 100)
+        r.start()
+        val flow = r.events("s1") // Subscribe before the session list exists.
+        val subscriber = launch { flow.collect {} }
+        withTimeout(10_000) { flow.first { it.events.size == 3 } }
+        val old = flow.value.events
+        delay(350)
+        assertEquals(3, flow.value.events.size)
+        subscriber.cancelAndJoin()
+        withTimeout(5_000) { while (flow.value.events.isNotEmpty()) delay(10) }
+        val restored = withTimeout(5_000) { flow.first { it.events.size == 3 } }
+        assertEquals(listOf(1L, 2L, 3L), restored.events.map { it.seq })
+        assertEquals(3, old.size)
+    }
+
+    @Test
+    fun idleBudgetDoesNotReclaimAnActiveConsumer() = runBlocking<Unit> {
+        daemon.putSession("s2", session("/tmp", "two")); daemon.upload("s2", agent("two"))
+        daemon.putSession("s3", session("/tmp", "three")); daemon.upload("s3", agent("three"))
+        val r = client(MemoryCache(), historyIdleCount = 1)
+        r.start()
+        val active = r.events("s1")
+        val subscriber = launch { active.collect {} }
+        try {
+            withTimeout(10_000) { active.first { it.events.size == 3 } }
+            val second = r.events("s2")
+            withTimeout(10_000) { second.first { it.events.size == 1 } }
+            val third = r.events("s3")
+            withTimeout(10_000) { third.first { it.events.size == 1 } }
+            withTimeout(5_000) { while (second.value.events.isNotEmpty()) delay(10) }
+            assertEquals(3, active.value.events.size)
+        } finally { subscriber.cancelAndJoin() }
+    }
+
+    @Test
+    fun aReclaimedLoadingFlowCanReloadWithoutWaitingForItsOldCacheRead() = runBlocking<Unit> {
+        val base = MemoryCache()
+        val source = client(base)
+        source.start(); source.awaitEvents("s1", 3); source.stop()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val blocked = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val cache = object : CipherCache by base {
+            override suspend fun events(sessionId: String): List<StoredEvent> {
+                if (calls.getAndIncrement() == 1) {
+                    blocked.complete(Unit); gate.await()
+                    return base.events(sessionId).take(1)
+                }
+                return base.events(sessionId)
+            }
+        }
+        val r = client(cache, historyIdleMs = 100)
+        r.start(); r.awaitState("cached session") { it.sessions["s1"] != null }
+        val flow = r.events("s1")
+        var subscriber = launch { flow.collect {} }
+        try {
+            // The eager events(sid) call completes normally. Later loads are
+            // triggered solely by subscriptions to this same flow.
+            withTimeout(5_000) { flow.first { it.events.size == 3 } }
+            subscriber.cancelAndJoin()
+            withTimeout(5_000) { while (flow.value.events.isNotEmpty()) delay(10) }
+            subscriber = launch { flow.collect {} }
+            withTimeout(5_000) { blocked.await() }
+            subscriber.cancelAndJoin()
+            delay(350) // Reclaim the unobserved, still-suspended buffer.
+            subscriber = launch { flow.collect {} }
+            withTimeout(5_000) { flow.first { it.events.size == 3 } }
+            assertTrue(calls.get() >= 3)
+            gate.complete(Unit)
+            delay(150)
+            assertEquals(listOf(1L, 2L, 3L), flow.value.events.map { it.seq })
+        } finally { gate.complete(Unit); subscriber.cancelAndJoin() }
+    }
 
     @Test
     fun syncsListsEventsAndPushes() = runBlocking<Unit> {

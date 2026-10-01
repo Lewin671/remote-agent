@@ -45,6 +45,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -173,6 +174,9 @@ class Remote(
     private val clock: () -> Long = System::currentTimeMillis,
     /** Stream frames waiting to be handled before the stream is dropped and caught up from history. */
     private val frameQueue: Int = 1024,
+    private val historyIdleMs: Long = 60_000,
+    private val historyIdleCount: Int = 8,
+    private val historyIdleBytes: Long = 16L * 1024 * 1024,
 ) {
     private val keys = Keys.derive(account.root)
     private val device = SigningKey(account.deviceSeed)
@@ -212,10 +216,13 @@ class Remote(
     // went to the background must not open the stream afterwards.
     private var generation = 0
     private var cacheRead = false
+    private var historySweep: Job? = null
     private val models = HashMap<String, Deferred<ListModelsResponse>>()
 
     private class Buffer {
-        val events = ArrayList<Event>()
+        var events = PagedList.empty<Event>()
+        var bytes = 0L
+        var usedAt = 0L
         val pending = TreeMap<Long, Event>(java.lang.Long::compareUnsigned)
         var fetching = false
         var refetch = false
@@ -374,7 +381,8 @@ class Remote(
                 publish()
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
-                for (sid in buffers.keys.toList()) scope.launch { fetchEvents(sid) }
+                val histories = buffers.keys + eventFlows.filterValues { it.subscriptionCount.value > 0 }.keys
+                for (sid in histories.toList()) scope.launch { loadEvents(sid); fetchEvents(sid) }
                 scope.launch { loadPrefs() }
                 scope.launch { loadDevices() }
             }
@@ -527,6 +535,7 @@ class Remote(
                 }
             }
             sessions[rs.sessionId] = view
+            if ((eventFlows[rs.sessionId]?.subscriptionCount?.value ?: 0) > 0) scope.launch { loadEvents(rs.sessionId) }
             if (save && store) cache?.putSession(rs)
         } catch (e: Exception) {
             report(e)
@@ -689,21 +698,52 @@ class Remote(
 
     /** A session's events; loads them from the cache and the server on first use. */
     fun events(sid: String): StateFlow<SessionEvents> {
-        val flow = eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }
-        scope.launch {
-            if (buffers[sid] != null) return@launch
-            val b = Buffer()
-            buffers[sid] = b
-            val cached = try {
-                cache?.events(sid).orEmpty()
-            } catch (e: Exception) {
-                report(e)
-                emptyList()
+        val flow = eventFlows.getOrPut(sid) {
+            MutableStateFlow(SessionEvents()).also { f ->
+                scope.launch {
+                    f.subscriptionCount.collect { count ->
+                        if (count > 0) scope.launch { loadEvents(sid) }
+                        else { buffers[sid]?.usedAt = clock(); trimHistory() }
+                    }
+                }
             }
-            if (cached.isNotEmpty()) ingest(sid, cached, fillGaps = false, save = false)
-            fetchEvents(sid)
+        }
+        scope.launch {
+            if (historySweep == null) historySweep = scope.launch {
+                while (true) { delay(historyIdleMs.coerceAtLeast(1)); trimHistory() }
+            }
+            buffers[sid]?.usedAt = clock()
+            loadEvents(sid)
         }
         return flow
+    }
+
+    private fun trimHistory() {
+        val idle = buffers.entries.filter { (sid, _) -> eventFlows[sid]?.subscriptionCount?.value == 0 }
+            .sortedBy { it.value.usedAt }
+        var bytes = idle.sumOf { it.value.bytes }
+        var count = idle.size
+        for ((sid, b) in idle) {
+            if (sessions[sid] == null || count > historyIdleCount || bytes > historyIdleBytes || clock() - b.usedAt >= historyIdleMs) {
+                buffers.remove(sid)
+                // Keep the small flow identity for consumers about to subscribe;
+                // its subscription watcher reloads a reclaimed history.
+                eventFlows[sid]?.value = SessionEvents()
+                count--; bytes -= b.bytes
+            }
+        }
+    }
+
+    private suspend fun loadEvents(sid: String) {
+        if (buffers[sid] != null || sessions[sid] == null) return
+        val b = Buffer().apply { usedAt = clock() }
+        buffers[sid] = b
+        val cached = try { cache?.events(sid).orEmpty() }
+        catch (e: Exception) { report(e); emptyList() }
+        if (buffers[sid] !== b) return
+        if (cached.isNotEmpty()) ingest(sid, cached, fillGaps = false, save = false)
+        fetchEvents(sid)
+        trimHistory()
     }
 
     /** Fetches everything after the last contiguous event. */
@@ -720,13 +760,13 @@ class Remote(
             do {
                 b.refetch = false
                 while (true) {
-                    if (!running || gen != generation) return
+                    if (!running || gen != generation || buffers[sid] !== b) return
                     val before = b.events.size
                     val res = api.client.getEvents(
                         GetEventsRequest.newBuilder().setSessionId(sid).setAfterSeq(before.toLong()).setLimit(500).build(),
                         Api.headers(token),
                     ).value()
-                    if (!running || gen != generation) return
+                    if (!running || gen != generation || buffers[sid] !== b) return
                     ingest(sid, res.eventsList, fillGaps = false, save = true)
                     // An event that does not open stops progress; asking for the
                     // same page again would not help.
@@ -763,17 +803,20 @@ class Remote(
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
                 b.pending[se.seq] = ev
                 opened += se
+                b.bytes += se.envelope.ciphertext.size() + 256L
             } catch (e: Exception) {
                 report(e)
                 b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
                 break
             }
         }
+        val added = ArrayList<Event>()
         while (true) {
-            val next = b.events.size.toLong() + 1
+            val next = (b.events.size + added.size).toLong() + 1
             val ev = b.pending.remove(next) ?: break
-            b.events += ev
+            added += ev
         }
+        b.events = b.events.append(added)
         if (save && opened.isNotEmpty()) {
             try {
                 cache?.putEvents(sid, opened)
@@ -781,16 +824,19 @@ class Remote(
                 report(e)
             }
         }
+        if (buffers[sid] !== b) return
         // The cache write suspended: newer metadata may have arrived, or the
         // session gone. Only the event progress is ours to update.
         sessions[sid]?.let { cur -> sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong())) }
         if (fillGaps && b.pending.isNotEmpty()) scope.launch { fetchEvents(sid) }
         publishEvents(sid, b)
         publish()
+        trimHistory()
     }
 
     private fun publishEvents(sid: String, b: Buffer) {
-        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(ArrayList(b.events), b.loaded, b.error ?: b.fetchError)
+        if (buffers[sid] !== b) return
+        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(b.events, b.loaded, b.error ?: b.fetchError)
     }
 
     /** Asks for missing events again, e.g. after one failed to open. */

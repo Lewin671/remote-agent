@@ -612,7 +612,7 @@ class EventProjection {
     private var result = Derived()
     fun update(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
         if (this.agent == agent && events === previous) return result
-        val append = this.agent == agent && events.size >= previous.size && previous.indices.all { events[it] === previous[it] }
+        val append = this.agent == agent && unchangedPrefix(events, previous)
         if (!append) reducer = EventReducer(agent)
         reducer.append(if (append) events.subList(previous.size, events.size) else events)
         result = reducer.snapshot()
