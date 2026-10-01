@@ -283,11 +283,6 @@ class V7Gallery {
             then = { ui.onAllNodesWithText("详情")[0].performClick() }) { SessionScreen("tool") }
     }
 
-    @Test fun toolPage() {
-        val ev = events(turn(), user("跑一遍库存集成测试"), started("go test ./internal/inventory/... -count=1"))
-        shoot("20-tool-page", sessionState(session("tool", "vps", "$home/Code/shop", "验证库存回滚", SessionStatus.SESSION_STATUS_RUNNING, agent = Agent.AGENT_CLAUDE)), mapOf("tool" to ev)) { ToolPage("tool", 3) }
-    }
-
     @Test fun modeSheet() {
         shoot("21-mode-sheet", sessionState(session("run", "mac", foo, "修复登录超时", mode = ApprovalMode.APPROVAL_MODE_AUTO)), mapOf("run" to runEvents.dropLast(1)), then = {
             ui.onNodeWithText("⋯").performClick()
