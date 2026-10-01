@@ -281,13 +281,9 @@ fun DeviceScreen(id: String) {
             if (!m.online) Banner("不在线 · 最后在线 ${whenText(m.lastSeenMs)}", Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp))
             val meta = m.meta
             val groups = io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())
-            val first = groups.firstOrNull { it.rows.any { r -> r.percent != null } }
-            if (first != null) {
-                GLabel(agentName(first.agent) + " 额度" + first.title.removePrefix(agentName(first.agent)))
-                Group(rows = first.rows.map { r -> @Composable { QuotaRowView(r, compact = true) } })
-            }
-            Group(rows = groups.filter { it != first }.map { g -> @Composable { GRow("${agentName(g.agent)} 额度", io.github.lewin671.remoteagent.core.quotaLine(g) + " ›", onClick = { nav.quota(id) }) } } +
-                listOf(@Composable { GRow("查看全部额度", onClick = { nav.quota(id) }, action = true, chevron = true) }))
+            // A line for each CLI's quota, leading to all of it.
+            GLabel("账户额度")
+            Group(rows = groups.map { g -> @Composable { GRow(g.title.substringBefore(" · "), io.github.lewin671.remoteagent.core.quotaLine(g) + " ›", onClick = { nav.quota(id) }) } })
             if (meta != null) {
                 val agents = meta.agentsList.ifEmpty {
                     listOf(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setVersion(meta.codexVersion).setVerified(meta.codexVerified).build())
@@ -465,7 +461,7 @@ fun QuotaScreen(id: String) {
     val p = pal
     val t = now()
     val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t) }.orEmpty()
-    PageScaffold("账户额度", subtitle = m?.let { machineLabel(state, id) + " · " + (groups.firstOrNull { g -> g.received.isNotEmpty() }?.received ?: if (it.online) "在线" else "离线") }, gray = true) {
+    PageScaffold("账户额度", subtitle = m?.let { machineLabel(state, id) + " · " + if (it.online) "在线" else "离线" }, gray = true) {
         if (m == null) {
             PageNote("这台机器已经移除了")
             return@PageScaffold
@@ -491,11 +487,12 @@ fun QuotaScreen(id: String) {
                     }
                     else -> {}
                 }
-                for (r in g.rows) rows += @Composable { QuotaRowView(r, received = if (r.percent != null) g.received else "") }
+                for (r in g.rows) rows += @Composable { QuotaRowView(r) }
                 if (rows.isNotEmpty()) Group(rows = rows)
+                // When it was heard, once for the group rather than on every row.
+                if (g.rows.isNotEmpty() && g.received.isNotEmpty()) Text(g.received, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
                 // Used up or close to it; nothing switches CLI or model by itself.
                 io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let { Text("$it，不会自动切换 CLI 或模型", style = T.sm, color = p.orangeInk, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }
-                io.github.lewin671.remoteagent.core.quotaPartial(g).takeIf { it.isNotEmpty() }?.let { Text(it, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }
             }
             Text("额度属于 CLI 登录账户，该账户的其他使用也可能计入。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
@@ -598,24 +595,30 @@ fun PairScreen() {
     }
 }
 
-private fun imageBytes(n: Long) = "%.1f MiB".format(n / 1048576.0)
+private fun imageBytes(n: Long) = if (n in 1 until 104858) "不到 0.1 MiB" else if (n >= 1L shl 30) "%.1f GiB".format(n / 1073741824.0) else "%.1f MiB".format(n / 1048576.0)
 private fun mib(n: Long) = if (n >= 1L shl 30 && n % (1L shl 30) == 0L) "${n shr 30} GiB" else "${n shr 20} MiB"
 
 @Composable
 private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsage?, enabled: Boolean, onChange: (DaemonSettings, Boolean) -> Unit) {
     var clean by remember { mutableStateOf(false) }
     var limit by remember { mutableStateOf(false) }
-    GLabel("图片存储 · 这台电脑")
+    val free = usage?.let { it.reclaimableBytes + it.cacheBytes } ?: 0L
+    // What is worth saying: sizes that are not zero.
+    val parts = usage?.let { u -> listOfNotNull(
+        if (u.reclaimableBytes > 0) "可清理 ${imageBytes(u.reclaimableBytes)}" else null,
+        if (u.reservedBytes > 0) "正在上传 ${imageBytes(u.reservedBytes)}" else null,
+    ).joinToString(" · ") }.orEmpty()
+    GLabel("图片存储")
     Group(rows = listOf(
-        { GRow("上传文件", usage?.let { imageBytes(it.uploadBytes) } ?: "读取中…") },
-        { GRow("需保留 / 可回收", usage?.let { "${imageBytes(it.protectedBytes)} / ${imageBytes(it.reclaimableBytes)}" } ?: "—") },
-        { GRow("上传空间上限", mib(settings.imageUploadQuotaBytes) + " ›", onClick = if (enabled) ({ limit = true }) else null) },
-        { GRow("预览和待同步缓存", usage?.let { "${imageBytes(it.cacheBytes)} / 150 MiB" } ?: "—") },
-        { GRow("清理可回收图片和缓存…", onClick = if (enabled) ({ clean = true }) else null, action = true, enabled = enabled) },
+        { GRow("上传的图片", usage?.let { imageBytes(it.uploadBytes) + if (parts.isNotEmpty()) " · $parts" else "" } ?: "读取中…") },
+        { GRow("空间上限", mib(settings.imageUploadQuotaBytes) + " ›", onClick = if (enabled) ({ limit = true }) else null) },
+        { GRow("预览缓存", usage?.let { imageBytes(it.cacheBytes) } ?: "—") },
+        { GRow("清理…", usage?.let { if (free > 0) "可释放 ${imageBytes(free)}" else "没有可清理的" }.orEmpty(), onClick = if (enabled && free > 0) ({ clean = true }) else null, action = true, enabled = enabled && free > 0) },
     ))
+    Text("图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。", style = T.sm, color = pal.muted, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp))
     if (limit) {
         val opts = listOf(256L shl 20, 1L shl 30, 5L shl 30)
-        ChoiceSheet("上传空间上限", opts.map { mib(it) to null }, opts.indexOf(settings.imageUploadQuotaBytes), onPick = { i ->
+        ChoiceSheet("空间上限", opts.map { mib(it) to null }, opts.indexOf(settings.imageUploadQuotaBytes), onPick = { i ->
             limit = false
             onChange(settings.toBuilder().setImageUploadQuotaBytes(opts[i]).build(), false)
         }, onClose = { limit = false })

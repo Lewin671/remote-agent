@@ -55,10 +55,10 @@ async function click(b: HTMLElement | undefined) {
   await act(async () => b!.click());
 }
 
-/** Opens a menu item behind an input's ＋ (client-v7). */
+/** Opens the project's settings, or an item of a session's ⋯ menu. */
 async function fromMenu(item: string | RegExp, within: ParentNode = host) {
   if (item === "新会话设置 ›") return click(within.querySelector<HTMLButtonElement>(".project-summary")!);
-  await click(within.querySelector<HTMLButtonElement>(".cm-plus")!);
+  await click(within.querySelector<HTMLButtonElement>(".navbar .more")!);
   await click(button(item));
 }
 
@@ -66,15 +66,17 @@ async function fromMenu(item: string | RegExp, within: ParentNode = host) {
 const setting = (name: string) =>
   [...document.querySelectorAll(".sr")].find((r) => r.querySelector(".lbl")?.textContent === name)?.querySelector(".v")?.textContent ?? "";
 
-it("keeps the context warning and the settings behind the ＋ on a narrow phone", async () => {
+it("keeps the context warning and the settings behind ⋯ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
   const r = demo();
   const s = r.sessions.get("s-ctx")!;
   try {
     act(() => viewport.setViewport({ width: 320, height: 740 }));
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    // The ＋ carries the high context as a dot, and its menu the reading.
-    expect(host.querySelector(".cm-plus.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
+    // ⋯ carries the high context as a dot, and its menu the reading; ＋
+    // only adds images.
+    expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
+    expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe("添加图片");
     expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
     await fromMenu("上下文：86%");
     expect(host.textContent).toContain("会话设置");
@@ -1317,14 +1319,14 @@ describe("sending images (v2)", () => {
     await t.pick(...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `p${i}.png`));
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
     expect(host.textContent).toContain("一条消息最多 6 张，多选的 2 张没有加入");
-    expect(host.querySelector(".pop-item")!.classList.contains("off")).toBe(true);
+    expect(host.querySelector(".cm-plus")!.classList.contains("off")).toBe(true);
   });
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {
     const r = demo();
     const s = r.sessions.get("s-appr")!; // on VPS-dev, an older daemon
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    await fromMenu("添加图片");
+    await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
     expect(host.querySelector("input[type=file]")).toBeTruthy();
     expect(host.textContent).toContain("VPS-dev 上的 remote-agent 版本较旧，不能发图片");
   });
@@ -1596,7 +1598,8 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   expect(host.textContent).not.toContain("暂不支持读取额度");
   expect(host.textContent).toContain("已用 28%");
   expect(host.textContent).toContain("暂未获取额度");
-  expect(host.textContent).toContain("7 天未获取");
+  expect(host.textContent).not.toContain("7 天");
+  expect(host.textContent).toContain("最近收到");
 });
 
 it("retries a confirmed start whose reply was lost as the same request, confirmed (review W1)", async () => {
@@ -1685,17 +1688,16 @@ describe("the client-v7 conversation", () => {
     expect(host.querySelector(".compose-status")).toBeNull();
   });
 
-  it("shows full access in the navbar and the other settings behind ＋", async () => {
+  it("shows full access in the navbar and the other settings behind ⋯", async () => {
     const r = demo();
     const s = r.sessions.get("s-idle")!;
     s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     expect(host.querySelector(".compose-card .access-warning")).toBeNull();
     expect(host.querySelector(".navbar .title")?.textContent).toContain("完全放行");
-    expect(host.querySelector<HTMLElement>(".compose-pop")!.hidden).toBe(true);
-    await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
-    expect(host.querySelector<HTMLElement>(".compose-pop")!.hidden).toBe(false);
-    expect(host.querySelector(".compose-pop")!.textContent).toContain("模式：完全放行");
+    await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+    expect(host.querySelector(".actsheet .ai2.red")!.textContent).toBe("审批模式：完全放行");
+    expect(host.querySelector(".actsheet")!.textContent).toContain("模型：");
   });
 
   it("starts sessions only with a first message, and folds the project head while typing", async () => {

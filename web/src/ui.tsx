@@ -96,6 +96,7 @@ export function Alert({
 export interface Action {
   label: string;
   red?: boolean;
+  warn?: boolean;
   onClick: () => void;
 }
 
@@ -111,7 +112,7 @@ export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; acti
           {actions.map((a) => (
             <button
               key={a.label}
-              className={"ai2" + (a.red ? " red" : "")}
+              className={"ai2" + (a.red ? " red" : a.warn ? " warn" : "")}
               onClick={() => {
                 onClose();
                 a.onClick();

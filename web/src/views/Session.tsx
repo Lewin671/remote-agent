@@ -20,6 +20,8 @@ import {
   machineName,
   modeName,
   modeOf,
+  contextPercent,
+  CONTEXT_WARN,
   phaseOf,
   projectKey,
   projectName,
@@ -204,8 +206,15 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
     </>
   );
+  // The session's settings live in the ⋯ menu; a high context shows as
+  // an orange dot on it.
+  const mode = modeOf(session);
+  const pct = contextPercent(session);
+  const high = pct !== undefined && pct > CONTEXT_WARN;
+  const model = session.info?.model ? [remote.modelName(session.machineId, agent, session.info.model), session.info.effort].filter(Boolean).join(" · ") : "";
+  const moreLabel = high ? `更多，上下文 ${pct}%` : "更多";
   const more = (
-    <button className="more" onClick={() => setMenu(true)} aria-label="更多">
+    <button className={"more" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
       ⋯
     </button>
   );
@@ -218,7 +227,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <span className="muted">
           {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
         </span>
-        <button className="mr" onClick={() => setMenu(true)} aria-label="更多">
+        <button className={"mr" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
           ⋯
         </button>
       </div>
@@ -284,13 +293,11 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             onInterrupt={interrupt}
             tray={tray}
             trayView={<TrayView tray={tray} />}
-            attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />}
+            attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />}
             cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
             dropping={drop.over}
             draft={remote.drafts.get(sid) ?? ""}
             onDraft={(text) => remote.drafts.set(sid, text)}
-            onMode={() => setSheet("mode")}
-            onModel={() => setSheet("model")}
           />
         </>
       )}
@@ -321,6 +328,9 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             </>
           }
           actions={[
+            ...(!inactive && mode ? [{ label: `审批模式：${mode.text}`, red: mode.text === "完全放行", onClick: () => setSheet("mode") }] : []),
+            ...(!inactive ? [{ label: model ? `模型：${model}` : "会话设置", onClick: () => setSheet("model") }] : []),
+            ...(!inactive && pct !== undefined ? [{ label: `上下文：${pct}%`, warn: high, onClick: () => setSheet("model") }] : []),
             ...(!inactive && d.running ? [{ label: "中断本轮", red: true, onClick: interrupt }] : []),
             ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
           ]}

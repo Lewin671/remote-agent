@@ -55,14 +55,14 @@ export function AttachButton({
   tray,
   blocked,
   onBlocked,
-  className = "pop-item",
-  label = "添加图片",
+  className = "cm-plus",
+  label = "＋",
 }: {
   tray: Tray;
   blocked: string;
   onBlocked: (why: string) => void;
   className?: string;
-  // A row of the input's ＋ menu.
+  // The ＋ on the input's left; it opens the image picker itself.
   label?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -71,6 +71,7 @@ export function AttachButton({
     <>
       <button
         className={className + (off ? " off" : "")}
+        aria-label="添加图片"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => (blocked ? onBlocked(blocked) : tray.full() ? onBlocked(`一条消息最多 ${tray.max} 张`) : input.current?.click())}
       >

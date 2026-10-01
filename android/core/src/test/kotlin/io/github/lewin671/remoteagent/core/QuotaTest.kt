@@ -29,9 +29,8 @@ class QuotaTest {
                 .addWindows(w("five_hour", 92.0)).addWindows(w("seven_day", null)).build(),
         )
         val g = quotaGroups(m, now, zone).single { it.agent == Agent.AGENT_CLAUDE }
-        assertEquals("Claude Code · claude_max", g.title)
+        assertEquals("Claude Code · Max", g.title)
         assertEquals("5 小时额度即将用尽", quotaBanner(g))
-        assertEquals("只有 5 小时用量可用；7 天额度暂时未知。", quotaPartial(g))
         assertEquals(QuotaStatus.OK, g.status)
         assertEquals("已用 92%", g.rows[0].used)
         assertEquals(QuotaTone.WARN, g.rows[0].tone)
@@ -75,7 +74,7 @@ class QuotaTest {
     }
 
     @Test
-    fun absentWindowsAreUnknownAndReportedDurationsAreKept() {
+    fun absentWindowsAreLeftOutAndReportedDurationsAreKept() {
         for ((agent, name) in listOf(Agent.AGENT_CLAUDE to "five_hour", Agent.AGENT_CODEX to "primary")) {
             val window = w(name, 99.6).toBuilder().setWindowMinutes(120).build()
             val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).addWindows(window).build()
@@ -84,19 +83,19 @@ class QuotaTest {
             assertEquals("已用 99%", g.rows[0].used)
             assertEquals(QuotaTone.WARN, g.rows[0].tone)
             assertEquals("2 小时额度即将用尽", quotaBanner(g))
-            assertEquals("未获取", g.rows[1].used)
-            assertEquals(null, g.rows[1].percent)
-            assertEquals("只有 2 小时用量可用；7 天额度暂时未知。", quotaPartial(g))
+            // A window the account does not have is not shown as missing.
+            assertEquals(1, g.rows.size)
         }
+        assertEquals("Pro Lite", planName("prolite"))
+        assertEquals("Team Plus", planName("Team Plus"))
     }
 
     @Test
-    fun oldDaemonAlsoShowsItsMissingWindow() {
+    fun oldDaemonShowsOnlyTheWindowsItHas() {
         val meta = MachineMeta.newBuilder().setPrimaryLimit(
             io.github.lewin671.remoteagent.proto.RateLimit.newBuilder().setUsedPercent(28.0).setWindowMinutes(300)
         ).build()
         val g = quotaGroups(MachineView("m", true, 0, meta), now, zone).single { it.agent == Agent.AGENT_CODEX }
-        assertEquals("未获取", g.rows[1].used)
-        assertEquals("只有 5 小时用量可用；7 天额度暂时未知。", quotaPartial(g))
+        assertEquals(listOf("5 小时"), g.rows.map { it.label })
     }
 }

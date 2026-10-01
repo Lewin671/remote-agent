@@ -235,7 +235,7 @@ class V8Gallery {
     }
 
     @Test fun projectMenu() {
-        shoot("04-project-menu", projectState(), then = { ui.onNodeWithContentDescription("附件与会话设置").performClick() }) { ProjectScreen(foo, false) }
+        shoot("04-project-menu", projectState()) { ProjectScreen(foo, false) }
     }
 
     @Test fun newSettings() {
@@ -356,8 +356,8 @@ class V8Gallery {
 
     @Test fun modeSheet() {
         shoot("21-mode-sheet", sessionState(session("run", "mac", foo, "修复登录超时", mode = ApprovalMode.APPROVAL_MODE_AUTO)), mapOf("run" to runEvents.dropLast(1)), then = {
-            ui.onNodeWithContentDescription("附件与会话设置").performClick()
-            ui.onNodeWithText("模式：自动 ▾").performClick()
+            ui.onNodeWithText("⋯").performClick()
+            ui.onNodeWithText("审批模式：自动").performClick()
         }) { SessionScreen("run") }
     }
 

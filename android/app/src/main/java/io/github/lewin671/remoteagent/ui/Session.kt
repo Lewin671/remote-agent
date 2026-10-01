@@ -149,7 +149,7 @@ fun SessionScreen(sid: String) {
     }
 }
 
-/** ‹, the title with its CLI, the status, project and machine, and ⋯: 中断本轮 and 结束会话…. */
+/** ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 中断本轮 and 结束会话…. */
 @Composable
 private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, dark: Boolean) {
     val p = pal
@@ -158,14 +158,27 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
     var projectSettings by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val act = rememberAction()
+    val live = status != Status.EXITED && status != Status.OFFLINE
+    // Claude Code records full model IDs; show the alias the list offers.
+    var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
+    LaunchedEffect(s.machineId, s.agent()) {
+        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
+    }
+    val raw = s.info?.model.orEmpty()
+    val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
+    val effort = s.info?.effort.orEmpty()
+    // Unknown context is left out, never shown as 0%.
+    val pc = if (live) contextPercent(s) else null
+    val high = (pc ?: 0) > 80
     val mode = if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
     val subtitle = status.text + if (status == Status.EXITED) "" else " · ${mode?.text ?: "未知"}"
     val rich = if (mode?.mode == Mode.FULL) androidx.compose.ui.text.buildAnnotatedString {
         append(status.text + " · ")
         pushStyle(androidx.compose.ui.text.SpanStyle(color = p.red)); append(mode.text); pop()
     } else null
-    NavBar(titleOf(s), nav.back, subtitle = subtitle, dot = p.tone(status.tone), more = { menu = true }, dark = dark, subtitleRich = rich)
+    NavBar(titleOf(s), nav.back, subtitle = subtitle, dot = p.tone(status.tone), more = { menu = true }, dark = dark, subtitleRich = rich, moreDot = high)
     if (menu) ActionSheet(
         info = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -174,6 +187,11 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
             }
         },
         actions = buildList {
+            if (live) {
+                add(SheetAction("审批模式：${mode?.text ?: "未知"}", danger = mode?.mode == Mode.FULL) { sheet = 1 })
+                add(SheetAction(if (model.isEmpty()) "会话设置" else "模型：$model" + if (effort.isNotEmpty()) " · $effort" else "") { sheet = 2 })
+                pc?.let { add(SheetAction("上下文：$it%", warn = high) { sheet = 2 }) }
+            }
             add(SheetAction("项目设置") { projectSettings = true })
             if (running) add(SheetAction("中断本轮") { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
             if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true) { confirmStop = true })
@@ -185,6 +203,10 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
             PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
             projectSettings = false
         }, onClose = { projectSettings = false })
+    }
+    when (sheet) {
+        1 -> ModeSheet(s, onClose = { sheet = 0 })
+        2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
     }
     if (act.error.isNotEmpty()) Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.meta)
     if (confirmStop) Confirm(
@@ -458,11 +480,10 @@ private fun EndCard(title: String, text: String, dot: androidx.compose.ui.graphi
 }
 
 /**
- * The message box (client-v7): ＋, the text from one line up to about six,
- * and ↑. 添加图片, the mode, the model and the context are in the ＋ menu;
- * full access stays in sight under the text, a full context is an orange dot
- * on ＋. Without the server connection the draft stays and sending and
- * settings wait.
+ * The message box: ＋ adds images, the text from one line up to about six,
+ * and ↑. The mode, the model and the context are in the ⋯ menu of the
+ * navigation bar. Without the server connection the draft stays and sending
+ * waits.
  */
 @Composable
 internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.remoteagent.core.Derived, status: Status, onFocus: (Boolean) -> Unit) {
@@ -470,7 +491,6 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val remote = LocalRemote.current
     val interruptAction = rememberAction()
     var text by Outbox.draft(s.id)
-    var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val online = state.conn == ConnState.ONLINE
     val running = status == Status.RUNNING || d.running
     val images = ImageDrafts.forSession(s.id)
@@ -481,16 +501,6 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     // Images picked before the machine went away go there again once it is back.
     LaunchedEffect(blocked, images.images.size) { if (blocked == null) images.sendAllTo(remote, s.machineId) }
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
-    // Claude Code records full model IDs; show the alias the list offers.
-    var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
-    LaunchedEffect(s.machineId, s.agent()) {
-        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) runCatching { models = remote.listModels(s.machineId, s.agent()) }
-    }
-    val raw = s.info?.model.orEmpty()
-    val model = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, raw) { it.slug }?.displayName } ?: raw
-    val effort = s.info?.effort.orEmpty()
-    val label = io.github.lewin671.remoteagent.core.modeLabel(s)
-    val pc = contextPercent(s)
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
         if (msg.isEmpty() && images.images.isEmpty()) return
@@ -522,15 +532,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         },
         canSend = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
         onSend = { send() },
-        menu = listOfNotNull(
-            MenuEntry("添加图片", enabled = blocked == null, onClick = pick),
-            MenuEntry("模式：${label?.text ?: "未知"} ▾") { sheet = 1 },
-            MenuEntry("模型：" + (if (model.isEmpty()) "会话设置" else model + if (effort.isNotEmpty()) " · $effort" else "") + " ▾") { sheet = 2 },
-            // Unknown context is left out, never shown as 0%.
-            pc?.let { MenuEntry("上下文：$it%") { sheet = 2 } },
-        ),
-        menuEnabled = online,
-        contextHigh = (pc ?: 0) > 80,
+        onPlus = pick, plusEnabled = blocked == null,
         onQueue = if (running && io.github.lewin671.remoteagent.core.capabilities(machine)?.sendModes == true) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (running) ({ interruptAction.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) }) else null,
         canInterrupt = online && !interruptAction.running,
@@ -539,11 +541,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         top = { ImageStrip(images, remote, s.machineId, maxImg) },
     )
     if (interruptAction.error.isNotEmpty()) Banner("没能中断：${interruptAction.error}", Modifier.padding(horizontal = 12.dp), Tone2.ERROR)
-    if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型；常用命令在 ＋ 菜单里。", Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp), style = T.meta, color = p.orangeInk)
-    when (sheet) {
-        1 -> ModeSheet(s, onClose = { sheet = 0 })
-        2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
-    }
+    if (text.trimStart().startsWith("/")) Text("以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。", Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp), style = T.meta, color = p.orangeInk)
 }
 
 /** Grey bars while the history loads. */

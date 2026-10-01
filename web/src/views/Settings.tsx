@@ -127,53 +127,27 @@ function quotaLine(m: MachineView): string {
   return `${agentName(v.agent)} · ${r.label}${r.used}${v.stale ? "（上次记录）" : ""}`;
 }
 
-/** On a machine's page: the first CLI's quota in full, the others in a
- * line each, and the way to all of it. */
+/** On a machine's page: a line for each CLI's quota, leading to all of it. */
 function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
   // Reset times pass with nothing else changing.
   const now = useNow(30_000);
   const views = machineQuotaViews(m.meta, agents, now, m.online);
-  const first = views.find((v) => v.kind === "ok" && v.rows.some((r) => r.percent !== undefined));
   const kind = (a: Agent) => (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX);
   return (
     <>
-      {first && (
-        <>
-          <div className="glabel">{first.title.replace(agentName(first.agent), `${agentName(first.agent)} 额度`)}</div>
-          <div className="grp">
-            {first.rows.map((r) => {
-              // The reset time without when it was last heard.
-              const reset = r.reset.split(" · ")[0];
-              return (
-                <div className={"row col quota " + r.tone} key={r.key}>
-                  <div className="line">
-                    <span>{r.label}</span>
-                    <span className="v">{[r.used, reset.endsWith("重置") ? reset : ""].filter(Boolean).join(" · ")}</span>
-                  </div>
-                  {r.percent !== undefined && (
-                    <div className="bar">
-                      <i style={{ width: `${Math.min(100, r.percent)}%` }} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <div className="glabel">账户额度</div>
       <div className="grp">
-        {agents
-          .filter((a) => !first || kind(a) !== first.agent)
-          .map((a) => (
-            <button className="row" key={a} onClick={() => go("q/" + m.id)}>
-              <span className="nw">{agentName(a)} 额度</span>
-              <span className="v">{quotaSummary(views.filter((v) => v.agent === kind(a)))} ›</span>
+        {agents.map((a) => {
+          const mine = views.filter((v) => v.agent === kind(a));
+          const tone = mine.some((v) => v.rows.some((r) => r.tone === "full")) ? " full" : mine.some((v) => v.rows.some((r) => r.tone === "warn")) ? " warn" : "";
+          return (
+            <button className={"row quota-line" + tone} key={a} onClick={() => go("q/" + m.id)}>
+              <span className="nw">{agentName(a)}</span>
+              <span className="v">{quotaSummary(mine)} ›</span>
             </button>
-          ))}
-        <button className="row act" onClick={() => go("q/" + m.id)}>
-          查看全部额度<span className="v">›</span>
-        </button>
+          );
+        })}
       </div>
     </>
   );
@@ -225,12 +199,7 @@ export function QuotaPage({ remote, id, onBack }: { remote: Remote; id: string; 
                       <span>{r.label}</span>
                       <span className="v">{r.used}</span>
                     </div>
-                    {r.percent !== undefined && r.tone !== "stale" && (
-                      <div className="bar">
-                        <i style={{ width: `${Math.min(100, r.percent)}%` }} />
-                      </div>
-                    )}
-                    {r.percent !== undefined && r.tone === "stale" && (
+                    {r.percent !== undefined && (
                       <div className="bar">
                         <i style={{ width: `${Math.min(100, r.percent)}%` }} />
                       </div>
@@ -241,10 +210,10 @@ export function QuotaPage({ remote, id, onBack }: { remote: Remote; id: string; 
                 ))
               )}
             </div>
-            {(v.banner || v.note) && (
+            {v.seen && v.rows.length > 0 && <div className="manage-hint">{v.seen}</div>}
+            {v.banner && (
               <div className="gbanner">
-                {v.banner && <Banner kind="warn">{v.banner}，不会自动切换 CLI 或模型</Banner>}
-                {v.note && <div className="hint">{v.note}</div>}
+                <Banner kind="warn">{v.banner}，不会自动切换 CLI 或模型</Banner>
               </div>
             )}
           </div>
@@ -786,6 +755,7 @@ function ThemePicker() {
 
 function storageSize(n: bigint | number): string {
   const value = Number(n);
+  if (value > 0 && value < 104858) return "不到 0.1 MiB";
   return value >= 1073741824 ? `${(value / 1073741824).toFixed(1)} GiB` : `${(value / 1048576).toFixed(1)} MiB`;
 }
 
@@ -800,21 +770,30 @@ function ImageStorageSettings({ remote, id, settings, onSave, online }: { remote
     catch (e) { setError(errorText(e)); }
     finally { setBusy(false); }
   };
+  const free = usage ? usage.reclaimableBytes + usage.cacheBytes : 0n;
+  // What is worth a line: sizes that are not zero.
+  const parts = usage ? [usage.reclaimableBytes > 0n && `可清理 ${storageSize(usage.reclaimableBytes)}`, usage.reservedBytes > 0n && `正在上传 ${storageSize(usage.reservedBytes)}`].filter(Boolean).join(" · ") : "";
+  const sessions = usage?.sessions.filter((s) => s.bytes > 0n) ?? [];
   return <>
-    <div className="glabel">图片存储 · 这台电脑</div>
+    <div className="glabel">图片存储</div>
     <div className="grp">
-      <div className="row">上传文件<span className="v">{usage ? storageSize(usage.uploadBytes) : "读取中…"}</span></div>
-      <div className="row col"><div className="hint">{usage ? `需保留 ${storageSize(usage.protectedBytes)} · 可回收 ${storageSize(usage.reclaimableBytes)} · 待传 ${storageSize(usage.reservedBytes)}` : "读取占用…"}</div></div>
-      <div className="row">上传空间上限<select aria-label="上传空间上限" className="v" value={String(settings.imageUploadQuotaBytes)} disabled={busy || !online} onChange={(e) => void run({ ...settings, imageUploadQuotaBytes: BigInt(e.target.value) })}>
+      <div className="row col">
+        <div className="line"><span>上传的图片</span><span className="v">{usage ? storageSize(usage.uploadBytes) : "读取中…"}</span></div>
+        {parts && <div className="hint">{parts}</div>}
+      </div>
+      <div className="row">空间上限<select aria-label="空间上限" className="v" value={String(settings.imageUploadQuotaBytes)} disabled={busy || !online} onChange={(e) => void run({ ...settings, imageUploadQuotaBytes: BigInt(e.target.value) })}>
         {[settings.imageUploadQuotaBytes, 256n << 20n, 1n << 30n, 5n << 30n, 10n << 30n].filter((x,i,a) => a.indexOf(x) === i).map((n) => <option key={String(n)} value={String(n)}>{storageSize(n)}</option>)}
       </select></div>
-      <div className="row">图片缓存<span className="v">{usage ? storageSize(usage.cacheBytes) : "—"}</span></div>
-      <div className="row help">缓存最多 150 MiB，按最近使用顺序回收</div>
-      <button className="row" disabled={busy || !online} onClick={() => void remote.settings(id, true).then(onSave, (e) => setError(errorText(e)))}>刷新占用<span className="v">↻</span></button>
-      <button className="row" disabled={busy || !online} onClick={() => setClean(true)}>清理可回收图片和缓存…</button>
-      {usage?.sessions.map((s) => <div className="row col" key={s.sessionId}><span>{remote.sessions.get(s.sessionId)?.info?.title || s.sessionId}</span><span className="hint">原图 {storageSize(s.bytes)} · 需保留 {storageSize(s.protectedBytes)}</span></div>)}
+      <div className="row">预览缓存<span className="v">{usage ? storageSize(usage.cacheBytes) : "—"}</span></div>
+      <button className="row act" disabled={busy || !online || free === 0n} onClick={() => setClean(true)}>清理…<span className="v">{usage ? (free > 0n ? `可释放 ${storageSize(free)}` : "没有可清理的") : ""}</span></button>
     </div>
-    <div className="manage-hint">正在发送和当前执行的图片不会被清理。历史图片保留，但已回收的原始路径可能无法再读取。</div>
+    <div className="manage-hint">图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。</div>
+    {sessions.length > 0 && <>
+      <div className="glabel">占用最多的会话</div>
+      <div className="grp">
+        {sessions.slice(0, 5).map((s) => <div className="row" key={s.sessionId}><span className="ell">{remote.sessions.get(s.sessionId)?.info?.title || `会话 ${s.sessionId.slice(-4)}`}</span><span className="v">{storageSize(s.bytes)}</span></div>)}
+      </div>
+    </>}
     {error && <div className="gbanner"><Banner kind="err">{error}</Banner></div>}
     {clean && <Alert title="清理可回收图片？" text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话历史保留；尚未同步的大图会只显示预览。" ok="清理" onCancel={() => setClean(false)} onOk={async () => { setClean(false); await run(settings, true); }} />}
   </>;

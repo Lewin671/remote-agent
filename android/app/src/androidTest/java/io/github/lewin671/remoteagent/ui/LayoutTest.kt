@@ -67,9 +67,9 @@ class LayoutTest {
             }
         }
         ui.onNodeWithContentDescription("发送").assertIsDisplayed()
-        ui.onNodeWithContentDescription("附件与会话设置").assertIsDisplayed()
+        ui.onNodeWithContentDescription("添加图片").assertIsDisplayed()
         val send = ui.onNodeWithContentDescription("发送").fetchSemanticsNode().boundsInRoot
-        val menu = ui.onNodeWithContentDescription("附件与会话设置").fetchSemanticsNode().boundsInRoot
+        val menu = ui.onNodeWithContentDescription("添加图片").fetchSemanticsNode().boundsInRoot
         val root = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
         assertTrue(send.right <= root.right && menu.right <= send.left)
         screenshot("composer-dark-large")
@@ -96,7 +96,7 @@ class LayoutTest {
                 }
             }
         }
-        ui.onNodeWithContentDescription("附件与会话设置").assertIsDisplayed().assertHasClickAction()
+        ui.onNodeWithContentDescription("添加图片").assertIsDisplayed().assertHasClickAction()
         ui.onNodeWithContentDescription("开始").assertIsDisplayed().assertIsNotEnabled()
         val root = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
         for (node in ui.onAllNodes(hasClickAction()).fetchSemanticsNodes()) {

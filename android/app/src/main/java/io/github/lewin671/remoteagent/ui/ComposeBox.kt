@@ -49,16 +49,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 
-/** An entry of the ＋ menu. */
-class MenuEntry(val text: String, val enabled: Boolean = true, val onClick: () -> Unit)
-
-/** Places the ＋ menu 8 dp above the message box, at its left edge. */
-private class AboveProvider(private val gap: Int) : PopupPositionProvider {
-    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset =
-        IntOffset(anchorBounds.left.coerceAtMost((windowSize.width - popupContentSize.width).coerceAtLeast(0)),
-            (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
-}
-
 /** Places the send menu above the composer, aligned with its send button. */
 private class RightAboveProvider(private val gap: Int) : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset =
@@ -67,9 +57,9 @@ private class RightAboveProvider(private val gap: Int) : PopupPositionProvider {
 }
 
 /**
- * The shared message box: ＋, one to six lines of text, and the send position.
- * In a running session that position becomes interrupt when empty; long-press
- * send offers queue when supported. [contextHigh] puts an orange dot on ＋.
+ * The shared message box: ＋ to add images, one to six lines of text, and the
+ * send position. In a running session that position becomes interrupt when
+ * empty; long-press send offers queue when supported.
  */
 @Composable
 fun ComposeBox(
@@ -78,10 +68,9 @@ fun ComposeBox(
     placeholder: String,
     canSend: Boolean,
     onSend: () -> Unit,
-    menu: List<MenuEntry>,
+    onPlus: () -> Unit,
     modifier: Modifier = Modifier,
-    menuEnabled: Boolean = true,
-    contextHigh: Boolean = false,
+    plusEnabled: Boolean = true,
     sendLabel: String = "发送",
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
@@ -92,7 +81,6 @@ fun ComposeBox(
     hasDraft: Boolean = text.isNotBlank(),
 ) {
     val p = pal
-    var open by remember { mutableStateOf(false) }
     var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     Box(modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 12.dp)) {
@@ -100,13 +88,12 @@ fun ComposeBox(
             top?.invoke()
             Row(verticalAlignment = Alignment.Bottom) {
                 Box(
-                    Modifier.size(44.dp).alpha(if (menuEnabled) 1f else .4f)
-                        .clickable(enabled = menuEnabled, role = Role.Button, onClickLabel = "附件与会话设置") { open = !open }
-                        .semantics { contentDescription = "附件与会话设置" },
+                    Modifier.size(44.dp).alpha(if (plusEnabled) 1f else .4f)
+                        .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = "添加图片") { onPlus() }
+                        .semantics { contentDescription = "添加图片" },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("＋", style = ts(22.sp, lineHeight = 1f), color = p.muted)
-                    if (contextHigh) Box(Modifier.align(Alignment.TopStart).offset(32.dp, 12.dp).size(5.dp).clip(CircleShape).background(p.orange))
                 }
                 BasicTextField(
                     text, onText,
@@ -136,17 +123,6 @@ fun ComposeBox(
                         Text(if (interrupt) "■" else "↑", style = ts(16.sp, FontWeight.SemiBold, 1f), color = if (interrupt) p.red else Color.White)
                     }
                 }
-            }
-        }
-        if (open) Popup(popupPositionProvider = AboveProvider(gap), onDismissRequest = { open = false }, properties = PopupProperties(focusable = true)) {
-            Column(
-                Modifier.width(IntrinsicSize.Max).widthIn(min = 160.dp, max = 300.dp).shadow(8.dp, Radii.SM).clip(Radii.SM).background(p.card).border(1.dp, p.line, Radii.SM)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                for (e in menu) Box(
-                    Modifier.heightIn(min = 44.dp).fillMaxWidth().clickable(enabled = e.enabled) { open = false; e.onClick() }.alpha(if (e.enabled) 1f else .45f),
-                    contentAlignment = Alignment.CenterStart,
-                ) { Text(e.text, style = T.sm, color = p.fg) }
             }
         }
         if (sendMenu) Popup(popupPositionProvider = RightAboveProvider(gap), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {

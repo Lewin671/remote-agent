@@ -437,7 +437,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         text, { text = it }, "描述任务…",
         canSend = c != null && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
         onSend = ::start,
-        menu = listOf(MenuEntry("添加图片", enabled = blocked == null, onClick = pick)),
+        onPlus = pick, plusEnabled = blocked == null,
         sendLabel = "开始", focusRequester = fr, onFocus = onFocus,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )

@@ -88,7 +88,7 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
                     meta.primaryLimit.takeIf { meta.hasPrimaryLimit() }?.let { QuotaWindow.newBuilder().setName("primary").setUsedPercent(it.usedPercent).setResetsAtMs(it.resetsAt * 1000).setWindowMinutes(it.windowMinutes).build() },
                     meta.secondaryLimit.takeIf { meta.hasSecondaryLimit() }?.let { QuotaWindow.newBuilder().setName("secondary").setUsedPercent(it.usedPercent).setResetsAtMs(it.resetsAt * 1000).setWindowMinutes(it.windowMinutes).build() },
                 )
-                val title = agentName(agent) + meta.planType.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty()
+                val title = agentName(agent) + meta.planType.takeIf { it.isNotEmpty() }?.let { " · ${planName(it)}" }.orEmpty()
                 out += QuotaGroup(agent, title, if (ws.isEmpty()) QuotaStatus.WAITING else QuotaStatus.OK, if (ws.isEmpty()) emptyList() else completeWindows(agent, ws).map { quotaRow(it, now, !m.online, zone) }, "", "", !m.online && ws.isNotEmpty())
             } else {
                 out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
@@ -100,10 +100,25 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
     return out
 }
 
+/** A plan as people call it: Pro Lite for prolite, Max for claude_max. */
+fun planName(plan: String): String = when (plan.lowercase()) {
+    "prolite" -> "Pro Lite"
+    "claude_max" -> "Max"
+    "claude_pro" -> "Pro"
+    "claude_team" -> "Team"
+    "claude_enterprise" -> "Enterprise"
+    else -> plan.replace(Regex("^claude_", RegexOption.IGNORE_CASE), "").split(Regex("[_\\s]+")).filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
+}
+
+/**
+ * The windows the account has, the CLI's usual ones first. One it does not
+ * report is left out: a plan with only a weekly window is not shown a second
+ * 7 天 that never arrives.
+ */
 private fun completeWindows(agent: Agent, windows: List<QuotaWindow>): List<QuotaWindow> {
     val expected = if (agent == Agent.AGENT_CLAUDE) listOf("five_hour", "seven_day") else listOf("primary", "secondary")
     val byName = windows.associateBy { it.name }
-    return expected.map { byName[it] ?: QuotaWindow.newBuilder().setName(it).build() } + windows.filter { it.name !in expected }
+    return expected.mapNotNull { byName[it] } + windows.filter { it.name !in expected }
 }
 
 private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean, now: Long, zone: ZoneId): QuotaGroup {
@@ -120,7 +135,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         q.sourceSessionId.isNotEmpty() -> " · 会话 ${q.sourceSessionId.takeLast(4)}"
         else -> ""
     }
-    val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${q.plan}" else "") + which
+    val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${planName(q.plan)}" else "") + which
     val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord, zone) }
     val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now, zone) else ""
     return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
@@ -132,13 +147,6 @@ fun quotaBanner(g: QuotaGroup): String {
     got.firstOrNull { it.tone == QuotaTone.FULL }?.let { return "${it.label}额度已用尽" }
     got.firstOrNull { it.tone == QuotaTone.WARN }?.let { return "${it.label}额度即将用尽" }
     return ""
-}
-
-/** When some windows have numbers and others not: which are known. */
-fun quotaPartial(g: QuotaGroup): String {
-    val missing = g.rows.filter { it.used == "未获取" }
-    if (missing.isEmpty() || missing.size == g.rows.size) return ""
-    return "只有 ${g.rows.filter { it.used != "未获取" }.joinToString("、") { it.label }}用量可用；${missing.joinToString("、") { it.label }}额度暂时未知。"
 }
 
 /** The device page's line for a CLI: its windows in short, or its state. */

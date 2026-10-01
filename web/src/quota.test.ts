@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { RateLimitSchema } from "./gen/remoteagent/v1/event_pb";
-import { quotaRow, quotaSummary, quotaViews } from "./quota";
+import { planName, quotaRow, quotaSummary, quotaViews } from "./quota";
 import { Agent } from "./gen/remoteagent/v1/event_pb";
 import { AgentQuotaSchema, QuotaState, QuotaWindowSchema } from "./gen/remoteagent/v1/remote_pb";
 import { describe } from "vitest";
@@ -37,21 +37,25 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const [v] = quotaViews([q({ agent: Agent.CODEX, state: QuotaState.OK, plan: "Pro Lite", observedMs: BigInt(at(9, 40)), windows: [w("primary", 62, 14, 300), w("secondary", 34, 20, 10080)] })], [Agent.CODEX], now, true);
     expect(v.title).toBe("Codex · Pro Lite");
     expect(v.rows.map((r) => [r.label, r.used, r.reset, r.tone])).toEqual([
-      ["5 小时", "已用 62%", "14:10 重置 · 最近收到 9:40", ""],
-      ["7 天", "已用 34%", "20:10 重置 · 最近收到 9:40", ""],
+      ["5 小时", "已用 62%", "14:10 重置", ""],
+      ["7 天", "已用 34%", "20:10 重置", ""],
     ]);
+    expect(v.seen).toBe("最近收到 9:40");
   });
 
   it("marks a missing usage 未获取, never 0%, and a missing reset time by leaving it out", () => {
     const [v] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(at(9, 40)), windows: [w("five_hour", 92, 13, 300), w("seven_day", undefined, undefined, 10080)] })], [Agent.CLAUDE], now, true);
     expect(v.rows[0]).toMatchObject({ used: "已用 92%", tone: "warn" });
-    expect(v.rows[1]).toMatchObject({ label: "7 天", used: "未获取", reset: "最近收到 9:40" });
+    expect(v.rows[1]).toMatchObject({ label: "7 天", used: "未获取", reset: "" });
     expect(v.rows[1].percent).toBeUndefined();
     expect(v.banner).toBe("5 小时额度即将用尽");
-    // A window Claude Code did not report at all is written as missing too.
-    const [only] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(at(9, 40)), windows: [w("five_hour", 100, 13, 300)] })], [Agent.CLAUDE], now, true);
-    expect(only.rows.map((r) => [r.label, r.used])).toEqual([["5 小时", "已用尽"], ["7 天", "未获取"]]);
-    expect(only.note).toBe("只有 5 小时用量可用；7 天额度暂时未知。");
+    // A window the account does not have is left out: a plan with only a
+    // weekly window is not shown a second 7 天 that never arrives.
+    const [only] = quotaViews([q({ agent: Agent.CODEX, state: QuotaState.OK, plan: "prolite", observedMs: BigInt(at(9, 40)), windows: [w("primary", 72, 13, 10080)] })], [Agent.CODEX], now, true);
+    expect(only.title).toBe("Codex · Pro Lite");
+    expect(only.rows.map((r) => [r.label, r.used])).toEqual([["7 天", "已用 72%"]]);
+    expect(planName("claude_max")).toBe("Max");
+    expect(planName("Team Plus")).toBe("Team Plus");
   });
 
   it("says waiting, unsupported, and keeps a failed read's last record with its time", () => {
@@ -68,7 +72,8 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const claude = views.find((v) => v.agent === Agent.CLAUDE)!;
     expect(claude).toMatchObject({ kind: "waiting", head: "暂未获取额度" });
     expect(codex).toMatchObject({ kind: "failed", error: "没能读取 Codex 额度：rollout unreadable", title: "Codex · 上次记录" });
-    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "13:10 重置 · 最近成功收到 9:20" });
+    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "13:10 重置" });
+    expect(codex.seen).toBe("最近成功收到 9:20");
     const [unsup] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.UNSUPPORTED, detail: "托管设置固定了状态栏" })], [Agent.CLAUDE], now, true);
     expect(unsup).toMatchObject({ kind: "unsupported", head: "暂不支持读取额度", detail: "托管设置固定了状态栏" });
     // A CLI the daemon has no entry for is not supported by it.

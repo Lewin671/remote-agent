@@ -1,9 +1,8 @@
-// The session composer: one growing input with images and settings on the
-// left; its right button sends, or interrupts an empty running turn.
+// The session composer: one growing input with ＋ for images on the left; its right button sends, or interrupts an empty running turn.
 
-import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import type { Tray } from "../attach";
-import { agentOf, CONTEXT_WARN, contextPercent, modeOf, type Derived } from "../model";
+import type { Derived } from "../model";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert } from "../ui";
@@ -31,46 +30,6 @@ export function promptIdOf(remote: Remote, sid: string, d: Derived): string | un
   return d.inputs.keys().next().value;
 }
 
-/** The ＋ on the input's left: a small menu of what the input can do
- * besides text. A high context shows as an orange dot beside it. */
-export function ComposeMenu({ children, high, disabled, label }: { children: ReactNode; high?: boolean; disabled?: boolean; label: string }) {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
-  const shown = open && !disabled;
-  return (
-    <div className="compose-menu" ref={box}>
-      <button
-        className={"cm-plus" + (high ? " context-high" : "")}
-        aria-label={label}
-        aria-expanded={shown}
-        aria-haspopup="menu"
-        disabled={disabled}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setOpen((o) => !o)}
-      >
-        ＋
-      </button>
-      {/* Kept mounted while closed: the image picker's input lives in it. */}
-      <div className="compose-pop" role="menu" hidden={!shown} onClick={(e) => (e.target as HTMLElement).closest("button") && setOpen(false)}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export function Composer({
   ref,
   remote,
@@ -82,8 +41,6 @@ export function Composer({
   onInterrupt,
   draft,
   onDraft,
-  onMode,
-  onModel,
   tray,
   trayView,
   attach,
@@ -100,9 +57,7 @@ export function Composer({
   onInterrupt: () => void;
   draft: string;
   onDraft: (text: string) => void;
-  onMode: () => void;
-  onModel: () => void;
-  // Images waiting to go with the message, the menu row that adds them,
+  // Images waiting to go with the message, the ＋ that adds them,
   // and dropping or pasting them on the card.
   tray?: Tray;
   trayView?: ReactNode;
@@ -140,34 +95,13 @@ export function Composer({
     onSend(t, sendMode);
     setSendMenu(false);
   };
-  const mode = modeOf(session);
-  const pct = contextPercent(session);
   const i = session.info;
-  const model = i?.model ? [remote.modelName(session.machineId, agentOf(session), i.model), i.effort].filter(Boolean).join(" · ") : "";
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
-  const high = pct !== undefined && pct > CONTEXT_WARN;
-  // Full access is the one setting always in view (client-v7).
-  const full = mode?.text === "完全放行";
   const canQueue = d.running && !!remote.machines.get(session.machineId)?.meta?.capabilities?.sendModes;
   return (
     <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}
-      <ComposeMenu label={high ? `附件与会话设置，上下文 ${pct}%` : "附件与会话设置"} high={high} disabled={!online}>
-        {attach}
-        {mode && (
-          <button className={full ? "red" : ""} onClick={onMode} aria-label={`审批模式：${mode.text}`}>
-            模式：{mode.text} ▾
-          </button>
-        )}
-        <button className={model ? "" : "nav"} onClick={onModel}>
-          {model ? `模型：${model} ▾` : "会话设置 ›"}
-        </button>
-        {pct !== undefined && (
-          <button className={high ? "warn-text" : ""} onClick={onModel} aria-label={`上下文 ${pct}%`}>
-            上下文：{pct}%
-          </button>
-        )}
-      </ComposeMenu>
+      <div className="compose-menu">{attach}</div>
       <textarea
         ref={input}
         className={"draft" + (t ? " typed" : "")}

@@ -146,6 +146,7 @@ fun NavBar(
     right: (@Composable () -> Unit)? = null,
     subtitleColor: Color? = null,
     subtitleRich: androidx.compose.ui.text.AnnotatedString? = null,
+    moreDot: Boolean = false,
 ) {
     val p = pal
     val link = if (dark) TermColors.link else p.blue
@@ -170,6 +171,7 @@ fun NavBar(
         Box(Modifier.size(44.dp).then(if (more != null) Modifier.tap { more() } else Modifier), contentAlignment = Alignment.Center) {
             if (right != null) right()
             else if (more != null) Text("⋯", color = link, style = ts(20.sp, lineHeight = 1f))
+            if (moreDot) Box(Modifier.align(Alignment.TopEnd).offset((-6).dp, 8.dp).size(5.dp).clip(CircleShape).background(p.orange))
         }
     }
 }
@@ -483,7 +485,7 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
 }
 
 /** One choice of an action sheet. */
-class SheetAction(val text: String, val danger: Boolean = false, val onClick: () -> Unit)
+class SheetAction(val text: String, val danger: Boolean = false, val warn: Boolean = false, val onClick: () -> Unit)
 
 /** The ⋯ menu: a card of actions above a separate 取消, from the bottom. */
 @Composable
@@ -497,7 +499,7 @@ fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onD
                     actions.forEachIndexed { i, a ->
                         if (i > 0 || info != null) HorizontalDivider(color = p.line, thickness = 1.dp)
                         Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).tap { onDismiss(); a.onClick() }, contentAlignment = Alignment.Center) {
-                            Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else p.blue)
+                            Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.blue)
                         }
                     }
                 }

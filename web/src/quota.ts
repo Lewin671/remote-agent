@@ -56,7 +56,7 @@ export interface QuotaView {
   error: string; // for failed
   rows: (QuotaRow & { key: string })[];
   banner: string; // 5 小时额度即将用尽, 额度已用尽
-  note: string; // 只有 5 小时用量可用；7 天额度暂时未知。
+  seen: string; // 最近收到 10:51, once for all the rows
   stale: boolean;
 }
 
@@ -72,6 +72,12 @@ const expected: Record<number, [string, string, number][]> = {
   ],
 };
 
+/** A plan as people call it: Pro Lite for prolite, Max for claude_max. */
+export function planName(plan: string): string {
+  const known: Record<string, string> = { prolite: "Pro Lite", claude_max: "Max", claude_pro: "Pro", claude_team: "Team", claude_enterprise: "Enterprise" };
+  return known[plan.toLowerCase()] ?? plan.replace(/^claude_/i, "").split(/[_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+}
+
 function hm(ms: number): string {
   const d = new Date(ms);
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -85,17 +91,15 @@ function when(ms: number, now: number): string {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${hm(ms)}`;
 }
 
-function windowRow(w: QuotaWindow | undefined, label: string, now: number, stale: boolean, observed: string, heard: string): QuotaRow & { key: string } {
-  const key = w?.name ?? label;
-  if (w && w.windowMinutes > 0n) label = windowLabel(Number(w.windowMinutes));
-  const seen = observed ? `${heard} ${observed}` : "";
-  if (!w || w.usedPercent === undefined)
-    return { key, label, used: "未获取", reset: seen, tone: "", note: "没有收到这项额度数据" };
+function windowRow(w: QuotaWindow, label: string, now: number, stale: boolean): QuotaRow & { key: string } {
+  const key = w.name;
+  if (w.windowMinutes > 0n) label = windowLabel(Number(w.windowMinutes));
+  if (w.usedPercent === undefined) return { key, label, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
   const pct = w.usedPercent;
   const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
   const resetMs = Number(w.resetsAtMs);
   if (resetMs > 0 && resetMs <= now)
-    return { key, label, used: "等待更新", percent: pct, reset: seen, tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
+    return { key, label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
   let reset = "";
   if (resetMs > 0) {
     const d = new Date(resetMs);
@@ -106,7 +110,7 @@ function windowRow(w: QuotaWindow | undefined, label: string, now: number, stale
     label,
     used: stale ? `上次${used}` : used,
     percent: pct,
-    reset: [reset, seen].filter(Boolean).join(" · "),
+    reset,
     tone: stale ? "stale" : pct >= 100 ? "full" : pct >= 80 ? "warn" : "",
     note: "",
   };
@@ -122,7 +126,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
   for (const agent of agents.map(norm)) {
     const name = agentName(agent);
     const mine = quotas.filter((q) => norm(q.agent) === agent);
-    const base = { agent, head: "", detail: "", error: "", rows: [], banner: "", note: "", stale: false };
+    const base = { agent, head: "", detail: "", error: "", rows: [], banner: "", seen: "", stale: false };
     if (!mine.length) {
       out.push({ ...base, title: name, kind: "unsupported", head: "暂不支持读取额度" });
       continue;
@@ -143,8 +147,10 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
       const heard = failed ? "最近成功收到" : "最近收到";
       const byName = new Map(q.windows.map((w) => [w.name, w]));
       const known = expected[agent] ?? [];
-      const rows = known.map(([n, label]) => windowRow(byName.get(n), label, now, stale, observed, heard));
-      for (const w of q.windows) if (!known.some(([n]) => n === w.name)) rows.push(windowRow(w, w.windowMinutes > 0n ? windowLabel(Number(w.windowMinutes)) : w.name, now, stale, observed, heard));
+      // Only the windows the account has: a plan with one window is not
+      // shown a second one that never arrives.
+      const rows = known.filter(([n]) => byName.has(n)).map(([n, label]) => windowRow(byName.get(n)!, label, now, stale));
+      for (const w of q.windows) if (!known.some(([n]) => n === w.name)) rows.push(windowRow(w, w.name, now, stale));
       if (failed && !q.windows.length) {
         out.push({ ...base, title: name + who, kind: "failed", error: `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}`, head: "暂未获取额度" });
         continue;
@@ -152,16 +158,16 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
       const got = rows.filter((r) => r.percent !== undefined && r.tone !== "stale");
       const full = got.find((r) => r.tone === "full");
       const warn = got.find((r) => r.tone === "warn");
-      const missing = rows.filter((r) => r.used === "未获取");
       out.push({
         ...base,
-        title: name + (q.plan ? ` · ${q.plan}` : "") + who + (stale ? " · 上次记录" : ""),
+        title: name + (q.plan ? ` · ${planName(q.plan)}` : "") + who + (stale ? " · 上次记录" : ""),
         kind: failed ? "failed" : "ok",
+        head: "暂未获取额度",
+        seen: observed ? `${heard} ${observed}` : "",
         error: failed ? `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}` : "",
         rows,
         stale,
         banner: full ? `${full.label}额度已用尽` : warn ? `${warn.label}额度即将用尽` : "",
-        note: missing.length && missing.length < rows.length ? `只有 ${rows.filter((r) => r.used !== "未获取").map((r) => r.label).join("、")}用量可用；${missing.map((r) => r.label).join("、")}额度暂时未知。` : "",
       });
     }
   }

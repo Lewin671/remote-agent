@@ -36,7 +36,6 @@ import { Avatar, Banner, Dot, Sheet } from "../ui";
 import { groupProjects, isHidden } from "../prefs";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
-import { ComposeMenu } from "./Composer";
 
 export type Go = (route: string) => void;
 
@@ -407,9 +406,9 @@ export function NewBox({
   const card = (
     <div className={"compose-card new-compose" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
       {trayView}
-      <ComposeMenu label="添加图片">
-        <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} className="pop-item" label="添加图片" />
-      </ComposeMenu>
+      <div className="compose-menu">
+        <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />
+      </div>
       {field}
       {go}
     </div>
