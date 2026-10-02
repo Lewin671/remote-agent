@@ -430,7 +430,7 @@ private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings
     var error by remember { mutableStateOf("") }
     LaunchedEffect(machineId, agent) {
         try {
-            models = remote.listModels(machineId, agent)
+            models = remote.listModels(machineId, agent, fresh = true)
         } catch (e: Exception) {
             error = errorText(e)
         }

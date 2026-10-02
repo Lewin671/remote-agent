@@ -62,7 +62,7 @@ export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) 
     setError("");
     if (!machineId || !online) return;
     setLoading(true);
-    Promise.allSettled([remote.listModels(machineId, agent), remote.settings(machineId)]).then(([m, s]) => {
+    Promise.allSettled([remote.listModels(machineId, agent, true), remote.settings(machineId)]).then(([m, s]) => {
       if (!alive) return;
       setLoading(false);
       if (m.status === "fulfilled") setModels(m.value);
@@ -486,6 +486,9 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
   const { remote, cfg, p, machine, info } = ns;
   const set = (patch: Partial<NewConfig>) => ns.setCfg({ ...cfg, ...patch });
   const def = defaultsOf(info.settings, cfg.agent);
+  useEffect(() => {
+    if (pick === "model") info.retry();
+  }, [pick]); // Refresh the native CLI list each time the model page opens.
   // Machines this project has used; a new project can use any.
   const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   const back = (

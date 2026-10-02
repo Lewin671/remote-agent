@@ -944,11 +944,11 @@ class Remote(
         throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）")
     }
 
-    /** The models a machine's CLI offers, fetched once per run. */
-    suspend fun listModels(machineId: String, agent: Agent = Agent.AGENT_UNSPECIFIED): ListModelsResponse {
+    /** The models a machine's CLI offers, refreshed when a picker opens. */
+    suspend fun listModels(machineId: String, agent: Agent = Agent.AGENT_UNSPECIFIED, fresh: Boolean = false): ListModelsResponse {
         val d = withContext(dispatcher) {
             val k = "$machineId/${agent.number}"
-            models[k]?.takeUnless { it.isCompleted && it.getCompletionExceptionOrNull() != null } ?: scope.async {
+            models[k]?.takeUnless { it.isCompleted && (fresh || it.getCompletionExceptionOrNull() != null) } ?: scope.async {
                 val r = machineCommand(machineId, Command.newBuilder().setListModels(ListModelsRequest.newBuilder().setAgent(agent)).build())
                 if (!r.hasListModels()) throw CommandException("internal", "意外的回复")
                 r.listModels

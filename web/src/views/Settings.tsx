@@ -525,7 +525,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
     setError("");
     remote.settings(id, true).then(setSt, (e) => setError(errorText(e)));
     for (const a of agents)
-      remote.listModels(id, a).then(
+      remote.listModels(id, a, true).then(
         (r) => setModels((x) => new Map(x).set(a, r)),
         () => undefined,
       );

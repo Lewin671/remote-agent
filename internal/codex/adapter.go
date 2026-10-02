@@ -91,7 +91,7 @@ func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 	sort.SliceStable(cache.Models, func(i, j int) bool { return cache.Models[i].Priority < cache.Models[j].Priority })
 	out := &pb.ListModelsResponse{DefaultModel: defaultModel(a.home)}
 	for _, m := range cache.Models {
-		if m.Visibility != "list" {
+		if m.Visibility != "list" && m.Slug != out.DefaultModel {
 			continue
 		}
 		info := &pb.ModelInfo{Slug: m.Slug, DisplayName: m.DisplayName, Description: m.Description, DefaultEffort: m.DefaultLevel}
@@ -100,7 +100,24 @@ func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 		}
 		out.Models = append(out.Models, info)
 	}
+	// A configured model can be newer than the CLI's on-disk catalog.
+	// Keep it selectable without inventing unsupported reasoning levels.
+	if out.DefaultModel != "" && !slices.ContainsFunc(out.Models, func(m *pb.ModelInfo) bool { return m.Slug == out.DefaultModel }) {
+		out.Models = append([]*pb.ModelInfo{{Slug: out.DefaultModel, DisplayName: modelName(out.DefaultModel)}}, out.Models...)
+	}
 	return out, nil
+}
+
+func modelName(slug string) string {
+	parts := strings.Split(slug, "-")
+	for i, part := range parts {
+		if strings.EqualFold(part, "gpt") {
+			parts[i] = "GPT"
+		} else if part != "" {
+			parts[i] = strings.ToUpper(part[:1]) + part[1:]
+		}
+	}
+	return strings.Join(parts, "-")
 }
 
 var configModel = regexp.MustCompile(`(?m)^\s*model\s*=\s*"([^"]+)"`)

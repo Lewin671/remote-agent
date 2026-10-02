@@ -118,7 +118,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const agent = agentOf(s);
   useEffect(() => {
     setError("");
-    remote.listModels(s.machineId, agent).then(setModels, (e) => setError(errorText(e)));
+    remote.listModels(s.machineId, agent, true).then(setModels, (e) => setError(errorText(e)));
   }, [remote, s.machineId, agent, attempt]);
   const pct = contextPercent(s);
   const model = s.info?.model ?? "";

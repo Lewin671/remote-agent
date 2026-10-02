@@ -724,6 +724,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
   await fromMenu("新会话设置 ›");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("模型")));
+  await vi.waitFor(() => expect(button("GPT-6-Sol", document)).toBeDefined());
   await click(button("GPT-6-Sol", document));
   await click(button("low", document));
   // Finish directly on the model page, without returning to project settings.
@@ -792,7 +793,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await fromMenu("新会话设置 ›");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi .ck")?.textContent).toBe("✓");
-  expect(button("high", document)?.className).toBe("on");
+  await vi.waitFor(() => expect(button("high", document)?.className).toBe("on"));
 });
 
 it("names a new project's default model as Codex does, even when /model hides it", async () => {
@@ -1746,4 +1747,40 @@ describe("the session view", () => {
     expect(host.textContent).not.toContain("会话从这里开始");
     expect(host.querySelector(".chat .sysline")?.textContent).toMatch(/· ~\/Code\//);
   });
+});
+
+
+it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with its efforts", async () => {
+  const r = demo();
+  // Prime the old page-lifetime catalog, then let the daemon report a new one.
+  await r.listModels("mac", Agent.CODEX);
+  const original = r.machineCommand.bind(r);
+  let reads = 0;
+  r.machineCommand = async (machine, cmd) => {
+    if (cmd?.case === "listModels") {
+      reads++;
+      return create(CommandResultSchema, { kind: { case: "listModels", value: {
+        defaultModel: "gpt-6.1-sol",
+        models: [{ slug: "gpt-6.1-sol", displayName: "GPT-6.1-Sol", defaultEffort: "low", efforts: ["low", "medium", "high", "xhigh", "max", "ultra"] }],
+      } } });
+    }
+    return original(machine, cmd);
+  };
+  (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide />);
+  await fromMenu("新会话设置 ›");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await vi.waitFor(() => expect(button("GPT-6.1-Sol", document)).toBeDefined());
+  expect(button(/^默认模型/, document)).toBeDefined();
+  await click(button(/^默认模型/, document));
+  await vi.waitFor(() => expect(button("ultra", document)).toBeDefined());
+  for (const e of ["low", "medium", "high", "xhigh", "max", "ultra"]) expect(button(e, document)).toBeDefined();
+  await click(button("GPT-6.1-Sol", document));
+  await click(button("high", document));
+  await click(button("完成", document));
+  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
+  const before = reads;
+  await fromMenu("新会话设置 ›");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
 });

@@ -145,7 +145,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
     var all by remember { mutableStateOf(false) }
     LaunchedEffect(attempt) {
         try {
-            models = remote.listModels(s.machineId, s.agent())
+            models = remote.listModels(s.machineId, s.agent(), fresh = true)
             loadError = ""
         } catch (e: Exception) {
             loadError = errorText(e)

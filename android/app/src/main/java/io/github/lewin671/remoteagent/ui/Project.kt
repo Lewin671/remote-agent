@@ -541,17 +541,17 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
     var page by remember { mutableStateOf("") }
     var models by remember { mutableStateOf<ListModelsResponse?>(null) }
     var modelsError by remember { mutableStateOf("") }
-    LaunchedEffect(c.machineId, c.agent) {
+    LaunchedEffect(c.machineId, c.agent, page == "model") {
         models = null
         modelsError = ""
         try {
-            models = remote.listModels(c.machineId, c.agent)
+            models = remote.listModels(c.machineId, c.agent, fresh = true)
         } catch (e: Exception) {
             modelsError = errorText(e)
         }
     }
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
-    LaunchedEffect(c.machineId, c.agent) {
+    LaunchedEffect(c.machineId, c.agent, page == "model") {
         settings = null
         runCatching { remote.machineCommand(c.machineId, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings }
             .onSuccess { settings = it }

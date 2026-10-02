@@ -1336,6 +1336,7 @@ export class Remote {
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();
+  private modelReads = new Set<string>();
   private modelLists = new Map<string, ListModelsResponse>();
 
   /** A model's display name, once the machine's list has been fetched. */
@@ -1343,10 +1344,10 @@ export class Remote {
     return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
   }
 
-  /** The models a machine's CLI offers, fetched once per page load. */
-  listModels(machineId: string, agent: Agent = Agent.CODEX): Promise<ListModelsResponse> {
+  /** The models a machine's CLI offers; pickers refresh completed reads. */
+  listModels(machineId: string, agent: Agent = Agent.CODEX, fresh = false): Promise<ListModelsResponse> {
     const key = machineId + "/" + agent;
-    let p = this.models.get(key);
+    let p = fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
     if (!p) {
       p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
         if (r.kind.case !== "listModels") throw new Error("意外的回复");
@@ -1354,7 +1355,11 @@ export class Remote {
         this.changed();
         return r.kind.value;
       });
-      p.catch(() => this.models.delete(key));
+      this.modelReads.add(key);
+      p.then(() => this.modelReads.delete(key), () => {
+        this.modelReads.delete(key);
+        if (this.models.get(key) === p) this.models.delete(key);
+      });
       this.models.set(key, p);
     }
     return p;

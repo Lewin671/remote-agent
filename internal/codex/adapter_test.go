@@ -1,6 +1,8 @@
 package codex
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,5 +82,22 @@ func TestManagedMCPOnStartAndResume(t *testing.T) {
 		if strings.Contains(joined, "instructions") || strings.Contains(joined, "system_prompt") {
 			t.Fatal("injected instructions")
 		}
+	}
+}
+
+func TestModelsIncludesConfiguredDefaultAndRereadsCatalog(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, "config.toml"), []byte(`model = "gpt-6.1-sol"`), 0600)
+	cache := filepath.Join(home, "models_cache.json")
+	os.WriteFile(cache, []byte(`{"models":[{"slug":"gpt-6-sol","visibility":"list"}]}`), 0600)
+	a := New("codex", home, "")
+	m, err := a.Models()
+	if err != nil || m.DefaultModel != "gpt-6.1-sol" || m.Models[0].Slug != "gpt-6.1-sol" {
+		t.Fatalf("configured model missing: %v, %v", m, err)
+	}
+	os.WriteFile(cache, []byte(`{"models":[{"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"hide","default_reasoning_level":"low","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"high"},{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]}]}`), 0600)
+	m, err = a.Models()
+	if err != nil || len(m.Models) != 1 || m.Models[0].DisplayName != "GPT-6.1-Sol" || len(m.Models[0].Efforts) != 6 {
+		t.Fatalf("catalog not refreshed: %v, %v", m, err)
 	}
 }
