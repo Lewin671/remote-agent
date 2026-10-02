@@ -855,7 +855,7 @@ fun contextText(tokens: Long): String? = when {
 }
 
 /** Claude Code's name for a model started with the 1M window: opus[1m]. */
-private const val LARGE_CONTEXT = "[1m]"
+const val LARGE_CONTEXT = "[1m]"
 
 /**
  * The models a running session can switch between, and the one it is on.
@@ -867,3 +867,6 @@ fun <M> sessionModels(models: List<M>, current: String, slug: (M) -> String): Pa
     val list = models.filter { !slug(it).endsWith(LARGE_CONTEXT) }
     return list to findModel(list, current.removeSuffix(LARGE_CONTEXT), slug)
 }
+
+/** A context window in a choice: 200k, 1M. */
+fun windowText(tokens: Long): String = contextText(tokens).orEmpty().removeSuffix(" 上下文")

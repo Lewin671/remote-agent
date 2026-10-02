@@ -404,6 +404,15 @@ export function sessionModels<M extends { slug: string }>(models: M[] | undefine
   return { list, cur: findModel(list, current.endsWith(LARGE_CONTEXT) ? current.slice(0, -LARGE_CONTEXT.length) : current) };
 }
 
+/** A project's model choice apart from its context window: the listed
+ * models without the 1M names, the one chosen among them, and the 1M name
+ * of the chosen one when the list has it. */
+export function modelChoice<M extends { slug: string }>(models: M[] | undefined, slug: string): { list: M[]; base: M | undefined; large: M | undefined; isLarge: boolean } {
+  const isLarge = slug.endsWith(LARGE_CONTEXT);
+  const { list, cur } = sessionModels(models, slug);
+  return { list, base: cur, large: cur && models?.find((m) => m.slug === cur.slug + LARGE_CONTEXT), isLarge };
+}
+
 /** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; empty when unknown. */
 export function contextText(tokens: bigint | undefined): string {
   const n = Number(tokens ?? 0n);

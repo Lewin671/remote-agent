@@ -616,10 +616,16 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                     else -> {
                         val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
-                        ms.modelsList.forEachIndexed { i, m ->
-                            ListItem(m.displayName.ifEmpty { m.slug }, small = io.github.lewin671.remoteagent.core.contextText(m.contextWindow), checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
+                        // The context window is its own choice below the list; a model
+                        // first picked starts with the 1M window, as Claude Code itself does.
+                        val (offered, base) = io.github.lewin671.remoteagent.core.sessionModels(ms.modelsList, c.model) { it.slug }
+                        val isLarge = c.model.endsWith(io.github.lewin671.remoteagent.core.LARGE_CONTEXT)
+                        fun largeOf(slug: String) = ms.modelsList.firstOrNull { it.slug == slug + io.github.lewin671.remoteagent.core.LARGE_CONTEXT }
+                        offered.forEachIndexed { i, m ->
+                            ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model.isNotEmpty() && m == base, last = i == offered.size - 1, onClick = {
                                 val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
-                                c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
+                                val slug = (if (c.model.isEmpty() || isLarge) largeOf(m.slug)?.slug else null) ?: m.slug
+                                c = c.copy(model = slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
                             })
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
@@ -628,6 +634,14 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                             } else m.defaultEffort
                             FieldLabel("推理强度")
                             ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { c = c.copy(effort = it) }
+                        }
+                        if (c.model.isNotEmpty() && base != null && base.contextWindow > 0) {
+                            val large = largeOf(base.slug)
+                            val standard = "标准 " + io.github.lewin671.remoteagent.core.windowText(base.contextWindow)
+                            val big = large?.let { io.github.lewin671.remoteagent.core.windowText(it.contextWindow) }
+                            FieldLabel("上下文窗口")
+                            ChoiceGrid(listOfNotNull(standard, big), if (isLarge) big else standard, true) { c = c.copy(model = if (it == big && large != null) large.slug else base.slug) }
+                            if (large == null) Hint("${base.displayName} 只有标准窗口")
                         }
                     }
                 }

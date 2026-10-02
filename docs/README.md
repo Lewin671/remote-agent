@@ -26,7 +26,8 @@
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v15.html](design/client-v15.html) | 界面稿 | 当前设计：Claude Code 的上下文窗口在项目设置的模型列表里选（1M 或标准） |
+| [design/client-v16.html](design/client-v16.html) | 界面稿 | 当前设计：项目设置的模型页单独列出「上下文窗口」选项（标准或 1M） |
+| [design/client-v15.html](design/client-v15.html) | 界面稿 | Claude Code 的上下文窗口在项目设置的模型列表里选（1M 或标准）；只读 |
 | [design/client-v14.html](design/client-v14.html) | 界面稿 | 模型列表写出上下文窗口；只读 |
 | [design/client-v13.html](design/client-v13.html) | 界面稿 | 新会话设置摘要改为带底色和 `›` 的按钮，只有完全放行标红；只读 |
 | [design/client-v12.html](design/client-v12.html) | 界面稿 | Android 后台推送静默降级，状态仅在通知设置内说明；只读 |

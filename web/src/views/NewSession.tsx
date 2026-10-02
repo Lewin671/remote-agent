@@ -9,6 +9,7 @@ import {
   ago,
   findModel,
   contextText,
+  modelChoice,
   modelLabel,
   inheritConfig,
   machineAgents,
@@ -522,6 +523,10 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
     );
   else if (pick === "model") {
     const chosen = findModel(info.models?.models, cfg.model || def.model || info.models?.defaultModel || "");
+    // The context window is its own choice below the list; a model first
+    // picked starts with the 1M window, as Claude Code itself does.
+    const choice = modelChoice(info.models?.models, cfg.model);
+    const large = !cfg.model || choice.isLarge;
     body = (
       <>
         {info.error && (
@@ -537,13 +542,10 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             </div>
             {!cfg.model && <span className="ck">✓</span>}
           </button>
-          {info.models?.models.map((m) => (
-            <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
-              <div className="mt">
-                {m.displayName || m.slug}
-                {contextText(m.contextWindow) && <small>{contextText(m.contextWindow)}</small>}
-              </div>
-              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck">✓</span>}
+          {choice.list.map((m) => (
+            <button key={m.slug} className="mi" onClick={() => set({ model: large && modelChoice(info.models?.models, m.slug).large ? m.slug + "[1m]" : m.slug, effort: "" })}>
+              <div className="mt">{m.displayName || m.slug}</div>
+              {cfg.model && m === choice.base && <span className="ck">✓</span>}
             </button>
           ))}
         </div>
@@ -557,6 +559,22 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 </button>
               ))}
             </div>
+          </>
+        )}
+        {choice.base && contextText(choice.base.contextWindow) && (
+          <>
+            <div className="fl">上下文窗口</div>
+            <div className="seg">
+              <button className={choice.isLarge ? "" : "on"} onClick={() => set({ model: choice.base!.slug })}>
+                标准 {windowText(choice.base.contextWindow)}
+              </button>
+              {choice.large && (
+                <button className={choice.isLarge ? "on" : ""} onClick={() => set({ model: choice.large!.slug })}>
+                  {windowText(choice.large.contextWindow)}
+                </button>
+              )}
+            </div>
+            {!choice.large && <div className="hint">{choice.base.displayName} 只有标准窗口</div>}
           </>
         )}
       </>
@@ -849,4 +867,9 @@ export function ConfigSummary({ line, chip, onClick }: { line: string; chip?: bo
       </span>
     </button>
   );
+}
+
+/** A context window in a choice: 200k, 1M. */
+function windowText(tokens: bigint): string {
+  return contextText(tokens).replace(" 上下文", "");
 }
