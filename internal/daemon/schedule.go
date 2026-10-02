@@ -46,6 +46,12 @@ func (d *Daemon) loadSchedules() error {
 			return errors.New("invalid scheduled task state")
 		}
 		d.tasks[id] = t
+		// Old MCP requests had no privilege scope. Require machine-level
+		// confirmation before any future dispatch of their stored definition.
+		if t.Source == "agent" && t.ScopedSession == "" && t.Status != "completed" && t.Status != "cancelled" {
+			t.Status, t.Reason = "paused", "legacy_agent_task_requires_confirmation"
+			touchTask(t, time.Now().UTC())
+		}
 		if t.Active != nil && t.Active.Status == "dispatching" {
 			now := time.Now().UTC()
 			t.Active.Status = "uncertain"
@@ -81,7 +87,15 @@ func appendRun(runs []schedule.Run, run schedule.Run) []schedule.Run {
 }
 
 func (h *handler) Schedule(ctx context.Context, req *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
-	b, err := h.d.scheduleCommand(req.Msg, originOf(ctx))
+	origin := originOf(ctx)
+	scope := req.Header().Get(schedule.MCPScopeHeader)
+	// Older MCP processes do not restrict their delegated capability. They
+	// must reconnect through the new scoped entry point, rather than being
+	// mistaken for an explicit machine-level user request.
+	if origin.Kind == pb.OriginKind_ORIGIN_KIND_LOCAL && req.Msg.SessionId != "" && scope == "" && req.Header().Get(schedule.CallerHeader) != "cli" {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("unscoped session scheduling is no longer supported; update the CLI or reconnect the session's MCP process"))
+	}
+	b, err := h.d.scheduleCommandScoped(req.Msg, origin, scope)
 	if err != nil {
 		return nil, rpcErr(err)
 	}
@@ -89,15 +103,36 @@ func (h *handler) Schedule(ctx context.Context, req *connect.Request[pb.Schedule
 }
 
 func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]byte, error) {
+	return d.scheduleCommandScoped(q, origin, "")
+}
+
+func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin, scope string) ([]byte, error) {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	if d.tasks == nil {
 		d.tasks = map[string]*schedule.Task{}
 	}
 	now := time.Now().UTC()
+	if scope != "" {
+		if scope != q.SessionId {
+			return nil, mcpScheduleDenied()
+		}
+		if _, err := d.exact(scope); err != nil {
+			return nil, mcpScheduleDenied()
+		}
+	}
+	if q.Operation == "mcp_scope" {
+		if scope == "" {
+			return nil, mcpScheduleDenied()
+		}
+		return json.Marshal(map[string]string{"scoped_session": scope})
+	}
 	if q.Operation == "list" {
 		tasks := make([]*schedule.Task, 0, len(d.tasks))
 		for _, t := range d.tasks {
+			if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
+				continue
+			}
 			tasks = append(tasks, t)
 		}
 		sort.Slice(tasks, func(i, j int) bool {
@@ -126,10 +161,16 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 		key := ""
 		if q.RequestId != "" {
 			key = origin.DeviceId + ":" + q.RequestId
+			if scope != "" {
+				key = "mcp:" + scope + ":" + q.RequestId
+			}
 		}
 		if key != "" {
 			for _, t := range d.tasks {
 				if t.CreationKey == key {
+					if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
+						return nil, mcpScheduleDenied()
+					}
 					if t.CreationHash != hash {
 						return nil, errors.New("creation key already belongs to a different task")
 					}
@@ -138,8 +179,11 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 			}
 		}
 		t := &schedule.Task{ID: newID(16), Revision: 1, Spec: spec, CreatedAt: now, UpdatedAt: now, SourceSession: q.SessionId, Source: "local", CreationKey: key, CreationHash: hash}
-		if q.SessionId != "" {
-			t.Source = "agent"
+		if scope != "" {
+			t.Source, t.ScopedSession = "agent", scope
+			if err := d.restrictMCPTask(t, true); err != nil {
+				return nil, err
+			}
 		}
 		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.Kind == pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT {
 			t.Source = "client"
@@ -157,6 +201,9 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 	t, ok := d.tasks[q.TaskId]
 	if !ok {
 		return nil, errNotFound
+	}
+	if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
+		return nil, mcpScheduleDenied()
 	}
 	if q.Operation == "get" {
 		return json.Marshal(t)
@@ -181,6 +228,12 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 		if q.SessionId != "" {
 			t.SourceSession = q.SessionId
 		}
+		if scope != "" {
+			if err := d.restrictMCPTask(t, true); err != nil {
+				d.tasks[t.ID] = prev
+				return nil, err
+			}
+		}
 		if err := d.prepareSchedule(t, now); err != nil {
 			d.tasks[t.ID] = prev
 			return nil, err
@@ -196,6 +249,11 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 		t.Reason = "user_cancelled"
 		t.NextRunAt = nil
 	case "resume":
+		if scope != "" {
+			if err := d.restrictMCPTask(t, false); err != nil {
+				return nil, err
+			}
+		}
 		if t.Status != "paused" {
 			return nil, errors.New("only paused tasks can be resumed")
 		}
@@ -216,6 +274,11 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 			t.Status = "completed"
 		}
 	case "run":
+		if scope != "" {
+			if err := d.restrictMCPTask(t, false); err != nil {
+				return nil, err
+			}
+		}
 		if t.Spec.Trigger.MaxRuns > 0 && t.Dispatches >= t.Spec.Trigger.MaxRuns {
 			return nil, errors.New("task run limit reached; update max_runs before running")
 		}
@@ -230,6 +293,14 @@ func (d *Daemon) scheduleCommand(q *pb.ScheduleRequest, origin *pb.Origin) ([]by
 		t.NextRunAt = &now
 	default:
 		return nil, errors.New("unknown schedule operation")
+	}
+	// Machine-level user confirmation can adopt a legacy agent task.
+	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
+		t.ScopedSession = ""
+		t.Source = "local"
+		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.Kind == pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT {
+			t.Source = "client"
+		}
 	}
 	touchTask(t, now)
 	if err := d.saveSchedulesLocked(); err != nil {
@@ -539,6 +610,12 @@ func (d *Daemon) tickSchedules(now time.Time) {
 }
 
 func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
+	if t.ScopedSession != "" {
+		if err := d.restrictMCPTask(t, false); err != nil {
+			t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
+			return
+		}
+	}
 	run := &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching"}
 	t.Active = run
 	t.Status = "dispatching"

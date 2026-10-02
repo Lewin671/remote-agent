@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+// MCPScopeHeader marks a scheduling request delegated through a bound MCP.
+// It is a capability restriction, not authentication of an OS user.
+const MCPScopeHeader = "X-Remote-Agent-Schedule-Scope"
+
+// CallerHeader distinguishes explicit user CLI requests from legacy MCP calls.
+const CallerHeader = "X-Remote-Agent-Schedule-Caller"
+
 // Spec is a complete task definition; updates replace it atomically.
 type Spec struct {
 	Title   string  `json:"title" jsonschema:"Short name visible in task lists"`
@@ -51,6 +58,7 @@ type Task struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 	NextRunAt     *time.Time `json:"next_run_at,omitempty"`
 	SourceSession string     `json:"source_session,omitempty"`
+	ScopedSession string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
 	Source        string     `json:"source"`
 	AnchorSession string     `json:"anchor_session,omitempty"`
 	AnchorSeq     uint64     `json:"anchor_seq,omitempty"`

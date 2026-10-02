@@ -300,7 +300,9 @@ func TestScheduleRejectsInvalidSpecs(t *testing.T) {
 		}
 	}
 	b, _ := json.Marshal(taskSpec(schedule.Trigger{Type: "after_turn"}))
-	_, err := (&handler{d: h.d}).Schedule(context.Background(), connect.NewRequest(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: b}))
+	req := connect.NewRequest(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: b})
+	req.Header().Set(schedule.CallerHeader, "cli")
+	_, err := (&handler{d: h.d}).Schedule(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package schedulemcp
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,15 +10,26 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type backend struct {
 	remoteagentv1connect.UnimplementedLocalServiceHandler
 	requests chan *pb.ScheduleRequest
+	scope    string
+	legacy   bool
 }
 
 func (b *backend) Schedule(_ context.Context, q *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
+	b.scope = q.Header().Get(schedule.MCPScopeHeader)
+	if q.Msg.Operation == "mcp_scope" {
+		if b.legacy {
+			return connect.NewResponse(&pb.ScheduleResponse{ResultJson: []byte(`{"id":"ignored-scope"}`)}), nil
+		}
+		raw, _ := json.Marshal(map[string]string{"scoped_session": b.scope})
+		return connect.NewResponse(&pb.ScheduleResponse{ResultJson: raw}), nil
+	}
 	b.requests <- q.Msg
 	return connect.NewResponse(&pb.ScheduleResponse{ResultJson: []byte(`{"id":"created","status":"waiting_turn"}`)}), nil
 }
@@ -57,6 +69,9 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 		t.Fatalf("call: %+v %v", res, err)
 	}
 	q := <-b.requests
+	if b.scope != "bound-session" {
+		t.Fatalf("missing MCP scope header: %q", b.scope)
+	}
 	if q.SessionId != "bound-session" || q.Operation != "create" || q.RequestId != "stable" {
 		t.Fatalf("not bound: %+v", q)
 	}
@@ -67,5 +82,46 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	q = <-b.requests
 	if q.Operation != "cancel" || q.TaskId != "created" || q.ExpectedRevision != 1 {
 		t.Fatal("wrong cancel")
+	}
+}
+
+func TestToolsFailClosedAgainstUnscopedDaemon(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	b := &backend{requests: make(chan *pb.ScheduleRequest, 1), legacy: true}
+	mux := http.NewServeMux()
+	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(b))
+	httpServer := httptest.NewServer(mux)
+	defer httpServer.Close()
+	server := New(remoteagentv1connect.NewLocalServiceClient(httpServer.Client(), httpServer.URL), "bound-session", "test")
+	st, ct := mcp.NewInMemoryTransports()
+	ss, err := server.Connect(ctx, st, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close()
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "test"}, nil)
+	cs, err := client.Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	for _, name := range []string{"schedule_create", "schedule_list", "schedule_run"} {
+		args := map[string]any{"task_id": "existing-full-task"}
+		if name == "schedule_create" {
+			args = map[string]any{"task": map[string]any{"title": "check", "message": "run", "trigger": map[string]any{"type": "after_turn"}, "target": map[string]any{"type": "new_session", "mode": "full"}}}
+		}
+		if name == "schedule_list" {
+			args = map[string]any{}
+		}
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || !res.IsError {
+			t.Fatalf("unscoped daemon accepted %s: %+v %v", name, res, err)
+		}
+		select {
+		case q := <-b.requests:
+			t.Fatalf("delegated operation before scope validation: %+v", q)
+		default:
+		}
 	}
 }

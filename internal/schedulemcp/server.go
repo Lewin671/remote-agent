@@ -45,7 +45,20 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 		}
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		res, err := client.Schedule(ctx, connect.NewRequest(&pb.ScheduleRequest{Operation: op, TaskId: id, SessionId: sessionID, SpecJson: b, ExpectedRevision: revision, RequestId: key}))
+		// An older daemon ignores the scope header. Confirm support on every
+		// call (including after a daemon restart) before delegating a task.
+		probe := connect.NewRequest(&pb.ScheduleRequest{Operation: "mcp_scope", SessionId: sessionID})
+		probe.Header().Set(schedule.MCPScopeHeader, sessionID)
+		ack, probeErr := client.Schedule(ctx, probe)
+		var scopeAck struct {
+			Session string `json:"scoped_session"`
+		}
+		if probeErr != nil || json.Unmarshal(ack.Msg.ResultJson, &scopeAck) != nil || scopeAck.Session != sessionID {
+			return nil, nil, errors.New("daemon does not support scoped MCP scheduling; upgrade and restart the daemon")
+		}
+		req := connect.NewRequest(&pb.ScheduleRequest{Operation: op, TaskId: id, SessionId: sessionID, SpecJson: b, ExpectedRevision: revision, RequestId: key})
+		req.Header().Set(schedule.MCPScopeHeader, sessionID)
+		res, err := client.Schedule(ctx, req)
 		if err != nil {
 			// Keep tool errors concise. Never log requests, messages or environment.
 			var ce *connect.Error
@@ -60,10 +73,10 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 		}
 		return nil, result, nil
 	}
-	mcp.AddTool(server, &mcp.Tool{Name: "schedule_create", Description: "Persist a future Agent message in Remote Agent, visible through its task API. Supports a timestamp, fixed interval, or delay after the current turn ends. Resume the same conversation (target.type=resume_session, session=current) or start a fresh one (new_session). Tasks survive CLI exit and daemon restart; this computer must be running to execute. Only a successful result means the task was saved. After an ambiguous connection error, list tasks before retrying or reuse a stable request_id."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateInput) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "schedule_create", Description: "Persist a future Agent message in Remote Agent, visible through its task API. Supports a timestamp, fixed interval, or delay after the current turn ends. Resume only this conversation (target.type=resume_session, session=current) or start a fresh one in the same project and CLI with the exact same standard approval mode (new_session). Plan and unknown/custom permissions cannot delegate tasks. Tasks survive CLI exit and daemon restart; this computer must be running to execute. Only a successful result means the task was saved. After an ambiguous connection error, list tasks before retrying or reuse a stable request_id."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "create", "", 0, &in.Task, in.RequestID)
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List this machine's Remote Agent scheduled tasks, including status, next execution time, revisions and execution history."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List this bound session's MCP-created Remote Agent scheduled tasks, including status, next execution time, revisions and execution history."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "list", "", 0, nil, "")
 	})
 	mcp.AddTool(server, &mcp.Tool{Name: "schedule_update", Description: "Replace a Remote Agent scheduled task definition; the active execution must finish first. Use expected_revision to avoid overwriting concurrent edits."}, func(ctx context.Context, _ *mcp.CallToolRequest, in UpdateInput) (*mcp.CallToolResult, map[string]any, error) {
