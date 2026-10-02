@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"errors"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -88,7 +89,7 @@ func (s *session) answerAlways(a *approval, turnID string, origin *pb.Origin) {
 				}
 				key, decision, msg = "1", pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, "remote-agent: the prompt offers no option to stop asking; allowed this request only"
 			}
-			if err := s.pressInPrompt(key); err != nil {
+			if err := s.pressInPrompt(key, plain); err != nil {
 				slog.Warn("answer permission prompt", "session", s.meta.ID, "err", errClass(err))
 				break
 			}
@@ -105,8 +106,10 @@ func (s *session) answerAlways(a *approval, turnID string, origin *pb.Origin) {
 	resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "remote-agent: could not answer the CLI's prompt; answer it in the terminal", originSystem)
 }
 
-// pressInPrompt writes key into the terminal while local keys are held.
-func (s *session) pressInPrompt(key string) error {
+// pressInPrompt checks the observed approval again with local input held
+// before writing key. An intervening local answer or remote operation may
+// have closed it and opened an unrelated permission prompt.
+func (s *session) pressInPrompt(key, expected string) error {
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
@@ -118,6 +121,15 @@ func (s *session) pressInPrompt(key string) error {
 		return err
 	}
 	defer func() { _ = c.Release() }()
+	// Let local keys sent before the hold reach the screen before comparing.
+	time.Sleep(settle)
+	styled, err := s.term.Capture()
+	if err != nil {
+		return err
+	}
+	if !s.ag.Analyze(styled).PermissionOpen || normalizeText(agent.StripANSI(styled)) != normalizeText(expected) {
+		return errors.New("the permission prompt changed before it could be answered")
+	}
 	return c.Write([]byte(key))
 }
 

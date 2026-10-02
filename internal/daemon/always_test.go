@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,5 +122,53 @@ func TestCodexApprovalOutlivesTurn(t *testing.T) {
 	}
 	if err := h.s.resolve(id, true, ""); err != nil {
 		t.Fatalf("resolve after the turn: %v", err)
+	}
+}
+
+// Model a local answer arriving after the first capture, before the hold:
+// the next prompt must not inherit approval of the previous tool request.
+type promptChangeTerm struct {
+	*fakeTerm
+	next string
+}
+
+func (t *promptChangeTerm) Control() (control, error) {
+	c, err := t.fakeTerm.Control()
+	return promptChangeControl{control: c, term: t}, err
+}
+
+type promptChangeControl struct {
+	control
+	term *promptChangeTerm
+}
+
+func (c promptChangeControl) Hold(d time.Duration) error {
+	if err := c.control.Hold(d); err != nil {
+		return err
+	}
+	c.term.setScreen(c.term.next)
+	return nil
+}
+
+func TestAllowAlwaysRefusesPromptChangedBeforeHold(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(codexApproval)
+	h.s.term = &promptChangeTerm{fakeTerm: h.term, next: strings.ReplaceAll(codexApproval, "touch ~/x", "rm -rf ~/important")}
+	h.s.answerAlways(&approval{id: "changed", key: "touch ~/x"}, "t", originLocal)
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("authorized a different prompt: %q", w)
+	}
+	if r := resolvedOf(h, "changed"); r == nil || r.Decision != pb.ApprovalDecision_APPROVAL_DECISION_CANCELED {
+		t.Fatalf("resolution = %v, want canceled", r)
+	}
+}
+
+func TestAllowAlwaysRefusesClosedPromptBeforeHold(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(codexApproval)
+	h.s.term = &promptChangeTerm{fakeTerm: h.term, next: idleScreen}
+	h.s.answerAlways(&approval{id: "closed", key: "touch ~/x"}, "t", originLocal)
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("typed into closed prompt: %q", w)
 	}
 }
