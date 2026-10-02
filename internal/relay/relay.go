@@ -58,6 +58,7 @@ type ImageUpload struct {
 type Relay struct {
 	backend Backend
 	cmds    *commandLog
+	calls   chan struct{} // bounds command workers across reconnects
 	// Retry is the first reconnect delay; it doubles up to a minute.
 	Retry time.Duration
 
@@ -70,7 +71,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), Retry: time.Second}
+	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), Retry: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -262,14 +263,41 @@ func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 	return err
 }
 
+// maxConcurrentCalls bounds memory and goroutines even when an untrusted
+// server floods the stream with large commands or repeats an inflight one.
+const maxConcurrentCalls = 8
+
 func (c *conn) readLoop(ctx context.Context) error {
+	return readForwardCalls(ctx, c.r.calls, func() (*pb.ServerFrame, error) {
+		return readFrame(ctx, c.ws)
+	}, c.handleCall)
+}
+
+func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
 	for {
-		f, err := readFrame(ctx, c.ws)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		f, err := read()
 		if err != nil {
 			return err
 		}
 		if call := f.GetForwardCall(); call != nil {
-			go c.handleCall(ctx, call)
+			// Backpressure retains at most one extra frame. A disconnected
+			// session must not wait indefinitely for a previous command.
+			select {
+			case slots <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			if ctx.Err() != nil {
+				<-slots
+				return ctx.Err()
+			}
+			go func() {
+				defer func() { <-slots }()
+				handle(ctx, call)
+			}()
 		}
 	}
 }

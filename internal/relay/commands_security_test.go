@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +19,7 @@ func TestCorruptCommandLogFailsClosed(t *testing.T) {
 			}
 			log := openCommandLog(path)
 			called := false
-			result := log.do("request", time.Now().Add(time.Minute).UnixMilli(), nil, func() *pb.CommandResult { called = true; return &pb.CommandResult{} })
+			result := log.do(context.Background(), "request", time.Now().Add(time.Minute).UnixMilli(), nil, func() *pb.CommandResult { called = true; return &pb.CommandResult{} })
 			if called || result.ErrorCode != "failed_precondition" {
 				t.Fatalf("unsafe execution: called=%v result=%v", called, result)
 			}
@@ -33,7 +34,7 @@ func TestCorruptCommandLogFailsClosed(t *testing.T) {
 func TestUnreadableCommandLogFailsClosed(t *testing.T) {
 	log := openCommandLog(t.TempDir()) // directories cannot be read as log files
 	called := false
-	result := log.do("request", time.Now().Add(time.Minute).UnixMilli(), nil, func() *pb.CommandResult { called = true; return &pb.CommandResult{} })
+	result := log.do(context.Background(), "request", time.Now().Add(time.Minute).UnixMilli(), nil, func() *pb.CommandResult { called = true; return &pb.CommandResult{} })
 	if called || result.ErrorCode != "failed_precondition" {
 		t.Fatalf("unsafe execution: called=%v result=%v", called, result)
 	}

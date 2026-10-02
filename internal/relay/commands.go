@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -70,15 +71,22 @@ func errUnknownOutcome() *pb.CommandResult {
 // do runs fn once per request ID and returns its result. A request ID
 // seen before gets its stored result; otherwise a non-nil reject, such as
 // an expired deadline, is returned without recording anything.
-func (c *commandLog) do(id string, deadline int64, reject *pb.CommandResult, fn func() *pb.CommandResult) *pb.CommandResult {
+func (c *commandLog) do(ctx context.Context, id string, deadline int64, reject *pb.CommandResult, fn func() *pb.CommandResult) *pb.CommandResult {
 	if c.loadErr != nil {
 		return &pb.CommandResult{ErrorCode: "failed_precondition", ErrorMessage: "remote commands disabled: cannot read command deduplication state; repair commands.json and restart the daemon"}
 	}
 	for {
+		if ctx.Err() != nil {
+			return &pb.CommandResult{ErrorCode: "canceled", ErrorMessage: "the command connection closed"}
+		}
 		c.mu.Lock()
 		if wait, ok := c.inflight[id]; ok {
 			c.mu.Unlock()
-			<-wait
+			select {
+			case <-wait:
+			case <-ctx.Done():
+				return &pb.CommandResult{ErrorCode: "canceled", ErrorMessage: "the command connection closed"}
+			}
 			continue
 		}
 		if e, ok := c.entries[id]; ok {

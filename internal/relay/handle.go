@@ -63,7 +63,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	case deadline.After(now.Add(maxAhead)):
 		reject = &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "the command's deadline is too far ahead; check the device clocks"}
 	}
-	res := c.r.cmds.do(h.RequestId, h.DeadlineMs, reject, func() *pb.CommandResult {
+	res := c.r.cmds.do(ctx, h.RequestId, h.DeadlineMs, reject, func() *pb.CommandResult {
 		cmd := &pb.Command{}
 		if err := proto.Unmarshal(plain, cmd); err != nil {
 			return &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "malformed command"}
