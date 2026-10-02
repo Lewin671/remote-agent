@@ -257,10 +257,12 @@ func ReadBlob(path, marker string, limit int64) (string, error) {
 	a, b, ok := strings.Cut(rest, ":")
 	start, err1 := strconv.ParseInt(a, 10, 64)
 	end, err2 := strconv.ParseInt(b, 10, 64)
-	if !ok || err1 != nil || err2 != nil || end < start {
+	if !ok || err1 != nil || err2 != nil || start < 0 || end < start {
 		return "", errors.New("malformed blob marker")
 	}
-	if end-start > limit {
+	// Nonnegative ordered offsets make subtraction safe; leave room for
+	// the two quotes on both 32-bit and 64-bit platforms before allocation.
+	if end-start > limit || end-start > int64(int(^uint(0)>>1))-2 {
 		return "", fmt.Errorf("blob of %d bytes is over the limit", end-start)
 	}
 	f, err := os.Open(path)

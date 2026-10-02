@@ -109,3 +109,20 @@ func TestCompactionStopsAtTheLimit(t *testing.T) {
 		t.Fatalf("built %d bytes", len(c.out))
 	}
 }
+
+func TestReadBlobRejectsHostileOffsets(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "transcript.jsonl")
+	if err := os.WriteFile(path, []byte("unused"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, offsets := range []string{
+		"-9223372036854775808:9223372036854775807", "-2:9223372036854775807", "-1:0",
+		"0:9223372036854775807", "1:0",
+	} {
+		t.Run(offsets, func(t *testing.T) {
+			if _, err := ReadBlob(path, BlobPrefix+offsets, 64<<20); err == nil {
+				t.Fatal("hostile offset accepted")
+			}
+		})
+	}
+}
