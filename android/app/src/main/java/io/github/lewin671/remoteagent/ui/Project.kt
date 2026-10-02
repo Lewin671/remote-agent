@@ -234,18 +234,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
                             Box(Modifier.clickable(enabled = ended.isNotEmpty()) { showEnded = !showEnded }) { ArrowText("已结束 ${ended.size}", p.blue, T.smB, down = showEnded) }
                         }
                         if (selected != null) {
-                            val summary = projectSummary(state, selected, summaryModels)
                             val full = selected.mode == Mode.FULL || (selected.mode == null && defaultModeOf(state.machines[selected.machineId], selected.agent).mode == Mode.FULL)
-                            val shown = buildAnnotatedString {
-                                if (full && summary.contains(Mode.FULL.text)) {
-                                    val start = summary.indexOf(Mode.FULL.text)
-                                    append(summary.substring(0, start))
-                                    withStyle(SpanStyle(color = p.red)) { append(Mode.FULL.text) }
-                                    append(summary.substring(start + Mode.FULL.text.length))
-                                } else append(summary)
-                            }
-                            Text(shown, style = T.sm, color = p.muted, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).testTag("project-settings-summary").clickable { settingsOpen = true })
+                            SummaryChip(projectSummary(state, selected, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = true }
                         }
                     }
                 }
@@ -277,6 +267,25 @@ fun ProjectScreen(key: String, focus: Boolean) {
         Drafts.newSession(key, selected).config.choose(it)
         settingsOpen = false
     }, onClose = { settingsOpen = false })
+}
+
+/** The new-session settings as a button that opens the project's settings; only 完全放行 is red. */
+@Composable
+private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val p = pal
+    val shown = buildAnnotatedString {
+        val start = if (full) summary.indexOf(Mode.FULL.text) else -1
+        if (start >= 0) {
+            append(summary.substring(0, start))
+            withStyle(SpanStyle(color = p.red)) { append(Mode.FULL.text) }
+            append(summary.substring(start + Mode.FULL.text.length))
+        } else append(summary)
+    }
+    Row(modifier.clip(RoundedCornerShape(10.dp)).background(p.chip).clickable(onClick = onClick).heightIn(min = 32.dp).padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(shown, style = T.sm, color = p.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Arrow(p.faint)
+    }
 }
 
 fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse? = null): String {
@@ -806,8 +815,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
     var settingsOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
         NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = true })
-        Text(projectSummary(state, selected, summaryModels), style = T.sm, color = if (selected.mode == Mode.FULL) p.red else p.muted,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { settingsOpen = true }.padding(horizontal = 16.dp, vertical = 8.dp))
+        SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = true }
         Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
         NewSessionBox(state, initial, projectName(path), focus = true)
     }

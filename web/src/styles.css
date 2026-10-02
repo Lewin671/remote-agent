@@ -783,7 +783,11 @@ input.field { margin: 0; }
 .side .sh .nb { width: 44px; height: 44px; min-height: 44px; padding: 0; background: none; display: flex; align-items: center; justify-content: center; }
 .side .ph .pname > span.live { color: var(--muted); font-weight: 400; }
 .project-summary { display: block; color: var(--muted); font-size: 13px; max-width: 100%; min-height: 32px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-summary.full { color: var(--red); }
+.project-summary .red { color: var(--red); }
+.project-summary.chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0 10px; background: var(--chip); color: var(--fg2); border-radius: var(--r-sm); }
+.project-summary.chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.project-summary.chip::after { content: "›"; color: var(--faint); font-size: 17px; flex: none; }
+@media (hover: hover) { .project-summary.chip:hover { background: var(--track); } }
 .phead > div:last-child { min-width: 0; }
 .phead .ppath { font-size: 13px; }
 .ps-id { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }

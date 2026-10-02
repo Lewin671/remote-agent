@@ -6,7 +6,7 @@ import { compareLive, compareEnded, exited, machineName, projectName, shortPath 
 import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
 import { SessionRow } from "./Home";
-import { ConfigSheet, NewBox, useNewSession, type Go } from "./NewSession";
+import { ConfigSheet, ConfigSummary, NewBox, useNewSession, type Go } from "./NewSession";
 import { RemovedNotice } from "./Projects";
 import { isHidden } from "../prefs";
 
@@ -48,7 +48,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
             已结束 {ended.length} ›
           </button>
         </div>
-        <button className={"project-summary" + (ns.line.includes("完全放行") ? " full" : "")} onClick={() => setSettingsOpen(true)}>{ns.line}</button>
+        <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />
       </div>
     </div>
   );
@@ -102,7 +102,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   return (
     <div className="page">
       {/* With the keyboard up the project's head folds into the bar. */}
-      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <button className="project-summary" onClick={() => setSettingsOpen(true)}>{ns.line}</button> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
+      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary line={ns.line} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
         {!typing && <div className="pad">{head}</div>}
         {lists}

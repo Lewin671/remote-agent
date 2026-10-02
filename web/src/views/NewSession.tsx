@@ -422,7 +422,7 @@ export function NewBox({
         {error}
         {notes}
         {card}
-        <button className={"project-summary" + (ns.line.includes("完全放行") ? " full" : "")} onClick={() => setConfig("main")}>{ns.line}</button>
+        <ConfigSummary line={ns.line} chip onClick={() => setConfig("main")} />
         {busyNote}
       </>
     );
@@ -850,4 +850,18 @@ export function NewFlow({ remote, go, onClose, onPicked }: { remote: Remote; go:
       />
     );
   return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} title={onPicked ? "选项目" : undefined} />;
+}
+
+/** The new-session settings in one line, opening the project's settings. Only 完全放行 is red. */
+export function ConfigSummary({ line, chip, onClick }: { line: string; chip?: boolean; onClick: () => void }) {
+  const [before, ...rest] = line.split("完全放行");
+  return (
+    <button className={"project-summary" + (chip ? " chip" : "")} onClick={onClick} aria-label={`新会话设置：${line}`}>
+      <span>
+        {before}
+        {rest.length > 0 && <span className="red">完全放行</span>}
+        {rest.join("完全放行")}
+      </span>
+    </button>
+  );
 }
