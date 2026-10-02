@@ -4,6 +4,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MarkdownTableTest {
+    @Test(timeout = 2000) fun unclosedLinkOpenersDoNotRescanEverySuffix() {
+        for (text in listOf("[".repeat(100_000), "[x](".repeat(25_000))) {
+            assertEquals(text, inline(text, androidx.compose.ui.graphics.Color.Gray, androidx.compose.ui.graphics.Color.Blue).text)
+        }
+    }
+
     @Test fun cellsDoNotSplitEscapedPipesOrCodeSpans() {
         assertEquals(listOf("a", "`x|y`", "c | d"), tableCells("| a | `x|y` | c \\| d |"))
         assertEquals(listOf("``x`|y``", "z"), tableCells("| ``x`|y`` | z |"))

@@ -5,6 +5,28 @@ import { Markdown, mdBlocks, Rich, safeHref, tableCells } from "./markdown";
 const html = (md: string) => renderToStaticMarkup(<Markdown text={md} />);
 
 describe("safety", () => {
+  it("renders many unclosed link openers without quadratic scans", () => {
+    const started = performance.now();
+    for (const text of ["[".repeat(100_000), "[x](".repeat(25_000), "<https://".repeat(12_000)]) {
+      const out = renderToStaticMarkup(<Rich text={text} />);
+      expect(out).not.toContain("<a ");
+    }
+    expect(performance.now() - started).toBeLessThan(1500);
+  }, 2000);
+
+  it("parses long lists without suffix copies or argument-stack overflow", () => {
+    const separate = mdBlocks("- x\n\n".repeat(20_000));
+    expect(separate[0].kind).toBe("list");
+    const indented = mdBlocks("- x\n\n" + "  y\n".repeat(150_000));
+    expect(indented[0].kind).toBe("list");
+  }, 2000);
+
+  it("keeps invalid openers as text and finds later valid links", () => {
+    const out = renderToStaticMarkup(<Rich text={"[unclosed] text [ok](https://a.b) <https://> [bad](with space)"} />);
+    expect(out).toContain('[unclosed] text <a href="https://a.b"');
+    expect(out).toContain("&lt;https://&gt; [bad](with space)");
+  });
+
   it("never renders HTML from the text", () => {
     const out = html('<img src=x onerror=alert(1)>\n\n<script>alert(1)</script>\n\n- <b onclick="x">b</b>\n\n```\n<iframe>\n```');
     expect(out).not.toMatch(/<(img|script|iframe|b onclick)/);

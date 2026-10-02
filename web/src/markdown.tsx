@@ -16,10 +16,38 @@ function escapedAt(text: string, index: number): boolean {
   return slashes % 2 === 1;
 }
 
+/** Index link delimiters once. A failed '[' or autolink opener must not
+ * rescan the remaining attacker-controlled CLI text on every character. */
+function inlineLinks(text: string): Map<number, { close: number; end: number; auto?: boolean }> {
+  const links = new Map<number, { close: number; end: number; auto?: boolean }>();
+  let close = -1, end = -1, validTarget = false;
+  let paren = -1, angle = -1, space = text.length, newline = text.length;
+  for (let i = text.length - 1; i >= 0; i--) {
+    const c = text[i];
+    if (c === "[") {
+      if (close > i + 1 && close < newline && validTarget) links.set(i, { close, end });
+    } else if (c === "<" && angle < space) {
+      const prefix = text.startsWith("https://", i + 1) ? 8 : text.startsWith("http://", i + 1) ? 7 : 0;
+      if (prefix && angle > i + 1 + prefix) links.set(i, { close: angle, end: angle, auto: true });
+    }
+    if (c === "]") {
+      close = i;
+      end = paren;
+      validTarget = text[i + 1] === "(" && paren > i + 2 && paren < space;
+    }
+    if (c === ")") paren = i;
+    if (c === ">") angle = i;
+    if (/\s/.test(c)) space = i;
+    if (c === "\n") newline = i;
+  }
+  return links;
+}
+
 /** Inline Markdown: `code`, **bold**, *italic*, [links](target) and
  * <https://autolinks>. */
 export function Rich({ text }: { text: string }) {
   const parts: ReactNode[] = [];
+  const links = inlineLinks(text);
   const runs = [...text.matchAll(/`+/g)];
   const closers = new Map<number, number>();
   const next = new Map<number, number>();
@@ -28,7 +56,7 @@ export function Rich({ text }: { text: string }) {
     if (end !== undefined) closers.set(run.index, end);
     next.set(run[0].length, run.index);
   }
-  const re = /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|\[([^\]\n]+)\]\(([^)\s]+)\)|<(https?:\/\/[^>\s]+)>/g;
+  const re = /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(\[)|(<https?:\/\/)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
@@ -48,8 +76,18 @@ export function Rich({ text }: { text: string }) {
     }
     else if (m[2] !== undefined) parts.push(<b key={key}>{m[2]}</b>);
     else if (m[3] !== undefined) parts.push(<em key={key}>{m[3]}</em>);
-    else if (m[4] !== undefined) parts.push(<Link key={key} text={m[4]} target={m[5]} />);
-    else parts.push(<Link key={key} text={m[6]} target={m[6]} />);
+    else {
+      const link = links.get(m.index);
+      if (link) {
+        const label = text.slice(m.index + 1, link.close);
+        const target = link.auto ? label : text.slice(link.close + 2, link.end);
+        parts.push(<Link key={key} text={label} target={target} />);
+        last = link.end + 1;
+        re.lastIndex = last;
+        continue;
+      }
+      parts.push(m[0]);
+    }
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));
@@ -147,6 +185,12 @@ export function mdBlocks(md: string, depth = 0): Block[] {
   // quotes/lists must not overflow the parser or React render stack.
   if (depth >= 32) return [{ kind: "text", text: md }];
   const lines = md.replace(/\r\n?/g, "\n").split("\n");
+  const nextNonBlank = new Array<number>(lines.length);
+  let nextLine = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    nextNonBlank[i] = nextLine;
+    if (lines[i].trim()) nextLine = i;
+  }
   const blocks: Block[] = [];
   let text: string[] = [];
   const flush = () => {
@@ -220,7 +264,7 @@ export function mdBlocks(md: string, depth = 0): Block[] {
       for (; j < lines.length; j++) {
         const l = lines[j];
         if (!l.trim()) {
-          const next = lines.slice(j + 1).find((x) => x.trim());
+          const next = lines[nextNonBlank[j]];
           if (next === undefined || (indentOf(next) <= base && !listLine.test(next))) break;
           body.push(l);
           continue;
@@ -263,7 +307,7 @@ function parseList(lines: string[], base: number, depth: number): Block {
     else cur.rest.push(l);
   }
   const strip = (rest: string[]) => {
-    const ind = Math.min(...rest.filter((x) => x.trim()).map(indentOf));
+    const ind = rest.reduce((smallest, line) => line.trim() ? Math.min(smallest, indentOf(line)) : smallest, Infinity);
     return rest.map((x) => x.slice(Math.min(ind, indentOf(x)))).join("\n");
   };
   return {

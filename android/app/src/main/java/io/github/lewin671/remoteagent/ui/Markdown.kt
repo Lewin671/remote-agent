@@ -216,11 +216,28 @@ private fun codeClosers(text: String): Map<Int, Int> {
     return closers
 }
 
+/** First closing delimiter for every opener, computed without repeated suffix scans. */
+private fun linkClosers(text: String): Map<Int, Pair<Int, Int>> {
+    val links = mutableMapOf<Int, Pair<Int, Int>>()
+    var close = -1
+    var end = -1
+    var paren = -1
+    for (i in text.indices.reversed()) {
+        when (text[i]) {
+            '[' -> if (close > i && end > close) links[i] = close to end
+            ']' -> if (i + 1 < text.length && text[i + 1] == '(') { close = i; end = paren }
+            ')' -> paren = i
+        }
+    }
+    return links
+}
+
 /** Inline formatting: `code`, **bold**, *italic*, [text](url). */
 fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: androidx.compose.ui.graphics.Color): AnnotatedString = buildAnnotatedString {
     var i = 0
     val s = text
     val closers = codeClosers(s)
+    val links = linkClosers(s)
     while (i < s.length) {
         val c = s[i]
         when {
@@ -253,8 +270,7 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
                 }
             }
             c == '[' -> {
-                val close = s.indexOf("](", i)
-                val end = if (close > 0) s.indexOf(')', close) else -1
+                val (close, end) = links[i] ?: (-1 to -1)
                 if (close > i && end > close) {
                     val label = s.substring(i + 1, close)
                     val url = s.substring(close + 2, end)
