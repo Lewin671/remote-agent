@@ -15,7 +15,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailabilityLight
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
-import io.github.lewin671.remoteagent.BuildConfig
+import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
@@ -59,7 +59,7 @@ object Push {
         })
     }
 
-    fun available(context: Context): Boolean = BuildConfig.PUSH_ENABLED && FirebaseApp.getApps(context).isNotEmpty()
+    fun available(context: Context): Boolean = context.resources.getBoolean(R.bool.push_enabled) && FirebaseApp.getApps(context).isNotEmpty()
 
     fun permitted(context: Context): Boolean =
         Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED

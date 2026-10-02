@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
-import io.github.lewin671.remoteagent.BuildConfig
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairLink
 import io.github.lewin671.remoteagent.core.Secret
@@ -76,7 +75,7 @@ fun JoinScreen(app: RaApp) {
     // Registering has begun: canceling now would misreport the outcome.
     var registering by remember { mutableStateOf(false) }
 
-    fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = BuildConfig.DEBUG)
+    fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
     fun join(link: PairLink) {
         error = ""

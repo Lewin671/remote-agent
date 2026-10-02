@@ -200,7 +200,7 @@ fun SettingsScreen() {
         GLabel("账户")
         Group(rows = listOf(
             { GRow("服务器", remote.account.server.removePrefix("https://")) },
-            { GRow("版本", io.github.lewin671.remoteagent.BuildConfig.VERSION_NAME.let { v -> val c = io.github.lewin671.remoteagent.BuildConfig.BUILD_COMMIT.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }) },
+            { GRow("版本", app.versionName.let { v -> val c = app.buildCommit.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }) },
             { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
             { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
         ))

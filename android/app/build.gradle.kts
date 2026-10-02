@@ -50,8 +50,8 @@ android {
         targetSdk = 35
         versionCode = product.getProperty("androidVersionCode").toInt()
         versionName = product.getProperty("version") + if (devBuild) "-dev.${buildCommit.take(7)}" else ""
-        buildConfigField("String", "BUILD_COMMIT", "\"$buildCommit\"")
-        buildConfigField("boolean", "PUSH_ENABLED", pushEnabled.toString())
+        resValue("string", "build_commit", buildCommit)
+        resValue("bool", "push_enabled", pushEnabled.toString())
         resValue("string", "app_name", if (appIdSuffix.isEmpty()) "remote-agent" else "remote-agent $appIdSuffix")
         if (appIdSuffix.isNotEmpty()) applicationIdSuffix = appIdSuffix
     }
@@ -96,7 +96,12 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
+        // BuildConfig holds the version, so with it every release compiles
+        // different classes. Without it a release that changes nothing
+        // under android/ takes KSP's and the compiler's output from Gradle's
+        // build cache. R8 still runs: its inputs include the manifest. The
+        // commit and the push switch are resources instead.
+        buildConfig = false
     }
     packaging {
         resources.excludes += setOf("META-INF/versions/9/OSGI-INF/MANIFEST.MF", "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*")

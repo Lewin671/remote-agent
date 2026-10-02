@@ -35,6 +35,12 @@ import okhttp3.OkHttpClient
  */
 class RaApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // What BuildConfig would hold, read from the manifest and resources:
+    // see the note on buildConfig in app/build.gradle.kts.
+    val versionName: String by lazy { packageManager.getPackageInfo(packageName, 0).versionName.orEmpty() }
+    val buildCommit: String get() = getString(R.string.build_commit)
+    val debuggable: Boolean get() = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
     val vault: Vault by lazy { Vault(this) }
     val prefs: Prefs by lazy { Prefs(this) }
     val db: CacheDb by lazy { CacheDb.open(this) }
