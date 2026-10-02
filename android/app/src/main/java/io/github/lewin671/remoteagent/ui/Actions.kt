@@ -125,6 +125,7 @@ object AccountMemory {
         Cancels.clear()
         PrefsChanges.clear()
         ImageDrafts.clear()
+        ViewerImages.clear()
         Resolves.clear()
         QuestionPicks.clear()
     }

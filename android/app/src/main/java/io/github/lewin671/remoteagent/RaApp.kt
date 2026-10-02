@@ -121,6 +121,7 @@ class RaApp : Application() {
         // Drafts and the like are kept per account, and only in memory.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
         val r = Remote(acct, http, RoomCache(db.dao(), imageEnvelopes), log = { Log.i(TAG, it) })
+        io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {

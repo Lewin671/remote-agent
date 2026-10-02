@@ -144,7 +144,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
 }
 
 /** Images decrypted while the viewer is open, by session and image, so paging back does not fetch again. */
-private val shown = android.util.LruCache<String, Big.Ready>(6)
+internal val ViewerImages = AccountCache<Big.Ready>(6)
 
 @Composable
 private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: Boolean) {
@@ -194,13 +194,13 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
 private suspend fun load(remote: Remote, sid: String, img: SessionImage, online: Boolean): Big {
     val ref = img.ref
     if (ref.sync != ImageSync.IMAGE_SYNC_SYNCED || ref.imageId.isEmpty()) return Big.NotSynced
-    shown.get("$sid/${ref.imageId}")?.let { return it }
+    ViewerImages.get(remote, "$sid/${ref.imageId}")?.let { return it }
     return try {
         when (val r = remote.image(sid, ref.imageId)) {
             is Remote.ImageResult.Loaded -> {
                 val bytes = r.payload.data.toByteArray()
                 val bmp = withContext(Dispatchers.Default) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } ?: return Big.Corrupt("解不出图片")
-                Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also { shown.put("$sid/${ref.imageId}", it) }
+                Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also { ViewerImages.put(remote, "$sid/${ref.imageId}", it) }
             }
             Remote.ImageResult.Expired -> Big.Expired
             Remote.ImageResult.Missing -> Big.NotSynced
@@ -232,7 +232,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
     val scope = rememberCoroutineScope()
     var msg by remember(img.ref.imageId) { mutableStateOf("") }
     fun bytes(): Pair<ByteArray, ImageFormat>? {
-        shown.get("$sid/${img.ref.imageId}")?.let { return it.bytes to it.format }
+        ViewerImages.get(remote, "$sid/${img.ref.imageId}")?.let { return it.bytes to it.format }
         val p = img.ref.preview.toByteArray()
         return if (p.isEmpty()) null else p to img.ref.previewFormat
     }
