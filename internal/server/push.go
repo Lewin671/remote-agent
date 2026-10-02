@@ -50,6 +50,14 @@ const pushCoalesce = 15 * time.Second
 // remembered: longer than any approval waits.
 const pushDedupe = time.Hour
 
+// Bound both retained dedupe state and asynchronous network deliveries.
+const (
+	maxPushRecent     = 4096
+	maxPushDeliveries = 32
+)
+
+var errPushBusy = errors.New("push capacity exhausted; try again later")
+
 type pusher struct {
 	s          *Server
 	mu         sync.Mutex
@@ -58,13 +66,14 @@ type pusher struct {
 	subscriber string
 	client     *http.Client
 	fcm        *fcm // nil when not configured
+	deliveries chan struct{}
 }
 
 func newPusher(s *Server) (*pusher, error) {
 	if _, err := s.store.db.Exec(pushSchema); err != nil {
 		return nil, err
 	}
-	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient()}
+	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient(), deliveries: make(chan struct{}, maxPushDeliveries)}
 	if s.cfg.FCMServiceAccount != "" {
 		f, err := loadFCM(s.cfg.FCMServiceAccount)
 		if err != nil {
@@ -90,10 +99,29 @@ func newPusher(s *Server) (*pusher, error) {
 	return p, err
 }
 
-func kindBit(k pb.NotifyKind) int { return 1 << int(k) }
+func kindBit(k pb.NotifyKind) int {
+	switch k {
+	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED:
+		return 1 << int(k)
+	default:
+		return 0
+	}
+}
+
+func validNotifyKinds(kinds []pb.NotifyKind) bool {
+	for _, k := range kinds {
+		if kindBit(k) == 0 {
+			return false
+		}
+	}
+	return true
+}
 
 func (p *pusher) subscribe(ctx context.Context, deviceID, sub string, kinds []pb.NotifyKind) error {
 	db := p.s.store.db
+	if !validNotifyKinds(kinds) {
+		return errors.New("unknown notification kind")
+	}
 	if sub == "" {
 		_, err := db.ExecContext(ctx, `DELETE FROM push_subs WHERE device_id = ?`, deviceID)
 		return err
@@ -124,6 +152,9 @@ func kindMask(kinds []pb.NotifyKind) int {
 
 func (p *pusher) setFCM(ctx context.Context, deviceID, token string, kinds []pb.NotifyKind) error {
 	db := p.s.store.db
+	if !validNotifyKinds(kinds) {
+		return errors.New("unknown notification kind")
+	}
 	if token == "" {
 		_, err := db.ExecContext(ctx, `DELETE FROM fcm_targets WHERE device_id = ?`, deviceID)
 		return err
@@ -145,51 +176,96 @@ var pushText = map[pb.NotifyKind]string{
 // serialized NOTIFY envelope for FCM targets, or nil. With a dedupe key the
 // notification is sent once per key; without one, once per session and
 // kind within pushCoalesce.
-func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) {
+func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
 	body, ok := pushText[kind]
 	if !ok {
-		return
+		return invalid("unknown notification kind")
 	}
 	key := sessionID + "/" + kind.String()
 	window := pushCoalesce
 	if dedupeKey != "" {
-		key = "d/" + dedupeKey
+		// A key from one session must not suppress another session's pushes.
+		key = "d/" + key + "/" + dedupeKey
 		window = pushDedupe
 	}
 	p.mu.Lock()
-	if t, ok := p.recent[key]; ok && time.Since(t) < window {
-		p.mu.Unlock()
-		return
-	}
-	p.recent[key] = time.Now()
+	defer p.mu.Unlock()
+	now := time.Now()
 	for k, t := range p.recent {
-		if time.Since(t) > pushDedupe || (!strings.HasPrefix(k, "d/") && time.Since(t) > pushCoalesce) {
+		if now.Sub(t) >= pushDedupe || (!strings.HasPrefix(k, "d/") && now.Sub(t) >= pushCoalesce) {
 			delete(p.recent, k)
 		}
 	}
-	p.mu.Unlock()
-	if p.fcm != nil {
-		p.notifyFCM(sessionID, kind, content)
+	if t, ok := p.recent[key]; ok && now.Sub(t) < window {
+		return nil
+	}
+	if len(p.recent) >= maxPushRecent {
+		return errPushBusy
 	}
 
-	rows, err := p.s.store.db.Query(`SELECT device_id, subscription FROM push_subs WHERE kinds & ? != 0`, kindBit(kind))
-	if err != nil {
-		slog.Error("load push subscriptions", "err", err)
-		return
-	}
-	type target struct{ device, sub string }
+	type target struct{ device, sub, token string }
 	var targets []target
+	rows, err := p.s.store.db.Query(`SELECT device_id, subscription FROM push_subs WHERE kinds & ? != 0 LIMIT ?`, kindBit(kind), maxPushDeliveries+1)
+	if err != nil {
+		return err
+	}
 	for rows.Next() {
 		var t target
-		if rows.Scan(&t.device, &t.sub) == nil {
+		if err := rows.Scan(&t.device, &t.sub); err != nil {
+			rows.Close()
+			return err
+		}
+		targets = append(targets, t)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	if p.fcm != nil {
+		rows, err := p.s.store.db.Query(`SELECT device_id, token FROM fcm_targets WHERE kinds & ? != 0 LIMIT ?`, kindBit(kind), maxPushDeliveries+1)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var t target
+			if err := rows.Scan(&t.device, &t.token); err != nil {
+				rows.Close()
+				return err
+			}
 			targets = append(targets, t)
 		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
 	}
-	rows.Close()
+	if len(targets) > cap(p.deliveries)-len(p.deliveries) {
+		return errPushBusy
+	}
+	// Reserve every delivery before remembering the key. Rejected work can
+	// be retried with the same key, and no notification is partially queued.
+	for range targets {
+		p.deliveries <- struct{}{}
+	}
+	p.recent[key] = now
 	payload, _ := json.Marshal(map[string]string{"title": "remote-agent", "body": body, "tag": sessionID + "/" + kind.String(), "session": sessionID})
-	for _, t := range targets {
-		go p.send(t.device, t.sub, payload)
+	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
+	if c := base64.StdEncoding.EncodeToString(content); len(content) > 0 && len(c) <= fcmMaxData {
+		data["content"] = c
 	}
+	for _, t := range targets {
+		go func() {
+			defer func() { <-p.deliveries }()
+			if t.sub != "" {
+				p.send(t.device, t.sub, payload)
+			} else {
+				p.sendFCM(t.device, t.token, data)
+			}
+		}()
+	}
+	return nil
 }
 
 func (p *pusher) send(deviceID, sub string, payload []byte) {
@@ -215,38 +291,15 @@ func (p *pusher) send(deviceID, sub string, payload []byte) {
 	}
 }
 
-func (p *pusher) notifyFCM(sessionID string, kind pb.NotifyKind, content []byte) {
-	rows, err := p.s.store.db.Query(`SELECT device_id, token FROM fcm_targets WHERE kinds & ? != 0`, kindBit(kind))
-	if err != nil {
-		slog.Error("load fcm targets", "err", err)
-		return
-	}
-	type target struct{ device, token string }
-	var targets []target
-	for rows.Next() {
-		var t target
-		if rows.Scan(&t.device, &t.token) == nil {
-			targets = append(targets, t)
-		}
-	}
-	rows.Close()
-	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
-	// Too large for FCM: the app shows the generic text instead.
-	if c := base64.StdEncoding.EncodeToString(content); len(content) > 0 && len(c) <= fcmMaxData {
-		data["content"] = c
-	}
-	for _, t := range targets {
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			defer cancel()
-			err := p.fcm.sendRetrying(ctx, t.token, data, 10*time.Minute)
-			switch {
-			case errors.Is(err, errFCMToken):
-				_, _ = p.s.store.db.Exec(`DELETE FROM fcm_targets WHERE device_id = ? AND token = ?`, t.device, t.token)
-			case err != nil:
-				slog.Warn("fcm push", "device", t.device, "err", err)
-			}
-		}()
+func (p *pusher) sendFCM(deviceID, token string, data map[string]string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	err := p.fcm.sendRetrying(ctx, token, data, 10*time.Minute)
+	switch {
+	case errors.Is(err, errFCMToken):
+		_, _ = p.s.store.db.Exec(`DELETE FROM fcm_targets WHERE device_id = ? AND token = ?`, deviceID, token)
+	case err != nil:
+		slog.Warn("fcm push", "device", deviceID, "err", err)
 	}
 }
 
@@ -315,7 +368,16 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	if len(req.Msg.DedupeKey) > 128 {
 		return nil, invalid("dedupe key too long")
 	}
-	m.s.push.notify(req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey)
+	if err := m.s.push.notify(req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
+		if errors.Is(err, errPushBusy) {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
+		var apiErr *connect.Error
+		if errors.As(err, &apiErr) {
+			return nil, err
+		}
+		return nil, internal(err)
+	}
 	return connect.NewResponse(&pb.NotifyResponse{}), nil
 }
 
