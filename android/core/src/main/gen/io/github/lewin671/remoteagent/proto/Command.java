@@ -48,6 +48,7 @@ public  final class Command extends
     GET_IMAGE_UPLOAD_STATUS(27),
     COMPLETE_IMAGE_UPLOAD(28),
     ABORT_IMAGE_UPLOAD(29),
+    SCHEDULE(30),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -86,6 +87,7 @@ public  final class Command extends
         case 27: return GET_IMAGE_UPLOAD_STATUS;
         case 28: return COMPLETE_IMAGE_UPLOAD;
         case 29: return ABORT_IMAGE_UPLOAD;
+        case 30: return SCHEDULE;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1326,6 +1328,99 @@ public  final class Command extends
       kindCase_ = 0;
       kind_ = null;
     }
+  }
+
+  public static final int SCHEDULE_FIELD_NUMBER = 30;
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSchedule() {
+    return kindCase_ == 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ScheduleRequest getSchedule() {
+    if (kindCase_ == 30) {
+       return (io.github.lewin671.remoteagent.proto.ScheduleRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ScheduleRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 30 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ScheduleRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder((io.github.lewin671.remoteagent.proto.ScheduleRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   */
+  private void clearSchedule() {
+    if (kindCase_ == 30) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int PROTOCOL_VERSION_FIELD_NUMBER = 100;
+  private int protocolVersion_;
+  /**
+   * <pre>
+   * The protocol version the client speaks (internal/protocol). A daemon
+   * of another version refuses the command and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  @java.lang.Override
+  public int getProtocolVersion() {
+    return protocolVersion_;
+  }
+  /**
+   * <pre>
+   * The protocol version the client speaks (internal/protocol). A daemon
+   * of another version refuses the command and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+   * @param value The protocolVersion to set.
+   */
+  private void setProtocolVersion(int value) {
+    
+    protocolVersion_ = value;
+  }
+  /**
+   * <pre>
+   * The protocol version the client speaks (internal/protocol). A daemon
+   * of another version refuses the command and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+   */
+  private void clearProtocolVersion() {
+
+    protocolVersion_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.proto.Command parseFrom(
@@ -2577,6 +2672,97 @@ public  final class Command extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSchedule() {
+      return instance.hasSchedule();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ScheduleRequest getSchedule() {
+      return instance.getSchedule();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    public Builder setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest value) {
+      copyOnWrite();
+      instance.setSchedule(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    public Builder setSchedule(
+        io.github.lewin671.remoteagent.proto.ScheduleRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSchedule(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    public Builder mergeSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest value) {
+      copyOnWrite();
+      instance.mergeSchedule(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+     */
+    public Builder clearSchedule() {
+      copyOnWrite();
+      instance.clearSchedule();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * The protocol version the client speaks (internal/protocol). A daemon
+     * of another version refuses the command and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+     * @return The protocolVersion.
+     */
+    @java.lang.Override
+    public int getProtocolVersion() {
+      return instance.getProtocolVersion();
+    }
+    /**
+     * <pre>
+     * The protocol version the client speaks (internal/protocol). A daemon
+     * of another version refuses the command and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+     * @param value The protocolVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProtocolVersion(int value) {
+      copyOnWrite();
+      instance.setProtocolVersion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The protocol version the client speaks (internal/protocol). A daemon
+     * of another version refuses the command and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProtocolVersion() {
+      copyOnWrite();
+      instance.clearProtocolVersion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Command)
   }
   @java.lang.Override
@@ -2618,13 +2804,15 @@ public  final class Command extends
             io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.class,
             io.github.lewin671.remoteagent.proto.CompleteImageUploadRequest.class,
             io.github.lewin671.remoteagent.proto.AbortImageUploadRequest.class,
+            io.github.lewin671.remoteagent.proto.ScheduleRequest.class,
+            "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u0017\u0001\u0000\u0001\u001d\u0017\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
-              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
-              "<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001c<\u0000" +
-              "\u001d<\u0000";
+              "\u0000\u0019\u0001\u0000\u0001d\u0019\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
+              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017" +
+              "<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000" +
+              "\u001e<\u0000d\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

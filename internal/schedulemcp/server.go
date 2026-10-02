@@ -45,17 +45,6 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 		}
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		// An older daemon ignores the scope header. Confirm support on every
-		// call (including after a daemon restart) before delegating a task.
-		probe := connect.NewRequest(&pb.ScheduleRequest{Operation: "mcp_scope", SessionId: sessionID})
-		probe.Header().Set(schedule.MCPScopeHeader, sessionID)
-		ack, probeErr := client.Schedule(ctx, probe)
-		var scopeAck struct {
-			Session string `json:"scoped_session"`
-		}
-		if probeErr != nil || json.Unmarshal(ack.Msg.ResultJson, &scopeAck) != nil || scopeAck.Session != sessionID {
-			return nil, nil, errors.New("daemon does not support scoped MCP scheduling; upgrade and restart the daemon")
-		}
 		req := connect.NewRequest(&pb.ScheduleRequest{Operation: op, TaskId: id, SessionId: sessionID, SpecJson: b, ExpectedRevision: revision, RequestId: key})
 		req.Header().Set(schedule.MCPScopeHeader, sessionID)
 		res, err := client.Schedule(ctx, req)

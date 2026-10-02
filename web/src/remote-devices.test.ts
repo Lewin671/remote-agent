@@ -26,7 +26,7 @@ async function setup() {
   const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   class Probe extends Remote {
     constructor() {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "me" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "me" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
     }
     put(d: unknown) {
       return (this as unknown as { putDevice(d: unknown): Promise<void> }).putDevice(d);

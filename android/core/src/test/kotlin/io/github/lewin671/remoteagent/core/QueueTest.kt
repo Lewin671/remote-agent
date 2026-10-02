@@ -28,18 +28,6 @@ class QueueTest {
     }
 
     @Test
-    fun anEndedSessionEmptiesTheQueue() {
-        val d = derive(
-            listOf(
-                input(1, "b", InputStatus.INPUT_STATUS_QUEUED),
-                Event.newBuilder().setSeq(2).setSessionState(SessionState.newBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED)).build(),
-            ),
-        )
-        assertEquals(emptyList<String>(), queued(d))
-        assertEquals(2L, d.unsent["b"])
-    }
-
-    @Test
     fun theDaemonsReasonComesFirst() {
         val s = SessionView("s", "m", Session.newBuilder().setInputWait("draft").setAgent(Agent.AGENT_CODEX).build())
         assertEquals("终端里有草稿", queueWhy(s, Status.RUNNING).short)
@@ -72,8 +60,6 @@ class OriginTest {
         assertEquals("Android · b71c", originLabel(o(k, "aaaab71c"), state, "me", "MacBook"))
         assertEquals("我的手机", originLabel(o(k, "cccc92de"), state, "me", "MacBook"))
         assertEquals("客户端 · 9999", originLabel(o(k, "gone9999"), state, "me", "MacBook"))
-        // The server's word for who sent it is no proof.
-        assertEquals("另一客户端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNVERIFIED_CLIENT, "aaaab71c"), state, "me", "MacBook"))
         assertEquals("MacBook 本地终端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL), state, "me", "MacBook"))
         assertEquals(null, originLabel(null, state, "me", "MacBook"))
     }

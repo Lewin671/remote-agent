@@ -65,7 +65,6 @@ type transfer struct {
 	CompletedMs int64  `json:"completed_ms,omitempty"`
 	// Set once a message used it.
 	Session  string          `json:"session,omitempty"`
-	Tracked  bool            `json:"tracked,omitempty"`
 	Exposed  bool            `json:"exposed,omitempty"`
 	Embedded bool            `json:"embedded,omitempty"`
 	Refs     map[string]bool `json:"refs,omitempty"`
@@ -227,7 +226,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			return nil, err
 		}
 	}
-	t := &transfer{ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli(), Tracked: true}
+	t := &transfer{ID: req.TransferId, Device: device, Format: req.Format, Total: req.TotalBytes, SHA256: req.Sha256, UpdatedMs: time.Now().UnixMilli()}
 	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
@@ -437,7 +436,7 @@ type queuedImage struct {
 // folder and returns them in order. They must be complete uploads of the
 // same device; an image this session already used (a message resent after
 // it failed) may be named again. Nothing moves unless all can.
-func (u *uploads) take(ids []string, device, sessionID string, request ...string) ([]queuedImage, error) {
+func (u *uploads) take(ids []string, device, sessionID, request string) ([]queuedImage, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -514,14 +513,10 @@ func (u *uploads) take(ids []string, device, sessionID string, request ...string
 		out = append(out, queuedImage{ID: t.ImageID, Path: dst})
 	}
 	for _, t := range ts {
-		if len(request) > 0 && request[0] != "" {
-			if t.Refs == nil {
-				t.Refs = map[string]bool{}
-			}
-			t.Refs[request[0]] = true
-		} else {
-			t.Tracked = false
-		} // legacy caller: do not assume no references
+		if t.Refs == nil {
+			t.Refs = map[string]bool{}
+		}
+		t.Refs[request] = true
 		t.AccessMs = time.Now().UnixMilli()
 		if err := u.save(t); err != nil {
 			return nil, err
@@ -616,7 +611,7 @@ func (u *uploads) release(sessionID string) {
 
 // untake returns images of a message that was not accepted after all to
 // the pending folder.
-func (u *uploads) untake(imgs []queuedImage, sessionID string, request ...string) {
+func (u *uploads) untake(imgs []queuedImage, sessionID, request string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for _, im := range imgs {
@@ -624,10 +619,8 @@ func (u *uploads) untake(imgs []queuedImage, sessionID string, request ...string
 		if t == nil || t.Session != sessionID {
 			continue
 		}
-		if len(request) > 0 {
-			delete(t.Refs, request[0])
-		}
-		if t.Tracked && (t.Exposed || len(t.Refs) > 0) {
+		delete(t.Refs, request)
+		if t.Exposed || len(t.Refs) > 0 {
 			_ = u.save(t)
 			continue
 		}
@@ -702,7 +695,7 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 			continue
 		}
-		if t.Tracked && t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
+		if t.Session != "" && len(t.Refs) == 0 && !t.Exposed {
 			if err := u.removeOriginal(t); err == nil {
 				continue
 			}
@@ -737,8 +730,7 @@ func (u *uploads) gcLocked(now time.Time) {
 			}
 		}
 	}
-	// Covers a crash after Exited was saved but before dropSession, and
-	// legacy session folders whose transfer records were aged out.
+	// Covers a crash after Exited was saved but before dropSession.
 	folders, _ := os.ReadDir(u.dir)
 	for _, e := range folders {
 		if !e.IsDir() || e.Name() == "partial" || e.Name() == "pending" {

@@ -6,7 +6,9 @@ import (
 	"net"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 )
 
 // New returns a LocalService client for the daemon listening on socket.
@@ -19,5 +21,5 @@ func New(socket string) remoteagentv1connect.LocalServiceClient {
 	}
 	// No client timeout: event streams and approval waits are long-lived;
 	// callers bound them with contexts.
-	return remoteagentv1connect.NewLocalServiceClient(&http.Client{Transport: tr}, "http://remote-agent")
+	return remoteagentv1connect.NewLocalServiceClient(&http.Client{Transport: tr}, "http://remote-agent", connect.WithInterceptors(protocol.Local()))
 }

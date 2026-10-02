@@ -91,7 +91,6 @@ object PrefsChanges {
 
 /** Why the preferences cannot be changed now, or null when they can. */
 fun prefsBlocked(state: RemoteState): String? = when {
-    !state.prefsSupported -> "服务器还不支持同步项目偏好，更新服务器后才能管理"
     state.conn != ConnState.ONLINE -> "当前显示缓存 · 连上后才能管理"
     state.prefs == null -> "正在读取项目偏好…"
     else -> null

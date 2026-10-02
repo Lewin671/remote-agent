@@ -316,8 +316,7 @@ var (
 // VerifySender checks who sent env: registration must carry the account's
 // signature and name the device in the header's sender, whose key must
 // have signed env. It returns the device ID. An envelope without a
-// signature gives ErrUnsigned; the caller decides whether to accept it as
-// unverified.
+// signature gives ErrUnsigned.
 func VerifySender(account ed25519.PublicKey, env *pb.Envelope, sender string, registration, regSig []byte) (string, error) {
 	if len(env.GetSignature()) == 0 {
 		return "", ErrUnsigned

@@ -276,7 +276,6 @@ func (p *Parser) userMessage(text string, blocks []block, pasteIDs []int32) *pb.
 			if n := len(msg.Images); n < len(pasteIDs) {
 				ref.CliIndex = pasteIDs[n]
 			}
-			msg.ImageCount++
 			msg.Images = append(msg.Images, p.image(ref, b))
 		}
 	}

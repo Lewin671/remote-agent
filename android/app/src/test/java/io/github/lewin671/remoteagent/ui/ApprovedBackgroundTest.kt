@@ -27,7 +27,7 @@ class ApprovedBackgroundTest {
             ev(2, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setToolName("Bash").setInputDigest("d"))),
             ev(3, Event.newBuilder().setApprovalResolved(ApprovalResolved.newBuilder().setApprovalId("a").setDecision(ApprovalDecision.APPROVAL_DECISION_ALLOW))),
             ev(4, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c").setItemType("Bash").setInputDigest("d").setTitle("npm run dev"))),
-            ev(5, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("c").setItemType("Bash").setInputDigest("d").setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("npm run dev").setOutput(out).setStatus("completed"))),
+            ev(5, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("c").setItemType("Bash").setInputDigest("d").setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("npm run dev").setOutput(out).setStatus("completed").setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED))),
         )
         val tool = buildChat(events, derive(events, Agent.AGENT_CLAUDE), "M").filterIsInstance<ChatItem.Tool>().single()
         assertTrue(tool.background)

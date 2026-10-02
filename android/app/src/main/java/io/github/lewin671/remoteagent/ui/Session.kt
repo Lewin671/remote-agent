@@ -533,7 +533,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         canSend = !keeping && online && (text.isNotBlank() || images.images.isNotEmpty()) && (images.images.isEmpty() || images.ready(s.machineId)),
         onSend = { send() },
         onPlus = pick, plusEnabled = blocked == null,
-        onQueue = if (running && io.github.lewin671.remoteagent.core.capabilities(machine)?.sendModes == true) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
+        onQueue = if (running) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (running) ({ interruptAction.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) }) else null,
         canInterrupt = online && !interruptAction.running,
         hasDraft = text.isNotBlank() || images.images.isNotEmpty(),

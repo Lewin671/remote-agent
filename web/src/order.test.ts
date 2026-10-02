@@ -26,7 +26,7 @@ it("orders attention by type and actual wait, independent of relay time", () => 
   const q = session("q", 1, 999999, { pendingQuestions: 1, attentionSince: timestampFromMs(1) });
   expect(ids([q, a, b].sort((x, y) => compareAttention(x, y, new Map())))).toEqual(["b", "a", "q"]);
 });
-it("orders history by exit time and uses stable legacy fallbacks and ties", () => {
+it("orders history by exit time and uses stable fallbacks and ties", () => {
   const a = session("a", 100, 99999, { endedAt: timestampFromMs(1000) });
   const b = session("b", 200, 1, { endedAt: timestampFromMs(2000) });
   expect(ids([a, b].sort(compareEnded))).toEqual(["b", "a"]);
@@ -47,7 +47,7 @@ it("keeps project positions across output, exit and reload; a new session moves 
   expect(projects([a, b]).find(p => p.key === "/a")?.updatedMs).toBe(999999);
   expect(keys([b, a, session("new", 3000, 0, { cwd: "/a" })])).toEqual(["/a", "/b"]);
 });
-it("breaks project ties by path and never falls back to upload time for legacy metadata", () => {
+it("breaks project ties by path and never falls back to upload time", () => {
   const a = session("z", 1000, 99999, { cwd: "/a" });
   const b = session("a", 1000, 1, { cwd: "/b" });
   expect(projects([b, a]).map(p => p.key)).toEqual(["/a", "/b"]);

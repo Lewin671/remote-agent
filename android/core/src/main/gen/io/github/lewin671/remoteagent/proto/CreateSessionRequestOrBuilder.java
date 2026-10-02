@@ -247,18 +247,4 @@ java.lang.String defaultValue);
    */
   com.google.protobuf.ByteString
       getImageIdsBytes(int index);
-
-  /**
-   * <pre>
-   * Ignored. Older daemons refused to start a session whose default mode
-   * would be FULL_ACCESS without it; a default the user chose (project
-   * settings, daemon settings or the CLI's own configuration) no longer
-   * needs a second confirmation (architecture §7). Clients still set it
-   * for those daemons.
-   * </pre>
-   *
-   * <code>bool confirm_full_access = 10 [json_name = "confirmFullAccess"];</code>
-   * @return The confirmFullAccess.
-   */
-  boolean getConfirmFullAccess();
 }

@@ -73,8 +73,7 @@ fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean, zone: ZoneId = Zone
 
 /**
  * Each installed CLI's quota on [m], one group per account the daemon could
- * tell apart. A daemon from before quotas reports Codex's windows in the
- * machine metadata only; a CLI without an entry is not supported there.
+ * tell apart. A CLI without an entry is not supported there.
  */
 fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()): List<QuotaGroup> {
     val meta = m.meta
@@ -82,17 +81,7 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
     for (agent in machineAgents(m)) {
         val entries = meta?.quotasList.orEmpty().filter { effectiveAgent(it.agent) == agent }
         if (entries.isEmpty()) {
-            if (agent == Agent.AGENT_CODEX && meta != null && meta.quotasCount == 0) {
-                // An older daemon: Codex's windows in the machine metadata.
-                val ws = listOfNotNull(
-                    meta.primaryLimit.takeIf { meta.hasPrimaryLimit() }?.let { QuotaWindow.newBuilder().setName("primary").setUsedPercent(it.usedPercent).setResetsAtMs(it.resetsAt * 1000).setWindowMinutes(it.windowMinutes).build() },
-                    meta.secondaryLimit.takeIf { meta.hasSecondaryLimit() }?.let { QuotaWindow.newBuilder().setName("secondary").setUsedPercent(it.usedPercent).setResetsAtMs(it.resetsAt * 1000).setWindowMinutes(it.windowMinutes).build() },
-                )
-                val title = agentName(agent) + meta.planType.takeIf { it.isNotEmpty() }?.let { " · ${planName(it)}" }.orEmpty()
-                out += QuotaGroup(agent, title, if (ws.isEmpty()) QuotaStatus.WAITING else QuotaStatus.OK, if (ws.isEmpty()) emptyList() else completeWindows(agent, ws).map { quotaRow(it, now, !m.online, zone) }, "", "", !m.online && ws.isNotEmpty())
-            } else {
-                out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
-            }
+            out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
             continue
         }
         for (q in entries) out += group(agent, q, entries.size > 1, m.online, now, zone)

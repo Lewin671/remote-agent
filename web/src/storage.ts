@@ -10,8 +10,7 @@ export interface StoredAccount {
   server: string;
   root: CryptoKey;
   // The root key's bytes, so that this browser can pair new devices.
-  // Browsers that joined before pairing existed do not have them.
-  rootRaw?: Uint8Array<ArrayBuffer>;
+  rootRaw: Uint8Array<ArrayBuffer>;
   devicePrivate: CryptoKey;
   deviceId: string;
 }

@@ -23,7 +23,7 @@ func formatEvent(e *pb.Event) string {
 	switch k := e.Kind.(type) {
 	case *pb.Event_UserMessage:
 		body = "user: " + k.UserMessage.Text
-		if n := k.UserMessage.ImageCount; n > 0 {
+		if n := len(k.UserMessage.Images); n > 0 {
 			body += fmt.Sprintf(" [%d image(s)]", n)
 		}
 	case *pb.Event_AgentMessage:

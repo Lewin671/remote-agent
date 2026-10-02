@@ -49,8 +49,7 @@ func (u *uploads) expose(imgs []queuedImage) error {
 	for _, im := range imgs {
 		t := u.byImage(im.ID)
 		if t == nil {
-			// Older queues can outlive their transfer records. These files
-			// remain protected; the CLI's normal image check still applies.
+			// No record to mark; the CLI's own image check still applies.
 			continue
 		}
 		t.Exposed = true
@@ -79,7 +78,7 @@ func (u *uploads) releaseRefs(imgs []queuedImage, sessionID, request string) {
 	defer u.mu.Unlock()
 	for _, im := range imgs {
 		t := u.byImage(im.ID)
-		if t == nil || t.Session != sessionID || !t.Tracked {
+		if t == nil || t.Session != sessionID {
 			continue
 		}
 		delete(t.Refs, request)
@@ -105,7 +104,7 @@ func (u *uploads) removeOriginal(t *transfer) error {
 
 // A minute also covers the gap between user-message and turn-start records.
 func reclaimable(t *transfer, pins map[string]bool) bool {
-	return t.Tracked && t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
+	return t.Session != "" && len(t.Refs) == 0 && t.Embedded && !pins[t.Session] && time.Since(time.UnixMilli(t.AccessMs)) >= time.Minute
 }
 
 func (u *uploads) records() ([]*transfer, error) {
@@ -203,7 +202,7 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 			usage.ProtectedBytes += fi.Size()
 		}
 	}
-	// Actual disk bytes include legacy/orphan files and all receiving chunks.
+	// Actual disk bytes include orphan files and all receiving chunks.
 	err = filepath.WalkDir(u.dir, func(path string, e fs.DirEntry, err error) error {
 		if os.IsNotExist(err) && path == u.dir {
 			return nil
@@ -217,8 +216,8 @@ func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage
 				return err
 			}
 			usage.UploadBytes += fi.Size()
-			// Older daemons aged out ownership records. Their remaining files
-			// count as protected, rather than disappearing from the breakdown.
+			// Files without a record (a crash between the two writes) count
+			// as protected, rather than disappearing from the breakdown.
 			ext := filepath.Ext(path)
 			if !known[path] && (ext == ".part" || ext == ".png" || ext == ".jpg" || ext == ".webp" || ext == ".gif") {
 				usage.ProtectedBytes += fi.Size()
@@ -384,7 +383,7 @@ func (u *uploads) restoreRefs(s *session) {
 		return
 	}
 	for _, t := range records {
-		if t.Session != s.meta.ID || !t.Tracked {
+		if t.Session != s.meta.ID {
 			continue
 		}
 		refs := map[string]bool{}

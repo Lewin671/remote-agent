@@ -5,10 +5,8 @@
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
-//   ?demo&prefs=fail | prefs=unsupported     saving project preferences
-//                                            fails, or the server has none
+//   ?demo&prefs=fail                         saving project preferences fails
 //   ?demo&long=1                            long project, machine and session names
-//   ?demo&devices=unsupported                a server without ListDevices
 //   ?demo&many=1&pick=1                     many sessions/projects, picker search
 //   ?demo&project-settings=1#/p/<encoded path>   project settings sheet
 //   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
@@ -43,7 +41,8 @@ import { CommandResultSchema, CommandSchema, MachineMetaSchema, type CommandResu
 import { CommandError, Remote, type CommandKind, type History, type RequestSlot, type SessionView, type TermConn } from "../remote";
 import { applyOp, emptyPrefs, type PrefsSnapshot } from "../prefs";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { DefaultModeSource, DeviceMetaSchema, type ProjectPrefs } from "../gen/remoteagent/v1/remote_pb";
+import { DefaultModeSource, DeviceMetaSchema, QuotaState, type ProjectPrefs } from "../gen/remoteagent/v1/remote_pb";
+import { PROTOCOL_VERSION } from "../protocol";
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
 type EventInit = MessageInitShape<typeof EventSchema>;
@@ -166,7 +165,7 @@ async function draw(look: Look, w: number, h: number): Promise<Uint8Array | unde
 
 const fromMe = (requestId = "") => ({ kind: OriginKind.CLIENT, deviceId: ME, requestId });
 const fromAndroid = { kind: OriginKind.CLIENT, deviceId: ANDROID };
-const fromUnverified = { kind: OriginKind.UNVERIFIED_CLIENT, deviceId: BROWSER };
+const fromBrowser = { kind: OriginKind.CLIENT, deviceId: BROWSER };
 const fromLocal = { kind: OriginKind.LOCAL };
 
 function fixtures(): Record<string, Fixture> {
@@ -374,7 +373,7 @@ function fixtures(): Record<string, Fixture> {
         [{ case: "userMessage", value: { text: "把库存回滚的测试补上", requestId: "m-me" } }, fromMe("m-me")],
         [{ case: "userMessage", value: { text: "不要修改公开接口" } }, fromAndroid],
         [{ case: "userMessage", value: { text: "先整理一下实现方案" } }, fromLocal],
-        [{ case: "settingsChanged", value: { mode: ApprovalMode.PLAN } }, fromUnverified],
+        [{ case: "settingsChanged", value: { mode: ApprovalMode.PLAN } }, fromBrowser],
         { case: "approvalRequested", value: { approvalId: "mx", command: "go test ./...", toolName: "Bash" } },
         [{ case: "approvalResolved", value: { approvalId: "mx", decision: ApprovalDecision.ALLOW } }, fromAndroid],
         { case: "turnStarted", value: {} },
@@ -528,7 +527,7 @@ export class DemoRemote extends Remote {
 
   static create(q: URLSearchParams): DemoRemote {
     const r = new DemoRemote(
-      { server: "https://ra.example.com", root: {} as CryptoKey, devicePrivate: {} as CryptoKey, deviceId: ME },
+      { server: "https://ra.example.com", root: {} as CryptoKey, rootRaw: new Uint8Array(32), devicePrivate: {} as CryptoKey, deviceId: ME },
       {} as Keys,
     );
     r.opts = q;
@@ -574,23 +573,31 @@ export class DemoRemote extends Remote {
   private seed() {
     const empty = this.opts.get("empty");
     const machine = (id: string, hostname: string, online: boolean, meta: MessageInitShape<typeof MachineMetaSchema> = {}) =>
-      this.machines.set(id, { id, online, lastSeenMs: BigInt(online ? now : now - 2 * 60 * min), metaRev: 1n, meta: create(MachineMetaSchema, { hostname, home: "/Users/me", ...meta }) });
+      this.machines.set(id, { id, online, lastSeenMs: BigInt(online ? now : now - 2 * 60 * min), metaRev: 1n, meta: create(MachineMetaSchema, { hostname, home: "/Users/me", protocolVersion: PROTOCOL_VERSION, ...meta }) });
     if (empty !== "none") {
       machine("mac", "MacBook", empty !== "offline", {
         codexVersion: "0.71.0",
         codexVerified: false,
-        planType: "Pro Lite",
-        primaryLimit: { usedPercent: 62, windowMinutes: 300n, resetsAt: BigInt(Math.floor((now + 3 * 60 * min) / 1000)) },
-        secondaryLimit: { usedPercent: 34, windowMinutes: 10080n, resetsAt: BigInt(Math.floor((now + 3 * 24 * 60 * min) / 1000)) },
+        quotas: [
+          {
+            agent: Agent.CODEX,
+            state: QuotaState.OK,
+            plan: "Pro Lite",
+            windows: [
+              { name: "primary", usedPercent: 62, windowMinutes: 300n, resetsAtMs: BigInt(now + 3 * 60 * min) },
+              { name: "secondary", usedPercent: 34, windowMinutes: 10080n, resetsAtMs: BigInt(now + 3 * 24 * 60 * min) },
+            ],
+          },
+        ],
         agents: [
           { agent: Agent.CODEX, version: "0.71.0", verified: false, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS },
           { agent: Agent.CLAUDE, version: "2.3.1", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS, defaultModeVaries: true },
         ],
-        capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, commandSignatures: true, imageStorage: true, sendModes: true, approvalAlways: true },
+        capabilities: { imageUpload: true, maxImagesPerMessage: 6, maxUploadBytes: 20n * 1024n * 1024n, maxChunkBytes: 786432, approvalAlways: true },
       });
       if (!empty) {
-        machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true, capabilities: { sendModes: true, approvalAlways: true } });
-        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true, capabilities: { sessionImages: true, imageUpload: true, maxImagesPerMessage: 6, maxChunkBytes: 786432, sendModes: true, approvalAlways: true } });
+        machine("vps", "VPS-dev", true, { codexVersion: "0.70.2", codexVerified: true, capabilities: { approvalAlways: true } });
+        machine("imac", "iMac", true, { codexVersion: "0.71.0", codexVerified: true, capabilities: { imageUpload: true, maxImagesPerMessage: 6, maxChunkBytes: 786432, approvalAlways: true } });
         machine("mini", "Mac mini", false);
       }
     }
@@ -913,10 +920,6 @@ export class DemoRemote extends Remote {
   ]);
 
   override async loadDevices() {
-    if (this.opts.get("devices") === "unsupported") {
-      this.devicesStatus = "unsupported";
-      return this.changed();
-    }
     this.devices.clear();
     for (const m of this.machines.values()) this.devices.set(m.id, { id: m.id, kind: DeviceKind.MACHINE, createdMs: 0n, metaRev: 0n });
     for (const id of [ME, ANDROID, BROWSER]) {
@@ -958,10 +961,6 @@ export class DemoRemote extends Remote {
   };
 
   override async loadPrefs() {
-    if (this.opts.get("prefs") === "unsupported") {
-      this.prefs = { ...this.prefs, status: "unsupported" };
-      return this.changed();
-    }
     this.prefs = { ...this.prefs, status: "ready", snap: this.stored };
     this.changed();
   }

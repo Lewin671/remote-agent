@@ -29,9 +29,6 @@ class V8InputTest {
     }
 
     @Test fun sendAndApprovalCommandsCarryV8Choices() {
-        assertEquals(SendMode.SEND_MODE_UNSPECIFIED, wireSendMode(SendMode.SEND_MODE_STEER, false))
-        assertEquals(SendMode.SEND_MODE_QUEUE, wireSendMode(SendMode.SEND_MODE_QUEUE, true))
-        assertThrows(IllegalStateException::class.java) { wireSendMode(SendMode.SEND_MODE_QUEUE, false) }
         val send = SendRequest.newBuilder().setSessionId("s").setRequestId("r").setMode(SendMode.SEND_MODE_QUEUE).build()
         val approval = ResolveApprovalRequest.newBuilder().setSessionId("s").setApprovalId("a").setAllow(true).setAlways(true).build()
         assertEquals(SendMode.SEND_MODE_QUEUE, send.mode)

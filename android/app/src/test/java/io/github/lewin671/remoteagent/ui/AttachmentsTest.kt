@@ -30,7 +30,6 @@ class MemoryFiles : SealedFiles {
     override fun clearFolder(folder: String) {
         data.keys.removeAll { it.startsWith("$folder/") }
     }
-    override fun names(folder: String) = data.keys.filter { it.startsWith("$folder/") }.map { it.removePrefix("$folder/") }
 }
 
 class AttachmentsTest {
@@ -132,17 +131,5 @@ class AttachmentsTest {
         d.detach(emptyList())
         val order = String(files.get("session:s", "order")!!).split("\n")
         assertEquals(listOf("a", "b"), order.drop(1))
-    }
-
-    @Test
-    fun aDraftSavedBeforeTheOrderFileIsRestored() {
-        val files = MemoryFiles()
-        saveImages(files, "session:s", listOf(img("x"), img("y")), original = false)
-        files.remove("session:s", "order")
-        val d = ImageDraft("session:s", files, kotlinx.coroutines.Dispatchers.Unconfined)
-        d.restore { null }
-        assertEquals(setOf("x", "y"), d.images.map { it.id }.toSet())
-        // And it has an order file now.
-        assertTrue(files.get("session:s", "order") != null)
     }
 }

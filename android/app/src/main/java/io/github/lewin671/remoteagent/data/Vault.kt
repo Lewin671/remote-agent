@@ -31,15 +31,13 @@ import javax.crypto.spec.GCMParameterSpec
 class Vault(context: Context) {
     private val dir = context.noBackupFilesDir
     private val accountFile = File(dir, "account-v2.bin")
-    private val legacyAccountFile = File(dir, "account.bin")
     private val notifyFile = File(dir, "notify.bin")
 
-    fun hasAccount(): Boolean = accountFile.exists() || legacyAccountFile.exists()
+    fun hasAccount(): Boolean = accountFile.exists()
 
     fun load(): Account? {
-        val legacy = !accountFile.exists()
-        val blob = read(if (legacy) legacyAccountFile else accountFile, if (legacy) LEGACY_ACCOUNT_ALIAS else ACCOUNT_ALIAS) ?: return null
-        val account = DataInputStream(ByteArrayInputStream(blob)).use { s ->
+        val blob = read(accountFile, ACCOUNT_ALIAS) ?: return null
+        return DataInputStream(ByteArrayInputStream(blob)).use { s ->
             if (s.readInt() != 1) return null
             val server = s.readUTF()
             val deviceId = s.readUTF()
@@ -47,18 +45,6 @@ class Vault(context: Context) {
             val seed = ByteArray(s.readInt()).also { s.readFully(it) }
             Account(server, root, seed, deviceId)
         }
-        // Old versions could silently create a key without the lock policy.
-        // Rewrap once while the app is in the foreground; never weaken the
-        // replacement key if Keystore cannot enforce the requested policy.
-        if (legacy) {
-            write(accountFile, ACCOUNT_ALIAS, blob, unlockedOnly = true)
-        }
-        if (legacyAccountFile.exists()) {
-            // A previous migration may have stopped after the rename.
-            syncDirectory()
-            clearLegacy()
-        }
-        return account
     }
 
     fun save(a: Account, notifyKey: ByteArray) {
@@ -74,13 +60,6 @@ class Vault(context: Context) {
         }
         write(accountFile, ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
-        clearLegacy()
-    }
-
-    private fun clearLegacy() {
-        legacyAccountFile.delete()
-        val ks = keyStore()
-        if (ks.containsAlias(LEGACY_ACCOUNT_ALIAS)) ks.deleteEntry(LEGACY_ACCOUNT_ALIAS)
     }
 
     private fun syncDirectory() {
@@ -93,10 +72,9 @@ class Vault(context: Context) {
 
     fun clear() {
         accountFile.delete()
-        legacyAccountFile.delete()
         notifyFile.delete()
         val ks = keyStore()
-        for (a in listOf(ACCOUNT_ALIAS, LEGACY_ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (ks.containsAlias(a)) ks.deleteEntry(a)
+        for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (ks.containsAlias(a)) ks.deleteEntry(a)
     }
 
     private fun read(f: File, alias: String): ByteArray? {
@@ -143,7 +121,6 @@ class Vault(context: Context) {
 
     companion object {
         private const val ACCOUNT_ALIAS = "ra-account-unlocked-v2"
-        private const val LEGACY_ACCOUNT_ALIAS = "ra-account"
         private const val NOTIFY_ALIAS = "ra-notify"
     }
 }

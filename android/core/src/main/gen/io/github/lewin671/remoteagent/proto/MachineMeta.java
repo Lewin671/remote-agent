@@ -21,7 +21,6 @@ public  final class MachineMeta extends
   private MachineMeta() {
     hostname_ = "";
     os_ = "";
-    planType_ = "";
     home_ = "";
     codexVersion_ = "";
     agents_ = emptyProtobufList();
@@ -121,170 +120,6 @@ public  final class MachineMeta extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     os_ = value.toStringUtf8();
-
-  }
-
-  public static final int PRIMARY_LIMIT_FIELD_NUMBER = 3;
-  private io.github.lewin671.remoteagent.proto.RateLimit primaryLimit_;
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   */
-  @java.lang.Override
-  public boolean hasPrimaryLimit() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.RateLimit getPrimaryLimit() {
-    return primaryLimit_ == null ? io.github.lewin671.remoteagent.proto.RateLimit.getDefaultInstance() : primaryLimit_;
-  }
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPrimaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-    value.getClass();  // minimal bytecode null check
-    primaryLimit_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergePrimaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-    value.getClass();  // minimal bytecode null check
-    if (primaryLimit_ != null &&
-        primaryLimit_ != io.github.lewin671.remoteagent.proto.RateLimit.getDefaultInstance()) {
-      primaryLimit_ =
-        io.github.lewin671.remoteagent.proto.RateLimit.newBuilder(primaryLimit_).mergeFrom(value).buildPartial();
-    } else {
-      primaryLimit_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   */
-  private void clearPrimaryLimit() {
-    primaryLimit_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
-  public static final int SECONDARY_LIMIT_FIELD_NUMBER = 4;
-  private io.github.lewin671.remoteagent.proto.RateLimit secondaryLimit_;
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecondaryLimit() {
-    return ((bitField0_ & 0x00000002) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.RateLimit getSecondaryLimit() {
-    return secondaryLimit_ == null ? io.github.lewin671.remoteagent.proto.RateLimit.getDefaultInstance() : secondaryLimit_;
-  }
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecondaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-    value.getClass();  // minimal bytecode null check
-    secondaryLimit_ = value;
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeSecondaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-    value.getClass();  // minimal bytecode null check
-    if (secondaryLimit_ != null &&
-        secondaryLimit_ != io.github.lewin671.remoteagent.proto.RateLimit.getDefaultInstance()) {
-      secondaryLimit_ =
-        io.github.lewin671.remoteagent.proto.RateLimit.newBuilder(secondaryLimit_).mergeFrom(value).buildPartial();
-    } else {
-      secondaryLimit_ = value;
-    }
-    bitField0_ |= 0x00000002;
-  }
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   */
-  private void clearSecondaryLimit() {
-    secondaryLimit_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
-  }
-
-  public static final int PLAN_TYPE_FIELD_NUMBER = 5;
-  private java.lang.String planType_;
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @return The planType.
-   */
-  @java.lang.Override
-  public java.lang.String getPlanType() {
-    return planType_;
-  }
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @return The bytes for planType.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getPlanTypeBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(planType_);
-  }
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @param value The planType to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPlanType(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    planType_ = value;
-  }
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   */
-  private void clearPlanType() {
-
-    planType_ = getDefaultInstance().getPlanType();
-  }
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @param value The bytes for planType to set.
-   */
-  private void setPlanTypeBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    planType_ = value.toStringUtf8();
 
   }
 
@@ -460,8 +295,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -473,8 +307,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -486,8 +319,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -499,8 +331,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -512,8 +343,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -533,8 +363,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -549,8 +378,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -564,8 +392,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -580,8 +407,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -595,8 +421,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -607,8 +432,7 @@ public  final class MachineMeta extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -622,22 +446,18 @@ public  final class MachineMeta extends
   private io.github.lewin671.remoteagent.proto.MachineCapabilities capabilities_;
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
    */
   @java.lang.Override
   public boolean hasCapabilities() {
-    return ((bitField0_ & 0x00000004) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -648,9 +468,7 @@ public  final class MachineMeta extends
   }
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -659,13 +477,11 @@ public  final class MachineMeta extends
   private void setCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities value) {
     value.getClass();  // minimal bytecode null check
     capabilities_ = value;
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -680,20 +496,18 @@ public  final class MachineMeta extends
     } else {
       capabilities_ = value;
     }
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
    */
   private void clearCapabilities() {
     capabilities_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int QUOTAS_FIELD_NUMBER = 11;
@@ -879,6 +693,47 @@ public  final class MachineMeta extends
   private void removeQuotas(int index) {
     ensureQuotasIsMutable();
     quotas_.remove(index);
+  }
+
+  public static final int PROTOCOL_VERSION_FIELD_NUMBER = 12;
+  private int protocolVersion_;
+  /**
+   * <pre>
+   * The protocol version this daemon speaks (internal/protocol). A client
+   * of another version sends it no commands and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  @java.lang.Override
+  public int getProtocolVersion() {
+    return protocolVersion_;
+  }
+  /**
+   * <pre>
+   * The protocol version this daemon speaks (internal/protocol). A client
+   * of another version sends it no commands and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+   * @param value The protocolVersion to set.
+   */
+  private void setProtocolVersion(int value) {
+    
+    protocolVersion_ = value;
+  }
+  /**
+   * <pre>
+   * The protocol version this daemon speaks (internal/protocol). A client
+   * of another version sends it no commands and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+   */
+  private void clearProtocolVersion() {
+
+    protocolVersion_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
@@ -1082,173 +937,6 @@ public  final class MachineMeta extends
 
     /**
      * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    @java.lang.Override
-    public boolean hasPrimaryLimit() {
-      return instance.hasPrimaryLimit();
-    }
-    /**
-     * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.RateLimit getPrimaryLimit() {
-      return instance.getPrimaryLimit();
-    }
-    /**
-     * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    public Builder setPrimaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-      copyOnWrite();
-      instance.setPrimaryLimit(value);
-      return this;
-      }
-    /**
-     * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    public Builder setPrimaryLimit(
-        io.github.lewin671.remoteagent.proto.RateLimit.Builder builderForValue) {
-      copyOnWrite();
-      instance.setPrimaryLimit(builderForValue.build());
-      return this;
-    }
-    /**
-     * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    public Builder mergePrimaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-      copyOnWrite();
-      instance.mergePrimaryLimit(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * The Codex account's latest usage limits seen on this machine.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-     */
-    public Builder clearPrimaryLimit() {  copyOnWrite();
-      instance.clearPrimaryLimit();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecondaryLimit() {
-      return instance.hasSecondaryLimit();
-    }
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.RateLimit getSecondaryLimit() {
-      return instance.getSecondaryLimit();
-    }
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    public Builder setSecondaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-      copyOnWrite();
-      instance.setSecondaryLimit(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    public Builder setSecondaryLimit(
-        io.github.lewin671.remoteagent.proto.RateLimit.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecondaryLimit(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    public Builder mergeSecondaryLimit(io.github.lewin671.remoteagent.proto.RateLimit value) {
-      copyOnWrite();
-      instance.mergeSecondaryLimit(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-     */
-    public Builder clearSecondaryLimit() {  copyOnWrite();
-      instance.clearSecondaryLimit();
-      return this;
-    }
-
-    /**
-     * <code>string plan_type = 5 [json_name = "planType"];</code>
-     * @return The planType.
-     */
-    @java.lang.Override
-    public java.lang.String getPlanType() {
-      return instance.getPlanType();
-    }
-    /**
-     * <code>string plan_type = 5 [json_name = "planType"];</code>
-     * @return The bytes for planType.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getPlanTypeBytes() {
-      return instance.getPlanTypeBytes();
-    }
-    /**
-     * <code>string plan_type = 5 [json_name = "planType"];</code>
-     * @param value The planType to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPlanType(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setPlanType(value);
-      return this;
-    }
-    /**
-     * <code>string plan_type = 5 [json_name = "planType"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearPlanType() {
-      copyOnWrite();
-      instance.clearPlanType();
-      return this;
-    }
-    /**
-     * <code>string plan_type = 5 [json_name = "planType"];</code>
-     * @param value The bytes for planType to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPlanTypeBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setPlanTypeBytes(value);
-      return this;
-    }
-
-    /**
-     * <pre>
      * Home folder, for choosing where to start sessions.
      * </pre>
      *
@@ -1421,8 +1109,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1435,8 +1122,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1447,8 +1133,7 @@ public  final class MachineMeta extends
     }/**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1460,8 +1145,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1475,8 +1159,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1491,8 +1174,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1505,8 +1187,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1520,8 +1201,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1535,8 +1215,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1551,8 +1230,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1566,8 +1244,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1580,8 +1257,7 @@ public  final class MachineMeta extends
     /**
      * <pre>
      * The CLIs installed on this machine; a client offers only these when
-     * starting a session. Empty from daemons older than Claude Code support,
-     * which only run Codex.
+     * starting a session.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -1594,9 +1270,7 @@ public  final class MachineMeta extends
 
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1607,9 +1281,7 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1620,9 +1292,7 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1634,9 +1304,7 @@ public  final class MachineMeta extends
       }
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1649,9 +1317,7 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1663,9 +1329,7 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * What this daemon supports beyond the base protocol. Absent from
-     * daemons older than v2: a client then offers none of it and says the
-     * computer needs updating.
+     * What this daemon offers that depends on the machine.
      * </pre>
      *
      * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -1873,6 +1537,49 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The protocol version this daemon speaks (internal/protocol). A client
+     * of another version sends it no commands and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+     * @return The protocolVersion.
+     */
+    @java.lang.Override
+    public int getProtocolVersion() {
+      return instance.getProtocolVersion();
+    }
+    /**
+     * <pre>
+     * The protocol version this daemon speaks (internal/protocol). A client
+     * of another version sends it no commands and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+     * @param value The protocolVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProtocolVersion(int value) {
+      copyOnWrite();
+      instance.setProtocolVersion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The protocol version this daemon speaks (internal/protocol). A client
+     * of another version sends it no commands and says which side to update.
+     * </pre>
+     *
+     * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProtocolVersion() {
+      copyOnWrite();
+      instance.clearProtocolVersion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -1892,9 +1599,6 @@ public  final class MachineMeta extends
             "bitField0_",
             "hostname_",
             "os_",
-            "primaryLimit_",
-            "secondaryLimit_",
-            "planType_",
             "home_",
             "codexVersion_",
             "codexVerified_",
@@ -1903,11 +1607,11 @@ public  final class MachineMeta extends
             "capabilities_",
             "quotas_",
             io.github.lewin671.remoteagent.proto.AgentQuota.class,
+            "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u0208\u0007\u0208\b\u0007" +
-              "\t\u001b\n\u1009\u0002\u000b\u001b";
+              "\u0000\t\u0000\u0001\u0001\f\t\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0006\u0208" +
+              "\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

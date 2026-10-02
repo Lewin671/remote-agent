@@ -27,7 +27,7 @@ func TestImages(t *testing.T) {
 	}
 	imgs := p.Images()
 	m := evs[0].GetUserMessage()
-	if m == nil || len(m.Images) != 1 || m.ImageCount != 1 || len(imgs) != 1 || imgs[0].Ref != m.Images[0] || imgs[0].Data != "data:image/png;base64,AAAA" {
+	if m == nil || len(m.Images) != 1 || len(imgs) != 1 || imgs[0].Ref != m.Images[0] || imgs[0].Data != "data:image/png;base64,AAAA" {
 		t.Fatalf("user message: %v %v", m, imgs)
 	}
 	if r := m.Images[0]; r.CliIndex != 1 || r.Path != "/tmp/a.png" || r.Source != pb.ImageSource_IMAGE_SOURCE_USER {

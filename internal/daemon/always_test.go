@@ -54,7 +54,7 @@ func TestCodexApprovalOutlivesTurn(t *testing.T) {
 }
 
 // A command prefix, basename or old conversation text cannot establish
-// which native prompt receives a permanent grant. Reject old clients too,
+// which native prompt receives a permanent grant. Reject clients that ask,
 // keep the original approval pending and never type a key or grant once.
 func TestPermanentApprovalFailsClosed(t *testing.T) {
 	for _, tc := range []struct{ name, input, screen string }{

@@ -46,12 +46,6 @@ func (d *Daemon) loadSchedules() error {
 			return errors.New("invalid scheduled task state")
 		}
 		d.tasks[id] = t
-		// Old MCP requests had no privilege scope. Require machine-level
-		// confirmation before any future dispatch of their stored definition.
-		if t.Source == "agent" && t.ScopedSession == "" && t.Status != "completed" && t.Status != "cancelled" {
-			t.Status, t.Reason = "paused", "legacy_agent_task_requires_confirmation"
-			touchTask(t, time.Now().UTC())
-		}
 		if t.Active != nil && t.Active.Status == "dispatching" {
 			now := time.Now().UTC()
 			t.Active.Status = "uncertain"
@@ -89,12 +83,6 @@ func appendRun(runs []schedule.Run, run schedule.Run) []schedule.Run {
 func (h *handler) Schedule(ctx context.Context, req *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
 	origin := originOf(ctx)
 	scope := req.Header().Get(schedule.MCPScopeHeader)
-	// Older MCP processes do not restrict their delegated capability. They
-	// must reconnect through the new scoped entry point, rather than being
-	// mistaken for an explicit machine-level user request.
-	if origin.Kind == pb.OriginKind_ORIGIN_KIND_LOCAL && req.Msg.SessionId != "" && scope == "" && req.Header().Get(schedule.CallerHeader) != "cli" {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("unscoped session scheduling is no longer supported; update the CLI or reconnect the session's MCP process"))
-	}
 	b, err := h.d.scheduleCommandScoped(req.Msg, origin, scope)
 	if err != nil {
 		return nil, rpcErr(err)
@@ -120,12 +108,6 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 		if _, err := d.exact(scope); err != nil {
 			return nil, mcpScheduleDenied()
 		}
-	}
-	if q.Operation == "mcp_scope" {
-		if scope == "" {
-			return nil, mcpScheduleDenied()
-		}
-		return json.Marshal(map[string]string{"scoped_session": scope})
 	}
 	if q.Operation == "list" {
 		tasks := make([]*schedule.Task, 0, len(d.tasks))
@@ -185,7 +167,7 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 				return nil, err
 			}
 		}
-		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.Kind == pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT {
+		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
 			t.Source = "client"
 		}
 		if err := d.prepareSchedule(t, now); err != nil {
@@ -294,11 +276,11 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 	default:
 		return nil, errors.New("unknown schedule operation")
 	}
-	// Machine-level user confirmation can adopt a legacy agent task.
+	// A machine-level request takes an agent's task over as the user's own.
 	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
 		t.ScopedSession = ""
 		t.Source = "local"
-		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT || origin.Kind == pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT {
+		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
 			t.Source = "client"
 		}
 	}
@@ -610,12 +592,6 @@ func (d *Daemon) tickSchedules(now time.Time) {
 }
 
 func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
-	// Never rely only on a persisted pause state: an active legacy run's
-	// status transitions must not re-enable an unscoped agent definition.
-	if t.Source == "agent" && t.ScopedSession == "" {
-		t.Status, t.Reason = "paused", "legacy_agent_task_requires_confirmation"
-		return
-	}
 	if t.ScopedSession != "" {
 		if err := d.restrictMCPTask(t, false); err != nil {
 			t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"

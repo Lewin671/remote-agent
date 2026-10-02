@@ -13,7 +13,7 @@ public enum DefaultModeSource
     implements com.google.protobuf.Internal.EnumLite {
   /**
    * <pre>
-   * Not known: an older daemon, or the configuration could not be read.
+   * Not known: the configuration could not be read.
    * </pre>
    *
    * <code>DEFAULT_MODE_SOURCE_UNSPECIFIED = 0;</code>
@@ -32,7 +32,7 @@ public enum DefaultModeSource
 
   /**
    * <pre>
-   * Not known: an older daemon, or the configuration could not be read.
+   * Not known: the configuration could not be read.
    * </pre>
    *
    * <code>DEFAULT_MODE_SOURCE_UNSPECIFIED = 0;</code>

@@ -126,12 +126,7 @@ message CreateSessionRequest {
   // Images for the first message, IDs from CompleteImageUpload (at most
   // 6). The prompt may be empty when there are images.
   repeated string image_ids = 9;
-  // Ignored. Older daemons refused to start a session whose default mode
-  // would be FULL_ACCESS without it; a default the user chose (project
-  // settings, daemon settings or the CLI's own configuration) no longer
-  // needs a second confirmation (architecture §7). Clients still set it
-  // for those daemons.
-  bool confirm_full_access = 10;
+  reserved 10;
 }
 
 message CreateSessionResponse {

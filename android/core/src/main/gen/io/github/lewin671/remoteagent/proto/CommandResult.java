@@ -49,6 +49,7 @@ public  final class CommandResult extends
     GET_IMAGE_UPLOAD_STATUS(37),
     COMPLETE_IMAGE_UPLOAD(38),
     ABORT_IMAGE_UPLOAD(39),
+    SCHEDULE(40),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -87,6 +88,7 @@ public  final class CommandResult extends
         case 37: return GET_IMAGE_UPLOAD_STATUS;
         case 38: return COMPLETE_IMAGE_UPLOAD;
         case 39: return ABORT_IMAGE_UPLOAD;
+        case 40: return SCHEDULE;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1420,6 +1422,58 @@ public  final class CommandResult extends
    */
   private void clearAbortImageUpload() {
     if (kindCase_ == 39) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FIELD_NUMBER = 40;
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSchedule() {
+    return kindCase_ == 40;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ScheduleResponse getSchedule() {
+    if (kindCase_ == 40) {
+       return (io.github.lewin671.remoteagent.proto.ScheduleResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ScheduleResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 40 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ScheduleResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder((io.github.lewin671.remoteagent.proto.ScheduleResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   */
+  private void clearSchedule() {
+    if (kindCase_ == 40) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2766,6 +2820,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSchedule() {
+      return instance.hasSchedule();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ScheduleResponse getSchedule() {
+      return instance.getSchedule();
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    public Builder setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse value) {
+      copyOnWrite();
+      instance.setSchedule(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    public Builder setSchedule(
+        io.github.lewin671.remoteagent.proto.ScheduleResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSchedule(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    public Builder mergeSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse value) {
+      copyOnWrite();
+      instance.mergeSchedule(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+     */
+    public Builder clearSchedule() {
+      copyOnWrite();
+      instance.clearSchedule();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -2809,12 +2911,14 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.GetImageUploadStatusResponse.class,
             io.github.lewin671.remoteagent.proto.CompleteImageUploadResponse.class,
             io.github.lewin671.remoteagent.proto.AbortImageUploadResponse.class,
+            io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
           };
           java.lang.String info =
-              "\u0000\u0019\u0001\u0000\u0001\'\u0019\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
+              "\u0000\u001a\u0001\u0000\u0001(\u001a\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u001e<\u0000" +
-              "\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000";
+              "\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(" +
+              "<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

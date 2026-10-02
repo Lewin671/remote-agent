@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -40,20 +41,13 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	}
 
 	// Who sent it: a device whose signature checks out against its
-	// registration with the account key, or, without a signature, the
-	// device the server names, unverified.
-	origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, RequestId: h.RequestId}
+	// registration with the account key. The server's word is not taken.
 	id, err := e2e.VerifySender(c.keys.AccountPublicKey(), call.Command, h.Sender, call.SenderRegistration, call.SenderRegistrationSignature)
-	switch {
-	case err == nil:
-		origin.DeviceId = id
-	case errors.Is(err, e2e.ErrUnsigned):
-		origin.Kind, origin.DeviceId = pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT, call.SenderDeviceId
-	default:
+	if err != nil {
 		fail("the command's device signature does not verify")
 		return
 	}
-	ctx = agent.WithOrigin(ctx, origin)
+	ctx = agent.WithOrigin(ctx, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: id, RequestId: h.RequestId})
 
 	var reject *pb.CommandResult
 	now := time.Now()
@@ -67,6 +61,9 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		cmd := &pb.Command{}
 		if err := proto.Unmarshal(plain, cmd); err != nil {
 			return &pb.CommandResult{ErrorCode: connect.CodeInvalidArgument.String(), ErrorMessage: "malformed command"}
+		}
+		if cmd.ProtocolVersion != protocol.Version {
+			return &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
 		}
 		return c.execute(ctx, h.SessionId, cmd)
 	})

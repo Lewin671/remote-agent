@@ -858,13 +858,13 @@ it("shows a running file edit in one line", async () => {
 });
 
 describe("a message the session ended before sending", () => {
-  function setup(ended: boolean, cancelEvent: boolean) {
+  function setup(ended: boolean) {
     const r = demo();
     const s = r.sessions.get("s-idle")!;
     const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
     (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "m1", requestId: "x", deadline: 0, text: "顺便补一个测试", status: "sent" }]);
     push({ case: "inputState", value: { requestId: "m1", status: InputStatus.QUEUED } });
-    if (cancelEvent) push({ case: "inputState", value: { requestId: "m1", status: InputStatus.CANCELED, reason: "exited" } });
+    push({ case: "inputState", value: { requestId: "m1", status: InputStatus.CANCELED, reason: "exited" } });
     push({ case: "sessionState", value: { status: SessionStatus.EXITED } });
     s.info = { ...s.info!, status: ended ? SessionStatus.EXITED : SessionStatus.IDLE };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
@@ -872,7 +872,7 @@ describe("a message the session ended before sending", () => {
   }
 
   it("says it was not sent, and can go back into the input after resuming", async () => {
-    setup(false, true);
+    setup(false);
     expect(host.textContent).toContain("会话结束，没有发出");
     expect(host.textContent).not.toContain("取消了一条排队的消息");
     expect(host.querySelector(".queued")).toBeNull();
@@ -880,8 +880,8 @@ describe("a message the session ended before sending", () => {
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("顺便补一个测试");
   });
 
-  it("is not left queued for ever when an older daemon recorded nothing", async () => {
-    const r = setup(true, false);
+  it("waits as the draft while the session is still ended", async () => {
+    const r = setup(true);
     expect(host.textContent).toContain("会话结束，没有发出");
     expect(host.querySelector(".queued")).toBeNull();
     await click(button("放回输入框"));
@@ -933,10 +933,10 @@ describe("a new-session draft", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
   const capture = (r: DemoRemote) => {
-    const sent: { cwd?: string; agent?: number; mode?: number; confirm?: boolean }[] = [];
+    const sent: { cwd?: string; agent?: number; mode?: number }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case === "createSession") {
-        sent.push({ cwd: cmd.value.cwd, agent: cmd.value.agent, mode: cmd.value.mode, confirm: cmd.value.confirmFullAccess });
+        sent.push({ cwd: cmd.value.cwd, agent: cmd.value.agent, mode: cmd.value.mode });
         throw new CommandError("failed_precondition", "stop here");
       }
       void slot;
@@ -984,7 +984,7 @@ describe("a new-session draft", () => {
     expect(sent[0].agent).toBe(Agent.CODEX);
   });
 
-  it("asks before starting in full access that is only the machine's default", async () => {
+  it("leaves the mode to the machine's default when that is full access", async () => {
     const r = demo();
     const sent = capture(r);
     // The machine reports Codex's default as full access.
@@ -995,8 +995,7 @@ describe("a new-session draft", () => {
     await type("加限流");
     await click(button("↑"));
     await vi.waitFor(() => expect(sent).toHaveLength(1));
-    // Left to the default, sent as confirmed.
-    expect(sent[0]).toMatchObject({ mode: ApprovalMode.UNSPECIFIED, confirm: true });
+    expect(sent[0]).toMatchObject({ mode: ApprovalMode.UNSPECIFIED });
   });
 });
 
@@ -1086,10 +1085,10 @@ describe("switching a new session's CLI (v2)", () => {
     const claude = r.machines.get("mac")!.meta!.agents[1];
     claude.defaultMode = ApprovalMode.FULL_ACCESS;
     claude.defaultModeSource = 2;
-    const sent: { agent?: number; mode?: number; prompt?: string; confirm?: boolean }[] = [];
+    const sent: { agent?: number; mode?: number; prompt?: string }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case === "createSession") {
-        sent.push({ agent: cmd.value.agent, mode: cmd.value.mode, prompt: cmd.value.prompt, confirm: cmd.value.confirmFullAccess });
+        sent.push({ agent: cmd.value.agent, mode: cmd.value.mode, prompt: cmd.value.prompt });
         throw new CommandError("failed_precondition", "stop here");
       }
       void slot;
@@ -1110,7 +1109,7 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("完全放行"), { timeout: 3000 });
     await click(button("↑"));
     await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, confirm: true, prompt: "加限流" });
+    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, prompt: "加限流" });
   });
 });
 
@@ -1181,7 +1180,7 @@ describe("project management (v2)", () => {
 });
 
 describe("who did what (v2)", () => {
-  it("names verified clients, and says another client or the terminal otherwise", () => {
+  it("names the client, or the terminal", () => {
     const r = demo();
     const s = r.sessions.get("s-multi")!;
     return (async () => {
@@ -1189,7 +1188,7 @@ describe("who did what (v2)", () => {
       mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
       const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
       expect(notes).toEqual(["本客户端 · Chrome", "Android · b71c", "VPS-dev 本地终端"]);
-      expect(host.textContent).toContain("另一客户端将模式切到 计划");
+      expect(host.textContent).toContain("客户端 · 92de将模式切到 计划");
       expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · b71c");
       await click(button(/还有 2 条排队/));
       const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
@@ -1251,14 +1250,6 @@ describe("pictures in a session (v2)", () => {
     await vi.waitFor(() => expect(note()).toBe("没能下载 · 点按重试"), { timeout: 3000 });
     await click(host.querySelector<HTMLButtonElement>(".viewer .vnote")!);
     await vi.waitFor(() => expect(note()).not.toBe("没能下载 · 点按重试"), { timeout: 3000 });
-  });
-
-  it("shows only a count from a daemon older than v2", () => {
-    const r = demo();
-    const s = r.sessions.get("s-idle")!;
-    r.events("s-idle").push(create(EventSchema, { seq: 3n, kind: { case: "userMessage", value: { text: "看图", imageCount: 2 } } }));
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    expect(host.textContent).toContain("2 张图片（电脑端版本较旧，这里看不到）");
   });
 });
 
@@ -1342,11 +1333,11 @@ describe("sending images (v2)", () => {
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {
     const r = demo();
-    const s = r.sessions.get("s-appr")!; // on VPS-dev, an older daemon
+    const s = r.sessions.get("s-appr")!; // on VPS-dev, whose image folder has a space in its path
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
     expect(host.querySelector("input[type=file]")).toBeTruthy();
-    expect(host.textContent).toContain("VPS-dev 上的 remote-agent 版本较旧，不能发图片");
+    expect(host.textContent).toContain("VPS-dev 上 remote-agent 的目录路径带空格，不能发图片");
   });
 });
 
@@ -1551,32 +1542,6 @@ it("marks a quota window as waiting for an update once its reset time passes (re
   }
 });
 
-it("lets an older daemon retry a full-access default without a confirmation dialog", async () => {
-  const r = demo();
-  const sent: { id: string; confirm?: boolean }[] = [];
-  r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
-    if (cmd?.case === "createSession") {
-      sent.push({ id: slot!.requestId, confirm: cmd.value.confirmFullAccess });
-      if (!cmd.value.confirmFullAccess) throw new CommandError("failed_precondition", "codex starts in full access here by default; confirm it or choose another mode");
-      throw new CommandError("failed_precondition", "stop here");
-    }
-    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
-  };
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
-  await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click(button("↑"));
-  await vi.waitFor(() => expect(host.textContent).toContain("电脑需要确认完全放行"));
-  expect(host.querySelector(".alert")).toBeNull();
-  await click(button("重试"));
-  await vi.waitFor(() => expect(sent).toHaveLength(2));
-  expect(sent[1].confirm).toBe(true);
-  expect(sent[1].id).not.toBe(sent[0].id);
-});
-
 it("starts a new session with images and no words (Go 61c4bb2)", async () => {
   const r = demo();
   r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
@@ -1620,13 +1585,12 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   expect(host.textContent).toContain("最近收到");
 });
 
-it("retries a confirmed start whose reply was lost as the same request, confirmed (review W1)", async () => {
+it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
   const r = demo();
-  const sent: { id: string; confirm?: boolean }[] = [];
+  const sent: { id: string; model?: string }[] = [];
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
-      sent.push({ id: slot!.requestId, confirm: cmd.value.confirmFullAccess });
-      if (!cmd.value.confirmFullAccess) throw new CommandError("failed_precondition", "codex starts in full access here by default; confirm it or choose another mode");
+      sent.push({ id: slot!.requestId, model: cmd.value.model });
       throw new CommandError("unknown", "连接超时");
     }
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
@@ -1647,13 +1611,11 @@ it("retries a confirmed start whose reply was lost as the same request, confirme
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(button("↑"));
-  await vi.waitFor(() => expect(host.textContent).toContain("电脑需要确认完全放行"));
-  await click(button("重试"));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
   await click(button("重试"));
-  await vi.waitFor(() => expect(sent).toHaveLength(3));
-  expect(sent[2]).toEqual(sent[1]);
-  expect(sent[2].confirm).toBe(true);
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).toEqual(sent[0]);
+  expect(sent[0].model).toBeTruthy();
 });
 
 it("does not put another client's images into this input (review W3)", async () => {

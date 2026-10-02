@@ -94,7 +94,6 @@ export interface Initiation {
 /** Starts adding a device to this browser's account. */
 export async function initiate(remote: Remote): Promise<Initiation> {
   const acct = remote.account;
-  if (!acct.rootRaw) throw new Error("这个浏览器是用旧方式加入的，拿不到账户密钥，不能添加设备。请在设置里退出，再重新加入一次。");
   const pc = client(acct.server, () => remote.authHeader());
   const key = newPairKey();
   const commit = await pairCommit(key.pub);

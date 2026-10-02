@@ -127,7 +127,7 @@ class ChatTest {
             resolved("C", ApprovalDecision.APPROVAL_DECISION_ALLOW),
             resolved("D", ApprovalDecision.APPROVAL_DECISION_ALLOW),
             call("Read a.go", "r", "dR", tool = "Read", kind = ToolKind.TOOL_KIND_OTHER),
-            call("rm y", "d", "", status = "failed"), // no digest: an older daemon
+            call("rm y", "d", "", status = "failed"), // no digest
             call("mkdir x", "m", "dA"),
             call("npm test", "t1", "dC"),
             call("npm test", "t2", "dC"),
@@ -155,7 +155,7 @@ class ChatTest {
             // digest says which call it is.
             approval("A", "a", "db", json = "{\"command\":\"a\",\"COMMAND\":\"b\"}"),
             resolved("A", ApprovalDecision.APPROVAL_DECISION_ALLOW),
-            // A request from an older daemon, without a digest, next to a call
+            // A request without a digest (Codex), next to a call
             // whose digest its input would give.
             approval("B", "ls", ""),
             resolved("B", ApprovalDecision.APPROVAL_DECISION_ALLOW),
@@ -230,16 +230,11 @@ class ChatTest {
     fun showsMessagesTheSessionEndedBeforeSending() {
         val q = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED
         val c = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
-        // Today's daemon says why; the user's own cancel is not one of these.
+        // The daemon says why; the user's own cancel is not one of these.
         val events = listOf(ev(1, input("mine", q)), ev(2, input("other", q)), ev(3, input("gone", q)), ev(4, input("gone", c)), ev(5, input("mine", c, "exited")), ev(6, input("other", c, "exited")), ev(7, exit()))
         val d = derive(events)
         assertEquals(listOf("mine", "other"), d.unsent.keys.toList())
         val items = buildChat(events, d, "M", textOf = { if (it == "mine") "补一个测试" else null })
         assertEquals(listOf(ChatItem.Unsent("umine", "mine", "补一个测试"), ChatItem.Unsent("uother", "other", null)), items.filterIsInstance<ChatItem.Unsent>())
-        // An older daemon left it queued: the exit settles it, and nothing stays in the queue.
-        val old = listOf(ev(1, input("a", q)), ev(2, exit()))
-        val od = derive(old)
-        assertEquals(mapOf("a" to 2L), od.unsent.toMap())
-        assertEquals(c, od.inputs["a"])
     }
 }

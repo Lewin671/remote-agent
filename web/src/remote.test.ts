@@ -32,7 +32,7 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
   const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   class Probe extends Remote {
     constructor() {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
     }
   }
   const r = new Probe();
@@ -74,7 +74,7 @@ it("signs every command it forwards with the device key, naming itself the sende
   const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   class Probe extends Remote {
     constructor() {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "dev1" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "dev1" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
     }
   }
   const r = new Probe();
@@ -92,13 +92,60 @@ it("signs every command it forwards with the device key, naming itself the sende
   expect(await crypto.subtle.verify("Ed25519", device.publicKey, sent!.signature as Uint8Array<ArrayBuffer>, envelopeSigned(sent!))).toBe(true);
 });
 
+it("sends its protocol version with a command, and sends none to a machine of another version", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { openMessage, PayloadKind } = await import("./crypto");
+  const { CommandSchema, MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
+  class Probe extends Remote {
+    constructor() {
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "dev1" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+    }
+  }
+  const r = new Probe();
+  const sent: Envelope[] = [];
+  (r as unknown as { api: object }).api = {
+    forward: async (req: { command: Envelope }) => {
+      sent.push(req.command);
+      throw new ConnectError("machine is offline", Code.Unavailable);
+    },
+  };
+  const machine = (id: string, protocolVersion: number) =>
+    r.machines.set(id, { id, online: true, lastSeenMs: 0n, metaRev: 1n, meta: create(MachineMetaSchema, { hostname: "MacBook.local", protocolVersion }) });
+  const run = (id: string) => r.machineCommand(id, { case: "listModels", value: {} }).then(() => undefined, (e: unknown) => e);
+
+  // The same version, and a machine whose metadata has not opened yet.
+  machine("same", PROTOCOL_VERSION);
+  await run("same");
+  await run("unknown");
+  expect(sent).toHaveLength(2);
+  for (const env of sent) expect((await openMessage(key, env, { kind: PayloadKind.COMMAND }, CommandSchema)).msg.protocolVersion).toBe(PROTOCOL_VERSION);
+
+  // An older machine, including one from before it reported a version.
+  machine("older", PROTOCOL_VERSION - 1);
+  const older = await run("older");
+  expect(older).toBeInstanceOf(CommandError);
+  expect((older as CommandError).message).toBe("MacBook 上的 remote-agent 版本较旧，请在电脑上更新后再试");
+  // Never sent, so a later attempt starts afresh.
+  expect(uncertain(older)).toBe(false);
+
+  // A newer machine: it is this page that is behind.
+  machine("newer", PROTOCOL_VERSION + 1);
+  const newer = await run("newer");
+  expect(newer).toBeInstanceOf(CommandError);
+  expect((newer as CommandError).message).toBe("这个网页版本较旧，请刷新或更新后再试");
+  expect(sent).toHaveLength(2);
+});
+
 it("replays a project pin on another client's sealed copy after a conflict", async () => {
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
   const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   const keys = { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key };
   class Probe extends Remote {
     constructor(id: string) {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: id }, keys);
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: id }, keys);
     }
   }
   // One server object; two clients share the account key.
@@ -149,7 +196,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
   class Probe extends Remote {
     constructor() {
-      super({ server: "https://ra.example.com", root: key, devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
     }
   }
   const r = new Probe();

@@ -73,7 +73,7 @@ func TestUploads(t *testing.T) {
 	if err := u.check([]string{st.ImageId}, "laptop"); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other device's image: %v", err)
 	}
-	imgs, err := u.take([]string{st.ImageId}, "phone", "sess1")
+	imgs, err := u.take([]string{st.ImageId}, "phone", "sess1", "r1")
 	if err != nil || len(imgs) != 1 || filepath.Dir(imgs[0].Path) != filepath.Join(u.dir, "sess1") || filepath.Ext(imgs[0].Path) != ".png" {
 		t.Fatalf("take %v %v", imgs, err)
 	}
@@ -81,10 +81,10 @@ func TestUploads(t *testing.T) {
 		t.Fatalf("file %v", err)
 	}
 	// A resend in the same session may name it again; another may not.
-	if _, err := u.take([]string{st.ImageId}, "phone", "sess1"); err != nil {
+	if _, err := u.take([]string{st.ImageId}, "phone", "sess1", "r1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.take([]string{st.ImageId}, "phone", "sess2"); err == nil {
+	if _, err := u.take([]string{st.ImageId}, "phone", "sess2", "r1"); err == nil {
 		t.Fatal("image taken by a second session")
 	}
 	u.dropSession("sess1")
@@ -169,7 +169,7 @@ func TestImageMovesAreRecoverable(t *testing.T) {
 	name := st.ImageId + ".png"
 
 	os.Chmod(filepath.Join(u.dir, "partial"), 0o500)
-	_, err := u.take([]string{st.ImageId}, "d", "s1")
+	_, err := u.take([]string{st.ImageId}, "d", "s1", "r1")
 	os.Chmod(filepath.Join(u.dir, "partial"), 0o700)
 	if err == nil {
 		t.Skip("directory writable despite chmod")
@@ -188,7 +188,7 @@ func TestImageMovesAreRecoverable(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(u.sessionDir("s1"), name)); err != nil {
 		t.Fatalf("move not finished: %v", err)
 	}
-	if imgs, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil || len(imgs) != 1 {
+	if imgs, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); err != nil || len(imgs) != 1 {
 		t.Fatalf("take after recovery: %v", err)
 	}
 }
@@ -218,7 +218,7 @@ func TestUploadExpiryWithoutGC(t *testing.T) {
 	if err := u.save(tr); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.take([]string{st.ImageId}, "d", "s1"); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("expired image accepted: %v", err)
 	}
 	if _, err := os.Stat(u.pending(st.ImageId + ".png")); !os.IsNotExist(err) {
@@ -230,7 +230,7 @@ func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	u := newUploads()
 	st := completeUpload(t, u, "d")
-	imgs, err := u.take([]string{st.ImageId}, "d", "s1")
+	imgs, err := u.take([]string{st.ImageId}, "d", "s1", "r1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,10 +243,10 @@ func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	u.gc(time.Now().Add(48 * time.Hour))
-	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+	if _, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); err != nil {
 		t.Fatalf("used image ownership expired: %v", err)
 	}
-	if _, err := u.take([]string{st.ImageId}, "other", "s1"); connect.CodeOf(err) != connect.CodePermissionDenied {
+	if _, err := u.take([]string{st.ImageId}, "other", "s1", "r1"); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("used ownership lost: %v", err)
 	}
 	// Simulate a crash after saving Exited, before deleting uploads.
@@ -357,7 +357,7 @@ func TestUploadCreatesMissingFoldersAndRetriesDoNotExtendExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+	if _, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -384,8 +384,8 @@ func TestUploadQuotaReservesIncomingBytesAndRecovers(t *testing.T) {
 	if err := u.abort(req.TransferId, "d"); err != nil {
 		t.Fatal(err)
 	}
-	// Legacy session originals still count even if they have no transfer record.
-	sdir := u.sessionDir("legacy")
+	// Session originals without a transfer record still count.
+	sdir := u.sessionDir("orphan")
 	if err := os.MkdirAll(sdir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -393,9 +393,9 @@ func TestUploadQuotaReservesIncomingBytesAndRecovers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := u.begin(req, "d"); connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("legacy original ignored: %v", err)
+		t.Fatalf("orphan original ignored: %v", err)
 	}
-	u.dropSession("legacy")
+	u.dropSession("orphan")
 	if _, err := u.begin(req, "d"); err != nil {
 		t.Fatalf("session cleanup did not free quota: %v", err)
 	}
@@ -405,7 +405,7 @@ func TestExitedUploadRecordCleanedWithoutImageFolder(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	u := newUploads()
 	st := completeUpload(t, u, "d")
-	if _, err := u.take([]string{st.ImageId}, "d", "s1"); err != nil {
+	if _, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); err != nil {
 		t.Fatal(err)
 	}
 	dir := paths.SessionDir("s1")

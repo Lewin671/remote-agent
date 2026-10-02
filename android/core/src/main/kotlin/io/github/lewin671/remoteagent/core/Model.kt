@@ -31,7 +31,7 @@ fun agentName(a: Agent): String = when (effectiveAgent(a)) {
 
 fun SessionView.agent(): Agent = effectiveAgent(info?.agent ?: Agent.AGENT_UNSPECIFIED)
 
-/** The CLIs a machine can start; daemons from before Claude Code support only run Codex. */
+/** The CLIs a machine can start; Codex while it lists none. */
 fun machineAgents(m: MachineView?): List<Agent> {
     val listed = m?.meta?.agentsList?.map { effectiveAgent(it.agent) }?.distinct().orEmpty()
     return listed.ifEmpty { listOf(Agent.AGENT_CODEX) }
@@ -111,8 +111,9 @@ fun avatarIndex(key: String): Int {
     return (h % 4).toInt()
 }
 
-// Missing lifecycle timestamps from old daemons fall back to creation time;
-// incomplete metadata uses zero, never the changing relay timestamp.
+// A session that has not ended or is not waiting has no such timestamp and
+// falls back to creation time; incomplete metadata uses zero, never the
+// changing relay timestamp.
 fun createdMs(s: SessionView): Long = s.info?.takeIf { it.hasCreatedAt() }?.createdAt?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: 0
 fun endedMs(s: SessionView): Long = s.info?.takeIf { it.hasEndedAt() }?.endedAt?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: createdMs(s)
 fun attentionMs(s: SessionView): Long = s.info?.takeIf { it.hasAttentionSince() }?.attentionSince?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: createdMs(s)
@@ -260,7 +261,8 @@ fun modeOf(s: SessionView): Mode? = modeLabel(s)?.mode
 /**
  * The session's mode. Session.mode is either CLI's mode as a client mode;
  * UNSPECIFIED with a permission mode is one of Claude Code's own, shown by
- * its name. Older daemons set neither: it is named from the approval fields.
+ * its name. With neither (a Codex context outside the four modes), it is
+ * named from the approval fields.
  */
 fun modeLabel(s: SessionView): ModeLabel? {
     val i = s.info ?: return null
@@ -326,15 +328,11 @@ fun backgroundInput(input: String): Boolean = Regex("\"run_in_background\"\\s*:\
 
 /**
  * The call went on in the background: this event is its start, not its
- * end. A v2 daemon says so (ToolCall.background); an older one only lets
- * Claude Code's result say it (claude-code-notes: a Bash call it moved to
- * the background returns "Command running in background with ID:"), or an
- * input asking for it.
+ * end. The daemon says so (ToolCall.background).
  */
 fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean =
     c.background != io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_UNSPECIFIED &&
-        c.background != io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED ||
-        backgroundInput(c.input) || c.output.startsWith("Command running in background with ID:")
+        c.background != io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED
 
 /** Why a call is in the background and what that means, as the web client says it. */
 fun backgroundNote(b: io.github.lewin671.remoteagent.proto.ToolBackground): String {
@@ -380,7 +378,7 @@ class Derived(
     val inputs: LinkedHashMap<String, InputStatus> = LinkedHashMap(),
     /** Full latest input state: mode and pause are needed for pending bubbles. */
     val inputDetails: LinkedHashMap<String, InputState> = LinkedHashMap(),
-    /** What the daemon accepted, per request ID: text, images and sender, shared by every client (v2 daemons). */
+    /** What the daemon accepted, per request ID: text, images and sender, shared by every client. */
     val accepted: HashMap<String, Accepted> = HashMap(),
     /** Why a message ended FAILED or NEEDS_TERMINAL, per request ID. */
     val failures: HashMap<String, String> = HashMap(),
@@ -492,7 +490,7 @@ internal class EventReducer(agent: Agent) {
                     }
                 }
                 Event.KindCase.USER_MESSAGE -> if (e.hasOrigin() && e.origin.kind != io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNSPECIFIED) {
-                    // A v2 daemon says who sent it: no guessing.
+                    // The daemon says who sent it: no guessing.
                     if (e.origin.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL) d.typedLocally += e.seq
                     else if (submitted > 0) submitted--
                 } else {
@@ -507,13 +505,10 @@ internal class EventReducer(agent: Agent) {
                     d.tools += RunningTool(it.title, it.callId, eventTime(e), it.kind, it.itemType, e.seq, it.input, it.inputDigest)
                 }
                 Event.KindCase.TOOL_CALL -> {
-                    // Starts and calls pair by call ID (Claude Code; Codex from
-                    // v2 daemons, whose later entries of one call carry
-                    // "<id>#2" and have no start); an older daemon gave Codex
-                    // starts no ID and they pair in order.
+                    // Starts and calls pair by call ID (for Codex, later
+                    // entries of one call carry "<id>#2" and have no start).
                     val id = e.toolCall.callId
-                    val i = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
-                    val j = if (i >= 0) i else d.tools.indexOfFirst { it.callId.isEmpty() }
+                    val j = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
                     if (j >= 0) {
                         val t = d.tools.removeAt(j)
                         d.completedAt[t.seq] = e.seq
@@ -563,14 +558,6 @@ internal class EventReducer(agent: Agent) {
                     if (!planning && c.model.isNotEmpty()) model = mm
                 }
                 Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
-                    // Still queued when the session ended: never written, even if
-                    // the daemon (from before InputState.reason) said nothing more.
-                    for ((id, st) in d.inputs) {
-                        if (st == InputStatus.INPUT_STATUS_QUEUED) {
-                            d.inputs[id] = InputStatus.INPUT_STATUS_CANCELED
-                            d.unsent[id] = e.seq
-                        }
-                    }
                     d.running = false
                     d.approvals.clear()
                     d.questions.clear()
@@ -749,11 +736,6 @@ fun queued(d: Derived): List<String> = d.inputs.filterValues { it == InputStatus
 
 data class PendingInput(val id: String, val text: String, val mode: SendMode, val paused: Boolean, val held: Boolean, val origin: io.github.lewin671.remoteagent.proto.Origin?)
 
-fun wireSendMode(mode: SendMode, supported: Boolean): SendMode {
-    if (!supported && mode == SendMode.SEND_MODE_QUEUE) throw IllegalStateException("电脑不支持排队发送")
-    return if (supported) mode else SendMode.SEND_MODE_UNSPECIFIED
-}
-
 /** Only inputs the model has not received; event order is acceptance order. */
 fun pendingInputs(d: Derived): List<PendingInput> = d.inputDetails.values.mapNotNull { st ->
     if (st.status != InputStatus.INPUT_STATUS_QUEUED && st.status != InputStatus.INPUT_STATUS_HELD_BY_CLI) return@mapNotNull null
@@ -839,7 +821,6 @@ fun originLabel(o: io.github.lewin671.remoteagent.proto.Origin?, state: RemoteSt
             o.deviceId.isEmpty() -> "另一客户端"
             else -> state.devices[o.deviceId]?.let { clientName(it, o.deviceId) } ?: "客户端 · ${shortId(o.deviceId)}"
         }
-        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNVERIFIED_CLIENT -> "另一客户端"
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 本地终端"
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_SYSTEM -> null
         else -> null
@@ -848,6 +829,20 @@ fun originLabel(o: io.github.lewin671.remoteagent.proto.Origin?, state: RemoteSt
 
 fun Event.originOrNull(): io.github.lewin671.remoteagent.proto.Origin? = if (hasOrigin()) origin else null
 
-/** What the machine says it supports; a daemon older than v2 says nothing and gets none of it. */
+/** What the machine says it offers; null until its metadata is read. */
 fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineCapabilities? =
     m?.meta?.takeIf { it.hasCapabilities() }?.capabilities
+
+/**
+ * Why no command goes to [m]: it speaks another protocol version than this
+ * app (PROTOCOL_VERSION), said by which side to update; null when they
+ * match or the machine's metadata is not read yet.
+ */
+fun protocolMismatch(m: MachineView?): String? {
+    val theirs = m?.meta?.protocolVersion ?: return null
+    return when {
+        theirs < PROTOCOL_VERSION -> "${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试"
+        theirs > PROTOCOL_VERSION -> "这个 App 版本较旧，请更新后再试"
+        else -> null
+    }
+}

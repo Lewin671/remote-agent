@@ -39,7 +39,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
   const sid = session.id;
-  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)), mine: new Set(remote.outbox(sid).map((o) => o.requestId)) };
+  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
   const act = async (id: string, resume = false) => {
     if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
     try {

@@ -30,7 +30,8 @@ export function attachBlocked(remote: Remote, m: MachineView | undefined): strin
   const name = machineName(m);
   if (!m?.online) return `${name} 离线，连上后才能添加图片`;
   if (remote.conn !== "online") return "和服务器断线了，连上后才能添加图片";
-  if (!m.meta?.capabilities?.imageUpload) return `${name} 上的 remote-agent 版本较旧，不能发图片；在电脑上更新后再试`;
+  if (!m.meta) return `还没读到 ${name} 的信息，稍后才能添加图片`;
+  if (!m.meta.capabilities?.imageUpload) return `${name} 上 remote-agent 的目录路径带空格，不能发图片`;
   return "";
 }
 

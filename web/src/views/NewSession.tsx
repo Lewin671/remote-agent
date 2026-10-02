@@ -18,7 +18,6 @@ import {
   modeName,
   defaultModeOf,
   modeLabel,
-  refusedForFullAccess,
   projectName,
   projects,
   shortPath,
@@ -142,7 +141,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others; the page's own view of the settings may
   // change as the started session's record arrives.
-  const payloadFor = (prompt: string, mode?: ApprovalMode, confirmFullAccess = false): StartPayload => {
+  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
     const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent };
     // The images are part of what is started: other images, another start.
@@ -156,32 +155,26 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
         mode: c.mode,
         agent: c.agent,
         imageIds: tray.imageIds(),
-        // Confirmation is not a setting the user changes: a retry of the
-        // pending start keeps it, override or not.
-        confirmFullAccess: pending ? pending.req.confirmFullAccess : confirmFullAccess,
       },
     };
   };
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
-  const changes = (prompt: string, mode?: ApprovalMode, confirm = false): boolean => {
+  const changes = (prompt: string, mode?: ApprovalMode): boolean => {
     const pending = current.payload;
-    return !!pending && JSON.stringify(payloadFor(prompt, mode, confirm)) !== JSON.stringify(pending);
+    return !!pending && JSON.stringify(payloadFor(prompt, mode)) !== JSON.stringify(pending);
   };
-  // The daemon refused the last start: the folder's default is full access.
-  const [refused, setRefused] = useState(false);
   // Images for the first message go to the chosen machine; a new machine
   // gets them again (the tray keeps them prepared).
   const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
-  const create = async (prompt: string, mode?: ApprovalMode, terminal = false, confirmFullAccess = false) => {
+  const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
-    if (changes(prompt, mode, confirmFullAccess)) abandon();
+    if (changes(prompt, mode)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = current.next(payloadFor(prompt, mode, confirmFullAccess));
+    const { payload, slot } = current.next(payloadFor(prompt, mode));
     setBusy(true);
     setError("");
-    setRefused(false);
     try {
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
       current.settle();
@@ -205,12 +198,6 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       return true;
     } catch (e) {
       current.settle(e);
-      // Refused before anything ran: ask, then send a new request.
-      if (refusedForFullAccess(e)) {
-        current.abandon();
-        setRefused(true);
-        return false;
-      }
       setError(errorText(e));
       return false;
     } finally {
@@ -244,8 +231,6 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     cfg,
     setCfg,
     latch,
-    refused,
-    clearRefused: () => setRefused(false),
     issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, cfg.mode || dm.mode),
     parts: describeParts(cfg, machine, info),
     tray,
@@ -292,7 +277,7 @@ export function NewBox({
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
   const cannot = ns.busy || !!ns.blocked || !!ns.issue;
-  const submit = async (force = false) => {
+  const submit = async () => {
     const prompt = text;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request. Chosen images must all be on the
@@ -300,10 +285,7 @@ export function NewBox({
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
     if (ns.tray.items.length && !ns.tray.ready()) return;
     // Retrying an unknown start sends it as it was.
-    // Older daemons still require the compatibility flag for full access.
-    const dm = defaultModeOf(ns.machine, ns.cfg.agent);
-    const confirm = force || ns.cfg.mode === ApprovalMode.FULL_ACCESS || (!ns.cfg.mode && dm.mode === ApprovalMode.FULL_ACCESS);
-    const ok = await ns.create(prompt.trim(), undefined, false, confirm);
+    const ok = await ns.create(prompt.trim());
     if (ok) setText("");
   };
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
@@ -438,7 +420,6 @@ export function NewBox({
   return (
     <>
       {body}
-      {ns.refused && <Banner kind="warn" action="重试" onAction={() => { ns.clearRefused(); void submit(true); }}>电脑需要确认完全放行</Banner>}
       {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
     </>
   );

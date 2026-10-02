@@ -14,6 +14,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/client"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 )
 
 // TestRPCOverUnixSocket exercises the handler through a real client on a
@@ -33,7 +34,7 @@ func TestRPCOverUnixSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: h.d}))
+	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: h.d}, connect.WithInterceptors(protocol.Local())))
 	srv := &http.Server{Handler: mux}
 	go srv.Serve(ln)
 	defer srv.Close()

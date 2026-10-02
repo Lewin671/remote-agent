@@ -70,9 +70,9 @@ class ToolsTest {
         assertEquals(1, d.background.size)
         assertTrue(d.background[0].returned)
         assertFalse(backgroundInput("""{"run_in_background":false}"""))
-        // Claude Code backgrounds a long command by itself: only the result says so.
+        // Claude Code backgrounds a long command by itself: the daemon says so on the result.
         val auto = derive(
-            listOf(turn, start(2, "sleep 45", "y", "sleep 45"), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("y").setInput("sleep 45").setOutput("Command running in background with ID: b2wvqs0hj. Output is being written to: /tmp/x")))),
+            listOf(turn, start(2, "sleep 45", "y", "sleep 45"), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("y").setInput("sleep 45").setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT).setOutput("Command running in background with ID: b2wvqs0hj. Output is being written to: /tmp/x")))),
             Agent.AGENT_CLAUDE,
         )
         assertEquals(1, auto.background.size)

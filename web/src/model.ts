@@ -39,7 +39,7 @@ export function compareAttention(a: SessionLike, b: SessionLike, machines: Reado
 
 // --- agents ---
 
-/** The CLI a session runs; sessions from before Claude Code are Codex's. */
+/** The CLI a session runs; Codex until the session's record says. */
 export function agentOf(s?: { info?: Session } | Session): Agent {
   const a = s && "info" in s ? s.info?.agent : (s as Session | undefined)?.agent;
   return a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
@@ -49,8 +49,7 @@ export function agentName(a: Agent): string {
   return a === Agent.CLAUDE ? "Claude Code" : "Codex";
 }
 
-/** The CLIs a machine can start. Daemons older than Claude Code support
- * list none and run only Codex. */
+/** The CLIs a machine can start; Codex while its list is not known. */
 export function machineAgents(m?: MachineLike): Agent[] {
   const list = m?.meta?.agents.map((a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX)) ?? [];
   const uniq = [...new Set(list)];
@@ -369,13 +368,8 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
   const i = s.info;
   if (!i) return undefined;
   // Session.mode is either CLI's mode as a client mode; UNSPECIFIED with a
-  // permission mode is one of Claude Code's own, shown by its name. Older
-  // daemons set neither: name it from the approval fields.
-  const text = i.mode
-    ? modeName(i.mode)
-    : i.permissionMode
-      ? permissionModeName(i.permissionMode)
-      : contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode);
+  // permission mode is one of Claude Code's own, shown by its name.
+  const text = i.mode ? modeName(i.mode) : i.permissionMode ? permissionModeName(i.permissionMode) : "";
   return text ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) } : undefined;
 }
 
@@ -481,7 +475,7 @@ export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode):
 /** The mode a CLI gives a session started without one on a machine, as the
  * daemon reads it (AgentInfo.default_mode): its settings, else the CLI's
  * own configuration. mode UNSPECIFIED with known is a mode outside the four
- * (accept edits); not known is an older daemon or an unreadable config. */
+ * (accept edits); not known is an unreadable config. */
 export interface DefaultMode {
   mode: ApprovalMode;
   known: boolean;
@@ -500,14 +494,6 @@ export function modeLabel(chosen: ApprovalMode, d: DefaultMode, agent: Agent): s
   if (chosen) return modeName(chosen);
   const base = !d.known ? "默认模式（不确定，可能是完全放行）" : d.mode ? `默认：${modeName(d.mode)}` : `默认：${agentName(agent)} 自己的模式`;
   return base + (d.varies ? "（项目设置可能不同）" : "");
-}
-
-/** The daemon refused a start because the folder's default is full access
- * and it was not confirmed; nothing ran, so an explicit retry can carry
- * the old daemon's compatibility flag without showing a confirmation. */
-export function refusedForFullAccess(e: unknown): boolean {
-  const x = e as { code?: string; message?: string } | undefined;
-  return x?.code === "failed_precondition" && /full access/i.test(x.message ?? "");
 }
 
 // --- events ---
@@ -529,19 +515,18 @@ export interface Derived {
   resolved: Map<string, { decision: ApprovalDecision; message: string }>;
   questions: Map<string, QuestionAsked>; // pending
   answered: Map<string, string[]>;
-  // Who answered an approval or a question, when the daemon says (v2).
+  // Who answered an approval or a question, as the daemon says.
   by: Map<string, NonNullable<Event["origin"]>>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
   // What the computer accepted for each message, as its first QUEUED state
-  // says (v2 daemons): the text and images, and who sent it; so every
-  // client shows the same queue. Missing from older daemons.
+  // says: the text and images, and who sent it; so every client shows
+  // the same queue.
   accepted: Map<string, { text: string; imageIds: string[]; origin?: Event["origin"]; mode: SendMode }>;
   paused: Set<string>;
   stages: Map<string, InputStage>; // how far a queued message got
   inputReasons: Map<string, string>; // why a message failed
   // Messages the session ended before writing: canceled for that reason
-  // ("exited"), or, from daemons that recorded nothing, still queued when
-  // the session ended. Never sent; not waiting either.
+  // ("exited"). Never sent; not waiting either.
   unsent: Set<string>;
   running: boolean;
   usage?: TokenUsage;
@@ -670,7 +655,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         }
         break;
       case "userMessage":
-        // A v2 daemon says who sent it; the counting below is for older ones.
+        // The daemon says who sent it; the counting below is for a message
+        // it could not tell the sender of.
         if (e.origin?.kind) {
           if (e.origin.kind === OriginKind.LOCAL) d.typedLocally.add(e.seq);
           if (submitted > 0 && k.value.requestId) submitted--;
@@ -754,8 +740,6 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       }
       case "sessionState":
         if (k.value.status === SessionStatus.EXITED) {
-          // Anything still queued was not written, and will not be.
-          for (const [id, st] of d.inputs) if (st === InputStatus.QUEUED) d.unsent.add(id);
           d.running = false;
           d.approvals.clear();
           d.questions.clear();
@@ -996,12 +980,10 @@ function visible(e: Event, d: Derived): boolean {
   return false;
 }
 
-/** Whether a call went on in the background: the daemon says so (v2), or,
- * from older daemons, Claude Code's result says it. Its event is then its
- * start, not its end. */
+/** Whether a call went on in the background, as the daemon says. Its
+ * event is then its start, not its end. */
 export function isBackground(t: ToolCall): boolean {
-  if (t.background !== ToolBackground.UNSPECIFIED) return true;
-  return /\b(?:command )?running in (?:the )?background with ID\b/i.test(t.output);
+  return t.background !== ToolBackground.UNSPECIFIED;
 }
 
 /** Why a call is in the background, and what that means. */
@@ -1107,7 +1089,7 @@ export function timeline(events: Event[], d: Derived): Item[] {
  * both events, compared as strings) matching exactly one
  * resolved approval requested before it, and that approval matching no
  * other call. Parallel calls, repeated identical calls and events without
- * a digest (Codex, older daemons) keep the approval as a row of its own. */
+ * a digest (Codex) keep the approval as a row of its own. */
 export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigint, ApprovalDecision>; approvals: Set<string>; ids: Map<bigint, string> } {
   const approvals = new Map<string, { id: string; seq: bigint }[]>();
   const calls = new Map<string, bigint[]>();
@@ -1115,7 +1097,7 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
     const k = e.kind;
     if (k.case === "approvalRequested" && d.resolved.has(k.value.approvalId)) {
       // The daemon gives the request the digest it gives the call; without
-      // one (Codex, older daemons) there is nothing to match.
+      // one (Codex) there is nothing to match.
       const digest = k.value.inputDigest;
       if (!digest) continue;
       const key = k.value.toolName + "\0" + digest;

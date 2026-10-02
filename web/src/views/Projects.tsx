@@ -18,7 +18,6 @@ export function useProjectGroups(remote: Remote) {
 
 /** Whether the list can be changed now, and why not. */
 export function prefsBlocked(remote: Remote): string {
-  if (remote.prefs.status === "unsupported") return "服务器版本较旧，还不能同步常用和已移除的项目";
   if (remote.prefs.status === "loading") return "正在读取项目列表的设置…";
   if (remote.prefs.status === "error" && !remote.prefs.snap) return "没能读取项目列表的设置";
   if (remote.conn !== "online") return "当前显示缓存 · 连上后才能管理";

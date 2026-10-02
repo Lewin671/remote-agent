@@ -132,7 +132,7 @@ func (QuotaLogin) EnumDescriptor() ([]byte, []int) {
 type DefaultModeSource int32
 
 const (
-	// Not known: an older daemon, or the configuration could not be read.
+	// Not known: the configuration could not be read.
 	DefaultModeSource_DEFAULT_MODE_SOURCE_UNSPECIFIED     DefaultModeSource = 0
 	DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS DefaultModeSource = 1
 	DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG      DefaultModeSource = 2
@@ -184,10 +184,6 @@ type MachineMeta struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Hostname string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	Os       string                 `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
-	// The Codex account's latest usage limits seen on this machine.
-	PrimaryLimit   *RateLimit `protobuf:"bytes,3,opt,name=primary_limit,json=primaryLimit,proto3" json:"primary_limit,omitempty"`
-	SecondaryLimit *RateLimit `protobuf:"bytes,4,opt,name=secondary_limit,json=secondaryLimit,proto3" json:"secondary_limit,omitempty"`
-	PlanType       string     `protobuf:"bytes,5,opt,name=plan_type,json=planType,proto3" json:"plan_type,omitempty"`
 	// Home folder, for choosing where to start sessions.
 	Home string `protobuf:"bytes,6,opt,name=home,proto3" json:"home,omitempty"`
 	// `codex --version`, and whether this remote-agent has been checked
@@ -195,21 +191,21 @@ type MachineMeta struct {
 	CodexVersion  string `protobuf:"bytes,7,opt,name=codex_version,json=codexVersion,proto3" json:"codex_version,omitempty"`
 	CodexVerified bool   `protobuf:"varint,8,opt,name=codex_verified,json=codexVerified,proto3" json:"codex_verified,omitempty"`
 	// The CLIs installed on this machine; a client offers only these when
-	// starting a session. Empty from daemons older than Claude Code support,
-	// which only run Codex.
+	// starting a session.
 	Agents []*AgentInfo `protobuf:"bytes,9,rep,name=agents,proto3" json:"agents,omitempty"`
-	// What this daemon supports beyond the base protocol. Absent from
-	// daemons older than v2: a client then offers none of it and says the
-	// computer needs updating.
+	// What this daemon offers that depends on the machine.
 	Capabilities *MachineCapabilities `protobuf:"bytes,10,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
 	// The account usage limits of each installed CLI, as far as the CLI
 	// tells them (Codex: its rollouts; Claude Code: the input of its status
 	// line). A CLI without an entry is not supported by this daemon.
 	// Several entries for one CLI are accounts (or, with account empty,
 	// sessions) that could not be told to be the same.
-	Quotas        []*AgentQuota `protobuf:"bytes,11,rep,name=quotas,proto3" json:"quotas,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Quotas []*AgentQuota `protobuf:"bytes,11,rep,name=quotas,proto3" json:"quotas,omitempty"`
+	// The protocol version this daemon speaks (internal/protocol). A client
+	// of another version sends it no commands and says which side to update.
+	ProtocolVersion uint32 `protobuf:"varint,12,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MachineMeta) Reset() {
@@ -256,27 +252,6 @@ func (x *MachineMeta) GetOs() string {
 	return ""
 }
 
-func (x *MachineMeta) GetPrimaryLimit() *RateLimit {
-	if x != nil {
-		return x.PrimaryLimit
-	}
-	return nil
-}
-
-func (x *MachineMeta) GetSecondaryLimit() *RateLimit {
-	if x != nil {
-		return x.SecondaryLimit
-	}
-	return nil
-}
-
-func (x *MachineMeta) GetPlanType() string {
-	if x != nil {
-		return x.PlanType
-	}
-	return ""
-}
-
 func (x *MachineMeta) GetHome() string {
 	if x != nil {
 		return x.Home
@@ -317,6 +292,13 @@ func (x *MachineMeta) GetQuotas() []*AgentQuota {
 		return x.Quotas
 	}
 	return nil
+}
+
+func (x *MachineMeta) GetProtocolVersion() uint32 {
+	if x != nil {
+		return x.ProtocolVersion
+	}
+	return 0
 }
 
 type AgentQuota struct {
@@ -511,9 +493,8 @@ func (x *QuotaWindow) GetWindowMinutes() int64 {
 
 type MachineCapabilities struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Images in the session carry ImageRefs and display copies (GetImage).
-	SessionImages bool `protobuf:"varint,1,opt,name=session_images,json=sessionImages,proto3" json:"session_images,omitempty"`
-	// The image upload commands, and image IDs in Send and CreateSession.
+	// Images can be uploaded here: not when the remote-agent folder's path
+	// has spaces, which the CLIs do not take in image paths.
 	ImageUpload         bool  `protobuf:"varint,2,opt,name=image_upload,json=imageUpload,proto3" json:"image_upload,omitempty"`
 	MaxImagesPerMessage int32 `protobuf:"varint,3,opt,name=max_images_per_message,json=maxImagesPerMessage,proto3" json:"max_images_per_message,omitempty"`
 	// Largest file BeginImageUpload accepts.
@@ -522,17 +503,8 @@ type MachineCapabilities struct {
 	MaxChunkBytes int32 `protobuf:"varint,5,opt,name=max_chunk_bytes,json=maxChunkBytes,proto3" json:"max_chunk_bytes,omitempty"`
 	// Formats BeginImageUpload accepts.
 	UploadFormats []ImageFormat `protobuf:"varint,6,rep,packed,name=upload_formats,json=uploadFormats,proto3,enum=remoteagent.v1.ImageFormat" json:"upload_formats,omitempty"`
-	// Commands are checked against Envelope.signature and events carry
-	// their Origin.
-	CommandSignatures bool `protobuf:"varint,7,opt,name=command_signatures,json=commandSignatures,proto3" json:"command_signatures,omitempty"`
-	ImageStorage      bool `protobuf:"varint,8,opt,name=image_storage,json=imageStorage,proto3" json:"image_storage,omitempty"`
-	// SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-	// message held by the CLI (InputStatus HELD_BY_CLI).
-	SendModes bool `protobuf:"varint,9,opt,name=send_modes,json=sendModes,proto3" json:"send_modes,omitempty"`
 	// ResolveApprovalRequest.always.
 	ApprovalAlways bool `protobuf:"varint,10,opt,name=approval_always,json=approvalAlways,proto3" json:"approval_always,omitempty"`
-	// Schedule machine command: daemon-owned timed Agent messages.
-	ScheduledTasks bool `protobuf:"varint,11,opt,name=scheduled_tasks,json=scheduledTasks,proto3" json:"scheduled_tasks,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -565,13 +537,6 @@ func (x *MachineCapabilities) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MachineCapabilities.ProtoReflect.Descriptor instead.
 func (*MachineCapabilities) Descriptor() ([]byte, []int) {
 	return file_remoteagent_v1_remote_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *MachineCapabilities) GetSessionImages() bool {
-	if x != nil {
-		return x.SessionImages
-	}
-	return false
 }
 
 func (x *MachineCapabilities) GetImageUpload() bool {
@@ -609,37 +574,9 @@ func (x *MachineCapabilities) GetUploadFormats() []ImageFormat {
 	return nil
 }
 
-func (x *MachineCapabilities) GetCommandSignatures() bool {
-	if x != nil {
-		return x.CommandSignatures
-	}
-	return false
-}
-
-func (x *MachineCapabilities) GetImageStorage() bool {
-	if x != nil {
-		return x.ImageStorage
-	}
-	return false
-}
-
-func (x *MachineCapabilities) GetSendModes() bool {
-	if x != nil {
-		return x.SendModes
-	}
-	return false
-}
-
 func (x *MachineCapabilities) GetApprovalAlways() bool {
 	if x != nil {
 		return x.ApprovalAlways
-	}
-	return false
-}
-
-func (x *MachineCapabilities) GetScheduledTasks() bool {
-	if x != nil {
-		return x.ScheduledTasks
 	}
 	return false
 }
@@ -770,9 +707,12 @@ type Command struct {
 	//	*Command_CompleteImageUpload
 	//	*Command_AbortImageUpload
 	//	*Command_Schedule
-	Kind          isCommand_Kind `protobuf_oneof:"kind"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Kind isCommand_Kind `protobuf_oneof:"kind"`
+	// The protocol version the client speaks (internal/protocol). A daemon
+	// of another version refuses the command and says which side to update.
+	ProtocolVersion uint32 `protobuf:"varint,100,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Command) Reset() {
@@ -1026,6 +966,13 @@ func (x *Command) GetSchedule() *ScheduleRequest {
 		}
 	}
 	return nil
+}
+
+func (x *Command) GetProtocolVersion() uint32 {
+	if x != nil {
+		return x.ProtocolVersion
+	}
+	return 0
 }
 
 type isCommand_Kind interface {
@@ -2602,20 +2549,18 @@ var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\n" +
-	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\xea\x03\n" +
+	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\x86\x03\n" +
 	"\vMachineMeta\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
-	"\x02os\x18\x02 \x01(\tR\x02os\x12>\n" +
-	"\rprimary_limit\x18\x03 \x01(\v2\x19.remoteagent.v1.RateLimitR\fprimaryLimit\x12B\n" +
-	"\x0fsecondary_limit\x18\x04 \x01(\v2\x19.remoteagent.v1.RateLimitR\x0esecondaryLimit\x12\x1b\n" +
-	"\tplan_type\x18\x05 \x01(\tR\bplanType\x12\x12\n" +
+	"\x02os\x18\x02 \x01(\tR\x02os\x12\x12\n" +
 	"\x04home\x18\x06 \x01(\tR\x04home\x12#\n" +
 	"\rcodex_version\x18\a \x01(\tR\fcodexVersion\x12%\n" +
 	"\x0ecodex_verified\x18\b \x01(\bR\rcodexVerified\x121\n" +
 	"\x06agents\x18\t \x03(\v2\x19.remoteagent.v1.AgentInfoR\x06agents\x12G\n" +
 	"\fcapabilities\x18\n" +
 	" \x01(\v2#.remoteagent.v1.MachineCapabilitiesR\fcapabilities\x122\n" +
-	"\x06quotas\x18\v \x03(\v2\x1a.remoteagent.v1.AgentQuotaR\x06quotas\"\xe7\x02\n" +
+	"\x06quotas\x18\v \x03(\v2\x1a.remoteagent.v1.AgentQuotaR\x06quotas\x12)\n" +
+	"\x10protocol_version\x18\f \x01(\rR\x0fprotocolVersionJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\xe7\x02\n" +
 	"\n" +
 	"AgentQuota\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x120\n" +
@@ -2634,28 +2579,23 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\fresets_at_ms\x18\x03 \x01(\x03R\n" +
 	"resetsAtMs\x12%\n" +
 	"\x0ewindow_minutes\x18\x04 \x01(\x03R\rwindowMinutesB\x0f\n" +
-	"\r_used_percent\"\xef\x03\n" +
-	"\x13MachineCapabilities\x12%\n" +
-	"\x0esession_images\x18\x01 \x01(\bR\rsessionImages\x12!\n" +
+	"\r_used_percent\"\xca\x02\n" +
+	"\x13MachineCapabilities\x12!\n" +
 	"\fimage_upload\x18\x02 \x01(\bR\vimageUpload\x123\n" +
 	"\x16max_images_per_message\x18\x03 \x01(\x05R\x13maxImagesPerMessage\x12(\n" +
 	"\x10max_upload_bytes\x18\x04 \x01(\x03R\x0emaxUploadBytes\x12&\n" +
 	"\x0fmax_chunk_bytes\x18\x05 \x01(\x05R\rmaxChunkBytes\x12B\n" +
-	"\x0eupload_formats\x18\x06 \x03(\x0e2\x1b.remoteagent.v1.ImageFormatR\ruploadFormats\x12-\n" +
-	"\x12command_signatures\x18\a \x01(\bR\x11commandSignatures\x12#\n" +
-	"\rimage_storage\x18\b \x01(\bR\fimageStorage\x12\x1d\n" +
-	"\n" +
-	"send_modes\x18\t \x01(\bR\tsendModes\x12'\n" +
+	"\x0eupload_formats\x18\x06 \x03(\x0e2\x1b.remoteagent.v1.ImageFormatR\ruploadFormats\x12'\n" +
 	"\x0fapproval_always\x18\n" +
-	" \x01(\bR\x0eapprovalAlways\x12'\n" +
-	"\x0fscheduled_tasks\x18\v \x01(\bR\x0escheduledTasks\"\xb2\x02\n" +
+	" \x01(\bR\x0eapprovalAlwaysJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"J\x04\b\v\x10\f\"\xb2\x02\n" +
 	"\tAgentInfo\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1a\n" +
 	"\bverified\x18\x03 \x01(\bR\bverified\x12?\n" +
 	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\x12Q\n" +
 	"\x13default_mode_source\x18\x05 \x01(\x0e2!.remoteagent.v1.DefaultModeSourceR\x11defaultModeSource\x12.\n" +
-	"\x13default_mode_varies\x18\x06 \x01(\bR\x11defaultModeVaries\"\xc9\x0e\n" +
+	"\x13default_mode_varies\x18\x06 \x01(\bR\x11defaultModeVaries\"\xf4\x0e\n" +
 	"\aCommand\x121\n" +
 	"\x04send\x18\x01 \x01(\v2\x1b.remoteagent.v1.SendRequestH\x00R\x04send\x12@\n" +
 	"\tinterrupt\x18\x02 \x01(\v2 .remoteagent.v1.InterruptRequestH\x00R\tinterrupt\x12S\n" +
@@ -2683,7 +2623,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x17get_image_upload_status\x18\x1b \x01(\v2+.remoteagent.v1.GetImageUploadStatusRequestH\x00R\x14getImageUploadStatus\x12`\n" +
 	"\x15complete_image_upload\x18\x1c \x01(\v2*.remoteagent.v1.CompleteImageUploadRequestH\x00R\x13completeImageUpload\x12W\n" +
 	"\x12abort_image_upload\x18\x1d \x01(\v2'.remoteagent.v1.AbortImageUploadRequestH\x00R\x10abortImageUpload\x12=\n" +
-	"\bschedule\x18\x1e \x01(\v2\x1f.remoteagent.v1.ScheduleRequestH\x00R\bscheduleB\x06\n" +
+	"\bschedule\x18\x1e \x01(\v2\x1f.remoteagent.v1.ScheduleRequestH\x00R\bschedule\x12)\n" +
+	"\x10protocol_version\x18d \x01(\rR\x0fprotocolVersionB\x06\n" +
 	"\x04kind\"\xab\x0f\n" +
 	"\rCommandResult\x12\x1d\n" +
 	"\n" +
@@ -2846,135 +2787,132 @@ var file_remoteagent_v1_remote_proto_goTypes = []any{
 	(*ProjectPrefs)(nil),                 // 20: remoteagent.v1.ProjectPrefs
 	(*ProjectSettings)(nil),              // 21: remoteagent.v1.ProjectSettings
 	(*ProjectPref)(nil),                  // 22: remoteagent.v1.ProjectPref
-	(*RateLimit)(nil),                    // 23: remoteagent.v1.RateLimit
-	(Agent)(0),                           // 24: remoteagent.v1.Agent
-	(ImageFormat)(0),                     // 25: remoteagent.v1.ImageFormat
-	(ApprovalMode)(0),                    // 26: remoteagent.v1.ApprovalMode
-	(*SendRequest)(nil),                  // 27: remoteagent.v1.SendRequest
-	(*InterruptRequest)(nil),             // 28: remoteagent.v1.InterruptRequest
-	(*ResolveApprovalRequest)(nil),       // 29: remoteagent.v1.ResolveApprovalRequest
-	(*AnswerQuestionRequest)(nil),        // 30: remoteagent.v1.AnswerQuestionRequest
-	(*StopSessionRequest)(nil),           // 31: remoteagent.v1.StopSessionRequest
-	(*CancelInputRequest)(nil),           // 32: remoteagent.v1.CancelInputRequest
-	(*SetModelRequest)(nil),              // 33: remoteagent.v1.SetModelRequest
-	(*SetApprovalModeRequest)(nil),       // 34: remoteagent.v1.SetApprovalModeRequest
-	(*CompactRequest)(nil),               // 35: remoteagent.v1.CompactRequest
-	(*AnswerPlanRequest)(nil),            // 36: remoteagent.v1.AnswerPlanRequest
-	(*ResumeSessionRequest)(nil),         // 37: remoteagent.v1.ResumeSessionRequest
-	(*ResumeInputRequest)(nil),           // 38: remoteagent.v1.ResumeInputRequest
-	(*CreateSessionRequest)(nil),         // 39: remoteagent.v1.CreateSessionRequest
-	(*ListModelsRequest)(nil),            // 40: remoteagent.v1.ListModelsRequest
-	(*ListDirectoriesRequest)(nil),       // 41: remoteagent.v1.ListDirectoriesRequest
-	(*GetSettingsRequest)(nil),           // 42: remoteagent.v1.GetSettingsRequest
-	(*UpdateSettingsRequest)(nil),        // 43: remoteagent.v1.UpdateSettingsRequest
-	(*BeginImageUploadRequest)(nil),      // 44: remoteagent.v1.BeginImageUploadRequest
-	(*PutImageChunkRequest)(nil),         // 45: remoteagent.v1.PutImageChunkRequest
-	(*GetImageUploadStatusRequest)(nil),  // 46: remoteagent.v1.GetImageUploadStatusRequest
-	(*CompleteImageUploadRequest)(nil),   // 47: remoteagent.v1.CompleteImageUploadRequest
-	(*AbortImageUploadRequest)(nil),      // 48: remoteagent.v1.AbortImageUploadRequest
-	(*ScheduleRequest)(nil),              // 49: remoteagent.v1.ScheduleRequest
-	(*SendResponse)(nil),                 // 50: remoteagent.v1.SendResponse
-	(*InterruptResponse)(nil),            // 51: remoteagent.v1.InterruptResponse
-	(*ResolveApprovalResponse)(nil),      // 52: remoteagent.v1.ResolveApprovalResponse
-	(*AnswerQuestionResponse)(nil),       // 53: remoteagent.v1.AnswerQuestionResponse
-	(*StopSessionResponse)(nil),          // 54: remoteagent.v1.StopSessionResponse
-	(*CancelInputResponse)(nil),          // 55: remoteagent.v1.CancelInputResponse
-	(*SetModelResponse)(nil),             // 56: remoteagent.v1.SetModelResponse
-	(*SetApprovalModeResponse)(nil),      // 57: remoteagent.v1.SetApprovalModeResponse
-	(*CompactResponse)(nil),              // 58: remoteagent.v1.CompactResponse
-	(*AnswerPlanResponse)(nil),           // 59: remoteagent.v1.AnswerPlanResponse
-	(*ResumeSessionResponse)(nil),        // 60: remoteagent.v1.ResumeSessionResponse
-	(*ResumeInputResponse)(nil),          // 61: remoteagent.v1.ResumeInputResponse
-	(*CreateSessionResponse)(nil),        // 62: remoteagent.v1.CreateSessionResponse
-	(*ListModelsResponse)(nil),           // 63: remoteagent.v1.ListModelsResponse
-	(*ListDirectoriesResponse)(nil),      // 64: remoteagent.v1.ListDirectoriesResponse
-	(*GetSettingsResponse)(nil),          // 65: remoteagent.v1.GetSettingsResponse
-	(*UpdateSettingsResponse)(nil),       // 66: remoteagent.v1.UpdateSettingsResponse
-	(*BeginImageUploadResponse)(nil),     // 67: remoteagent.v1.BeginImageUploadResponse
-	(*PutImageChunkResponse)(nil),        // 68: remoteagent.v1.PutImageChunkResponse
-	(*GetImageUploadStatusResponse)(nil), // 69: remoteagent.v1.GetImageUploadStatusResponse
-	(*CompleteImageUploadResponse)(nil),  // 70: remoteagent.v1.CompleteImageUploadResponse
-	(*AbortImageUploadResponse)(nil),     // 71: remoteagent.v1.AbortImageUploadResponse
-	(*ScheduleResponse)(nil),             // 72: remoteagent.v1.ScheduleResponse
-	(NotifyKind)(0),                      // 73: remoteagent.v1.NotifyKind
+	(Agent)(0),                           // 23: remoteagent.v1.Agent
+	(ImageFormat)(0),                     // 24: remoteagent.v1.ImageFormat
+	(ApprovalMode)(0),                    // 25: remoteagent.v1.ApprovalMode
+	(*SendRequest)(nil),                  // 26: remoteagent.v1.SendRequest
+	(*InterruptRequest)(nil),             // 27: remoteagent.v1.InterruptRequest
+	(*ResolveApprovalRequest)(nil),       // 28: remoteagent.v1.ResolveApprovalRequest
+	(*AnswerQuestionRequest)(nil),        // 29: remoteagent.v1.AnswerQuestionRequest
+	(*StopSessionRequest)(nil),           // 30: remoteagent.v1.StopSessionRequest
+	(*CancelInputRequest)(nil),           // 31: remoteagent.v1.CancelInputRequest
+	(*SetModelRequest)(nil),              // 32: remoteagent.v1.SetModelRequest
+	(*SetApprovalModeRequest)(nil),       // 33: remoteagent.v1.SetApprovalModeRequest
+	(*CompactRequest)(nil),               // 34: remoteagent.v1.CompactRequest
+	(*AnswerPlanRequest)(nil),            // 35: remoteagent.v1.AnswerPlanRequest
+	(*ResumeSessionRequest)(nil),         // 36: remoteagent.v1.ResumeSessionRequest
+	(*ResumeInputRequest)(nil),           // 37: remoteagent.v1.ResumeInputRequest
+	(*CreateSessionRequest)(nil),         // 38: remoteagent.v1.CreateSessionRequest
+	(*ListModelsRequest)(nil),            // 39: remoteagent.v1.ListModelsRequest
+	(*ListDirectoriesRequest)(nil),       // 40: remoteagent.v1.ListDirectoriesRequest
+	(*GetSettingsRequest)(nil),           // 41: remoteagent.v1.GetSettingsRequest
+	(*UpdateSettingsRequest)(nil),        // 42: remoteagent.v1.UpdateSettingsRequest
+	(*BeginImageUploadRequest)(nil),      // 43: remoteagent.v1.BeginImageUploadRequest
+	(*PutImageChunkRequest)(nil),         // 44: remoteagent.v1.PutImageChunkRequest
+	(*GetImageUploadStatusRequest)(nil),  // 45: remoteagent.v1.GetImageUploadStatusRequest
+	(*CompleteImageUploadRequest)(nil),   // 46: remoteagent.v1.CompleteImageUploadRequest
+	(*AbortImageUploadRequest)(nil),      // 47: remoteagent.v1.AbortImageUploadRequest
+	(*ScheduleRequest)(nil),              // 48: remoteagent.v1.ScheduleRequest
+	(*SendResponse)(nil),                 // 49: remoteagent.v1.SendResponse
+	(*InterruptResponse)(nil),            // 50: remoteagent.v1.InterruptResponse
+	(*ResolveApprovalResponse)(nil),      // 51: remoteagent.v1.ResolveApprovalResponse
+	(*AnswerQuestionResponse)(nil),       // 52: remoteagent.v1.AnswerQuestionResponse
+	(*StopSessionResponse)(nil),          // 53: remoteagent.v1.StopSessionResponse
+	(*CancelInputResponse)(nil),          // 54: remoteagent.v1.CancelInputResponse
+	(*SetModelResponse)(nil),             // 55: remoteagent.v1.SetModelResponse
+	(*SetApprovalModeResponse)(nil),      // 56: remoteagent.v1.SetApprovalModeResponse
+	(*CompactResponse)(nil),              // 57: remoteagent.v1.CompactResponse
+	(*AnswerPlanResponse)(nil),           // 58: remoteagent.v1.AnswerPlanResponse
+	(*ResumeSessionResponse)(nil),        // 59: remoteagent.v1.ResumeSessionResponse
+	(*ResumeInputResponse)(nil),          // 60: remoteagent.v1.ResumeInputResponse
+	(*CreateSessionResponse)(nil),        // 61: remoteagent.v1.CreateSessionResponse
+	(*ListModelsResponse)(nil),           // 62: remoteagent.v1.ListModelsResponse
+	(*ListDirectoriesResponse)(nil),      // 63: remoteagent.v1.ListDirectoriesResponse
+	(*GetSettingsResponse)(nil),          // 64: remoteagent.v1.GetSettingsResponse
+	(*UpdateSettingsResponse)(nil),       // 65: remoteagent.v1.UpdateSettingsResponse
+	(*BeginImageUploadResponse)(nil),     // 66: remoteagent.v1.BeginImageUploadResponse
+	(*PutImageChunkResponse)(nil),        // 67: remoteagent.v1.PutImageChunkResponse
+	(*GetImageUploadStatusResponse)(nil), // 68: remoteagent.v1.GetImageUploadStatusResponse
+	(*CompleteImageUploadResponse)(nil),  // 69: remoteagent.v1.CompleteImageUploadResponse
+	(*AbortImageUploadResponse)(nil),     // 70: remoteagent.v1.AbortImageUploadResponse
+	(*ScheduleResponse)(nil),             // 71: remoteagent.v1.ScheduleResponse
+	(NotifyKind)(0),                      // 72: remoteagent.v1.NotifyKind
 }
 var file_remoteagent_v1_remote_proto_depIdxs = []int32{
-	23, // 0: remoteagent.v1.MachineMeta.primary_limit:type_name -> remoteagent.v1.RateLimit
-	23, // 1: remoteagent.v1.MachineMeta.secondary_limit:type_name -> remoteagent.v1.RateLimit
-	7,  // 2: remoteagent.v1.MachineMeta.agents:type_name -> remoteagent.v1.AgentInfo
-	6,  // 3: remoteagent.v1.MachineMeta.capabilities:type_name -> remoteagent.v1.MachineCapabilities
-	4,  // 4: remoteagent.v1.MachineMeta.quotas:type_name -> remoteagent.v1.AgentQuota
-	24, // 5: remoteagent.v1.AgentQuota.agent:type_name -> remoteagent.v1.Agent
-	0,  // 6: remoteagent.v1.AgentQuota.state:type_name -> remoteagent.v1.QuotaState
-	5,  // 7: remoteagent.v1.AgentQuota.windows:type_name -> remoteagent.v1.QuotaWindow
-	1,  // 8: remoteagent.v1.AgentQuota.login:type_name -> remoteagent.v1.QuotaLogin
-	25, // 9: remoteagent.v1.MachineCapabilities.upload_formats:type_name -> remoteagent.v1.ImageFormat
-	24, // 10: remoteagent.v1.AgentInfo.agent:type_name -> remoteagent.v1.Agent
-	26, // 11: remoteagent.v1.AgentInfo.default_mode:type_name -> remoteagent.v1.ApprovalMode
-	2,  // 12: remoteagent.v1.AgentInfo.default_mode_source:type_name -> remoteagent.v1.DefaultModeSource
-	27, // 13: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
-	28, // 14: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
-	29, // 15: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
-	30, // 16: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
-	31, // 17: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
-	32, // 18: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
-	33, // 19: remoteagent.v1.Command.set_model:type_name -> remoteagent.v1.SetModelRequest
-	34, // 20: remoteagent.v1.Command.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeRequest
-	35, // 21: remoteagent.v1.Command.compact:type_name -> remoteagent.v1.CompactRequest
-	36, // 22: remoteagent.v1.Command.answer_plan:type_name -> remoteagent.v1.AnswerPlanRequest
-	10, // 23: remoteagent.v1.Command.open_terminal:type_name -> remoteagent.v1.OpenTerminalRequest
-	37, // 24: remoteagent.v1.Command.resume_session:type_name -> remoteagent.v1.ResumeSessionRequest
-	38, // 25: remoteagent.v1.Command.resume_input:type_name -> remoteagent.v1.ResumeInputRequest
-	39, // 26: remoteagent.v1.Command.create_session:type_name -> remoteagent.v1.CreateSessionRequest
-	40, // 27: remoteagent.v1.Command.list_models:type_name -> remoteagent.v1.ListModelsRequest
-	41, // 28: remoteagent.v1.Command.list_directories:type_name -> remoteagent.v1.ListDirectoriesRequest
-	42, // 29: remoteagent.v1.Command.get_settings:type_name -> remoteagent.v1.GetSettingsRequest
-	43, // 30: remoteagent.v1.Command.update_settings:type_name -> remoteagent.v1.UpdateSettingsRequest
-	44, // 31: remoteagent.v1.Command.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadRequest
-	45, // 32: remoteagent.v1.Command.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkRequest
-	46, // 33: remoteagent.v1.Command.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusRequest
-	47, // 34: remoteagent.v1.Command.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadRequest
-	48, // 35: remoteagent.v1.Command.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadRequest
-	49, // 36: remoteagent.v1.Command.schedule:type_name -> remoteagent.v1.ScheduleRequest
-	50, // 37: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
-	51, // 38: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
-	52, // 39: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
-	53, // 40: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
-	54, // 41: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
-	55, // 42: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
-	56, // 43: remoteagent.v1.CommandResult.set_model:type_name -> remoteagent.v1.SetModelResponse
-	57, // 44: remoteagent.v1.CommandResult.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeResponse
-	58, // 45: remoteagent.v1.CommandResult.compact:type_name -> remoteagent.v1.CompactResponse
-	59, // 46: remoteagent.v1.CommandResult.answer_plan:type_name -> remoteagent.v1.AnswerPlanResponse
-	11, // 47: remoteagent.v1.CommandResult.open_terminal:type_name -> remoteagent.v1.OpenTerminalResponse
-	60, // 48: remoteagent.v1.CommandResult.resume_session:type_name -> remoteagent.v1.ResumeSessionResponse
-	61, // 49: remoteagent.v1.CommandResult.resume_input:type_name -> remoteagent.v1.ResumeInputResponse
-	62, // 50: remoteagent.v1.CommandResult.create_session:type_name -> remoteagent.v1.CreateSessionResponse
-	63, // 51: remoteagent.v1.CommandResult.list_models:type_name -> remoteagent.v1.ListModelsResponse
-	64, // 52: remoteagent.v1.CommandResult.list_directories:type_name -> remoteagent.v1.ListDirectoriesResponse
-	65, // 53: remoteagent.v1.CommandResult.get_settings:type_name -> remoteagent.v1.GetSettingsResponse
-	66, // 54: remoteagent.v1.CommandResult.update_settings:type_name -> remoteagent.v1.UpdateSettingsResponse
-	67, // 55: remoteagent.v1.CommandResult.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadResponse
-	68, // 56: remoteagent.v1.CommandResult.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkResponse
-	69, // 57: remoteagent.v1.CommandResult.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusResponse
-	70, // 58: remoteagent.v1.CommandResult.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadResponse
-	71, // 59: remoteagent.v1.CommandResult.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadResponse
-	72, // 60: remoteagent.v1.CommandResult.schedule:type_name -> remoteagent.v1.ScheduleResponse
-	13, // 61: remoteagent.v1.TerminalFrame.snapshot:type_name -> remoteagent.v1.TerminalSnapshot
-	14, // 62: remoteagent.v1.TerminalFrame.resize:type_name -> remoteagent.v1.TerminalResize
-	73, // 63: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
-	17, // 64: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
-	25, // 65: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
-	22, // 66: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
-	22, // 67: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
-	21, // 68: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
-	24, // 69: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
-	26, // 70: remoteagent.v1.ProjectSettings.mode:type_name -> remoteagent.v1.ApprovalMode
-	71, // [71:71] is the sub-list for method output_type
-	71, // [71:71] is the sub-list for method input_type
-	71, // [71:71] is the sub-list for extension type_name
-	71, // [71:71] is the sub-list for extension extendee
-	0,  // [0:71] is the sub-list for field type_name
+	7,  // 0: remoteagent.v1.MachineMeta.agents:type_name -> remoteagent.v1.AgentInfo
+	6,  // 1: remoteagent.v1.MachineMeta.capabilities:type_name -> remoteagent.v1.MachineCapabilities
+	4,  // 2: remoteagent.v1.MachineMeta.quotas:type_name -> remoteagent.v1.AgentQuota
+	23, // 3: remoteagent.v1.AgentQuota.agent:type_name -> remoteagent.v1.Agent
+	0,  // 4: remoteagent.v1.AgentQuota.state:type_name -> remoteagent.v1.QuotaState
+	5,  // 5: remoteagent.v1.AgentQuota.windows:type_name -> remoteagent.v1.QuotaWindow
+	1,  // 6: remoteagent.v1.AgentQuota.login:type_name -> remoteagent.v1.QuotaLogin
+	24, // 7: remoteagent.v1.MachineCapabilities.upload_formats:type_name -> remoteagent.v1.ImageFormat
+	23, // 8: remoteagent.v1.AgentInfo.agent:type_name -> remoteagent.v1.Agent
+	25, // 9: remoteagent.v1.AgentInfo.default_mode:type_name -> remoteagent.v1.ApprovalMode
+	2,  // 10: remoteagent.v1.AgentInfo.default_mode_source:type_name -> remoteagent.v1.DefaultModeSource
+	26, // 11: remoteagent.v1.Command.send:type_name -> remoteagent.v1.SendRequest
+	27, // 12: remoteagent.v1.Command.interrupt:type_name -> remoteagent.v1.InterruptRequest
+	28, // 13: remoteagent.v1.Command.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalRequest
+	29, // 14: remoteagent.v1.Command.answer_question:type_name -> remoteagent.v1.AnswerQuestionRequest
+	30, // 15: remoteagent.v1.Command.stop_session:type_name -> remoteagent.v1.StopSessionRequest
+	31, // 16: remoteagent.v1.Command.cancel_input:type_name -> remoteagent.v1.CancelInputRequest
+	32, // 17: remoteagent.v1.Command.set_model:type_name -> remoteagent.v1.SetModelRequest
+	33, // 18: remoteagent.v1.Command.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeRequest
+	34, // 19: remoteagent.v1.Command.compact:type_name -> remoteagent.v1.CompactRequest
+	35, // 20: remoteagent.v1.Command.answer_plan:type_name -> remoteagent.v1.AnswerPlanRequest
+	10, // 21: remoteagent.v1.Command.open_terminal:type_name -> remoteagent.v1.OpenTerminalRequest
+	36, // 22: remoteagent.v1.Command.resume_session:type_name -> remoteagent.v1.ResumeSessionRequest
+	37, // 23: remoteagent.v1.Command.resume_input:type_name -> remoteagent.v1.ResumeInputRequest
+	38, // 24: remoteagent.v1.Command.create_session:type_name -> remoteagent.v1.CreateSessionRequest
+	39, // 25: remoteagent.v1.Command.list_models:type_name -> remoteagent.v1.ListModelsRequest
+	40, // 26: remoteagent.v1.Command.list_directories:type_name -> remoteagent.v1.ListDirectoriesRequest
+	41, // 27: remoteagent.v1.Command.get_settings:type_name -> remoteagent.v1.GetSettingsRequest
+	42, // 28: remoteagent.v1.Command.update_settings:type_name -> remoteagent.v1.UpdateSettingsRequest
+	43, // 29: remoteagent.v1.Command.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadRequest
+	44, // 30: remoteagent.v1.Command.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkRequest
+	45, // 31: remoteagent.v1.Command.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusRequest
+	46, // 32: remoteagent.v1.Command.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadRequest
+	47, // 33: remoteagent.v1.Command.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadRequest
+	48, // 34: remoteagent.v1.Command.schedule:type_name -> remoteagent.v1.ScheduleRequest
+	49, // 35: remoteagent.v1.CommandResult.send:type_name -> remoteagent.v1.SendResponse
+	50, // 36: remoteagent.v1.CommandResult.interrupt:type_name -> remoteagent.v1.InterruptResponse
+	51, // 37: remoteagent.v1.CommandResult.resolve_approval:type_name -> remoteagent.v1.ResolveApprovalResponse
+	52, // 38: remoteagent.v1.CommandResult.answer_question:type_name -> remoteagent.v1.AnswerQuestionResponse
+	53, // 39: remoteagent.v1.CommandResult.stop_session:type_name -> remoteagent.v1.StopSessionResponse
+	54, // 40: remoteagent.v1.CommandResult.cancel_input:type_name -> remoteagent.v1.CancelInputResponse
+	55, // 41: remoteagent.v1.CommandResult.set_model:type_name -> remoteagent.v1.SetModelResponse
+	56, // 42: remoteagent.v1.CommandResult.set_approval_mode:type_name -> remoteagent.v1.SetApprovalModeResponse
+	57, // 43: remoteagent.v1.CommandResult.compact:type_name -> remoteagent.v1.CompactResponse
+	58, // 44: remoteagent.v1.CommandResult.answer_plan:type_name -> remoteagent.v1.AnswerPlanResponse
+	11, // 45: remoteagent.v1.CommandResult.open_terminal:type_name -> remoteagent.v1.OpenTerminalResponse
+	59, // 46: remoteagent.v1.CommandResult.resume_session:type_name -> remoteagent.v1.ResumeSessionResponse
+	60, // 47: remoteagent.v1.CommandResult.resume_input:type_name -> remoteagent.v1.ResumeInputResponse
+	61, // 48: remoteagent.v1.CommandResult.create_session:type_name -> remoteagent.v1.CreateSessionResponse
+	62, // 49: remoteagent.v1.CommandResult.list_models:type_name -> remoteagent.v1.ListModelsResponse
+	63, // 50: remoteagent.v1.CommandResult.list_directories:type_name -> remoteagent.v1.ListDirectoriesResponse
+	64, // 51: remoteagent.v1.CommandResult.get_settings:type_name -> remoteagent.v1.GetSettingsResponse
+	65, // 52: remoteagent.v1.CommandResult.update_settings:type_name -> remoteagent.v1.UpdateSettingsResponse
+	66, // 53: remoteagent.v1.CommandResult.begin_image_upload:type_name -> remoteagent.v1.BeginImageUploadResponse
+	67, // 54: remoteagent.v1.CommandResult.put_image_chunk:type_name -> remoteagent.v1.PutImageChunkResponse
+	68, // 55: remoteagent.v1.CommandResult.get_image_upload_status:type_name -> remoteagent.v1.GetImageUploadStatusResponse
+	69, // 56: remoteagent.v1.CommandResult.complete_image_upload:type_name -> remoteagent.v1.CompleteImageUploadResponse
+	70, // 57: remoteagent.v1.CommandResult.abort_image_upload:type_name -> remoteagent.v1.AbortImageUploadResponse
+	71, // 58: remoteagent.v1.CommandResult.schedule:type_name -> remoteagent.v1.ScheduleResponse
+	13, // 59: remoteagent.v1.TerminalFrame.snapshot:type_name -> remoteagent.v1.TerminalSnapshot
+	14, // 60: remoteagent.v1.TerminalFrame.resize:type_name -> remoteagent.v1.TerminalResize
+	72, // 61: remoteagent.v1.NotifyContent.kind:type_name -> remoteagent.v1.NotifyKind
+	17, // 62: remoteagent.v1.NotifyContent.approval:type_name -> remoteagent.v1.NotifyApproval
+	24, // 63: remoteagent.v1.ImagePayload.format:type_name -> remoteagent.v1.ImageFormat
+	22, // 64: remoteagent.v1.ProjectPrefs.pinned:type_name -> remoteagent.v1.ProjectPref
+	22, // 65: remoteagent.v1.ProjectPrefs.hidden:type_name -> remoteagent.v1.ProjectPref
+	21, // 66: remoteagent.v1.ProjectPrefs.settings:type_name -> remoteagent.v1.ProjectSettings
+	23, // 67: remoteagent.v1.ProjectSettings.agent:type_name -> remoteagent.v1.Agent
+	25, // 68: remoteagent.v1.ProjectSettings.mode:type_name -> remoteagent.v1.ApprovalMode
+	69, // [69:69] is the sub-list for method output_type
+	69, // [69:69] is the sub-list for method input_type
+	69, // [69:69] is the sub-list for extension type_name
+	69, // [69:69] is the sub-list for extension extendee
+	0,  // [0:69] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_remote_proto_init() }

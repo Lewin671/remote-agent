@@ -14,6 +14,11 @@ import com.connectrpc.ServerOnlyStreamInterface
  *  from clients through the server.
  */
 public interface LocalServiceClientInterface {
+  /**
+   *  Schedule manages daemon-owned tasks. It is also used by the local MCP.
+   */
+  public suspend fun schedule(request: ScheduleRequest, headers: Headers = emptyMap()): ResponseMessage<ScheduleResponse>
+
   public suspend fun createSession(request: CreateSessionRequest, headers: Headers = emptyMap()): ResponseMessage<CreateSessionResponse>
 
   public suspend fun listSessions(request: ListSessionsRequest, headers: Headers = emptyMap()): ResponseMessage<ListSessionsResponse>

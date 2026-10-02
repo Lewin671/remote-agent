@@ -171,7 +171,7 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
  * ToolCall.input_digest, the same computation on the daemon), never one
  * worked out here: the tool and digest must match exactly one decided
  * request and exactly one call, and the call must come after the request.
- * Codex and older daemons give no digest, so their approvals keep their
+ * Codex gives no digest, so its approvals keep their
  * own line; so do parallel or repeated calls that cannot be told apart.
  */
 fun approvalDecisions(events: List<Event>, d: Derived): ApprovalDecisions {

@@ -67,8 +67,7 @@ public interface EventOrBuilder extends
    * <pre>
    * Who caused the event, when the daemon knows: set on InputState,
    * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
-   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
-   * older than v2 and when unknown.
+   * SettingsChanged and an interrupted TurnEnded. Absent when unknown.
    * </pre>
    *
    * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>
@@ -79,8 +78,7 @@ public interface EventOrBuilder extends
    * <pre>
    * Who caused the event, when the daemon knows: set on InputState,
    * UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
-   * SettingsChanged and an interrupted TurnEnded. Absent from daemons
-   * older than v2 and when unknown.
+   * SettingsChanged and an interrupted TurnEnded. Absent when unknown.
    * </pre>
    *
    * <code>.remoteagent.v1.Origin origin = 5 [json_name = "origin"];</code>

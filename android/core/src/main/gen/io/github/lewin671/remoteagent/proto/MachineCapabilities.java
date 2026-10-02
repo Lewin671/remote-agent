@@ -17,49 +17,12 @@ public  final class MachineCapabilities extends
   private MachineCapabilities() {
     uploadFormats_ = emptyIntList();
   }
-  public static final int SESSION_IMAGES_FIELD_NUMBER = 1;
-  private boolean sessionImages_;
-  /**
-   * <pre>
-   * Images in the session carry ImageRefs and display copies (GetImage).
-   * </pre>
-   *
-   * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-   * @return The sessionImages.
-   */
-  @java.lang.Override
-  public boolean getSessionImages() {
-    return sessionImages_;
-  }
-  /**
-   * <pre>
-   * Images in the session carry ImageRefs and display copies (GetImage).
-   * </pre>
-   *
-   * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-   * @param value The sessionImages to set.
-   */
-  private void setSessionImages(boolean value) {
-    
-    sessionImages_ = value;
-  }
-  /**
-   * <pre>
-   * Images in the session carry ImageRefs and display copies (GetImage).
-   * </pre>
-   *
-   * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-   */
-  private void clearSessionImages() {
-
-    sessionImages_ = false;
-  }
-
   public static final int IMAGE_UPLOAD_FIELD_NUMBER = 2;
   private boolean imageUpload_;
   /**
    * <pre>
-   * The image upload commands, and image IDs in Send and CreateSession.
+   * Images can be uploaded here: not when the remote-agent folder's path
+   * has spaces, which the CLIs do not take in image paths.
    * </pre>
    *
    * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -71,7 +34,8 @@ public  final class MachineCapabilities extends
   }
   /**
    * <pre>
-   * The image upload commands, and image IDs in Send and CreateSession.
+   * Images can be uploaded here: not when the remote-agent folder's path
+   * has spaces, which the CLIs do not take in image paths.
    * </pre>
    *
    * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -83,7 +47,8 @@ public  final class MachineCapabilities extends
   }
   /**
    * <pre>
-   * The image upload commands, and image IDs in Send and CreateSession.
+   * Images can be uploaded here: not when the remote-agent folder's path
+   * has spaces, which the CLIs do not take in image paths.
    * </pre>
    *
    * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -376,114 +341,6 @@ public  final class MachineCapabilities extends
     }
   }
 
-  public static final int COMMAND_SIGNATURES_FIELD_NUMBER = 7;
-  private boolean commandSignatures_;
-  /**
-   * <pre>
-   * Commands are checked against Envelope.signature and events carry
-   * their Origin.
-   * </pre>
-   *
-   * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-   * @return The commandSignatures.
-   */
-  @java.lang.Override
-  public boolean getCommandSignatures() {
-    return commandSignatures_;
-  }
-  /**
-   * <pre>
-   * Commands are checked against Envelope.signature and events carry
-   * their Origin.
-   * </pre>
-   *
-   * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-   * @param value The commandSignatures to set.
-   */
-  private void setCommandSignatures(boolean value) {
-    
-    commandSignatures_ = value;
-  }
-  /**
-   * <pre>
-   * Commands are checked against Envelope.signature and events carry
-   * their Origin.
-   * </pre>
-   *
-   * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-   */
-  private void clearCommandSignatures() {
-
-    commandSignatures_ = false;
-  }
-
-  public static final int IMAGE_STORAGE_FIELD_NUMBER = 8;
-  private boolean imageStorage_;
-  /**
-   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-   * @return The imageStorage.
-   */
-  @java.lang.Override
-  public boolean getImageStorage() {
-    return imageStorage_;
-  }
-  /**
-   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-   * @param value The imageStorage to set.
-   */
-  private void setImageStorage(boolean value) {
-    
-    imageStorage_ = value;
-  }
-  /**
-   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-   */
-  private void clearImageStorage() {
-
-    imageStorage_ = false;
-  }
-
-  public static final int SEND_MODES_FIELD_NUMBER = 9;
-  private boolean sendModes_;
-  /**
-   * <pre>
-   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-   * message held by the CLI (InputStatus HELD_BY_CLI).
-   * </pre>
-   *
-   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-   * @return The sendModes.
-   */
-  @java.lang.Override
-  public boolean getSendModes() {
-    return sendModes_;
-  }
-  /**
-   * <pre>
-   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-   * message held by the CLI (InputStatus HELD_BY_CLI).
-   * </pre>
-   *
-   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-   * @param value The sendModes to set.
-   */
-  private void setSendModes(boolean value) {
-    
-    sendModes_ = value;
-  }
-  /**
-   * <pre>
-   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-   * message held by the CLI (InputStatus HELD_BY_CLI).
-   * </pre>
-   *
-   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-   */
-  private void clearSendModes() {
-
-    sendModes_ = false;
-  }
-
   public static final int APPROVAL_ALWAYS_FIELD_NUMBER = 10;
   private boolean approvalAlways_;
   /**
@@ -621,47 +478,8 @@ public  final class MachineCapabilities extends
 
     /**
      * <pre>
-     * Images in the session carry ImageRefs and display copies (GetImage).
-     * </pre>
-     *
-     * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-     * @return The sessionImages.
-     */
-    @java.lang.Override
-    public boolean getSessionImages() {
-      return instance.getSessionImages();
-    }
-    /**
-     * <pre>
-     * Images in the session carry ImageRefs and display copies (GetImage).
-     * </pre>
-     *
-     * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-     * @param value The sessionImages to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSessionImages(boolean value) {
-      copyOnWrite();
-      instance.setSessionImages(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Images in the session carry ImageRefs and display copies (GetImage).
-     * </pre>
-     *
-     * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSessionImages() {
-      copyOnWrite();
-      instance.clearSessionImages();
-      return this;
-    }
-
-    /**
-     * <pre>
-     * The image upload commands, and image IDs in Send and CreateSession.
+     * Images can be uploaded here: not when the remote-agent folder's path
+     * has spaces, which the CLIs do not take in image paths.
      * </pre>
      *
      * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -673,7 +491,8 @@ public  final class MachineCapabilities extends
     }
     /**
      * <pre>
-     * The image upload commands, and image IDs in Send and CreateSession.
+     * Images can be uploaded here: not when the remote-agent folder's path
+     * has spaces, which the CLIs do not take in image paths.
      * </pre>
      *
      * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -687,7 +506,8 @@ public  final class MachineCapabilities extends
     }
     /**
      * <pre>
-     * The image upload commands, and image IDs in Send and CreateSession.
+     * Images can be uploaded here: not when the remote-agent folder's path
+     * has spaces, which the CLIs do not take in image paths.
      * </pre>
      *
      * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -976,120 +796,6 @@ public  final class MachineCapabilities extends
 
     /**
      * <pre>
-     * Commands are checked against Envelope.signature and events carry
-     * their Origin.
-     * </pre>
-     *
-     * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-     * @return The commandSignatures.
-     */
-    @java.lang.Override
-    public boolean getCommandSignatures() {
-      return instance.getCommandSignatures();
-    }
-    /**
-     * <pre>
-     * Commands are checked against Envelope.signature and events carry
-     * their Origin.
-     * </pre>
-     *
-     * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-     * @param value The commandSignatures to set.
-     * @return This builder for chaining.
-     */
-    public Builder setCommandSignatures(boolean value) {
-      copyOnWrite();
-      instance.setCommandSignatures(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Commands are checked against Envelope.signature and events carry
-     * their Origin.
-     * </pre>
-     *
-     * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearCommandSignatures() {
-      copyOnWrite();
-      instance.clearCommandSignatures();
-      return this;
-    }
-
-    /**
-     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-     * @return The imageStorage.
-     */
-    @java.lang.Override
-    public boolean getImageStorage() {
-      return instance.getImageStorage();
-    }
-    /**
-     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-     * @param value The imageStorage to set.
-     * @return This builder for chaining.
-     */
-    public Builder setImageStorage(boolean value) {
-      copyOnWrite();
-      instance.setImageStorage(value);
-      return this;
-    }
-    /**
-     * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearImageStorage() {
-      copyOnWrite();
-      instance.clearImageStorage();
-      return this;
-    }
-
-    /**
-     * <pre>
-     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-     * message held by the CLI (InputStatus HELD_BY_CLI).
-     * </pre>
-     *
-     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-     * @return The sendModes.
-     */
-    @java.lang.Override
-    public boolean getSendModes() {
-      return instance.getSendModes();
-    }
-    /**
-     * <pre>
-     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-     * message held by the CLI (InputStatus HELD_BY_CLI).
-     * </pre>
-     *
-     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-     * @param value The sendModes to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSendModes(boolean value) {
-      copyOnWrite();
-      instance.setSendModes(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-     * message held by the CLI (InputStatus HELD_BY_CLI).
-     * </pre>
-     *
-     * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSendModes() {
-      copyOnWrite();
-      instance.clearSendModes();
-      return this;
-    }
-
-    /**
-     * <pre>
      * ResolveApprovalRequest.always.
      * </pre>
      *
@@ -1144,20 +850,16 @@ public  final class MachineCapabilities extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "sessionImages_",
             "imageUpload_",
             "maxImagesPerMessage_",
             "maxUploadBytes_",
             "maxChunkBytes_",
             "uploadFormats_",
-            "commandSignatures_",
-            "imageStorage_",
-            "sendModes_",
             "approvalAlways_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0004" +
-              "\u0004\u0002\u0005\u0004\u0006,\u0007\u0007\b\u0007\t\u0007\n\u0007";
+              "\u0000\u0006\u0000\u0000\u0002\n\u0006\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
+              "\u0004\u0002\u0005\u0004\u0006,\n\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -90,11 +90,8 @@ data class RemoteState(
     val offlineSinceMs: Long = 0,
     /** The account's project preferences; null until read (from the server or the cache). */
     val prefs: PrefsObject? = null,
-    /** The server keeps account preferences; false for a server older than v2. */
-    val prefsSupported: Boolean = true,
-    /** The account's devices, machines and clients (ListDevices); empty for a server older than v2. */
+    /** The account's devices, machines and clients (ListDevices). */
     val devices: Map<String, DeviceView> = emptyMap(),
-    val devicesSupported: Boolean = true,
 )
 
 /** A device of the account; a client's name is in its sealed metadata. */
@@ -197,9 +194,7 @@ class Remote(
     private var loaded = false
     private var offlineSince = 0L
     private var prefs: PrefsObject? = null
-    private var prefsSupported = true
     private val devices = HashMap<String, DeviceView>()
-    private var devicesSupported = true
 
     // Pushes seen per machine, session and machine removal, so that a list
     // fetched before a push cannot undo it.
@@ -277,7 +272,7 @@ class Remote(
 
     private fun publish() {
         if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
-        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, prefsSupported, devices.toMap(), devicesSupported)
+        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap())
     }
 
     private suspend fun readCache() {
@@ -547,18 +542,12 @@ class Remote(
 
     private val prefsCodec = PrefsCodec(keys.prefs, account.deviceId)
 
-    private fun unimplemented(e: Throwable) = e is ConnectException && e.code == Code.UNIMPLEMENTED
-
     private suspend fun loadPrefs() {
         try {
             val o = api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(token)).value()
-            prefsSupported = true
             putPrefs(o.`object`)
         } catch (e: Exception) {
-            if (unimplemented(e)) {
-                prefsSupported = false
-                publish()
-            } else report(e)
+            report(e)
         }
     }
 
@@ -619,12 +608,11 @@ class Remote(
     private suspend fun loadDevices() {
         try {
             val r = api.client.listDevices(io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(), Api.headers(token)).value()
-            devicesSupported = true
             val ids = r.devicesList.map { it.id }.toSet()
             devices.keys.retainAll(ids)
             for (d in r.devicesList) putDevice(d)
         } catch (e: Exception) {
-            if (unimplemented(e)) devicesSupported = false else report(e)
+            report(e)
         }
         publish()
     }
@@ -854,7 +842,7 @@ class Remote(
         val requestId = newRequestId()
         val deadline = clock() + COMMAND_TTL_MS
         // Signed by this device, so a daemon can tell who sent it
-        // (architecture §9); older daemons ignore the signature.
+        // (architecture §9).
         val env = signEnvelope(device, Envelopes.seal(
             keys.command,
             Header.newBuilder()
@@ -865,7 +853,7 @@ class Remote(
                 .setDeadlineMs(deadline)
                 .setSender(account.deviceId)
                 .build(),
-            cmd,
+            cmd.toBuilder().setProtocolVersion(PROTOCOL_VERSION).build(),
         ))
         return PreparedCommand(machineId, sessionId, requestId, deadline, env)
     }
@@ -885,6 +873,9 @@ class Remote(
      * most once; when the outcome stays unknown the error says so.
      */
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult {
+        // A machine of another protocol version would refuse it: say which
+        // side to update instead of sending.
+        protocolMismatch(state.value.machines[p.machineId])?.let { throw CommandException("failed_precondition", it) }
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
         if (!retryOfUnknown && clock() >= p.deadlineMs) throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")

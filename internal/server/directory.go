@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -35,32 +34,6 @@ const (
 	maxPrefsBytes      = 256 << 10
 	maxDeviceMetaBytes = 16 << 10
 )
-
-// migrate adds the columns later versions need to an older database.
-func (s *store) migrate() error {
-	cols := map[string]bool{}
-	rows, err := s.db.Query(`SELECT name FROM pragma_table_info('devices')`)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			rows.Close()
-			return err
-		}
-		cols[name] = true
-	}
-	rows.Close()
-	for _, c := range []struct{ name, def string }{{"meta", "BLOB"}, {"meta_revision", "INTEGER NOT NULL DEFAULT 0"}} {
-		if !cols[c.name] {
-			if _, err := s.db.Exec(fmt.Sprintf(`ALTER TABLE devices ADD COLUMN %s %s`, c.name, c.def)); err != nil {
-				return fmt.Errorf("add devices.%s: %w", c.name, err)
-			}
-		}
-	}
-	return nil
-}
 
 func scanDevice(sc interface{ Scan(...any) error }) (*pb.Device, error) {
 	d := &pb.Device{}

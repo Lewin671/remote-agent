@@ -72,7 +72,7 @@ class ProjectTest {
 
     @Test
     fun anUnknownDefaultDoesNotBlockAStart() {
-        // An older daemon says nothing: it could be full access.
+        // The daemon could not read it: it could be full access.
         val old = machine(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).build())
         assertEquals(LaunchMode.Send(ApprovalMode.APPROVAL_MODE_UNSPECIFIED), launchMode(null, defaultModeOf(old, Agent.AGENT_CODEX)))
         // A mode outside the four (accept edits) is known and not full access.

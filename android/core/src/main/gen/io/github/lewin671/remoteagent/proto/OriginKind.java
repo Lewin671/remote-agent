@@ -31,16 +31,6 @@ public enum OriginKind
   ORIGIN_KIND_CLIENT(1),
   /**
    * <pre>
-   * A client command without a signature, e.g. from a client older than
-   * v2. device_id is the device the server says sent it, which is not
-   * proof: show it as "another client", not by name.
-   * </pre>
-   *
-   * <code>ORIGIN_KIND_UNVERIFIED_CLIENT = 2;</code>
-   */
-  ORIGIN_KIND_UNVERIFIED_CLIENT(2),
-  /**
-   * <pre>
    * The computer: typed in the local terminal, or sent with the local
    * remote-agent command.
    * </pre>
@@ -74,16 +64,6 @@ public enum OriginKind
    * <code>ORIGIN_KIND_CLIENT = 1;</code>
    */
   public static final int ORIGIN_KIND_CLIENT_VALUE = 1;
-  /**
-   * <pre>
-   * A client command without a signature, e.g. from a client older than
-   * v2. device_id is the device the server says sent it, which is not
-   * proof: show it as "another client", not by name.
-   * </pre>
-   *
-   * <code>ORIGIN_KIND_UNVERIFIED_CLIENT = 2;</code>
-   */
-  public static final int ORIGIN_KIND_UNVERIFIED_CLIENT_VALUE = 2;
   /**
    * <pre>
    * The computer: typed in the local terminal, or sent with the local
@@ -127,7 +107,6 @@ public enum OriginKind
     switch (value) {
       case 0: return ORIGIN_KIND_UNSPECIFIED;
       case 1: return ORIGIN_KIND_CLIENT;
-      case 2: return ORIGIN_KIND_UNVERIFIED_CLIENT;
       case 3: return ORIGIN_KIND_LOCAL;
       case 4: return ORIGIN_KIND_SYSTEM;
       default: return null;

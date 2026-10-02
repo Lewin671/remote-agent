@@ -8,7 +8,6 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
@@ -177,113 +176,5 @@ func TestMCPScheduledDispatchRechecksNarrowedPermissions(t *testing.T) {
 	got := readTask(t, h.d, task.ID)
 	if got.Status != "paused" || got.Reason != "agent_schedule_permissions_changed" || got.Dispatches != 0 {
 		t.Fatalf("unsafe delayed dispatch: %+v", got)
-	}
-}
-
-func TestLegacyAgentSchedulesRequireMachineConfirmation(t *testing.T) {
-	h := scopedHarness(t, "ask")
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 60}), "")
-	h.d.scheduleMu.Lock()
-	h.d.tasks[task.ID].Source = "agent"
-	if err := h.d.saveSchedulesLocked(); err != nil {
-		t.Fatal(err)
-	}
-	h.d.scheduleMu.Unlock()
-	if err := h.d.loadSchedules(); err != nil {
-		t.Fatal(err)
-	}
-	got := readTask(t, h.d, task.ID)
-	if got.Status != "paused" || got.Reason != "legacy_agent_task_requires_confirmation" {
-		t.Fatalf("legacy unsafe task not quarantined: %+v", got)
-	}
-	if _, err := scopedSchedule(t, h, "resume", task.ID, nil); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("MCP adopted legacy task: %v", err)
-	}
-	if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "resume", TaskId: task.ID}, originLocal); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.d.loadSchedules(); err != nil {
-		t.Fatal(err)
-	}
-	if got := readTask(t, h.d, task.ID); got.Status != "scheduled" || got.Source != "local" {
-		t.Fatalf("confirmed legacy task requarantined: %+v", got)
-	}
-}
-
-func TestLegacyMCPRequestsCannotBypassScope(t *testing.T) {
-	h := scopedHarness(t, "ask")
-	spec := scopedNewSpec(h, "full")
-	b, _ := json.Marshal(spec)
-	q := connect.NewRequest(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: b})
-	_, err := (&handler{d: h.d}).Schedule(context.Background(), q)
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("legacy unscoped MCP allowed: %v", err)
-	}
-	q.Header().Set(schedule.CallerHeader, "cli")
-	if _, err := (&handler{d: h.d}).Schedule(context.Background(), q); err != nil {
-		t.Fatalf("explicit machine user blocked: %v", err)
-	}
-	q.Header().Del(schedule.CallerHeader)
-	ctx := agent.WithOrigin(context.Background(), &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "user-device"})
-	if _, err := (&handler{d: h.d}).Schedule(ctx, q); err != nil {
-		t.Fatalf("remote machine user blocked: %v", err)
-	}
-}
-
-func TestLegacyActiveExecutionCannotClearQuarantine(t *testing.T) {
-	h := scopedHarness(t, "ask")
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn", Repeat: true}), "")
-	now := time.Now().Add(time.Second)
-	h.d.tickSchedules(now)
-	task = readTask(t, h.d, task.ID)
-	if task.Active == nil {
-		t.Fatal("execution not queued")
-	}
-	h.d.scheduleMu.Lock()
-	h.d.tasks[task.ID].Source = "agent"
-	if err := h.d.saveSchedulesLocked(); err != nil {
-		t.Fatal(err)
-	}
-	h.d.scheduleMu.Unlock()
-	if err := h.d.loadSchedules(); err != nil {
-		t.Fatal(err)
-	}
-	assertQuarantined := func() {
-		t.Helper()
-		got := readTask(t, h.d, task.ID)
-		if got.Status != "paused" || got.Reason != "legacy_agent_task_requires_confirmation" || got.Dispatches != 1 {
-			t.Fatalf("quarantine cleared without user confirmation: %+v", got)
-		}
-	}
-	assertQuarantined()
-	for _, paused := range []bool{true, false} {
-		h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: task.Active.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Paused: paused}}})
-		h.d.tickSchedules(now)
-		assertQuarantined()
-	}
-	completeTask(h, task.Active, now)
-	h.d.tickSchedules(now)
-	assertQuarantined()
-	h.d.tickSchedules(now.Add(time.Hour))
-	assertQuarantined()
-	if err := h.d.loadSchedules(); err != nil {
-		t.Fatal(err)
-	}
-	h.d.tickSchedules(now.Add(2 * time.Hour))
-	assertQuarantined()
-}
-
-func TestLegacyDispatchGateRejectsOverwrittenPause(t *testing.T) {
-	h := scopedHarness(t, "ask")
-	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
-	h.d.scheduleMu.Lock()
-	h.d.tasks[task.ID].Source = "agent"
-	h.d.tasks[task.ID].Status = "scheduled"
-	h.d.tasks[task.ID].Reason = ""
-	h.d.scheduleMu.Unlock()
-	h.d.tickSchedules(task.NextRunAt.Add(time.Second))
-	got := readTask(t, h.d, task.ID)
-	if got.Status != "paused" || got.Reason != "legacy_agent_task_requires_confirmation" || got.Dispatches != 0 || len(h.s.queue.Queue) != 0 {
-		t.Fatalf("unscoped legacy definition reached session: %+v", got)
 	}
 }

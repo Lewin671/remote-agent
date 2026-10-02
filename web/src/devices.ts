@@ -50,14 +50,11 @@ export interface OriginContext {
   me: string; // this device's ID
   devices: Map<string, DeviceInfo>;
   machine: string; // the session's computer, by name
-  // Request IDs this page sent: an unverified sender is this client only
-  // if this page knows the request as its own.
-  mine?: Set<string>;
 }
 
 /** Who did something, in words; "" for the CLI or daemon itself, and
- * undefined when the daemon recorded no origin (older daemons), for the
- * caller's own fallback. */
+ * undefined when the daemon recorded no origin (a message it could not
+ * tell the sender of), for the caller's own fallback. */
 export function originLabel(o: Origin | undefined, ctx: OriginContext): string | undefined {
   if (!o || o.kind === OriginKind.UNSPECIFIED) return undefined;
   switch (o.kind) {
@@ -67,8 +64,6 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
       // A device removed since keeps only its short ID.
       return d ? clientName(d) : `客户端 · ${shortId(o.deviceId)}`;
     }
-    case OriginKind.UNVERIFIED_CLIENT:
-      return o.requestId && ctx.mine?.has(o.requestId) ? "本客户端" : "另一客户端";
     case OriginKind.LOCAL:
       return `${ctx.machine} 本地终端`;
     case OriginKind.SYSTEM:
@@ -82,7 +77,7 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
  * daemon named a device, "终端" for the computer. */
 export function elsewhereLabel(o: Origin | undefined, ctx: OriginContext): string {
   const l = originLabel(o, ctx);
-  if (l === undefined || l === "另一客户端") return "另一端";
+  if (l === undefined) return "另一端";
   if (o?.kind === OriginKind.LOCAL) return "终端";
   return l;
 }

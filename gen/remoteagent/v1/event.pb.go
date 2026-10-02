@@ -31,10 +31,6 @@ const (
 	// device key, registered with the account key (Envelope.signature).
 	// device_id names it.
 	OriginKind_ORIGIN_KIND_CLIENT OriginKind = 1
-	// A client command without a signature, e.g. from a client older than
-	// v2. device_id is the device the server says sent it, which is not
-	// proof: show it as "another client", not by name.
-	OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT OriginKind = 2
 	// The computer: typed in the local terminal, or sent with the local
 	// remote-agent command.
 	OriginKind_ORIGIN_KIND_LOCAL OriginKind = 3
@@ -48,16 +44,14 @@ var (
 	OriginKind_name = map[int32]string{
 		0: "ORIGIN_KIND_UNSPECIFIED",
 		1: "ORIGIN_KIND_CLIENT",
-		2: "ORIGIN_KIND_UNVERIFIED_CLIENT",
 		3: "ORIGIN_KIND_LOCAL",
 		4: "ORIGIN_KIND_SYSTEM",
 	}
 	OriginKind_value = map[string]int32{
-		"ORIGIN_KIND_UNSPECIFIED":       0,
-		"ORIGIN_KIND_CLIENT":            1,
-		"ORIGIN_KIND_UNVERIFIED_CLIENT": 2,
-		"ORIGIN_KIND_LOCAL":             3,
-		"ORIGIN_KIND_SYSTEM":            4,
+		"ORIGIN_KIND_UNSPECIFIED": 0,
+		"ORIGIN_KIND_CLIENT":      1,
+		"ORIGIN_KIND_LOCAL":       3,
+		"ORIGIN_KIND_SYSTEM":      4,
 	}
 )
 
@@ -748,7 +742,7 @@ func (InputStatus) EnumDescriptor() ([]byte, []int) {
 type SendMode int32
 
 const (
-	// Steer; also what older clients get.
+	// Steer.
 	SendMode_SEND_MODE_UNSPECIFIED SendMode = 0
 	// Into the current turn as soon as the input box is free.
 	SendMode_SEND_MODE_STEER SendMode = 1
@@ -872,8 +866,7 @@ type Event struct {
 	TurnId string `protobuf:"bytes,4,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
 	// Who caused the event, when the daemon knows: set on InputState,
 	// UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
-	// SettingsChanged and an interrupted TurnEnded. Absent from daemons
-	// older than v2 and when unknown.
+	// SettingsChanged and an interrupted TurnEnded. Absent when unknown.
 	Origin *Origin `protobuf:"bytes,5,opt,name=origin,proto3" json:"origin,omitempty"`
 	// Types that are valid to be assigned to Kind:
 	//
@@ -1639,8 +1632,7 @@ func (x *PlanAnswered) GetChoice() int32 {
 }
 
 // ToolStarted says the model called a tool; its ToolCall event with the
-// same call_id follows when the call completes. Daemons before v2 left
-// call_id empty for Codex, whose start and end then pair in order. For
+// same call_id follows when the call completes. For
 // Codex a call is one exec script: a second command it ran reports a
 // ToolCall with the ID "<call_id>#2", which has no start of its own.
 type ToolStarted struct {
@@ -1734,13 +1726,8 @@ type UserMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The message as the CLI recorded it, including the CLI's "[Image #N]"
 	// placeholders; ImageRef.cli_index ties each to its image.
-	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	// Number of images attached to the message. Deprecated: use images;
-	// still set for clients older than v2.
-	//
-	// Deprecated: Marked as deprecated in remoteagent/v1/event.proto.
-	ImageCount int32       `protobuf:"varint,2,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
-	Images     []*ImageRef `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	Text   string      `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Images []*ImageRef `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
 	// The Send request that submitted this message, when the daemon matched
 	// it; the event's origin says who sent it.
 	RequestId     string `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -1783,14 +1770,6 @@ func (x *UserMessage) GetText() string {
 		return x.Text
 	}
 	return ""
-}
-
-// Deprecated: Marked as deprecated in remoteagent/v1/event.proto.
-func (x *UserMessage) GetImageCount() int32 {
-	if x != nil {
-		return x.ImageCount
-	}
-	return 0
 }
 
 func (x *UserMessage) GetImages() []*ImageRef {
@@ -3284,14 +3263,12 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x04kind\x18\x03 \x01(\x0e2\x18.remoteagent.v1.ToolKindR\x04kind\x12\x14\n" +
 	"\x05input\x18\x04 \x01(\tR\x05input\x12\x1b\n" +
 	"\titem_type\x18\x05 \x01(\tR\bitemType\x12!\n" +
-	"\finput_digest\x18\x06 \x01(\tR\vinputDigest\"\x97\x01\n" +
+	"\finput_digest\x18\x06 \x01(\tR\vinputDigest\"x\n" +
 	"\vUserMessage\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\x12#\n" +
-	"\vimage_count\x18\x02 \x01(\x05B\x02\x18\x01R\n" +
-	"imageCount\x120\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x120\n" +
 	"\x06images\x18\x03 \x03(\v2\x18.remoteagent.v1.ImageRefR\x06images\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x04 \x01(\tR\trequestId\"8\n" +
+	"request_id\x18\x04 \x01(\tR\trequestIdJ\x04\b\x02\x10\x03\"8\n" +
 	"\fAgentMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
 	"\x05phase\x18\x02 \x01(\tR\x05phase\"\x1f\n" +
@@ -3409,14 +3386,13 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12\x1b\n" +
 	"\timage_ids\x18\x06 \x03(\tR\bimageIds\x12,\n" +
 	"\x04mode\x18\a \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12\x16\n" +
-	"\x06paused\x18\b \x01(\bR\x06paused*\x93\x01\n" +
+	"\x06paused\x18\b \x01(\bR\x06paused*v\n" +
 	"\n" +
 	"OriginKind\x12\x1b\n" +
 	"\x17ORIGIN_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
-	"\x12ORIGIN_KIND_CLIENT\x10\x01\x12!\n" +
-	"\x1dORIGIN_KIND_UNVERIFIED_CLIENT\x10\x02\x12\x15\n" +
+	"\x12ORIGIN_KIND_CLIENT\x10\x01\x12\x15\n" +
 	"\x11ORIGIN_KIND_LOCAL\x10\x03\x12\x16\n" +
-	"\x12ORIGIN_KIND_SYSTEM\x10\x04*\x85\x01\n" +
+	"\x12ORIGIN_KIND_SYSTEM\x10\x04\"\x04\b\x02\x10\x02*\x85\x01\n" +
 	"\vImageFormat\x12\x1c\n" +
 	"\x18IMAGE_FORMAT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10IMAGE_FORMAT_PNG\x10\x01\x12\x15\n" +

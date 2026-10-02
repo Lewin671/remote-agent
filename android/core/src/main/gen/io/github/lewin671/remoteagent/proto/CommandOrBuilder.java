@@ -273,5 +273,27 @@ public interface CommandOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.AbortImageUploadRequest getAbortImageUpload();
 
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   * @return Whether the schedule field is set.
+   */
+  boolean hasSchedule();
+  /**
+   * <code>.remoteagent.v1.ScheduleRequest schedule = 30 [json_name = "schedule"];</code>
+   * @return The schedule.
+   */
+  io.github.lewin671.remoteagent.proto.ScheduleRequest getSchedule();
+
+  /**
+   * <pre>
+   * The protocol version the client speaks (internal/protocol). A daemon
+   * of another version refuses the command and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  int getProtocolVersion();
+
   public io.github.lewin671.remoteagent.proto.Command.KindCase getKindCase();
 }

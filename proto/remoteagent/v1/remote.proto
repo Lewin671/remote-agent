@@ -13,10 +13,7 @@ import "remoteagent/v1/relay.proto";
 message MachineMeta {
   string hostname = 1;
   string os = 2;
-  // The Codex account's latest usage limits seen on this machine.
-  RateLimit primary_limit = 3;
-  RateLimit secondary_limit = 4;
-  string plan_type = 5;
+  reserved 3, 4, 5;
   // Home folder, for choosing where to start sessions.
   string home = 6;
   // `codex --version`, and whether this remote-agent has been checked
@@ -24,12 +21,9 @@ message MachineMeta {
   string codex_version = 7;
   bool codex_verified = 8;
   // The CLIs installed on this machine; a client offers only these when
-  // starting a session. Empty from daemons older than Claude Code support,
-  // which only run Codex.
+  // starting a session.
   repeated AgentInfo agents = 9;
-  // What this daemon supports beyond the base protocol. Absent from
-  // daemons older than v2: a client then offers none of it and says the
-  // computer needs updating.
+  // What this daemon offers that depends on the machine.
   MachineCapabilities capabilities = 10;
   // The account usage limits of each installed CLI, as far as the CLI
   // tells them (Codex: its rollouts; Claude Code: the input of its status
@@ -37,6 +31,9 @@ message MachineMeta {
   // Several entries for one CLI are accounts (or, with account empty,
   // sessions) that could not be told to be the same.
   repeated AgentQuota quotas = 11;
+  // The protocol version this daemon speaks (internal/protocol). A client
+  // of another version sends it no commands and says which side to update.
+  uint32 protocol_version = 12;
 }
 
 enum QuotaState {
@@ -93,9 +90,9 @@ message QuotaWindow {
 }
 
 message MachineCapabilities {
-  // Images in the session carry ImageRefs and display copies (GetImage).
-  bool session_images = 1;
-  // The image upload commands, and image IDs in Send and CreateSession.
+  reserved 1, 7, 8, 9, 11;
+  // Images can be uploaded here: not when the remote-agent folder's path
+  // has spaces, which the CLIs do not take in image paths.
   bool image_upload = 2;
   int32 max_images_per_message = 3;
   // Largest file BeginImageUpload accepts.
@@ -104,17 +101,8 @@ message MachineCapabilities {
   int32 max_chunk_bytes = 5;
   // Formats BeginImageUpload accepts.
   repeated ImageFormat upload_formats = 6;
-  // Commands are checked against Envelope.signature and events carry
-  // their Origin.
-  bool command_signatures = 7;
-  bool image_storage = 8;
-  // SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-  // message held by the CLI (InputStatus HELD_BY_CLI).
-  bool send_modes = 9;
   // ResolveApprovalRequest.always.
   bool approval_always = 10;
-  // Schedule machine command: daemon-owned timed Agent messages.
-  bool scheduled_tasks = 11;
 }
 
 message AgentInfo {
@@ -138,7 +126,7 @@ message AgentInfo {
 }
 
 enum DefaultModeSource {
-  // Not known: an older daemon, or the configuration could not be read.
+  // Not known: the configuration could not be read.
   DEFAULT_MODE_SOURCE_UNSPECIFIED = 0;
   DEFAULT_MODE_SOURCE_DAEMON_SETTINGS = 1;
   DEFAULT_MODE_SOURCE_CLI_CONFIG = 2;
@@ -176,6 +164,9 @@ message Command {
     AbortImageUploadRequest abort_image_upload = 29;
     ScheduleRequest schedule = 30;
   }
+  // The protocol version the client speaks (internal/protocol). A daemon
+  // of another version refuses the command and says which side to update.
+  uint32 protocol_version = 100;
 }
 
 // CommandResult is the daemon's reply to a Command. A retried request ID

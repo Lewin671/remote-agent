@@ -67,7 +67,8 @@ import { describeBrowser, type DeviceInfo } from "./devices";
 import type { Prepare, Tray } from "./attach";
 import { prepareForSending } from "./sendimages";
 import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
-import { modelLabel, type Outgoing } from "./model";
+import { machineName, modelLabel, type Outgoing } from "./model";
+import { PROTOCOL_VERSION } from "./protocol";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
 export interface MachineView {
@@ -190,7 +191,7 @@ export type ImageResult =
 export const PREFS_OBJECT = "project-prefs";
 
 export interface PrefsState {
-  status: "loading" | "ready" | "unsupported" | "error";
+  status: "loading" | "ready" | "error";
   error: string;
   snap?: PrefsSnapshot;
   // Operations in flight, by project path.
@@ -269,7 +270,7 @@ export class Remote {
   // The account's devices, machines and clients (ListDevices); names of
   // clients are sealed in their metadata.
   devices = new Map<string, DeviceInfo>();
-  devicesStatus: "loading" | "ready" | "unsupported" | "error" = "loading";
+  devicesStatus: "loading" | "ready" | "error" = "loading";
   // The account's project list preferences.
   prefs: PrefsState = { status: "loading", error: "", pending: new Map() };
   // Images chosen for each draft, by draft key (a session ID, or
@@ -802,6 +803,15 @@ export class Remote {
    * runs at most once. */
   private async forward(machineId: string, sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
     const { requestId, deadline } = slot;
+    // A machine of another protocol version would refuse the command, in
+    // words that do not say which side to update: say so here, unsent.
+    const m = this.machines.get(machineId);
+    const theirs = m?.meta?.protocolVersion;
+    if (theirs !== undefined && theirs !== PROTOCOL_VERSION)
+      throw new CommandError(
+        "failed_precondition",
+        theirs < PROTOCOL_VERSION ? `${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试` : "这个网页版本较旧，请刷新或更新后再试",
+      );
     // Signed by this device, so the daemon knows who sent it whatever the
     // server says (the server also checks the sender is the caller).
     const env = await signEnvelope(
@@ -817,7 +827,7 @@ export class Remote {
           sender: this.account.deviceId,
         },
         CommandSchema,
-        create(CommandSchema, { kind: cmd }),
+        create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
       ),
     );
     // Once a try may have reached the daemon, no later failure of this
@@ -1048,8 +1058,7 @@ export class Remote {
 
   // --- devices ---
 
-  /** Lists the account's devices. A server older than v2 has no list:
-   * the pages then say so rather than guess. */
+  /** Lists the account's devices. */
   async loadDevices() {
     try {
       const r = await this.api.listDevices({});
@@ -1060,7 +1069,7 @@ export class Remote {
       this.changed();
       await this.describeSelf();
     } catch (e) {
-      this.devicesStatus = e instanceof ConnectError && e.code === Code.Unimplemented ? "unsupported" : "error";
+      this.devicesStatus = "error";
       this.changed();
     }
   }
@@ -1151,8 +1160,7 @@ export class Remote {
       await this.takePrefs(r.object, false);
       this.prefs = { ...this.prefs, status: "ready", error: "" };
     } catch (e) {
-      const unsupported = e instanceof ConnectError && e.code === Code.Unimplemented;
-      this.prefs = { ...this.prefs, status: unsupported ? "unsupported" : this.prefs.snap ? "ready" : "error", error: unsupported ? "" : errorText(e) };
+      this.prefs = { ...this.prefs, status: this.prefs.snap ? "ready" : "error", error: errorText(e) };
     }
     this.changed();
   }
@@ -1281,7 +1289,6 @@ export class Remote {
       res = await this.api.getImage({ sessionId: sid, imageId });
     } catch (e) {
       if (e instanceof ConnectError && e.code === Code.NotFound) return { kind: "missing" };
-      if (e instanceof ConnectError && e.code === Code.Unimplemented) return { kind: "missing" };
       throw e;
     }
     if (res.expired || !res.image) return { kind: "expired" };

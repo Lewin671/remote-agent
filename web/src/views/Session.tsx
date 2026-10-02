@@ -414,11 +414,11 @@ function ChatBody({
   const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
   const short: Short = { text: (title) => shortenPaths(title, cwd, home), path: (path) => shortenPath(path, cwd, home) };
 
-  // Text of a message this page knows, by request ID; v2 daemons say
-  // what they accepted from any client.
+  // Text of a message this page knows, by request ID; the daemon says
+  // what it accepted from any client.
   const textOf = new Map([...[...d.accepted].map(([id, a]) => [id, a.text] as const), ...outbox.map((o) => [o.sendId, o.text] as const)]);
   const who: Who = {
-    ctx: { me: remote.account.deviceId, devices: remote.devices, machine, mine: new Set(outbox.map((o) => o.requestId)) },
+    ctx: { me: remote.account.deviceId, devices: remote.devices, machine },
     // Name this client on its own messages only when there are others.
     many: [...remote.devices.values()].filter((x) => x.kind === DeviceKind.CLIENT).length > 1,
     self: platformLabel(remote.devices.get(remote.account.deviceId)?.meta),
@@ -446,7 +446,7 @@ function ChatBody({
     } else if (count > seen.current) setUnseen(count - seen.current);
   }, [count, hist.loaded]);
 
-  // A v2 daemon names the request a recorded message came from; until
+  // The daemon names the request a recorded message came from; until
   // then, a message it marked submitted (Codex takes one mid-turn and
   // records it later) stays in view as written to the terminal.
   const recorded = new Set(events.flatMap((e) => (e.kind.case === "userMessage" && e.kind.value.requestId ? [e.kind.value.requestId] : [])));
@@ -597,8 +597,6 @@ function Row({
       const from = label === undefined ? (d.typedLocally.has(e.seq) ? `${machine} 终端` : "") : label === "本客户端" ? (who.many ? `本客户端 · ${who.self}` : "") : label;
       const images = k.value.images;
       const segs = splitPlaceholders(k.value.text, images);
-      // A daemon older than v2 only counts them.
-      const unseen = images.length === 0 ? k.value.imageCount : 0;
       return (
         <div className="me">
           <ImageStrip refs={images} numbered />
@@ -615,7 +613,6 @@ function Row({
               )}
             </div>
           )}
-          {unseen > 0 && <small>{unseen} 张图片（电脑端版本较旧，这里看不到）</small>}
           {from && <small>{from}</small>}
         </div>
       );

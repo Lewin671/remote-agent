@@ -90,12 +90,4 @@ class QuotaTest {
         assertEquals("Team Plus", planName("Team Plus"))
     }
 
-    @Test
-    fun oldDaemonShowsOnlyTheWindowsItHas() {
-        val meta = MachineMeta.newBuilder().setPrimaryLimit(
-            io.github.lewin671.remoteagent.proto.RateLimit.newBuilder().setUsedPercent(28.0).setWindowMinutes(300)
-        ).build()
-        val g = quotaGroups(MachineView("m", true, 0, meta), now, zone).single { it.agent == Agent.AGENT_CODEX }
-        assertEquals(listOf("5 小时"), g.rows.map { it.label })
-    }
 }

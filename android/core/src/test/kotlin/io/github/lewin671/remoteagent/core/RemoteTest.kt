@@ -189,6 +189,7 @@ class RemoteTest {
         val (h, cmd) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
         assertEquals("s1", h.sessionId)
         assertEquals("跑一下测试", cmd.send.text)
+        assertEquals(PROTOCOL_VERSION, cmd.protocolVersion)
         assertEquals(r.account.deviceId, h.sender)
         assertTrue(h.deadlineMs > System.currentTimeMillis())
 
@@ -208,6 +209,37 @@ class RemoteTest {
         } catch (e: CommandException) {
             assertEquals(CommandException.UNAVAILABLE, e.code)
         }
+    }
+
+    private suspend fun refused(protocol: Int): CommandException {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true && it.sessions["s1"]?.info != null }
+        daemon.putMachine("fake-mac.local", protocol)
+        r.awaitState("machine protocol") { it.machines[daemon.id]?.meta?.protocolVersion == protocol }
+        try {
+            r.command("s1", Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build())
+            throw AssertionError("expected a version error")
+        } catch (e: CommandException) {
+            // Nothing was sent.
+            assertEquals(null, daemon.commands.poll(300, TimeUnit.MILLISECONDS))
+            assertFalse(e.fromDaemon)
+            return e
+        }
+    }
+
+    @Test
+    fun sendsNothingToAMachineOfAnOlderProtocol() = runBlocking<Unit> {
+        val e = refused(PROTOCOL_VERSION - 1)
+        assertEquals("failed_precondition", e.code)
+        assertEquals("fake-mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", e.message)
+    }
+
+    @Test
+    fun sendsNothingToAMachineOfANewerProtocol() = runBlocking<Unit> {
+        val e = refused(PROTOCOL_VERSION + 1)
+        assertEquals("failed_precondition", e.code)
+        assertEquals("这个 App 版本较旧，请更新后再试", e.message)
     }
 
     @Test

@@ -317,7 +317,6 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 			case "text":
 				parts = append(parts, c.Text)
 			case "image", "local_image", "input_image":
-				msg.ImageCount++
 				msg.Images = append(msg.Images, p.userImage(&stash, c.Path, c.ImageURL, int32(len(msg.Images)+1)))
 			}
 		}

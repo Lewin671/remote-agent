@@ -117,10 +117,6 @@ func New(cfg Config) (*Server, error) {
 		st.Close()
 		return nil, err
 	}
-	if err := st.migrate(); err != nil {
-		st.Close()
-		return nil, err
-	}
 	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)

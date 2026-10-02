@@ -4,8 +4,7 @@
 // passed does not mean the quota is back.
 
 import { Agent, type RateLimit } from "./gen/remoteagent/v1/event_pb";
-import { create } from "@bufbuild/protobuf";
-import { AgentQuotaSchema, QuotaState, QuotaWindowSchema, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
+import { QuotaState, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
 import { agentName } from "./model";
 
 export interface QuotaRow {
@@ -185,15 +184,7 @@ export function quotaSummary(views: QuotaView[]): string {
     .join("；");
 }
 
-/** A machine's quota views: from its quotas, or, from daemons before
- * them, Codex's limits in the machine metadata (Claude Code then has none). */
+/** A machine's quota views, from the quotas in its metadata. */
 export function machineQuotaViews(meta: MachineMeta | undefined, agents: Agent[], now: number, online: boolean): QuotaView[] {
-  let quotas = meta?.quotas ?? [];
-  if (!quotas.length) {
-    const win = (name: string, l?: RateLimit) =>
-      l && create(QuotaWindowSchema, { name, usedPercent: l.usedPercent, resetsAtMs: l.resetsAt * 1000n, windowMinutes: l.windowMinutes });
-    const windows = [win("primary", meta?.primaryLimit), win("secondary", meta?.secondaryLimit)].filter((w): w is QuotaWindow => !!w);
-    quotas = [create(AgentQuotaSchema, { agent: Agent.CODEX, state: windows.length ? QuotaState.OK : QuotaState.WAITING, plan: meta?.planType ?? "", windows })];
-  }
-  return quotaViews(quotas, agents, now, online);
+  return quotaViews(meta?.quotas ?? [], agents, now, online);
 }

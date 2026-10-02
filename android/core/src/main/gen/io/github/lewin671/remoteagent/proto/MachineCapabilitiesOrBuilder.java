@@ -12,17 +12,8 @@ public interface MachineCapabilitiesOrBuilder extends
 
   /**
    * <pre>
-   * Images in the session carry ImageRefs and display copies (GetImage).
-   * </pre>
-   *
-   * <code>bool session_images = 1 [json_name = "sessionImages"];</code>
-   * @return The sessionImages.
-   */
-  boolean getSessionImages();
-
-  /**
-   * <pre>
-   * The image upload commands, and image IDs in Send and CreateSession.
+   * Images can be uploaded here: not when the remote-agent folder's path
+   * has spaces, which the CLIs do not take in image paths.
    * </pre>
    *
    * <code>bool image_upload = 2 [json_name = "imageUpload"];</code>
@@ -104,34 +95,6 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The enum numeric value on the wire of uploadFormats at the given index.
    */
   int getUploadFormatsValue(int index);
-
-  /**
-   * <pre>
-   * Commands are checked against Envelope.signature and events carry
-   * their Origin.
-   * </pre>
-   *
-   * <code>bool command_signatures = 7 [json_name = "commandSignatures"];</code>
-   * @return The commandSignatures.
-   */
-  boolean getCommandSignatures();
-
-  /**
-   * <code>bool image_storage = 8 [json_name = "imageStorage"];</code>
-   * @return The imageStorage.
-   */
-  boolean getImageStorage();
-
-  /**
-   * <pre>
-   * SendRequest.mode, InputState.paused, ResumeInput, and canceling a
-   * message held by the CLI (InputStatus HELD_BY_CLI).
-   * </pre>
-   *
-   * <code>bool send_modes = 9 [json_name = "sendModes"];</code>
-   * @return The sendModes.
-   */
-  boolean getSendModes();
 
   /**
    * <pre>

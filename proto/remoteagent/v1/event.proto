@@ -16,8 +16,7 @@ message Event {
   string turn_id = 4;
   // Who caused the event, when the daemon knows: set on InputState,
   // UserMessage, ApprovalResolved, QuestionAnswered, PlanAnswered,
-  // SettingsChanged and an interrupted TurnEnded. Absent from daemons
-  // older than v2 and when unknown.
+  // SettingsChanged and an interrupted TurnEnded. Absent when unknown.
   Origin origin = 5;
 
   oneof kind {
@@ -50,10 +49,7 @@ enum OriginKind {
   // device key, registered with the account key (Envelope.signature).
   // device_id names it.
   ORIGIN_KIND_CLIENT = 1;
-  // A client command without a signature, e.g. from a client older than
-  // v2. device_id is the device the server says sent it, which is not
-  // proof: show it as "another client", not by name.
-  ORIGIN_KIND_UNVERIFIED_CLIENT = 2;
+  reserved 2;
   // The computer: typed in the local terminal, or sent with the local
   // remote-agent command.
   ORIGIN_KIND_LOCAL = 3;
@@ -168,8 +164,7 @@ message PlanAnswered {
 }
 
 // ToolStarted says the model called a tool; its ToolCall event with the
-// same call_id follows when the call completes. Daemons before v2 left
-// call_id empty for Codex, whose start and end then pair in order. For
+// same call_id follows when the call completes. For
 // Codex a call is one exec script: a second command it ran reports a
 // ToolCall with the ID "<call_id>#2", which has no start of its own.
 message ToolStarted {
@@ -196,9 +191,7 @@ message UserMessage {
   // The message as the CLI recorded it, including the CLI's "[Image #N]"
   // placeholders; ImageRef.cli_index ties each to its image.
   string text = 1;
-  // Number of images attached to the message. Deprecated: use images;
-  // still set for clients older than v2.
-  int32 image_count = 2 [deprecated = true];
+  reserved 2;
   repeated ImageRef images = 3;
   // The Send request that submitted this message, when the daemon matched
   // it; the event's origin says who sent it.
@@ -477,7 +470,7 @@ enum InputStatus {
 
 // SendMode is how a message sent during a turn is delivered.
 enum SendMode {
-  // Steer; also what older clients get.
+  // Steer.
   SEND_MODE_UNSPECIFIED = 0;
   // Into the current turn as soon as the input box is free.
   SEND_MODE_STEER = 1;

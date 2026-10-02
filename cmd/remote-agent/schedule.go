@@ -112,10 +112,6 @@ func runSchedule(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	req := connect.NewRequest(q)
-	// User CLI requests retain machine-level authority. The daemon requires
-	// an explicit caller marker so legacy unscoped MCP tools cannot bypass
-	// the narrower capability delegated to the model's bound session.
-	req.Header().Set("X-Remote-Agent-Schedule-Caller", "cli")
 	res, err := dial().Schedule(ctx, req)
 	if err != nil {
 		return explain(err)

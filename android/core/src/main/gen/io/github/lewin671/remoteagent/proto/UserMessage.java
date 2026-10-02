@@ -92,49 +92,6 @@ public  final class UserMessage extends
 
   }
 
-  public static final int IMAGE_COUNT_FIELD_NUMBER = 2;
-  private int imageCount_;
-  /**
-   * <pre>
-   * Number of images attached to the message. Deprecated: use images;
-   * still set for clients older than v2.
-   * </pre>
-   *
-   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-   * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-   *     See remoteagent/v1/event.proto;l=200
-   * @return The imageCount.
-   */
-  @java.lang.Override
-  @java.lang.Deprecated public int getImageCount() {
-    return imageCount_;
-  }
-  /**
-   * <pre>
-   * Number of images attached to the message. Deprecated: use images;
-   * still set for clients older than v2.
-   * </pre>
-   *
-   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-   * @param value The imageCount to set.
-   */
-  private void setImageCount(int value) {
-    
-    imageCount_ = value;
-  }
-  /**
-   * <pre>
-   * Number of images attached to the message. Deprecated: use images;
-   * still set for clients older than v2.
-   * </pre>
-   *
-   * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-   */
-  private void clearImageCount() {
-
-    imageCount_ = 0;
-  }
-
   public static final int IMAGES_FIELD_NUMBER = 3;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ImageRef> images_;
   /**
@@ -477,55 +434,6 @@ public  final class UserMessage extends
     }
 
     /**
-     * <pre>
-     * Number of images attached to the message. Deprecated: use images;
-     * still set for clients older than v2.
-     * </pre>
-     *
-     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=200
-     * @return The imageCount.
-     */
-    @java.lang.Override
-    @java.lang.Deprecated public int getImageCount() {
-      return instance.getImageCount();
-    }
-    /**
-     * <pre>
-     * Number of images attached to the message. Deprecated: use images;
-     * still set for clients older than v2.
-     * </pre>
-     *
-     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=200
-     * @param value The imageCount to set.
-     * @return This builder for chaining.
-     */
-    @java.lang.Deprecated public Builder setImageCount(int value) {
-      copyOnWrite();
-      instance.setImageCount(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Number of images attached to the message. Deprecated: use images;
-     * still set for clients older than v2.
-     * </pre>
-     *
-     * <code>int32 image_count = 2 [json_name = "imageCount", deprecated = true];</code>
-     * @deprecated remoteagent.v1.UserMessage.image_count is deprecated.
-     *     See remoteagent/v1/event.proto;l=200
-     * @return This builder for chaining.
-     */
-    @java.lang.Deprecated public Builder clearImageCount() {
-      copyOnWrite();
-      instance.clearImageCount();
-      return this;
-    }
-
-    /**
      * <code>repeated .remoteagent.v1.ImageRef images = 3 [json_name = "images"];</code>
      */
     @java.lang.Override
@@ -718,14 +626,13 @@ public  final class UserMessage extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "text_",
-            "imageCount_",
             "images_",
             io.github.lewin671.remoteagent.proto.ImageRef.class,
             "requestId_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0208\u0002\u0004" +
-              "\u0003\u001b\u0004\u0208";
+              "\u0000\u0003\u0000\u0000\u0001\u0004\u0003\u0000\u0001\u0000\u0001\u0208\u0003\u001b" +
+              "\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

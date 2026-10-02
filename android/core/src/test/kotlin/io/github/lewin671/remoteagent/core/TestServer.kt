@@ -128,9 +128,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         token = login(Api(account.server, http), account)
     }
 
-    suspend fun putMachine(hostname: String) {
+    suspend fun putMachine(hostname: String, protocol: Int = PROTOCOL_VERSION) {
         metaRev++
-        val meta = MachineMeta.newBuilder().setHostname(hostname).setOs("darwin").setHome("/Users/me").build()
+        val meta = MachineMeta.newBuilder().setHostname(hostname).setOs("darwin").setHome("/Users/me").setProtocolVersion(protocol).build()
         val env = Envelopes.seal(keys.meta, header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(), meta)
         api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), Api.headers(token)).value()
     }

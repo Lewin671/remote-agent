@@ -97,7 +97,7 @@ export function Composer({
   };
   const i = session.info;
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : wide ? "消息 · ⌘↵ 发送" : "消息";
-  const canQueue = d.running && !!remote.machines.get(session.machineId)?.meta?.capabilities?.sendModes;
+  const canQueue = d.running;
   return (
     <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}

@@ -83,14 +83,10 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
             <span className="v">已配对 ›</span>
           </button>
         ))}
-        {remote.devicesStatus === "unsupported" ? (
-          <div className="row help">服务器版本较旧，看不到其他客户端。</div>
-        ) : (
-          others.length > 3 && (
-            <button className="row add" onClick={() => go("devices")}>
-              全部客户端 ›
-            </button>
-          )
+        {others.length > 3 && (
+          <button className="row add" onClick={() => go("devices")}>
+            全部客户端 ›
+          </button>
         )}
       </div>
       {push.group}
@@ -276,7 +272,6 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
         </div>
         <div className="glabel">客户端 · 操作会话</div>
         <div className="grp">
-          {remote.devicesStatus === "unsupported" && <div className="row help">服务器版本较旧，只能看到这个浏览器。</div>}
           {remote.devicesStatus === "error" && (
             <div className="row help">
               没能读取设备列表
@@ -685,7 +680,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             </button>
           </div>
         )}
-        {st && meta?.capabilities?.imageStorage && <ImageStorageSettings remote={remote} id={id} settings={st} onSave={setSt} online={m.online} />}
+        {st && <ImageStorageSettings remote={remote} id={id} settings={st} onSave={setSt} online={m.online} />}
         {projs.length > 0 && (
           <>
             <div className="glabel">项目</div>

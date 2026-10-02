@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -26,6 +27,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -196,7 +198,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	defer os.Remove(sock)
 
 	mux := http.NewServeMux()
-	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: d}))
+	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: d}, connect.WithInterceptors(protocol.Local())))
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
@@ -256,8 +258,8 @@ func (d *Daemon) restore() error {
 		d.uploads.restoreRefs(s)
 		s.cancelStaleApprovals()
 		if m.Exited && alive {
-			// Marked exited while still running, as when an earlier daemon
-			// misread tmux; stopping or ending kills the tmux session.
+			// Marked exited while still running, as when tmux was misread;
+			// stopping or ending kills the tmux session.
 			s.meta.Exited = false
 			if err := s.meta.save(dir); err != nil {
 				slog.Error("save session", "session", m.ID, "err", errClass(err))
@@ -477,10 +479,8 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
 	m.Agents = d.installed()
 	m.Capabilities = d.capabilities()
+	m.ProtocolVersion = protocol.Version
 	d.mu.Lock()
-	if u := d.limits; u != nil {
-		m.PrimaryLimit, m.SecondaryLimit, m.PlanType = u.PrimaryLimit, u.SecondaryLimit, u.PlanType
-	}
 	m.Quotas = d.quotaEntriesLocked()
 	d.mu.Unlock()
 	return m
@@ -640,10 +640,10 @@ func (d *Daemon) resume(id string) (*session, error) {
 		return nil, err
 	}
 	// The same environment it started with: the caller's shell may have
-	// provided credentials or proxies. Older sessions did not keep it.
+	// provided credentials or proxies.
 	env, err := readEnvFile(filepath.Join(s.dir, "env.json"))
 	if err != nil {
-		env = sessionEnv(nil, d.cfg.Env)
+		return nil, fmt.Errorf("read the session's environment: %w", err)
 	}
 	d.ownEnv(env, id)
 	if m.Agent == pb.Agent_AGENT_CLAUDE {

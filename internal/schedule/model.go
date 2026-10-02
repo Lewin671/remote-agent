@@ -14,9 +14,6 @@ import (
 // It is a capability restriction, not authentication of an OS user.
 const MCPScopeHeader = "X-Remote-Agent-Schedule-Scope"
 
-// CallerHeader distinguishes explicit user CLI requests from legacy MCP calls.
-const CallerHeader = "X-Remote-Agent-Schedule-Caller"
-
 // Spec is a complete task definition; updates replace it atomically.
 type Spec struct {
 	Title   string  `json:"title" jsonschema:"Short name visible in task lists"`

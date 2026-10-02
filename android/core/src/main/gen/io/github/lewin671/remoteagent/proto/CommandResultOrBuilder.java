@@ -297,5 +297,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.AbortImageUploadResponse getAbortImageUpload();
 
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   * @return Whether the schedule field is set.
+   */
+  boolean hasSchedule();
+  /**
+   * <code>.remoteagent.v1.ScheduleResponse schedule = 40 [json_name = "schedule"];</code>
+   * @return The schedule.
+   */
+  io.github.lewin671.remoteagent.proto.ScheduleResponse getSchedule();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

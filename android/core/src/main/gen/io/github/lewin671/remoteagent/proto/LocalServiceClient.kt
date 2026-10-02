@@ -19,6 +19,21 @@ import com.connectrpc.StreamType
 public class LocalServiceClient(
   private val client: ProtocolClientInterface,
 ) : LocalServiceClientInterface {
+  /**
+   *  Schedule manages daemon-owned tasks. It is also used by the local MCP.
+   */
+  override suspend fun schedule(request: ScheduleRequest, headers: Headers): ResponseMessage<ScheduleResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/Schedule",
+      io.github.lewin671.remoteagent.proto.ScheduleRequest::class,
+      io.github.lewin671.remoteagent.proto.ScheduleResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun createSession(request: CreateSessionRequest, headers: Headers): ResponseMessage<CreateSessionResponse> = client.unary(
     request,
     headers,

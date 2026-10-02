@@ -203,18 +203,11 @@ func imageFound(t *testing.T, w, h int) agent.FoundImage {
 	return agent.FoundImage{Ref: &pb.ImageRef{}, Data: base64.StdEncoding.EncodeToString(b)}
 }
 
-func TestImageQuotaSurvivesOldClientSettingsAndRestart(t *testing.T) {
+func TestImageQuotaSurvivesRestart(t *testing.T) {
 	h := newHarness(t, Config{})
 	chosen := int64(5 << 30)
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{ImageUploadQuotaBytes: chosen}); err != nil {
 		t.Fatal(err)
-	}
-	// Updating CLI defaults from an older client must not reset the new quota.
-	if _, err := h.d.updateSettings(&pb.DaemonSettings{ApprovalTimeoutSeconds: 300}); err != nil {
-		t.Fatal(err)
-	}
-	if n := h.d.settings().ImageUploadQuotaBytes; n != chosen {
-		t.Fatalf("old client reset quota: %d", n)
 	}
 	if n := New(Config{}).settings().ImageUploadQuotaBytes; n != chosen {
 		t.Fatalf("restart lost quota: %d", n)

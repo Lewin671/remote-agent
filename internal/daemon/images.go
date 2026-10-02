@@ -308,9 +308,9 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 	_ = os.Remove(st.displayPath(id))
 }
 
-// capabilities says what this daemon offers beyond the base protocol.
+// capabilities says what this daemon offers that depends on the machine.
 func (d *Daemon) capabilities() *pb.MachineCapabilities {
-	c := &pb.MachineCapabilities{SessionImages: true, CommandSignatures: true, ImageStorage: true, SendModes: true, ScheduledTasks: true}
+	c := &pb.MachineCapabilities{}
 	if d.uploads.usable() {
 		c.ImageUpload = true
 		c.MaxImagesPerMessage = maxMessageImages

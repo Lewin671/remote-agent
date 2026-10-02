@@ -36,48 +36,6 @@ public interface MachineMetaOrBuilder extends
 
   /**
    * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   * @return Whether the primaryLimit field is set.
-   */
-  boolean hasPrimaryLimit();
-  /**
-   * <pre>
-   * The Codex account's latest usage limits seen on this machine.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.RateLimit primary_limit = 3 [json_name = "primaryLimit"];</code>
-   * @return The primaryLimit.
-   */
-  io.github.lewin671.remoteagent.proto.RateLimit getPrimaryLimit();
-
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   * @return Whether the secondaryLimit field is set.
-   */
-  boolean hasSecondaryLimit();
-  /**
-   * <code>.remoteagent.v1.RateLimit secondary_limit = 4 [json_name = "secondaryLimit"];</code>
-   * @return The secondaryLimit.
-   */
-  io.github.lewin671.remoteagent.proto.RateLimit getSecondaryLimit();
-
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @return The planType.
-   */
-  java.lang.String getPlanType();
-  /**
-   * <code>string plan_type = 5 [json_name = "planType"];</code>
-   * @return The bytes for planType.
-   */
-  com.google.protobuf.ByteString
-      getPlanTypeBytes();
-
-  /**
-   * <pre>
    * Home folder, for choosing where to start sessions.
    * </pre>
    *
@@ -127,8 +85,7 @@ public interface MachineMetaOrBuilder extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -138,8 +95,7 @@ public interface MachineMetaOrBuilder extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -148,8 +104,7 @@ public interface MachineMetaOrBuilder extends
   /**
    * <pre>
    * The CLIs installed on this machine; a client offers only these when
-   * starting a session. Empty from daemons older than Claude Code support,
-   * which only run Codex.
+   * starting a session.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.AgentInfo agents = 9 [json_name = "agents"];</code>
@@ -158,9 +113,7 @@ public interface MachineMetaOrBuilder extends
 
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -169,9 +122,7 @@ public interface MachineMetaOrBuilder extends
   boolean hasCapabilities();
   /**
    * <pre>
-   * What this daemon supports beyond the base protocol. Absent from
-   * daemons older than v2: a client then offers none of it and says the
-   * computer needs updating.
+   * What this daemon offers that depends on the machine.
    * </pre>
    *
    * <code>.remoteagent.v1.MachineCapabilities capabilities = 10 [json_name = "capabilities"];</code>
@@ -216,4 +167,15 @@ public interface MachineMetaOrBuilder extends
    * <code>repeated .remoteagent.v1.AgentQuota quotas = 11 [json_name = "quotas"];</code>
    */
   int getQuotasCount();
+
+  /**
+   * <pre>
+   * The protocol version this daemon speaks (internal/protocol). A client
+   * of another version sends it no commands and says which side to update.
+   * </pre>
+   *
+   * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
+   * @return The protocolVersion.
+   */
+  int getProtocolVersion();
 }

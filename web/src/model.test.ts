@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
-import { CommandError } from "./remote";
 import {
   agentName,
   agentOf,
@@ -18,7 +17,6 @@ import {
   defaultModeOf,
   inheritConfig,
   modeLabel,
-  refusedForFullAccess,
   inputFailure,
   newConfigIssue,
   switchAgent,
@@ -172,7 +170,7 @@ describe("messages the session ended before sending", () => {
       { case: "inputState", value: { requestId: "c", status: InputStatus.QUEUED } },
       { case: "inputState", value: { requestId: "b", status: InputStatus.CANCELED } }, // the user's own cancel
       { case: "inputState", value: { requestId: "a", status: InputStatus.CANCELED, reason: "exited" } },
-      // An older daemon wrote nothing for c; the session then ended.
+      { case: "inputState", value: { requestId: "c", status: InputStatus.CANCELED, reason: "exited" } },
       { case: "sessionState", value: { status: SessionStatus.EXITED } },
     );
     const d = derive(list);
@@ -312,7 +310,7 @@ describe("agents", () => {
 });
 
 describe("new sessions follow the project", () => {
-  const ctx = { approvalsReviewer: "auto_review", approvalPolicy: "on-request", sandbox: "workspace-write", collaborationMode: "default" };
+  const ctx = { mode: ApprovalMode.AUTO };
   const machines = (m1: boolean, m2: boolean) =>
     new Map<string, MachineLike>([
       ["m1", { id: "m1", online: m1, lastSeenMs: 0n }],
@@ -330,9 +328,9 @@ describe("new sessions follow the project", () => {
   });
 
   it("keeps full access but treats plan as a passing state", () => {
-    const full = sess({ ...ctx, approvalsReviewer: "user", approvalPolicy: "never", sandbox: "danger-full-access" });
+    const full = sess({ mode: ApprovalMode.FULL_ACCESS });
     expect(inheritConfig(projects([full])[0], machines(true, true))?.mode).toBe(ApprovalMode.FULL_ACCESS);
-    const plan = sess({ ...ctx, collaborationMode: "plan" });
+    const plan = sess({ mode: ApprovalMode.PLAN });
     expect(inheritConfig(projects([plan])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
   });
 
@@ -366,10 +364,6 @@ describe("approval modes", () => {
 
   it("shows a Claude Code mode outside the four by its own name", () => {
     expect(modeOf(sess({ agent: Agent.CLAUDE, permissionMode: "acceptEdits" }))).toEqual({ cls: "", text: "accept edits", mode: ApprovalMode.UNSPECIFIED });
-  });
-
-  it("falls back to Codex's approval fields for older daemons", () => {
-    expect(modeOf(sess({ approvalsReviewer: "auto_review", approvalPolicy: "on-request", sandbox: "workspace-write", collaborationMode: "default" }))?.text).toBe("自动");
   });
 
   it("knows haiku has no auto mode", () => {
@@ -682,7 +676,7 @@ describe("approval records", () => {
       { case: "approvalResolved", value: { approvalId: "C", decision: ApprovalDecision.ALLOW } },
       { case: "approvalResolved", value: { approvalId: "D", decision: ApprovalDecision.ALLOW } },
       { case: "toolCall", value: { title: "Read a.go", callId: "r", itemType: "Read", inputDigest: "dR", kind: ToolKind.OTHER, status: "completed" } },
-      call("rm y", "d", "", "failed"), // no digest: an older daemon
+      call("rm y", "d", "", "failed"), // no digest
       call("mkdir x", "m", "dA"),
       call("npm test", "t1", "dC"),
       call("npm test", "t2", "dC"),
@@ -706,7 +700,7 @@ describe("approval records", () => {
       // digest says which call it is.
       { case: "approvalRequested", value: { approvalId: "A", toolName: "Bash", command: "a", toolInputJson: '{"command":"a","COMMAND":"b"}', inputDigest: "db" } },
       { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
-      // A request from an older daemon, without a digest, next to a call
+      // A request without a digest, next to a call
       // whose digest its input would give.
       { case: "approvalRequested", value: { approvalId: "B", toolName: "Bash", command: "ls", toolInputJson: '{"command":"ls"}' } },
       { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.ALLOW } },
@@ -813,21 +807,15 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
   const machine = (info: object) => ({ id: "m1", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, info as never)] }) });
   const claudeFull = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.FULL_ACCESS, defaultModeSource: DefaultModeSource.CLI_CONFIG, defaultModeVaries: true });
   const codexAuto = machine({ agent: Agent.CODEX, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS });
-  const old = machine({ agent: Agent.CODEX });
+  const unread = machine({ agent: Agent.CODEX }); // the CLI's config could not be read
   const acceptEdits = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.UNSPECIFIED, defaultModeSource: DefaultModeSource.CLI_CONFIG });
 
   it("names the mode a start will really use", () => {
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：完全放行（项目设置可能不同）");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe("默认：自动");
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(old, Agent.CODEX), Agent.CODEX)).toBe("默认模式（不确定，可能是完全放行）");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe("默认模式（不确定，可能是完全放行）");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
     expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
-  });
-
-  it("recognizes the daemon refusing an unconfirmed start in full access", () => {
-    expect(refusedForFullAccess(new CommandError("failed_precondition", "claude starts in full access here by default; confirm it or choose another mode"))).toBe(true);
-    expect(refusedForFullAccess(new CommandError("failed_precondition", "no such folder"))).toBe(false);
-    expect(refusedForFullAccess(new CommandError("unknown", "full access"))).toBe(false);
   });
 });
 
@@ -860,10 +848,5 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
     expect(backgroundNote(ToolBackground.TIMED_OUT)).toContain("超时");
     expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");
     expect(backgroundNote(ToolBackground.REQUESTED)).toContain("要求");
-  });
-
-  it("still recognizes a background command from its text on older daemons", () => {
-    const list = events({ case: "turnStarted", value: {} }, { case: "toolCall", value: { title: "npm run dev", callId: "t1", itemType: "Bash", kind: ToolKind.COMMAND, status: "completed", output: "Command running in background with ID: b123" } });
-    expect(shape(list)).toEqual(["background:t1"]);
   });
 });

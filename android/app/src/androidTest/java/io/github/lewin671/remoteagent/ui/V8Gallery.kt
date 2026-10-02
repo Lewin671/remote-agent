@@ -96,7 +96,7 @@ class V8Gallery {
 
     private fun machine(id: String, name: String, online: Boolean = true, claude: Boolean = false) = id to MachineView(
         id, online, if (online) now else now - 2 * 3600_000,
-        MachineMeta.newBuilder().setHostname(name).setHome(home).setCapabilities(MachineCapabilities.newBuilder().setSendModes(true).setApprovalAlways(true))
+        MachineMeta.newBuilder().setHostname(name).setHome(home).setCapabilities(MachineCapabilities.newBuilder().setApprovalAlways(true))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG))
             .also { if (claude) it.addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)) }
             .build(),

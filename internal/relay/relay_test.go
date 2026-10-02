@@ -21,6 +21,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
@@ -813,23 +814,29 @@ func TestCommandOrigins(t *testing.T) {
 	if _, err := e.client.Do(ctx, s, send("a")); err != nil {
 		t.Fatal(err)
 	}
-	// Unsigned, as from an older client: the server's word only.
-	e.client.Unsigned = true
-	if _, err := e.client.Do(ctx, s, send("b")); err != nil {
-		t.Fatal(err)
+	// Unsigned: the server's word about the sender is not taken.
+	env, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("b"))
+	env.Signature = nil
+	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("unsigned: %v", err)
 	}
-	e.client.Unsigned = false
 	// A signature that does not check out is refused.
-	env, _ := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("c"))
+	env, _ = e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send("c"))
 	env.Signature[0] ^= 1
 	if _, err := e.client.Forward(ctx, s.MachineID, env); connect.CodeOf(err) != connect.CodeAborted {
 		t.Fatalf("bad signature: %v", err)
 	}
+	// A client of another protocol version is told to update; nothing runs.
+	other := send("d")
+	other.ProtocolVersion = protocol.Version + 1
+	var ce *remoteclient.CommandError
+	if _, err := e.client.Do(ctx, s, other); !errors.As(err, &ce) || ce.Code != connect.CodeFailedPrecondition.String() || !strings.Contains(ce.Message, "update") {
+		t.Fatalf("protocol mismatch: %v", err)
+	}
 	e.backend.mu.Lock()
 	defer e.backend.mu.Unlock()
 	o := e.backend.origins
-	if len(o) != 2 || o[0].Kind != pb.OriginKind_ORIGIN_KIND_CLIENT || o[0].DeviceId != e.client.DeviceID || o[0].RequestId == "" ||
-		o[1].Kind != pb.OriginKind_ORIGIN_KIND_UNVERIFIED_CLIENT || o[1].DeviceId != e.client.DeviceID {
+	if len(o) != 1 || o[0].Kind != pb.OriginKind_ORIGIN_KIND_CLIENT || o[0].DeviceId != e.client.DeviceID || o[0].RequestId == "" {
 		t.Fatalf("origins %v", o)
 	}
 }

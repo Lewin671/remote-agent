@@ -8,8 +8,7 @@ package io.github.lewin671.remoteagent.proto;
 /**
  * <pre>
  * ToolStarted says the model called a tool; its ToolCall event with the
- * same call_id follows when the call completes. Daemons before v2 left
- * call_id empty for Codex, whose start and end then pair in order. For
+ * same call_id follows when the call completes. For
  * Codex a call is one exec script: a second command it ran reports a
  * ToolCall with the ID "&lt;call_id&gt;#2", which has no start of its own.
  * </pre>
@@ -457,8 +456,7 @@ public  final class ToolStarted extends
   /**
    * <pre>
    * ToolStarted says the model called a tool; its ToolCall event with the
-   * same call_id follows when the call completes. Daemons before v2 left
-   * call_id empty for Codex, whose start and end then pair in order. For
+   * same call_id follows when the call completes. For
    * Codex a call is one exec script: a second command it ran reports a
    * ToolCall with the ID "&lt;call_id&gt;#2", which has no start of its own.
    * </pre>

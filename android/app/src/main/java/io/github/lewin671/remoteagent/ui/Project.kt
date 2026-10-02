@@ -126,8 +126,8 @@ fun NewConfig.settings(now: Long): ProjectSettings = ProjectSettings.newBuilder(
 
 /**
  * The mode a CLI gives a session started without one, as the daemon reads
- * it (AgentInfo.default_mode): null when not known (an older daemon, or a
- * configuration it could not read).
+ * it (AgentInfo.default_mode): null when not known (a configuration it
+ * could not read).
  */
 data class DefaultMode(
     /** One of the four, or null for a mode outside them (Claude Code's accept edits). */
@@ -374,7 +374,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
     LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
     val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
-    fun launch(cfg: NewConfig, mode: ApprovalMode, confirmedFull: Boolean = false) {
+    fun launch(cfg: NewConfig, mode: ApprovalMode) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
         // of starting a second session.
@@ -389,7 +389,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                     val ids = start.taken.mapNotNull { it.imageId }
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).setConfirmFullAccess(confirmedFull).build()
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
@@ -401,7 +401,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             // Only a session that started takes the draft; a refusal that asks
             // for confirmation, or no answer, leaves text and images as they are.
             val sid = startedSession(r) ?: return@run
-            if (state.prefsSupported && state.prefs?.prefs?.settingsList?.any { it.path == key } != true)
+            if (state.prefs?.prefs?.settingsList?.any { it.path == key } != true)
                 PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings((initial ?: cfg).settings(System.currentTimeMillis())))
             Outbox.rememberPrompt(sid, start.prompt)
             nav.session(sid)
@@ -419,8 +419,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         if (st.attempt.frozen && text.trim() != st.prompt) st.attempt.abandon()
         // An unknown start is resent as prepared, with the mode it had.
         if (st.attempt.frozen) return launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
-        launch(cfg, cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED, confirmedFull = cfg.mode == Mode.FULL ||
-            defaultModeOf(state.machines[cfg.machineId], cfg.agent).mode == Mode.FULL)
+        launch(cfg, cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
     }
     val c = config
     val notices = @Composable {

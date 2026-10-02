@@ -21,7 +21,6 @@ const ctx = {
     ["cccc0000cccc0000cccc0000cccc92de", dev("cccc0000cccc0000cccc0000cccc92de")],
     ["dddd0000dddd0000dddd0000ddddpxl1", dev("dddd0000dddd0000dddd0000ddddpxl1", { name: "我的手机", platform: "android" })],
   ]),
-  mine: new Set(["r-mine"]),
 };
 
 describe("device names", () => {
@@ -40,14 +39,9 @@ describe("device names", () => {
 });
 
 describe("where an action came from", () => {
-  it("names a device only when its signature was verified", () => {
+  it("names the device that sent it", () => {
     expect(originLabel(origin(OriginKind.CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("Android · b71c");
     expect(originLabel(origin(OriginKind.CLIENT, ctx.me), ctx)).toBe("本客户端");
-    // The server's word alone is not proof: another client, not a name.
-    expect(originLabel(origin(OriginKind.UNVERIFIED_CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("另一客户端");
-    expect(originLabel(origin(OriginKind.UNVERIFIED_CLIENT, ctx.me), ctx)).toBe("另一客户端");
-    // ...unless this page itself sent that request.
-    expect(originLabel(origin(OriginKind.UNVERIFIED_CLIENT, ctx.me, "r-mine"), ctx)).toBe("本客户端");
   });
 
   it("keeps a removed device to its short ID", () => {
@@ -66,7 +60,6 @@ describe("where an action came from", () => {
 
   it("falls back to 另一端 for something settled elsewhere", () => {
     expect(elsewhereLabel(undefined, ctx)).toBe("另一端");
-    expect(elsewhereLabel(origin(OriginKind.UNVERIFIED_CLIENT, "x"), ctx)).toBe("另一端");
     expect(elsewhereLabel(origin(OriginKind.LOCAL), ctx)).toBe("终端");
     expect(elsewhereLabel(origin(OriginKind.CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("Android · b71c");
   });

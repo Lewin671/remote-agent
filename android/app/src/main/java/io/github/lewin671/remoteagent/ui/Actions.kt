@@ -254,11 +254,8 @@ object Outbox {
         o.error = ""
         scope.launch {
             try {
-                val machine = remote.state.value.sessions[sid]?.machineId?.let { remote.state.value.machines[it] }
-                val wireMode = io.github.lewin671.remoteagent.core.wireSendMode(o.mode, io.github.lewin671.remoteagent.core.capabilities(machine)?.sendModes == true)
                 remote.command(sid, remote.cmd {
-                    send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds)
-                        .apply { if (wireMode != io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_UNSPECIFIED) mode = wireMode }.build()
+                    send = SendRequest.newBuilder().setSessionId(sid).setText(o.text).setRequestId(o.requestId).addAllImageIds(o.imageIds).setMode(o.mode).build()
                 })
                 o.state = Outgoing.State.SENT
             } catch (e: Exception) {

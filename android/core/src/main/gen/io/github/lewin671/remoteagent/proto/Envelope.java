@@ -154,8 +154,8 @@ public  final class Envelope extends
    * <pre>
    * Ed25519 signature by the sending device's key, so that a daemon can
    * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-   * and from clients older than v2. It signs the bytes as transmitted:
+   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+   * it; it is empty elsewhere. It signs the bytes as transmitted:
    * "remote-agent/v1/envelope-signature&#92;x00"
    * || uint32be(len(header)) || header
    * || uint32be(len(nonce)) || nonce
@@ -175,8 +175,8 @@ public  final class Envelope extends
    * <pre>
    * Ed25519 signature by the sending device's key, so that a daemon can
    * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-   * and from clients older than v2. It signs the bytes as transmitted:
+   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+   * it; it is empty elsewhere. It signs the bytes as transmitted:
    * "remote-agent/v1/envelope-signature&#92;x00"
    * || uint32be(len(header)) || header
    * || uint32be(len(nonce)) || nonce
@@ -197,8 +197,8 @@ public  final class Envelope extends
    * <pre>
    * Ed25519 signature by the sending device's key, so that a daemon can
    * tell which device sent a command even though the server is not
-   * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-   * and from clients older than v2. It signs the bytes as transmitted:
+   * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+   * it; it is empty elsewhere. It signs the bytes as transmitted:
    * "remote-agent/v1/envelope-signature&#92;x00"
    * || uint32be(len(header)) || header
    * || uint32be(len(nonce)) || nonce
@@ -446,8 +446,8 @@ public  final class Envelope extends
      * <pre>
      * Ed25519 signature by the sending device's key, so that a daemon can
      * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-     * and from clients older than v2. It signs the bytes as transmitted:
+     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+     * it; it is empty elsewhere. It signs the bytes as transmitted:
      * "remote-agent/v1/envelope-signature&#92;x00"
      * || uint32be(len(header)) || header
      * || uint32be(len(nonce)) || nonce
@@ -467,8 +467,8 @@ public  final class Envelope extends
      * <pre>
      * Ed25519 signature by the sending device's key, so that a daemon can
      * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-     * and from clients older than v2. It signs the bytes as transmitted:
+     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+     * it; it is empty elsewhere. It signs the bytes as transmitted:
      * "remote-agent/v1/envelope-signature&#92;x00"
      * || uint32be(len(header)) || header
      * || uint32be(len(nonce)) || nonce
@@ -490,8 +490,8 @@ public  final class Envelope extends
      * <pre>
      * Ed25519 signature by the sending device's key, so that a daemon can
      * tell which device sent a command even though the server is not
-     * trusted. Clients set it on COMMAND envelopes; it is empty elsewhere
-     * and from clients older than v2. It signs the bytes as transmitted:
+     * trusted. Clients set it on COMMAND envelopes, where a daemon requires
+     * it; it is empty elsewhere. It signs the bytes as transmitted:
      * "remote-agent/v1/envelope-signature&#92;x00"
      * || uint32be(len(header)) || header
      * || uint32be(len(nonce)) || nonce

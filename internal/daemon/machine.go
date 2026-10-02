@@ -106,12 +106,6 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 			return nil, errors.New("image storage limits must be between 32 MiB and 1 TiB")
 		}
 	}
-	// Old clients omit new fields; preserve previously chosen limits.
-	st = proto.CloneOf(st)
-	old := d.settings()
-	if st.ImageUploadQuotaBytes == 0 {
-		st.ImageUploadQuotaBytes = old.ImageUploadQuotaBytes
-	}
 	t := time.Duration(st.ApprovalTimeoutSeconds) * time.Second
 	if st.ApprovalTimeoutSeconds != 0 && (t < 30*time.Second || t > maxApprovalTimeout) {
 		return nil, fmt.Errorf("approval timeout must be between 30s and %s", maxApprovalTimeout)

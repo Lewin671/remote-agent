@@ -170,12 +170,9 @@ fun SettingsScreen() {
         val me = remote.account.deviceId
         val others = state.devices.values.filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != me }.sortedBy { it.createdMs }.take(3)
         Group(rows = listOf<@Composable () -> Unit>(
-            { GRow(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), "当前", onClick = if (state.devicesSupported) ({ nav.client(me) }) else null) },
+            { GRow(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), "当前", onClick = { nav.client(me) }) },
         ) + others.map { c -> @Composable { GRow(io.github.lewin671.remoteagent.core.clientName(c, c.id), "已配对 ›", onClick = { nav.client(c.id) }) } } + listOf(
-            @Composable {
-                if (state.devicesSupported) GRow("全部客户端 ›", onClick = { nav.devices() }, action = true)
-                else Text("服务器还不支持设备目录，更新服务器后才能看到其他客户端", Modifier.padding(14.dp), style = T.meta, color = p.muted)
-            },
+            @Composable { GRow("全部客户端 ›", onClick = { nav.devices() }, action = true) },
         ))
         GLabel("本客户端的通知")
         Group(rows = listOf(
@@ -342,9 +339,9 @@ fun DeviceScreen(id: String) {
                 }
             }
             if (save.error.isNotEmpty()) Banner("没能保存：${save.error}", Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.ERROR)
-            settings?.let { s -> if (meta?.capabilities?.imageStorage == true) {
+            settings?.let { s ->
                 MachineImageStorage(s, imageStorage, m.online && !save.running, onChange = { next, clean -> update(next, clean) })
-            } }
+            }
             val projects = state.sessions.values.filter { it.machineId == id }.mapNotNull { it.info?.cwd }.distinct()
             if (projects.isNotEmpty()) {
                 GLabel("项目")

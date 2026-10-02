@@ -437,7 +437,7 @@ func TestQueuedMessageWithImage(t *testing.T) {
 		t.Fatalf("events: %v %v", evs, err)
 	}
 	m := evs[0].GetUserMessage()
-	if m.GetText() != "[Image #5]what color?" || m.GetImageCount() != 1 {
+	if m.GetText() != "[Image #5]what color?" || len(m.GetImages()) != 1 {
 		t.Errorf("message: %v", m)
 	}
 }

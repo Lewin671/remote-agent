@@ -63,11 +63,8 @@ fun DevicesScreen() {
                 })
             } })
             GLabel("客户端 · 操作会话")
-            if (!state.devicesSupported) Hint("服务器还不支持设备目录，更新服务器后才能看到其他客户端", Modifier.padding(horizontal = 30.dp))
-            else {
-                val clients = state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT }.sortedWith(compareBy({ it.id != me }, { it.createdMs }))
-                Group(rows = clients.map { c -> @Composable { GRow(clientName(c, c.id), if (c.id == me) "当前客户端" else "已配对 ›", onClick = { nav.client(c.id) }) } })
-            }
+            val clients = state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT }.sortedWith(compareBy({ it.id != me }, { it.createdMs }))
+            Group(rows = clients.map { c -> @Composable { GRow(clientName(c, c.id), if (c.id == me) "当前客户端" else "已配对 ›", onClick = { nav.client(c.id) }) } })
             Text("客户端名称在设备详情中设置；未命名时显示类型和 ID 短码。已配对不表示现在正在查看。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
             Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).heightIn(min = 44.dp).clickable { nav.pair() }, contentAlignment = Alignment.CenterStart) {
                 Text("＋ 添加电脑或客户端", style = T.body, color = p.blue)

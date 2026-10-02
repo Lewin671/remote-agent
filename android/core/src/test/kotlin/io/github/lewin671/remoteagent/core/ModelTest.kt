@@ -61,7 +61,7 @@ class ModelTest {
     }
 
     @Test
-    fun pairsToolsByIdWhenGiven() {
+    fun pairsToolsById() {
         val d = derive(
             listOf(
                 ev(1, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle("a").setCallId("x"))),
@@ -70,14 +70,6 @@ class ModelTest {
             ),
         )
         assertEquals(listOf("a"), d.tools.map { it.title })
-        val codex = derive(
-            listOf(
-                ev(1, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle("a"))),
-                ev(2, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle("b"))),
-                ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("call_1"))),
-            ),
-        )
-        assertEquals(listOf("b"), codex.tools.map { it.title })
     }
 
     @Test
@@ -89,6 +81,17 @@ class ModelTest {
             ),
         )
         assertEquals("模式切到了 自动", d.terminalChanges[2])
+    }
+
+    @Test
+    fun saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
+        fun m(v: Int) = MachineView("m", true, 0, MachineMeta.newBuilder().setHostname("mac.local").setProtocolVersion(v).build())
+        assertEquals(null, protocolMismatch(m(PROTOCOL_VERSION)))
+        assertEquals("mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", protocolMismatch(m(PROTOCOL_VERSION - 1)))
+        assertEquals("这个 App 版本较旧，请更新后再试", protocolMismatch(m(PROTOCOL_VERSION + 1)))
+        // Not read yet: the daemon answers for itself.
+        assertEquals(null, protocolMismatch(MachineView("m", true, 0)))
+        assertEquals(null, protocolMismatch(null))
     }
 
     @Test

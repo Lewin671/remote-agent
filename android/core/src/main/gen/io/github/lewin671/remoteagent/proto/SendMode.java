@@ -17,7 +17,7 @@ public enum SendMode
     implements com.google.protobuf.Internal.EnumLite {
   /**
    * <pre>
-   * Steer; also what older clients get.
+   * Steer.
    * </pre>
    *
    * <code>SEND_MODE_UNSPECIFIED = 0;</code>
@@ -44,7 +44,7 @@ public enum SendMode
 
   /**
    * <pre>
-   * Steer; also what older clients get.
+   * Steer.
    * </pre>
    *
    * <code>SEND_MODE_UNSPECIFIED = 0;</code>

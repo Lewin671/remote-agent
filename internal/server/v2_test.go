@@ -347,27 +347,3 @@ func TestDeviceDirectory(t *testing.T) {
 	}
 	_ = client2
 }
-
-func TestMigratesOldDevicesTable(t *testing.T) {
-	path := t.TempDir() + "/old.db"
-	st, err := openStore(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// A database from before v2: devices without the metadata columns.
-	if _, err := st.db.Exec(`DROP TABLE devices; CREATE TABLE devices (id TEXT PRIMARY KEY, public_key BLOB NOT NULL, kind INTEGER NOT NULL,
-		registration BLOB NOT NULL, signature BLOB NOT NULL, created_ms INTEGER NOT NULL);
-		INSERT INTO devices VALUES ('d', x'00', 2, x'00', x'00', 1);`); err != nil {
-		t.Fatal(err)
-	}
-	st.Close()
-	s, err := New(Config{DBPath: path})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	ds, err := s.store.devices(context.Background())
-	if err != nil || len(ds) != 1 || ds[0].MetaRevision != 0 {
-		t.Fatalf("%v %v", ds, err)
-	}
-}
