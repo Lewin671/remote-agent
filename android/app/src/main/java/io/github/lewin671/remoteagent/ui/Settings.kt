@@ -642,8 +642,8 @@ private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsa
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
 private val bundledFonts = listOf(
     Triple("Inter", "界面中的西文和数字", io.github.lewin671.remoteagent.R.raw.ofl_inter),
-    Triple("JetBrains Mono", "代码、路径和命令", io.github.lewin671.remoteagent.R.raw.ofl_jetbrains_mono),
-    Triple("Sarasa Fixed SC", "终端", io.github.lewin671.remoteagent.R.raw.ofl_sarasa_gothic),
+    Triple("JetBrains Mono", "代码、路径、命令和终端", io.github.lewin671.remoteagent.R.raw.ofl_jetbrains_mono),
+    Triple("Sarasa Fixed SC（符号子集）", "终端里的符号", io.github.lewin671.remoteagent.R.raw.ofl_sarasa_gothic),
 )
 
 @Composable

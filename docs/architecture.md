@@ -432,7 +432,7 @@ Android 不执行终端输出里的 OSC 52 剪贴板写入，避免恶意文件�
 
 `terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只用这两个。`TerminalView` 绑定的 `TerminalSession` 是 `final`，还在 `updateSize` 里通过 JNI 起本地进程，引用发布的包就换不掉它。所以两个模块的源码固定在 v0.118.3 放进 `android/terminal`，只重写 `TerminalSession`：输入交给回调，远程的输出和快照由外部喂入，JNI 和 C 代码去掉（实测见 [android-notes §2](android-notes.md#2-termux-终端组件)）。升级上游时对照这一个文件合并。
 
-Android 终端内置 Sarasa Fixed SC Regular（SIL OFL），让中文和西文使用配套的等宽度量，减少系统回退字体触发的横向拉伸。字号默认 14dp，可在 10–22dp 间调整，保存在本机。适配和绘制使用同一字体在实际像素字号下测出的格宽、取整行高及顶部基线偏移；Termux 的字符宽度规则和必要的缩放保留，避免破坏框线和光标对齐。
+Android 终端的字体依次是 JetBrains Mono、Sarasa Fixed SC 的符号子集（JetBrains Mono 没有的 `⏵`、`⎿`、`✻` 和盲文点阵等，约 290 KB）、系统字体（中文由它提供）。自带的回退链用 Android 10 起的 `Typeface.CustomFallbackBuilder`；Android 8–9 只有 JetBrains Mono 加系统字体，系统缺的符号仍显示不出。JetBrains Mono 的格宽是 0.6em，中文字形比两格窄：渲染器把比格子窄的字形按原宽居中画，不再横向拉伸；框线、色块和 Powerline 分隔符仍拉满格子以保持相连。实测见 [android-notes §2](android-notes.md#2-termux-终端组件)。字号默认 14dp，可在 10–22dp 间调整，保存在本机。适配和绘制使用同一字体在实际像素字号下测出的格宽、取整行高及顶部基线偏移；Termux 的字符宽度规则不变，比格子宽的字形仍然压缩进格子，避免破坏框线和光标对齐。
 
 尺寸和积压的规则同第 11 节：默认不改 tmux 窗口，键盘弹出、旋转屏幕都不改远端尺寸，只有「适配屏幕」及已适配时主动调整字号才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
 

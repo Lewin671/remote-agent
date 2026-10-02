@@ -15,6 +15,9 @@ import com.termux.terminal.WcWidth;
  * Renderer of a {@link TerminalEmulator} into a {@link Canvas}.
  * <p/>
  * Saves font metrics, so needs to be recreated each time the typeface or font size changes.
+ * <p/>
+ * MODIFIED for remote-agent from termux-app v0.118.3 (Apache License 2.0): a glyph narrower than
+ * its cells is drawn centred at its own width instead of stretched to fill them.
  */
 public final class TerminalRenderer {
 
@@ -123,7 +126,7 @@ public final class TerminalRenderer {
                             invertCursorTextColor = true;
                         }
                         drawTextRun(canvas, line, palette, heightOffset, lastRunStartColumn, columnWidthSinceLastRun,
-                            lastRunStartIndex, charsSinceLastRun, measuredWidthForRun,
+                            lastRunStartIndex, charsSinceLastRun, measuredWidthForRun, lastRunFontWidthMismatch,
                             cursorColor, cursorShape, lastRunStyle, reverseVideo || invertCursorTextColor || lastRunInsideSelection);
                     }
                     measuredWidthForRun = 0.f;
@@ -152,12 +155,17 @@ public final class TerminalRenderer {
                 invertCursorTextColor = true;
             }
             drawTextRun(canvas, line, palette, heightOffset, lastRunStartColumn, columnWidthSinceLastRun, lastRunStartIndex, charsSinceLastRun,
-                measuredWidthForRun, cursorColor, cursorShape, lastRunStyle, reverseVideo || invertCursorTextColor || lastRunInsideSelection);
+                measuredWidthForRun, lastRunFontWidthMismatch, cursorColor, cursorShape, lastRunStyle, reverseVideo || invertCursorTextColor || lastRunInsideSelection);
         }
     }
 
+    /** Box drawing, block elements and Powerline separators join their neighbours, so they must fill the cell. */
+    private static boolean fillsCell(int codePoint) {
+        return (codePoint >= 0x2500 && codePoint <= 0x259F) || (codePoint >= 0xE0A0 && codePoint <= 0xE0D4);
+    }
+
     private void drawTextRun(Canvas canvas, char[] text, int[] palette, float y, int startColumn, int runWidthColumns,
-                             int startCharIndex, int runWidthChars, float mes, int cursor, int cursorStyle,
+                             int startCharIndex, int runWidthChars, float mes, boolean widthMismatch, int cursor, int cursorStyle,
                              long textStyle, boolean reverseVideo) {
         int foreColor = TextStyle.decodeForeColor(textStyle);
         final int effect = TextStyle.decodeEffect(textStyle);
@@ -191,7 +199,13 @@ public final class TerminalRenderer {
 
         mes = mes / mFontWidth;
         boolean savedMatrix = false;
-        if (Math.abs(mes - runWidthColumns) > 0.01) {
+        // A mismatched run is a single code point. One narrower than its cells (CJK from a fallback
+        // font beside a 0.6em Latin cell) keeps its shape and sits in the middle, as desktop terminals do.
+        float textLeft = -1;
+        if (widthMismatch && runWidthChars > 0 && mes < runWidthColumns
+            && !fillsCell(Character.codePointAt(text, startCharIndex))) {
+            textLeft = left + (runWidthColumns - mes) * mFontWidth / 2;
+        } else if (Math.abs(mes - runWidthColumns) > 0.01) {
             canvas.save();
             canvas.scale(runWidthColumns / mes, 1.f);
             left *= mes / runWidthColumns;
@@ -233,7 +247,7 @@ public final class TerminalRenderer {
             mTextPaint.setColor(foreColor);
 
             // The text alignment is the default Paint.Align.LEFT.
-            canvas.drawTextRun(text, startCharIndex, runWidthChars, startCharIndex, runWidthChars, left, y - mFontLineSpacingAndAscent, false, mTextPaint);
+            canvas.drawTextRun(text, startCharIndex, runWidthChars, startCharIndex, runWidthChars, textLeft >= 0 ? textLeft : left, y - mFontLineSpacingAndAscent, false, mTextPaint);
         }
 
         if (savedMatrix) canvas.restore();

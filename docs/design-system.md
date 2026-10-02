@@ -77,8 +77,8 @@
 | 字体 | 用途 | 来源 | 许可 | 许可证位置 |
 |---|---|---|---|---|
 | Inter 4.1（西文子集） | 其他平台的界面西文和数字 | github.com/rsms/inter | SIL OFL 1.1 | Android `res/raw/ofl_inter.txt`（设置 › 开源许可）；网页 `/fonts/OFL-Inter.txt` |
-| JetBrains Mono 2.304 | 代码、路径和命令 | github.com/JetBrains/JetBrainsMono | SIL OFL 1.1 | Android `res/raw/ofl_jetbrains_mono.txt`；网页 `/fonts/OFL-JetBrainsMono.txt` |
-| Sarasa Fixed SC 1.0.42 | Android 终端 | github.com/be5invis/Sarasa-Gothic | SIL OFL 1.1 | Android `res/raw/ofl_sarasa_gothic.txt` |
+| JetBrains Mono 2.304 | 代码、路径和命令；Android 终端 | github.com/JetBrains/JetBrainsMono | SIL OFL 1.1 | Android `res/raw/ofl_jetbrains_mono.txt`；网页 `/fonts/OFL-JetBrainsMono.txt` |
+| Sarasa Fixed SC 1.0.42（符号子集，裁剪方式见 Android `assets/fonts/README.txt`） | Android 终端里 JetBrains Mono 没有的符号 | github.com/be5invis/Sarasa-Gothic | SIL OFL 1.1 | Android `res/raw/ofl_sarasa_gothic.txt` |
 
 ## 4. 间距、圆角与阴影
 

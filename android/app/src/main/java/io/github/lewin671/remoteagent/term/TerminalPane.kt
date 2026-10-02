@@ -57,9 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.content.res.ResourcesCompat
 import com.termux.view.TerminalView
-import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
 import kotlinx.coroutines.launch
@@ -122,7 +120,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
         }
     }
     val context = LocalContext.current
-    val typeface = remember(context) { requireNotNull(ResourcesCompat.getFont(context, R.font.sarasa_fixed_sc_regular)) }
+    val typeface = remember(context) { terminalTypeface(context) }
     val preferences = remember(context) { context.getSharedPreferences("terminal-display", android.content.Context.MODE_PRIVATE) }
     var fontDp by remember { mutableIntStateOf(preferences.getInt("font-dp", 14).coerceIn(10, 22)) }
     var refitAfterFontChange by remember { mutableStateOf(false) }
