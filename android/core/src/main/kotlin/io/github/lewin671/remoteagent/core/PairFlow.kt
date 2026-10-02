@@ -46,20 +46,21 @@ data class PairLink(val code: String, val server: String, val commit: ByteArray?
         fun parse(raw: String): PairLink? {
             val i = raw.indexOf("#/pair?")
             if (i < 0) return null
-            val q = raw.substring(i + 7).split("&").mapNotNull {
-                val kv = it.split("=", limit = 2)
-                if (kv.size == 2) kv[0] to URLDecoder.decode(kv[1], "UTF-8") else null
-            }.toMap()
-            val code = q["code"] ?: return null
-            val server = q["s"] ?: return null
-            val commit = q["c"]?.let {
-                try {
-                    Base64.getUrlDecoder().decode(it.trimEnd('='))
-                } catch (e: IllegalArgumentException) {
-                    return null
-                }
+            // QR contents are untrusted: malformed percent escapes must not
+            // escape into the scanner's main-thread callback.
+            try {
+                val q = raw.substring(i + 7).split("&").mapNotNull {
+                    val kv = it.split("=", limit = 2)
+                    if (kv.size == 2) kv[0] to URLDecoder.decode(kv[1], "UTF-8") else null
+                }.toMap()
+                val code = q["code"] ?: return null
+                val server = q["s"] ?: return null
+                val commit = q["c"]?.let { Base64.getUrlDecoder().decode(it.trimEnd('=')) }
+                if (!Regex("[0-9]{8}").matches(code) || (commit != null && commit.size != 32)) return null
+                return PairLink(code, Secret.checkServer(server, allowPlainHttp = true), commit)
+            } catch (e: IllegalArgumentException) {
+                return null
             }
-            return PairLink(code, server, commit)
         }
     }
 }
