@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS devices (
 	signature BLOB NOT NULL,
 	created_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS revoked_devices (
+	id TEXT PRIMARY KEY,
+	revoked_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tokens (
 	hash BLOB PRIMARY KEY,
 	device_id TEXT NOT NULL,
@@ -91,6 +95,8 @@ func (s *store) accountKey(ctx context.Context) ([]byte, error) {
 	return k, err
 }
 
+var errDeviceRevoked = errors.New("device has been revoked; pair again with a new device key")
+
 // addDevice stores a registered device, creating the account first when
 // account is not nil. Registering the same key again is a no-op.
 func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *pb.DeviceRegistration, raw, sig []byte) error {
@@ -99,6 +105,13 @@ func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *p
 		return err
 	}
 	defer tx.Rollback()
+	var revoked int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM revoked_devices WHERE id = ?`, id).Scan(&revoked); err != nil {
+		return err
+	}
+	if revoked != 0 {
+		return errDeviceRevoked
+	}
 	if account != nil {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO account (id, public_key, created_ms) VALUES (1, ?, ?)`, account, nowMs()); err != nil {
 			return err
@@ -415,6 +428,11 @@ func (s *store) removeDevice(ctx context.Context, id string) (bool, error) {
 	defer tx.Rollback()
 	var kind int32
 	if err := tx.QueryRowContext(ctx, `SELECT kind FROM devices WHERE id = ?`, id).Scan(&kind); err != nil {
+		return false, err
+	}
+	// Keep a tombstone: the old signed registration remains valid even after
+	// the live device row is deleted, and must never resurrect this key.
+	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, revoked_ms) VALUES (?, ?) ON CONFLICT (id) DO NOTHING`, id, nowMs()); err != nil {
 		return false, err
 	}
 	stmts := []string{

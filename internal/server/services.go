@@ -82,6 +82,9 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 	}
 	id := e2e.DeviceID(reg.DevicePublicKey)
 	if err := a.s.store.addDevice(ctx, create, id, reg, req.Msg.Registration, req.Msg.Signature); err != nil {
+		if errors.Is(err, errDeviceRevoked) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
 		return nil, internal(err)
 	}
 	if create != nil {
