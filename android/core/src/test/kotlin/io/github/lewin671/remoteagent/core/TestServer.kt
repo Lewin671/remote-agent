@@ -23,7 +23,6 @@ import io.github.lewin671.remoteagent.proto.TermHello
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.UploadEventsRequest
 import com.connectrpc.ProtocolClientConfig
-import com.connectrpc.extensions.GoogleJavaLiteProtobufStrategy
 import com.connectrpc.impl.ProtocolClient
 import com.connectrpc.okhttp.ConnectOkHttpClient
 import com.connectrpc.protocols.NetworkProtocol
@@ -106,7 +105,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
     private val api = MachineServiceClient(
         ProtocolClient(
             ConnectOkHttpClient(http),
-            ProtocolClientConfig(host = account.server, serializationStrategy = GoogleJavaLiteProtobufStrategy(), networkProtocol = NetworkProtocol.CONNECT),
+            ProtocolClientConfig(host = account.server, serializationStrategy = LiteProtobufStrategy, networkProtocol = NetworkProtocol.CONNECT),
         ),
     )
     private var token = ""

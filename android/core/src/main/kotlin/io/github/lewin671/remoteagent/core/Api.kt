@@ -5,7 +5,6 @@ import com.connectrpc.Code
 import com.connectrpc.ConnectException
 import com.connectrpc.ProtocolClientConfig
 import com.connectrpc.ResponseMessage
-import com.connectrpc.extensions.GoogleJavaLiteProtobufStrategy
 import com.connectrpc.getOrThrow
 import com.connectrpc.impl.ProtocolClient
 import com.connectrpc.okhttp.ConnectOkHttpClient
@@ -45,7 +44,7 @@ class Api(server: String, http: OkHttpClient) {
         ConnectOkHttpClient(http.newBuilder().followRedirects(false).followSslRedirects(false).build()),
         ProtocolClientConfig(
             host = this.server,
-            serializationStrategy = GoogleJavaLiteProtobufStrategy(),
+            serializationStrategy = LiteProtobufStrategy,
             networkProtocol = NetworkProtocol.CONNECT,
         ),
     )
