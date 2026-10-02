@@ -1,108 +1,199 @@
 name: Release
 
+# A release is the commit that changes version.properties, pushed to main
+# together with its tag. The run belongs to main rather than to the tag so
+# that releases share caches: one saved by a tag run is visible to that tag
+# alone, which left every release starting cold.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: [version.properties]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to retry (for example v0.2.0)
-        required: true
+        description: Version tag to retry (for example v0.2.0). Empty rehearses this branch without publishing.
+        required: false
         type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: product-release
-  cancel-in-progress: false
-
+# The three check and build jobs run side by side; R8 alone needs both cores
+# of a hosted runner, so sharing a job with lint and tests doubles its time.
 jobs:
-  release:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-      RA_OFFICIAL_RELEASE: 'true'
+    timeout-minutes: 20
     steps:
-      - name: Validate tag input
-        run: |
-          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ env.RELEASE_TAG }}
-          fetch-depth: 0
-      - name: Validate shared version and skip published releases
-        id: plan
-        run: |
-          git merge-base --is-ancestor HEAD origin/main
-          python3 scripts/release.py validate "$RELEASE_TAG"
-          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/is-draft"; then
-            if [ "$(cat "$RUNNER_TEMP/is-draft")" = false ]; then
-              echo 'skip=true' >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # A failed lookup must really be a missing release, not auth/network failure.
-            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > /dev/null
-          fi
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        if: steps.plan.outputs.skip != 'true'
         with:
           go-version-file: go.mod
+          # Cached below under a key android-checks can restore.
+          cache: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.mod', 'go.sum') }}
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: steps.plan.outputs.skip != 'true'
         with:
           node-version: '24'
       - name: Install pnpm
-        if: steps.plan.outputs.skip != 'true'
         run: npm install --global pnpm@10.19.0
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        if: steps.plan.outputs.skip != 'true'
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-          cache-dependency-path: |
-            android/**/*.gradle.kts
-            android/gradle/libs.versions.toml
-            android/gradle/wrapper/gradle-wrapper.properties
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
-        with:
-          # Google no longer publishes the legacy "tools" package.
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
-          log-accepted-android-sdk-licenses: false
-        if: steps.plan.outputs.skip != 'true'
-      - name: Restore APK configuration
-        if: steps.plan.outputs.skip != 'true'
-        env:
-          ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
-          ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
-        run: python3 scripts/android-ci.py
       - name: Release policy tests
-        if: steps.plan.outputs.skip != 'true'
         run: python3 -m unittest discover -s scripts -p '*_test.py'
       - name: Go tests
-        if: steps.plan.outputs.skip != 'true'
         run: go test ./...
       - name: Check reachable Go vulnerabilities
-        if: steps.plan.outputs.skip != 'true'
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: Web tests and build
-        if: steps.plan.outputs.skip != 'true'
         working-directory: web
         env:
+          RA_OFFICIAL_RELEASE: 'true'
           VITE_DEFAULT_SERVER: https://ra.remote-agent.top
         run: |
           pnpm install --frozen-lockfile
           pnpm test
           pnpm build
-      - name: Android tests and signed APK
-        if: steps.plan.outputs.skip != 'true'
+
+  android-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      # :core:test builds the Go server it runs against.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.mod', 'go.sum') }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      # Each Gradle job keeps its own cache: they resolve different
+      # dependencies, and a shared key would keep only the first one saved.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-checks-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-checks-
+      - name: Restore APK configuration
+        env:
+          ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
+          ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
+        run: python3 scripts/android-ci.py
+      - name: Android tests and release lint
         working-directory: android
-        run: ./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        run: ./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testReleaseUnitTest :app:testReleaseUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
+
+  android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-build-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-build-
+      - name: Restore APK configuration
+        env:
+          ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
+          ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
+        run: python3 scripts/android-ci.py
+      - name: Signed APK
+        working-directory: android
+        # android-checks runs the lint that assembleRelease would repeat here.
+        # R8 is a third faster with the runner's memory and a throughput
+        # collector than with the 2g heap that suits a laptop.
+        run: ./gradlew --no-daemon --no-configuration-cache -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :app:assembleRelease -x lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
+
+  publish:
+    needs: [checks, android-checks, android-build]
+    if: github.event_name == 'push' || inputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # Only publishing is serialized, so that "latest" is decided one release
+    # at a time. GitHub keeps a single waiting run per group and cancels the
+    # rest, which dropped releases while this covered the whole build.
+    concurrency:
+      group: product-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Validate shared version and skip published releases
+        id: plan
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
+          BUILT_COMMIT: ${{ needs.android-build.outputs.commit }}
+        run: |
+          RELEASE_TAG=${TAG_INPUT:-v$(sed -n 's/^version=//p' version.properties)}
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/is-draft"; then
+            if [ "$(cat "$RUNNER_TEMP/is-draft")" = false ]; then
+              echo 'skip=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            # A failed lookup must really be a missing release, not auth/network failure.
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > /dev/null
+          fi
+          # The APK must come from the tagged commit, and the tag from main.
+          [ "$(git rev-parse HEAD)" = "$BUILT_COMMIT" ]
+          git merge-base --is-ancestor HEAD origin/main
+          python3 scripts/release.py validate "$RELEASE_TAG"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          name: apk
+          path: android/app/build/outputs/apk/release
       - name: Package immutable release assets
         if: steps.plan.outputs.skip != 'true'
         run: |
@@ -127,6 +218,3 @@ jobs:
           PYTHON
           )
           gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
-      - name: Remove signing material
-        if: always()
-        run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
