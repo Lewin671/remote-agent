@@ -7,6 +7,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ProjectTest {
+    @Test fun defaultModelResolvesSupportedEffortsWithoutPinningTheModel() {
+        val models = io.github.lewin671.remoteagent.proto.ListModelsResponse.newBuilder().setDefaultModel("fallback")
+            .addModels(io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("fallback").addEfforts("low"))
+            .addModels(io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("configured").addEfforts("high").addEfforts("ultra"))
+            .build()
+        val settings = io.github.lewin671.remoteagent.proto.DaemonSettings.newBuilder().setDefaultModel("configured").build()
+        val c = NewConfig("mac", "/work/app", effort = "high")
+        assertEquals(listOf("high", "ultra"), projectModel(c, models, settings)?.effortsList)
+        assertEquals(listOf("low"), projectModel(c, models)?.effortsList)
+        assertEquals("", c.settings(1).model)
+        assertEquals("high", c.settings(1).effort)
+        org.junit.Assert.assertNull(projectModel(c.copy(model = "unknown"), models, settings))
+    }
+
     @Test
     fun savedSettingsWinOverLatestSessionAndStayOnOfflineMachine() {
         val saved = io.github.lewin671.remoteagent.proto.ProjectSettings.newBuilder().setPath("/work/app").setMachineId("old")

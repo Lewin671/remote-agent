@@ -567,7 +567,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             <div className="fl">推理强度</div>
             <div className="seg wrap">
               {chosen.efforts.map((e) => (
-                <button key={e} className={e === (cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)) ? "on" : ""} onClick={() => set({ model: chosen.slug, effort: e })}>
+                <button key={e} className={e === (cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)) ? "on" : ""} onClick={() => set({ effort: e })}>
                   {e}
                 </button>
               ))}

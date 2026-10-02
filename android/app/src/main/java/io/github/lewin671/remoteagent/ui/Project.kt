@@ -505,6 +505,12 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
     }
 }
 
+fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSettings? = null): io.github.lewin671.remoteagent.proto.ModelInfo? {
+    val defaultModel = if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()
+    val id = c.model.ifEmpty { defaultModel.ifEmpty { models.defaultModel } }
+    return io.github.lewin671.remoteagent.core.findModel(models.modelsList, id) { it.slug }
+}
+
 /**
  * 项目设置 (client-v8): CLI, machine, model and effort, and approval mode,
  * each chosen on a page of the sheet. The folder is the project's read-only path.
@@ -527,11 +533,17 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
             modelsError = errorText(e)
         }
     }
+    var settings by remember { mutableStateOf<DaemonSettings?>(null) }
+    LaunchedEffect(c.machineId, c.agent) {
+        settings = null
+        runCatching { remote.machineCommand(c.machineId, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings }
+            .onSuccess { settings = it }
+    }
     val used = state.sessions.values.filter { projectKey(it) == initial.cwd }.map { it.machineId }.distinct().ifEmpty { state.machines.keys.toList() }
     val agents = machineAgents(state.machines[c.machineId])
     val blockedPrefs = prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
-    val shownModel = models?.let { ms -> io.github.lewin671.remoteagent.core.findModel(ms.modelsList, c.model) { it.slug } }
+    val shownModel = models?.let { projectModel(c, it, settings) }
     Sheet(onClose) {
         when (page) {
             "" -> {
@@ -594,16 +606,20 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                     modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
                     ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
-                        ListItem("默认" + if (ms.defaultModel.isNotEmpty()) "（${ms.defaultModel}）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
+                        val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
+                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
                         ms.modelsList.forEachIndexed { i, m ->
                             ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
                                 val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
                                 c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
                             })
                         }
-                        ms.modelsList.firstOrNull { it.slug == c.model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
+                        projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
+                            val defaultEffort = if (c.model.isEmpty()) {
+                                (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.effort.orEmpty() else settings?.defaultEffort.orEmpty()).ifEmpty { m.defaultEffort }
+                            } else m.defaultEffort
                             FieldLabel("推理强度")
-                            ChoiceGrid(m.effortsList, c.effort, true) { c = c.copy(effort = it) }
+                            ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { c = c.copy(effort = it) }
                         }
                     }
                 }

@@ -777,6 +777,24 @@ it("keeps project settings by path and carries full access without a new confirm
   expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", effort: "max", mode: ApprovalMode.FULL_ACCESS });
 });
 
+it("keeps the default model while saving a chosen reasoning effort", async () => {
+  const r = demo();
+  const project = "/Users/me/Code/foo";
+  mount(<ProjectPage remote={r} pkey={project} go={() => undefined} onBack={() => undefined} wide />);
+  await fromMenu("新会话设置 ›");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click(button(/^默认模型/, document));
+  await vi.waitFor(() => expect(button("high", document)).toBeDefined());
+  await click(button("high", document));
+  expect(document.querySelector(".mi .ck")?.textContent).toBe("✓");
+  await click(button("完成", document));
+  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === project)).toMatchObject({ model: "", effort: "high" }));
+  await fromMenu("新会话设置 ›");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  expect(document.querySelector(".mi .ck")?.textContent).toBe("✓");
+  expect(button("high", document)?.className).toBe("on");
+});
+
 it("names a new project's default model as Codex does, even when /model hides it", async () => {
   const r = demo();
   // The machine's default is a model Codex leaves out of its list.

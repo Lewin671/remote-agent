@@ -26,7 +26,8 @@
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v10.html](design/client-v10.html) | 界面稿 | 当前设计：项目配置的模型、CLI、机器和审批子页均有「完成」，直接保存并关闭 |
+| [design/client-v11.html](design/client-v11.html) | 界面稿 | 当前设计：默认模型也可单独指定推理强度，模型继续跟随默认配置 |
+| [design/client-v10.html](design/client-v10.html) | 界面稿 | 项目配置的模型、CLI、机器和审批子页均有「完成」，直接保存并关闭；只读 |
 | [design/client-v9.html](design/client-v9.html) | 界面稿 | 「＋」直接添加图片，会话设置移到 ⋯ 菜单，标题取首句并单行，精简额度、图片存储和外观，宽屏设置页限制列宽；只读 |
 | [design/client-v8.html](design/client-v8.html) | 界面稿 | 新会话配置归入项目设置，项目页「＋」只添加图片，项目默认完全放行不再确认；只读 |
 | [design/client-v7.html](design/client-v7.html) | 界面稿 | 精简等待事项、工具详情，统一会话与新建输入框；移除只启动终端入口；只读 |
