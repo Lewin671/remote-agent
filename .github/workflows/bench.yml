@@ -1,0 +1,67 @@
+name: Benchmark Android build (temporary)
+
+# Measures Gradle variants on a hosted runner while the release pipeline is
+# being tuned. No secrets: release builds fall back to the debug key.
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: Name of the experiment
+        required: true
+        type: string
+      cmd:
+        description: Shell command run in android/
+        required: true
+        type: string
+      cache:
+        description: Gradle cache key suffix (empty runs cold)
+        required: false
+        type: string
+
+run-name: bench ${{ inputs.label }}
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.cache != ''
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: bench-gradle-${{ inputs.cache }}
+      - name: Runner size
+        run: |
+          nproc
+          free -m
+          df -h /
+          ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
+          du -sh ~/.gradle/caches/* ~/.gradle/wrapper 2>/dev/null || true
+      - name: Run
+        working-directory: android
+        env:
+          CMD: ${{ inputs.cmd }}
+        run: bash -c "$CMD"
+      - name: Sizes after
+        if: always()
+        run: du -sh ~/.gradle/caches/* ~/.gradle/caches/*/* ~/.gradle/wrapper 2>/dev/null | sort -h | tail -25
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: profile
+          path: android/build/reports/profile
+          retention-days: 1
+          if-no-files-found: ignore
