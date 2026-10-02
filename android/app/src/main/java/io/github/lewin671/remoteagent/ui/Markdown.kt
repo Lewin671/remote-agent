@@ -263,7 +263,7 @@ fun inline(text: String, codeBg: androidx.compose.ui.graphics.Color, link: andro
             (c == '*' || c == '_') && i + 1 < s.length && s[i + 1] != ' ' && (i == 0 || !s[i - 1].isLetterOrDigit()) -> {
                 val end = s.indexOf(c, i + 1)
                 if (end > i + 1 && s[end - 1] != ' ') {
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(s.substring(i + 1, end)) }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(inline(s.substring(i + 1, end), codeBg, link)) }
                     i = end + 1
                 } else {
                     append(c); i++

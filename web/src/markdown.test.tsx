@@ -161,6 +161,8 @@ it("does not let escaped backticks swallow neighboring table columns", () => {
 
 it("resumes inline formatting after code containing Markdown markers", () => {
   expect(renderToStaticMarkup(<Rich text={'`**` **bold**'} />)).toBe('<code>**</code> <b>bold</b>');
+  expect(renderToStaticMarkup(<Rich text={'**`termFirst`**：保持 *见 `a.go`*'} />)).toBe('<b><code>termFirst</code></b>：保持 <em>见 <code>a.go</code></em>');
+  expect(renderToStaticMarkup(<Rich text={'**见 [文档](https://example.com/a)**'} />)).toContain('<b>见 <a href="https://example.com/a"');
   expect(renderToStaticMarkup(<Rich text={'``* ` | **`` **after** [docs](https://example.com)'} />)).toContain('<code>* ` | **</code> <b>after</b>');
 });
 

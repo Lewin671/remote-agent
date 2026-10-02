@@ -74,8 +74,9 @@ export function Rich({ text }: { text: string }) {
       }
       parts.push(m[1]);
     }
-    else if (m[2] !== undefined) parts.push(<b key={key}>{m[2]}</b>);
-    else if (m[3] !== undefined) parts.push(<em key={key}>{m[3]}</em>);
+    // Emphasis may wrap code and links, so its content is inline Markdown too.
+    else if (m[2] !== undefined) parts.push(<b key={key}><Rich text={m[2]} /></b>);
+    else if (m[3] !== undefined) parts.push(<em key={key}><Rich text={m[3]} /></em>);
     else {
       const link = links.get(m.index);
       if (link) {
