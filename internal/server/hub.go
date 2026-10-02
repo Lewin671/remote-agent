@@ -62,7 +62,15 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	dev, err := h.hello(ctx, conn)
+	token, err := h.hello(ctx, conn)
+	var dev *device
+	if err == nil {
+		var release context.CancelFunc
+		ctx, dev, release, err = h.s.beginStream(ctx, token)
+		if release != nil {
+			defer release()
+		}
+	}
 	if err != nil {
 		slog.Info("stream hello refused", "err", err)
 		conn.Close(websocket.StatusPolicyViolation, "authentication failed")
@@ -97,18 +105,18 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // hello reads the first frame and authenticates it.
-func (h *hub) hello(ctx context.Context, conn *websocket.Conn) (*device, error) {
+func (h *hub) hello(ctx context.Context, conn *websocket.Conn) (string, error) {
 	hctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	typ, b, err := conn.Read(hctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	f := &pb.PeerFrame{}
 	if typ != websocket.MessageBinary || proto.Unmarshal(b, f) != nil || f.GetHello() == nil {
-		return nil, errors.New("expected hello")
+		return "", errors.New("expected hello")
 	}
-	return h.s.authenticate(ctx, f.GetHello().Token)
+	return f.GetHello().Token, nil
 }
 
 func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {

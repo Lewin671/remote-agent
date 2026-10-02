@@ -61,11 +61,12 @@ func (t *termHub) serve(w http.ResponseWriter, r *http.Request) {
 		conn.Close(websocket.StatusPolicyViolation, "bad hello")
 		return
 	}
-	dev, err := t.s.authenticate(ctx, hello.Token)
+	ctx, dev, release, err := t.s.beginStream(ctx, hello.Token)
 	if err != nil {
 		conn.Close(websocket.StatusPolicyViolation, "authentication failed")
 		return
 	}
+	defer release()
 	me := &termEnd{conn: conn, dev: dev, machine: hello.MachineId, joined: make(chan *termEnd, 1), ctx: ctx, cancel: cancel}
 	if dev.kind == pb.DeviceKind_DEVICE_KIND_CLIENT && hello.MachineId == "" {
 		conn.Close(websocket.StatusPolicyViolation, "no machine")

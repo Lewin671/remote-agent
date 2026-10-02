@@ -327,6 +327,7 @@ func (c *clientService) RemoveDevice(ctx context.Context, req *connect.Request[p
 	if err != nil {
 		return nil, internal(err)
 	}
+	c.s.revokeStreams(req.Msg.DeviceId)
 	slog.Info("device removed", "device", req.Msg.DeviceId)
 	c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: req.Msg.DeviceId}}})
 	if machine {

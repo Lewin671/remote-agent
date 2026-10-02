@@ -121,6 +121,7 @@ type device struct {
 	id        string
 	publicKey []byte
 	kind      pb.DeviceKind
+	expiresMs int64
 }
 
 func (s *store) device(ctx context.Context, id string) (*device, error) {
@@ -160,10 +161,14 @@ func (s *store) tokenDevice(ctx context.Context, hash []byte) (*device, error) {
 	if err != nil {
 		return nil, err
 	}
-	if expires < nowMs() {
+	if expires <= nowMs() {
 		return nil, errNoRows
 	}
-	return s.device(ctx, id)
+	d, err := s.device(ctx, id)
+	if err == nil {
+		d.expiresMs = expires
+	}
+	return d, err
 }
 
 func marshalEnv(e *pb.Envelope) ([]byte, error) {
