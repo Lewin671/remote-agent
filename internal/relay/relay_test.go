@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -216,6 +218,10 @@ type env struct {
 }
 
 func setup(t *testing.T) *env {
+	return setupWithHandler(t, func(h http.Handler) http.Handler { return h })
+}
+
+func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler) *env {
 	t.Helper()
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	e := &env{dbPath: filepath.Join(t.TempDir(), "ra.db"), backend: newFakeBackend(t)}
@@ -224,7 +230,7 @@ func setup(t *testing.T) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.http = httptest.NewServer(e.srv.Handler())
+	e.http = httptest.NewServer(wrap(e.srv.Handler()))
 	t.Cleanup(func() {
 		e.stopRelay()
 		e.http.Close()
@@ -243,6 +249,58 @@ func setup(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	return e
+}
+
+func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
+	var active, peak atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/remoteagent.v1.MachineService/") {
+				n := active.Add(1)
+				defer active.Add(-1)
+				for old := peak.Load(); n > old; old = peak.Load() {
+					if peak.CompareAndSwap(old, n) {
+						break
+					}
+				}
+				select {
+				case <-r.Context().Done():
+					return
+				case <-time.After(25 * time.Millisecond):
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	for i := range 64 {
+		id := fmt.Sprintf("history-%03d", i)
+		appendText(t, e.backend.add(t, id), id, "history")
+	}
+	e.startRelay()
+	waitFor(t, "all historical sessions uploaded", func() bool {
+		ss, err := e.client.Sessions(context.Background())
+		if err != nil || len(ss) != 64 {
+			return false
+		}
+		for _, s := range ss {
+			if s.LastSeq != 1 {
+				return false
+			}
+		}
+		return true
+	})
+	if n := peak.Load(); n > 2 {
+		t.Fatalf("concurrent machine RPCs = %d; want at most 2", n)
+	}
+	// A live session's long-lived watcher must not retain an RPC slot.
+	appendText(t, e.backend.add(t, "new-session"), "new-session", "new")
+	e.session(t, "new-session", 1)
+	log, err := e.backend.log("history-000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	appendText(t, log, "history-000", "updated")
+	e.session(t, "history-000", 2)
 }
 
 func (e *env) startRelay() {

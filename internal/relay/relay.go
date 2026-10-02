@@ -56,9 +56,10 @@ type ImageUpload struct {
 
 // Relay keeps the daemon connected to the server.
 type Relay struct {
-	backend Backend
-	cmds    *commandLog
-	calls   chan struct{} // bounds command workers across reconnects
+	backend     Backend
+	cmds        *commandLog
+	calls       chan struct{} // bounds command workers across reconnects
+	machineRPCs chan struct{} // bounds session uploads across reconnects
 	// Retry is the first reconnect delay; it doubles up to a minute.
 	Retry time.Duration
 
@@ -71,7 +72,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), Retry: time.Second}
+	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), Retry: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -148,7 +149,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}
 	hc := httpClient()
 	c := &conn{r: r, acct: acct, keys: keys, token: token,
-		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))}
+		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token), r.limitMachineRPCs()))}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
 	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
@@ -218,6 +219,27 @@ func login(ctx context.Context, acct *Account) (string, error) {
 		return "", err
 	}
 	return res.Msg.Token, nil
+}
+
+// Keep history synchronization below the server's RPC admission limit, leaving
+// room for client requests. Acquire per call, not per long-lived session sync.
+const maxConcurrentMachineRPCs = 2
+
+func (r *Relay) limitMachineRPCs() connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case r.machineRPCs <- struct{}{}:
+				defer func() { <-r.machineRPCs }()
+			}
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			return next(ctx, req)
+		}
+	}
 }
 
 func bearer(token string) connect.UnaryInterceptorFunc {
