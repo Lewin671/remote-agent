@@ -3,6 +3,7 @@ package ptyhost
 import (
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -174,5 +175,55 @@ func TestListenMakesControlDirectoryPrivate(t *testing.T) {
 		if err != nil || fi.Mode().Perm() != item.perm {
 			t.Fatalf("permissions for %s: %v, %v", item.path, fi, err)
 		}
+	}
+}
+
+// An expiry callback can already be running when renewal calls Timer.Stop.
+// Reproduce its eventual arrival directly: an old callback must not release
+// a renewed hold, or local keystrokes can enter a checked remote draft.
+func TestExpiredCallbackCannotReleaseRenewedHold(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	h := &Host{ptmx: w, cmd: &exec.Cmd{}}
+	if err := h.hold(1, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	old := h.holdGeneration
+	h.local([]byte("local draft"))
+	if err := h.hold(1, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	h.expire(1, old)
+	if !h.status().Held || string(h.pending) != "local draft" {
+		t.Fatal("expired callback released renewed lease and flushed local input")
+	}
+	h.expire(1, h.holdGeneration)
+	if h.status().Held {
+		t.Fatal("current lease did not expire")
+	}
+	b := make([]byte, len("local draft"))
+	if _, err := io.ReadFull(r, b); err != nil || string(b) != "local draft" {
+		t.Fatalf("buffered input = %q, err = %v", b, err)
+	}
+}
+
+func TestExpiredCallbackCannotReleaseReacquiredHold(t *testing.T) {
+	h := &Host{cmd: &exec.Cmd{}}
+	if err := h.hold(1, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	old := h.holdGeneration
+	h.release(1)
+	if err := h.hold(1, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	defer h.release(1)
+	h.expire(1, old)
+	if !h.status().Held {
+		t.Fatal("expired callback released reacquired hold")
 	}
 }

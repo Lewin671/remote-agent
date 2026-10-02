@@ -52,13 +52,14 @@ type Host struct {
 	ptmx *os.File
 	cmd  *exec.Cmd
 
-	mu        sync.Mutex // guards writes to ptmx and the fields below
-	held      bool
-	holder    int // connection that holds input, 0 when not held
-	nextConn  int
-	holdTimer *time.Timer
-	pending   []byte
-	lastLocal time.Time
+	mu             sync.Mutex // guards writes to ptmx and the fields below
+	held           bool
+	holder         int // connection that holds input, 0 when not held
+	nextConn       int
+	holdTimer      *time.Timer
+	holdGeneration uint64 // distinguishes renewed leases from already-running timer callbacks
+	pending        []byte
+	lastLocal      time.Time
 }
 
 // Run starts argv in a PTY attached to the process's own terminal, serves
@@ -209,8 +210,21 @@ func (h *Host) hold(conn int, d time.Duration) error {
 	if h.holdTimer != nil {
 		h.holdTimer.Stop()
 	}
-	h.holdTimer = time.AfterFunc(d, func() { h.release(conn) })
+	h.holdGeneration++
+	generation := h.holdGeneration
+	h.holdTimer = time.AfterFunc(d, func() { h.expire(conn, generation) })
 	return nil
+}
+
+// expire releases only the lease that scheduled this callback. Timer.Stop
+// cannot cancel a callback that has already started and is waiting for mu;
+// that callback must not release a newer lease of the same controller.
+func (h *Host) expire(conn int, generation uint64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.holdGeneration == generation {
+		h.releaseLocked(conn)
+	}
 }
 
 // release ends conn's hold and flushes buffered local input. It does
@@ -218,6 +232,10 @@ func (h *Host) hold(conn int, d time.Duration) error {
 func (h *Host) release(conn int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.releaseLocked(conn)
+}
+
+func (h *Host) releaseLocked(conn int) {
 	if !h.held || h.holder != conn {
 		return
 	}
