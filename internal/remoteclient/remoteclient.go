@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
+	"github.com/Lewin671/remote-agent/internal/netpolicy"
 	"strings"
 	"sync"
 	"time"
@@ -55,7 +55,7 @@ func Register(ctx context.Context, secret e2e.Secret) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	hc := &http.Client{Timeout: time.Minute}
+	hc := netpolicy.Client(time.Minute)
 	auth := remoteagentv1connect.NewAuthServiceClient(hc, secret.Server)
 	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{Registration: reg, Signature: keys.SignRegistration(reg)}))
 	if err != nil {
@@ -276,7 +276,7 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 // Stream opens the push stream. Frames arrive on the returned channel,
 // which is closed when the stream ends.
 func (c *Client) Stream(ctx context.Context) (<-chan *pb.ServerFrame, error) {
-	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.Server, "http")+"/v1/stream", nil)
+	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.Server, "http")+"/v1/stream", &websocket.DialOptions{HTTPClient: netpolicy.Client(time.Minute)})
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ type Term struct {
 // OpenTerminal joins a session's terminal stream.
 func (c *Client) OpenTerminal(ctx context.Context, s Session) (*Term, error) {
 	stream := NewRequestID()
-	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.Server, "http")+"/v1/term", nil)
+	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.Server, "http")+"/v1/term", &websocket.DialOptions{HTTPClient: netpolicy.Client(time.Minute)})
 	if err != nil {
 		return nil, err
 	}

@@ -150,7 +150,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))}
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
-	ws, _, err := websocket.Dial(ctx, wsURL, nil)
+	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
 	if err != nil {
 		return fmt.Errorf("open stream: %w", err)
 	}

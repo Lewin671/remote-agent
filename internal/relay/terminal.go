@@ -43,7 +43,7 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 	if err != nil {
 		return err
 	}
-	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.acct.Server, "http")+"/v1/term", nil)
+	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.acct.Server, "http")+"/v1/term", &websocket.DialOptions{HTTPClient: httpClient()})
 	if err != nil {
 		t.Close()
 		return fmt.Errorf("join the terminal stream: %w", err)
