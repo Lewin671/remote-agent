@@ -24,7 +24,7 @@ func runModel(args []string) error {
 			if m.Slug == res.Msg.DefaultModel {
 				def = " (default)"
 			}
-			fmt.Printf("%-16s %-14s %s%s\n", m.Slug, m.DisplayName, strings.Join(m.Efforts, ","), def)
+			fmt.Printf("%-16s %-14s %s%s\n", terminalText(m.Slug, false), terminalText(m.DisplayName, false), terminalText(strings.Join(m.Efforts, ","), false), def)
 		}
 		return nil
 	}

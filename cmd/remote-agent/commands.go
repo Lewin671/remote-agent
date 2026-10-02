@@ -272,8 +272,8 @@ func runList(args []string) error {
 		if p == "" {
 			p = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.Id[:12], agentName(s.Agent), status, model, p,
-			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), s.Cwd)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
+			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), terminalText(s.Cwd, false))
 	}
 	return w.Flush()
 }

@@ -119,7 +119,7 @@ func main() {
 		os.Exit(2)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "remote-agent:", err)
+		fmt.Fprintln(os.Stderr, "remote-agent:", terminalText(err.Error(), true))
 		os.Exit(1)
 	}
 }
