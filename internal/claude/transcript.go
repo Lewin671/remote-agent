@@ -3,6 +3,7 @@ package claude
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -282,7 +283,52 @@ func (p *Parser) userMessage(text string, blocks []block, pasteIDs []int32) *pb.
 	if len(parts) > 0 {
 		msg.Text = strings.Join(parts, "\n")
 	}
+	msg.Text = unwrapPasted(msg.Text)
 	return msg
+}
+
+// pastedOpenRE matches the tag Claude Code opens a collapsed paste with.
+var pastedOpenRE = regexp.MustCompile(`\n*<pasted_content id="([^"\n]*)">\n`)
+
+// unwrapPasted takes out the tags Claude Code records around a paste it
+// showed as "[Pasted text #N +M lines]" (2.1.287):
+//
+//	\n\n<pasted_content id="94cd">\n…\n</pasted_content id="94cd">\n
+//
+// leaving the pasted text, so that a message reads as it was written. An
+// opening tag without its closing one is left alone.
+func unwrapPasted(text string) string {
+	if !strings.Contains(text, "<pasted_content id=") {
+		return text
+	}
+	var out strings.Builder
+	rest, found := text, false
+	for {
+		m := pastedOpenRE.FindStringSubmatchIndex(rest)
+		if m == nil {
+			break
+		}
+		end := "\n</pasted_content id=\"" + rest[m[2]:m[3]] + "\">"
+		n := strings.Index(rest[m[1]:], end)
+		if n < 0 {
+			break
+		}
+		// The line breaks Claude Code adds around the tags separate the
+		// paste from what was typed next to it.
+		if before := rest[:m[0]]; before != "" {
+			out.WriteString(before + "\n")
+		}
+		out.WriteString(rest[m[1] : m[1]+n])
+		rest = strings.TrimLeft(rest[m[1]+n+len(end):], "\n")
+		if rest != "" {
+			out.WriteString("\n")
+		}
+		found = true
+	}
+	if !found {
+		return text
+	}
+	return out.String() + rest
 }
 
 // startTurn opens the turn of a user record.

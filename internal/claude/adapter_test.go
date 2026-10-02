@@ -97,13 +97,14 @@ func TestFullAccess(t *testing.T) {
 func TestSubmitted(t *testing.T) {
 	a := New("", "")
 	for line, want := range map[string]bool{
-		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"hello  world"}}`:           true,
-		`{"type":"user","message":{"role":"user","content":"hello world"}}`:                                      false,
-		`{"type":"queue-operation","operation":"enqueue","content":"hello world"}`:                               true,
-		`{"type":"queue-operation","operation":"remove","content":"hello world"}`:                                false,
-		`{"type":"attachment","attachment":{"type":"queued_command","prompt":"hello world"}}`:                    true,
-		`{"type":"user","origin":{"kind":"human"},"message":{"content":[{"type":"text","text":"hello world"}]}}`: true,
-		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"other"}}`:                  false,
+		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"hello  world"}}`:                                                                    true,
+		`{"type":"user","message":{"role":"user","content":"hello world"}}`:                                                                                               false,
+		`{"type":"queue-operation","operation":"enqueue","content":"hello world"}`:                                                                                        true,
+		`{"type":"queue-operation","operation":"remove","content":"hello world"}`:                                                                                         false,
+		`{"type":"attachment","attachment":{"type":"queued_command","prompt":"hello world"}}`:                                                                             true,
+		`{"type":"user","origin":{"kind":"human"},"message":{"content":[{"type":"text","text":"hello world"}]}}`:                                                          true,
+		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"other"}}`:                                                                           false,
+		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"\n\n<pasted_content id=\"94cd\">\nhello\nworld\n</pasted_content id=\"94cd\">\n"}}`: true,
 	} {
 		if got := a.Submitted([]byte(line), func(r string) bool { return strings.Join(strings.Fields(r), " ") == "hello world" }, ""); got != want {
 			t.Errorf("%s: %v", line, got)

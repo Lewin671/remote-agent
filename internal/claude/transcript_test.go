@@ -441,3 +441,33 @@ func TestQueuedMessageWithImage(t *testing.T) {
 		t.Errorf("message: %v", m)
 	}
 }
+
+// A paste Claude Code collapsed to "[Pasted text #N +M lines]" is recorded
+// between tags (2.1.287); the message is the pasted text.
+func TestPastedContentUnwrapped(t *testing.T) {
+	evs, err := NewParser().Parse([]byte(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"\n\n<pasted_content id=\"94cd\">\n1. yes\n2. yes\n\nand then?\n</pasted_content id=\"94cd\">\n"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	for _, e := range evs {
+		if m := e.GetUserMessage(); m != nil {
+			got = m.Text
+		}
+	}
+	if want := "1. yes\n2. yes\n\nand then?"; got != want {
+		t.Errorf("message %q, want %q", got, want)
+	}
+	for in, want := range map[string]string{
+		"plain": "plain",
+		"see:\n\n<pasted_content id=\"a\">\nx\ny\n</pasted_content id=\"a\">\n":                                                        "see:\nx\ny",
+		"\n\n<pasted_content id=\"a\">\nx\n</pasted_content id=\"a\">\n why?":                                                          "x\n why?",
+		"\n\n<pasted_content id=\"a\">\nx\n</pasted_content id=\"a\">\n\n\n<pasted_content id=\"a\">\ny\n</pasted_content id=\"a\">\n": "x\ny",
+		"<pasted_content id=\"a\">\nnot closed":                                                                                        "<pasted_content id=\"a\">\nnot closed",
+		"<pasted_content id=\"a\">\nx\n</pasted_content id=\"b\">":                                                                     "<pasted_content id=\"a\">\nx\n</pasted_content id=\"b\">",
+	} {
+		if got := unwrapPasted(in); got != want {
+			t.Errorf("unwrapPasted(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

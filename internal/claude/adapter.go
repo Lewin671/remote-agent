@@ -549,7 +549,7 @@ func (a *Adapter) Submitted(line []byte, match func(recorded string) bool, _ str
 	}
 	switch r.Type {
 	case "queue-operation":
-		return r.Operation == "enqueue" && match(r.Content)
+		return r.Operation == "enqueue" && match(unwrapPasted(r.Content))
 	case "attachment":
 		return r.Attachment != nil && r.Attachment.Type == "queued_command" && match(contentText(r.Attachment.Prompt))
 	case "user":
@@ -562,11 +562,11 @@ func (a *Adapter) Submitted(line []byte, match func(recorded string) bool, _ str
 }
 
 // contentText is the text of message content: a string, or the text of
-// its blocks.
+// its blocks, without the tags around collapsed pastes.
 func contentText(raw json.RawMessage) string {
 	var s string
 	if json.Unmarshal(raw, &s) == nil {
-		return s
+		return unwrapPasted(s)
 	}
 	var blocks []block
 	if json.Unmarshal(raw, &blocks) != nil {
@@ -578,7 +578,7 @@ func contentText(raw json.RawMessage) string {
 			parts = append(parts, b.Text)
 		}
 	}
-	return strings.Join(parts, "\n")
+	return unwrapPasted(strings.Join(parts, "\n"))
 }
 
 // HookEvents turns AskUserQuestion and ExitPlanMode calls, reported by

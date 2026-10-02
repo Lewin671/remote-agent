@@ -62,6 +62,7 @@
 - **statusLine 实测（2.1.285，haiku，Max 订阅登录，2026-09-30）**：用 `--settings` 给会话设的 `statusLine`（`type: command`）会取代用户设置里的，用户自己的命令不再运行，所以要包一层：包装命令把输入原样交给用户的命令，输出和退出码照传，终端上的状态栏和原来一样，输入框的识别不受影响；用户没有状态栏时包装命令什么都不输出，界面只剩模式行，识别同样正常。输入 JSON 的键有 `session_id`、`transcript_path`、`cwd`、`model`（`id`、`display_name`）、`workspace`、`version`、`cost`、`context_window`、`prompt_cache` 等；**第一条回复之前没有 `rate_limits`**，回复之后才有 `{"five_hour":{"used_percentage":80,"resets_at":1790774400},"seven_day":{…}}`（`resets_at` 是 Unix 秒）。输入里没有账户、套餐和登录方式：这些只在 Claude Code 自己的 `~/.claude.json` 的 `oauthAccount`（`accountUuid`、`organizationUuid`、`organizationType` 如 `claude_max` 等）里。状态栏在每次界面更新和 `refreshInterval` 时重跑，额度数字只在有新回复时变
 - Plan 模式下即使用 `--model haiku` 启动，模型也变成了 `claude-sonnet-5-5`（`perTurnEffort: medium`），退出 Plan 模式后回到 haiku
 - `~/.claude/history.jsonl` 也记用户输入（包括斜杠命令），但多行粘贴只记 `[Pasted text #1 +11 lines]`，正文在 `pastedContents` 里；transcript 里是完整正文
+- **折叠的粘贴在 transcript 里带标签**（2.1.287，本机两条记录，2026-10-02）：输入框里显示成 `[Pasted text #N +M lines]` 的粘贴（两条都是 4 行以上；3 行的没有折叠，按原文记录），`type: "user"` 的 `content` 是 `"\n\n<pasted_content id=\"94cd\">\n正文\n</pasted_content id=\"94cd\">\n"`，开闭标签带同一个 id，同一会话的两条 id 相同。remote-agent 发消息用的就是 bracketed paste，所以多行消息都会这样记录；解析时去掉标签。和手打文字混在一起、运行中排队（`queue-operation`、`queued_command`）时的写法未实测，按同样格式处理
 
 ## 3. hook
 
