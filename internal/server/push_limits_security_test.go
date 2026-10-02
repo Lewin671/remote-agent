@@ -74,7 +74,7 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 	if err := p.notify("s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, "retry"); !errors.Is(err, errPushBusy) {
 		t.Fatalf("unbounded concurrent pushes: %v", err)
 	}
-	if _, ok := p.recent["d/s/NOTIFY_KIND_ATTENTION/retry"]; ok {
+	if _, ok := p.recent[pushRecentKey("s", pb.NotifyKind_NOTIFY_KIND_ATTENTION, "retry")]; ok {
 		t.Fatal("rejected notification consumed its dedupe key")
 	}
 	close(blocked)
@@ -97,6 +97,27 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 	}
 	if len(completed) != maxPushDeliveries+2 {
 		t.Fatalf("unexpected delivery count: %d", len(completed))
+	}
+}
+
+func TestNotificationRetainedKeysHaveBoundedBytes(t *testing.T) {
+	ts := newTestServer(t)
+	p := ts.srv.push
+	sid := strings.Repeat("s", 512<<10)
+	for i := range 8 {
+		if err := p.notify(sid, pb.NotifyKind_NOTIFY_KIND_ATTENTION, nil, fmt.Sprint(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for key := range p.recent {
+		if len(key) > 66 {
+			t.Fatalf("retained notification key has %d bytes", len(key))
+		}
+	}
+	// Routing identifiers containing delimiters cannot suppress each other.
+	kind := pb.NotifyKind_NOTIFY_KIND_ATTENTION
+	if pushRecentKey("a/"+kind.String()+"/b", kind, "x") == pushRecentKey("a", kind, "b/"+kind.String()+"/x") {
+		t.Fatal("ambiguous notification field framing")
 	}
 }
 

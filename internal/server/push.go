@@ -3,8 +3,10 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -58,6 +60,18 @@ const (
 )
 
 var errPushBusy = errors.New("push capacity exhausted; try again later")
+
+// Retained keys have a fixed size even when a peer supplies a very long
+// session identifier. JSON framing also keeps the fields unambiguous.
+func pushRecentKey(sessionID string, kind pb.NotifyKind, dedupeKey string) string {
+	b, _ := json.Marshal([]string{sessionID, kind.String(), dedupeKey})
+	sum := sha256.Sum256(b)
+	key := hex.EncodeToString(sum[:])
+	if dedupeKey != "" {
+		key = "d/" + key
+	}
+	return key
+}
 
 type pusher struct {
 	s          *Server
@@ -182,11 +196,9 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 	if !ok {
 		return invalid("unknown notification kind")
 	}
-	key := sessionID + "/" + kind.String()
+	key := pushRecentKey(sessionID, kind, dedupeKey)
 	window := pushCoalesce
 	if dedupeKey != "" {
-		// A key from one session must not suppress another session's pushes.
-		key = "d/" + key + "/" + dedupeKey
 		window = pushDedupe
 	}
 	p.mu.Lock()
