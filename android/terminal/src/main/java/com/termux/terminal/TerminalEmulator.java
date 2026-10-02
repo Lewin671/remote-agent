@@ -1,8 +1,6 @@
 package com.termux.terminal;
 
-import android.util.Base64;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -2101,14 +2099,10 @@ public final class TerminalEmulator {
                     }
                 }
                 break;
-            case 52: // Manipulate Selection Data. Skip the optional first selection parameter(s).
-                int startIndex = textParameter.indexOf(";") + 1;
-                try {
-                    String clipboardText = new String(Base64.decode(textParameter.substring(startIndex), 0), StandardCharsets.UTF_8);
-                    mSession.onCopyTextToClipboard(clipboardText);
-                } catch (Exception e) {
-                    Logger.logError(mClient, LOG_TAG, "OSC Manipulate selection, invalid string '" + textParameter + "");
-                }
+            case 52:
+                // Remote output may include untrusted file or model content.
+                // It must not change the phone's clipboard without a user action.
+                // Selection-copy remains available through TerminalView.
                 break;
             case 104:
                 // "104;$c" → Reset Color Number $c. It is reset to the color specified by the corresponding X

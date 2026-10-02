@@ -18,6 +18,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    testOptions { unitTests.isReturnDefaultValues = true }
     lint {
         abortOnError = false
     }
@@ -25,4 +26,5 @@ android {
 
 dependencies {
     implementation(libs.annotation)
+    testImplementation(libs.junit)
 }
