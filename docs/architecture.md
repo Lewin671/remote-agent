@@ -289,7 +289,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 新设备等待核对时可取消或因图案不一致返回填码页：停止本次轮询和后续自动加入，丢弃本次临时配对密钥，保留服务器地址、清空旧码；不把本地退出说成 server 已撤销。旧候选仍可能占着配对码，提示已有设备拒绝旧请求并生成新码。取消与允许同时发生时，注册前需重新检查取消状态；如果登记已经开始或完成，不能报「已取消」，应确认登记结果，再提示已经加入或结果尚未确认。界面见 [client-v2 · 设置与配对](design/client-v2.html#settings)。
 
-各端的服务器地址只接受 HTTPS，本机 loopback 地址允许 HTTP 用于开发；地址不能带用户凭据或片段。Go、网页和 Android 的 API 请求拒绝重定向，避免登录签名、setup token 或 bearer 被转交给另一个地址。Go 和 Android 的 WebSocket 握手也拒绝重定向；浏览器 WebSocket 没有关闭重定向的 API，仍依赖所配置 HTTPS 服务及浏览器的混合内容策略。
+各端的服务器地址只接受 HTTPS，本机 loopback 地址允许 HTTP 用于开发，Android 调试还支持模拟器的 `10.0.2.2`；正式 Android 的网络配置禁止 HTTP。服务器地址不能带用户凭据，Go 也拒绝片段和查询。Go、网页和 Android 的 API 请求拒绝重定向，避免登录签名、setup token 或 bearer 被转交给另一个地址。Go 和 Android 的 WebSocket 握手也拒绝重定向；浏览器 WebSocket 没有关闭重定向的 API，仍依赖所配置 HTTPS 服务及浏览器的混合内容策略。
 
 账户密钥串 `ra1.<根密钥>.<server 地址>`（`remote-agent account secret`）仍可作为备用方式粘贴，它不放进 URL，以免留在浏览历史里。
 
@@ -425,10 +425,12 @@ Android 的事件列表用不可变分块快照，追加时复用完整旧页，
 
 - **实现**：Android 13（API 33）起平台 JCA 也有 XDH 和 Ed25519，但导入导出原始 32 字节密钥、从 seed 推出公钥都没验证过，验证通过前继续用 Bouncy Castle。直接用 Bouncy Castle 的 lightweight API，不依赖系统里名为 `BC` 的旧 provider
 - **互通**：`:core` 的测试读取 `internal/e2e/testdata/vectors.json`；另加 Kotlin 生成、Go 和 TS 校验的反向向量。要特别对齐的是：header 按原始字节参与认证、密文后接 16 字节 tag、签名上下文末尾的 `\0`、配对 transcript 的长度前缀和 emoji 表、拒绝全零的 X25519 共享值、`uint64` 序号不经过有符号数
-- **保管**：在 Keystore 里生成不可导出的 AES 密钥，用它加密根密钥和设备 seed，存在应用私有目录，不进云备份和设备迁移。签名和配对都要原始字节，所以用的时候它们仍会进内存，Keystore 只保护存储。AndroidX `security-crypto` 已弃用，不用 `EncryptedSharedPreferences`
+- **保管**：在 Keystore 里生成不可导出的 AES 密钥，用它加密根密钥和设备 seed，存在应用私有目录，不进云备份和设备迁移。API 28 起账户包装密钥要求设备解锁；生成失败时报错，不降级成锁屏可用的密钥。API 26–27 没有这个平台限制。旧账户在前台读出后迁移到新包装密钥，新密文持久化成功后才清理旧记录。签名和配对都要原始字节，所以用的时候它们仍会进内存，Keystore 只保护存储。AndroidX `security-crypto` 已弃用，不用 `EncryptedSharedPreferences`
 - **通知密钥**：`notify`（第 9 节）单独包装保存，后台收到推送时就能解密；根密钥和 `command` 密钥不因为收通知而在后台解开
 
 ### 终端
+
+Android 不执行终端输出里的 OSC 52 剪贴板写入，避免恶意文件或模型输出修改手机剪贴板；用户主动选择复制仍可用。
 
 `terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只用这两个。`TerminalView` 绑定的 `TerminalSession` 是 `final`，还在 `updateSize` 里通过 JNI 起本地进程，引用发布的包就换不掉它。所以两个模块的源码固定在 v0.118.3 放进 `android/terminal`，只重写 `TerminalSession`：输入交给回调，远程的输出和快照由外部喂入，JNI 和 C 代码去掉（实测见 [android-notes §2](android-notes.md#2-termux-终端组件)）。升级上游时对照这一个文件合并。
 
