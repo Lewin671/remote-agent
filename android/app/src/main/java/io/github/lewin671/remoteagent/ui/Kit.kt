@@ -32,7 +32,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.materialIcon
+import androidx.compose.material.icons.materialPath
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -550,6 +551,31 @@ fun Page(
     }
 }
 
+/** Material's outlined chat bubble, copied (Apache License 2.0) so the app ships only the core icon set: the extended set is 11,000 classes that R8 has to read on every release build. */
+private val ChatBubbleOutline by lazy {
+    materialIcon("Outlined.ChatBubbleOutline") {
+        materialPath {
+            moveTo(20f, 2f)
+            lineTo(4f, 2f)
+            curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+            verticalLineToRelative(18f)
+            lineToRelative(4f, -4f)
+            horizontalLineToRelative(14f)
+            curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+            lineTo(22f, 4f)
+            curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
+            close()
+            moveTo(20f, 16f)
+            lineTo(6f, 16f)
+            lineToRelative(-2f, 2f)
+            lineTo(4f, 4f)
+            horizontalLineToRelative(16f)
+            verticalLineToRelative(12f)
+            close()
+        }
+    }
+}
+
 /** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
 @Composable
 fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
@@ -560,7 +586,7 @@ fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
             Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable { if (!on) onSelect(r) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
                     androidx.compose.material3.Icon(
-                        if (r == "home") androidx.compose.material.icons.Icons.Outlined.ChatBubbleOutline else androidx.compose.material.icons.Icons.Outlined.Settings,
+                        if (r == "home") ChatBubbleOutline else androidx.compose.material.icons.Icons.Outlined.Settings,
                         null, tint = if (on) p.blue else p.muted, modifier = Modifier.size(22.dp),
                     )
                     if (r == "home" && waiting > 0) Text(

@@ -46,7 +46,7 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
-compose-icons = { module = "androidx.compose.material:material-icons-extended" }
+compose-icons = { module = "androidx.compose.material:material-icons-core" }
 fragment = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
 core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
