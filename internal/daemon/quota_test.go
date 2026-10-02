@@ -54,11 +54,25 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	if claudeQuota(h.d)[0].ObservedMs != now.UnixMilli() {
 		t.Fatal("renewed too soon")
 	}
+	// An idle session repeats the limits of its last reply: they do not
+	// replace newer ones, nor renew the time.
+	later := now.Add(5 * time.Minute)
+	h.d.statusLine("s2", []byte(`{"rate_limits":{"five_hour":{"used_percentage":86,"resets_at":1790774400},"seven_day":{"used_percentage":3,"resets_at":1790960400}}}`), later)
+	h.d.statusLine("s1", []byte(`{"rate_limits":{"five_hour":{"used_percentage":80,"resets_at":1790774400}}}`), later.Add(5*time.Minute))
+	q = claudeQuota(h.d)
+	if w := q[0].Windows; len(w) != 2 || w[0].GetUsedPercent() != 86 || w[1].GetUsedPercent() != 3 || q[0].ObservedMs != later.UnixMilli() {
+		t.Fatalf("stale report taken: %v", q)
+	}
+	// A window that has reset since is newer whatever its usage.
+	h.d.statusLine("s1", []byte(`{"rate_limits":{"five_hour":{"used_percentage":1,"resets_at":1790792400}}}`), later.Add(6*time.Minute))
+	if w := claudeQuota(h.d)[0].Windows; len(w) != 2 || w[0].GetUsedPercent() != 1 || w[0].ResetsAtMs != 1790792400000 || w[1].GetUsedPercent() != 3 {
+		t.Fatalf("after a reset: %v", w)
+	}
 	// A restart keeps the record of the same account...
 	d2 := New(Config{})
 	d2.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
 	d2.loadQuotas()
-	if q := claudeQuota(d2); len(q) != 1 || q[0].GetWindows()[0].GetUsedPercent() != 80 {
+	if q := claudeQuota(d2); len(q) != 1 || q[0].GetWindows()[0].GetUsedPercent() != 1 {
 		t.Fatalf("after restart: %v", q)
 	}
 	// ...but not another account's.

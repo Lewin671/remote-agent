@@ -143,13 +143,48 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 		}
 	}
 	if old := d.quotas[key]; old != nil {
+		reported := e.Windows
+		e.Windows = newestWindows(old.Windows, reported)
 		same := proto.Equal(&pb.AgentQuota{Windows: old.Windows, Plan: old.Plan, Login: old.Login}, &pb.AgentQuota{Windows: e.Windows, Plan: e.Plan, Login: e.Login})
-		if same && now.Sub(time.UnixMilli(old.ObservedMs)) < quotaRefresh {
+		// A report that is behind the record does not renew its time.
+		current := proto.Equal(&pb.AgentQuota{Windows: reported}, &pb.AgentQuota{Windows: e.Windows})
+		if same && (!current || now.Sub(time.UnixMilli(old.ObservedMs)) < quotaRefresh) {
 			return
 		}
 	}
 	d.quotas[key] = e
 	d.saveQuotasLocked()
+}
+
+// newestWindows merges a status line's windows into the recorded ones. A
+// session's status line repeats the limits of that session's last reply,
+// with no time, so an idle session keeps reporting old numbers next to a
+// busy one's. Per window the later reset wins, and with the same reset
+// the higher usage, which only grows until the reset. Without reset times
+// the report wins. A window only the record has is kept: the client marks
+// it once its reset has passed.
+func newestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
+	byName := map[string]*pb.QuotaWindow{}
+	for _, w := range old {
+		byName[w.Name] = w
+	}
+	for _, w := range reported {
+		o := byName[w.Name]
+		if o == nil || w.ResetsAtMs > o.ResetsAtMs ||
+			w.ResetsAtMs == o.ResetsAtMs && (w.ResetsAtMs == 0 || o.UsedPercent == nil || w.GetUsedPercent() > o.GetUsedPercent()) {
+			byName[w.Name] = w
+		}
+	}
+	names := make([]string, 0, len(byName))
+	for name := range byName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]*pb.QuotaWindow, 0, len(names))
+	for _, name := range names {
+		out = append(out, byName[name])
+	}
+	return out
 }
 
 // quotaEntries lists the limits for the machine metadata. Callers hold
