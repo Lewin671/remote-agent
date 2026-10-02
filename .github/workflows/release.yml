@@ -102,7 +102,7 @@ jobs:
       - name: Android tests and signed APK
         if: steps.plan.outputs.skip != 'true'
         working-directory: android
-        run: ./gradlew --no-daemon --no-configuration-cache :core:test :app:testDebugUnitTest :app:assembleRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        run: ./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
       - name: Package immutable release assets
         if: steps.plan.outputs.skip != 'true'
         run: |
