@@ -52,5 +52,8 @@ func TmuxSocketName() string {
 
 // EnsureDir creates dir with owner-only permissions.
 func EnsureDir(dir string) error {
-	return os.MkdirAll(dir, 0o700)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(dir, 0o700)
 }

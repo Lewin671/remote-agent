@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/creack/pty"
 	"golang.org/x/term"
 )
@@ -139,7 +140,7 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer) (in
 }
 
 func listen(path string) (net.Listener, error) {
-	if err := os.MkdirAll(dirOf(path), 0o700); err != nil {
+	if err := paths.EnsureDir(dirOf(path)); err != nil {
 		return nil, err
 	}
 	_ = os.Remove(path)
@@ -147,7 +148,11 @@ func listen(path string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = os.Chmod(path, 0o600)
+	if err := os.Chmod(path, 0o600); err != nil {
+		ln.Close()
+		os.Remove(path)
+		return nil, err
+	}
 	return ln, nil
 }
 

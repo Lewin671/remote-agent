@@ -307,11 +307,16 @@ func TestCompleteSaveFailureLeavesNoOrphan(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Force the atomic record write to fail after the image write succeeds.
-	if err := os.Mkdir(u.partial(tid)+".json.tmp", 0o700); err != nil {
+	partialDir := filepath.Join(u.dir, "partial")
+	if err := os.Chmod(partialDir, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.complete(tid, "d"); err == nil {
-		t.Fatal("record write succeeded unexpectedly")
+	_, err := u.complete(tid, "d")
+	if chmodErr := os.Chmod(partialDir, 0o700); chmodErr != nil {
+		t.Fatal(chmodErr)
+	}
+	if err == nil {
+		t.Skip("directory writable despite chmod")
 	}
 	entries, err := os.ReadDir(filepath.Join(u.dir, "pending"))
 	if err != nil || len(entries) != 0 {

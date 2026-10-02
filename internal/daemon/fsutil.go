@@ -9,12 +9,12 @@ import (
 // by the owner only: the data is on disk before the call returns, so a
 // crash leaves either the old or the new file.
 func writeFileSync(path string, data []byte) error {
-	tmp := path + ".tmp"
-	defer os.Remove(tmp)
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
 		return err
 	}
+	tmp := f.Name()
+	defer os.Remove(tmp)
 	if _, err := f.Write(data); err != nil {
 		f.Close()
 		return err

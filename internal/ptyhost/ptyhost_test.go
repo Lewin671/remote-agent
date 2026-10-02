@@ -153,3 +153,26 @@ func TestHoldIsExclusive(t *testing.T) {
 		t.Fatalf("hold after release: %v", err)
 	}
 }
+
+func TestListenMakesControlDirectoryPrivate(t *testing.T) {
+	dir := shortTempDir(t)
+	if err := os.Chmod(dir, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	socket := filepath.Join(dir, "private.sock")
+	ln, err := listen(socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	defer os.Remove(socket)
+	for _, item := range []struct {
+		path string
+		perm os.FileMode
+	}{{dir, 0o700}, {socket, 0o600}} {
+		fi, err := os.Stat(item.path)
+		if err != nil || fi.Mode().Perm() != item.perm {
+			t.Fatalf("permissions for %s: %v, %v", item.path, fi, err)
+		}
+	}
+}

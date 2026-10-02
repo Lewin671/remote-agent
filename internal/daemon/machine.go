@@ -157,11 +157,7 @@ func (d *Daemon) approvalTimeout() time.Duration {
 }
 
 func writeFileAtomic(path string, b []byte) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return writeFileSync(path, b)
 }
 
 // --- new sessions ---

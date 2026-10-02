@@ -601,15 +601,7 @@ func writeEnvFile(path string, env map[string]string) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(b); err != nil {
-		f.Close()
-		return err
-	}
-	return f.Close()
+	return writeFileSync(path, b)
 }
 
 var errRunning = errors.New("the session is still running")

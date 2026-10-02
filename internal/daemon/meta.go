@@ -50,9 +50,5 @@ func (m *meta) save(dir string) error {
 	if err != nil {
 		return err
 	}
-	tmp := filepath.Join(dir, "session.json.tmp")
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, filepath.Join(dir, "session.json"))
+	return writeFileSync(filepath.Join(dir, "session.json"), append(b, '\n'))
 }
