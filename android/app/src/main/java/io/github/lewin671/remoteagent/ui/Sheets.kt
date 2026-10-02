@@ -175,13 +175,13 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             loadError.isNotEmpty() -> Banner("没能读取模型列表：$loadError", tone = Tone2.ERROR, action = "重试", onAction = { attempt++ })
             ms == null -> Text("读取中…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
             else -> {
-                val current = io.github.lewin671.remoteagent.core.findModel(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
+                val (offered, current) = io.github.lewin671.remoteagent.core.sessionModels(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
                 if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
-                val list = if (all || ms.modelsCount <= 5) ms.modelsList else ms.modelsList.take(3)
+                val list = if (all || offered.size <= 5) offered else offered.take(3)
                 list.forEachIndexed { i, m ->
                     ListItem(
-                        m.displayName.ifEmpty { m.slug }, small = listOfNotNull(io.github.lewin671.remoteagent.core.contextText(m.contextWindow), if (m.effortsList.isEmpty()) "无推理强度" else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { "最高 $it" }).joinToString(" · ").ifEmpty { null },
-                        checked = m.slug == pickedModel, enabled = !running && !act.running, last = i == list.size - 1 && (all || ms.modelsCount <= 5),
+                        m.displayName.ifEmpty { m.slug }, small = if (m.effortsList.isEmpty()) "无推理强度" else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { "最高 $it" },
+                        checked = m.slug == pickedModel, enabled = !running && !act.running, last = i == list.size - 1 && (all || offered.size <= 5),
                         onClick = {
                             pickedModel = m.slug
                             // A model without efforts has nothing more to choose.
@@ -189,10 +189,10 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                         },
                     )
                 }
-                if (!all && ms.modelsCount > 5) Box(Modifier.heightIn(min = 44.dp).clickable { all = true }, contentAlignment = Alignment.CenterStart) {
+                if (!all && offered.size > 5) Box(Modifier.heightIn(min = 44.dp).clickable { all = true }, contentAlignment = Alignment.CenterStart) {
                     ArrowText("全部模型", p.blue, T.body)
                 }
-                val model = ms.modelsList.firstOrNull { it.slug == pickedModel }
+                val model = offered.firstOrNull { it.slug == pickedModel }
                 if (model != null && model.effortsList.isNotEmpty()) {
                     FieldLabel("推理强度")
                     ChoiceGrid(model.effortsList, if (model == current) s.info?.effort else null, !running && !act.running) { setModel(model.slug, it) }

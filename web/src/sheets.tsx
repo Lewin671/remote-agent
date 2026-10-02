@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, CONTEXT_WARN, contextText, findModel, contextPercent, modeOf, noAutoMode } from "./model";
+import { agentName, agentOf, CONTEXT_WARN, sessionModels, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet } from "./ui";
 
@@ -123,8 +123,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const pct = contextPercent(s);
   const model = s.info?.model ?? "";
   const effort = s.info?.effort ?? "";
-  const cur = findModel(models?.models, model);
-  const list = models?.models ?? [];
+  const { list, cur } = sessionModels(models?.models, model);
   // A short list shows whole, so no model is out of reach behind 全部模型
   // (Claude Code offers four); a long one shows three, and the current
   // model even when it is not among them.
@@ -184,7 +183,6 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
             <div className="mt">
               {m.displayName || m.slug}
-              {contextText(m.contextWindow) && <small>{contextText(m.contextWindow)}</small>}
               {m.efforts.length === 0 ? <small>无推理强度</small> : agent !== Agent.CLAUDE && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
             </div>
             {m === cur && <span className="ck">✓</span>}

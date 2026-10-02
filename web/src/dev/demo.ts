@@ -487,9 +487,12 @@ const models = create(ListModelsResponseSchema, {
 const claudeModels = create(ListModelsResponseSchema, {
   defaultModel: "sonnet",
   models: [
-    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
-    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
-    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "opus[1m]", displayName: "Opus 1M", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 200_000n },
+    { slug: "fable[1m]", displayName: "Fable 1M", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 200_000n },
+    { slug: "sonnet[1m]", displayName: "Sonnet 1M", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 200_000n },
     { slug: "haiku", displayName: "Haiku", efforts: [], contextWindow: 200_000n },
   ],
 });

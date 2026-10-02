@@ -46,6 +46,7 @@ import {
   type MachineLike,
   type SessionLike,
   contextText,
+  sessionModels,
 } from "./model";
 
 function events(...kinds: object[]): Event[] {
@@ -857,4 +858,11 @@ it("writes a model's context window, and nothing when it is unknown", () => {
   expect(contextText(200_000n)).toBe("200k 上下文");
   expect(contextText(0n)).toBe("");
   expect(contextText(undefined)).toBe("");
+});
+
+it("leaves the 1M names out of a session's models and finds its model without the suffix", () => {
+  const models = [{ slug: "opus[1m]" }, { slug: "opus" }, { slug: "haiku" }];
+  expect(sessionModels(models, "opus[1m]")).toEqual({ list: [{ slug: "opus" }, { slug: "haiku" }], cur: { slug: "opus" } });
+  expect(sessionModels(models, "claude-opus-5-5").cur).toEqual({ slug: "opus" });
+  expect(sessionModels(undefined, "opus")).toEqual({ list: [], cur: undefined });
 });

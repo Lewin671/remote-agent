@@ -394,6 +394,9 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	d.ownEnv(env, id)
 	if m.Agent == pb.Agent_AGENT_CLAUDE {
 		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
+		for k, v := range claude.StartEnv(args) {
+			env[k] = v
+		}
 	}
 	envFile, err := startEnv(dir, env)
 	if err != nil {

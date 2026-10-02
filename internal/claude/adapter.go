@@ -85,14 +85,67 @@ func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions,
 // cycles through them from medium.
 var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
-// models are the aliases /model lists. Which model an alias stands for
-// changes with Claude Code releases; the menu shows it. The context
-// windows are what /context reports for each alias (claude-code-notes §2).
+// models are the aliases /model lists, each with the context window a
+// session started with it gets. Which model an alias stands for changes
+// with Claude Code releases; the menu shows it. The [1m] names start the
+// same model with the 1M window, which the terminal then names; a session
+// started with the bare alias is held to the standard window (StartEnv).
+// Windows as /context reports them (claude-code-notes §2).
 var models = []*pb.ModelInfo{
-	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
-	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
-	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
-	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: 200_000},
+	{Slug: "opus[1m]", DisplayName: "Opus 1M", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
+	{Slug: "fable[1m]", DisplayName: "Fable 1M", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
+	{Slug: "sonnet[1m]", DisplayName: "Sonnet 1M", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
+	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: standardContext},
+}
+
+const (
+	standardContext = 200_000
+	largeContext    = 1_000_000
+	largeSuffix     = "[1m]"
+	// disableLarge makes Claude Code use the standard window for models
+	// that otherwise get 1M (claude-code-notes §2).
+	disableLarge = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
+)
+
+// StandardContext reports whether a session started with args is held to
+// the standard context window: its --model is one of the listed aliases
+// without [1m]. Other models, and no model, keep Claude Code's own window.
+func StandardContext(args []string) bool {
+	model := ""
+	for i, a := range args {
+		if v, ok := strings.CutPrefix(a, "--model="); ok {
+			model = v
+		} else if a == "--model" && i+1 < len(args) {
+			model = args[i+1]
+		}
+	}
+	for _, m := range models {
+		if m.Slug == model {
+			return !strings.HasSuffix(model, largeSuffix)
+		}
+	}
+	return false
+}
+
+// StartEnv is the environment a session started with args needs besides
+// the caller's.
+func StartEnv(args []string) map[string]string {
+	if StandardContext(args) {
+		return map[string]string{disableLarge: "1"}
+	}
+	return nil
+}
+
+// SessionWindow is the context window of a session started with args,
+// given the window w of the model its transcript names.
+func SessionWindow(args []string, w int64) int64 {
+	if StandardContext(args) && w > standardContext {
+		return standardContext
+	}
+	return w
 }
 
 // Models lists the aliases of /model. The default is the model set in

@@ -16,6 +16,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/proto"
@@ -595,6 +596,9 @@ func (s *session) info() *pb.Session {
 	out.FullAccessUnavailable = s.meta.NoFullAccess
 	if u := s.usage; u != nil {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
+		if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+			out.ContextWindow = claude.SessionWindow(s.meta.Args, out.ContextWindow)
+		}
 	}
 	out.Title, out.Preview = s.title, s.preview
 	out.AttentionSince = s.ordering.attentionSince(out)

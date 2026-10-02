@@ -393,6 +393,17 @@ export function findModel<M extends { slug: string }>(models: M[] | undefined, i
   return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
 }
 
+/** Claude Code's name for a model started with the 1M window: opus[1m]. */
+const LARGE_CONTEXT = "[1m]";
+
+/** The models a running session can switch between. Its context window
+ * was set when it started, so the 1M names are left out, and a session
+ * started with one is on the model of the same name without it. */
+export function sessionModels<M extends { slug: string }>(models: M[] | undefined, current: string): { list: M[]; cur: M | undefined } {
+  const list = (models ?? []).filter((m) => !m.slug.endsWith(LARGE_CONTEXT));
+  return { list, cur: findModel(list, current.endsWith(LARGE_CONTEXT) ? current.slice(0, -LARGE_CONTEXT.length) : current) };
+}
+
 /** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; empty when unknown. */
 export function contextText(tokens: bigint | undefined): string {
   const n = Number(tokens ?? 0n);

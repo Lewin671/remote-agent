@@ -157,6 +157,8 @@ func shownEffort(plain string) string {
 // with ←/→ and presses s, which applies to this session only; the number
 // keys and Enter would change the default.
 func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
+	// The window is fixed when the session starts; /model lists the aliases.
+	model = strings.TrimSuffix(model, largeSuffix)
 	var info *pb.ModelInfo
 	for _, m := range models {
 		if m.Slug == model {

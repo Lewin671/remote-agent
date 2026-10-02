@@ -853,3 +853,17 @@ fun contextText(tokens: Long): String? = when {
     tokens >= 1_000_000 -> "${(tokens / 100_000 / 10.0).toString().removeSuffix(".0")}M 上下文"
     else -> "${(tokens + 500) / 1000}k 上下文"
 }
+
+/** Claude Code's name for a model started with the 1M window: opus[1m]. */
+private const val LARGE_CONTEXT = "[1m]"
+
+/**
+ * The models a running session can switch between, and the one it is on.
+ * Its context window was set when it started, so the 1M names are left
+ * out, and a session started with one is on the model of the same name
+ * without it.
+ */
+fun <M> sessionModels(models: List<M>, current: String, slug: (M) -> String): Pair<List<M>, M?> {
+    val list = models.filter { !slug(it).endsWith(LARGE_CONTEXT) }
+    return list to findModel(list, current.removeSuffix(LARGE_CONTEXT), slug)
+}
