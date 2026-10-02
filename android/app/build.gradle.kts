@@ -145,6 +145,7 @@ dependencies {
     implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test)
     androidTestImplementation(libs.android.test.runner)

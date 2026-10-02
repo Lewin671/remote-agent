@@ -1,11 +1,8 @@
 package io.github.lewin671.remoteagent
 
-import android.Manifest
 import android.content.Intent
 import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import io.github.lewin671.remoteagent.push.Notifier
-import io.github.lewin671.remoteagent.push.Push
 import kotlinx.coroutines.launch
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -80,11 +77,6 @@ class MainActivity : ComponentActivity() {
     /** A session to open, from a notification. */
     private val openSession = mutableStateOf<Pair<String, String?>?>(null)
 
-    private val askNotify = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-        val app = application as RaApp
-        app.remote.value?.let { r -> app.scope.launch { Push.register(app, r) } }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -134,11 +126,6 @@ class MainActivity : ComponentActivity() {
                 actions.session(sid)
                 if (approval != null) actions.approval(sid, approval)
                 openSession.value = null
-            }
-        }
-        LaunchedEffect(remote) {
-            if (Build.VERSION.SDK_INT >= 33 && !Push.permitted(this@MainActivity) && Push.available(this@MainActivity)) {
-                askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
         // Say what this client is, sealed, so other clients can tell it apart.

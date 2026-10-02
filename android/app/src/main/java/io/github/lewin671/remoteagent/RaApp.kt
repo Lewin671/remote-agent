@@ -69,20 +69,29 @@ class RaApp : Application() {
                 loadAccount()
                 _remote.value?.let { r ->
                     r.start()
-                    scope.launch { Push.register(this@RaApp, r) }
+                    Push.register(this@RaApp, r)
                 }
             }
 
             override fun onStop(owner: LifecycleOwner) {
                 foreground = false
+                Push.stop()
                 _remote.value?.stop()
             }
         })
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 _remote.value?.reconnectNow()
+                scope.launch {
+                    registerPush()
+                }
             }
         })
+    }
+
+    /** A background token callback registers once with an already loaded account; it never loads keys. */
+    fun registerPush(token: String? = null) {
+        if (foreground || token != null) _remote.value?.let { Push.register(this, it, token, autoRetry = foreground) }
     }
 
     /**
@@ -116,7 +125,7 @@ class RaApp : Application() {
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {
             r.start()
-            scope.launch { Push.register(this@RaApp, r) }
+            Push.register(this@RaApp, r)
         }
     }
 
@@ -128,6 +137,7 @@ class RaApp : Application() {
 
     /** Forgets the account, the cache and the keys on this device. */
     suspend fun logout() {
+        Push.stop()
         _remote.value?.close()
         _remote.value = null
         AccountMemory.clear()

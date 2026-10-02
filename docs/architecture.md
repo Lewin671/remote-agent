@@ -441,7 +441,8 @@ Android 终端内置 Sarasa Fixed SC Regular（SIL OFL），让中文和西文�
 ### 推送和通知里审批
 
 - **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
-- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。手机有 GMS，不做 UnifiedPush
+- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
+- **Android 订阅恢复**：获取 token 前检查 Google Play 服务是否可用，区分 Google 注册失败和中继服务器登记失败；暂时失败在前台指数退避重试，网络恢复时立即重试。新 token 或通知偏好替换旧重试，进入后台或退出账户时取消，回到前台重新登记。后台的新 token 回调只在账户已加载时登记一次，不读取账户密钥，也不持续重试；关闭两类通知时直接清空订阅，不依赖 Google token。推送故障不阻塞聊天、同步和审批，不显示顶部警告或自动弹窗；只在通知设置分组下方以灰色说明给出原因和可选操作，不显示 Java 异常链。不自动请求通知权限，用户在通知设置里点「开启」时才进入系统设置。重试不能解决手机网络持续无法访问 Google 的问题。
 - **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
 - **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
 - **显示**：默认只显示通用文案，点开直接进审批页。App 设置里打开「在通知里显示内容并直接审批」后，手机解锁时才显示会话标题、命令和按钮，这样的通知用 `VISIBILITY_SECRET`，锁屏上整条不出现；锁着时收到的仍只发通用文案。`VISIBILITY_PRIVATE` 不够：用户允许锁屏显示敏感内容时它照样全文显示（scope 第 4 节，实测见 [android-notes §4](android-notes.md#4-fcm)）。账户只在前台读取，推送拉起的后台进程只用通知密钥。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知

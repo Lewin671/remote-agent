@@ -18,6 +18,7 @@ import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.*
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -25,6 +26,34 @@ import java.io.File
 
 /** Real Compose layout and hit regions on an isolated emulator app; no live account. */
 class LayoutTest {
+    @Test fun optionalPushNoticeFitsLargeFontAndKeepsRetryUsableInBothThemes() {
+        var dark by mutableStateOf(false)
+        var retries = 0
+        val problem = "暂时连不上 Google 推送服务，正在自动重试。请检查网络和 Google Play 服务"
+        ui.setContent {
+            val base = LocalDensity.current
+            RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalDensity provides Density(base.density, 2f)) {
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.soft)) {
+                        GLabel("本客户端的通知")
+                        Group(rows = listOf { Text("等我处理时", Modifier.padding(14.dp), color = pal.fg, style = T.body) })
+                        PushNotice(io.github.lewin671.remoteagent.push.PushStatus(problem, "重试")) { retries++ }
+                    }
+                }
+            }
+        }
+        for (theme in listOf(false, true)) {
+            ui.runOnIdle { dark = theme }
+            ui.onNodeWithText(problem).assertIsDisplayed()
+            ui.onNodeWithText("仅影响 App 在后台时的系统通知，不影响聊天和审批").assertIsDisplayed()
+            val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
+            val note = ui.onNodeWithText(problem).fetchSemanticsNode().boundsInRoot
+            assertTrue(note.left >= frame.left && note.right <= frame.right)
+            ui.onNodeWithText("重试").performClick()
+            screenshot(if (theme) "push-notice-dark-large" else "push-notice-light-large")
+        }
+        ui.runOnIdle { assertEquals(2, retries) }
+    }
     @get:Rule val ui = createComposeRule()
     private val key = "/Users/me/Code/ai-bot/remote-agent-with-a-very-long-project-name"
     private val machineId = "1111111111111111"

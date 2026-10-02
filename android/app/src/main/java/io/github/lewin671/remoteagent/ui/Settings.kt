@@ -148,7 +148,6 @@ fun SettingsScreen() {
     Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState()).readableColumn()) {
         LargeTitle("设置")
         ConnBanner(state)
-        if (push.problem.isNotEmpty()) Banner(push.problem, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), Tone2.WARN, action = push.action.ifEmpty { null }, onAction = { Push.fix(app, remote) })
         GLabel("电脑", "全部设备", onAction = { nav.devices() })
         Group(rows = state.machines.values.sortedBy { machineLabel(state, it.id) }.map { m -> @Composable {
             Row(Modifier.fillMaxWidth().clickable { nav.device(m.id) }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -190,6 +189,7 @@ fun SettingsScreen() {
                 ) { v -> scope.launch { app.prefs.update { it.copy(showContent = v) } } }
             },
         ))
+        PushNotice(push) { Push.fix(app, remote) }
         GLabel("本机存储")
         Group(rows = listOf { GRow("图片存储", onClick = { storage = true }, chevron = true) })
         GLabel("外观")
@@ -214,6 +214,19 @@ fun SettingsScreen() {
         "退出并删除本机密钥？", "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。", "退出", danger = true,
         onDismiss = { logout = false },
     ) { scope.launch { app.logout() } }
+}
+
+/** Optional background delivery belongs with notification settings, not the app's connection banner. */
+@Composable
+internal fun PushNotice(push: io.github.lewin671.remoteagent.push.PushStatus, onAction: () -> Unit) {
+    if (push.problem.isEmpty()) return
+    Column(Modifier.padding(horizontal = 20.dp).padding(top = 8.dp)) {
+        Text(push.problem, style = T.meta, color = pal.muted)
+        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.meta, color = pal.muted)
+        if (push.action.isNotEmpty()) TextButton(onClick = onAction) {
+            Text(push.action, style = T.meta, color = pal.blue)
+        }
+    }
 }
 
 /** One setting's few values at the right of its row (主题): a grey capsule with the chosen one raised. */

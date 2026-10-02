@@ -36,6 +36,7 @@
 
 ## 4. FCM
 
+- **异常处理与静默降级（2026-10-02，基于 v0.8.12 的修复工作树）**：JVM 夹具覆盖嵌套的 `SERVICE_NOT_AVAILABLE`、退避与恢复、偏好更新替换旧重试、取消和后台只登记一次；API 36 模拟器的独立 `.pushcheck` 包验证通知设置下的灰色说明在 320dp、200% 字号、亮暗两色下不越界，重试按钮可点。只验证了夹具和布局，未在真手机上复现 Google 服务不可达，也未验证国内网络的后台投递。
 - **可用**：模拟器（Google Play 镜像）经 `-http-proxy` 走本机代理后能拿到 FCM token，server 用 FCM HTTP v1 发的 data message 能收到。token 长 142 字符
 - **耗时**：App 在后台时，从 daemon 记下审批到通知出现约 3 秒；进程被杀掉后（`am kill`），系统为 FCM 广播新起进程，从审批记下到通知出现约 2 秒，其中 `onMessageReceived` 里读偏好、解密、发通知共 191 ms（进程在时 14 到 80 ms）。模拟器负载很高时，进程启动超过 10 秒会被判定为「failed to complete startup」的 ANR，这条推送随之丢失（系统日志 `broadcast intent callback: result=CANCELLED`）。推测真手机上不会这么慢，但 Application 的 `onCreate` 仍然只做最少的事
 - **`am force-stop` 之后收不到推送**：被强制停止的 App 处于 stopped 状态，系统不投递广播；测试「进程被回收」要用 `am kill`

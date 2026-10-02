@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.push
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,27 +11,25 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailabilityLight
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import io.github.lewin671.remoteagent.BuildConfig
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.value
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.PushType
 import io.github.lewin671.remoteagent.proto.SetPushTargetRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-
-/** Whether push works, and what the user can do about it. */
-data class PushStatus(val problem: String = "", val action: String = "")
 
 /**
  * Push notifications through FCM (architecture §15). The app registers its
@@ -45,6 +44,9 @@ object Push {
 
     private val _status = MutableStateFlow(PushStatus())
     val status: StateFlow<PushStatus> = _status
+    private val registration by lazy { PushRegistration(RaApp.instance.scope) }
+
+    fun stop() = registration.stop()
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -64,48 +66,91 @@ object Push {
 
     private suspend fun fcmToken(): String = suspendCancellableCoroutine { c ->
         FirebaseMessaging.getInstance().token.addOnCompleteListener { t ->
+            if (!c.isActive) return@addOnCompleteListener
             if (t.isSuccessful) c.resume(t.result) else c.resumeWithException(t.exception ?: Exception("FCM token unavailable"))
         }
     }
 
     /** Registers this device's FCM token and the kinds it wants; safe to call often. */
-    suspend fun register(context: Context, remote: Remote, token: String? = null) {
-        if (!available(context)) {
-            _status.value = PushStatus("这个版本没有配置推送，审批来了不会提醒你")
-            return
-        }
-        if (!permitted(context)) {
-            _status.value = PushStatus("推送没开，审批来了不会提醒你", "开启")
-            return
-        }
+    fun register(context: Context, remote: Remote, token: String? = null, autoRetry: Boolean = true) {
+        registration.request({ attempt(context, remote, token, autoRetry) }, { _status.value = it }, autoRetry)
+    }
+
+    private suspend fun attempt(context: Context, remote: Remote, token: String?, autoRetry: Boolean): PushAttempt {
         try {
-            val fcm = token ?: fcmToken()
+            if (!available(context)) {
+                return PushAttempt(PushStatus("本版本未启用后台推送"))
+            }
             val s = RaApp.instance.prefs.settings.first()
             val kinds = buildList {
                 if (s.notifyAttention) add(NotifyKind.NOTIFY_KIND_ATTENTION)
                 if (s.notifyTurnEnded) add(NotifyKind.NOTIFY_KIND_TURN_ENDED)
             }
+            // Turning notifications off must not depend on obtaining a Google token.
+            val fcm = if (kinds.isEmpty()) "" else {
+                val gms = GoogleApiAvailabilityLight.getInstance().isGooglePlayServicesAvailable(context)
+                if (gms != ConnectionResult.SUCCESS) {
+                    val problem = when (gms) {
+                        ConnectionResult.SERVICE_MISSING -> "未安装 Google Play 服务，收不到推送"
+                        ConnectionResult.SERVICE_DISABLED -> "Google Play 服务已停用，收不到推送"
+                        ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED -> "Google Play 服务需要更新，收不到推送"
+                        ConnectionResult.SERVICE_UPDATING -> "Google Play 服务正在更新，后台提醒暂不可用"
+                        else -> "Google Play 服务不可用，收不到推送"
+                    }
+                    return PushAttempt(PushStatus(problem, "修复"), retry = gms == ConnectionResult.SERVICE_UPDATING)
+                }
+                if (!permitted(context)) {
+                    return PushAttempt(PushStatus("系统通知权限未开启", "开启"))
+                }
+                try {
+                    token ?: fcmToken()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    return tokenFailure(e)
+                }
+            }
             val res = remote.api.client.setPushTarget(
                 SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).setTarget(if (kinds.isEmpty()) "" else fcm).addAllKinds(kinds).build(),
                 Api.headers(remote.currentToken()),
             ).value()
-            _status.value = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus("服务器没有配置 FCM，收不到推送")
+            val status = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus("服务器没有配置 FCM，收不到推送")
             // Only the length: the token identifies this phone to FCM.
             Log.i(TAG, "push registered, token length ${fcm.length}")
+            return PushAttempt(status)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            _status.value = PushStatus("订阅失败：${errorText(e)}", "重试")
+            val retry = e is java.io.IOException || e is com.connectrpc.ConnectException &&
+                e.code in setOf(com.connectrpc.Code.UNKNOWN, com.connectrpc.Code.UNAVAILABLE, com.connectrpc.Code.DEADLINE_EXCEEDED)
+            val problem = when {
+                retry && autoRetry -> "通知订阅未能同步到服务器，正在自动重试"
+                retry -> "通知订阅未能同步到服务器，请重试"
+                else -> "服务器未能保存通知订阅，请重试"
+            }
+            return PushAttempt(PushStatus(problem, "重试"), retry)
         }
     }
 
     /** What the banner's button does. */
     fun fix(context: Context, remote: Remote) {
-        if (!permitted(context)) {
+        val gms = GoogleApiAvailabilityLight.getInstance()
+        val code = gms.isGooglePlayServicesAvailable(context)
+        if (available(context) && code != ConnectionResult.SUCCESS) {
+            val intent = if (gms.isUserResolvableError(code)) gms.getErrorResolutionIntent(context, code, null) else null
+            try {
+                if (intent != null) context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                else register(context, remote)
+            } catch (e: ActivityNotFoundException) {
+                _status.value = PushStatus("请在系统设置中安装、更新或启用 Google Play 服务，再重试", "重试")
+            }
+        } else if (!permitted(context)) {
             context.startActivity(
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         } else {
-            RaApp.instance.scope.launch { register(context, remote) }
+            register(context, remote)
         }
     }
 }

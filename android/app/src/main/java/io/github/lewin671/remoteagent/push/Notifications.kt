@@ -50,9 +50,7 @@ private const val TAG = "remote-agent"
 /** Receives FCM data messages; decrypts them with the notify key and shows a notification. */
 class RaMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
-        val app = RaApp.instance
-        val remote = app.remote.value ?: return
-        app.scope.launch { Push.register(app, remote, token) }
+        RaApp.instance.registerPush(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
