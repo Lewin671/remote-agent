@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS devices (
 	signature BLOB NOT NULL,
 	created_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS registration_policy (
+	id INTEGER PRIMARY KEY CHECK (id = 1),
+	freshness_floor_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS revoked_devices (
 	id TEXT PRIMARY KEY,
 	revoked_ms INTEGER NOT NULL
@@ -74,10 +78,49 @@ func openStore(path string) (*store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	// Migrate atomically: databases from before tombstones have lost the
+	// IDs of already removed devices. A persisted signed-registration time
+	// floor prevents replaying those old registrations after this upgrade.
+	tx, err := db.BeginTx(context.Background(), nil)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	defer tx.Rollback()
+	var hadTombstones int
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'revoked_devices')`).Scan(&hadTombstones); err != nil {
+		tx.Rollback()
+		db.Close()
+		return nil, err
+	}
+	if _, err := tx.Exec(schema); err != nil {
+		tx.Rollback()
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
+	var floor int64
+	if hadTombstones == 0 {
+		var accounts int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM account`).Scan(&accounts); err != nil {
+			tx.Rollback()
+			db.Close()
+			return nil, err
+		}
+		if accounts != 0 {
+			floor = nowMs()
+		}
+	}
+	if _, err := tx.Exec(`INSERT INTO registration_policy (id, freshness_floor_ms) VALUES (1, ?) ON CONFLICT (id) DO NOTHING`, floor); err != nil {
+		tx.Rollback()
+		db.Close()
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		db.Close()
+		return nil, err
+	}
+
 	return &store{db: db}, nil
 }
 
@@ -97,6 +140,7 @@ func (s *store) accountKey(ctx context.Context) ([]byte, error) {
 }
 
 var errDeviceRevoked = errors.New("device has been revoked; pair again with a new device key")
+var errRegistrationStale = errors.New("registration predates the server security upgrade; pair again and check the device clock")
 
 // addDevice stores a registered device, creating the account first when
 // account is not nil. Registering the same key again is a no-op.
@@ -112,6 +156,19 @@ func (s *store) addDevice(ctx context.Context, account []byte, id string, reg *p
 	}
 	if revoked != 0 {
 		return errDeviceRevoked
+	}
+	var floor int64
+	if err := tx.QueryRowContext(ctx, `SELECT freshness_floor_ms FROM registration_policy WHERE id = 1`).Scan(&floor); err != nil {
+		return err
+	}
+	if reg.CreatedMs < floor {
+		var existing int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE id = ?`, id).Scan(&existing); err != nil {
+			return err
+		}
+		if existing == 0 {
+			return errRegistrationStale
+		}
 	}
 	if account != nil {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO account (id, public_key, created_ms) VALUES (1, ?, ?)`, account, nowMs()); err != nil {
