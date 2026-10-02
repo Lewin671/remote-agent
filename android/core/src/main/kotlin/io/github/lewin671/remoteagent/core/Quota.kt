@@ -59,13 +59,13 @@ private fun clockText(ms: Long, now: Long, zone: ZoneId): String {
 }
 
 /** One window: used share, reset time, and whether the reading can still be trusted. */
-fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean, zone: ZoneId = ZoneId.systemDefault()): QuotaRow {
+fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean): QuotaRow {
     val label = nameLabel(w)
     if (!w.hasUsedPercent()) return QuotaRow(label, "未获取", null, "", QuotaTone.NORMAL, "没有收到这项额度数据")
     val pct = w.usedPercent
     val used = if (pct >= 100) "已用尽" else "已用 ${kotlin.math.floor(pct).toInt()}%"
     val passed = w.resetsAtMs in 1..now
-    val reset = if (w.resetsAtMs > 0 && !passed) "${clockText(w.resetsAtMs, now, zone)} 重置" else ""
+    val reset = if (w.resetsAtMs > 0 && !passed) "${clockText(w.resetsAtMs, now, ZoneId.of("Asia/Shanghai"))} 重置（北京时间）" else ""
     if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复")
     if (lastRecord) return QuotaRow(label, used, pct, reset, QuotaTone.STALE, "")
     return QuotaRow(label, used, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "")
@@ -125,7 +125,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         else -> ""
     }
     val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${planName(q.plan)}" else "") + which
-    val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord, zone) }
+    val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord) }
     val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now, zone) else ""
     return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
 }

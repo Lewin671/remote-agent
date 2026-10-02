@@ -22,6 +22,17 @@ class QuotaTest {
         QuotaWindow.newBuilder().setName(name).setResetsAtMs(now + resetIn).apply { if (pct != null) usedPercent = pct }.build()
 
     @Test
+    fun resetUsesBeijingEvenWhenClientIsInLosAngeles() {
+        val now = java.time.Instant.parse("2026-10-02T15:30:00Z").toEpochMilli()
+        val w = QuotaWindow.newBuilder().setName("seven_day").setUsedPercent(95.0)
+            .setResetsAtMs(java.time.Instant.parse("2026-10-02T16:10:00Z").toEpochMilli()).build()
+        val m = machine(true, AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE)
+            .setState(QuotaState.QUOTA_STATE_OK).addWindows(w).build())
+        val g = quotaGroups(m, now, ZoneId.of("America/Los_Angeles")).single { it.agent == Agent.AGENT_CLAUDE }
+        assertEquals("周六 0:10 重置（北京时间）", g.rows.single().reset)
+    }
+
+    @Test
     fun claudeCodesQuotaIsShownWhenTheDaemonReadsIt() {
         val m = machine(
             true,

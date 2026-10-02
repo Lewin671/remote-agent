@@ -6,11 +6,11 @@ import { Agent } from "./gen/remoteagent/v1/event_pb";
 import { AgentQuotaSchema, QuotaState, QuotaWindowSchema } from "./gen/remoteagent/v1/remote_pb";
 import { describe } from "vitest";
 
-const now = new Date(2026, 8, 30, 9, 40).getTime();
+const now = Date.parse("2026-09-30T09:40:00+08:00");
 const lim = (usedPercent: number, windowMinutes: number, resetInMin: number) => create(RateLimitSchema, { usedPercent, windowMinutes: BigInt(windowMinutes), resetsAt: BigInt(Math.floor((now + resetInMin * 60_000) / 1000)) });
 
 it("shows use and reset, warns from 80% and calls 100% used up", () => {
-  expect(quotaRow(lim(62, 300, 270), "5 小时", now, true)).toMatchObject({ label: "5 小时", used: "已用 62%", reset: "14:10 重置", tone: "" });
+  expect(quotaRow(lim(62, 300, 270), "5 小时", now, true)).toMatchObject({ label: "5 小时", used: "已用 62%", reset: "14:10 重置（北京时间）", tone: "" });
   expect(quotaRow(lim(92, 300, 30), "5 小时", now, true).tone).toBe("warn");
   expect(quotaRow(lim(100, 10080, 3 * 1440), "7 天", now, true)).toMatchObject({ label: "7 天", used: "已用尽", tone: "full" });
 });
@@ -27,7 +27,7 @@ it("keeps an old reading as such: offline, or past its reset", () => {
 });
 
 describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
-  const at = (h: number, m = 0) => new Date(2026, 8, 30, h, m).getTime();
+  const at = (h: number, m = 0) => Date.parse("2026-09-30T00:00:00+08:00") + (h * 60 + m) * 60_000;
   const q = (init: object) => create(AgentQuotaSchema, init as never);
   const w = (name: string, used: number | undefined, resetH: number | undefined, minutes: number) =>
     create(QuotaWindowSchema, { name, usedPercent: used, resetsAtMs: resetH === undefined ? 0n : BigInt(at(resetH, 10)), windowMinutes: BigInt(minutes) });
@@ -37,10 +37,10 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const [v] = quotaViews([q({ agent: Agent.CODEX, state: QuotaState.OK, plan: "Pro Lite", observedMs: BigInt(at(9, 40)), windows: [w("primary", 62, 14, 300), w("secondary", 34, 20, 10080)] })], [Agent.CODEX], now, true);
     expect(v.title).toBe("Codex · Pro Lite");
     expect(v.rows.map((r) => [r.label, r.used, r.reset, r.tone])).toEqual([
-      ["5 小时", "已用 62%", "14:10 重置", ""],
-      ["7 天", "已用 34%", "20:10 重置", ""],
+      ["5 小时", "已用 62%", "14:10 重置（北京时间）", ""],
+      ["7 天", "已用 34%", "20:10 重置（北京时间）", ""],
     ]);
-    expect(v.seen).toBe("最近收到 9:40");
+    expect(v.seen).toBe(`最近收到 ${new Date(at(9, 40)).getHours()}:40`);
   });
 
   it("marks a missing usage 未获取, never 0%, and a missing reset time by leaving it out", () => {
@@ -72,8 +72,8 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const claude = views.find((v) => v.agent === Agent.CLAUDE)!;
     expect(claude).toMatchObject({ kind: "waiting", head: "暂未获取额度" });
     expect(codex).toMatchObject({ kind: "failed", error: "没能读取 Codex 额度：rollout unreadable", title: "Codex · 上次记录" });
-    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "13:10 重置" });
-    expect(codex.seen).toBe("最近成功收到 9:20");
+    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "13:10 重置（北京时间）" });
+    expect(codex.seen).toBe(`最近成功收到 ${new Date(at(9, 20)).getHours()}:20`);
     const [unsup] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.UNSUPPORTED, detail: "托管设置固定了状态栏" })], [Agent.CLAUDE], now, true);
     expect(unsup).toMatchObject({ kind: "unsupported", head: "暂不支持读取额度", detail: "托管设置固定了状态栏" });
     // A CLI the daemon has no entry for is not supported by it.
@@ -112,4 +112,14 @@ it("uses reported durations and raw percentages for warning thresholds", () => {
   expect(quotaRow(lim(79.6, 120, 60), "5 小时", now, true).tone).toBe("");
   window.usedPercent = 79.6;
   expect(quotaViews([q], [Agent.CODEX], now, true)[0].banner).toBe("");
+});
+
+
+it("uses Beijing dates across midnight regardless of the client timezone", () => {
+  const now = Date.parse("2026-10-02T15:30:00Z");
+  const reset = Date.parse("2026-10-02T16:10:00Z");
+  const l = create(RateLimitSchema, { usedPercent: 95, resetsAt: BigInt(reset / 1000) });
+  expect(quotaRow(l, "7 天", now, true).reset).toBe("周六 0:10 重置（北京时间）");
+  const q = create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.OK, windows: [create(QuotaWindowSchema, { name: "secondary", usedPercent: 95, resetsAtMs: BigInt(reset) })] });
+  expect(quotaViews([q], [Agent.CODEX], now, true)[0].rows[0].reset).toBe("周六 0:10 重置（北京时间）");
 });

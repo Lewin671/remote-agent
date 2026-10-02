@@ -18,6 +18,16 @@ export interface QuotaRow {
 
 const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
+/** Reset instants are shown in Beijing regardless of the device timezone. */
+function resetTime(ms: number, now: number): string {
+  // Shanghai is UTC+8 without DST for current quota windows.
+  const beijing = (t: number) => new Date(t + 8 * 60 * 60 * 1000);
+  const d = beijing(ms);
+  const today = beijing(now);
+  const day = d.toISOString().slice(0, 10) === today.toISOString().slice(0, 10) ? "" : days[d.getUTCDay()] + " ";
+  return `${day}${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")} 重置（北京时间）`;
+}
+
 export function windowLabel(minutes: number): string {
   if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return `${minutes / (24 * 60)} 天`;
   if (minutes >= 60) return `${Math.round(minutes / 60)} 小时`;
@@ -34,9 +44,7 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
   const passed = resetMs > 0 && resetMs <= now;
   let reset = "";
   if (resetMs > 0 && !passed) {
-    const d = new Date(resetMs);
-    const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-    reset = `${d.toDateString() === new Date(now).toDateString() ? "" : days[d.getDay()] + " "}${hm} 重置`;
+    reset = resetTime(resetMs, now);
   }
   const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
   if (passed) return { label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${used}；重置时间已过，不能据此确认额度已经恢复` };
@@ -100,10 +108,7 @@ function windowRow(w: QuotaWindow, label: string, now: number, stale: boolean): 
   if (resetMs > 0 && resetMs <= now)
     return { key, label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
   let reset = "";
-  if (resetMs > 0) {
-    const d = new Date(resetMs);
-    reset = `${d.toDateString() === new Date(now).toDateString() ? "" : days[d.getDay()] + " "}${hm(resetMs)} 重置`;
-  }
+  if (resetMs > 0) reset = resetTime(resetMs, now);
   return {
     key,
     label,
