@@ -76,8 +76,9 @@ type Server struct {
 	stop     chan struct{}
 	stopOnce sync.Once
 
-	streamMu sync.Mutex
-	streams  map[string]map[*streamAuth]struct{}
+	streamMu            sync.Mutex
+	streams             map[string]map[*streamAuth]struct{}
+	pendingStreamHellos chan struct{}
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -117,7 +118,7 @@ func New(cfg Config) (*Server, error) {
 		st.Close()
 		return nil, err
 	}
-	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, stop: make(chan struct{})}
+	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)

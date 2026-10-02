@@ -51,6 +51,11 @@ func (h *hub) online(machineID string) bool {
 
 // serve handles one stream connection.
 func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
+	releaseHello, ok := h.s.acquireStreamHello(w)
+	if !ok {
+		return
+	}
+	defer releaseHello()
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: h.s.originPatterns()})
 	if err != nil {
 		// Accept has written the response.
@@ -58,7 +63,7 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.CloseNow()
-	conn.SetReadLimit(maxFrameBytes)
+	conn.SetReadLimit(maxStreamHelloBytes)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
@@ -71,11 +76,13 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 			defer release()
 		}
 	}
+	releaseHello()
 	if err != nil {
 		slog.Info("stream hello refused", "err", err)
 		conn.Close(websocket.StatusPolicyViolation, "authentication failed")
 		return
 	}
+	conn.SetReadLimit(maxFrameBytes)
 	p := &peer{dev: dev, out: make(chan *pb.ServerFrame, sendQueue), cancel: cancel}
 	h.add(p)
 	defer h.remove(p)

@@ -44,12 +44,17 @@ type termHub struct {
 func newTermHub(s *Server) *termHub { return &termHub{s: s, waiting: map[string]*termEnd{}} }
 
 func (t *termHub) serve(w http.ResponseWriter, r *http.Request) {
+	releaseHello, ok := t.s.acquireStreamHello(w)
+	if !ok {
+		return
+	}
+	defer releaseHello()
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: t.s.originPatterns()})
 	if err != nil {
 		return
 	}
 	defer conn.CloseNow()
-	conn.SetReadLimit(termFrameBytes)
+	conn.SetReadLimit(maxStreamHelloBytes)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
@@ -62,11 +67,13 @@ func (t *termHub) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, dev, release, err := t.s.beginStream(ctx, hello.Token)
+	releaseHello()
 	if err != nil {
 		conn.Close(websocket.StatusPolicyViolation, "authentication failed")
 		return
 	}
 	defer release()
+	conn.SetReadLimit(termFrameBytes)
 	me := &termEnd{conn: conn, dev: dev, machine: hello.MachineId, joined: make(chan *termEnd, 1), ctx: ctx, cancel: cancel}
 	if dev.kind == pb.DeviceKind_DEVICE_KIND_CLIENT && hello.MachineId == "" {
 		conn.Close(websocket.StatusPolicyViolation, "no machine")
