@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	_ "modernc.org/sqlite"
 )
@@ -398,21 +399,30 @@ func (s *store) events(ctx context.Context, sessionID string, after uint64, limi
 	}
 	defer rows.Close()
 	var out []*pb.StoredEvent
+	// Reserve the two bytes used by the More flag. Stop while reading rows,
+	// rather than accumulating up to 1000 potentially 1 MiB envelopes first.
+	size, more := 2, false
 	for rows.Next() {
+		if len(out) >= limit {
+			more = true
+			break
+		}
 		e := &pb.StoredEvent{}
 		var b []byte
 		if err := rows.Scan(&e.Seq, &b); err != nil {
 			return nil, false, err
 		}
 		e.Envelope = unmarshalEnv(b)
+		n := protowire.SizeTag(1) + protowire.SizeBytes(proto.Size(e))
+		if len(out) > 0 && size+n > maxEventPageBytes {
+			more = true
+			break
+		}
+		size += n
 		out = append(out, e)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, false, err
-	}
-	more := len(out) > limit
-	if more {
-		out = out[:limit]
 	}
 	return out, more, nil
 }

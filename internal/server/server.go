@@ -57,6 +57,8 @@ const (
 	maxFrameBytes    = 2 << 20
 	defaultEventPage = 200
 	maxEventPage     = 1000
+	// Bound memory as well as event count; legal envelopes can be 1 MiB.
+	maxEventPageBytes = 4 << 20
 	// sendQueue is how many frames may wait for a slow stream peer before
 	// it is disconnected; it catches up from history after reconnecting.
 	sendQueue = 256
