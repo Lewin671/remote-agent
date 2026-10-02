@@ -2,6 +2,7 @@ package relay
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -26,6 +27,7 @@ type commandLog struct {
 	mu       sync.Mutex
 	entries  map[string]*commandEntry
 	inflight map[string]chan struct{}
+	loadErr  error // unreadable deduplication state must never be treated as empty
 }
 
 type commandEntry struct {
@@ -35,8 +37,26 @@ type commandEntry struct {
 
 func openCommandLog(path string) *commandLog {
 	c := &commandLog{path: path, entries: map[string]*commandEntry{}, inflight: map[string]chan struct{}{}}
-	if b, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(b, &c.entries)
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return c
+	}
+	if err != nil {
+		c.loadErr = err
+		return c
+	}
+	if err := json.Unmarshal(b, &c.entries); err != nil {
+		c.loadErr = err
+		return c
+	}
+	if c.entries == nil {
+		c.loadErr = errors.New("null command log")
+	}
+	for _, e := range c.entries {
+		if e == nil || e.DeadlineMs <= 0 {
+			c.loadErr = errors.New("invalid command log entry")
+			break
+		}
 	}
 	return c
 }
@@ -51,6 +71,9 @@ func errUnknownOutcome() *pb.CommandResult {
 // seen before gets its stored result; otherwise a non-nil reject, such as
 // an expired deadline, is returned without recording anything.
 func (c *commandLog) do(id string, deadline int64, reject *pb.CommandResult, fn func() *pb.CommandResult) *pb.CommandResult {
+	if c.loadErr != nil {
+		return &pb.CommandResult{ErrorCode: "failed_precondition", ErrorMessage: "remote commands disabled: cannot read command deduplication state; repair commands.json and restart the daemon"}
+	}
 	for {
 		c.mu.Lock()
 		if wait, ok := c.inflight[id]; ok {
