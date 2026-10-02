@@ -9,7 +9,7 @@ import {
   ago,
   findModel,
   contextText,
-  modelChoice,
+  STANDARD_WINDOW,
   modelLabel,
   inheritConfig,
   machineAgents,
@@ -84,7 +84,12 @@ export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: 
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
   const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " · " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
-  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
+  // Claude Code only: the window new sessions get, 1M unless the project
+  // asks for the standard one or the model has no larger one.
+  const max = model?.contextWindow ?? 0n;
+  const fixedWindow = max > 0n && max <= STANDARD_WINDOW;
+  const window = cfg.agent !== Agent.CLAUDE ? 0n : cfg.standardContext || fixedWindow ? STANDARD_WINDOW : max || 1_000_000n;
+  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, window, fixedWindow, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
 }
 
 /** The configuration in one line: machine, CLI, model and effort, mode. */
@@ -109,7 +114,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const [oneTimeKey, setOneTimeKey] = useState("");
   const oneTime = oneTimeKey === key;
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
-  const override = selection?.key === key ? selection.config : saved ? { machineId: saved.machineId, cwd: key, agent: saved.agent, model: saved.model, effort: saved.effort, mode: saved.mode } : undefined;
+  const override = selection?.key === key ? selection.config : saved ? { machineId: saved.machineId, cwd: key, agent: saved.agent, model: saved.model, effort: saved.effort, mode: saved.mode, standardContext: saved.standardContext } : undefined;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
@@ -126,7 +131,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     setSelection({ key, config });
     if (once) setOneTimeKey(key);
     if (once || oneTime) return;
-    const op = { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: { machineId: config.machineId, agent: config.agent, model: config.model, effort: config.effort, mode: config.mode } };
+    const op = { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: { machineId: config.machineId, agent: config.agent, model: config.model, effort: config.effort, mode: config.mode, standardContext: !!config.standardContext } };
     void remote.changePrefs("settings", key, op).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
   };
   // One pending attempt per project: the wide home reuses this hook when
@@ -145,7 +150,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // change as the started session's record arrives.
   const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
-    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent };
+    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent, standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext };
     // The images are part of what is started: other images, another start.
     return {
       machineId: c.machineId,
@@ -156,6 +161,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
         effort: c.effort,
         mode: c.mode,
         agent: c.agent,
+        standardContext: c.standardContext,
         imageIds: tray.imageIds(),
       },
     };
@@ -191,7 +197,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       // leave a saved choice alone, including a one-time offline fallback.
       if (!saved) {
         const c = oneTime ? inherited ?? cfg : cfg;
-        void remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings", path: key, at: Date.now(), settings: { machineId: c.machineId, agent: c.agent, model: c.model, effort: c.effort, mode: c.mode } });
+        void remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings", path: key, at: Date.now(), settings: { machineId: c.machineId, agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: !!c.standardContext } });
       }
       setSelection(undefined);
       setOneTimeKey("");
@@ -239,7 +245,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     attachWhy: attachBlocked(remote, machine),
     machine,
     info,
-    line: [agentName(cfg.agent), modeText, machineName(machine), describeParts(cfg, machine, info).model].join(" · "),
+    line: [agentName(cfg.agent), modeText, machineName(machine), describeParts(cfg, machine, info).model, contextText(describeParts(cfg, machine, info).window)].filter(Boolean).join(" · "),
     modeText,
     create,
     busy,
@@ -523,10 +529,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
     );
   else if (pick === "model") {
     const chosen = findModel(info.models?.models, cfg.model || def.model || info.models?.defaultModel || "");
-    // The context window is its own choice below the list; a model first
-    // picked starts with the 1M window, as Claude Code itself does.
-    const choice = modelChoice(info.models?.models, cfg.model);
-    const large = !cfg.model || choice.isLarge;
     body = (
       <>
         {info.error && (
@@ -542,10 +544,10 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             </div>
             {!cfg.model && <span className="ck">✓</span>}
           </button>
-          {choice.list.map((m) => (
-            <button key={m.slug} className="mi" onClick={() => set({ model: large && modelChoice(info.models?.models, m.slug).large ? m.slug + "[1m]" : m.slug, effort: "" })}>
+          {info.models?.models.map((m) => (
+            <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
               <div className="mt">{m.displayName || m.slug}</div>
-              {cfg.model && m === choice.base && <span className="ck">✓</span>}
+              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck">✓</span>}
             </button>
           ))}
         </div>
@@ -559,22 +561,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 </button>
               ))}
             </div>
-          </>
-        )}
-        {choice.base && contextText(choice.base.contextWindow) && (
-          <>
-            <div className="fl">上下文窗口</div>
-            <div className="seg">
-              <button className={choice.isLarge ? "" : "on"} onClick={() => set({ model: choice.base!.slug })}>
-                标准 {windowText(choice.base.contextWindow)}
-              </button>
-              {choice.large && (
-                <button className={choice.isLarge ? "on" : ""} onClick={() => set({ model: choice.large!.slug })}>
-                  {windowText(choice.large.contextWindow)}
-                </button>
-              )}
-            </div>
-            {!choice.large && <div className="hint">{choice.base.displayName} 只有标准窗口</div>}
           </>
         )}
       </>
@@ -645,6 +631,19 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 <em>{info.loading ? `读取 ${machineName(machine)} 的设置…` : modelLine}</em>
               </span>
             </button>
+            {cfg.agent === Agent.CLAUDE && (
+              <div className="sr">
+                <span className="lbl">上下文</span>
+                {ns.parts.fixedWindow ? (
+                  <span className="fixed">标准 200k · 这个模型只有标准窗口</span>
+                ) : (
+                  <div className="pick" role="group" aria-label="上下文窗口">
+                    <button className={cfg.standardContext ? "" : "on"} onClick={() => set({ standardContext: false })}>1M</button>
+                    <button className={cfg.standardContext ? "on" : ""} onClick={() => set({ standardContext: true })}>标准 200k</button>
+                  </div>
+                )}
+              </div>
+            )}
             <button className="sr" onClick={() => setPick("mode")}>
               <span className="lbl">审批</span>
               <span className="v">
@@ -867,9 +866,4 @@ export function ConfigSummary({ line, chip, onClick }: { line: string; chip?: bo
       </span>
     </button>
   );
-}
-
-/** A context window in a choice: 200k, 1M. */
-function windowText(tokens: bigint): string {
-  return contextText(tokens).replace(" 上下文", "");
 }

@@ -247,4 +247,15 @@ java.lang.String defaultValue);
    */
   com.google.protobuf.ByteString
       getImageIdsBytes(int index);
+
+  /**
+   * <pre>
+   * Claude Code only: hold the session to the standard context window
+   * instead of the 1M one its models otherwise get.
+   * </pre>
+   *
+   * <code>bool standard_context = 11 [json_name = "standardContext"];</code>
+   * @return The standardContext.
+   */
+  boolean getStandardContext();
 }

@@ -27,6 +27,9 @@ type meta struct {
 	// NoFullAccess: the CLI would not switch this session to full access,
 	// as Claude Code started without bypass allowed.
 	NoFullAccess bool `json:"no_full_access,omitempty"`
+	// StandardContext: a Claude Code session held to the standard context
+	// window; its environment says so to the CLI, also when resumed.
+	StandardContext bool `json:"standard_context,omitempty"`
 	// Starting: the session is being created and its CLI may not have
 	// started yet; a restart that finds no tmux session undoes it.
 	Starting bool `json:"starting,omitempty"`

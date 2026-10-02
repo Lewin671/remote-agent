@@ -379,6 +379,47 @@ public  final class ProjectSettings extends
     updatedMs_ = 0L;
   }
 
+  public static final int STANDARD_CONTEXT_FIELD_NUMBER = 8;
+  private boolean standardContext_;
+  /**
+   * <pre>
+   * Claude Code only: new sessions get the standard context window
+   * instead of 1M.
+   * </pre>
+   *
+   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+   * @return The standardContext.
+   */
+  @java.lang.Override
+  public boolean getStandardContext() {
+    return standardContext_;
+  }
+  /**
+   * <pre>
+   * Claude Code only: new sessions get the standard context window
+   * instead of 1M.
+   * </pre>
+   *
+   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+   * @param value The standardContext to set.
+   */
+  private void setStandardContext(boolean value) {
+    
+    standardContext_ = value;
+  }
+  /**
+   * <pre>
+   * Claude Code only: new sessions get the standard context window
+   * instead of 1M.
+   * </pre>
+   *
+   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+   */
+  private void clearStandardContext() {
+
+    standardContext_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.ProjectSettings parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -849,6 +890,49 @@ public  final class ProjectSettings extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Claude Code only: new sessions get the standard context window
+     * instead of 1M.
+     * </pre>
+     *
+     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+     * @return The standardContext.
+     */
+    @java.lang.Override
+    public boolean getStandardContext() {
+      return instance.getStandardContext();
+    }
+    /**
+     * <pre>
+     * Claude Code only: new sessions get the standard context window
+     * instead of 1M.
+     * </pre>
+     *
+     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+     * @param value The standardContext to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStandardContext(boolean value) {
+      copyOnWrite();
+      instance.setStandardContext(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Claude Code only: new sessions get the standard context window
+     * instead of 1M.
+     * </pre>
+     *
+     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStandardContext() {
+      copyOnWrite();
+      instance.clearStandardContext();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ProjectSettings)
   }
   @java.lang.Override
@@ -872,10 +956,11 @@ public  final class ProjectSettings extends
             "effort_",
             "mode_",
             "updatedMs_",
+            "standardContext_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\f\u0007\u0002";
+              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0208" +
+              "\u0004\u0208\u0005\u0208\u0006\f\u0007\u0002\b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

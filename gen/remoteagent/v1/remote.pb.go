@@ -2408,9 +2408,12 @@ type ProjectSettings struct {
 	// Never PLAN: a plan is a passing state, not a default.
 	Mode ApprovalMode `protobuf:"varint,6,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
 	// Unix milliseconds of the last change.
-	UpdatedMs     int64 `protobuf:"varint,7,opt,name=updated_ms,json=updatedMs,proto3" json:"updated_ms,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UpdatedMs int64 `protobuf:"varint,7,opt,name=updated_ms,json=updatedMs,proto3" json:"updated_ms,omitempty"`
+	// Claude Code only: new sessions get the standard context window
+	// instead of 1M.
+	StandardContext bool `protobuf:"varint,8,opt,name=standard_context,json=standardContext,proto3" json:"standard_context,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ProjectSettings) Reset() {
@@ -2490,6 +2493,13 @@ func (x *ProjectSettings) GetUpdatedMs() int64 {
 		return x.UpdatedMs
 	}
 	return 0
+}
+
+func (x *ProjectSettings) GetStandardContext() bool {
+	if x != nil {
+		return x.StandardContext
+	}
+	return false
 }
 
 type ProjectPref struct {
@@ -2718,7 +2728,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x06hidden\x18\x03 \x03(\v2\x1b.remoteagent.v1.ProjectPrefR\x06hidden\x12\x1d\n" +
 	"\n" +
 	"recent_ops\x18\x04 \x03(\tR\trecentOps\x12;\n" +
-	"\bsettings\x18\x05 \x03(\v2\x1f.remoteagent.v1.ProjectSettingsR\bsettings\"\xf0\x01\n" +
+	"\bsettings\x18\x05 \x03(\v2\x1f.remoteagent.v1.ProjectSettingsR\bsettings\"\x9b\x02\n" +
 	"\x0fProjectSettings\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12+\n" +
 	"\x05agent\x18\x02 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1d\n" +
@@ -2728,7 +2738,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x06effort\x18\x05 \x01(\tR\x06effort\x120\n" +
 	"\x04mode\x18\x06 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12\x1d\n" +
 	"\n" +
-	"updated_ms\x18\a \x01(\x03R\tupdatedMs\"<\n" +
+	"updated_ms\x18\a \x01(\x03R\tupdatedMs\x12)\n" +
+	"\x10standard_context\x18\b \x01(\bR\x0fstandardContext\"<\n" +
 	"\vProjectPref\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x19\n" +
 	"\bsince_ms\x18\x02 \x01(\x03R\asinceMs*\x8b\x01\n" +

@@ -46,8 +46,6 @@ import {
   type MachineLike,
   type SessionLike,
   contextText,
-  sessionModels,
-  modelChoice,
 } from "./model";
 
 function events(...kinds: object[]): Event[] {
@@ -861,17 +859,8 @@ it("writes a model's context window, and nothing when it is unknown", () => {
   expect(contextText(undefined)).toBe("");
 });
 
-it("leaves the 1M names out of a session's models and finds its model without the suffix", () => {
-  const models = [{ slug: "opus[1m]" }, { slug: "opus" }, { slug: "haiku" }];
-  expect(sessionModels(models, "opus[1m]")).toEqual({ list: [{ slug: "opus" }, { slug: "haiku" }], cur: { slug: "opus" } });
-  expect(sessionModels(models, "claude-opus-5-5").cur).toEqual({ slug: "opus" });
-  expect(sessionModels(undefined, "opus")).toEqual({ list: [], cur: undefined });
-});
-
-it("splits a project's model into the model and its context window", () => {
-  const models = [{ slug: "opus[1m]" }, { slug: "opus" }, { slug: "haiku" }];
-  expect(modelChoice(models, "opus[1m]")).toEqual({ list: [{ slug: "opus" }, { slug: "haiku" }], base: { slug: "opus" }, large: { slug: "opus[1m]" }, isLarge: true });
-  expect(modelChoice(models, "opus")).toMatchObject({ base: { slug: "opus" }, large: { slug: "opus[1m]" }, isLarge: false });
-  expect(modelChoice(models, "haiku")).toMatchObject({ base: { slug: "haiku" }, large: undefined, isLarge: false });
-  expect(modelChoice(models, "")).toMatchObject({ base: undefined, large: undefined });
+it("finds the model of a session started under its 1M name", () => {
+  const models = [{ slug: "opus" }, { slug: "haiku" }];
+  expect(findModel(models, "opus[1m]")).toEqual({ slug: "opus" });
+  expect(findModel(models, "claude-opus-5-5")).toEqual({ slug: "opus" });
 });

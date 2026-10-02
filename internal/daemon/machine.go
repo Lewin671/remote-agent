@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -194,6 +195,9 @@ func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]
 	}
 	if mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		mode = def.Mode
+	}
+	if ag.Kind() == pb.Agent_AGENT_CLAUDE && !req.StandardContext {
+		model = claude.LargeModel(model)
 	}
 	return ag.Options(req.Args, model, effort, mode)
 }

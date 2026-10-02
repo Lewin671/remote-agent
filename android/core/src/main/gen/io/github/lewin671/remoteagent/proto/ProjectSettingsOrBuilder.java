@@ -105,4 +105,15 @@ public interface ProjectSettingsOrBuilder extends
    * @return The updatedMs.
    */
   long getUpdatedMs();
+
+  /**
+   * <pre>
+   * Claude Code only: new sessions get the standard context window
+   * instead of 1M.
+   * </pre>
+   *
+   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+   * @return The standardContext.
+   */
+  boolean getStandardContext();
 }

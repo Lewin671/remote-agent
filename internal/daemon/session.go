@@ -596,8 +596,8 @@ func (s *session) info() *pb.Session {
 	out.FullAccessUnavailable = s.meta.NoFullAccess
 	if u := s.usage; u != nil {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
-		if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
-			out.ContextWindow = claude.SessionWindow(s.meta.Args, out.ContextWindow)
+		if s.meta.StandardContext && out.ContextWindow > claude.StandardWindow {
+			out.ContextWindow = claude.StandardWindow
 		}
 	}
 	out.Title, out.Preview = s.title, s.preview

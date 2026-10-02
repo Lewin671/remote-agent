@@ -175,7 +175,8 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             loadError.isNotEmpty() -> Banner("没能读取模型列表：$loadError", tone = Tone2.ERROR, action = "重试", onAction = { attempt++ })
             ms == null -> Text("读取中…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
             else -> {
-                val (offered, current) = io.github.lewin671.remoteagent.core.sessionModels(ms.modelsList, s.info?.model.orEmpty()) { it.slug }
+                val offered = ms.modelsList
+                val current = io.github.lewin671.remoteagent.core.findModel(offered, s.info?.model.orEmpty()) { it.slug }
                 if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
                 val list = if (all || offered.size <= 5) offered else offered.take(3)
                 list.forEachIndexed { i, m ->

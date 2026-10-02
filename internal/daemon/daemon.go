@@ -371,7 +371,8 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		return nil, err
 	}
 	id := newID(8)
-	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true}
+	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
+		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext}
 	dir := paths.SessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -394,8 +395,8 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	d.ownEnv(env, id)
 	if m.Agent == pb.Agent_AGENT_CLAUDE {
 		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
-		for k, v := range claude.StartEnv(args) {
-			env[k] = v
+		if m.StandardContext {
+			env[claude.StandardContextEnv] = "1"
 		}
 	}
 	envFile, err := startEnv(dir, env)

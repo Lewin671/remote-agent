@@ -446,9 +446,12 @@ type CreateSessionRequest struct {
 	Agent Agent `protobuf:"varint,8,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
 	// Images for the first message, IDs from CompleteImageUpload (at most
 	// 6). The prompt may be empty when there are images.
-	ImageIds      []string `protobuf:"bytes,9,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ImageIds []string `protobuf:"bytes,9,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
+	// Claude Code only: hold the session to the standard context window
+	// instead of the 1M one its models otherwise get.
+	StandardContext bool `protobuf:"varint,11,opt,name=standard_context,json=standardContext,proto3" json:"standard_context,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CreateSessionRequest) Reset() {
@@ -542,6 +545,13 @@ func (x *CreateSessionRequest) GetImageIds() []string {
 		return x.ImageIds
 	}
 	return nil
+}
+
+func (x *CreateSessionRequest) GetStandardContext() bool {
+	if x != nil {
+		return x.StandardContext
+	}
+	return false
 }
 
 type CreateSessionResponse struct {
@@ -3687,7 +3697,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x0fpermission_mode\x18\x1b \x01(\tR\x0epermissionMode\x126\n" +
 	"\x17full_access_unavailable\x18\x1c \x01(\bR\x15fullAccessUnavailable\x12C\n" +
 	"\x0fattention_since\x18\x1d \x01(\v2\x1a.google.protobuf.TimestampR\x0eattentionSince\x125\n" +
-	"\bended_at\x18\x1e \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"\xfd\x02\n" +
+	"\bended_at\x18\x1e \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"\xa8\x03\n" +
 	"\x14CreateSessionRequest\x12\x10\n" +
 	"\x03cwd\x18\x01 \x01(\tR\x03cwd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12?\n" +
@@ -3697,7 +3707,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x06effort\x18\x06 \x01(\tR\x06effort\x120\n" +
 	"\x04mode\x18\a \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12+\n" +
 	"\x05agent\x18\b \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1b\n" +
-	"\timage_ids\x18\t \x03(\tR\bimageIds\x1a6\n" +
+	"\timage_ids\x18\t \x03(\tR\bimageIds\x12)\n" +
+	"\x10standard_context\x18\v \x01(\bR\x0fstandardContext\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\n" +

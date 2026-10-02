@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, CONTEXT_WARN, sessionModels, contextPercent, modeOf, noAutoMode } from "./model";
+import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet } from "./ui";
 
@@ -123,7 +123,8 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const pct = contextPercent(s);
   const model = s.info?.model ?? "";
   const effort = s.info?.effort ?? "";
-  const { list, cur } = sessionModels(models?.models, model);
+  const cur = findModel(models?.models, model);
+  const list = models?.models ?? [];
   // A short list shows whole, so no model is out of reach behind 全部模型
   // (Claude Code offers four); a long one shows three, and the current
   // model even when it is not among them.

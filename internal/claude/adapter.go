@@ -85,67 +85,38 @@ func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions,
 // cycles through them from medium.
 var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
-// models are the aliases /model lists, each with the context window a
-// session started with it gets. Which model an alias stands for changes
-// with Claude Code releases; the menu shows it. The [1m] names start the
-// same model with the 1M window, which the terminal then names; a session
-// started with the bare alias is held to the standard window (StartEnv).
-// Windows as /context reports them (claude-code-notes §2).
+// models are the aliases /model lists, each with the largest context
+// window a session with it gets (claude-code-notes §2). Which model an
+// alias stands for changes with Claude Code releases; the menu shows it.
 var models = []*pb.ModelInfo{
-	{Slug: "opus[1m]", DisplayName: "Opus 1M", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
-	{Slug: "fable[1m]", DisplayName: "Fable 1M", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
-	{Slug: "sonnet[1m]", DisplayName: "Sonnet 1M", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
-	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: standardContext},
-	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: standardContext},
+	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: largeContext},
+	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: StandardWindow},
 }
 
 const (
-	standardContext = 200_000
-	largeContext    = 1_000_000
-	largeSuffix     = "[1m]"
-	// disableLarge makes Claude Code use the standard window for models
-	// that otherwise get 1M (claude-code-notes §2).
-	disableLarge = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
+	// StandardWindow is the context window of a session held to the
+	// standard one, and of models without a larger one.
+	StandardWindow = 200_000
+	largeContext   = 1_000_000
+	largeSuffix    = "[1m]"
+	// StandardContextEnv makes Claude Code use the standard window for
+	// models that otherwise get 1M (claude-code-notes §2).
+	StandardContextEnv = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
 )
 
-// StandardContext reports whether a session started with args is held to
-// the standard context window: its --model is one of the listed aliases
-// without [1m]. Other models, and no model, keep Claude Code's own window.
-func StandardContext(args []string) bool {
-	model := ""
-	for i, a := range args {
-		if v, ok := strings.CutPrefix(a, "--model="); ok {
-			model = v
-		} else if a == "--model" && i+1 < len(args) {
-			model = args[i+1]
-		}
-	}
+// LargeModel is the name to start model with so that Claude Code says the
+// session has the 1M window: opus[1m] for an alias with one. The window is
+// 1M under the bare alias too; only the terminal's title differs. Other
+// names, and none, are returned as they are.
+func LargeModel(model string) string {
 	for _, m := range models {
-		if m.Slug == model {
-			return !strings.HasSuffix(model, largeSuffix)
+		if m.Slug == model && m.ContextWindow > StandardWindow {
+			return model + largeSuffix
 		}
 	}
-	return false
-}
-
-// StartEnv is the environment a session started with args needs besides
-// the caller's.
-func StartEnv(args []string) map[string]string {
-	if StandardContext(args) {
-		return map[string]string{disableLarge: "1"}
-	}
-	return nil
-}
-
-// SessionWindow is the context window of a session started with args,
-// given the window w of the model its transcript names.
-func SessionWindow(args []string, w int64) int64 {
-	if StandardContext(args) && w > standardContext {
-		return standardContext
-	}
-	return w
+	return model
 }
 
 // Models lists the aliases of /model. The default is the model set in

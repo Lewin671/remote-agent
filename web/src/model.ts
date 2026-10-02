@@ -390,28 +390,13 @@ export function contextPercent(s: SessionLike): number | undefined {
  * ID that has it as one of its words. */
 export function findModel<M extends { slug: string }>(models: M[] | undefined, id: string): M | undefined {
   if (!models || !id) return undefined;
+  // Claude Code is started as opus[1m] to name its 1M window; the model is opus.
+  id = id.replace(/\[1m\]$/, "");
   return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
 }
 
-/** Claude Code's name for a model started with the 1M window: opus[1m]. */
-const LARGE_CONTEXT = "[1m]";
-
-/** The models a running session can switch between. Its context window
- * was set when it started, so the 1M names are left out, and a session
- * started with one is on the model of the same name without it. */
-export function sessionModels<M extends { slug: string }>(models: M[] | undefined, current: string): { list: M[]; cur: M | undefined } {
-  const list = (models ?? []).filter((m) => !m.slug.endsWith(LARGE_CONTEXT));
-  return { list, cur: findModel(list, current.endsWith(LARGE_CONTEXT) ? current.slice(0, -LARGE_CONTEXT.length) : current) };
-}
-
-/** A project's model choice apart from its context window: the listed
- * models without the 1M names, the one chosen among them, and the 1M name
- * of the chosen one when the list has it. */
-export function modelChoice<M extends { slug: string }>(models: M[] | undefined, slug: string): { list: M[]; base: M | undefined; large: M | undefined; isLarge: boolean } {
-  const isLarge = slug.endsWith(LARGE_CONTEXT);
-  const { list, cur } = sessionModels(models, slug);
-  return { list, base: cur, large: cur && models?.find((m) => m.slug === cur.slug + LARGE_CONTEXT), isLarge };
-}
+/** The standard context window, which a Claude Code session can be held to. */
+export const STANDARD_WINDOW = 200_000n;
 
 /** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; empty when unknown. */
 export function contextText(tokens: bigint | undefined): string {
@@ -454,6 +439,7 @@ export interface NewConfig {
   model: string; // empty: the machine's default
   effort: string;
   mode: ApprovalMode; // UNSPECIFIED: the machine's default
+  standardContext?: boolean; // Claude Code: the standard context window instead of 1M
   from?: SessionLike; // the session copied, if any
 }
 

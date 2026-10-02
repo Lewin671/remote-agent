@@ -103,6 +103,8 @@ data class NewConfig(
     val model: String = "",
     val effort: String = "",
     val mode: Mode? = null,
+    /** Claude Code: the standard context window instead of 1M. */
+    val standardContext: Boolean = false,
 )
 
 /**
@@ -113,7 +115,7 @@ data class NewConfig(
  */
 fun projectConfig(state: RemoteState, key: String): NewConfig? {
     state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }?.let {
-        return NewConfig(it.machineId, key, effectiveAgent(it.agent), it.model, it.effort, modeOf(it.mode)?.takeUnless { m -> m == Mode.PLAN })
+        return NewConfig(it.machineId, key, effectiveAgent(it.agent), it.model, it.effort, modeOf(it.mode)?.takeUnless { m -> m == Mode.PLAN }, it.standardContext)
     }
     val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
     val last = sessions.firstOrNull() ?: return null
@@ -122,7 +124,7 @@ fun projectConfig(state: RemoteState, key: String): NewConfig? {
 }
 
 fun NewConfig.settings(now: Long): ProjectSettings = ProjectSettings.newBuilder().setPath(cwd).setMachineId(machineId)
-    .setAgent(agent).setModel(model).setEffort(effort).setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setUpdatedMs(now).build()
+    .setAgent(agent).setModel(model).setEffort(effort).setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setStandardContext(standardContext).setUpdatedMs(now).build()
 
 /**
  * The mode a CLI gives a session started without one, as the daemon reads
@@ -295,7 +297,14 @@ fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse?
     val chosen = models?.let { io.github.lewin671.remoteagent.core.findModel(it.modelsList, modelId) { m -> m.slug } }
     return listOf(agentName(c.agent), mode,
         machineLabel(state, c.machineId), chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" },
-        c.effort.ifEmpty { chosen?.defaultEffort.orEmpty() }).filter { it.isNotEmpty() }.joinToString(" · ")
+        c.effort.ifEmpty { chosen?.defaultEffort.orEmpty() }, contextSummary(c, chosen?.contextWindow ?: 0)).filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/** The context window new Claude Code sessions get, as the summary writes it: 1M unless the project asks for the standard one or the model has no larger one. */
+fun contextSummary(c: NewConfig, modelWindow: Long): String {
+    if (c.agent != Agent.AGENT_CLAUDE) return ""
+    val standard = c.standardContext || modelWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
+    return io.github.lewin671.remoteagent.core.contextText(if (standard) io.github.lewin671.remoteagent.core.STANDARD_WINDOW else modelWindow.takeIf { it > 0 } ?: 1_000_000L).orEmpty()
 }
 
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
@@ -389,7 +398,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                     val ids = start.taken.mapNotNull { it.imageId }
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).addAllImageIds(ids).build()
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(cfg.agent == Agent.AGENT_CLAUDE && cfg.standardContext).addAllImageIds(ids).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
@@ -572,6 +581,11 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                         {
                             SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
                         },
+                        *(if (c.agent == Agent.AGENT_CLAUDE) arrayOf<@Composable () -> Unit>({
+                            // A model without a larger window has nothing to choose.
+                            val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
+                            SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))
+                        }) else emptyArray()),
                         { SetRow("审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
                     )
                     rows.forEachIndexed { i, r ->
@@ -616,16 +630,10 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                     else -> {
                         val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
-                        // The context window is its own choice below the list; a model
-                        // first picked starts with the 1M window, as Claude Code itself does.
-                        val (offered, base) = io.github.lewin671.remoteagent.core.sessionModels(ms.modelsList, c.model) { it.slug }
-                        val isLarge = c.model.endsWith(io.github.lewin671.remoteagent.core.LARGE_CONTEXT)
-                        fun largeOf(slug: String) = ms.modelsList.firstOrNull { it.slug == slug + io.github.lewin671.remoteagent.core.LARGE_CONTEXT }
-                        offered.forEachIndexed { i, m ->
-                            ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model.isNotEmpty() && m == base, last = i == offered.size - 1, onClick = {
+                        ms.modelsList.forEachIndexed { i, m ->
+                            ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
                                 val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
-                                val slug = (if (c.model.isEmpty() || isLarge) largeOf(m.slug)?.slug else null) ?: m.slug
-                                c = c.copy(model = slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
+                                c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
                             })
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
@@ -635,16 +643,14 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                             FieldLabel("推理强度")
                             ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { c = c.copy(effort = it) }
                         }
-                        if (c.model.isNotEmpty() && base != null && base.contextWindow > 0) {
-                            val large = largeOf(base.slug)
-                            val standard = "标准 " + io.github.lewin671.remoteagent.core.windowText(base.contextWindow)
-                            val big = large?.let { io.github.lewin671.remoteagent.core.windowText(it.contextWindow) }
-                            FieldLabel("上下文窗口")
-                            ChoiceGrid(listOfNotNull(standard, big), if (isLarge) big else standard, true) { c = c.copy(model = if (it == big && large != null) large.slug else base.slug) }
-                            if (large == null) Hint("${base.displayName} 只有标准窗口")
-                        }
                     }
                 }
+            }
+            "context" -> {
+                SheetHead("上下文窗口", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
+                ListItem("1M", "Claude Code 的默认窗口", checked = !c.standardContext, onClick = { c = c.copy(standardContext = false); page = "" })
+                ListItem("标准 200k", "超过 200k 前自动压缩", checked = c.standardContext, last = true, onClick = { c = c.copy(standardContext = true); page = "" })
+                Hint("窗口在会话开始时确定，改了只影响之后新建的会话。")
             }
             "mode" -> {
                 SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })

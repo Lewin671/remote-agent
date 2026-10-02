@@ -127,6 +127,9 @@ message CreateSessionRequest {
   // 6). The prompt may be empty when there are images.
   repeated string image_ids = 9;
   reserved 10;
+  // Claude Code only: hold the session to the standard context window
+  // instead of the 1M one its models otherwise get.
+  bool standard_context = 11;
 }
 
 message CreateSessionResponse {

@@ -398,6 +398,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .sr .lbl { flex: none; color: var(--muted); width: 34px; font-size: 13px; }
 .sr .v { margin-left: auto; color: var(--fg2); display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; white-space: nowrap; }
 .sr .v em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+.sr .fixed { margin-left: auto; color: var(--muted); font-size: 13px; text-align: right; }
 .sr .v::after { content: "›"; color: var(--faint); font-size: 17px; margin-left: 2px; }
 .sr:disabled { opacity: .45; }
 .plist .pi { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid var(--line); width: 100%; }

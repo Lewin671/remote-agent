@@ -593,14 +593,14 @@ func TestAutoNoteIgnored(t *testing.T) {
 	}
 }
 
-// Each alias is listed with the 1M window and the standard one, and a
-// session started with the bare alias is held to the standard window.
+// The list gives each alias once with its largest window, and the aliases
+// with a 1M window are started under their [1m] name.
 func TestModelsContextWindow(t *testing.T) {
 	list, err := (&Adapter{home: t.TempDir()}).Models()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]int64{"opus[1m]": 1_000_000, "opus": 200_000, "fable[1m]": 1_000_000, "fable": 200_000, "sonnet[1m]": 1_000_000, "sonnet": 200_000, "haiku": 200_000}
+	want := map[string]int64{"opus": 1_000_000, "fable": 1_000_000, "sonnet": 1_000_000, "haiku": 200_000}
 	if len(list.Models) != len(want) {
 		t.Fatalf("%d models, want %d", len(list.Models), len(want))
 	}
@@ -609,28 +609,9 @@ func TestModelsContextWindow(t *testing.T) {
 			t.Errorf("%s: context window %d, want %d", m.Slug, m.ContextWindow, want[m.Slug])
 		}
 	}
-	for _, c := range []struct {
-		args     []string
-		standard bool
-	}{
-		{[]string{"--model", "opus"}, true},
-		{[]string{"--model=sonnet", "--effort", "low"}, true},
-		{[]string{"--model", "opus[1m]"}, false},
-		{[]string{"--model", "claude-opus-5-5"}, false},
-		{[]string{"--effort", "low"}, false},
-		{nil, false},
-	} {
-		if got := StandardContext(c.args); got != c.standard {
-			t.Errorf("StandardContext(%v) = %v", c.args, got)
+	for in, out := range map[string]string{"opus": "opus[1m]", "sonnet": "sonnet[1m]", "haiku": "haiku", "": "", "claude-opus-5-5": "claude-opus-5-5", "opus[1m]": "opus[1m]"} {
+		if got := LargeModel(in); got != out {
+			t.Errorf("LargeModel(%q) = %q, want %q", in, got, out)
 		}
-		if got := StartEnv(c.args)["CLAUDE_CODE_DISABLE_1M_CONTEXT"] == "1"; got != c.standard {
-			t.Errorf("StartEnv(%v) disables 1M: %v", c.args, got)
-		}
-	}
-	if w := SessionWindow([]string{"--model", "opus"}, 1_000_000); w != 200_000 {
-		t.Errorf("standard session window %d", w)
-	}
-	if w := SessionWindow([]string{"--model", "opus[1m]"}, 1_000_000); w != 1_000_000 {
-		t.Errorf("1M session window %d", w)
 	}
 }

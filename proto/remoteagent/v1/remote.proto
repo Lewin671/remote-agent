@@ -338,6 +338,9 @@ message ProjectSettings {
   ApprovalMode mode = 6;
   // Unix milliseconds of the last change.
   int64 updated_ms = 7;
+  // Claude Code only: new sessions get the standard context window
+  // instead of 1M.
+  bool standard_context = 8;
 }
 
 message ProjectPref {

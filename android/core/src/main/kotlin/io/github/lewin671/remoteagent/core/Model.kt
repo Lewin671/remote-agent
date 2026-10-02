@@ -285,6 +285,8 @@ fun noAutoMode(s: SessionView): Boolean = s.agent() == Agent.AGENT_CLAUDE && s.i
  */
 fun <M> findModel(models: List<M>, id: String, slug: (M) -> String): M? {
     if (id.isEmpty()) return null
+    // Claude Code is started as opus[1m] to name its 1M window; the model is opus.
+    val id = id.removeSuffix("[1m]")
     models.firstOrNull { slug(it) == id }?.let { return it }
     val words = id.lowercase().split(Regex("[-_.\\s]"))
     return models.firstOrNull { slug(it).lowercase() in words }
@@ -854,19 +856,5 @@ fun contextText(tokens: Long): String? = when {
     else -> "${(tokens + 500) / 1000}k 上下文"
 }
 
-/** Claude Code's name for a model started with the 1M window: opus[1m]. */
-const val LARGE_CONTEXT = "[1m]"
-
-/**
- * The models a running session can switch between, and the one it is on.
- * Its context window was set when it started, so the 1M names are left
- * out, and a session started with one is on the model of the same name
- * without it.
- */
-fun <M> sessionModels(models: List<M>, current: String, slug: (M) -> String): Pair<List<M>, M?> {
-    val list = models.filter { !slug(it).endsWith(LARGE_CONTEXT) }
-    return list to findModel(list, current.removeSuffix(LARGE_CONTEXT), slug)
-}
-
-/** A context window in a choice: 200k, 1M. */
-fun windowText(tokens: Long): String = contextText(tokens).orEmpty().removeSuffix(" 上下文")
+/** The standard context window, which a Claude Code session can be held to. */
+const val STANDARD_WINDOW = 200_000L
