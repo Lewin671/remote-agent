@@ -566,7 +566,7 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                 TextAction("从项目列表移除", { PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.Hide(c.cwd)); onClose() }, enabled = blockedPrefs == null, color = p.red)
             }
             "cli" -> {
-                SheetHead("新会话使用的 CLI", onBack = { page = "" })
+                SheetHead("新会话使用的 CLI", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
                 agents.forEachIndexed { i, a ->
                     ListItem(agentName(a), "${machineLabel(state, c.machineId)} 上已安装", checked = a == c.agent, last = i == agents.size - 1, onClick = { c = switchAgent(c, a); page = "" })
                 }
@@ -575,7 +575,7 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                 for (a in missing) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(a)}", Modifier.padding(top = 8.dp), action = "换机器", onAction = { page = "machine" })
             }
             "machine" -> {
-                SheetHead("机器", onBack = { page = "" })
+                SheetHead("机器", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
                 used.forEachIndexed { i, id ->
                     val online = state.machines[id]?.online == true
                     val has = c.agent in machineAgents(state.machines[id])
@@ -588,7 +588,7 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                 }
             }
             "model" -> {
-                SheetHead("模型", onBack = { page = "" })
+                SheetHead("模型", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
                 val ms = models
                 when {
                     modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
@@ -609,7 +609,7 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                 }
             }
             "mode" -> {
-                SheetHead("审批模式", onBack = { page = "" })
+                SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
                 ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { c = c.copy(mode = null); page = "" })
                 newSessionModes.forEachIndexed { i, m ->
                     // Claude Code's haiku has no auto mode.

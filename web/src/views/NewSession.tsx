@@ -615,11 +615,9 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       <div className="ns-head">
         {pick && back}
         <b>{titles[pick]}</b>
-        {!pick && (
-          <button className="link" onClick={onClose}>
-            完成
-          </button>
-        )}
+        <button className="link" onClick={onClose}>
+          完成
+        </button>
       </div>
       {body ?? (
         <>

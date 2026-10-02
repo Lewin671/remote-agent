@@ -726,9 +726,9 @@ it("keeps a project's model and effort after the page remounts", async () => {
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("模型")));
   await click(button("GPT-6-Sol", document));
   await click(button("low", document));
-  await click(document.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!);
-  expect(setting("模型")).toContain("GPT-6-Sol · low");
+  // Finish directly on the model page, without returning to project settings.
   await click(button("完成", document));
+  expect(document.querySelector(".ns-head")).toBeNull();
   await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === project)).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
   // Rebuild the page with the saved account preference.
   act(() => root!.unmount());
