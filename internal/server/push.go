@@ -64,7 +64,7 @@ func newPusher(s *Server) (*pusher, error) {
 	if _, err := s.store.db.Exec(pushSchema); err != nil {
 		return nil, err
 	}
-	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: &http.Client{Timeout: 20 * time.Second}}
+	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient()}
 	if s.cfg.FCMServiceAccount != "" {
 		f, err := loadFCM(s.cfg.FCMServiceAccount)
 		if err != nil {
@@ -101,6 +101,9 @@ func (p *pusher) subscribe(ctx context.Context, deviceID, sub string, kinds []pb
 	var s webpush.Subscription
 	if err := json.Unmarshal([]byte(sub), &s); err != nil || s.Endpoint == "" || s.Keys.P256dh == "" || s.Keys.Auth == "" {
 		return errors.New("malformed push subscription")
+	}
+	if err := validatePushEndpoint(s.Endpoint); err != nil {
+		return err
 	}
 	mask := 0
 	for _, k := range kinds {
@@ -191,7 +194,7 @@ func (p *pusher) notify(sessionID string, kind pb.NotifyKind, content []byte, de
 
 func (p *pusher) send(deviceID, sub string, payload []byte) {
 	var s webpush.Subscription
-	if json.Unmarshal([]byte(sub), &s) != nil {
+	if json.Unmarshal([]byte(sub), &s) != nil || validatePushEndpoint(s.Endpoint) != nil {
 		return
 	}
 	res, err := webpush.SendNotification(payload, &s, &webpush.Options{
@@ -199,7 +202,7 @@ func (p *pusher) send(deviceID, sub string, payload []byte) {
 		TTL: 3600, Urgency: webpush.UrgencyHigh, Topic: "",
 	})
 	if err != nil {
-		slog.Warn("web push", "device", deviceID, "err", err)
+		slog.Warn("web push delivery failed", "device", deviceID)
 		return
 	}
 	res.Body.Close()

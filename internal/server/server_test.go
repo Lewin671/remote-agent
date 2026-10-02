@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -292,6 +293,12 @@ func TestPushAndRemoveDevice(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer pushSvc.Close()
+	// The fake delivery transport is local; production rejects private hosts.
+	ts.srv.push.client = &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		u, _ := url.Parse(pushSvc.URL)
+		r.URL.Scheme, r.URL.Host = u.Scheme, u.Host
+		return http.DefaultTransport.RoundTrip(r)
+	})}
 	count := func() int { mu.Lock(); defer mu.Unlock(); return len(got) }
 
 	key, err := c.GetPushKey(ctx, connect.NewRequest(&pb.GetPushKeyRequest{}))
@@ -299,7 +306,7 @@ func TestPushAndRemoveDevice(t *testing.T) {
 		t.Fatalf("push key: %v %v", key, err)
 	}
 	if _, err := c.SetPushSubscription(ctx, connect.NewRequest(&pb.SetPushSubscriptionRequest{
-		SubscriptionJson: pushSubscription(t, pushSvc.URL), Kinds: []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION},
+		SubscriptionJson: pushSubscription(t, "https://push.example/endpoint"), Kinds: []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION},
 	})); err != nil {
 		t.Fatal(err)
 	}
@@ -438,3 +445,7 @@ func TestPairingLimits(t *testing.T) {
 		t.Fatalf("after many wrong codes: %v", last)
 	}
 }
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
