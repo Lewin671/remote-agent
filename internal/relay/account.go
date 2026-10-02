@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/Lewin671/remote-agent/internal/netpolicy"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -82,7 +84,7 @@ func (a *Account) Secret() e2e.Secret { return e2e.Secret{Root: a.Root, Server: 
 // CheckServerURL accepts https URLs, and http only for this computer.
 func CheckServerURL(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimRight(strings.TrimSpace(raw), "/"))
-	if err != nil || u.Host == "" || u.Path != "" || u.RawQuery != "" {
+	if err != nil || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.User != nil || u.Fragment != "" || u.Opaque != "" {
 		return "", fmt.Errorf("server must be a URL like https://ra.example.com")
 	}
 	switch u.Scheme {
@@ -142,17 +144,18 @@ func Join(ctx context.Context, server string, root []byte, setupToken string) (*
 }
 
 func httpClient() *http.Client {
-	return &http.Client{Timeout: 60 * time.Second}
+	return netpolicy.Client(60 * time.Second)
 }
 
 // writeFileSync writes a file atomically and durably with owner-only
 // permissions.
 func writeFileSync(path string, data []byte) error {
-	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*")
 	if err != nil {
 		return err
 	}
+	tmp := f.Name()
+	defer os.Remove(tmp)
 	if _, err := f.Write(data); err != nil {
 		f.Close()
 		return err
