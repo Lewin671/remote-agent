@@ -14,7 +14,7 @@ func TestPushEndpointRejectsInternalDestinations(t *testing.T) {
 			t.Fatalf("accepted unsafe endpoint %q", endpoint)
 		}
 	}
-	for _, addr := range []string{"127.0.0.1", "::1", "::ffff:127.0.0.1", "169.254.169.254", "10.0.0.1", "100.64.0.1", "198.18.0.1", "64:ff9b::7f00:1", "2002:7f00:1::"} {
+	for _, addr := range []string{"127.0.0.1", "::1", "::ffff:127.0.0.1", "169.254.169.254", "10.0.0.1", "100.64.0.1", "198.18.0.1", "192.88.99.1", "64:ff9b::7f00:1", "2002:7f00:1::", "fec0::1", "100::1", "100:0:0:1::1", "5f00::1", "2606:4700:4700::1111%lo0"} {
 		if publicPushIP(netip.MustParseAddr(addr)) {
 			t.Fatalf("allowed non-public address %q", addr)
 		}

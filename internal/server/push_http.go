@@ -29,6 +29,7 @@ var nonPublicPushRanges = []netip.Prefix{
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("192.0.0.0/24"),
 	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"),
 	netip.MustParsePrefix("198.18.0.0/15"),
 	netip.MustParsePrefix("198.51.100.0/24"),
 	netip.MustParsePrefix("203.0.113.0/24"),
@@ -41,8 +42,16 @@ var nonPublicPushRanges = []netip.Prefix{
 	netip.MustParsePrefix("3fff::/20"),
 }
 
+// Current IPv6 Internet unicast allocations are under 2000::/3. Go's
+// IsGlobalUnicast also accepts deprecated site-local and non-public
+// special-use ranges (e.g. fec0::/10, 100::/64 and 5f00::/16).
+var globalPushIPv6 = netip.MustParsePrefix("2000::/3")
+
 func publicPushIP(ip netip.Addr) bool {
 	ip = ip.Unmap()
+	if ip.Zone() != "" || (ip.Is6() && !globalPushIPv6.Contains(ip)) {
+		return false
+	}
 	if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
 		return false
 	}
