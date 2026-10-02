@@ -5,6 +5,7 @@ import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Imag
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { ApprovalDecision, InputStatus, SessionStatus, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { Markdown } from "../markdown";
+import { getView, setView, type View } from "../view";
 import {
   agentName,
   agentOf,
@@ -15,6 +16,7 @@ import {
   duration,
   eventTime,
   exitReason,
+  dayTime,
   hhmm,
   inputFailure,
   machineName,
@@ -51,7 +53,7 @@ import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, toolTitle, type Short }
 import { RowState, RememberDetails } from "./RowState";
 import { HistoryRows } from "./HistoryRows";
 
-type Tab = "chat" | "term" | "split";
+type Tab = View;
 
 /** Tracks an element's width, for choices that depend on the space the
  * main area has rather than the window. */
@@ -104,7 +106,14 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   // The open dock may take what the input and about 120 px of chat leave.
   const room = colHeight > 0 ? colHeight - 230 : Infinity;
   const canSplit = wide && width >= 840;
-  const [tabPick, setTab] = useState<Tab>(() => (remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : "chat"));
+  // A new session opens on its terminal once; otherwise the view is the one
+  // last picked on this device. A view that cannot show falls back to the
+  // chat without changing the pick.
+  const [tabPick, setTab] = useState<Tab>(() => (remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : getView()));
+  const pickTab = (t: Tab) => {
+    setTab(t);
+    setView(t);
+  };
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
   if (inactive && tab !== "chat") tab = "chat";
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
@@ -196,7 +205,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const seg = (
     <div className={"seg" + (tab !== "chat" && !wide ? " dark" : "")} role="tablist">
       {tabs.map(([t, name]) => (
-        <button key={t} role="tab" aria-selected={t === tab} className={t === tab ? "on" : ""} disabled={t !== "chat" && inactive} onClick={() => setTab(t)}>
+        <button key={t} role="tab" aria-selected={t === tab} className={t === tab ? "on" : ""} disabled={t !== "chat" && inactive} onClick={() => pickTab(t)}>
           {name}
           {t === "term" && st.kind === "popup" && <span className="n">●</span>}
         </button>
@@ -230,12 +239,10 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <span className="muted">
           {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
         </span>
+        {seg}
         <button className={"mr" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
           ⋯
         </button>
-      </div>
-      <div className="r2">
-        {seg}
       </div>
     </header>
   ) : (
@@ -458,9 +465,8 @@ function ChatBody({
   const showPrompt = prompt && !events.some((e) => e.kind.case === "userMessage") && promptState !== InputStatus.CANCELED && promptState !== InputStatus.UNCONFIRMED;
 
   const header = (<>
-        {hist.loaded && <div className="sep">会话从这里开始</div>}
-        <div className="sep">
-          {started ? hhmm(started) + " · " : ""}
+        <div className="sysline">
+          {started ? dayTime(started) + " · " : ""}
           {shortPath(cwd)}
         </div>
         {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}

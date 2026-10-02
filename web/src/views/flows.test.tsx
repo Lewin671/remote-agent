@@ -1697,3 +1697,53 @@ it("writes a development build's commit once in the settings", async () => {
   expect(versionText("0.8.2", "60980937bd64665f")).toBe("0.8.2 · 6098093");
   expect(versionText("0.8.2")).toBe("0.8.2");
 });
+
+describe("the session view", () => {
+  const picked = () => host.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
+  const open = (r: DemoRemote, sid: string) => mount(<SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />);
+  const close = () => {
+    act(() => root?.unmount());
+    host.remove();
+  };
+
+  it("opens every session in the view last picked on this device", async () => {
+    const r = demo();
+    open(r, "s-idle");
+    expect(picked()).toBe("聊天");
+    await click(button("终端"));
+    expect(picked()).toBe("终端");
+    close();
+    open(r, "s-ctx");
+    expect(picked()).toBe("终端");
+    await click(button("聊天"));
+    close();
+    open(r, "s-idle");
+    expect(picked()).toBe("聊天");
+  });
+
+  it("does not take a new session's first terminal for a pick", () => {
+    const r = demo();
+    r.termFirst.add("s-idle");
+    open(r, "s-idle");
+    expect(picked()).toBe("终端");
+    close();
+    open(r, "s-ctx");
+    expect(picked()).toBe("聊天");
+  });
+
+  it("shows the chat of an ended session and keeps the pick", () => {
+    const r = demo();
+    localStorage.setItem("ra-view", "term");
+    const ended = [...r.sessions.values()].find((s) => s.info?.status === SessionStatus.EXITED)!;
+    open(r, ended.id);
+    expect(picked()).toBe("聊天");
+    expect(localStorage.getItem("ra-view")).toBe("term");
+  });
+
+  it("starts the chat with one line, the time and the folder", () => {
+    const r = demo();
+    open(r, "s-idle");
+    expect(host.textContent).not.toContain("会话从这里开始");
+    expect(host.querySelector(".chat .sysline")?.textContent).toMatch(/· ~\/Code\//);
+  });
+});

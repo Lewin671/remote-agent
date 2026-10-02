@@ -125,7 +125,10 @@ fun SessionScreen(sid: String) {
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val status = statusIn(state, s)
-    var tab by rememberSaveable { mutableStateOf(0) }
+    // The view last picked on this device; every session opens in it.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val viewPrefs = remember(context) { context.getSharedPreferences("session-view", android.content.Context.MODE_PRIVATE) }
+    var tab by rememberSaveable { mutableStateOf(viewPrefs.getInt("tab", 0)) }
     BackHandler(enabled = tab == 1) { tab = 0 }
     // Another page (a tool's details) asked for the terminal.
     val wantTerminal = OpenTerminal.requested[sid] == true
@@ -140,7 +143,10 @@ fun SessionScreen(sid: String) {
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
         SessionTopBar(state, s, status, d.running || status == Status.RUNNING, dark = term)
         ConnBanner(state)
-        SessionTabs(tab, status != Status.EXITED, status == Status.POPUP, dark = term) { tab = it }
+        SessionTabs(if (term) 1 else 0, status != Status.EXITED, status == Status.POPUP, dark = term) {
+            tab = it
+            viewPrefs.edit().putInt("tab", it).apply()
+        }
         if (tab == 1 && status != Status.EXITED) {
             TerminalPane(remote, sid, sessionRunning = status != Status.EXITED, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {

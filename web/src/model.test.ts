@@ -46,6 +46,7 @@ import {
   type MachineLike,
   type SessionLike,
   contextText,
+  dayTime,
 } from "./model";
 
 function events(...kinds: object[]): Event[] {
@@ -863,4 +864,12 @@ it("finds the model of a session started under its 1M name", () => {
   const models = [{ slug: "opus" }, { slug: "haiku" }];
   expect(findModel(models, "opus[1m]")).toEqual({ slug: "opus" });
   expect(findModel(models, "claude-opus-5-5")).toEqual({ slug: "opus" });
+});
+
+describe("dayTime", () => {
+  it("writes the date only when it is not today", () => {
+    const now = new Date(2026, 9, 2, 18, 0).getTime();
+    expect(dayTime(new Date(2026, 9, 2, 5, 51).getTime(), now)).toBe("5:51");
+    expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe("9月27日 14:02");
+  });
 });

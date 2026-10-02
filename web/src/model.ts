@@ -240,6 +240,13 @@ export function hhmm(ms: number): string {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** A clock time, with the date when it is not today: 9:41, 9月27日 14:02. */
+export function dayTime(ms: number, now = Date.now()): string {
+  const d = new Date(ms);
+  if (d.toDateString() === new Date(now).toDateString()) return hhmm(ms);
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${hhmm(ms)}`;
+}
+
 /** Minutes left before a deadline, as the dock writes it. */
 export function minutesLeft(deadlineMs: number, now = Date.now()): string {
   const left = deadlineMs - now;
