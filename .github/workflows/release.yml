@@ -129,12 +129,14 @@ jobs:
             !~/.gradle/caches/build-cache-1
           key: gradle-build-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-build-
-      # Task outputs of one build, kept until :core or :terminal change, so
-      # the releases that leave them alone do not compile them again.
+      # Task outputs, so a release compiles only the modules it changed: all
+      # of them when nothing under android/ did, and R8 alone then runs. The
+      # chain of entries restarts when :core or :terminal change.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.gradle/caches/build-cache-1
-          key: gradle-build-outputs-${{ hashFiles('android/core/**', 'android/terminal/**', 'android/*.kts', 'android/gradle.properties', 'android/gradle/**') }}
+          key: gradle-build-outputs-${{ hashFiles('android/core/**', 'android/terminal/**', 'android/*.kts', 'android/gradle.properties', 'android/gradle/**') }}-${{ hashFiles('android/**') }}
+          restore-keys: gradle-build-outputs-${{ hashFiles('android/core/**', 'android/terminal/**', 'android/*.kts', 'android/gradle.properties', 'android/gradle/**') }}-
       - name: Restore APK configuration
         env:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
@@ -143,10 +145,19 @@ jobs:
       - name: Signed APK
         working-directory: android
         # android-checks runs the lint that assembleRelease would repeat here.
-        # Measured on a hosted runner: one JVM with most of its memory and a
-        # throughput collector builds a tenth faster than the 2g daemon plus
-        # Kotlin daemon that suit a laptop, and those two together swap.
-        run: ./gradlew --no-daemon --no-configuration-cache --parallel -Dorg.gradle.jvmargs="-Xmx6g -XX:+UseParallelGC -Dfile.encoding=UTF-8" -Pkotlin.compiler.execution.strategy=in-process :app:assembleRelease -x lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        # Measured on a hosted runner: R8 is a tenth faster with 4g than
+        # with the 2g that suits a laptop, and again with a throughput
+        # collector. More heap gains nothing, and compiling Kotlin inside
+        # this JVM instead of its daemon is slower.
+        run: |
+          touch "$RUNNER_TEMP/build-start"
+          ./gradlew --no-daemon --no-configuration-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" -Pkotlin.daemon.jvmargs=-Xmx2g :app:assembleRelease -x lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+          # Every build adds its R8 output, which no later build can use.
+          # Past 150 MB keep only what this build stored.
+          outputs="$HOME/.gradle/caches/build-cache-1"
+          if [ "$(du -sm "$outputs" | cut -f1)" -gt 150 ]; then
+            find "$outputs" -type f ! -newer "$RUNNER_TEMP/build-start" -delete
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apk
