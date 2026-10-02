@@ -47,7 +47,8 @@ jobs:
       - name: Release policy tests
         run: python3 -m unittest discover -s scripts -p '*_test.py'
       - name: Go tests
-        run: go test ./...
+        # The restored build cache also holds test results; a release runs them.
+        run: go test -count=1 ./...
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: Web tests and build
@@ -98,7 +99,9 @@ jobs:
         run: python3 scripts/android-ci.py
       - name: Android tests and release lint
         working-directory: android
-        run: ./gradlew --no-daemon --no-configuration-cache :core:test :terminal:testReleaseUnitTest :app:testReleaseUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        # Nothing is taken from the build cache: :core:test would otherwise
+        # pass without running whenever only the Go server changed.
+        run: ./gradlew --no-daemon --no-configuration-cache --no-build-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :core:test :terminal:testReleaseUnitTest :app:testReleaseUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
       - name: Remove signing material
         if: always()
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
@@ -121,10 +124,17 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            ~/.gradle/caches
+            ~/.gradle/caches/*
             ~/.gradle/wrapper
+            !~/.gradle/caches/build-cache-1
           key: gradle-build-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-build-
+      # Task outputs of one build, kept until :core or :terminal change, so
+      # the releases that leave them alone do not compile them again.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.gradle/caches/build-cache-1
+          key: gradle-build-outputs-${{ hashFiles('android/core/**', 'android/terminal/**', 'android/*.kts', 'android/gradle.properties', 'android/gradle/**') }}
       - name: Restore APK configuration
         env:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
@@ -133,9 +143,10 @@ jobs:
       - name: Signed APK
         working-directory: android
         # android-checks runs the lint that assembleRelease would repeat here.
-        # R8 is a third faster with the runner's memory and a throughput
-        # collector than with the 2g heap that suits a laptop.
-        run: ./gradlew --no-daemon --no-configuration-cache -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :app:assembleRelease -x lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        # Measured on a hosted runner: one JVM with most of its memory and a
+        # throughput collector builds a tenth faster than the 2g daemon plus
+        # Kotlin daemon that suit a laptop, and those two together swap.
+        run: ./gradlew --no-daemon --no-configuration-cache --parallel -Dorg.gradle.jvmargs="-Xmx6g -XX:+UseParallelGC -Dfile.encoding=UTF-8" -Pkotlin.compiler.execution.strategy=in-process :app:assembleRelease -x lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apk
