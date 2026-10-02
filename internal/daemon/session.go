@@ -128,10 +128,6 @@ type decision struct {
 	terminal bool
 	// origin is who answered through remote-agent.
 	origin *pb.Origin
-	// always, with allow: stop asking about requests like this one. The
-	// hook cannot say so; the daemon answers the CLI's own prompt
-	// (always.go).
-	always bool
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
@@ -1060,12 +1056,6 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "", originLocal)
 		return nil, nil
 	}
-	if d.always {
-		// The hook stays silent, so the CLI shows its own prompt; the
-		// daemon picks the prompt's "don't ask again" option there.
-		go s.answerAlways(a, p.TurnID, d.origin)
-		return nil, nil
-	}
 	if d.allow {
 		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message, d.origin)
 	} else {
@@ -1107,6 +1097,13 @@ func (s *session) resolve(id string, allow bool, message string) error {
 
 // resolveBy is resolve on behalf of origin.
 func (s *session) resolveBy(id string, allow, always bool, message string, origin *pb.Origin) error {
+	// Native permission prompts expose no stable tool request ID. Screen
+	// text (especially command prefixes or basenames) cannot prove which
+	// request would receive a permanent grant. Leave it pending for the
+	// user to decide in the native terminal; never silently grant once.
+	if allow && always {
+		return fmt.Errorf("permanent approvals must be answered in the native terminal: %w", agent.ErrUnsupported)
+	}
 	s.mu.Lock()
 	a, ok := s.approvals[id]
 	if !ok || a.claimed {
@@ -1120,7 +1117,7 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 	a.claimed = true
 	delete(s.approvals, id)
 	s.mu.Unlock()
-	a.decision <- decision{allow: allow, always: allow && always, message: message, origin: origin}
+	a.decision <- decision{allow: allow, message: message, origin: origin}
 	return nil
 }
 

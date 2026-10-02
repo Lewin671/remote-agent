@@ -310,7 +310,7 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 
 // capabilities says what this daemon offers beyond the base protocol.
 func (d *Daemon) capabilities() *pb.MachineCapabilities {
-	c := &pb.MachineCapabilities{SessionImages: true, CommandSignatures: true, ImageStorage: true, SendModes: true, ApprovalAlways: true, ScheduledTasks: true}
+	c := &pb.MachineCapabilities{SessionImages: true, CommandSignatures: true, ImageStorage: true, SendModes: true, ScheduledTasks: true}
 	if d.uploads.usable() {
 		c.ImageUpload = true
 		c.MaxImagesPerMessage = maxMessageImages
