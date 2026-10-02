@@ -610,6 +610,12 @@ func (d *Daemon) tickSchedules(now time.Time) {
 }
 
 func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
+	// Never rely only on a persisted pause state: an active legacy run's
+	// status transitions must not re-enable an unscoped agent definition.
+	if t.Source == "agent" && t.ScopedSession == "" {
+		t.Status, t.Reason = "paused", "legacy_agent_task_requires_confirmation"
+		return
+	}
 	if t.ScopedSession != "" {
 		if err := d.restrictMCPTask(t, false); err != nil {
 			t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
@@ -744,7 +750,7 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 	}
 	// Cursor and message/turn identity are persisted together. Replaying after
 	// restart cannot mistake an unrelated earlier turn for this execution.
-	if run.InputPaused && t.Status != "cancelled" && t.Reason != "user_paused" {
+	if run.InputPaused && t.Status != "cancelled" && (t.Status != "paused" || t.Reason == "execution_input_paused") {
 		t.Status = "paused"
 		t.Reason = "execution_input_paused"
 	} else if !run.InputPaused && t.Status == "paused" && t.Reason == "execution_input_paused" {
@@ -772,9 +778,12 @@ func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason
 	}
 	if t.Status == "paused" {
 		if status == "completed" {
+			pausedReason := t.Reason
 			d.nextSchedule(t, now)
-			if t.Status == "completed" {
+			if t.Status == "completed" && (pausedReason == "user_paused" || pausedReason == "execution_input_paused" || pausedReason == "") {
 				t.Reason = "completed_while_paused"
+			} else {
+				t.Reason = pausedReason
 			}
 			t.Status = "paused"
 		}

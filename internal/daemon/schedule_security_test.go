@@ -229,3 +229,61 @@ func TestLegacyMCPRequestsCannotBypassScope(t *testing.T) {
 		t.Fatalf("remote machine user blocked: %v", err)
 	}
 }
+
+func TestLegacyActiveExecutionCannotClearQuarantine(t *testing.T) {
+	h := scopedHarness(t, "ask")
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn", Repeat: true}), "")
+	now := time.Now().Add(time.Second)
+	h.d.tickSchedules(now)
+	task = readTask(t, h.d, task.ID)
+	if task.Active == nil {
+		t.Fatal("execution not queued")
+	}
+	h.d.scheduleMu.Lock()
+	h.d.tasks[task.ID].Source = "agent"
+	if err := h.d.saveSchedulesLocked(); err != nil {
+		t.Fatal(err)
+	}
+	h.d.scheduleMu.Unlock()
+	if err := h.d.loadSchedules(); err != nil {
+		t.Fatal(err)
+	}
+	assertQuarantined := func() {
+		t.Helper()
+		got := readTask(t, h.d, task.ID)
+		if got.Status != "paused" || got.Reason != "legacy_agent_task_requires_confirmation" || got.Dispatches != 1 {
+			t.Fatalf("quarantine cleared without user confirmation: %+v", got)
+		}
+	}
+	assertQuarantined()
+	for _, paused := range []bool{true, false} {
+		h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: task.Active.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Paused: paused}}})
+		h.d.tickSchedules(now)
+		assertQuarantined()
+	}
+	completeTask(h, task.Active, now)
+	h.d.tickSchedules(now)
+	assertQuarantined()
+	h.d.tickSchedules(now.Add(time.Hour))
+	assertQuarantined()
+	if err := h.d.loadSchedules(); err != nil {
+		t.Fatal(err)
+	}
+	h.d.tickSchedules(now.Add(2 * time.Hour))
+	assertQuarantined()
+}
+
+func TestLegacyDispatchGateRejectsOverwrittenPause(t *testing.T) {
+	h := scopedHarness(t, "ask")
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+	h.d.scheduleMu.Lock()
+	h.d.tasks[task.ID].Source = "agent"
+	h.d.tasks[task.ID].Status = "scheduled"
+	h.d.tasks[task.ID].Reason = ""
+	h.d.scheduleMu.Unlock()
+	h.d.tickSchedules(task.NextRunAt.Add(time.Second))
+	got := readTask(t, h.d, task.ID)
+	if got.Status != "paused" || got.Reason != "legacy_agent_task_requires_confirmation" || got.Dispatches != 0 || len(h.s.queue.Queue) != 0 {
+		t.Fatalf("unscoped legacy definition reached session: %+v", got)
+	}
+}
