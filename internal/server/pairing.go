@@ -146,21 +146,22 @@ func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	ps.sweepLocked()
+	// Apply the limit before looking up a code. Otherwise callers that have
+	// exhausted the budget can still test unlimited codes and distinguish
+	// valid ones from the rate-limited invalid responses.
+	now := time.Now()
+	kept := ps.badCodes[:0]
+	for _, t := range ps.badCodes {
+		if now.Sub(t) < time.Minute {
+			kept = append(kept, t)
+		}
+	}
+	ps.badCodes = kept
+	if len(ps.badCodes) >= badCodesPerMinute {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
+	}
 	p := ps.byCode[code]
 	if p == nil {
-		// Wrong codes are limited across all callers, so guessing an
-		// open one within its five minutes is hopeless.
-		now := time.Now()
-		kept := ps.badCodes[:0]
-		for _, t := range ps.badCodes {
-			if now.Sub(t) < time.Minute {
-				kept = append(kept, t)
-			}
-		}
-		ps.badCodes = kept
-		if len(ps.badCodes) >= badCodesPerMinute {
-			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many wrong codes; try again in a minute"))
-		}
 		ps.badCodes = append(ps.badCodes, now)
 		return nil, errNoPairing
 	}
@@ -241,7 +242,7 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 	}
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
-	if p.joinerPub == nil || p.initPub != nil {
+	if p.canceled || p.delivered || p.joinerPub == nil || p.initPub != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("nothing to reveal to yet"))
 	}
 	// The server checks the commitment too, but the joiner does not rely
@@ -277,6 +278,7 @@ func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Reques
 	}
 	ps.mu.Lock()
 	p.canceled = true
+	p.payload = nil
 	// Keep it briefly so the other side sees the cancellation.
 	p.expires = time.Now().Add(30 * time.Second)
 	delete(ps.byCode, p.code)
