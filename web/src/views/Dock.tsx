@@ -6,6 +6,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
+import { approvalDisplay } from "../approval-display";
 import { Markdown } from "../markdown";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
@@ -14,11 +15,11 @@ import { Banner, Exp, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
 
 export function approvalTitle(a: ApprovalRequested): string {
-  return a.command ? "请求执行" : "请求权限 · " + a.toolName;
+  return a.command ? "请求执行" : "请求权限 · " + approvalDisplay(a.toolName);
 }
 
 export function approvalText(a: ApprovalRequested): string {
-  return a.command || a.toolInputJson || a.toolName;
+  return approvalDisplay(a.command || a.toolInputJson || a.toolName);
 }
 
 /** A <pre> cut to its max height, with 展开全文 when it overflows. */
@@ -213,7 +214,7 @@ function ApprovalDock({
       frame={frame}
       label={title}
       // A permission request's arguments are no summary: its title says it.
-      brief={a.command ? a.command.replace(/\s+/g, " ") : ""}
+      brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""}
       busy={!!ap.busy}
       reasoning={reasoning}
       head={
@@ -228,7 +229,7 @@ function ApprovalDock({
       }
       body={
         <>
-          {a.description && <div className="desc">{a.description}</div>}
+          {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
           <Cut text={approvalText(a)} onMore={onDetail} />
         </>
       }
@@ -618,7 +619,7 @@ export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote:
       <div className="body detail">
         {/* A command speaks for itself; other requests name the tool. */}
         {!a.command && <div className="h-kind">{approvalTitle(a)}</div>}
-        {a.description && <div className="desc">{a.description}</div>}
+        {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
         <pre className="cmd">{approvalText(a)}</pre>
       </div>
       <div className={"dock" + (reasoning ? " reasoning" : "")}>

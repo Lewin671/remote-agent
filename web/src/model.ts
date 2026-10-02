@@ -1,3 +1,4 @@
+import { approvalDisplay } from "./approval-display";
 // View models derived from the decrypted state: projects, session states
 // by priority, what is docked above the input, how a sent message is
 // doing, and how the chat timeline groups events. Everything here is pure,
@@ -179,7 +180,7 @@ export function previewOf(s: SessionLike, st: State, pending?: { approval?: Appr
   switch (st.kind) {
     case "approval":
       if (!pending?.approval) return st.text;
-      return pending.approval.command ? "请求执行 " + oneLine(pending.approval.command) : "请求权限 · " + pending.approval.toolName;
+      return pending.approval.command ? "请求执行 " + oneLine(approvalDisplay(pending.approval.command)) : "请求权限 · " + approvalDisplay(pending.approval.toolName);
     case "question":
       return pending?.question?.questions[0]?.text || st.text;
     case "plan":

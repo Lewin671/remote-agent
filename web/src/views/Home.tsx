@@ -30,6 +30,7 @@ import {
 import type { Remote, SessionView } from "../remote";
 import { Avatar, Banner, Dot, Skeleton, useNow, useRemote } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
+import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
@@ -81,13 +82,13 @@ function TodoCard({ remote, s, go, wide }: { remote: Remote; s: SessionView; go:
       </div>
       <div className="m">
         {where}
-        {wide && a?.description && ` · ${a.description}`}
+        {wide && a?.description && ` · ${approvalDisplay(a.description)}`}
         {q?.questions[0] && ` · ${q.questions[0].text}`}
         {st.kind === "popup" && s.info?.statusDetail && ` · ${s.info.statusDetail}`}
       </div>
       {a && (
         <>
-          {!wide && a.description && <div className="desc">{a.description}</div>}
+          {!wide && a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
           <pre>{approvalText(a)}</pre>
           {/* Keyed by approval: the next one must not inherit this one's locked buttons. */}
           <ApprovalActions key={a.approvalId} remote={remote} sid={s.id} a={a} agent={agent} wideRow={wide} />

@@ -246,9 +246,9 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long) {
         val q = d.questions.values.firstOrNull()?.questionsList?.firstOrNull()?.text
         Text(listOfNotNull(projectName(projectKey(s)), machineLabel(state, s.machineId), q).joinToString(" · "), style = T.meta, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (st == Status.APPROVAL && a != null) {
-            if (a.description.isNotEmpty()) Text(a.description, style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 6.dp))
+            if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 6.dp))
             if (a.command.isNotEmpty()) Text(
-                a.command, style = T.mono, color = p.fg2, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                approvalDisplay(a.command), style = T.mono, color = p.fg2, maxLines = 3, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clip(Radii.XS).background(p.card).border(1.dp, p.line, Radii.XS).padding(horizontal = 10.dp, vertical = 7.dp),
             )
             ApprovalButtons(s, a, compact = true, onCard = true)

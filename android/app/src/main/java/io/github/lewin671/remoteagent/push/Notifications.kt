@@ -25,6 +25,7 @@ import androidx.work.WorkerParameters
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.ui.approvalDisplay
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
@@ -100,9 +101,9 @@ object Notifier {
     fun approvalText(a: io.github.lewin671.remoteagent.proto.NotifyApproval): Pair<String, String> {
         val oldToolInput = a.toolInput.isEmpty() && a.command.trimStart().startsWith("{") && a.toolName != "Bash"
         val command = if (oldToolInput) "" else a.command
-        if (command.isNotEmpty()) return "请求执行" to command
+        if (command.isNotEmpty()) return "请求执行" to approvalDisplay(command)
         val input = a.toolInput.ifEmpty { if (oldToolInput) a.command else "" }
-        return "请求权限" + (if (a.toolName.isNotEmpty()) " · ${a.toolName}" else "") to a.description.ifEmpty { input }.ifEmpty { a.toolName }
+        return "请求权限" + (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else "") to approvalDisplay(a.description.ifEmpty { input }.ifEmpty { a.toolName })
     }
 
     /** How a push is shown. */
@@ -159,7 +160,7 @@ object Notifier {
             b.setContentTitle(title)
                 .setContentText(what)
                 .setSubText(c.title.takeIf { it.isNotEmpty() })
-                .setStyle(NotificationCompat.BigTextStyle().bigText(listOf(approval.description, what).filter { it.isNotEmpty() }.distinct().joinToString("\n")))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(listOf(approvalDisplay(approval.description), what).filter { it.isNotEmpty() }.distinct().joinToString("\n")))
             if (approval.deadlineMs > 0) b.setTimeoutAfter((approval.deadlineMs - System.currentTimeMillis()).coerceAtLeast(1000))
             if (how.buttons && (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis())) {
                 b.addAction(action(context, c, false, nid))

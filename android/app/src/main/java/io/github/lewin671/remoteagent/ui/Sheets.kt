@@ -226,9 +226,9 @@ fun ApprovalPage(sid: String, aid: String) {
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
-            if (a.toolName.isNotEmpty() && a.command.isEmpty()) Text("请求权限 · ${a.toolName}", style = T.smB, color = p.fg2, modifier = Modifier.padding(bottom = 4.dp))
-            if (a.description.isNotEmpty()) Text(a.description, style = T.sm, color = p.fg2, modifier = Modifier.padding(bottom = 6.dp))
-            Code(a.command.ifEmpty { a.toolInputJson })
+            if (a.toolName.isNotEmpty() && a.command.isEmpty()) Text("请求权限 · ${approvalDisplay(a.toolName)}", style = T.smB, color = p.fg2, modifier = Modifier.padding(bottom = 4.dp))
+            if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(bottom = 6.dp))
+            Code(approvalDisplay(a.command.ifEmpty { a.toolInputJson }))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line).padding(top = 8.dp, bottom = 16.dp)) {
             ApprovalButtons(s, a, compact = false)

@@ -76,7 +76,7 @@ sealed interface DockItem {
 
 /** The dock's one line: type, a summary, 处理 (client-v7). */
 fun dockSummary(item: DockItem, agent: String): Pair<String, String> = when (item) {
-    is DockItem.Approval -> (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to item.a.command.ifEmpty { item.a.toolName }.lines().first()
+    is DockItem.Approval -> (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to approvalDisplay(item.a.command.ifEmpty { item.a.toolName }).lines().first()
     is DockItem.Question -> "$agent 在问你" to item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
     is DockItem.Plan -> "计划待批准" to ""
     is DockItem.Popup -> "终端里有弹窗" to item.title
@@ -154,11 +154,11 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -
     var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     PendingDock(DockItem.Approval(a), agent, more, body = {
         DockHead(
-            if (a.command.isNotEmpty()) "请求执行" else "请求权限" + (if (a.toolName.isNotEmpty()) " · ${a.toolName}" else ""),
+            if (a.command.isNotEmpty()) "请求执行" else "请求权限" + (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else ""),
             if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝" else "",
         )
-        if (a.description.isNotEmpty()) Text(a.description, style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 4.dp))
-        val body = a.command.ifEmpty { a.toolInputJson }
+        if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 4.dp))
+        val body = approvalDisplay(a.command.ifEmpty { a.toolInputJson })
         if (body.isNotEmpty()) {
             val cut = body.lines().size > 4 || body.length > 200
             Box(Modifier.padding(vertical = 8.dp)) {
