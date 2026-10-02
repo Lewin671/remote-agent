@@ -180,7 +180,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
 - **模型提问**：问题从 rollout 的 `function_call` 读出，它在等待回答时就已经写入，不需要 hook。回答时暂存本地按键、抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
 - **中断**：只在一轮运行时发 Esc，绝不发 Ctrl-C。空闲时发 Ctrl-C 会清空输入框，再按一次会退出 Codex（notes §8）
-- **切换模型和 effort**：空闲时操作 `/model` 菜单：按显示名在屏幕上找模型的编号并按下，在档位列表里用方向键移到目标档位后按 `s`，只改当前会话（回车会改全局默认值）。Max、Ultra 在 `More reasoning…` 子菜单里。以底部状态栏出现新的模型和档位为成功，认不出菜单就按 Esc 退出并报错。rollout 要到下一轮才记录新模型（notes §2），所以 daemon 先记一条 `SettingsChanged`，会话信息立即按它更新，下一轮的 `turn_context` 再校对。可选的模型和档位读自 `~/.codex/models_cache.json`
+- **切换模型和 effort**：空闲时操作 `/model` 菜单：按显示名在屏幕上找模型的编号并按下，在档位列表里用方向键移到目标档位后按 `s`，只改当前会话（回车会改全局默认值）。Max、Ultra 在 `More reasoning…` 子菜单里。以底部状态栏出现新的模型和档位为成功，认不出菜单就按 Esc 退出并报错。rollout 要到下一轮才记录新模型（notes §2），所以 daemon 先记一条 `SettingsChanged`，会话信息立即按它更新，下一轮的 `turn_context` 再校对。可选的模型和档位读自 `~/.codex/models_cache.json`；打开模型选择页时重新读取，避免客户端一直使用旧列表。配置中的默认模型也列为一个可明确选择的选项：缓存有它时保留其完整档位，即使它标为隐藏；缓存暂时没有它时仍列出模型，但不猜测支持的档位
 - **切换审批模式**：询问、自动、完全放行分别是 `/permissions` 菜单的 1、2、3，按数字直接选中；完全放行还要在 `Enable full access?` 里按 1 确认，以屏幕出现 `Permission selection requested` 为成功。计划模式用 Shift+Tab 切换，以状态栏右侧的 `Plan mode` 判断当前状态。运行中也能切，下一轮起生效（notes §4）。同样先记 `SettingsChanged`
 - **压缩上下文**：空闲时输入 `/compact`。压缩在 rollout 里是一条 `ContextCompaction`，无论是客户端发起的还是终端里敲的，都解析成「上下文已压缩」事件
 - **计划**：Plan 模式下模型给出计划后，rollout 里的 `Plan` 条目解析成 `PlanProposed` 事件，屏幕上的 `Implement this plan?` 让会话处于「计划待批准」，客户端显示计划卡片，回答时注入 1、2 或 3（notes §4）
@@ -489,7 +489,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。daemon 在会话的 `--settings` 里把状态栏设成 `"$RA_EXE" statusline claude`（不改用户的设置文件）：它把输入转给 daemon（500 毫秒超时，失败也不影响状态栏），再用同样的输入运行用户原来的状态栏命令（启动会话时按 Claude Code 的优先级读出、存在会话目录里），输出和退出码原样交回，`padding`、`refreshInterval` 也照搬，所以终端里看到的状态栏不变。托管设置里定了状态栏时它会盖过 daemon 的，额度就读不到，报「不支持」。账户用 `~/.claude.json` 里 `oauthAccount` 的账户和组织 ID 算一个短指纹来区分（ID 本身不离开电脑），套餐取 `organizationType`，有 `oauthAccount` 才标为订阅登录；读不出账户时不合并，按来源会话分开。额度按账户存在 `~/.remote-agent/quota.json`，重启后只沿用当前登录账户的记录，看到新账户的数字就清掉旧账户的。数字不变时一分钟内不刷新记录时间，免得机器元数据频繁变化。结果放在 `MachineMeta.quotas`，每个 CLI 一项或几项，状态分等待（还没收到额度）、正常、失败和不支持。采集只读取 CLI 已有数据，不主动给模型发消息，不把登录凭据交给 server，不调用未公开的账户接口。额度元数据端到端加密同步，server 只收密文，日志不记录额度或账户内容。
 
-客户端按来源提供的窗口显示已用百分比、重置时间和最近收到时间。Claude Code 的 5 小时、7 天分别可缺失；只有真实收到其他限额窗口时才显示该窗口，不承诺按模型额度或额外用量。套餐名未知就省略，读到的内部代号换成名称显示（`prolite` 写 Pro Lite，`claude_max` 写 Max）；API 计费须由可靠的登录方式信息确认，不能从 `rate_limits` 缺失推断。API 用量和账单到服务商控制台查看，不把会话估算费用当成账户余额。
+客户端按来源提供的窗口显示已用百分比、重置时间和最近收到时间。重置时间统一转换为北京时间（`Asia/Shanghai`，UTC+8），日期和星期也按北京时间判断，并标注「北京时间」；最近收到时间仍按客户端时区显示。Claude Code 的 5 小时、7 天分别可缺失；只有真实收到其他限额窗口时才显示该窗口，不承诺按模型额度或额外用量。套餐名未知就省略，读到的内部代号换成名称显示（`prolite` 写 Pro Lite，`claude_max` 写 Max）；API 计费须由可靠的登录方式信息确认，不能从 `rate_limits` 缺失推断。API 用量和账单到服务商控制台查看，不把会话估算费用当成账户余额。
 
 - 有效数据：80% 起橙色提示，100% 标「已用尽」；不自动切换 CLI 或模型，不拦截发送。缺重置时间只省略时间，缺用量则标「未获取」，不补成 0%。
 - 尚未收到任何额度：显示「暂未获取额度」。明确不支持读取时显示「暂不支持读取额度」。单个窗口缺失不清空其他有效窗口；账户没有的窗口（CLI 根本没上报）不显示，不占一行「未获取」。「最近收到」的时间每个 CLI 只写一次。
