@@ -142,7 +142,10 @@ export type Block =
 
 /** Splits Markdown into blocks: fenced code, tables, headings, rules,
  * quotes, lists and paragraphs. */
-export function mdBlocks(md: string): Block[] {
+export function mdBlocks(md: string, depth = 0): Block[] {
+  // CLI output can contain attacker-controlled file content. Deeply nested
+  // quotes/lists must not overflow the parser or React render stack.
+  if (depth >= 32) return [{ kind: "text", text: md }];
   const lines = md.replace(/\r\n?/g, "\n").split("\n");
   const blocks: Block[] = [];
   let text: string[] = [];
@@ -200,7 +203,7 @@ export function mdBlocks(md: string): Block[] {
       const body: string[] = [];
       let j = i;
       while (j < lines.length && quote.test(lines[j])) body.push(quote.exec(lines[j++])![1]);
-      blocks.push({ kind: "quote", blocks: mdBlocks(body.join("\n")) });
+      blocks.push({ kind: "quote", blocks: mdBlocks(body.join("\n"), depth + 1) });
       i = j - 1;
       continue;
     }
@@ -227,7 +230,7 @@ export function mdBlocks(md: string): Block[] {
         if (j > i && indentOf(l) <= base + 1 && listLine.test(l) && ordered(l) !== kind) break;
         body.push(l);
       }
-      blocks.push(parseList(body, base));
+      blocks.push(parseList(body, base, depth));
       i = j - 1;
       continue;
     }
@@ -244,7 +247,7 @@ function lazy(body: string[]): boolean {
   return last !== undefined && last.trim() !== "";
 }
 
-function parseList(lines: string[], base: number): Block {
+function parseList(lines: string[], base: number, depth: number): Block {
   const first = listLine.exec(lines[0])!;
   const ordered = /\d/.test(first[2]);
   const items: { text: string[]; rest: string[] }[] = [];
@@ -267,7 +270,7 @@ function parseList(lines: string[], base: number): Block {
     kind: "list",
     ordered,
     start: ordered ? parseInt(first[2], 10) : 1,
-    items: items.map((it) => ({ text: it.text.join("\n"), children: it.rest.some((x) => x.trim()) ? mdBlocks(strip(it.rest)) : [] })),
+    items: items.map((it) => ({ text: it.text.join("\n"), children: it.rest.some((x) => x.trim()) ? mdBlocks(strip(it.rest), depth + 1) : [] })),
   };
 }
 

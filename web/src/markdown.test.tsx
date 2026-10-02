@@ -141,3 +141,10 @@ it("resumes inline formatting after code containing Markdown markers", () => {
   expect(renderToStaticMarkup(<Rich text={'`**` **bold**'} />)).toBe('<code>**</code> <b>bold</b>');
   expect(renderToStaticMarkup(<Rich text={'``* ` | **`` **after** [docs](https://example.com)'} />)).toContain('<code>* ` | **</code> <b>after</b>');
 });
+
+
+it("bounds nesting in attacker-controlled CLI Markdown", () => {
+  const out = renderToStaticMarkup(<Markdown text={"> ".repeat(10_000) + "payload"} />);
+  expect(out).toContain("payload");
+  expect((out.match(/<blockquote>/g) ?? []).length).toBe(32);
+});
