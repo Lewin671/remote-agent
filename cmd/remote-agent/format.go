@@ -164,6 +164,7 @@ func terminalText(s string, multiline bool) string {
 	for _, r := range s {
 		layout := multiline && (r == '\n' || r == '\t')
 		if !layout && (r < 32 || r >= 127 && r <= 159) ||
+			r == 0x061c || r == 0x200e || r == 0x200f ||
 			r >= 0x202a && r <= 0x202e || r >= 0x2066 && r <= 0x2069 {
 			q := strconv.QuoteRuneToASCII(r)
 			out.WriteString(q[1 : len(q)-1])

@@ -29,10 +29,10 @@ func TestEventLogEscapesTerminalCommands(t *testing.T) {
 
 func TestApprovalLogEscapesDisplaySpoofing(t *testing.T) {
 	e := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{
-		ToolName: "shell", Command: "safe\r\x1b[2Kdangerous\u202ereversed\u2066isolated\u2069",
+		ToolName: "shell", Command: "safe\r\x1b[2Kdangerous\u202ereversed\u2066isolated\u2069\u061c\u200e\u200f",
 	}}}
 	got := formatEvent(e)
-	if strings.ContainsAny(got, "\r\x1b\u202e\u2066\u2069") {
+	if strings.ContainsAny(got, "\r\x1b\u202e\u2066\u2069\u061c\u200e\u200f") {
 		t.Fatalf("unsafe approval display: %q", got)
 	}
 }
