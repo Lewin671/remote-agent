@@ -6,7 +6,8 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { importSessionKey, openMessage, sealMessage } from "./crypto";
+import { relayFetch } from "./transport";
+import { checkServer, importSessionKey, openMessage, sealMessage } from "./crypto";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { DeviceKind, PairingService, PairingState, type GetPairingResponse } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -28,7 +29,7 @@ function client(server: string, auth?: () => string) {
         },
       ]
     : [];
-  return createClient(PairingService, createConnectTransport({ baseUrl: apiBase(server), useBinaryFormat: true, interceptors }));
+  return createClient(PairingService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(server), useBinaryFormat: true, interceptors }));
 }
 
 export interface PairLink {
@@ -44,7 +45,13 @@ export function parsePairLink(query: string): PairLink | undefined {
   const server = q.get("s");
   if (!code || !server) return undefined;
   const c = q.get("c");
-  return { code, server, commit: c ? fromB64url(c) : undefined };
+  try {
+    const commit = c ? fromB64url(c) : undefined;
+    if (!/^\d{8}$/.test(code) || (commit && commit.length !== 32)) return undefined;
+    return { code, server: checkServer(server), commit };
+  } catch {
+    return undefined;
+  }
 }
 
 type Poll = (want: PairingState) => Promise<GetPairingResponse>;
@@ -143,6 +150,7 @@ export async function initiate(remote: Remote): Promise<Initiation> {
 /** Joins an account with a code or link from an existing device. onEmoji
  * gets the emoji to compare with the other device's. */
 export async function joinByPairing(link: PairLink, onEmoji: (emoji: string[]) => void, stopped: () => boolean, onRegistering: () => void = () => undefined): Promise<StoredAccount> {
+  link = { ...link, server: checkServer(link.server) };
   const pc = client(link.server);
   const key = newPairKey();
   const joined = await pc.joinPairing({ code: link.code.replace(/\s/g, ""), joinerPublic: key.pub, joinerKind: DeviceKind.CLIENT });

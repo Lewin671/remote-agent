@@ -5,8 +5,10 @@
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, type Client, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import { relayFetch } from "./transport";
 import {
   accountKey,
+  checkServer,
   concat,
   deriveKeys,
   deviceID,
@@ -156,7 +158,8 @@ const noAnswer: AnswerState = { index: 0, ticked: [], busy: "", error: "", unkno
 /** Where the API is reached: the account's server, or with
  * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
 export function apiBase(server: string): string {
-  return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : server;
+  const origin = checkServer(server);
+  return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
 }
 
 export interface TermConn {
@@ -206,6 +209,7 @@ export async function join(secretText: string): Promise<StoredAccount> {
 
 /** Registers this browser as a device of the account with root key root. */
 export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: string): Promise<StoredAccount> {
+  server = checkServer(server);
   const root = await importRoot(rootRaw);
   const acct = await accountKey(root);
   const device = await newDeviceKey();
@@ -219,7 +223,7 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
       createdMs: BigInt(Date.now()),
     }),
   );
-  const auth = createClient(AuthService, createConnectTransport({ baseUrl: apiBase(server), useBinaryFormat: true }));
+  const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(server), useBinaryFormat: true }));
   const res = await auth.registerDevice({ registration: reg, signature: acct.sign(concat(new TextEncoder().encode(REGISTER_CONTEXT), reg)) });
   if (res.deviceId !== (await deviceID(pub))) throw new Error("server 返回了意外的设备 ID");
   const stored: StoredAccount = { server, root, rootRaw: new Uint8Array(rootRaw), devicePrivate: device.privateKey, deviceId: res.deviceId };
@@ -357,7 +361,7 @@ export class Remote {
       req.header.set("Authorization", "Bearer " + this.token);
       return next(req);
     };
-    this.api = createClient(ClientService, createConnectTransport({ baseUrl: apiBase(account.server), useBinaryFormat: true, interceptors: [auth] }));
+    this.api = createClient(ClientService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true, interceptors: [auth] }));
   }
 
   static async load(): Promise<Remote | undefined> {
@@ -411,7 +415,7 @@ export class Remote {
   }
 
   private async login() {
-    const auth = createClient(AuthService, createConnectTransport({ baseUrl: apiBase(this.account.server), useBinaryFormat: true }));
+    const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true }));
     const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
     const sig = await signLogin(this.account.devicePrivate, ch.challenge);
     const res = await auth.login({ deviceId: this.account.deviceId, challenge: ch.challenge, signature: sig });

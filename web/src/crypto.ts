@@ -65,10 +65,16 @@ export function parseSecret(text: string): Secret {
     throw bad;
   }
   if (root.length !== 32 || !server) throw bad;
-  const u = new URL(server);
+  return { root, server: checkServer(server) };
+}
+
+/** All entry points use the same transport policy, including pairing. */
+export function checkServer(server: string): string {
+  const u = new URL(server.trim());
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
   if (u.protocol !== "https:" && !(u.protocol === "http:" && local)) throw new Error("server 必须使用 https");
-  return { root, server: u.origin };
+  if (u.username || u.password) throw new Error("server 地址不能包含用户名或密码");
+  return u.origin;
 }
 
 /** Imports the root key; it cannot be read back out of the browser. */
