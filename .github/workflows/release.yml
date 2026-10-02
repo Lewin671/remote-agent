@@ -87,6 +87,9 @@ jobs:
       - name: Go tests
         if: steps.plan.outputs.skip != 'true'
         run: go test ./...
+      - name: Check reachable Go vulnerabilities
+        if: steps.plan.outputs.skip != 'true'
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: Web tests and build
         if: steps.plan.outputs.skip != 'true'
         working-directory: web
