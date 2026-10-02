@@ -329,8 +329,9 @@ fun DeviceScreen(id: String) {
                         @Composable { GRow("模型", d.model.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
                         @Composable { GRow("推理强度", d.effort.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
                         @Composable {
+                            // One line: that project settings may differ is said in the picker.
                             GRow(
-                                "审批模式", (cur?.text ?: modeLabel(null, eff, agent)) + " ›", onClick = if (save.running) null else ({ pickMode = agent }),
+                                "审批模式", (cur?.text ?: modeLabel(null, eff.copy(varies = false), agent)) + " ›", onClick = if (save.running) null else ({ pickMode = agent }),
                                 valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
                             )
                         },
