@@ -846,3 +846,10 @@ fun protocolMismatch(m: MachineView?): String? {
         else -> null
     }
 }
+
+/** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; null when unknown. */
+fun contextText(tokens: Long): String? = when {
+    tokens <= 0 -> null
+    tokens >= 1_000_000 -> "${(tokens / 100_000 / 10.0).toString().removeSuffix(".0")}M 上下文"
+    else -> "${(tokens + 500) / 1000}k 上下文"
+}

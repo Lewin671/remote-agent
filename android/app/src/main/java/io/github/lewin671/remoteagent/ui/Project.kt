@@ -617,7 +617,7 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                         val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
                         ms.modelsList.forEachIndexed { i, m ->
-                            ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
+                            ListItem(m.displayName.ifEmpty { m.slug }, small = io.github.lewin671.remoteagent.core.contextText(m.contextWindow), checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
                                 val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
                                 c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
                             })

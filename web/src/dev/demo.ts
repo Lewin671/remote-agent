@@ -487,10 +487,10 @@ const models = create(ListModelsResponseSchema, {
 const claudeModels = create(ListModelsResponseSchema, {
   defaultModel: "sonnet",
   models: [
-    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
-    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
-    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium" },
-    { slug: "haiku", displayName: "Haiku", efforts: [] },
+    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "haiku", displayName: "Haiku", efforts: [], contextWindow: 200_000n },
   ],
 });
 

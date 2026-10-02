@@ -86,12 +86,13 @@ func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions,
 var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
 // models are the aliases /model lists. Which model an alias stands for
-// changes with Claude Code releases; the menu shows it.
+// changes with Claude Code releases; the menu shows it. The context
+// windows are what /context reports for each alias (claude-code-notes §2).
 var models = []*pb.ModelInfo{
-	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium"},
-	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium"},
-	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium"},
-	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers"},
+	{Slug: "opus", DisplayName: "Opus", Description: "Best for everyday, complex tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
+	{Slug: "fable", DisplayName: "Fable", Description: "Most capable for your hardest and longest-running tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
+	{Slug: "sonnet", DisplayName: "Sonnet", Description: "Efficient for routine tasks", Efforts: efforts, DefaultEffort: "medium", ContextWindow: 1_000_000},
+	{Slug: "haiku", DisplayName: "Haiku", Description: "Fastest for quick answers", ContextWindow: 200_000},
 }
 
 // Models lists the aliases of /model. The default is the model set in

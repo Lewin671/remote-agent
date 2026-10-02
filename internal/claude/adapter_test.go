@@ -592,3 +592,17 @@ func TestAutoNoteIgnored(t *testing.T) {
 		}
 	}
 }
+
+// The pickers show each alias's context window (claude-code-notes §2).
+func TestModelsContextWindow(t *testing.T) {
+	list, err := (&Adapter{home: t.TempDir()}).Models()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int64{"opus": 1_000_000, "fable": 1_000_000, "sonnet": 1_000_000, "haiku": 200_000}
+	for _, m := range list.Models {
+		if m.ContextWindow != want[m.Slug] {
+			t.Errorf("%s: context window %d, want %d", m.Slug, m.ContextWindow, want[m.Slug])
+		}
+	}
+}

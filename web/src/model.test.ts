@@ -45,6 +45,7 @@ import {
   when,
   type MachineLike,
   type SessionLike,
+  contextText,
 } from "./model";
 
 function events(...kinds: object[]): Event[] {
@@ -849,4 +850,11 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
     expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");
     expect(backgroundNote(ToolBackground.REQUESTED)).toContain("要求");
   });
+});
+
+it("writes a model's context window, and nothing when it is unknown", () => {
+  expect(contextText(1_000_000n)).toBe("1M 上下文");
+  expect(contextText(200_000n)).toBe("200k 上下文");
+  expect(contextText(0n)).toBe("");
+  expect(contextText(undefined)).toBe("");
 });

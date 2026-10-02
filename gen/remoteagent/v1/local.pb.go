@@ -1834,6 +1834,8 @@ type ModelInfo struct {
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Efforts       []string               `protobuf:"bytes,4,rep,name=efforts,proto3" json:"efforts,omitempty"`
 	DefaultEffort string                 `protobuf:"bytes,5,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
+	// Context window in tokens; 0 when unknown.
+	ContextWindow int64 `protobuf:"varint,6,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1901,6 +1903,13 @@ func (x *ModelInfo) GetDefaultEffort() string {
 		return x.DefaultEffort
 	}
 	return ""
+}
+
+func (x *ModelInfo) GetContextWindow() int64 {
+	if x != nil {
+		return x.ContextWindow
+	}
+	return 0
 }
 
 type ListModelsResponse struct {
@@ -3774,13 +3783,14 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x06effort\x18\x03 \x01(\tR\x06effort\"\x12\n" +
 	"\x10SetModelResponse\"@\n" +
 	"\x11ListModelsRequest\x12+\n" +
-	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\"\xa5\x01\n" +
+	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\"\xcc\x01\n" +
 	"\tModelInfo\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
 	"\aefforts\x18\x04 \x03(\tR\aefforts\x12%\n" +
-	"\x0edefault_effort\x18\x05 \x01(\tR\rdefaultEffort\"l\n" +
+	"\x0edefault_effort\x18\x05 \x01(\tR\rdefaultEffort\x12%\n" +
+	"\x0econtext_window\x18\x06 \x01(\x03R\rcontextWindow\"l\n" +
 	"\x12ListModelsResponse\x121\n" +
 	"\x06models\x18\x01 \x03(\v2\x19.remoteagent.v1.ModelInfoR\x06models\x12#\n" +
 	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\"i\n" +

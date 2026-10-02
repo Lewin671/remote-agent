@@ -180,7 +180,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 val list = if (all || ms.modelsCount <= 5) ms.modelsList else ms.modelsList.take(3)
                 list.forEachIndexed { i, m ->
                     ListItem(
-                        m.displayName.ifEmpty { m.slug }, small = if (m.effortsList.isEmpty()) "无推理强度" else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { "最高 $it" },
+                        m.displayName.ifEmpty { m.slug }, small = listOfNotNull(io.github.lewin671.remoteagent.core.contextText(m.contextWindow), if (m.effortsList.isEmpty()) "无推理强度" else m.effortsList.lastOrNull()?.takeIf { it != "high" }?.let { "最高 $it" }).joinToString(" · ").ifEmpty { null },
                         checked = m.slug == pickedModel, enabled = !running && !act.running, last = i == list.size - 1 && (all || ms.modelsCount <= 5),
                         onClick = {
                             pickedModel = m.slug

@@ -308,6 +308,44 @@ public  final class ModelInfo extends
 
   }
 
+  public static final int CONTEXT_WINDOW_FIELD_NUMBER = 6;
+  private long contextWindow_;
+  /**
+   * <pre>
+   * Context window in tokens; 0 when unknown.
+   * </pre>
+   *
+   * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+   * @return The contextWindow.
+   */
+  @java.lang.Override
+  public long getContextWindow() {
+    return contextWindow_;
+  }
+  /**
+   * <pre>
+   * Context window in tokens; 0 when unknown.
+   * </pre>
+   *
+   * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+   * @param value The contextWindow to set.
+   */
+  private void setContextWindow(long value) {
+    
+    contextWindow_ = value;
+  }
+  /**
+   * <pre>
+   * Context window in tokens; 0 when unknown.
+   * </pre>
+   *
+   * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+   */
+  private void clearContextWindow() {
+
+    contextWindow_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.ModelInfo parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -693,6 +731,46 @@ public  final class ModelInfo extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Context window in tokens; 0 when unknown.
+     * </pre>
+     *
+     * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+     * @return The contextWindow.
+     */
+    @java.lang.Override
+    public long getContextWindow() {
+      return instance.getContextWindow();
+    }
+    /**
+     * <pre>
+     * Context window in tokens; 0 when unknown.
+     * </pre>
+     *
+     * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+     * @param value The contextWindow to set.
+     * @return This builder for chaining.
+     */
+    public Builder setContextWindow(long value) {
+      copyOnWrite();
+      instance.setContextWindow(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Context window in tokens; 0 when unknown.
+     * </pre>
+     *
+     * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearContextWindow() {
+      copyOnWrite();
+      instance.clearContextWindow();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ModelInfo)
   }
   @java.lang.Override
@@ -714,10 +792,11 @@ public  final class ModelInfo extends
             "description_",
             "efforts_",
             "defaultEffort_",
+            "contextWindow_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u021a\u0005\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u021a\u0005\u0208\u0006\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

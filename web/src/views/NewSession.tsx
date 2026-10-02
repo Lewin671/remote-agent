@@ -8,6 +8,7 @@ import {
   agentName,
   ago,
   findModel,
+  contextText,
   modelLabel,
   inheritConfig,
   machineAgents,
@@ -538,7 +539,10 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
           </button>
           {info.models?.models.map((m) => (
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
-              <div className="mt">{m.displayName || m.slug}</div>
+              <div className="mt">
+                {m.displayName || m.slug}
+                {contextText(m.contextWindow) && <small>{contextText(m.contextWindow)}</small>}
+              </div>
               {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck">✓</span>}
             </button>
           ))}

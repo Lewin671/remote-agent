@@ -82,4 +82,14 @@ public interface ModelInfoOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDefaultEffortBytes();
+
+  /**
+   * <pre>
+   * Context window in tokens; 0 when unknown.
+   * </pre>
+   *
+   * <code>int64 context_window = 6 [json_name = "contextWindow"];</code>
+   * @return The contextWindow.
+   */
+  long getContextWindow();
 }

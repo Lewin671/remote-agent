@@ -446,7 +446,7 @@ private fun DefaultModelSheet(machineId: String, agent: Agent, s: DaemonSettings
             else -> {
                 ListItem("默认（${agentName(agent)} 自己的配置）", checked = model.isEmpty(), onClick = { onPick("", "") })
                 ms.modelsList.forEachIndexed { i, m ->
-                    ListItem(m.displayName.ifEmpty { m.slug }, small = if (m.effortsList.isEmpty()) "无推理强度" else null, checked = m.slug == model, last = i == ms.modelsCount - 1,
+                    ListItem(m.displayName.ifEmpty { m.slug }, small = listOfNotNull(io.github.lewin671.remoteagent.core.contextText(m.contextWindow), if (m.effortsList.isEmpty()) "无推理强度" else null).joinToString(" · ").ifEmpty { null }, checked = m.slug == model, last = i == ms.modelsCount - 1,
                         onClick = { if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug })
                 }
                 ms.modelsList.firstOrNull { it.slug == model }?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->

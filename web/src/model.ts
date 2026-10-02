@@ -393,6 +393,13 @@ export function findModel<M extends { slug: string }>(models: M[] | undefined, i
   return models.find((m) => m.slug === id) ?? models.find((m) => modelIs(id, m.slug));
 }
 
+/** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; empty when unknown. */
+export function contextText(tokens: bigint | undefined): string {
+  const n = Number(tokens ?? 0n);
+  if (n <= 0) return "";
+  return `${n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k`} 上下文`;
+}
+
 /** The name to show for a model: its display name from the machine's
  * list; the ID as is while the list has not come; and for a Codex model
  * missing from the list (the machine's default may be one Codex hides

@@ -281,6 +281,8 @@ message ModelInfo {
   string description = 3;
   repeated string efforts = 4;
   string default_effort = 5;
+  // Context window in tokens; 0 when unknown.
+  int64 context_window = 6;
 }
 
 message ListModelsResponse {
