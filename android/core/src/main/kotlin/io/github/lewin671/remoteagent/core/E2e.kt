@@ -144,6 +144,7 @@ data class Secret(val root: ByteArray, val server: String) {
                 throw IllegalArgumentException("server 地址无效")
             }
             val host = u.host ?: throw IllegalArgumentException("server 地址无效")
+            require(u.rawUserInfo == null) { "server 地址不能包含用户名或密码" }
             val local = host in setOf("localhost", "127.0.0.1", "[::1]", "::1") || (allowPlainHttp && host == "10.0.2.2")
             when (u.scheme) {
                 "https" -> {}

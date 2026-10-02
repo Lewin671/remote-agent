@@ -36,11 +36,15 @@ class Account(
 }
 
 /** The server's services over the Connect protocol with binary protobuf. */
-class Api(val server: String, http: OkHttpClient) {
+class Api(server: String, http: OkHttpClient) {
+    // 10.0.2.2 is the emulator's host loopback. Release Android network
+    // policy still blocks all cleartext; no remote HTTP origin is accepted.
+    val server = Secret.checkServer(server, allowPlainHttp = true)
     private val protocol = ProtocolClient(
-        ConnectOkHttpClient(http),
+        // Never replay login, registration or pairing bodies at another URL.
+        ConnectOkHttpClient(http.newBuilder().followRedirects(false).followSslRedirects(false).build()),
         ProtocolClientConfig(
-            host = server,
+            host = this.server,
             serializationStrategy = GoogleJavaLiteProtobufStrategy(),
             networkProtocol = NetworkProtocol.CONNECT,
         ),
@@ -55,6 +59,8 @@ class Api(val server: String, http: OkHttpClient) {
 
         /** An HTTP client with the timeouts the protocol expects: Forward waits up to 30 s. */
         fun defaultHttp(): OkHttpClient = OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
