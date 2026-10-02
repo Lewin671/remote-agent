@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -273,7 +274,9 @@ func (p *pusher) send(deviceID, sub string, payload []byte) {
 	if json.Unmarshal([]byte(sub), &s) != nil || validatePushEndpoint(s.Endpoint) != nil {
 		return
 	}
-	res, err := webpush.SendNotification(payload, &s, &webpush.Options{
+	// webpush-go appends padding to the payload backing array. Each concurrent
+	// delivery must own its input buffer.
+	res, err := webpush.SendNotification(bytes.Clone(payload), &s, &webpush.Options{
 		HTTPClient: p.client, Subscriber: p.subscriber, VAPIDPublicKey: p.pub, VAPIDPrivateKey: p.priv,
 		TTL: 3600, Urgency: webpush.UrgencyHigh, Topic: "",
 	})
