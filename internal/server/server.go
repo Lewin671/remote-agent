@@ -51,12 +51,14 @@ type Config struct {
 
 // Limits on what peers may send.
 const (
-	maxEnvelopeBytes = 1 << 20
-	maxUploadEvents  = 500
-	maxRequestBytes  = 8 << 20
-	maxFrameBytes    = 2 << 20
-	defaultEventPage = 200
-	maxEventPage     = 1000
+	maxEnvelopeBytes       = 1 << 20
+	maxUploadEvents        = 500
+	maxRequestBytes        = 8 << 20
+	maxAuthRequestBytes    = 16 << 10
+	maxPairingRequestBytes = 2 << 20
+	maxFrameBytes          = 2 << 20
+	defaultEventPage       = 200
+	maxEventPage           = 1000
 	// Bound memory as well as event count; legal envelopes can be 1 MiB.
 	maxEventPageBytes = 4 << 20
 	// sendQueue is how many frames may wait for a slow stream peer before
@@ -79,6 +81,7 @@ type Server struct {
 	streamMu            sync.Mutex
 	streams             map[string]map[*streamAuth]struct{}
 	pendingStreamHellos chan struct{}
+	rpcRequests         chan struct{}
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -118,7 +121,7 @@ func New(cfg Config) (*Server, error) {
 		st.Close()
 		return nil, err
 	}
-	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), stop: make(chan struct{})}
+	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)
@@ -141,15 +144,15 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	opts := []connect.HandlerOption{connect.WithReadMaxBytes(maxRequestBytes)}
 	authed := append(opts, connect.WithInterceptors(s.authInterceptor()))
-	mux.Handle(remoteagentv1connect.NewAuthServiceHandler(&authService{s: s}, opts...))
+	mux.Handle(remoteagentv1connect.NewAuthServiceHandler(&authService{s: s}, connect.WithReadMaxBytes(maxAuthRequestBytes)))
 	// Pairing authenticates per call: the joiner has no login yet.
-	mux.Handle(remoteagentv1connect.NewPairingServiceHandler(s.pairing, opts...))
+	mux.Handle(remoteagentv1connect.NewPairingServiceHandler(s.pairing, connect.WithReadMaxBytes(maxPairingRequestBytes)))
 	mux.Handle(remoteagentv1connect.NewClientServiceHandler(&clientService{s: s}, authed...))
 	mux.Handle(remoteagentv1connect.NewMachineServiceHandler(&machineService{s: s}, authed...))
 	mux.HandleFunc("/v1/stream", s.hub.serve)
 	mux.HandleFunc("/v1/term", s.term.serve)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
-	return s.cors(mux)
+	return s.cors(s.limitRPCRequests(mux, rpcBodyReadTimeout))
 }
 
 // cors lets the allowed web origins call the API.

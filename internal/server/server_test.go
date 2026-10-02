@@ -216,7 +216,11 @@ func TestChallengesAreBounded(t *testing.T) {
 	ts := newTestServer(t)
 	ctx := context.Background()
 	for _, id := range []string{"", "short", string(make([]byte, 32)), strings.Repeat("x", 1<<16)} {
-		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		want := connect.CodeInvalidArgument
+		if len(id) > 16<<10 {
+			want = connect.CodeResourceExhausted
+		}
+		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id})); connect.CodeOf(err) != want {
 			t.Fatalf("device ID %.10q: %v", id, err)
 		}
 	}
