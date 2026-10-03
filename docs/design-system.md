@@ -1,6 +1,6 @@
 # 界面设计规范
 
-本文写客户端界面（网页、宽屏和 Android）共用的视觉与交互规则：信息层级、颜色、字号、间距、圆角、符号、组件和文案，以及每条规则的理由。界面具体长什么样见当前界面稿 [design/client-v23.html](design/client-v23.html)，功能边界见 [scope.md](scope.md)，技术决策见 [architecture.md](architecture.md)。本文不写某个画面的布局；界面稿和本文冲突时，先按本文改界面稿，确实需要例外的，在本文写明例外和理由。
+本文写客户端界面（网页、宽屏和 Android）共用的视觉与交互规则：信息层级、颜色、字号、间距、圆角、符号、组件和文案，以及每条规则的理由。界面具体长什么样见当前界面稿 [design/client-v24.html](design/client-v24.html)，功能边界见 [scope.md](scope.md)，技术决策见 [architecture.md](architecture.md)。本文不写某个画面的布局；界面稿和本文冲突时，先按本文改界面稿，确实需要例外的，在本文写明例外和理由。
 
 ## 1. 信息层级
 
