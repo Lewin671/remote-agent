@@ -256,6 +256,10 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .toolout .more { color: var(--muted); cursor: pointer; }
 .sep { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin: 12px 0; }
 .sep::before, .sep::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.sep.fork::before, .sep.fork::after { min-width: 12px; }
+.sep.fork > span { min-width: 0; display: flex; gap: 4px; white-space: nowrap; }
+.sep.fork .src { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sep.fork a { color: var(--blue); text-decoration: none; }
 .sysline { text-align: center; font-size: 12px; color: var(--muted); margin: 10px 0; }
 .sysline b { font-weight: var(--w6); color: var(--fg2); }
 .sysline.warn { color: var(--orange-ink); }
@@ -455,6 +459,11 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .actsheet .info + .ai2 { border-top: 1px solid var(--line); }
 .actsheet .ai2.red { color: var(--red); } .actsheet .ai2.warn { color: var(--orange-ink); }
 .actsheet .ai2.cancel { font-weight: var(--w6); }
+.actsheet .ai2.two { flex-direction: column; gap: 1px; padding: 6px 14px; }
+.actsheet .ai2.two small { font-size: 12px; color: var(--muted); }
+.actsheet .ai2.two small.err { color: var(--red); }
+.actsheet .ai2.dis > span, .actsheet .ai2.dis:not(.two) { opacity: .4; }
+.actsheet .ai2.busy { color: var(--muted); gap: 6px; }
 .actsheet .info { padding: 10px 14px; font-size: 12px; color: var(--muted); text-align: center; word-break: break-all; }
 .actsheet .info .mono { color: var(--fg2); }
 

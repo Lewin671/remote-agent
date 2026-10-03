@@ -12,6 +12,7 @@ import {
   decisionText,
   derive,
   dockItems,
+  forkBlocked,
   findModel,
   modelLabel,
   defaultModeOf,
@@ -97,6 +98,37 @@ describe("state priority", () => {
     expect(previewOf(idle, stateOf(idle, online))).toBe("改了 a.go，见 文档");
     const fresh = sess();
     expect(previewOf(fresh, stateOf(fresh, online))).toBe("还没发消息");
+  });
+});
+
+describe("forking a session", () => {
+  it("is offered between turns, once a message was sent", () => {
+    expect(forkBlocked(sess({ title: "修复登录超时" }), online)).toBe("");
+    expect(forkBlocked(sess({ title: "修复登录超时", status: SessionStatus.EXITED }), online)).toBe("");
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.RUNNING }), online)).toBe("这一轮结束后可用");
+    expect(forkBlocked(sess({ title: "x", pendingApprovals: 1 }), online)).toBe("这一轮结束后可用");
+    expect(forkBlocked(sess({ title: "x", pendingQuestions: 1 }), online)).toBe("这一轮结束后可用");
+    // The events may say a turn runs before the summary does.
+    expect(forkBlocked(sess({ title: "x" }), online, true)).toBe("这一轮结束后可用");
+    expect(forkBlocked(sess({ title: "x", planOpen: true }), online)).toBe("处理完等待事项后可用");
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.BLOCKED }), online)).toBe("处理完等待事项后可用");
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.STARTING }), online)).toBe("启动完成后可用");
+    expect(forkBlocked(sess(), online)).toBe("发过消息后可用");
+  });
+
+  it("draws the line where the fork leaves its source, and nothing of the source's still runs", () => {
+    const evs = events(
+      { case: "turnStarted", value: {} },
+      { case: "userMessage", value: { text: "查一下超时" } },
+      { case: "toolStarted", value: { callId: "c1", title: "go test ./..." } },
+      { case: "sessionForked", value: { sourceSessionId: "s0", sourceTitle: "查一下超时" } },
+      { case: "userMessage", value: { text: "换一种做法" } },
+    );
+    const d = derive(evs);
+    expect(d.running).toBe(false);
+    expect(d.tools).toEqual([]);
+    const kinds = timeline(evs, d).map((it) => (it.kind === "event" ? it.event.kind.case : it.kind));
+    expect(kinds).toEqual(["userMessage", "unsettled", "sessionForked", "userMessage"]);
   });
 });
 

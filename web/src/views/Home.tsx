@@ -155,7 +155,8 @@ export function SessionRow({
         </div>
         {!compact && <div className="pv">{previewOf(s, st, pending)}</div>}
         <div className="mc">
-          <span className={"stw " + st.tone}>{st.text}</span> · {agentName(agentOf(s))}
+          <span className={"stw " + st.tone}>{st.text}</span>
+          {s.info?.forkedFrom ? " · 分叉" : ""} · {agentName(agentOf(s))}
           {showProject && ` · ${projectName(projectKey(s))}`} · {machineName(machine)}
         </div>
       </div>

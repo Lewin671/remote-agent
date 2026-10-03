@@ -98,6 +98,15 @@ export interface Action {
   red?: boolean;
   warn?: boolean;
   onClick: () => void;
+  /** Grayed out and not clickable. */
+  disabled?: boolean;
+  /** A line under the label: why it is disabled, or (red) why it failed. */
+  note?: string;
+  noteRed?: boolean;
+  /** In progress: the label is what is happening. */
+  busy?: boolean;
+  /** Clicking leaves the sheet open, for the action to report in it. */
+  keep?: boolean;
 }
 
 /** An iOS-style action sheet: an info line, actions, and 取消. */
@@ -112,13 +121,16 @@ export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; acti
           {actions.map((a) => (
             <button
               key={a.label}
-              className={"ai2" + (a.red ? " red" : a.warn ? " warn" : "")}
+              className={"ai2" + (a.red ? " red" : a.warn ? " warn" : "") + (a.note ? " two" : "") + (a.disabled ? " dis" : "") + (a.busy ? " busy" : "")}
+              disabled={a.disabled || a.busy}
               onClick={() => {
-                onClose();
+                if (!a.keep) onClose();
                 a.onClick();
               }}
             >
-              {a.label}
+              {a.busy && <span className="sp">◌</span>}
+              {a.note ? <span>{a.label}</span> : a.label}
+              {a.note && <small className={a.noteRed ? "err" : ""}>{a.note}</small>}
             </button>
           ))}
         </div>

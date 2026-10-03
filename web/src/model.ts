@@ -162,6 +162,26 @@ export function stateOf(s: SessionLike, machine?: MachineLike): State {
   return { kind, tone, text };
 }
 
+/** Why a session cannot be forked now, or "" when it can: the CLIs fork a
+ * conversation between turns, and there must be one (architecture §13).
+ * running is what the session's events say, which may be ahead of its
+ * summary. */
+export function forkBlocked(s: SessionLike, machine?: MachineLike, running = false): string {
+  switch (stateOf(s, machine).kind) {
+    case "starting":
+      return "启动完成后可用";
+    case "running":
+    case "approval":
+    case "question":
+      return "这一轮结束后可用";
+    case "plan":
+    case "popup":
+      return "处理完等待事项后可用";
+  }
+  if (running) return "这一轮结束后可用";
+  return s.info?.title || s.info?.preview ? "" : "发过消息后可用";
+}
+
 export function needsAttention(s: SessionLike, machine?: MachineLike): boolean {
   return stateOf(s, machine).tone === "wait";
 }
@@ -766,6 +786,14 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           settle(d, false);
         }
         break;
+      case "sessionForked":
+        // What came before is the source's history: nothing of it runs or
+        // waits in this session.
+        d.running = false;
+        d.approvals.clear();
+        d.questions.clear();
+        settle(d, false);
+        break;
     }
   }
   return d;
@@ -979,6 +1007,7 @@ function visible(e: Event, d: Derived): boolean {
     case "toolStarted":
     case "planAnswered":
     case "imageGenerated":
+    case "sessionForked":
       return true;
     case "turnEnded":
       return k.value.outcome === TurnOutcome.ABORTED || k.value.durationMs >= 1000n;

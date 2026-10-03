@@ -1837,3 +1837,52 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   await click(button("保存"));
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
 });
+
+it("forks a session from ⋯: says why it cannot yet, reports a failure in the menu, and opens the fork", async () => {
+  const r = demo();
+  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+
+  // A running session shows the item grayed out, with when it will work.
+  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+  await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+  expect(row().disabled).toBe(true);
+  expect(row().textContent).toBe("分叉会话这一轮结束后可用");
+  act(() => root?.unmount());
+  host.remove();
+
+  const s = r.sessions.get("s-idle")!;
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+  expect(row().disabled).toBe(false);
+
+  // A failure stays in the menu, under the item, which can be tried again.
+  const command = vi.spyOn(r, "command");
+  command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 没有回应"));
+  await click(row());
+  await vi.waitFor(() => expect(row().textContent).toBe("分叉会话没能分叉：MacBook 没有回应"));
+  expect(row().disabled).toBe(false);
+
+  // While it forks the row says so and the others wait; then the fork opens.
+  location.hash = "";
+  await click(row());
+  expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } });
+  expect(row().textContent).toBe("◌正在分叉…");
+  expect(button("重命名")!.disabled).toBe(true);
+  await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
+  expect(host.querySelector(".actsheet")).toBeNull();
+
+  // The fork carries the conversation and says where it came from.
+  const id = decodeURIComponent(location.hash.slice(4));
+  expect(r.created.has(id)).toBe(true);
+  await vi.waitFor(() => expect(r.sessions.get(id)).toBeTruthy(), { timeout: 3000 });
+  const fork = r.sessions.get(id)!;
+  expect(fork.info!.forkedFrom).toBe(s.id);
+  act(() => root?.unmount());
+  host.remove();
+  mount(<SessionPage remote={r} session={fork} onBack={() => undefined} wide={false} />);
+  await vi.waitFor(() => expect(host.querySelector(".sep.fork")).toBeTruthy());
+  expect(host.querySelector(".ccol")?.textContent).toContain("已补充 12 个接口的说明");
+  const link = host.querySelector<HTMLAnchorElement>(".sep.fork a")!;
+  expect(link.textContent).toBe("补充接口文档 ›");
+  expect(link.getAttribute("href")).toBe("#/s/s-idle");
+});

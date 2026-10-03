@@ -16,6 +16,7 @@ import {
   duration,
   eventTime,
   exitReason,
+  forkBlocked,
   dayTime,
   hhmm,
   inputFailure,
@@ -25,6 +26,7 @@ import {
   contextPercent,
   CONTEXT_WARN,
   phaseOf,
+  plain,
   projectKey,
   projectName,
   shortPath,
@@ -120,6 +122,10 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [menu, setMenu] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const [forking, setForking] = useState(false);
+  const [forkError, setForkError] = useState("");
+  const menuOpen = useRef(false);
+  menuOpen.current = menu;
   const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
@@ -228,8 +234,32 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const high = pct !== undefined && pct > CONTEXT_WARN;
   const model = session.info?.model ? [remote.modelName(session.machineId, agent, session.info.model), session.info.effort].filter(Boolean).join(" · ") : "";
   const moreLabel = high ? `更多，上下文 ${pct}%` : "更多";
+  const openMenu = () => {
+    setForkError("");
+    setMenu(true);
+  };
+  /** Forks the session on its computer and opens the new one. The menu
+   * stays open meanwhile and says how it went. */
+  const fork = async () => {
+    setForking(true);
+    setForkError("");
+    try {
+      const res = await remote.command(sid, { case: "forkSession", value: { sessionId: sid } });
+      if (res.kind.case !== "forkSession" || !res.kind.value.session) throw new Error("意外的回复");
+      const id = res.kind.value.session.id;
+      remote.created.add(id);
+      setMenu(false);
+      location.hash = "/s/" + encodeURIComponent(id);
+    } catch (e) {
+      if (menuOpen.current) setForkError(errorText(e));
+      else setToast("没能分叉：" + errorText(e));
+    } finally {
+      setForking(false);
+    }
+  };
+  const forkWhy = forkBlocked(session, machine, d.running);
   const more = (
-    <button className={"more" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
+    <button className={"more" + (high ? " context-high" : "")} onClick={openMenu} aria-label={moreLabel}>
       ⋯
     </button>
   );
@@ -243,7 +273,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           {st.text}{!ended && !(starting && !modeOf(session)) && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
         </span>
         {seg}
-        <button className={"mr" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
+        <button className={"mr" + (high ? " context-high" : "")} onClick={openMenu} aria-label={moreLabel}>
           ⋯
         </button>
       </div>
@@ -345,9 +375,18 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             ...(!inactive ? [{ label: model ? `模型：${model}` : "会话设置", onClick: () => setSheet("model") }] : []),
             ...(!inactive && pct !== undefined ? [{ label: `上下文：${pct}%`, warn: high, onClick: () => setSheet("model") }] : []),
             ...(machine?.online && remote.conn === "online" ? [{ label: "重命名", onClick: () => setRenaming(true) }] : []),
+            ...(machine?.online && remote.conn === "online"
+              ? [
+                  forking
+                    ? { label: "正在分叉…", busy: true, keep: true, onClick: () => undefined }
+                    : forkWhy
+                      ? { label: "分叉会话", disabled: true, note: forkWhy, onClick: () => undefined }
+                      : { label: "分叉会话", keep: true, note: forkError && "没能分叉：" + forkError, noteRed: true, onClick: () => void fork() },
+                ]
+              : []),
             ...(!inactive && d.running ? [{ label: "中断本轮", red: true, onClick: interrupt }] : []),
             ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
-          ]}
+          ].map((a) => ("busy" in a || !forking ? a : { ...a, disabled: true }))}
           onClose={() => setMenu(false)}
         />
       )}
@@ -800,6 +839,26 @@ function Row({
     case "sessionState": {
       const t = eventTime(e);
       return <div className="sep">{t ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} ` : ""}结束</div>;
+    }
+    case "sessionForked": {
+      const t = eventTime(e);
+      // The source as it is titled now; one this client no longer has is
+      // named as it was, without a way there.
+      const src = remote.sessions.get(k.value.sourceSessionId);
+      return (
+        <div className="sep fork">
+          <span>
+            {t ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} ` : ""}分叉自
+            {src ? (
+              <a className="src" href={"#/s/" + encodeURIComponent(src.id)}>
+                {titleOf(src)} ›
+              </a>
+            ) : (
+              <span className="src">{plain(k.value.sourceTitle) || "另一个会话"}</span>
+            )}
+          </span>
+        </div>
+      );
     }
   }
   return null;

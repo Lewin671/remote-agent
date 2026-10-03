@@ -819,6 +819,23 @@ export class DemoRemote extends Remote {
       case "renameSession":
         this.patch(sid, { title: cmd.value.title });
         return ok();
+      case "forkSession": {
+        await sleep(800);
+        const src = this.sessions.get(sid)!;
+        if (sid === "s-ended3") throw new CommandError("failed_precondition", "目录 ~/Code/foo 不存在了");
+        const id = "s-fork-" + Math.random().toString(16).slice(2, 8);
+        const history = this.events(sid).filter((e) => e.kind.case !== "sessionState" && e.kind.case !== "inputState");
+        const info: Session = { ...(src.info ?? create(SessionSchema, {})), id, status: SessionStatus.STARTING, statusDetail: "", createdAt: timestampFromMs(Date.now()), forkedFrom: sid, forkedSeq: BigInt(history.length + 1) };
+        const view: SessionView = { id, machineId: src.machineId, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(Date.now()) };
+        setTimeout(() => {
+          this.sessions.set(id, view);
+          const list = this.events(id);
+          for (const e of history) list.push(create(EventSchema, { ...e, seq: BigInt(list.length + 1), sessionId: id }));
+          this.push(id, { case: "sessionForked", value: { sourceSessionId: sid, sourceTitle: src.info?.title ?? "" } });
+        }, 300);
+        setTimeout(() => this.patch(id, { status: SessionStatus.IDLE }), 2500);
+        return create(CommandResultSchema, { kind: { case: "forkSession", value: { session: info } } });
+      }
       case "setModel":
         if (cmd.value.model === "gpt-6-nova") throw new CommandError("unknown", "Codex 的菜单和预期不一样");
         this.push(sid, { case: "settingsChanged", value: { model: cmd.value.model, effort: cmd.value.effort } });
