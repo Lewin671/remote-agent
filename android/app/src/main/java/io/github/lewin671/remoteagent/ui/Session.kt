@@ -153,7 +153,7 @@ fun SessionScreen(sid: String) {
     }
 }
 
-/** ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 中断本轮 and 结束会话…. */
+/** ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 重命名, 中断本轮 and 结束会话…. */
 @Composable
 private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, dark: Boolean) {
     val p = pal
@@ -162,9 +162,12 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     var menu by remember { mutableStateOf(false) }
     var confirmStop by remember { mutableStateOf(false) }
     var projectSettings by remember { mutableStateOf(false) }
+    var rename by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model
     val act = rememberAction()
     val live = status != Status.EXITED && status != Status.OFFLINE
+    // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
+    val canRename = state.conn == ConnState.ONLINE && machineOf(state, s)?.online == true
     // Claude Code records full model IDs; show the alias the list offers.
     var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
     LaunchedEffect(s.machineId, s.agent()) {
@@ -197,6 +200,7 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
                 pc?.let { add(SheetAction("上下文：$it%", warn = high) { sheet = 2 }) }
             }
             add(SheetAction("项目设置") { projectSettings = true })
+            if (canRename) add(SheetAction("重命名") { rename = true })
             if (running) add(SheetAction("中断本轮") { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
             if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true) { confirmStop = true })
         },
@@ -208,6 +212,7 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
             projectSettings = false
         }, onClose = { projectSettings = false })
     }
+    if (rename) RenameDialog(s, onClose = { rename = false })
     when (sheet) {
         1 -> ModeSheet(s, onClose = { sheet = 0 })
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })

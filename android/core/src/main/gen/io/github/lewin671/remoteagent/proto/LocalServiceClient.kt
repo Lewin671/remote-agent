@@ -195,6 +195,21 @@ public class LocalServiceClient(
 
 
   /**
+   *  RenameSession gives a session a title of the user's choosing.
+   */
+  override suspend fun renameSession(request: RenameSessionRequest, headers: Headers): ResponseMessage<RenameSessionResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/RenameSession",
+      io.github.lewin671.remoteagent.proto.RenameSessionRequest::class,
+      io.github.lewin671.remoteagent.proto.RenameSessionResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
    *  Compact runs /compact while the session is idle.
    */
   override suspend fun compact(request: CompactRequest, headers: Headers): ResponseMessage<CompactResponse> = client.unary(

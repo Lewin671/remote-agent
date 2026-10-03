@@ -41,6 +41,27 @@ class ModelTest {
     }
 
     @Test
+    fun renameStartsFromTheTitleAndSendsOnlyAChange() {
+        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
+        assertEquals("登录接口偶尔超时", renameInitial(s { title = " 登录接口偶尔超时 " }))
+        // The "<folder> · <start time>" placeholder is not a title to edit.
+        assertEquals("", renameInitial(s { cwd = "/Users/me/Code/billing" }))
+        assertEquals("", renameInitial(SessionView("s", "m")))
+
+        // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
+        assertEquals("字".repeat(60), titleInput("字".repeat(61)))
+        assertEquals("😀".repeat(60), titleInput("😀".repeat(61)))
+        assertEquals("a".repeat(59) + "😀", titleInput("a".repeat(59) + "😀" + "b"))
+        assertEquals("第一行 第二行", titleInput("第一行\r\n第二行"))
+
+        assertEquals(null, renameTitle("  登录超时 ", "登录超时"))
+        assertEquals("登录超时：限流和重试", renameTitle(" 登录超时：限流和重试\u3000", "登录超时"))
+        // Emptied: back to the automatic title; nothing to do when there was none.
+        assertEquals("", renameTitle("  ", "登录超时"))
+        assertEquals(null, renameTitle("", ""))
+    }
+
+    @Test
     fun derivesPendingItemsAndInputs() {
         val d = derive(
             listOf(

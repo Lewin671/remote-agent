@@ -188,6 +188,17 @@ public interface CommandResultOrBuilder extends
   io.github.lewin671.remoteagent.proto.ResumeInputResponse getResumeInput();
 
   /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   * @return Whether the renameSession field is set.
+   */
+  boolean hasRenameSession();
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   * @return The renameSession.
+   */
+  io.github.lewin671.remoteagent.proto.RenameSessionResponse getRenameSession();
+
+  /**
    * <code>.remoteagent.v1.CreateSessionResponse create_session = 30 [json_name = "createSession"];</code>
    * @return Whether the createSession field is set.
    */

@@ -60,6 +60,11 @@ public interface LocalServiceClientInterface {
   public suspend fun setApprovalMode(request: SetApprovalModeRequest, headers: Headers = emptyMap()): ResponseMessage<SetApprovalModeResponse>
 
   /**
+   *  RenameSession gives a session a title of the user's choosing.
+   */
+  public suspend fun renameSession(request: RenameSessionRequest, headers: Headers = emptyMap()): ResponseMessage<RenameSessionResponse>
+
+  /**
    *  Compact runs /compact while the session is idle.
    */
   public suspend fun compact(request: CompactRequest, headers: Headers = emptyMap()): ResponseMessage<CompactResponse>

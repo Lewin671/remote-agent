@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,11 +28,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
@@ -39,10 +52,14 @@ import io.github.lewin671.remoteagent.core.contextPercent
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.modeOf
+import io.github.lewin671.remoteagent.core.renameInitial
+import io.github.lewin671.remoteagent.core.renameTitle
+import io.github.lewin671.remoteagent.core.titleInput
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.CompactRequest
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
+import io.github.lewin671.remoteagent.proto.RenameSessionRequest
 import io.github.lewin671.remoteagent.proto.SetApprovalModeRequest
 import io.github.lewin671.remoteagent.proto.SetModelRequest
 
@@ -94,6 +111,60 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         "切到完全放行？", "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。", "切换", danger = true,
         onDismiss = { confirmFull = false },
     ) { set(Mode.FULL) }
+}
+
+/**
+ * 重命名会话: the title on one line, selected so that typing replaces it, with
+ * the keyboard up. Saving it empty goes back to the automatic title. The new
+ * title comes back in the session's metadata; a failure keeps the dialog and
+ * what was typed.
+ */
+@Composable
+fun RenameDialog(s: SessionView, onClose: () -> Unit) {
+    val p = pal
+    val remote = LocalRemote.current
+    val act = rememberAction()
+    val initial = remember { renameInitial(s) }
+    var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+    val focus = remember { FocusRequester() }
+    fun save() {
+        if (act.running) return
+        // The same title again is a cancel.
+        val title = renameTitle(value.text, initial) ?: return onClose()
+        act.run({
+            remote.command(s.id, remote.cmd { renameSession = RenameSessionRequest.newBuilder().setSessionId(s.id).setTitle(title).build() })
+        }) { onClose() }
+    }
+    // Leaving while it is being saved would drop the answer.
+    Dialog(onDismissRequest = { if (!act.running) onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // The keyboard only comes up for a window that has the focus.
+        val window = LocalWindowInfo.current
+        LaunchedEffect(window) {
+            snapshotFlow { window.isWindowFocused }.collect { if (it) focus.requestFocus() }
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).imePadding(), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("重命名会话", style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 12.dp))
+                BasicTextField(
+                    value, { value = it.copy(text = titleInput(it.text)) }, Modifier.fillMaxWidth().padding(bottom = 8.dp).focusRequester(focus),
+                    textStyle = T.body.copy(color = p.fg), cursorBrush = SolidColor(p.blue), singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { save() }),
+                    decorationBox = { inner -> FieldBox { inner() } },
+                )
+                Text(
+                    if (act.error.isNotEmpty()) "没能保存：${act.error}" else "留空保存会恢复自动标题",
+                    style = T.sm, color = if (act.error.isNotEmpty()) p.red else p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 14.dp),
+                )
+                Btns {
+                    Btn("取消", onClose, Modifier.weight(1f), enabled = !act.running)
+                    Btn("保存", { save() }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running)
+                }
+            }
+        }
+    }
 }
 
 /** The context box of 会话设置: the percent, what it is of, and 压缩. */

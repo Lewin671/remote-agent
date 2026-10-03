@@ -640,7 +640,8 @@ public  final class Session extends
   private java.lang.String title_;
   /**
    * <pre>
-   * First line of the first user message, shortened.
+   * The title the user gave the session, else the first clause of the
+   * first user message, shortened.
    * </pre>
    *
    * <code>string title = 15 [json_name = "title"];</code>
@@ -652,7 +653,8 @@ public  final class Session extends
   }
   /**
    * <pre>
-   * First line of the first user message, shortened.
+   * The title the user gave the session, else the first clause of the
+   * first user message, shortened.
    * </pre>
    *
    * <code>string title = 15 [json_name = "title"];</code>
@@ -665,7 +667,8 @@ public  final class Session extends
   }
   /**
    * <pre>
-   * First line of the first user message, shortened.
+   * The title the user gave the session, else the first clause of the
+   * first user message, shortened.
    * </pre>
    *
    * <code>string title = 15 [json_name = "title"];</code>
@@ -680,7 +683,8 @@ public  final class Session extends
   }
   /**
    * <pre>
-   * First line of the first user message, shortened.
+   * The title the user gave the session, else the first clause of the
+   * first user message, shortened.
    * </pre>
    *
    * <code>string title = 15 [json_name = "title"];</code>
@@ -691,7 +695,8 @@ public  final class Session extends
   }
   /**
    * <pre>
-   * First line of the first user message, shortened.
+   * The title the user gave the session, else the first clause of the
+   * first user message, shortened.
    * </pre>
    *
    * <code>string title = 15 [json_name = "title"];</code>
@@ -2244,7 +2249,8 @@ public  final class Session extends
 
     /**
      * <pre>
-     * First line of the first user message, shortened.
+     * The title the user gave the session, else the first clause of the
+     * first user message, shortened.
      * </pre>
      *
      * <code>string title = 15 [json_name = "title"];</code>
@@ -2256,7 +2262,8 @@ public  final class Session extends
     }
     /**
      * <pre>
-     * First line of the first user message, shortened.
+     * The title the user gave the session, else the first clause of the
+     * first user message, shortened.
      * </pre>
      *
      * <code>string title = 15 [json_name = "title"];</code>
@@ -2269,7 +2276,8 @@ public  final class Session extends
     }
     /**
      * <pre>
-     * First line of the first user message, shortened.
+     * The title the user gave the session, else the first clause of the
+     * first user message, shortened.
      * </pre>
      *
      * <code>string title = 15 [json_name = "title"];</code>
@@ -2284,7 +2292,8 @@ public  final class Session extends
     }
     /**
      * <pre>
-     * First line of the first user message, shortened.
+     * The title the user gave the session, else the first clause of the
+     * first user message, shortened.
      * </pre>
      *
      * <code>string title = 15 [json_name = "title"];</code>
@@ -2297,7 +2306,8 @@ public  final class Session extends
     }
     /**
      * <pre>
-     * First line of the first user message, shortened.
+     * The title the user gave the session, else the first clause of the
+     * first user message, shortened.
      * </pre>
      *
      * <code>string title = 15 [json_name = "title"];</code>

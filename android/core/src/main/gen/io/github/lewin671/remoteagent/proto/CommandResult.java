@@ -39,6 +39,7 @@ public  final class CommandResult extends
     OPEN_TERMINAL(20),
     RESUME_SESSION(21),
     RESUME_INPUT(22),
+    RENAME_SESSION(23),
     CREATE_SESSION(30),
     LIST_MODELS(31),
     LIST_DIRECTORIES(32),
@@ -78,6 +79,7 @@ public  final class CommandResult extends
         case 20: return OPEN_TERMINAL;
         case 21: return RESUME_SESSION;
         case 22: return RESUME_INPUT;
+        case 23: return RENAME_SESSION;
         case 30: return CREATE_SESSION;
         case 31: return LIST_MODELS;
         case 32: return LIST_DIRECTORIES;
@@ -902,6 +904,58 @@ public  final class CommandResult extends
    */
   private void clearResumeInput() {
     if (kindCase_ == 22) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int RENAME_SESSION_FIELD_NUMBER = 23;
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRenameSession() {
+    return kindCase_ == 23;
+  }
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RenameSessionResponse getRenameSession() {
+    if (kindCase_ == 23) {
+       return (io.github.lewin671.remoteagent.proto.RenameSessionResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.RenameSessionResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRenameSession(io.github.lewin671.remoteagent.proto.RenameSessionResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRenameSession(io.github.lewin671.remoteagent.proto.RenameSessionResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 23 &&
+        kind_ != io.github.lewin671.remoteagent.proto.RenameSessionResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.RenameSessionResponse.newBuilder((io.github.lewin671.remoteagent.proto.RenameSessionResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+   */
+  private void clearRenameSession() {
+    if (kindCase_ == 23) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2341,6 +2395,54 @@ public  final class CommandResult extends
     }
 
     /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRenameSession() {
+      return instance.hasRenameSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RenameSessionResponse getRenameSession() {
+      return instance.getRenameSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    public Builder setRenameSession(io.github.lewin671.remoteagent.proto.RenameSessionResponse value) {
+      copyOnWrite();
+      instance.setRenameSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    public Builder setRenameSession(
+        io.github.lewin671.remoteagent.proto.RenameSessionResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRenameSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    public Builder mergeRenameSession(io.github.lewin671.remoteagent.proto.RenameSessionResponse value) {
+      copyOnWrite();
+      instance.mergeRenameSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RenameSessionResponse rename_session = 23 [json_name = "renameSession"];</code>
+     */
+    public Builder clearRenameSession() {
+      copyOnWrite();
+      instance.clearRenameSession();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.v1.CreateSessionResponse create_session = 30 [json_name = "createSession"];</code>
      */
     @java.lang.Override
@@ -2901,6 +3003,7 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.OpenTerminalResponse.class,
             io.github.lewin671.remoteagent.proto.ResumeSessionResponse.class,
             io.github.lewin671.remoteagent.proto.ResumeInputResponse.class,
+            io.github.lewin671.remoteagent.proto.RenameSessionResponse.class,
             io.github.lewin671.remoteagent.proto.CreateSessionResponse.class,
             io.github.lewin671.remoteagent.proto.ListModelsResponse.class,
             io.github.lewin671.remoteagent.proto.ListDirectoriesResponse.class,
@@ -2914,11 +3017,11 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
           };
           java.lang.String info =
-              "\u0000\u001a\u0001\u0000\u0001(\u001a\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "\u0000\u001b\u0001\u0000\u0001(\u001b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
               "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u001e<\u0000" +
-              "\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(" +
-              "<\u0000";
+              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
+              "\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000" +
+              "\'<\u0000(<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

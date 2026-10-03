@@ -177,6 +177,28 @@ fun titleOf(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): String {
     return if (created > 0) "${projectName(i.cwd)} · ${hhmm(created, zone)}" else projectName(i.cwd)
 }
 
+/** The most a session's title holds, counted in code points as the daemon counts them. */
+const val TITLE_MAX = 60
+
+/**
+ * What the rename field starts with: the session's title, or nothing while
+ * it only has the "<folder> · <start time>" placeholder. Same as the web.
+ */
+fun renameInitial(s: SessionView): String = titleInput(s.info?.title.orEmpty().trim())
+
+/** What the rename field takes of [text]: one line, and nothing past [TITLE_MAX]. */
+fun titleInput(text: String): String {
+    val line = text.replace(Regex("[\\r\\n]+"), " ")
+    return if (line.codePointCount(0, line.length) <= TITLE_MAX) line else line.substring(0, line.offsetByCodePoints(0, TITLE_MAX))
+}
+
+/**
+ * The title to send for what was typed, trimmed as the daemon trims it;
+ * null when it is the title the field started with and there is nothing to
+ * save. Empty asks for the automatic title back.
+ */
+fun renameTitle(typed: String, initial: String): String? = typed.trim().takeIf { it != initial }
+
 /** Text for one-line previews: Markdown marks and the CLIs' image placeholders removed. */
 fun plain(text: String): String = text
     .replace(Regex("\\[Image #\\d+]\\s*"), "")

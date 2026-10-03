@@ -154,6 +154,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.ResumeInputRequest getResumeInput();
 
   /**
+   * <code>.remoteagent.v1.RenameSessionRequest rename_session = 14 [json_name = "renameSession"];</code>
+   * @return Whether the renameSession field is set.
+   */
+  boolean hasRenameSession();
+  /**
+   * <code>.remoteagent.v1.RenameSessionRequest rename_session = 14 [json_name = "renameSession"];</code>
+   * @return The renameSession.
+   */
+  io.github.lewin671.remoteagent.proto.RenameSessionRequest getRenameSession();
+
+  /**
    * <pre>
    * Commands for the machine rather than a session; their envelope
    * header names no session.
