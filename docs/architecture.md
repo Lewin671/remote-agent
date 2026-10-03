@@ -168,15 +168,28 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 下面每条做法都基于 [codex-notes.md](codex-notes.md) 里的实测，括号里的「notes §n」指它的第 n 节。升级 Codex 后要跟着复核。
 
-- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置。没有这个文件时读以前的 `codex.env`），并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。这些变量不经过 tmux 的命令行（命令行对本机所有用户可见，而环境变量里常有 API key），而是存进会话目录下只有自己可读的 `env.json`，供恢复会话时沿用；每次启动另写一份副本交给 PTY 代理，读取后删除。用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令和 `timeout`）必须固定：Codex 每个 hook 位置只记一份信任，定义一变就要重新信任，而且会顶掉之前的信任。所以命令写成 `"$RA_EXE" hook codex`，不含二进制的路径，换了路径或同时跑测试用的另一份二进制也不用重新信任（notes §3、§5）
+- **启动**：tmux pane 里运行 `remote-agent pty-host -- codex …`。
+  - **环境变量**：环境变量取自发起的 `remote-agent codex` 进程，再叠加 `~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置。没有这个文件时读以前的 `codex.env`），并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。
+  - **不上命令行**：这些变量不经过 tmux 的命令行（命令行对本机所有用户可见，而环境变量里常有 API key），而是存进会话目录下只有自己可读的 `env.json`，供恢复会话时沿用；每次启动另写一份副本交给 PTY 代理，读取后删除。
+  - **hook**：用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令和 `timeout`）必须固定：Codex 每个 hook 位置只记一份信任，定义一变就要重新信任，而且会顶掉之前的信任。所以命令写成 `"$RA_EXE" hook codex`，不含二进制的路径，换了路径或同时跑测试用的另一份二进制也不用重新信任（notes §3、§5）
 - **locale**：daemon 没有 UTF-8 的 locale 时（launchd、systemd 启动就是这样）自己补上 `LC_CTYPE`，tmux 和 Codex 都继承它。否则 tmux 会把输出里的 tab 和非 ASCII 字符换成 `_`：会话列表读不出来，所有会话都会被当成已经消失，屏幕里的 `›` 也认不出来。标成已结束、但 tmux 会话其实还在的会话，daemon 启动时会重新接上
 - **恢复会话**：`codex resume <Codex 会话 ID>`，沿用原来的环境变量和参数，去掉位置参数（如第一句话），再用最近一轮的模型、effort 和审批模式覆盖；审批模式只在最近一轮的沙箱、审批策略和审批方与某个标准模式完全一致时才覆盖，免得把只读沙箱之类的更严设置放宽。Codex 不接受重复的 `-m`，命令行的审批选项又比 `-c` 优先，所以被覆盖的选项先从原参数里去掉
 - **启动弹窗**：用 `-c` 关掉检查更新、限额换模型提示等能关的弹窗；关不掉的 `Trust this folder?`、`Hooks need review` 每个目录或每套 hook 只问一次，客户端提示去终端处理。能不弹就不弹；信任目录是安全决定，留给用户在终端里做（notes §5）
 - **启动时不注入**：Codex 在新目录启动时会先闪一下输入框再弹出信任对话框（notes §10），所以会话处于「启动中」时不注入，等状态检测连续两次看到同样的画面、进入空闲再说
 - **防弹窗挡输入**：每次注入前先抓屏，确认没有弹窗挡着。判断画面时只看屏幕底部；以列表里选中的行判断有没有弹窗，标题只用来给弹窗命名，对话里出现同样的字不算（notes §5、§6、§10）
 - **等画面**：轮询屏幕，等到预期画面出现再操作，并设超时；不用固定的 sleep（notes §6）
-- **输入**：远程消息按到达顺序排队，一次注入一条；队列在受理前写入 `queue.json`，重启后接着发。请求 ID 会记住最近 1000 个，重试不会重复发送。写入前记下 `history.jsonl` 的位置和当前事件序号。注入时 daemon 先让 PTY 代理暂存本地按键，等 80ms 让已经敲下的键显示出来，再抓屏：输入框就绪且没有未发送的草稿，才一次写入 bracketed paste 包起来的正文和回车，然后放开暂存。暂存期间本地敲的键不丢，放开后按顺序进入新的输入框；PTY 是按顺序的字节流，它们一定排在这条消息的回车之后。本地有草稿或有弹窗时，消息继续排队，绝不覆盖或拼接草稿。写入后以 `~/.codex/history.jsonl` 新增一行（已知 Codex 会话 ID 时只认这个会话的行）或 rollout 里出现这条用户消息，确认提交成功（notes §1、§10）。每条消息的状态以事件记录：排队、已提交、无法确认。10 秒内确认不了的记为「无法确认」，**不重发**，因为按键已经送到，重发可能提交两次；写入时恰好 daemon 停了的，重启后同样只等确认、不重发。注入、回答提问和中断共用一把锁，同一时刻只有一个操作使用 PTY 代理；代理也只允许持有暂存的连接写入和放开。正文里的控制字符会被去掉，避免提前结束粘贴
-- **运行中的消息分两种**：steer 是插入这一轮，daemon 照上一条的规则在输入框就绪时写入：Codex 运行中按回车就是插入当前这一轮；Claude Code 运行中回车会先进它自己的队列，等当前工具调用结束再并入这一轮（claude-code-notes §10）。queue 是等这一轮结束再发，由 daemon 留在自己的队列里，看到这一轮结束（Codex 的 `task_complete`，Claude Code 的 `turn_duration`）后才按上一条的规则写入，不借用 Codex 的 Tab：两个 CLI 行为一致，daemon 重启后还在，也能照常取消。空闲时两者没有区别。**还没送到 Agent 的消息都能撤回**，不分 steer 和 queue：还在 daemon 队列里的直接移除（`CancelInput`）；Codex 的 steer 一写进终端就插进这一轮，算已送达，不能撤回；Claude Code 的 steer 写进后先留在 Claude Code 自己的队列里，直到当前工具结束才并入，这期间 daemon 按 ↑ 把它拉回输入框、清空，以 transcript 出现不是 `absorbed_mid_turn` 的 `queue-operation remove` 为撤回成功；先被并入了就报「已送达，不能取消」。客户端默认发 steer，和两个 CLI 自己按回车一致；发送请求里带一个字段区分两种，没填时按 steer。**一轮被中断后**，还没写入的消息（queue 的，以及 steer 但还没写入的）都暂停，不自动发出，等用户逐条选择发送或取消：中断往往说明方向变了，排好的后续消息可能已经不适用。暂停状态和原因同步给所有客户端
+- **输入**：远程消息按到达顺序排队，一次注入一条；队列在受理前写入 `queue.json`，重启后接着发。请求 ID 会记住最近 1000 个，重试不会重复发送。写入前记下 `history.jsonl` 的位置和当前事件序号。
+  - **写入**：注入时 daemon 先让 PTY 代理暂存本地按键，等 80ms 让已经敲下的键显示出来，再抓屏：输入框就绪且没有未发送的草稿，才一次写入 bracketed paste 包起来的正文和回车，然后放开暂存。暂存期间本地敲的键不丢，放开后按顺序进入新的输入框；PTY 是按顺序的字节流，它们一定排在这条消息的回车之后。
+  - **有草稿或弹窗时**：本地有草稿或有弹窗时，消息继续排队，绝不覆盖或拼接草稿。
+  - **确认提交**：写入后以 `~/.codex/history.jsonl` 新增一行（已知 Codex 会话 ID 时只认这个会话的行）或 rollout 里出现这条用户消息，确认提交成功（notes §1、§10）。每条消息的状态以事件记录：排队、已提交、无法确认。
+  - **确认不了不重发**：10 秒内确认不了的记为「无法确认」，**不重发**，因为按键已经送到，重发可能提交两次；写入时恰好 daemon 停了的，重启后同样只等确认、不重发。
+  - **互斥**：注入、回答提问和中断共用一把锁，同一时刻只有一个操作使用 PTY 代理；代理也只允许持有暂存的连接写入和放开。正文里的控制字符会被去掉，避免提前结束粘贴
+- **运行中的消息分两种**：
+  - steer 是插入这一轮，daemon 照上一条的规则在输入框就绪时写入：Codex 运行中按回车就是插入当前这一轮；Claude Code 运行中回车会先进它自己的队列，等当前工具调用结束再并入这一轮（claude-code-notes §10）。
+  - queue 是等这一轮结束再发，由 daemon 留在自己的队列里，看到这一轮结束（Codex 的 `task_complete`，Claude Code 的 `turn_duration`）后才按上一条的规则写入，不借用 Codex 的 Tab：两个 CLI 行为一致，daemon 重启后还在，也能照常取消。空闲时两者没有区别。
+  - **还没送到 Agent 的消息都能撤回**，不分 steer 和 queue：还在 daemon 队列里的直接移除（`CancelInput`）；Codex 的 steer 一写进终端就插进这一轮，算已送达，不能撤回；Claude Code 的 steer 写进后先留在 Claude Code 自己的队列里，直到当前工具结束才并入，这期间 daemon 按 ↑ 把它拉回输入框、清空，以 transcript 出现不是 `absorbed_mid_turn` 的 `queue-operation remove` 为撤回成功；先被并入了就报「已送达，不能取消」。
+  - **默认**：客户端默认发 steer，和两个 CLI 自己按回车一致；发送请求里带一个字段区分两种，没填时按 steer。
+  - **一轮被中断后**，还没写入的消息（queue 的，以及 steer 但还没写入的）都暂停，不自动发出，等用户逐条选择发送或取消：中断往往说明方向变了，排好的后续消息可能已经不适用。暂停状态和原因同步给所有客户端
 - **判断输入框**：抓屏时保留颜色属性（`capture-pane -e`），按**样式属性**判断，不按转义序列的字面写法：逐个解析行首的 SGR 序列得到加粗、变淡、反色，再看第一个可见字符。Codex 升级常换写法（0.159.0 把 `\e[1m` 换成了 `\e[0;1m`），样式本身不变。输入框的提示符是加粗的 `›`，占位提示是淡色字（前面可能先有背景色设置，判断时跳过开头的样式和空格，看第一个可见字符是不是淡色），列表里选中的行是加粗反色的 `›`。只有看到占位提示才认定输入框是空的：多行草稿的第一行可能是空的，其余行和底部状态栏分不开（notes §10）
 - **找到 rollout**：`SessionStart` hook（发出第一条消息时触发）把 `RA_SESSION` 和 `transcript_path` 一起报给 daemon（notes §3）
 - **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
@@ -232,7 +245,11 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
 - **Codex 的计划模式**：计划模式和权限是两个开关。选「计划」只打开计划模式、权限不变；选其他三种会先关掉计划模式再切权限
 - **以 CLI 为准**：客户端只发「切换」指令，显示的是从 rollout、transcript 或屏幕读回来的结果；在电脑终端里切的，聊天里记一条。终端切到了这 4 种以外的模式（如 accept edits），照实显示
-- **会话中途切到完全放行要二次确认，新建会话不确认**：新会话的审批模式来自项目设置（第 13 节），在项目设置里选完全放行本身就是明确的选择，按它新建时不再弹确认，项目页的设置摘要用红字标出，会话里写在导航栏的状态行。项目设置没指定时用 daemon 设置里的默认模式，再没有就沿用 CLI 自己的配置。沿用 CLI 配置时，客户端事先不知道它是什么，所以 daemon 把每个 CLI 实际生效的默认模式读出来放进机器元数据（`AgentInfo.default_mode`，只读配置、不改任何文件）：Claude Code 按它的优先级读托管设置、项目的 `.claude/settings.local.json` 和 `settings.json`、用户的 `~/.claude/settings.json` 里的 `permissions.defaultMode`，都没有就是 manual；Codex 读 `config.toml` 顶层和所选 profile 的 `approval_policy`、`sandbox_mode`、`approvals_reviewer`，没写的按 Codex 的默认值。读不出来就标为未知。客户端用它在摘要里如实显示：完全放行照样用红字，未知写「CLI 配置（未读到）」，两种都不拦截新建。这些默认值都是用户自己写的配置，和在项目设置里选完全放行一样算明确选择，所以 daemon 也不据此拒绝新建
+- **会话中途切到完全放行要二次确认，新建会话不确认**：新会话的审批模式来自项目设置（第 13 节），在项目设置里选完全放行本身就是明确的选择，按它新建时不再弹确认，项目页的设置摘要用红字标出，会话里写在导航栏的状态行。
+  - **项目设置没指定时**：项目设置没指定时用 daemon 设置里的默认模式，再没有就沿用 CLI 自己的配置。
+  - **读出 CLI 的默认模式**：沿用 CLI 配置时，客户端事先不知道它是什么，所以 daemon 把每个 CLI 实际生效的默认模式读出来放进机器元数据（`AgentInfo.default_mode`，只读配置、不改任何文件）：Claude Code 按它的优先级读托管设置、项目的 `.claude/settings.local.json` 和 `settings.json`、用户的 `~/.claude/settings.json` 里的 `permissions.defaultMode`，都没有就是 manual；Codex 读 `config.toml` 顶层和所选 profile 的 `approval_policy`、`sandbox_mode`、`approvals_reviewer`，没写的按 Codex 的默认值。读不出来就标为未知。
+  - **客户端怎么显示**：客户端用它在摘要里如实显示：完全放行照样用红字，未知写「CLI 配置（未读到）」，两种都不拦截新建。
+  - **为什么不拦截**：这些默认值都是用户自己写的配置，和在项目设置里选完全放行一样算明确选择，所以 daemon 也不据此拒绝新建
 
 ## 8. 项目标识
 
@@ -411,10 +428,19 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **计划**：`ExitPlanMode` 同样由 `PreToolUse` hook 报来，记为 `PlanProposed`，屏幕上的计划框让会话处于「计划待批准」。批准（`IMPLEMENT`）按「Yes, manually approve edits」那一项，执行后回到 manual；继续规划（`KEEP_PLANNING`）按 Esc，留在 Plan 模式；Claude Code 没有「清空上下文再执行」，这一项返回不支持。hook 批准计划不起作用（notes §8）
 - **当前审批模式**：以屏幕上的模式行为准。在电脑终端里用 Shift+Tab 切的，daemon 从屏幕看到后记一条 `TurnContext`（`permission_mode`），不用等下一条消息；会话信息的 `mode` 按第 7 节的对应关系给出，accept edits 这类没有对应的给 UNSPECIFIED，原名在 `permission_mode` 里
 - **切换审批模式**：空闲时切到 Plan 用 `/plan`，直接到达。其余用 Shift+Tab 在模式行上一格一格地走到目标模式，每按一次都读模式行确认；转一圈都没遇到目标就报错并回到原来的模式。按放行的范围，模式从严到宽是 plan、manual、accept edits、auto、bypass。运行中也能切（notes §5），但途中（以及目标不可用时回来的路上）只要有一个模式比目标宽，就不切，免得那一瞬间放行了工具调用。是否运行中在拿到终端控制之后才判断（切模型、压缩同样如此）：之前拿着控制的注入可能刚开始了一轮，所以要重新读 transcript，并把「已写入还没确认的消息」和屏幕上的忙碌迹象（输入框上方的转圈行、变暗的提示符，notes §4）也算作运行中。
-  - **空闲时途经更宽的模式**（主要是从 Plan 模式切出：Shift+Tab 只能单向走，也没有离开 Plan 模式的命令，notes §5）：屏幕上有后台工作（模式行的 `· 1 shell`、输入框上方的 `Waiting for N background agent`、模式行下的后台子代理列表，notes §10）时不切，告诉用户原因；否则先算出整条路径，把要按的 Shift+Tab 一次写完，中间不读屏幕，最后核对模式行。算路径要知道 bypass 和 auto 可不可用：bypass 按会话启动时记下的能力（`full_access_unavailable`）；auto 按模型（haiku 没有，其余 Claude 模型有：sonnet 实测，opus、fable 推测），或这个会话用同一模型时屏幕上出现过 auto；状态栏的 `auto mode unavailable for this model` 不作依据，它在换到有 auto 的模型之后还会留一阵（notes §5）。已知不可用的目标直接报错，不按键。**唯一的例外**是 auto 可不可用算不出来（还不知道会话的模型、屏幕也没提示）：这时按「不可用」计数，只会少按、不会多按；如果因此停在 auto 上（比目标宽），立即把差的键补上，这是第二次写入。目标实际不可用时回到原来的模式
+  - **空闲时途经更宽的模式**（主要是从 Plan 模式切出：Shift+Tab 只能单向走，也没有离开 Plan 模式的命令，notes §5）：
+    - **做法**：屏幕上有后台工作（模式行的 `· 1 shell`、输入框上方的 `Waiting for N background agent`、模式行下的后台子代理列表，notes §10）时不切，告诉用户原因；否则先算出整条路径，把要按的 Shift+Tab 一次写完，中间不读屏幕，最后核对模式行。
+    - **哪些模式可用**：算路径要知道 bypass 和 auto 可不可用：bypass 按会话启动时记下的能力（`full_access_unavailable`）；auto 按模型（haiku 没有，其余 Claude 模型有：sonnet 实测，opus、fable 推测），或这个会话用同一模型时屏幕上出现过 auto；状态栏的 `auto mode unavailable for this model` 不作依据，它在换到有 auto 的模型之后还会留一阵（notes §5）。已知不可用的目标直接报错，不按键。
+    - **唯一的例外**是 auto 可不可用算不出来（还不知道会话的模型、屏幕也没提示）：这时按「不可用」计数，只会少按、不会多按；如果因此停在 auto 上（比目标宽），立即把差的键补上，这是第二次写入。目标实际不可用时回到原来的模式
   - **为什么这样取舍**：一律拒绝的话，bypass 或 auto 可用的会话（本机默认就是）就没法从远程离开 Plan 模式。空闲时这一轮没有工具调用；可能在这一瞬间调用工具的只有后台工作，看得到就拒绝
   - **残余风险**：连按期间 Claude Code 依次经过的宽松模式仍会存在几十毫秒（按键和界面刷新的时间，未精确测量）；屏幕上看不出来的后台工作（比如列表被挤出屏幕、Claude Code 改了提示的写法）挡不住；后台工作在检查之后、连按之前的一瞬间启动也挡不住
-- **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、←/→ 调推理强度，按 `s` 只改当前会话；弹出 `Switch model?` 时按它的「Yes, switch to」那一项，只在菜单已经消失、确认框和这一项都在时才按，免得把数字按进菜单改掉默认模型。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID。**上下文窗口**是项目设置里独立的一项（`ProjectSettings.standard_context`，新建时随 `CreateSessionRequest.standard_context` 交给 daemon），只对 Claude Code 有意义，默认 1M：这是 Claude Code 自己的默认值，所以没设置过的项目行为不变，用默认模型时也能选。选标准时 daemon 在会话环境里加 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`，固定为 200k（notes §2）；环境随会话保存，恢复时不变，会话信息里的窗口也按 200k 报告。选 1M 且模型是有 1M 窗口的别名时，daemon 把它写成 `opus[1m]` 交给 `--model`，窗口本来就是 1M，这样做只是让终端标题写出 `(1M context)`；没指定模型时不改参数。不把窗口编码进模型名：那样默认模型下没法选，也会让已有项目的含义悄悄改变。窗口在启动时就定了，会话里切换模型不涉及它。模型列表带每个模型最大的上下文窗口（`ModelInfo.context_window`），客户端据此判断模型有没有 1M 可选（Haiku 没有）；Codex 不填，因为 `models_cache.json` 里的窗口和会话实际报告的不一致（codex-notes §1），它的实际窗口在会话的上下文占用里看
+- **切换模型和推理强度**：空闲时 `/model`，用方向键移到模型那一行、←/→ 调推理强度，按 `s` 只改当前会话；弹出 `Switch model?` 时按它的「Yes, switch to」那一项，只在菜单已经消失、确认框和这一项都在时才按，免得把数字按进菜单改掉默认模型。以对话里出现 `Set model to … for this session only` 为成功。数字键和回车会改全局默认值，不用（notes §9）。
+  - **可选的模型**：可选的模型是 Claude Code 的别名（opus、fable、sonnet、haiku），列表写在代码里；会话信息里的模型是完整的模型 ID。
+  - **上下文窗口**是项目设置里独立的一项（`ProjectSettings.standard_context`，新建时随 `CreateSessionRequest.standard_context` 交给 daemon），只对 Claude Code 有意义，默认 1M：这是 Claude Code 自己的默认值，所以没设置过的项目行为不变，用默认模型时也能选。
+  - **选标准时**：选标准时 daemon 在会话环境里加 `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`，固定为 200k（notes §2）；环境随会话保存，恢复时不变，会话信息里的窗口也按 200k 报告。
+  - **选 1M 时**：选 1M 且模型是有 1M 窗口的别名时，daemon 把它写成 `opus[1m]` 交给 `--model`，窗口本来就是 1M，这样做只是让终端标题写出 `(1M context)`；没指定模型时不改参数。
+  - **为什么不编码进模型名**：不把窗口编码进模型名：那样默认模型下没法选，也会让已有项目的含义悄悄改变。窗口在启动时就定了，会话里切换模型不涉及它。
+  - **模型列表**：模型列表带每个模型最大的上下文窗口（`ModelInfo.context_window`），客户端据此判断模型有没有 1M 可选（Haiku 没有）；Codex 不填，因为 `models_cache.json` 里的窗口和会话实际报告的不一致（codex-notes §1），它的实际窗口在会话的上下文占用里看
 - **压缩**：空闲时 `/compact`，以屏幕出现 `Compacting conversation` 或 transcript 出现 `compact_boundary` 为开始
 - **额度**：从状态栏命令的输入采集，见下节
 
@@ -422,7 +448,14 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v19 · 账户额度](design/client-v19.html#quota)。
 
-Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。daemon 在会话的 `--settings` 里把状态栏设成 `"$RA_EXE" statusline claude`（不改用户的设置文件）：它把输入转给 daemon（500 毫秒超时，失败也不影响状态栏），再用同样的输入运行用户原来的状态栏命令（启动会话时按 Claude Code 的优先级读出、存在会话目录里），输出和退出码原样交回，`padding`、`refreshInterval` 也照搬，所以终端里看到的状态栏不变。托管设置里定了状态栏时它会盖过 daemon 的，额度就读不到，报「不支持」。账户用 `~/.claude.json` 里 `oauthAccount` 的账户和组织 ID 算一个短指纹来区分（ID 本身不离开电脑），套餐取 `organizationType`，有 `oauthAccount` 才标为订阅登录；读不出账户时不合并，按来源会话分开。额度按账户存在 `~/.remote-agent/quota.json`，重启后只沿用当前登录账户的记录，看到新账户的数字就清掉旧账户的。数字不变时一分钟内不刷新记录时间，免得机器元数据频繁变化。结果放在 `MachineMeta.quotas`，每个 CLI 一项或几项，状态分等待（还没收到额度）、正常、失败和不支持。采集只读取 CLI 已有数据，不主动给模型发消息，不把登录凭据交给 server，不调用未公开的账户接口。额度元数据端到端加密同步，server 只收密文，日志不记录额度或账户内容。
+Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
+
+- **采集**：daemon 在会话的 `--settings` 里把状态栏设成 `"$RA_EXE" statusline claude`（不改用户的设置文件）：它把输入转给 daemon（500 毫秒超时，失败也不影响状态栏），再用同样的输入运行用户原来的状态栏命令（启动会话时按 Claude Code 的优先级读出、存在会话目录里），输出和退出码原样交回，`padding`、`refreshInterval` 也照搬，所以终端里看到的状态栏不变。
+- **读不到时**：托管设置里定了状态栏时它会盖过 daemon 的，额度就读不到，报「不支持」。
+- **区分账户**：账户用 `~/.claude.json` 里 `oauthAccount` 的账户和组织 ID 算一个短指纹来区分（ID 本身不离开电脑），套餐取 `organizationType`，有 `oauthAccount` 才标为订阅登录；读不出账户时不合并，按来源会话分开。
+- **保存**：额度按账户存在 `~/.remote-agent/quota.json`，重启后只沿用当前登录账户的记录，看到新账户的数字就清掉旧账户的。数字不变时一分钟内不刷新记录时间，免得机器元数据频繁变化。
+- **上报**：结果放在 `MachineMeta.quotas`，每个 CLI 一项或几项，状态分等待（还没收到额度）、正常、失败和不支持。
+- **边界**：采集只读取 CLI 已有数据，不主动给模型发消息，不把登录凭据交给 server，不调用未公开的账户接口。额度元数据端到端加密同步，server 只收密文，日志不记录额度或账户内容。
 
 客户端按来源提供的窗口显示已用百分比、重置时间和最近收到时间。重置时间统一转换为北京时间（`Asia/Shanghai`，UTC+8），日期和星期也按北京时间判断，并标注「北京时间」；最近收到时间仍按客户端时区显示。Claude Code 的 5 小时、7 天分别可缺失；只有真实收到其他限额窗口时才显示该窗口，不承诺按模型额度或额外用量。套餐名未知就省略，读到的内部代号换成名称显示（`prolite` 写 Pro Lite，`claude_max` 写 Max）；API 计费须由可靠的登录方式信息确认，不能从 `rate_limits` 缺失推断。API 用量和账单到服务商控制台查看，不把会话估算费用当成账户余额。
 
