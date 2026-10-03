@@ -51,9 +51,8 @@ import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
 import { PendingBubbles } from "./Queue";
 
 // The terminal brings xterm, a third of the page's script: fetched when a
-// terminal is first shown, and ahead of that once the page is idle.
-const loadTerminal = () => import("./Terminal").then((m) => ({ default: m.TerminalView }));
-const TerminalView = lazy(loadTerminal);
+// terminal is first shown, or ahead of that once the page has settled.
+const TerminalView = lazy(() => import("./Terminal").then((m) => ({ default: m.TerminalView })));
 import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, toolTitle, type Short } from "./Tools";
 
 import { RowState, RememberDetails } from "./RowState";
@@ -169,11 +168,6 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   useEffect(() => {
     if (machine?.online && !inactive) remote.listModels(session.machineId, agent).catch(() => undefined);
   }, [remote, session.machineId, agent, machine?.online, inactive]);
-
-  useEffect(() => {
-    const t = setTimeout(() => void loadTerminal().catch(() => undefined), 2000);
-    return () => clearTimeout(t);
-  }, []);
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     try {
