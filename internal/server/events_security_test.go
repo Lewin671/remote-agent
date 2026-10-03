@@ -44,8 +44,8 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 			t.Fatal(err)
 		}
 		pages++
-		if n := proto.Size(res.Msg); n > 4<<20 {
-			t.Fatalf("event page is %d bytes; maximum is 4 MiB", n)
+		if n := proto.Size(res.Msg); n > maxEventPageBytes {
+			t.Fatalf("event page is %d bytes; maximum is %d", n, maxEventPageBytes)
 		}
 		if len(res.Msg.Events) == 0 {
 			t.Fatal("empty page before the final cursor")

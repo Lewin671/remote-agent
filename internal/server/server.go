@@ -60,7 +60,9 @@ const (
 	defaultEventPage       = 200
 	maxEventPage           = 1000
 	// Bound memory as well as event count; legal envelopes can be 1 MiB.
-	maxEventPageBytes = 4 << 20
+	// A page is also what a client waits for before it shows anything
+	// more, so it is kept to a few seconds of a slow link.
+	maxEventPageBytes = 1 << 20
 	// sendQueue is how many frames may wait for a slow stream peer before
 	// it is disconnected; it catches up from history after reconnecting.
 	sendQueue = 256
@@ -82,6 +84,7 @@ type Server struct {
 	streams             map[string]map[*streamAuth]struct{}
 	pendingStreamHellos chan struct{}
 	rpcRequests         chan struct{}
+	smallRPCRequests    chan struct{}
 
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
@@ -117,7 +120,7 @@ func New(cfg Config) (*Server, error) {
 		st.Close()
 		return nil, err
 	}
-	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), stop: make(chan struct{})}
+	s := &Server{cfg: cfg, store: st, challenges: map[string]challenge{}, streams: map[string]map[*streamAuth]struct{}{}, pendingStreamHellos: make(chan struct{}, maxPendingStreamHellos), rpcRequests: make(chan struct{}, maxConcurrentRPCRequests), smallRPCRequests: make(chan struct{}, maxConcurrentSmallRPCRequests), stop: make(chan struct{})}
 	s.hub = newHub(s)
 	s.term = newTermHub(s)
 	s.pairing = newPairingService(s)

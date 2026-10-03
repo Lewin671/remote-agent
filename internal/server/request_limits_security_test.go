@@ -15,13 +15,19 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 )
 
+// slowRPCBody starts a request that declares a large body and withholds it.
 func slowRPCBody(t *testing.T, base string) net.Conn {
+	t.Helper()
+	return slowBody(t, base, 1<<20)
+}
+
+func slowBody(t *testing.T, base string, length int) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", strings.TrimPrefix(base, "http://"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = fmt.Fprintf(conn, "POST /remoteagent.v1.AuthService/Login HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/proto\r\nContent-Length: 1024\r\n\r\nx")
+	_, err = fmt.Fprintf(conn, "POST /remoteagent.v1.AuthService/Login HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/proto\r\nContent-Length: %d\r\n\r\nx", length)
 	if err != nil {
 		conn.Close()
 		t.Fatal(err)
@@ -54,8 +60,10 @@ func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	if res.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("decoder admitted another request: %d", res.StatusCode)
+	// Small requests have their own budget: large bodies in flight do not
+	// turn them away.
+	if res.StatusCode == http.StatusServiceUnavailable {
+		t.Fatal("large bodies in flight refused a small request")
 	}
 	// An excess request that withholds its body must be refused promptly,
 	// without net/http draining that body after the handler returns.
@@ -84,6 +92,37 @@ func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
 			t.Fatal("RPC slots leaked after client disconnect")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestSmallRPCRequestsAreBoundedToo(t *testing.T) {
+	ts := newTestServer(t)
+	var conns []net.Conn
+	defer func() {
+		for _, conn := range conns {
+			conn.Close()
+		}
+	}()
+	for range maxConcurrentSmallRPCRequests {
+		conns = append(conns, slowBody(t, ts.url, 1024))
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for len(ts.srv.smallRPCRequests) != maxConcurrentSmallRPCRequests {
+		if time.Now().After(deadline) {
+			t.Fatal("small request bodies did not enter the decoder")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if len(ts.srv.rpcRequests) != 0 {
+		t.Fatal("small requests took slots meant for large ones")
+	}
+	rejected := slowBody(t, ts.url, 1024)
+	defer rejected.Close()
+	rejected.SetReadDeadline(time.Now().Add(time.Second))
+	raw := make([]byte, 1024)
+	n, err := rejected.Read(raw)
+	if err != nil || !strings.Contains(string(raw[:n]), "503") {
+		t.Fatalf("an excess small request was not refused: %q %v", raw[:n], err)
 	}
 }
 
