@@ -239,6 +239,17 @@ func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.S
 	return connect.NewResponse(&pb.SetApprovalModeResponse{}), nil
 }
 
+func (h *handler) RenameSession(ctx context.Context, req *connect.Request[pb.RenameSessionRequest]) (*connect.Response[pb.RenameSessionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	if err := s.rename(req.Msg.Title); err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.RenameSessionResponse{}), nil
+}
+
 func (h *handler) Compact(ctx context.Context, req *connect.Request[pb.CompactRequest]) (*connect.Response[pb.CompactResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {

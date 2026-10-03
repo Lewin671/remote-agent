@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/codex"
@@ -446,6 +447,47 @@ func TestInfoSummarizesTheSession(t *testing.T) {
 	}
 	if s := summary(strings.Repeat("长", 200), 60); len([]rune(s)) != 60 || !strings.HasSuffix(s, "…") {
 		t.Fatalf("summary %q", s)
+	}
+}
+
+func TestRenameOverridesTheAutomaticTitle(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "修复登录超时"}}})
+	_, changed := h.s.log.Since(0)
+	if err := h.s.rename("  登录超时：\n限流和重试 "); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-changed:
+	default:
+		t.Fatal("those uploading the session were not woken")
+	}
+	if got := h.s.info().Title; got != "登录超时： 限流和重试" {
+		t.Fatalf("title %q", got)
+	}
+	// Later messages leave it, and so does a restart.
+	h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "second"}}})
+	m, err := loadMeta(h.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log.Close()
+	h.open(*m)
+	if got := h.s.info().Title; got != "登录超时： 限流和重试" {
+		t.Fatalf("title after restart %q", got)
+	}
+
+	if err := h.s.rename(strings.Repeat("长", renameMax+1)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a title too long: %v", err)
+	}
+	if err := h.s.rename(strings.Repeat("长", renameMax)); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.rename(" "); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.s.info().Title; got != "修复登录超时" {
+		t.Fatalf("title after clearing %q", got)
 	}
 }
 

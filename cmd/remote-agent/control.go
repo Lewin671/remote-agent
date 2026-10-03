@@ -55,6 +55,14 @@ func runMode(args []string) error {
 	return explain(err)
 }
 
+func runRename(args []string) error {
+	if err := needArgs(args, 1, "rename <id> [<title>]"); err != nil {
+		return err
+	}
+	_, err := dial().RenameSession(context.Background(), connect.NewRequest(&pb.RenameSessionRequest{SessionId: args[0], Title: strings.Join(args[1:], " ")}))
+	return explain(err)
+}
+
 func runCompact(args []string) error {
 	if err := needArgs(args, 1, "compact <id>"); err != nil {
 		return err

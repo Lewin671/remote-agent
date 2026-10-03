@@ -175,6 +175,15 @@ func (l *Log) Since(after uint64) ([]*pb.Event, <-chan struct{}) {
 	return out, l.changed
 }
 
+// Poke wakes those waiting on Since without an event: something they
+// send along with the events changed, as the session's title.
+func (l *Log) Poke() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	close(l.changed)
+	l.changed = make(chan struct{})
+}
+
 // Each calls fn for every event in order, under the lock.
 func (l *Log) Each(fn func(*pb.Event)) {
 	l.mu.Lock()

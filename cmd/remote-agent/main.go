@@ -35,6 +35,8 @@ Usage:
   remote-agent model <id> <model> [<effort>]
                                            switch a session's model
   remote-agent mode <id> ask|auto|full|plan switch the approval mode
+  remote-agent rename <id> [<title>]       title the session; no title goes back
+                                           to the automatic one
   remote-agent compact <id>                compact the session's context
   remote-agent plan <id> implement|clear|keep
                                            answer "Implement this plan?"
@@ -97,6 +99,8 @@ func main() {
 		err = runModel(args)
 	case "mode":
 		err = runMode(args)
+	case "rename":
+		err = runRename(args)
 	case "compact":
 		err = runCompact(args)
 	case "plan":

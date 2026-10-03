@@ -1784,3 +1784,44 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
 });
+
+it("renames a session from ⋯, keeps what was typed when saving fails, and goes back to the automatic title", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-run")!;
+  const was = s.info!.title;
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const input = () => host.querySelector<HTMLInputElement>(".alert.rename input")!;
+  const write = (text: string) =>
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input(), text);
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+  await fromMenu("重命名");
+  expect(input().value).toBe(was);
+  write("x".repeat(70));
+  expect(input().value).toHaveLength(60);
+  write("  登录超时：限流和重试 ");
+
+  const command = vi.spyOn(r, "command");
+  command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 不在线"));
+  await click(button("保存"));
+  await vi.waitFor(() => expect(host.querySelector(".alert.rename")?.textContent).toContain("没能保存：MacBook 不在线"));
+  expect(input().value).toBe("  登录超时：限流和重试 ");
+
+  await click(button("保存"));
+  expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "登录超时：限流和重试" } });
+  await vi.waitFor(() => expect(host.querySelector(".alert.rename")).toBeNull(), { timeout: 3000 });
+  expect(r.sessions.get("s-run")!.info!.title).toBe("登录超时：限流和重试");
+
+  // Saving the same title sends nothing; an empty one clears it.
+  command.mockClear();
+  await fromMenu("重命名");
+  await click(button("保存"));
+  expect(command).not.toHaveBeenCalled();
+  expect(host.querySelector(".alert.rename")).toBeNull();
+  await fromMenu("重命名");
+  write("");
+  await click(button("保存"));
+  expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
+});

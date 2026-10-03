@@ -31,6 +31,8 @@ service LocalService {
   rpc SetModel(SetModelRequest) returns (SetModelResponse);
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
   rpc SetApprovalMode(SetApprovalModeRequest) returns (SetApprovalModeResponse);
+  // RenameSession gives a session a title of the user's choosing.
+  rpc RenameSession(RenameSessionRequest) returns (RenameSessionResponse);
   // Compact runs /compact while the session is idle.
   rpc Compact(CompactRequest) returns (CompactResponse);
   // AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
@@ -74,7 +76,8 @@ message Session {
   int32 pending_approvals = 12;
   int32 pending_questions = 13;
   int32 queued_inputs = 14;
-  // First line of the first user message, shortened.
+  // The title the user gave the session, else the first clause of the
+  // first user message, shortened.
   string title = 15;
   // What happened last: the latest agent message or tool call, shortened.
   string preview = 16;
@@ -300,6 +303,15 @@ message SetApprovalModeRequest {
 }
 
 message SetApprovalModeResponse {}
+
+message RenameSessionRequest {
+  string session_id = 1;
+  // One line of at most 60 characters; empty goes back to the automatic
+  // title.
+  string title = 2;
+}
+
+message RenameSessionResponse {}
 
 message CompactRequest {
   string session_id = 1;

@@ -443,6 +443,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .alert { position: absolute; left: 50%; top: 25%; transform: translateX(-50%); width: min(300px, calc(100% - 60px)); background: var(--card); border-radius: var(--r-lg); padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
 .alert h5 { margin: 0 0 6px; font-size: 17px; }
 .alert p { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+.alert.rename .field { margin: 12px 0 8px; }
 .actsheet { position: absolute; left: 8px; right: 8px; bottom: max(20px, env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { .actsheet { left: auto; right: 16px; bottom: auto; top: 56px; width: 320px; } }
 .actsheet .grp2 { background: var(--card); border-radius: var(--r-md); overflow: hidden; margin-top: 8px; }

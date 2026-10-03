@@ -49,7 +49,7 @@ export function Sheet({ onClose, children, className = "" }: { onClose: () => vo
   );
 }
 
-function useEscape(fn: () => void) {
+export function useEscape(fn: () => void) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && fn();
     addEventListener("keydown", onKey);

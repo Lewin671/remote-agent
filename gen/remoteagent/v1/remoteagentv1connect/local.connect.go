@@ -66,6 +66,9 @@ const (
 	// LocalServiceSetApprovalModeProcedure is the fully-qualified name of the LocalService's
 	// SetApprovalMode RPC.
 	LocalServiceSetApprovalModeProcedure = "/remoteagent.v1.LocalService/SetApprovalMode"
+	// LocalServiceRenameSessionProcedure is the fully-qualified name of the LocalService's
+	// RenameSession RPC.
+	LocalServiceRenameSessionProcedure = "/remoteagent.v1.LocalService/RenameSession"
 	// LocalServiceCompactProcedure is the fully-qualified name of the LocalService's Compact RPC.
 	LocalServiceCompactProcedure = "/remoteagent.v1.LocalService/Compact"
 	// LocalServiceAnswerPlanProcedure is the fully-qualified name of the LocalService's AnswerPlan RPC.
@@ -131,6 +134,8 @@ type LocalServiceClient interface {
 	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
+	// RenameSession gives a session a title of the user's choosing.
+	RenameSession(context.Context, *connect.Request[v1.RenameSessionRequest]) (*connect.Response[v1.RenameSessionResponse], error)
 	// Compact runs /compact while the session is idle.
 	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
 	// AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
@@ -246,6 +251,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("SetApprovalMode")),
 			connect.WithClientOptions(opts...),
 		),
+		renameSession: connect.NewClient[v1.RenameSessionRequest, v1.RenameSessionResponse](
+			httpClient,
+			baseURL+LocalServiceRenameSessionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("RenameSession")),
+			connect.WithClientOptions(opts...),
+		),
 		compact: connect.NewClient[v1.CompactRequest, v1.CompactResponse](
 			httpClient,
 			baseURL+LocalServiceCompactProcedure,
@@ -348,6 +359,7 @@ type localServiceClient struct {
 	setModel             *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
 	listModels           *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
 	setApprovalMode      *connect.Client[v1.SetApprovalModeRequest, v1.SetApprovalModeResponse]
+	renameSession        *connect.Client[v1.RenameSessionRequest, v1.RenameSessionResponse]
 	compact              *connect.Client[v1.CompactRequest, v1.CompactResponse]
 	answerPlan           *connect.Client[v1.AnswerPlanRequest, v1.AnswerPlanResponse]
 	listDirectories      *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
@@ -427,6 +439,11 @@ func (c *localServiceClient) ListModels(ctx context.Context, req *connect.Reques
 // SetApprovalMode calls remoteagent.v1.LocalService.SetApprovalMode.
 func (c *localServiceClient) SetApprovalMode(ctx context.Context, req *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error) {
 	return c.setApprovalMode.CallUnary(ctx, req)
+}
+
+// RenameSession calls remoteagent.v1.LocalService.RenameSession.
+func (c *localServiceClient) RenameSession(ctx context.Context, req *connect.Request[v1.RenameSessionRequest]) (*connect.Response[v1.RenameSessionResponse], error) {
+	return c.renameSession.CallUnary(ctx, req)
 }
 
 // Compact calls remoteagent.v1.LocalService.Compact.
@@ -523,6 +540,8 @@ type LocalServiceHandler interface {
 	SetModel(context.Context, *connect.Request[v1.SetModelRequest]) (*connect.Response[v1.SetModelResponse], error)
 	ListModels(context.Context, *connect.Request[v1.ListModelsRequest]) (*connect.Response[v1.ListModelsResponse], error)
 	SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error)
+	// RenameSession gives a session a title of the user's choosing.
+	RenameSession(context.Context, *connect.Request[v1.RenameSessionRequest]) (*connect.Response[v1.RenameSessionResponse], error)
 	// Compact runs /compact while the session is idle.
 	Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error)
 	// AnswerPlan answers the CLI's prompt about a proposed plan: Codex's
@@ -632,6 +651,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceSetApprovalModeProcedure,
 		svc.SetApprovalMode,
 		connect.WithSchema(localServiceMethods.ByName("SetApprovalMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceRenameSessionHandler := connect.NewUnaryHandler(
+		LocalServiceRenameSessionProcedure,
+		svc.RenameSession,
+		connect.WithSchema(localServiceMethods.ByName("RenameSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceCompactHandler := connect.NewUnaryHandler(
@@ -746,6 +771,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListModelsHandler.ServeHTTP(w, r)
 		case LocalServiceSetApprovalModeProcedure:
 			localServiceSetApprovalModeHandler.ServeHTTP(w, r)
+		case LocalServiceRenameSessionProcedure:
+			localServiceRenameSessionHandler.ServeHTTP(w, r)
 		case LocalServiceCompactProcedure:
 			localServiceCompactHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerPlanProcedure:
@@ -833,6 +860,10 @@ func (UnimplementedLocalServiceHandler) ListModels(context.Context, *connect.Req
 
 func (UnimplementedLocalServiceHandler) SetApprovalMode(context.Context, *connect.Request[v1.SetApprovalModeRequest]) (*connect.Response[v1.SetApprovalModeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.SetApprovalMode is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) RenameSession(context.Context, *connect.Request[v1.RenameSessionRequest]) (*connect.Response[v1.RenameSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.RenameSession is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) Compact(context.Context, *connect.Request[v1.CompactRequest]) (*connect.Response[v1.CompactResponse], error) {

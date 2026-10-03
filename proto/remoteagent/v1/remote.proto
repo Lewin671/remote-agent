@@ -150,6 +150,7 @@ message Command {
     OpenTerminalRequest open_terminal = 11;
     ResumeSessionRequest resume_session = 12;
     ResumeInputRequest resume_input = 13;
+    RenameSessionRequest rename_session = 14;
     // Commands for the machine rather than a session; their envelope
     // header names no session.
     CreateSessionRequest create_session = 20;
@@ -191,6 +192,7 @@ message CommandResult {
     OpenTerminalResponse open_terminal = 20;
     ResumeSessionResponse resume_session = 21;
     ResumeInputResponse resume_input = 22;
+    RenameSessionResponse rename_session = 23;
     CreateSessionResponse create_session = 30;
     ListModelsResponse list_models = 31;
     ListDirectoriesResponse list_directories = 32;

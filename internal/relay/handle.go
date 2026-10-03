@@ -142,6 +142,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 				out.Kind = &pb.CommandResult_SetApprovalMode{SetApprovalMode: m}
 			})
 		})
+	case *pb.Command_RenameSession:
+		err = on(k.RenameSession.SessionId, func() error {
+			return call(ctx, l.RenameSession, k.RenameSession, func(m *pb.RenameSessionResponse) {
+				out.Kind = &pb.CommandResult_RenameSession{RenameSession: m}
+			})
+		})
 	case *pb.Command_Compact:
 		err = on(k.Compact.SessionId, func() error {
 			return call(ctx, l.Compact, k.Compact, func(m *pb.CompactResponse) { out.Kind = &pb.CommandResult_Compact{Compact: m} })

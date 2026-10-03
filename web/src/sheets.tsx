@@ -1,12 +1,12 @@
 // Sheets opened from a session's chips: the approval mode, and the
 // model, reasoning effort and context use.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
-import { Alert, Banner, Sheet } from "./ui";
+import { Alert, Banner, Sheet, useEscape } from "./ui";
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
   const claude = agent === Agent.CLAUDE;
@@ -29,6 +29,69 @@ export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; 
       onCancel={onCancel}
       onOk={onOk}
     />
+  );
+}
+
+/** The longest title a session can be given; the daemon checks it too. */
+export const TITLE_MAX = 60;
+
+/** Cuts a title to TITLE_MAX characters, not splitting one. */
+function clipTitle(t: string): string {
+  return [...t.replace(/\s*\n\s*/g, " ")].slice(0, TITLE_MAX).join("");
+}
+
+/** Renames a session. The title the user gives wins over the automatic
+ * one; an empty one goes back to it. */
+export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: SessionView; onClose: () => void }) {
+  const current = (s.info?.title ?? "").trim();
+  const [title, setTitle] = useState(() => clipTitle(current));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  useEscape(onClose);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, []);
+  const save = async () => {
+    const next = title.trim();
+    if (next === current) return onClose();
+    setBusy(true);
+    setError("");
+    try {
+      await remote.command(s.id, { case: "renameSession", value: { sessionId: s.id, title: next } });
+      onClose();
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="overlay">
+      <div className="dim" onClick={onClose} />
+      <form
+        className="alert rename"
+        role="dialog"
+        aria-modal="true"
+        aria-label="重命名会话"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!busy) void save();
+        }}
+      >
+        <h5>重命名会话</h5>
+        <input ref={input} className="field" aria-label="会话标题" value={title} enterKeyHint="done" onChange={(e) => setTitle(clipTitle(e.target.value))} />
+        {error ? <p className="red">没能保存：{error}</p> : <p>留空保存会恢复自动标题</p>}
+        <div className="btns">
+          <button type="button" className="btn" disabled={busy} onClick={onClose}>
+            取消
+          </button>
+          <button type="submit" className="btn pri" disabled={busy}>
+            保存
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

@@ -815,6 +815,9 @@ export class DemoRemote extends Remote {
         await sleep(1500);
         this.patch(sid, { status: SessionStatus.IDLE });
         return ok();
+      case "renameSession":
+        this.patch(sid, { title: cmd.value.title });
+        return ok();
       case "setModel":
         if (cmd.value.model === "gpt-6-nova") throw new CommandError("unknown", "Codex 的菜单和预期不一样");
         this.push(sid, { case: "settingsChanged", value: { model: cmd.value.model, effort: cmd.value.effort } });

@@ -38,7 +38,7 @@ import {
   type Outgoing,
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
-import { ModeSheet, SessionSheet } from "../sheets";
+import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Dot, Exp, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
@@ -119,6 +119,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
   const [typing, setTyping] = useState(false);
   const [toast, setToast] = useState("");
@@ -341,6 +342,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
             ...(!inactive && mode ? [{ label: `审批模式：${mode.text}`, red: mode.text === "完全放行", onClick: () => setSheet("mode") }] : []),
             ...(!inactive ? [{ label: model ? `模型：${model}` : "会话设置", onClick: () => setSheet("model") }] : []),
             ...(!inactive && pct !== undefined ? [{ label: `上下文：${pct}%`, warn: high, onClick: () => setSheet("model") }] : []),
+            ...(machine?.online && remote.conn === "online" ? [{ label: "重命名", onClick: () => setRenaming(true) }] : []),
             ...(!inactive && d.running ? [{ label: "中断本轮", red: true, onClick: interrupt }] : []),
             ...(!ended && machine?.online ? [{ label: "结束会话…", red: true, onClick: () => setConfirmEnd(true) }] : []),
           ]}
@@ -360,6 +362,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
           }}
         />
       )}
+      {renaming && <RenameDialog remote={remote} s={session} onClose={() => setRenaming(false)} />}
       {sheet === "mode" && <ModeSheet remote={remote} s={session} onClose={() => setSheet("")} />}
       {sheet === "model" && <SessionSheet remote={remote} s={session} running={d.running} onClose={() => setSheet("")} />}
       {viewing !== undefined && (

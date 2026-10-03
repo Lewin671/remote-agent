@@ -13,7 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/claude"
@@ -601,6 +603,9 @@ func (s *session) info() *pb.Session {
 		}
 	}
 	out.Title, out.Preview = s.title, s.preview
+	if s.meta.Title != "" {
+		out.Title = s.meta.Title
+	}
 	out.AttentionSince = s.ordering.attentionSince(out)
 	out.EndedAt = s.ordering.endedAt
 	return out
@@ -655,6 +660,29 @@ const (
 	titleMin = 4
 	titleMax = 40
 )
+
+// rename gives the session the title the user chose, on one line; an
+// empty one goes back to the title from the first message. It works on
+// an exited session too.
+func (s *session) rename(title string) error {
+	title = strings.Join(strings.Fields(title), " ")
+	if n := utf8.RuneCountInString(title); n > renameMax {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the title has %d characters; at most %d fit", n, renameMax))
+	}
+	s.mu.Lock()
+	s.meta.Title = title
+	m := s.meta
+	s.mu.Unlock()
+	if err := m.save(s.dir); err != nil {
+		return fmt.Errorf("save session: %w", err)
+	}
+	// The relay uploads the session's metadata when the log changes.
+	s.log.Poke()
+	return nil
+}
+
+// renameMax is how many characters a title the user gives may have.
+const renameMax = 60
 
 // cancelInput removes a queued message unless it is already being
 // written.

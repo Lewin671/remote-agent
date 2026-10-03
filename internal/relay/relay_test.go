@@ -36,6 +36,7 @@ type fakeBackend struct {
 
 	mu        sync.Mutex
 	sessions  map[string]*eventlog.Log
+	titles    map[string]string
 	sends     []*pb.SendRequest
 	schedules []*pb.ScheduleRequest
 	term      *fakeTerminal
@@ -48,7 +49,7 @@ type fakeBackend struct {
 }
 
 func newFakeBackend(t *testing.T) *fakeBackend {
-	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, images: map[string]relay.ImageUpload{}}
+	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, images: map[string]relay.ImageUpload{}}
 }
 
 func (b *fakeBackend) add(t *testing.T, id string) *eventlog.Log {
@@ -92,7 +93,9 @@ func (b *fakeBackend) SessionInfo(id string) (*pb.Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: pb.SessionStatus_SESSION_STATUS_IDLE, LastSeq: l.LastSeq()}, nil
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: pb.SessionStatus_SESSION_STATUS_IDLE, LastSeq: l.LastSeq(), Title: b.titles[id]}, nil
 }
 
 func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error) {
@@ -179,6 +182,18 @@ func (f *fakeLocal) Send(ctx context.Context, req *connect.Request[pb.SendReques
 	n := len(f.b.sends)
 	f.b.mu.Unlock()
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(n)}), nil
+}
+
+func (f *fakeLocal) RenameSession(ctx context.Context, req *connect.Request[pb.RenameSessionRequest]) (*connect.Response[pb.RenameSessionResponse], error) {
+	l, err := f.b.log(req.Msg.SessionId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	f.b.mu.Lock()
+	f.b.titles[req.Msg.SessionId] = req.Msg.Title
+	f.b.mu.Unlock()
+	l.Poke()
+	return connect.NewResponse(&pb.RenameSessionResponse{}), nil
 }
 
 func (f *fakeLocal) ResolveApproval(ctx context.Context, req *connect.Request[pb.ResolveApprovalRequest]) (*connect.Response[pb.ResolveApprovalResponse], error) {
@@ -506,6 +521,28 @@ func TestCommandsRunOnce(t *testing.T) {
 	if _, err := e.client.Do(ctx, s, other); !errors.As(err, &ce) || ce.Code != "not_found" {
 		t.Fatalf("mismatched session: %v", err)
 	}
+}
+
+func TestRenameReachesTheClients(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+
+	rename := &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: "sess1", Title: "登录超时"}}}
+	res, err := e.client.Do(context.Background(), s, rename)
+	if err != nil || res.GetRenameSession() == nil {
+		t.Fatalf("rename: %v %v", res, err)
+	}
+	// Without waiting for the next event or the periodic look.
+	waitFor(t, "the new title", func() bool {
+		ss, err := e.client.Sessions(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(ss) == 1 && ss[0].Info.GetTitle() == "登录超时"
+	})
 }
 
 func TestCommandsRejected(t *testing.T) {

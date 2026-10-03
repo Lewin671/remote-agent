@@ -24,6 +24,9 @@ type meta struct {
 	CodexSessionID string `json:"codex_session_id,omitempty"`
 	RolloutPath    string `json:"rollout_path,omitempty"`
 	Exited         bool   `json:"exited,omitempty"`
+	// Title is the title the user gave the session; without one the
+	// title comes from the first message.
+	Title string `json:"title,omitempty"`
 	// NoFullAccess: the CLI would not switch this session to full access,
 	// as Claude Code started without bypass allowed.
 	NoFullAccess bool `json:"no_full_access,omitempty"`
