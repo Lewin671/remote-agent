@@ -189,3 +189,58 @@ it("reclaims failed and canceled image histories without deleting retry thumbnai
   expect(r.outbox("s")[0].thumbs![0]).toBe(thumb);
   r.stop();
 });
+
+async function sealedEvents(r: Remote, n: number) {
+  const { sealMessage } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
+  const out = [];
+  for (let seq = 1n; seq <= BigInt(n); seq++)
+    out.push({ seq, envelope: await sealMessage(r.sessions.get("s")!.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { seq, sessionId: "s", kind: { case: "agentMessage", value: { text: "m" + seq } } })) });
+  return out;
+}
+
+it("opens a session from the cached history and downloads only what is new", async () => {
+  const r = await probe();
+  const all = await sealedEvents(r, 3);
+  const cache = { read: vi.fn(async () => all.slice(0, 2)), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined) };
+  (r as any).cache = cache;
+  r.sessions.get("s")!.lastSeq = 3n;
+  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({ events: all.filter((e) => e.seq > afterSeq), more: false }));
+  (r as any).api = { getEvents };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  expect(getEvents).toHaveBeenCalledTimes(1);
+  expect(getEvents.mock.calls[0][0].afterSeq).toBe(2n);
+  expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
+  // Only the downloaded event is written back.
+  expect(cache.append).toHaveBeenCalledTimes(1);
+  expect((cache.append.mock.calls as any)[0][1].map((e: { seq: bigint }) => e.seq)).toEqual([3n]);
+  clearTimeout((r as any).historyTrim); r.stop();
+});
+
+it("drops a cached history that is not this session's", async () => {
+  const r = await probe();
+  const all = await sealedEvents(r, 3);
+  const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({ events: all.filter((e) => e.seq > afterSeq), more: false }));
+  (r as any).api = { getEvents };
+  // Longer than what the server has.
+  r.sessions.get("s")!.lastSeq = 2n;
+  const long = { read: vi.fn(async () => all), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined) };
+  (r as any).cache = long;
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  expect(long.drop).toHaveBeenCalledWith("s");
+  expect(getEvents.mock.calls[0][0].afterSeq).toBe(0n);
+  // Does not open where it is: sealed for another seq.
+  (r as any).buffers.delete("s");
+  r.sessions.get("s")!.lastSeq = 3n;
+  const moved = { ...long, read: vi.fn(async () => [{ seq: 1n, envelope: all[1].envelope }]), drop: vi.fn(async () => undefined) };
+  (r as any).cache = moved;
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  expect(moved.drop).toHaveBeenCalledWith("s");
+  expect(r.history("s").broken).toBe(false);
+  expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
+  clearTimeout((r as any).historyTrim); r.stop();
+});

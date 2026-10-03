@@ -68,6 +68,7 @@ import type { Prepare, Tray } from "./attach";
 import { prepareForSending } from "./sendimages";
 import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
 import { machineName, modelLabel, type Outgoing } from "./model";
+import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
 
@@ -95,6 +96,8 @@ interface EventBuffer {
   fetching: boolean;
   refetch: boolean;
   loaded: boolean;
+  // The copy cached in this browser has been read, or there is none.
+  restored: boolean;
   // The last fetch failed; a retry may help.
   error: string;
   // An event did not open; history stops before it.
@@ -361,6 +364,7 @@ export class Remote {
   protected constructor(
     readonly account: StoredAccount,
     private keys: Keys,
+    private cache?: EventCache,
   ) {
     const auth: Interceptor = (next) => (req) => {
       req.header.set("Authorization", "Bearer " + this.token);
@@ -372,7 +376,7 @@ export class Remote {
   static async load(): Promise<Remote | undefined> {
     const acct = await loadAccount();
     if (!acct) return undefined;
-    return new Remote(acct, await deriveKeys(acct.root));
+    return new Remote(acct, await deriveKeys(acct.root), eventCache());
   }
 
   // --- change notification for React ---
@@ -615,6 +619,7 @@ export class Remote {
       this.listed = true;
       this.listError = "";
       this.listRetry = 2000;
+      void this.cache?.keep(sessions).catch(() => undefined);
       this.changed();
     } catch (e) {
       // The stream is up but the lists are not: say so, and try again
@@ -710,7 +715,7 @@ export class Remote {
     const b = this.buffers.get(sid);
     if (b) b.usedAt = Date.now();
     if (!b) {
-      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, error: "", broken: false, bytes: 0, usedAt: Date.now() });
+      this.buffers.set(sid, { events: [], pending: new Map(), fetching: false, refetch: false, loaded: false, restored: false, error: "", broken: false, bytes: 0, usedAt: Date.now() });
       void this.fetchEvents(sid);
       return [];
     }
@@ -736,6 +741,23 @@ export class Remote {
     void this.fetchEvents(sid);
   }
 
+  /** Starts a history from the copy cached in this browser, so that only
+   * what came since is downloaded. A copy that is longer than the server's
+   * history or does not open belongs to something else: it is dropped. */
+  private async restore(s: SessionView, b: EventBuffer) {
+    b.restored = true;
+    if (!this.cache || b.events.length) return;
+    const stale = () => this.closed || this.buffers.get(s.id) !== b;
+    const rows = await this.cache.read(s.id).catch((): CachedEvent[] => []);
+    if (!rows.length || stale()) return;
+    if (BigInt(rows.length) <= s.lastSeq) {
+      await this.ingest(s, rows, false, true);
+      if (stale() || !b.broken) return;
+      Object.assign(b, { events: [], pending: new Map(), broken: false, bytes: 0, inputStatuses: undefined });
+    }
+    await this.cache.drop(s.id).catch(() => undefined);
+  }
+
   /** Fetches everything after the last contiguous event. */
   private async fetchEvents(sid: string) {
     const b = this.buffers.get(sid);
@@ -748,6 +770,7 @@ export class Remote {
     b.fetching = true;
     const generation = this.generation;
     try {
+      if (!b.restored && this.cache) await this.restore(s, b);
       do {
         b.refetch = false;
         for (;;) {
@@ -775,9 +798,13 @@ export class Remote {
     }
   }
 
-  private async ingest(s: SessionView, stored: StoredEvent[], fillGaps = true) {
+  private async ingest(s: SessionView, stored: StoredEvent[] | CachedEvent[], fillGaps = true, cached = false) {
     const b = this.buffers.get(s.id);
     if (!b) return;
+    const fresh: CachedEvent[] = [];
+    const save = () => {
+      if (fresh.length && !cached) void this.cache?.append(s.id, fresh).catch(() => undefined);
+    };
     for (const se of stored) {
       if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
       try {
@@ -791,12 +818,15 @@ export class Remote {
         if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
         b.pending.set(se.seq, msg);
         b.bytes = (b.bytes ?? 0) + se.envelope!.ciphertext.byteLength + 256;
+        fresh.push({ seq: se.seq, envelope: se.envelope! });
       } catch (e) {
         b.broken = true;
+        save();
         this.report(e);
         return;
       }
     }
+    save();
     if (this.buffers.get(s.id) !== b) return;
     for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
       const event = b.pending.get(next)!;

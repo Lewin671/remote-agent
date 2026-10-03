@@ -1,4 +1,5 @@
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { clearEventCache } from "./eventcache";
 import type { NewConfig } from "./model";
 
 // The account lives in IndexedDB. The device's private key is a
@@ -54,8 +55,10 @@ export function saveAccount(a: StoredAccount): Promise<void> {
   return run("readwrite", (s) => s.put(a, KEY));
 }
 
-export function forgetAccount(): Promise<void> {
-  return run("readwrite", (s) => s.delete(KEY));
+/** Forgets the account, and the sealed history cached for it. */
+export async function forgetAccount(): Promise<void> {
+  await run("readwrite", (s) => s.delete(KEY));
+  await clearEventCache();
 }
 
 // Project choices stay in this browser, scoped to its server and device.
