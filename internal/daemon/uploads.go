@@ -169,9 +169,9 @@ func validHexID(id string) bool {
 }
 
 // imageOwner names who uploads, so that only they can continue and send
-// it: the device that signed the command, or this computer. A device the
-// server names for an unsigned command is no proof and may not handle
-// images at all; unsigned text messages still work.
+// it: the device that signed the command, or this computer. The relay
+// rejects unsigned commands before they get here, so any other origin is
+// not a device and may not handle images.
 func imageOwner(o *pb.Origin) (string, error) {
 	switch {
 	case o == nil || o.Kind == pb.OriginKind_ORIGIN_KIND_LOCAL:
