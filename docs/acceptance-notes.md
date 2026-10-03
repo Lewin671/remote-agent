@@ -1,0 +1,120 @@
+# 验收记录
+
+本文记录 remote-agent 自己的功能做过哪些验收：哪天、用什么版本和环境、走了哪些操作、哪些没覆盖。它回答「这件事验证到什么程度」，代码和提交说明里查不到这些。
+
+不写的内容：外部工具的行为（见 [codex-notes.md](codex-notes.md)、[claude-code-notes.md](claude-code-notes.md)、[android-notes.md](android-notes.md)、[browser-notes.md](browser-notes.md)），设计和理由（见 [architecture.md](architecture.md)），还没做和还没验证的事项（见 [plan.md](plan.md)）。
+
+每条记录只代表当时的版本。之后改过的功能不因为这里有记录就算仍然通过；已经撤掉的功能不留记录。
+
+## 1. 验证等级
+
+下文和 [plan.md](plan.md) 用同一组说法，它们不能互相替代：
+
+| 说法 | 含义 |
+|---|---|
+| 自动测试 | `go test ./...`、`cd web && pnpm test`、`cd android && ./gradlew test` 或仪器测试通过 |
+| 演示页 / 示例数据 | 网页的 `/?demo`、Android 的 `V7Gallery` / `V8Gallery` 用固定数据渲染，没有连 daemon |
+| 真实 CLI | 连着真实的 Codex 或 Claude Code 走过操作，客户端是本机 Chrome 或 Android 模拟器 |
+| 真机 | 在真手机上走过。**目前没有任何一项做过真机验收** |
+
+## 2. 本地和端到端（P0 到 P2）
+
+**P0 本地打通**（tag `p0`）：`scripts/acceptance.sh` 用真实的 Codex 检查发消息、事件顺序、审批的允许 / 拒绝 / 超时、中断、模型提问、重启 daemon 后会话和事件接续（需要已登录的 codex，会消耗少量额度）；rollout 解析由 `go test ./...` 的脱敏 fixture 覆盖。attach 后的使用体验和「本地先答提问」是在终端里手动确认的。
+
+**P1 端到端打通**（tag `p1`，2026-09-29）：
+
+- 自动测试（`internal/relay`、`internal/server`、`internal/e2e`，`cd web && pnpm test`）：加密格式在 Go 和浏览器两边一致（测试向量 `internal/e2e/testdata/vectors.json` 由 Go 生成，网页校验）；事件按序号上传和推送，daemon 断线重连后不丢不重；同一请求 ID 的指令只执行一次，daemon 重启后也一样；过期、被篡改、用别的账户密钥加密的指令被拒绝；机器离线时立即失败，重连后也不执行；没有 setup token 不能建账户，不是账户密钥签名的设备不能登记，一台机器不能写另一台机器的会话
+- 本机 Chrome 对线上 server 和真实 Codex 手动走过：粘贴账户密钥后看到机器和会话，发消息后回复实时出现；审批允许后命令执行，拒绝时附的理由 Codex 能看到，不回复超时自动拒绝；中断；模型提问点选回答；daemon 停掉时显示机器离线、发消息立即失败，期间终端里的对话在 daemon 重启后补到网页上；server 的数据库和日志里搜不到消息、命令、路径和机器名的明文
+
+**P2 可以日常使用**（2026-09-29，没有打 tag）：
+
+- 自动测试：模型、审批模式、计划、压缩的菜单操作每一步先确认画面，认不出就按 Esc 退出，有草稿时不动输入框（`internal/daemon/control_test.go`，按实测画面模拟 Codex）；终端流的快照、输出、输入、调整尺寸，重放的帧被拒绝，终端内容不进 server 数据库（`TestTerminalStream`）；配对两端 emoji 和密钥一致，被替换的承诺在揭示前被发现，拒绝后拿不到密钥，码的次数和全局限流，Go 和网页按测试向量一致；推送只发给订阅了对应类别的设备，相同通知合并，失效的订阅被删除；移除的机器连同会话一起删除、登录失效；超大的事件被截断而不是卡住同步；取消排队的消息后它不会再写入终端
+- 本机 Chrome 用真实 Codex（GPT-6-Luna，低档位）手动走过：从网页新建会话，在终端视图里用按键栏确认信任目录后第一句话自动发出；切换模型和 effort、审批模式、进出计划模式，Codex 的菜单和状态栏随之变化，`~/.codex/config.toml` 不变；计划卡片批准后开始执行；压缩后上下文从 3% 降到 0%；电脑发起、浏览器扫码加入，以及浏览器发起、电脑输码加入，两个方向都成功，两端 emoji 相同；暗色和亮色下各页面和当时的界面稿一致；从 `remote-agent.top` 连 server 不受 AdGuard 影响
+- 没覆盖：手机上的终端按键栏、推送和扫码
+
+## 3. Claude Code
+
+**daemon 侧**（2026-09-29，Claude Code 2.1.284 haiku，本机手动）：send 和本地有草稿时排队；`events --follow` 按顺序输出一轮；approve、deny 附理由、超时拒绝；终端里先答时收回卡片；interrupt；单问、两问、多选提问的远程回答和本地先答；计划的远程批准；切换模型和审批模式（不可用的模式报错并回到原模式）；压缩；stop 后 resume 接着同一段对话；重启 daemon 后序号接着走；`remote-agent doctor claude` 全部通过。Codex 这边 `scripts/acceptance.sh` 照常通过。
+
+**网页上**（2026-09-29，Claude Code 2.1.284 haiku，隔离的 daemon 加入同一账户）：新建时选 CLI 和模型；信任目录的弹窗去终端处理；收发消息；审批允许和附理由拒绝；单选和多选提问；切到计划并批准；切换模型；压缩；中断；结束和恢复（恢复后接着同一段对话）；在终端里切到 accept edits 后照实显示，再切回询问；「完全放行」按会话信息置灰；haiku 的自动模式和推理强度不提供。
+
+## 4. 网页
+
+**按 v1 界面稿**（2026-09-29）：本机 Chrome 上逐屏对照过 390 宽和 1280 宽、亮色和暗色；用真实的 daemon 和 Codex（GPT-6-Luna，低档位）走过配对加入、在项目里新建、信任目录的弹窗停靠后去终端处理、适配和还原终端、发消息、结束和恢复、切换审批模式。`pnpm test` 覆盖状态优先级、停靠区顺序、消息发送状态和 Markdown 渲染。
+
+**v2 的画面，到 v7 为止**（2026-09-30，Claude Code 2.1.285 haiku，Codex 0.159.0 GPT-6-Luna low，隔离的 server、daemon 和 tmux）：
+
+- 自动测试：`web/src/model.ts`（工具运行与待确认、队列、切换 CLI、来源）、`prefs.ts`（项目偏好的操作与冲突重做）、`devices.ts`、`quota.ts`、`attach.ts`（待发图片）、`imageview.ts` 和 `images.ts`（选图处理：转正、去元数据、压缩、JPEG 无损旋转，对 jpegtran `-perfect` 逐个系数比对）的规则，以及对 Go `v2-vectors.json` 的签名、新用途密钥与信封
+- 逐屏对照：本机 Chrome 上 320 / 390 / 900 / 1280 宽、亮色和暗色；v7 另对照了设计稿的手机画面（304 宽）亮暗两套和宽屏 1176 / 900 宽截图，并查了 320 宽和放大 30%
+- 真实 CLI：新项目选目录后新建两个 CLI 的会话，信任弹窗用按键栏处理；耗时 Bash 在结果返回前显示命令和计时；Claude Code `Read` 与 Codex `view_image` 的预览和大图（显示版解密后按文件头核对）；带方向标记和 GPS 的 JPEG 以原图发出后，电脑上是转正且没有 EXIF 的文件，模型读出图案；新建会话第一条消息带图；终端里留着草稿时消息排队，从队列取消；两个网页客户端（不同来源即不同设备）用配对码加入、改名同步、另一端发的排队消息显示发送者和全文、另一端取消后本端提示、另一端允许的审批显示「已允许 · 第二浏览器」、项目偏好改动实时推到另一端；本地 `remote-agent send` 的消息标为「本地终端」
+- v5 的复查见 [browser-notes](browser-notes.md#v5-界面复查)
+
+## 5. Android
+
+都在模拟器（API 36，Google Play 镜像）上做，实测细节见 [android-notes.md](android-notes.md)。
+
+**A1 到 A5**（2026-09-29，本机独立的 server 和 daemon）：
+
+- 自动测试：`cd android && ./gradlew test` 跑 `vectors.json` 和反向向量 `kotlin-vectors.json`（Go 的 `internal/e2e`、网页的 `kotlin-vectors.test.ts` 也校验它）；`:core` 的集成测试在 JVM 上起真实的 Go server 和假 daemon，覆盖同步和推送、指令转发和机器离线、终端流、配对、server 重启后不丢不重
+- 模拟器上走过：输码配对（电脑发起）和 App 发起、电脑输码加入，两边 emoji 一致；会话列表、项目页、聊天；发消息收到回复；审批在停靠区允许、附理由拒绝，在通知里允许和拒绝，推送点开直接进审批页；Claude Code 的多选提问；中断；结束和恢复；切换审批模式；在项目里新建 Codex 和 Claude Code（haiku）会话，信任目录的弹窗去终端用按键栏处理；终端的输入、按键栏、键盘弹出和旋转不改远端尺寸、适配和还原；server 停掉再起，断线期间的事件补齐且不重复；App 进程被杀后收推送、重开后先显示缓存；移除设备；亮色和暗色
+- 推送：用真实的 Firebase 项目联调，server 用 FCM HTTP v1 发送，App 在后台和进程被杀后都收到并解密；通知默认只写通用文案，设置里打开后才有命令和按钮
+- R8：`minified` 构建类型（release 加允许明文 HTTP）走过同样的流程
+- 终端字体与字号的模拟器验收见 [android-notes §2](android-notes.md#2-termux-终端组件)
+- 没覆盖：终端输出积压后断开重连的逻辑没有用真实的大量输出触发过；中文输入法、设了锁屏时的通知按钮
+
+**v2 的画面**（2026-09-30，Claude Code 2.1.285 haiku，Codex 0.159.0 GPT-6-Luna low，隔离的 server、daemon，包名 `.v2dev` 的副本，debug 和 R8 的 `minified` 各走一遍）：
+
+- 自动测试：`:core` 的 `Model.kt`（工具与队列状态）、`Prefs.kt`、`Images.kt` 有 JVM 测试；集成测试对真实 Go server 验了图片存取、两个客户端并发改项目偏好、客户端改名同步
+- 真实 CLI：工具开始即显示和计时、并行调用、Claude Code 自己转到后台的命令标为待确认；独立中断入口；审批停靠和允许；Claude Code 多选「提交 N 项」、计划「继续规划」、Haiku 不提供自动模式；常用、移除和撤销、恢复，隐藏项目的会话仍在主页；设备目录、客户端改名、设备默认模型、额度页；Claude Code `Read` 的图片预览、大图、保存和分享；从手机给两个 CLI 各发两张图（带方向标记的 6.7 MB 照片压成 669 KB 并转正）、原图 8.9 MB 分块上传后转正且没有 EXIF、新建会话第一条消息带图、进程被杀后待发图片从加密存储恢复并重传
+- 实测见 [android-notes §6](android-notes.md#6-v2-客户端)；v5 的复查见 [android-notes §7](android-notes.md#7-v5-界面复查)
+
+**v7 的画面**（2026-09-30，示例数据）：仪器测试 `V7Gallery` 以固定示例数据渲染 29 个手机画面的亮暗两套，在 304×644 dp 的模拟器显示上截图，与设计稿同一画面并排核对，并在字号 130% 下检查不溢出，见 [android-notes §9](android-notes.md#9-v7-界面还原)。没有连真实 CLI。
+
+**v8 的画面**（2026-09-30，示例数据）：JVM 测试覆盖待发状态、模式与项目设置冲突重做；`V8Gallery` 在 API 36 模拟器上通过 33 个亮暗画面测试，130% 字号下抽查截图，见 [android-notes §10](android-notes.md#10-v8-界面还原)。连真实 CLI 的部分见下一节。
+
+## 6. 网页和 Android 同时操作（v8）
+
+2026-09-30，隔离的 server、daemon 和 tmux，网页（本机 Chrome）和 Android（API 36 模拟器，`.v8e2e` 副本，配对码加入）同一账户，连真实 CLI（Codex 0.159.2 GPT-6-Luna low，Claude Code 2.1.285 haiku）：
+
+- 新项目在项目设置里选 CLI、模型和「询问」后发第一句话直接新建，默认完全放行时不再确认；项目设置改动同步到另一端
+- 运行中点 ↑ 插入这一轮、长按（网页 Alt+Enter）排到这一轮结束后，回复分别落在同一轮和下一轮
+- 待发气泡就地取消（网页、Android），另一端的消息标出来源
+- 中断后排队的消息暂停，点「发送」发出
+- Claude Code 运行中收进它自己队列的消息（`HELD_BY_CLI`）用命令行撤回，确认之后没有发出；网页上这条路径与排队消息的取消用同一个指令
+
+## 7. 会话里的图片（daemon、server）
+
+2026-09-30，隔离的 server、daemon 和 tmux，Codex 0.159.0 GPT-6-Luna low，Claude Code 2.1.285 haiku，测试客户端是 `internal/remoteclient`：
+
+- 两个 CLI 各新建一个第一条消息带图的会话；Codex 空闲时发两张图，Claude Code 运行中发两张图
+- 3.8 MB 和 4.3 MB 的图显示版都在 1 MiB 以内；11.6 MB 带 GPS 的原图在两个 CLI 的记录里都没有 EXIF
+- 电脑终端里显示 `[Image #N]`，模型都读出了图里的字
+- Codex 的 `view_image`、生成图，Claude Code 的 `Read`，以及两个 CLI 在终端本地粘贴的图都带预览和大图
+- 第二张图丢失时不提交并清空输入框；粘贴中途杀掉 daemon，重启后清空并记为失败；注入期间本地敲的键在提交后出现在新输入框里
+- 18.9 MB 的 rollout 行照常解析
+- server 数据库和 WAL 里没有正文、路径和图片明文
+
+## 8. v9 以后的界面改动
+
+这些改动两端都已实现，但验证只到下表的程度，没有逐屏对照界面稿，也没有连真实 CLI 复验。
+
+| 改动 | 网页 | Android |
+|---|---|---|
+| 会话标题取首句并单行；「＋」直接选图片，模式、模型和上下文移到 ⋯ 菜单；额度、图片存储和外观精简；宽屏设置页限制列宽（v0.8.1 到 v0.8.6） | 本机 Chrome 1488 宽暗色下看过设置首页，其余只过自动测试 | 模拟器上跑过 `LayoutTest`，其余只过自动测试。只有设置、电脑详情和额度页限制了列宽 |
+| 项目设置各子页的「完成」直接保存并关闭（v0.8.11） | 自动测试 | 自动测试 |
+| 默认模型可以单独选推理强度 | 自动测试 | 自动测试 |
+| 后台推送不可用时静默降级，状态写在通知设置分组下方 | 不涉及 | 本地夹具和模拟器布局，见 [android-notes §4](android-notes.md#4-fcm) |
+| 新会话设置摘要改成按钮，只有完全放行标红 | 自动测试 | 自动测试 |
+| Claude Code 的上下文窗口是项目设置首页的一行，默认 1M、可选标准 200k | 演示页点过 | 只过单元测试 |
+| 会话的视图记在本机；宽屏会话顶栏并成一行；聊天开头只留一行「开始时间 · 目录」 | 已实现 | 只有视图记忆（没有宽屏布局，也没有会话开头这一行） |
+
+## 9. 定时任务（daemon）
+
+Go 测试覆盖绑定轮次、创建幂等、修订冲突、重启、dispatch 边界无法确认、遗漏周期、次数限制、取消和输入暂停；MCP 协议测试验证工具发现、参数传递及没有 server instructions。真实 Codex 和 Claude Code 上的执行验收见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)。
+
+## 10. 复现时用得上的办法
+
+- **网页的演示页**：`cd web && pnpm dev` 后打开 `/?demo`，用假数据看所有画面和状态，不连 server，不进构建。`&conn=`、`&term=closed`、`&empty=`、`&prefs=fail|unsupported`、`&devices=unsupported` 等参数切换各种情况，见 `web/src/dev/demo.ts`
+- **在真实 CLI 上造出排队的消息**：先在终端里敲一段不发送的草稿，再从客户端发消息。daemon 不覆盖草稿，消息留在队列里
+- **隔离环境**：验收用独立的 server、daemon（另一个 `REMOTE_AGENT_HOME`）和 tmux socket，不动日常使用的那一套；Android 用改了包名的副本
+- **模型**：Codex 用 GPT-6-Luna 低档位，Claude Code 用 haiku，额度消耗最少
