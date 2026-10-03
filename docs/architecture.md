@@ -1,6 +1,8 @@
 # 架构与技术决策
 
-项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex，以及所有技术决策和理由。Codex 的实测行为见 [codex-notes.md](codex-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
+项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。两个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，会话里的图片见 [session-images.md](session-images.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
+
+章节编号被代码注释引用（如 `architecture §13`），所以不重排、不改号。
 
 ## 1. 各端与部署
 
@@ -20,7 +22,7 @@
 | `remote-agent` | Go 单二进制：daemon、本地 CLI（`remote-agent codex` 等）和 hook 入口都在里面 | 每台电脑一个 |
 | `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
-| `android` | 原生 App，Kotlin + Jetpack Compose，见第 15 节 | 自己签名的 APK，侧载安装 |
+| `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 
 当前的 VPS 上已经有 Happy 用 docker compose 跑的 Caddy（占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
@@ -149,7 +151,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 |---|---|---|
 | 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
 | 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
-| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 另做原生 App（第 15 节） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
+| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 另做原生 App（[android-client.md](android-client.md)） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
 | 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
@@ -266,7 +268,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | `wrap` | AES-256 | 加密会话密钥 |
 | `machine-meta` | AES-256 | 加密机器元数据（机器名、系统） |
 | `command` | AES-256 | 加密客户端发给 daemon 的指令和返回结果 |
-| `notify` | AES-256 | 加密推送里的通知内容，只给 Android App 在后台解密用（第 15 节） |
+| `notify` | AES-256 | 加密推送里的通知内容，只给 Android App 在后台解密用（[android-client.md](android-client.md)） |
 | `account-prefs` | AES-256 | 加密账户级的偏好对象（项目的常用、隐藏和项目设置，第 8、13 节） |
 | `device-meta` | AES-256 | 加密客户端设备的元数据（名称、平台），见下文「设备目录」 |
 
@@ -291,7 +293,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 账户密钥串 `ra1.<根密钥>.<server 地址>`（`remote-agent account secret`）仍可作为备用方式粘贴，它不放进 URL，以免留在浏览历史里。
 
-**浏览器怎么存**：设备私钥存成不可导出的 `CryptoKey`（IndexedDB）；根密钥除了不可导出的 HKDF 密钥，还存一份原始字节，因为配对时要把它交给新设备（WebCrypto 的不可导出密钥取不回原始字节）。代价是页面一旦被注入脚本，根密钥能被带走；不过那种情况下脚本本来就能通过页面解密全部内容，差别在于带走后长期有效。配对上线前加入的浏览器没有原始字节，不能发起配对，要重新加入一次。不同的网页来源（如 localhost 和 `app.<域名>`）各有各的存储，换了地址要重新加入。App 怎么存见第 15 节。
+**浏览器怎么存**：设备私钥存成不可导出的 `CryptoKey`（IndexedDB）；根密钥除了不可导出的 HKDF 密钥，还存一份原始字节，因为配对时要把它交给新设备（WebCrypto 的不可导出密钥取不回原始字节）。代价是页面一旦被注入脚本，根密钥能被带走；不过那种情况下脚本本来就能通过页面解密全部内容，差别在于带走后长期有效。配对上线前加入的浏览器没有原始字节，不能发起配对，要重新加入一次。不同的网页来源（如 localhost 和 `app.<域名>`）各有各的存储，换了地址要重新加入。App 怎么存见 [android-client.md](android-client.md)。
 
 ### 多客户端的界面状态
 
@@ -322,6 +324,8 @@ server 把指令原样转给那台机器的 WebSocket，最多等 30 秒。机�
 
 **WebSocket**：路径 `/v1/stream`，承载二进制 Protobuf 帧。浏览器的 WebSocket 不能自定义请求头，所以第一帧发 token，认证通过前 server 不发任何数据；浏览器连接还要检查 `Origin`；原生 App 不发 `Origin`，server 用的 coder/websocket 对没有 `Origin` 的请求直接放行，App 同样靠第一帧的 token 认证。server 每 20 秒 ping 一次；某个客户端积压超过 256 帧就断开它，它重连后从历史补。每台机器同时只保留一条连接，新连接顶掉旧的。主连接和终端连接在 token 到期或设备被移除时都取消，认证登记和移除共用锁，避免连接在移除期间重新进入。
 
+**后台和内存**：App 进入后台、网页页面隐藏时，都关闭主连接和终端连接并暂停界面计时，回到前台或恢复可见后重新同步。两端只为当前消费者保留完整解密历史：网页页面与待处理卡片显式持有，Android 按事件流订阅保护，图片确认只在确实仍等待处理时持有。无人使用的历史按最近使用回收，默认最多 8 个会话、估算内容量 16 MiB，并在闲置一分钟后释放；估算不等于进程堆内存上限，活动会话仍保留完整历史以推导状态。回收不删除历史、Android 磁盘密文缓存或待发图片。网页长会话只挂载视口附近的行，展开状态由会话视图保存；回看位置需要重载时，等完整历史或明确失败后恢复，避免把旧位置套在分页前缀上。网页主流串行处理并限制在途帧与字节，终端预算直到 xterm 消费完成才释放；超预算断开后重新同步，不跳过字节。
+
 **大小限制**：单个信封不超过 1 MiB，一次上传不超过 500 个事件，推送帧超过 1 MiB 就拆开发。历史按条数和序列化字节数共同分页，客户端按返回游标连续读取。WebSocket 认证 hello 使用独立的小帧上限；等待认证和活跃连接同时受固定限额约束，过载明确拒绝。HTTP RPC 在解码请求正文之前限制并发和读取时长；认证请求使用更小的正文上限。推送去重状态和异步发送同样有容量限制，过载返回可重试错误，不消耗被拒通知的去重键。
 
 **网页**：事件内容一律当文本渲染，不插入 HTML；Markdown 里只有 http(s) 的链接可以点，其他目标（大多是本机文件路径，也可能是 `javascript:`）显示成等宽文字；构建产物带 CSP，只允许运行自己的脚本。网页和 server 要放在同一个注册域名下（`app.<域名>` 和 `ra.<域名>`）：拦截扩展常按「第三方请求」过滤，实测 AdGuard 会拦掉跨站发往 `*.*.top` 的 WebSocket（[browser-notes §1](browser-notes.md#1-adguard-拦截发往-top-的跨站-websocket)）。本地开发遇到这种拦截时，可以用 `RA_PROXY` 让 vite 把请求转发到 server，同时用 `VITE_SAME_ORIGIN_API=1` 构建。
@@ -343,7 +347,9 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 - **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送
 - **内容**：只有通用文案（「有会话在等你处理」），外加用于跳转的会话 ID，符合 scope 第 4 节「推送不含具体内容」。同一会话同一类别 15 秒内只推一次
 - **客户端**：service worker 收到推送时，如果应用正开着并在前台，就不再弹通知；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
-- **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见第 15 节
+- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
+- **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
+- **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见 [android-client.md](android-client.md)
 
 ## 13. daemon 设置与远程新建会话
 
@@ -376,78 +382,7 @@ remote-agent 依赖 Codex 的屏幕和 rollout，Codex 升级可能改变它们�
 
 ## 15. Android 客户端
 
-Android 原生 App 要把手机上的体验做到原生水平，范围见 [scope.md](scope.md) 第 5 节，进度和未定的问题见 [plan.md](plan.md)。协议、同步、指令和终端的规则都和网页一样（第 10、11 节），这里只写 App 自己的选型和约束。
-
-### 选型
-
-| 组件 | 选型 | 理由 |
-|---|---|---|
-| 工程结构 | 纯 Android 工程，分成 `:core` 和 `:app` 两个模块，代码放在 `android/` | 见下文「模块」 |
-| UI | Jetpack Compose + Material 3；状态用 Coroutines + StateFlow，事件在一个串行队列里归约 | 返回手势、键盘 insets、动态取色这些原生交互都能直接控制；前台界面和后台通知走同一套逻辑 |
-| RPC | connect-kotlin + OkHttp，Connect 协议，二进制 Protobuf | ConnectRPC 官方的 Android 用法 |
-| Protobuf | 用 `buf` 从 `proto/` 生成 javalite 和 connect-kotlin 代码 | `proto/` 仍是唯一的协议定义 |
-| WebSocket | OkHttp，`/v1/stream` 和 `/v1/term` 各一条 | 和网页相同的两条连接 |
-| 加密 | AES-256-GCM 用平台 JCA；X25519、Ed25519、HKDF 用 Bouncy Castle 的 lightweight API | 先保证和 Go、TS 逐字节一致，见下文「加密和密钥」 |
-| 本地存储 | Room 存密文信封和同步游标，DataStore 存偏好 | 本地不保存明文 |
-| 推送 | FCM data message（自己的手机有 GMS） | 见下文「推送和通知里审批」 |
-| 终端 | Termux 的 `terminal-emulator` 和 `terminal-view`，源码放在 `android/terminal`，用 `AndroidView` 嵌进 Compose | 原生渲染和输入法都比 WebView 里的 xterm.js 好；为什么放源码见下文「终端」 |
-| 扫码 | CameraX + ZXing core | 本地解码，只扫配对二维码这一种 |
-| 构建和分发 | Gradle version catalog 锁定依赖版本；minSdk 26，targetSdk 35，compileSdk 36（connect-kotlin 0.9 依赖的 OkHttp 5.4 要求）；release 构建开 R8，另有一个 `minified` 构建类型，和 release 相同但允许明文 HTTP，用来在本机 server 上测 R8 的包；自己签名，侧载安装；Firebase 的 `google-services.json` 和签名配置放在仓库外的 `~/.config/remote-agent/`，没有时照常构建、推送关闭 | 不上架应用商店；`setAuthenticationRequired` 等 API 31 起的能力按版本判断 |
-
-### 为什么是纯 Kotlin
-
-| 方案 | 结论 | 理由 |
-|---|---|---|
-| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。`:core` 不依赖 `android.*`，以后做 iOS 再迁，业务规则和测试都能保留 |
-| gomobile 复用 Go | 暂不采用 | 能直接复用的只有 `internal/e2e`：`relay.JoinByPairing` 按机器登记并写 `account.json`，`remoteclient` 是测试用的客户端，不保存设备私钥；同步引擎和事件归约只有 TS 版，用 Go 也要新写。还要承担：Go 的 TLS 不走 Android 的网络安全策略，系统代理不自动生效，网络切换要由 Kotlin 通知，协程取消要桥接到 `context`，Go 和 JVM 两个堆，以及 NDK、R8、16 KB 页面的构建问题。做 iOS 时和 KMP 一起重新评估 |
-| 只把加密交给 Go | 不采用 | 绑定层的固定成本一样不少，复用最少 |
-| Flutter、React Native | 不采用 | 终端和系统交互仍要写原生模块；Flutter 多出一套 Dart；RN 也搬不动现有网页，它依赖 WebCrypto、IndexedDB、xterm.js 和 DOM |
-| 包装 PWA（TWA、Capacitor） | 不采用 | 界面仍是网页，终端输入、键盘和系统交互达不到原生 |
-
-### 模块
-
-- **`:core`**：纯 Kotlin/JVM，不依赖 `android.*`。包括 proto、RPC 和 WebSocket、加密、配对、同步、事件归约和项目分组，都能在 JVM 上单独测试
-- **`:app`**：Compose UI、终端视图、生命周期、Keystore、Room 和 DataStore、FCM 和通知、扫码。通过少量接口使用 `:core`，不把 Android 类型传进去
-
-### 同步和生命周期
-
-同步、指令的规则照搬网页（第 10 节）：先连主 WebSocket，收到 `Ready` 后再拉列表和缺的事件；按序号去重、补缺口；元数据只接受更新的修订号；指令重试沿用同一个请求 ID 和截止时间，结果未知就如实显示。
-
-App 在前台时保持主 WebSocket；进入后台关闭主连接和终端连接，暂停自动历史分页与界面计时，改靠推送；回到前台重新认证、追赶历史，终端等待主连接就绪后取得新快照。不靠常驻后台的连接收通知。网页在页面隐藏时也暂停这两条连接和计时，恢复可见后重新同步。
-
-Android 的事件列表用不可变分块快照，追加时复用完整旧页，前缀校验按页比较；聊天状态按追加事件增量推导，每次发布独立快照；普通消息复用旧聊天行，审批、工具结果和压缩等影响旧行的事件，以及 CLI 类型或显示上下文变化，仍完整重建。终端保留字节顺序，将相邻输出合并通知视图，并限制批次与队列大小；积压超限重新获取快照，不能跳过中间字节。模拟器前后 Profile 见 [android-notes §8](android-notes.md#8-客户端性能-profile)。
-
-两端只为当前消费者保留完整解密历史：网页页面与待处理卡片显式持有，Android 按事件流订阅保护，图片确认只在确实仍等待处理时持有。无人使用的历史按最近使用回收，默认最多 8 个会话、估算内容量 16 MiB，并在闲置一分钟后释放；估算不等于进程堆内存上限，活动会话仍保留完整历史以推导状态。回收不删除历史、Android 磁盘密文缓存或待发图片。网页长会话只挂载视口附近的行，展开状态由会话视图保存；回看位置需要重载时，等完整历史或明确失败后恢复，避免把旧位置套在分页前缀上。网页主流串行处理并限制在途帧与字节，终端预算直到 xterm 消费完成才释放；超预算断开后重新同步，不跳过字节。
-
-### 加密和密钥
-
-- **实现**：Android 13（API 33）起平台 JCA 也有 XDH 和 Ed25519，但导入导出原始 32 字节密钥、从 seed 推出公钥都没验证过，验证通过前继续用 Bouncy Castle。直接用 Bouncy Castle 的 lightweight API，不依赖系统里名为 `BC` 的旧 provider
-- **互通**：`:core` 的测试读取 `internal/e2e/testdata/vectors.json`；另加 Kotlin 生成、Go 和 TS 校验的反向向量。要特别对齐的是：header 按原始字节参与认证、密文后接 16 字节 tag、签名上下文末尾的 `\0`、配对 transcript 的长度前缀和 emoji 表、拒绝全零的 X25519 共享值、`uint64` 序号不经过有符号数
-- **保管**：在 Keystore 里生成不可导出的 AES 密钥，用它加密根密钥和设备 seed，存在应用私有目录，不进云备份和设备迁移。API 28 起账户包装密钥要求设备解锁；生成失败时报错，不降级成锁屏可用的密钥。API 26–27 没有这个平台限制。签名和配对都要原始字节，所以用的时候它们仍会进内存，Keystore 只保护存储。AndroidX `security-crypto` 已弃用，不用 `EncryptedSharedPreferences`
-- **通知密钥**：`notify`（第 9 节）单独包装保存，后台收到推送时就能解密；根密钥和 `command` 密钥不因为收通知而在后台解开
-
-### 终端
-
-Android 不执行终端输出里的 OSC 52 剪贴板写入，避免恶意文件或模型输出修改手机剪贴板；用户主动选择复制仍可用。本地 CLI 的结构化事件、模型和会话列表把控制码显示为转义文本，避免消息或文件内容操纵终端及审批显示；原生 tmux 字节流保留交互行为。
-
-`terminal-emulator` 和 `terminal-view` 是 Termux 仓库里以 Apache 2.0 发布的两个模块（仓库其余部分是 GPLv3，2026-09-29 核实），只用这两个。`TerminalView` 绑定的 `TerminalSession` 是 `final`，还在 `updateSize` 里通过 JNI 起本地进程，引用发布的包就换不掉它。所以两个模块的源码固定在 v0.118.3 放进 `android/terminal`，只重写 `TerminalSession`：输入交给回调，远程的输出和快照由外部喂入，JNI 和 C 代码去掉（实测见 [android-notes §2](android-notes.md#2-termux-终端组件)）。升级上游时对照这一个文件合并。
-
-Android 终端的字体依次是 JetBrains Mono、Sarasa Fixed SC 的符号子集（JetBrains Mono 没有的 `⏵`、`⎿`、`✻` 和盲文点阵等，约 290 KB）、系统字体（中文由它提供）。自带的回退链用 Android 10 起的 `Typeface.CustomFallbackBuilder`；Android 8–9 只有 JetBrains Mono 加系统字体，系统缺的符号仍显示不出。JetBrains Mono 的格宽是 0.6em，中文字形比两格窄：渲染器把比格子窄的字形按原宽居中画，不再横向拉伸；框线、色块和 Powerline 分隔符仍拉满格子以保持相连。实测见 [android-notes §2](android-notes.md#2-termux-终端组件)。字号默认 14dp，可在 10–22dp 间调整，保存在本机。适配和绘制使用同一字体在实际像素字号下测出的格宽、取整行高及顶部基线偏移；Termux 的字符宽度规则不变，比格子宽的字形仍然压缩进格子，避免破坏框线和光标对齐。
-
-尺寸和积压的规则同第 11 节：默认不改 tmux 窗口，键盘弹出、旋转屏幕都不改远端尺寸，只有「适配屏幕」及已适配时主动调整字号才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
-
-### 推送和通知里审批
-
-- **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
-- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
-- **Android 订阅恢复**：获取 token 前检查 Google Play 服务是否可用，区分 Google 注册失败和中继服务器登记失败；暂时失败在前台指数退避重试，网络恢复时立即重试。新 token 或通知偏好替换旧重试，进入后台或退出账户时取消，回到前台重新登记。后台的新 token 回调只在账户已加载时登记一次，不读取账户密钥，也不持续重试；关闭两类通知时直接清空订阅，不依赖 Google token。推送故障不阻塞聊天、同步和审批，不显示顶部警告或自动弹窗；只在通知设置分组下方以灰色说明给出原因和可选操作，不显示 Java 异常链。不自动请求通知权限，用户在通知设置里点「开启」时才进入系统设置。重试不能解决手机网络持续无法访问 Google 的问题。
-- **内容**：daemon 用 `notify` 密钥加密审批摘要（机器、会话、审批 ID、命令、截止时间），随 `Notify` 交给 server 原样转发。server 和 FCM 只看到密文；FCM 的 payload 上限是 4 KB，放不下时只发通用提醒
-- **合并**：审批按审批 ID 去重，不再按「同一会话同一类别 15 秒内只推一次」合并，免得漏掉接连出现的审批
-- **显示**：默认只显示通用文案，点开直接进审批页。App 设置里打开「在通知里显示内容并直接审批」后，手机解锁时才显示会话标题、命令和按钮，这样的通知用 `VISIBILITY_SECRET`，锁屏上整条不出现；锁着时收到的仍只发通用文案。`VISIBILITY_PRIVATE` 不够：用户允许锁屏显示敏感内容时它照样全文显示（scope 第 4 节，实测见 [android-notes §4](android-notes.md#4-fcm)）。账户只在前台读取，推送拉起的后台进程只用通知密钥。密文总是随推送下发，开关只在手机上决定怎么显示。App 在前台时不弹通知
-- **按钮**：「允许 / 拒绝」设 `setAuthenticationRequired(true)`，先解锁手机才能点；API 31 以下做不到这一点，就不给按钮，点通知进审批页；每条通知用独立、不可变的 `PendingIntent`，只绑定自己那条审批；命令显示不全时，「允许」改为打开完整的审批页
-- **执行**：点按钮时在广播里封好指令（请求 ID 和截止时间就此固定），交给 WorkManager 发 `Forward`；先显示「允许中…」，daemon 返回才算完成；结果未知时重试同一个信封，过了截止时间还不知道就如实显示
-- **daemon 的校验**：超时和回复都要先抢到审批的 `claimed` 标记，只有一方生效，过期的回复不会被放行。另在审批里存一个绝对截止时间，处理回复时一并检查，作为额外防护
-- **投递失败**：推送没送到不影响 daemon 的超时拒绝，审批仍可以打开 App 处理
+见 [android-client.md](android-client.md)：选型、模块、同步和生命周期、密钥保管、原生终端、推送和在通知里审批。
 
 ## 16. 接入 Claude Code
 
@@ -499,39 +434,7 @@ Codex 继续用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数
 
 ## 17. 会话里的图片
 
-客户端显示会话里出现过的图片，也能发图片给 Agent。显示的图片包括：用户粘贴的（电脑上或客户端发的）、Agent 查看的（Claude Code 的 `Read`，Codex 的 `view_image`、浏览器截图等）、Codex 生成的。界面见 [design/client-v2.html](design/client-v2.html#images)，两个 CLI 怎么记录图片见 [codex-notes §1](codex-notes.md#1-数据从哪读)、[claude-code-notes §2](claude-code-notes.md#2-transcript)。
-
-- **只取 CLI 已经记下的图**：两个 CLI 都把图片的 base64 内嵌在 rollout 或 transcript 里，daemon 解析时一起拿到，不需要再读磁盘。Agent 在回复里提到的本机文件（比如 `![](out/chart.png)`）daemon 不去读：路径由模型决定，照着读就等于让模型能把本机任意文件送到手机上。想在手机上看这类文件，让 Agent 自己看一眼（`Read`、`view_image`），它就会作为「查看的图」出现
-- **事件只带引用**：`UserMessage`、`ToolCall` 和新的「生成了图片」事件里带图片列表，每张有图片 ID、格式、原始尺寸、原始路径（知道的话）和一张内嵌的预览图
-- **两种尺寸**：预览图长边 320px，编码成 JPEG（有透明的用 PNG），大约 5 到 20 KB，直接内嵌在事件里，聊天列表不用额外请求就能画出来；查看大图用的显示版长边不超过 2048px，单独加密上传，加密后的整个信封（连同 header、nonce、GCM 标签和 Protobuf 编码）不超过 1 MiB 的上限，放不下就依次降 JPEG 质量（85 到 55）、再每次缩小到 80%，透明图只缩小，点开时才下载。编码只用 Go 标准库的 JPEG、PNG，WebP 只读不写（`golang.org/x/image/webp` 只有解码器），不为 WebP 编码引入 cgo 依赖。解码有上限：编码后 48 MB、6000 万像素，动图只取第一帧，同时最多处理两张。原图不上传，还在电脑上的会话记录里。Codex 的原图常见 2 到 3 MB，放不进 1 MiB 的信封，也没必要在手机上看原始分辨率
-- **加密和绑定**：显示版用会话密钥加密，header 的用途写「图片」，并带上机器、会话和图片 ID，和事件一样由接收方核对位置。图片 ID 是随机数，不用内容哈希，避免 server 看出两张图是否相同；同一会话里重复出现的图（Codex 每看一次存一份）由 daemon 用会话密钥算 HMAC 去重，只传一次
-- **上传顺序**：显示版和事件走同一条按序上传的队列，先传图、后传引用它的事件，客户端看到事件时图已经在 server 上。图压不进信封上限，或者解码失败时，事件照常上传，这张图标为「没有同步」，只留预览（预览也做不出来就只写文件名）。上传失败不能堵住后面的审批和消息：server 拒绝（配额满）立即放弃，网络错误最多试五次（跨重连累计），之后事件照样上传、这张图标为只有预览。哪张图对应哪个 ID、是否已上传记在会话目录的 `images/index.json`，重启不重传也不丢引用；显示版传完就从本地删掉
-- **读大记录**：几张原图的消息在 rollout 里是一行几十 MB。读记录时一次只读一行，超过 8 MiB 的行不整行读进内存也不跳过：先复制出一份去掉长字符串的 JSON（base64 换成指向文件位置的标记，长文字只留开头），图片处理时再按标记从文件里读出那一段
-- **事件太大时**：先去掉预览（从大的开始），保住正文、图片引用和工具状态，还放不下才截断文字
-- **渲染安全**：daemon 统一重新编码成 PNG 或 JPEG，不转发 SVG 之类可能带脚本的格式；客户端解密后再按文件头核对格式，网页用 `blob:` URL 显示，CSP 只多放行 `img-src blob: data:`
-- **server 能看到的**：图片的数量、密文大小和上传时间，和事件的元数据同一个级别
-- **保存期限和配额**：显示版在 server 上保存 30 天，整个账户最多存 1 GiB（server 的 `-image-retention`、`-image-quota` 可调）。配额在插入的同一个事务里检查，满了就拒绝新图（daemon 把事件降级为「没有同步」），不提前删掉没过期的图。过期的图删掉密文、留下一行记录，客户端因此能区分「已过期」和「从没同步」；同一个图片 ID 过期后不再存入，daemon 需要时换新 ID 重传。配额只算显示版的密文，不含事件里内嵌的预览，也不等于数据库文件的实际大小：SQLite 删掉的空间不会自动还给文件系统，WAL 和备份另算，备份里的密文按备份自己的保留期存在
-- **保存和分享**：客户端查看大图时可以保存到本机或调系统分享。图片从这一步起离开 App，由用户自己决定
-
-### 从客户端发图片
-
-实测见 [claude-code-notes §10](claude-code-notes.md#10-中断和运行中的输入)、[codex-notes §10](codex-notes.md#10-屏幕和输入)。
-
-- **怎么交给 CLI**：daemon 把图片写成本机文件，把文件路径用 bracketed paste 单独粘进输入框，两个 CLI 都会把它变成 `[Image #N]`，和在电脑上粘贴图片一样，仍然是原生输入。不写系统剪贴板再按粘贴键，因为那会覆盖用户电脑上的剪贴板
-- **一条消息最多 6 张**：新建会话的第一条消息和之后的消息都一样
-- **默认压缩**：网页各草稿共用单图准备队列，切换原图或移除后跳过尚未开始的旧请求；Android 也只同时准备一张图，避免多张源图的解码内存叠加。选图后在本机解码，缩到长边不超过 2048px，编码成 JPEG（带透明的用 PNG），iPhone 的 HEIC 这类格式也在这一步转掉；图片数据留出加密信封的开销；压缩图和原图统一走下面的分块协议，每个信封不超过 1 MiB。两个 CLI 本来就会把大图缩到 2000px 上下（notes），所以默认压缩基本不损失模型能看到的内容，还能避免 Codex 把几 MB 的原图写进 rollout
-- **原图**：每条消息可以选择发原图，保留原始的像素和画质，适合有小字的截图。PNG、JPEG、WebP、GIF 原样发送；两个 CLI 不认的格式（HEIC 等）按原始尺寸转成高质量 JPEG。单张不超过 20 MB，按不超过 1 MiB 的信封分块传给 daemon，daemon 按顺序拼好、核对总长度和哈希后才算传完。界面上说明两个 CLI 仍会自己缩小过大的图
-- **去掉元数据**：两种方式都去掉 EXIF 等元数据再发出，照片里的拍摄位置不会经 CLI 送到模型服务商。去掉之前先按 EXIF 里的方向把图转正，否则手机照片会横着或倒着交给 CLI，和客户端预览不一致。默认压缩在解码时按方向转正，重新编码后元数据自然没有了；原图的 JPEG 带方向标记时先无损旋转（尺寸不是 MCU 整数倍、做不了无损旋转时，以最高质量重新编码），再删掉 APP1 等元数据段（整个文件都要删，包括扫描之间和 EOI 之前的注释、APP 段，EOI 之后的内容也丢掉），PNG 删掉文本和 `eXIf` 块，GIF 删掉注释扩展和除循环播放以外的应用扩展（XMP 在里面），帧不动，没有方向标记的不改动像素数据
-- **先传图、再发消息**：图片传给机器，不传给会话：每张图用机器级指令（header 里不带会话 ID，见第 13 节）分块发给 daemon，原图也不会被 60 秒的指令期限卡住。传输 ID 由客户端生成，每块带偏移，daemon 逐块落盘（fsync）后才回复已持久化的长度，重发的块必须和已收到的字节一致；中断后客户端查询状态从断点接着传。完成时 daemon 核对总长度、SHA-256、文件头的格式并确认能解码，再去掉 EXIF、XMP 和文本块（客户端已经去过一遍，这里兜底，要转正的 JPEG 重新编码），写到 `~/.remote-agent/uploads/pending/<图片 ID>.<扩展名>`（权限 0600，路径由 daemon 决定，不含空格，否则两个 CLI 都不认；`REMOTE_AGENT_HOME` 的路径带空格时 daemon 不声明上传能力），返回图片 ID。传输和图片都绑定开始上传的设备，别的设备不能续传或拿来发送；这里的设备由指令签名证明（第 9 节），server 转述的发送方不算数。发消息或新建会话的指令带上这些 ID，daemon 受理时把文件移到 `uploads/<会话 ID>/` 下；新建会话先核对图片都在，再启动 CLI。一小时没有新增字节的传输、24 小时内没有被消息用上的图，daemon 自动删除；重复块和查询状态不延长期限。每次操作也检查期限，不等定期清理才失效。电脑上传目录默认限额 1 GiB，可在设备设置中调整，计入已有文件和未完成传输尚未收到的预留字节。新上传前清理过期文件，再按最近使用顺序回收可淘汰的原图，仍不足才拒绝并指向设备的占用和清理入口。排队的图片按消息请求 ID 记录引用；取消消息后只在最后一个引用释放、文件还没交给 CLI 时删除。重启以持久化队列恢复引用，避免中途退出留下永久占用。完成时清理后的文件仍不得超过单张上限，原始分块副本等写入成功才删除，这一步可临时多占一张图的空间。新建时换了机器，客户端把图重新传给新机器，所以发出之前客户端一直留着压缩好的图。和文字消息一样要求机器在线，server 不替用户保存要发的图；消息排队时图片已经在电脑上，不会重传
-- **注入**：沿用现有的输入锁和暂存本地按键，输入框为空才开始。每张图的路径单独粘贴一次，只看输入框（两条横线之间或提示符那几行）里是否正好多了一个 `[Image #N]`、没有别的字：Claude Code 运行中排队的消息也以 `[Image #N]` 开头显示在输入框上方，搜整个屏幕会认错。全部认出后再粘贴正文和回车。暂存按键改成租约：每秒续一次，整条消息有总时长上限（10 秒加每张图 8 秒），PTY 代理的单次暂存仍最多 10 秒，daemon 卡住时用户的终端最多被挡这么久。每次写终端（粘贴路径、Ctrl-U、正文和回车）之前都要确认暂存仍然有效：最近一次续期得到确认、离到期还有余量，且没过总时长；存标记（fsync）或抓屏卡住导致暂存可能已经放开时，一律不再写，按回车前还要再抓一次屏确认输入框里正好是这条消息的占位。每一步写入前先把阶段存进 `queue.json`（等待、正在粘贴图片、图片已识别、正在提交），并作为 `InputState` 发给客户端
-- **没能发送时**：某张图没变成占位（路径以文字留在输入框里、一直等不到、输入框里出现了别的字、弹出了菜单）就不按回车。输入框里只有这条消息粘进去的占位和路径时，用 Ctrl-U 清空并确认输入框变空，消息记为「提交前失败，已清理」（`FAILED`）；输入框里还有别的内容（比如暂存失效后本地敲的键），或者清完确认不了，就什么都不删，记为「需要到终端处理」（`NEEDS_TERMINAL`）。等占位超时时即使输入框是空的也记为后者，因为 Claude Code 可能稍后才把图转换进去。两种都不自动重试。不用 Ctrl-C 或 Esc 清空：Codex 空输入框按 Ctrl-C 会退出，Claude Code 运行中按 Esc 会中断这一轮。daemon 在粘贴图片中途停了，重启后不再写这条消息，也不删任何东西：旧 daemon 一停暂存就放开了，这期间用户可能清掉了失败的粘贴、又贴了自己的图（Codex 的编号还会重用），输入框里的内容认不出归属；Claude Code 也可能还在转换停之前贴进去的图。所以只有输入框在整个转换窗口（10 秒）里一直是空的，才记为失败（原因 `restarted`），否则记为需要到终端处理；窗口结束之前后面的消息不写入。已经按了回车的照旧只等确认
-- **确认提交**：要同时有文字和图片的证据：CLI 记下的正文里必须有这条消息每张图的 `[Image #N]`，去掉这些占位（只去掉本次的，用户正文里自己写的占位保留）后和发出的正文一致。Codex 以 `history.jsonl` 或 rollout 的用户消息为准（后者的 `local_image` 路径就是上传的文件）；Claude Code 以带 `imagePasteIds` 的用户记录、`queue-operation` 的 `enqueue` 或 `queued_command` 为准。事件里的 `UserMessage` 按路径或编号认出是哪条发出的消息后，带上请求 ID、来源和每张图的上传 ID，发送端据此换掉自己的本地缩略图
-- **清理和恢复**：首次上传和首次接受消息分别创建暂存、会话目录。daemon 启动时先补完中断的文件移动，再恢复会话输入；启动及每十分钟清理过期传输、一天以上的孤儿图片和损坏记录、已退出会话的上传目录，并重试退出后的删除。已使用图片记录随原图保留，避免文件仍在却无法验证归属。写入失败会清理临时文件；未完成的记录提交留下的文件也由定期清理兜底。会话元数据无法读取时不据此删除会话文件。
-- **原图的保留与 LRU**：Codex 提交时才读取文件，Claude Code 粘贴时就读入；必须先保留上传、排队和正在提交的图片。两个 CLI 的历史图片已经以 base64 内嵌，历史回放不需要原文件，但模型仍可能按来源路径再读（[Claude Code 实测](claude-code-notes.md#10-中断和运行中的输入)）。daemon 确认记录里已有可读图片后，至少保留一分钟，且这一轮执行中仍保护这台会话的原图；队列不再引用、执行结束后才进入 LRU。此后按原始路径再次读取不保证成功，历史内嵌图片仍保留。无法确认读入的文件和升级前缺少引用信息的记录不参与淘汰，等会话结束清理。
-- **缓存与草稿**：电脑的预览和待同步显示版共用 150 MiB 的文件缓存，按最近使用顺序淘汰；限额只算预览与显示版文件，图片索引和历史记录按会话历史保留。已同步图片仍可从 server 下载，预览已内嵌在事件中。离线积压的显示版被淘汰时明确降级为只有预览，不能继续宣称大图可下载；同一图片之后再出现时可从 CLI 记录重新编码。Android 查看缓存也为 150 MiB，按最近访问淘汰；已解密的查看图片只属于当前账户连接，退出或切换连接时清空，旧的异步加载不能回填到新账户；待发与待确认图片另设 256 MiB 上限（容纳六张 20 MiB 原图的草稿和发送过渡副本），不按 LRU 丢弃用户草稿。闲置七天的草稿清理，尚未确认的消息保留到确认或用户移除；容量不足时保留已有内容并提示。各期限和固定容量都是初始默认值，后续按实际用量调整。
-- **占用与清理**：电脑详情显示上传图片的总占用和预览缓存，不按会话列出；可清理和正在上传的大小不为零时才写出来。只开放上传限额一个配置项。清理按钮写明可释放多少，只删除可回收原图和缓存，并说明未同步大图会退回预览；没有可清理的内容时不可点。Android 设置显示本机草稿和查看缓存的占用，清理查看缓存不删草稿。占用统计通过加密指令回复返回，不给 server 新增明文目录或内容。
-- **显示**：发出去的图由 CLI 写进会话记录，按上面的规则显示，和在电脑上粘贴的图同一条路径；发送中先显示客户端本地的缩略图
-
+见 [session-images.md](session-images.md)：从 CLI 的记录里取图、两种尺寸、加密上传、保存期限和配额，以及从客户端发图片、注入、失败处理和存储清理。
 
 ## 18. 定时任务
 

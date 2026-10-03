@@ -19,7 +19,9 @@
 | 文件 | 类型 | 内容 |
 |---|---|---|
 | [scope.md](scope.md) | 边界 | 要解决的问题、组件职责、信任边界、MVP 做与不做 |
-| [architecture.md](architecture.md) | 设计 | 部署、报文分层、通信方式、技术决策、接入 Codex、审批、项目标识、会话里的图片 |
+| [architecture.md](architecture.md) | 设计 | 部署和发布、报文分层、通信方式、技术决策、接入 Codex 和 Claude Code、审批、项目、账户和密钥、同步和指令、终端、推送、daemon 设置、账户额度、定时任务 |
+| [android-client.md](android-client.md) | 设计 | Android 客户端自己的选型和约束：模块、生命周期、密钥保管、原生终端、推送和在通知里审批 |
+| [session-images.md](session-images.md) | 设计 | 会话里的图片：取图、编码、加密上传、保存期限，以及从客户端发图片、失败处理和存储清理 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单、hook、审批模式、弹窗、中断、模型提问 |
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器、选图和图片 |
