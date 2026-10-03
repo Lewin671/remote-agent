@@ -151,6 +151,7 @@ message Command {
     ResumeSessionRequest resume_session = 12;
     ResumeInputRequest resume_input = 13;
     RenameSessionRequest rename_session = 14;
+    ForkSessionRequest fork_session = 15;
     // Commands for the machine rather than a session; their envelope
     // header names no session.
     CreateSessionRequest create_session = 20;
@@ -193,6 +194,7 @@ message CommandResult {
     ResumeSessionResponse resume_session = 21;
     ResumeInputResponse resume_input = 22;
     RenameSessionResponse rename_session = 23;
+    ForkSessionResponse fork_session = 24;
     CreateSessionResponse create_session = 30;
     ListModelsResponse list_models = 31;
     ListDirectoriesResponse list_directories = 32;

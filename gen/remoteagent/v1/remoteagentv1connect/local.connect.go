@@ -53,6 +53,9 @@ const (
 	// LocalServiceResumeSessionProcedure is the fully-qualified name of the LocalService's
 	// ResumeSession RPC.
 	LocalServiceResumeSessionProcedure = "/remoteagent.v1.LocalService/ResumeSession"
+	// LocalServiceForkSessionProcedure is the fully-qualified name of the LocalService's ForkSession
+	// RPC.
+	LocalServiceForkSessionProcedure = "/remoteagent.v1.LocalService/ForkSession"
 	// LocalServiceCancelInputProcedure is the fully-qualified name of the LocalService's CancelInput
 	// RPC.
 	LocalServiceCancelInputProcedure = "/remoteagent.v1.LocalService/CancelInput"
@@ -123,6 +126,10 @@ type LocalServiceClient interface {
 	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
+	// ForkSession starts a new session that carries on from a session's
+	// conversation as it is now, with the CLI's own fork. The source is left
+	// as it is.
+	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
 	// CancelInput withdraws a message the model has not received: one still
 	// in the daemon's queue, or (Claude Code) one held in the CLI's own queue
 	// until the current tool call ends (InputStatus HELD_BY_CLI).
@@ -219,6 +226,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceResumeSessionProcedure,
 			connect.WithSchema(localServiceMethods.ByName("ResumeSession")),
+			connect.WithClientOptions(opts...),
+		),
+		forkSession: connect.NewClient[v1.ForkSessionRequest, v1.ForkSessionResponse](
+			httpClient,
+			baseURL+LocalServiceForkSessionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ForkSession")),
 			connect.WithClientOptions(opts...),
 		),
 		cancelInput: connect.NewClient[v1.CancelInputRequest, v1.CancelInputResponse](
@@ -354,6 +367,7 @@ type localServiceClient struct {
 	interrupt            *connect.Client[v1.InterruptRequest, v1.InterruptResponse]
 	stopSession          *connect.Client[v1.StopSessionRequest, v1.StopSessionResponse]
 	resumeSession        *connect.Client[v1.ResumeSessionRequest, v1.ResumeSessionResponse]
+	forkSession          *connect.Client[v1.ForkSessionRequest, v1.ForkSessionResponse]
 	cancelInput          *connect.Client[v1.CancelInputRequest, v1.CancelInputResponse]
 	resumeInput          *connect.Client[v1.ResumeInputRequest, v1.ResumeInputResponse]
 	setModel             *connect.Client[v1.SetModelRequest, v1.SetModelResponse]
@@ -414,6 +428,11 @@ func (c *localServiceClient) StopSession(ctx context.Context, req *connect.Reque
 // ResumeSession calls remoteagent.v1.LocalService.ResumeSession.
 func (c *localServiceClient) ResumeSession(ctx context.Context, req *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error) {
 	return c.resumeSession.CallUnary(ctx, req)
+}
+
+// ForkSession calls remoteagent.v1.LocalService.ForkSession.
+func (c *localServiceClient) ForkSession(ctx context.Context, req *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error) {
+	return c.forkSession.CallUnary(ctx, req)
 }
 
 // CancelInput calls remoteagent.v1.LocalService.CancelInput.
@@ -529,6 +548,10 @@ type LocalServiceHandler interface {
 	// ResumeSession starts the CLI again for an exited session, continuing its
 	// conversation.
 	ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error)
+	// ForkSession starts a new session that carries on from a session's
+	// conversation as it is now, with the CLI's own fork. The source is left
+	// as it is.
+	ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error)
 	// CancelInput withdraws a message the model has not received: one still
 	// in the daemon's queue, or (Claude Code) one held in the CLI's own queue
 	// until the current tool call ends (InputStatus HELD_BY_CLI).
@@ -621,6 +644,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceResumeSessionProcedure,
 		svc.ResumeSession,
 		connect.WithSchema(localServiceMethods.ByName("ResumeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceForkSessionHandler := connect.NewUnaryHandler(
+		LocalServiceForkSessionProcedure,
+		svc.ForkSession,
+		connect.WithSchema(localServiceMethods.ByName("ForkSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceCancelInputHandler := connect.NewUnaryHandler(
@@ -761,6 +790,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceStopSessionHandler.ServeHTTP(w, r)
 		case LocalServiceResumeSessionProcedure:
 			localServiceResumeSessionHandler.ServeHTTP(w, r)
+		case LocalServiceForkSessionProcedure:
+			localServiceForkSessionHandler.ServeHTTP(w, r)
 		case LocalServiceCancelInputProcedure:
 			localServiceCancelInputHandler.ServeHTTP(w, r)
 		case LocalServiceResumeInputProcedure:
@@ -840,6 +871,10 @@ func (UnimplementedLocalServiceHandler) StopSession(context.Context, *connect.Re
 
 func (UnimplementedLocalServiceHandler) ResumeSession(context.Context, *connect.Request[v1.ResumeSessionRequest]) (*connect.Response[v1.ResumeSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.ResumeSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ForkSession(context.Context, *connect.Request[v1.ForkSessionRequest]) (*connect.Response[v1.ForkSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.ForkSession is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) CancelInput(context.Context, *connect.Request[v1.CancelInputRequest]) (*connect.Response[v1.CancelInputResponse], error) {

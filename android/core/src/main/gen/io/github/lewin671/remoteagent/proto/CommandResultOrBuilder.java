@@ -199,6 +199,17 @@ public interface CommandResultOrBuilder extends
   io.github.lewin671.remoteagent.proto.RenameSessionResponse getRenameSession();
 
   /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   * @return Whether the forkSession field is set.
+   */
+  boolean hasForkSession();
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   * @return The forkSession.
+   */
+  io.github.lewin671.remoteagent.proto.ForkSessionResponse getForkSession();
+
+  /**
    * <code>.remoteagent.v1.CreateSessionResponse create_session = 30 [json_name = "createSession"];</code>
    * @return Whether the createSession field is set.
    */

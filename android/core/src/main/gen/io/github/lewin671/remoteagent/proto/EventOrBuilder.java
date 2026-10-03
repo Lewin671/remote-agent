@@ -295,5 +295,16 @@ public interface EventOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.PlanAnswered getPlanAnswered();
 
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   * @return Whether the sessionForked field is set.
+   */
+  boolean hasSessionForked();
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   * @return The sessionForked.
+   */
+  io.github.lewin671.remoteagent.proto.SessionForked getSessionForked();
+
   public io.github.lewin671.remoteagent.proto.Event.KindCase getKindCase();
 }

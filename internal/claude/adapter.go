@@ -470,7 +470,7 @@ func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
 	if l.SessionID == "" {
 		l.SessionID = newUUID()
 	}
-	if !l.Resume {
+	if !l.Resume && l.ForkOf == "" {
 		return append([]string{"--settings", path, "--session-id", l.SessionID}, l.Args...), nil
 	}
 	drop := map[string]bool{}
@@ -501,6 +501,13 @@ func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
 		over = append(over, "--allow-dangerously-skip-permissions")
 	}
 	args := append(flagArgs(l.Args, drop), over...)
+	if l.ForkOf != "" {
+		// The fork's transcript will repeat the source's records.
+		if err := writeCopied(l.Dir, l.Transcript, l.ForkOffset); err != nil {
+			return nil, err
+		}
+		return append([]string{"--settings", path, "--resume", l.ForkOf, "--fork-session", "--session-id", l.SessionID}, args...), nil
+	}
 	flag := "--session-id" // nothing was sent: there is no conversation yet
 	if l.Transcript != "" {
 		if _, err := os.Stat(l.Transcript); err == nil {

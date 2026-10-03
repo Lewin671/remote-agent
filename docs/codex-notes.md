@@ -201,6 +201,16 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 
 
 
+## 11. 分叉
+
+codex-cli 0.159.2，GPT-6-Luna low，2026-10-03。
+
+- `codex fork [选项] <会话 ID>` 以交互方式打开一个新会话，接着原会话的对话；选项和 `codex resume` 一样（`-m`、`-c`、`-s`、`-a` 等），原会话不受影响，之后还能照常 `resume`
+- 屏幕上先写一行 `Thread forked from <原会话的标题或 ID>`，再重画之前的对话，然后是空的输入框
+- 新 rollout 在启动时就写出，开头只有 `session_meta` 和 `thread_settings_applied` 两行，**不含之前的对话**。`session_meta` 里有 `forked_from_id`、`forked_from_ordinal_exclusive`，以及 `history_base`（`thread_id`、`end_ordinal_exclusive`、`end_byte_offset`），指向父 rollout 截止到哪一行；之后只追加新会话自己的记录。分叉出的会话再分叉，指向的是它自己的 rollout，要看全历史得一层层往上找
+- `SessionStart` hook 和普通会话一样，在发出第一条消息时才触发，带新会话的 ID 和 rollout 路径
+- 经 remote-agent 实测：分叉出的会话记得原对话里的内容，原会话之后发的消息它不知道；分叉的分叉、结束后 `resume`、对已退出的会话分叉都正常
+
 ## 定时任务 MCP 接入实测
 
 2026-09-30，Codex CLI 0.159.2、GPT-6-Luna low，使用独立的状态目录、tmux socket 和临时工作目录实测：单次 `-c mcp_servers.remote_agent=...` 注册 stdio MCP；没有注入会话指令。用户消息要求安排“本轮结束后 2 秒”，模型调用 `schedule_create`，daemon 在本轮结束后发出后续消息，同一对话记录了回复。

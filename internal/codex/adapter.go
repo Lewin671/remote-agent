@@ -242,7 +242,8 @@ func FlagArgs(args []string, drop, valueFlags map[string]bool) []string {
 // such as a first prompt, then the model, effort and approval mode it last
 // ran with, which may have been changed since. Codex refuses a repeated
 // -m, and its approval flags win over -c, so the options overridden are
-// dropped from the original ones first.
+// dropped from the original ones first. A fork takes its options the same
+// way and starts with `codex fork` (codex-notes §11).
 func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 	argv, err := a.argv(l)
 	if err != nil || l.Exe == "" || l.RemoteSession == "" {
@@ -253,7 +254,7 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 }
 
 func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
-	if !l.Resume {
+	if !l.Resume && l.ForkOf == "" {
 		return Args(l.Args), nil
 	}
 	var over []string
@@ -274,6 +275,10 @@ func (a *Adapter) argv(l *agent.Launch) ([]string, error) {
 		}
 	}
 	args := append(FlagArgs(l.Args, drop, valueFlags), over...)
+	if l.ForkOf != "" {
+		argv := append([]string{"fork"}, Args(args)...)
+		return append(argv, l.ForkOf), nil
+	}
 	if l.SessionID == "" {
 		// Nothing was ever sent: there is no conversation to resume.
 		return Args(args), nil
@@ -352,6 +357,10 @@ func NormalizeText(s string) string { return strings.Join(strings.Fields(s), " "
 
 // HookEvents: Codex writes what remote-agent needs to the rollout in time.
 func (a *Adapter) HookEvents(*agent.Hook) []*pb.Event { return nil }
+
+// Copied: a fork's rollout refers to its source's and repeats none of it
+// (codex-notes §11).
+func (a *Adapter) Copied(string) func([]byte) bool { return nil }
 
 // ForwardPermission: with auto_review on, the hook stays silent and
 // Codex's reviewer decides (architecture §7).

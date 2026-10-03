@@ -202,11 +202,15 @@
 - 后台工作结束时，Claude Code 自己发起新的一轮：transcript 先有 `queue-operation`，再有一条正文为 `<task-notification>…` 的用户记录，`origin.kind` 为 `task-notification`、`promptSource` 为 `system`，然后模型回复，以 `turn_duration` 结束
 - Shift+Tab 一次连续写入多个（`tmux send-keys -H` 一次发三个 `\e[Z`）：全部生效，模式行直接显示走完三步后的模式
 
-## 11. 压缩和恢复
+## 11. 压缩、恢复和分叉
 
 - `/compact`：输入框上方显示 `Compacting conversation… (22s)`，完成后显示 `Compacted (ctrl+o to see full summary)`。transcript 依次是 `/compact` 这条用户记录（没有 `origin`）、`compact_boundary`、`isCompactSummary` 的摘要、斜杠命令的记录；hook 依次是 `PreCompact`、`SessionStart`（`source: "compact"`）。这次压缩用了 41 秒，`preTokens` 36057 → `postTokens` 3605
 - `/exit` 退出，触发 `SessionEnd`
 - `claude --resume <id>`：同一个会话 ID、同一个 transcript，接着追加；`SessionStart` 的 `source` 为 `resume`；屏幕上重新画出之前的对话
+- `claude --resume <id> --fork-session --session-id <新 uuid>`（2.1.287，haiku，2026-10-03）：以新的会话 ID 接着原对话，原 transcript 不动；`--session-id` 在交互模式和 `-p` 下都生效。屏幕上重新画出之前的对话。**新 transcript 要到发出第一条消息时才出现**，这之前磁盘上没有它
+  - 新 transcript 的内容：开头几行是新会话自己的 `mode`、`permission-mode` 等没有 `uuid` 的记录，接着是原会话全部记录的副本（`uuid`、`parentUuid`、时间戳都和原来一样，只有 `sessionId` 换成新的），然后才是新消息。没有标明「分叉自哪个会话」的字段
+  - 分叉出的会话再分叉，新 transcript 里的副本包含两层的全部记录，`uuid` 仍然不变
+  - 还没发过消息的会话没有 transcript，不能分叉
 
 ## 12. 做实测时的注意事项
 

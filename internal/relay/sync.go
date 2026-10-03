@@ -124,6 +124,9 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			after = res.Msg.LastSeq
 			// Once stored, clients can load what the notification is about.
 			for _, e := range evs[:n] {
+				if e.Seq <= info.ForkedSeq {
+					continue // the source's history, copied into a fork
+				}
 				if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
 					req, err := c.notifyRequest(id, info, kind, e)
 					if err != nil {

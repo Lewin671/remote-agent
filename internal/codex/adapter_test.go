@@ -67,6 +67,24 @@ func TestResumeArgv(t *testing.T) {
 	}
 }
 
+// A fork takes its options as a resume does and names the source.
+func TestForkArgv(t *testing.T) {
+	a := New("codex", t.TempDir(), "")
+	argv, err := a.Argv(&agent.Launch{Args: []string{"-m", "gpt-6-sol", "fix it"}, ForkOf: "019a",
+		Context: &pb.TurnContext{Model: "gpt-6-luna", Effort: "low"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j := strings.Join(argv, " ")
+	if argv[0] != "fork" || argv[len(argv)-1] != "019a" || strings.Contains(j, "fix it") || strings.Contains(j, "gpt-6-sol") ||
+		!strings.Contains(j, "-m gpt-6-luna") || !strings.Contains(j, `model_reasoning_effort="low"`) || !strings.Contains(j, "hooks.SessionStart") {
+		t.Fatalf("argv %q", argv)
+	}
+	if a.Copied(t.TempDir()) != nil {
+		t.Fatal("Codex repeats nothing in a fork's rollout")
+	}
+}
+
 func TestManagedMCPOnStartAndResume(t *testing.T) {
 	a := New("codex", t.TempDir(), "")
 	for _, resume := range []bool{false, true} {

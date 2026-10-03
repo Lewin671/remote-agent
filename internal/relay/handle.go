@@ -170,6 +170,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 				out.Kind = &pb.CommandResult_ResumeSession{ResumeSession: m}
 			})
 		})
+	case *pb.Command_ForkSession:
+		err = on(k.ForkSession.SessionId, func() error {
+			return call(ctx, l.ForkSession, k.ForkSession, func(m *pb.ForkSessionResponse) {
+				out.Kind = &pb.CommandResult_ForkSession{ForkSession: m}
+			})
+		})
 	case *pb.Command_CreateSession:
 		err = machine(func() error {
 			req := k.CreateSession

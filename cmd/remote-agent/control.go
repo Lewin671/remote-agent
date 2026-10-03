@@ -88,6 +88,18 @@ func runPlan(args []string) error {
 	return explain(err)
 }
 
+func runFork(args []string) error {
+	if err := needArgs(args, 1, "fork <id>"); err != nil {
+		return err
+	}
+	res, err := dial().ForkSession(context.Background(), connect.NewRequest(&pb.ForkSessionRequest{SessionId: args[0]}))
+	if err != nil {
+		return explain(err)
+	}
+	fmt.Printf("forked into %s; attach with `remote-agent attach %s`\n", res.Msg.Session.Id, res.Msg.Session.Id[:8])
+	return nil
+}
+
 func runResume(args []string) error {
 	if err := needArgs(args, 1, "resume <id>"); err != nil {
 		return err

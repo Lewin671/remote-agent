@@ -31,6 +31,7 @@ Usage:
   remote-agent interrupt <id>              interrupt the running turn
   remote-agent stop <id>                   end the session
   remote-agent resume <id>                 start an ended session again
+  remote-agent fork <id>                   start a new session from a session's conversation
   remote-agent model [codex|claude]        list a CLI's models
   remote-agent model <id> <model> [<effort>]
                                            switch a session's model
@@ -95,6 +96,8 @@ func main() {
 		err = runStop(args)
 	case "resume":
 		err = runResume(args)
+	case "fork":
+		err = runFork(args)
 	case "model":
 		err = runModel(args)
 	case "mode":

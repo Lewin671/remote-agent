@@ -57,6 +57,9 @@ type session struct {
 	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
 	parser agent.Parser
 	reader *tail.Reader
+	// copied tells the lines of a fork's transcript that repeat its
+	// source's records, which the fork has as events already; nil if none.
+	copied func(line []byte) bool
 
 	mu      sync.Mutex
 	meta    meta
@@ -156,6 +159,9 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		status:     pb.SessionStatus_SESSION_STATUS_STARTING,
 		queue:      q,
 		images:     openImageStore(dir),
+	}
+	if m.ForkedFrom != "" {
+		s.copied = ag.Copied(dir)
 	}
 	// Rebuild derived state from the events already logged.
 	log.Each(func(e *pb.Event) {
@@ -364,6 +370,10 @@ func (s *session) readRollout() {
 		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID)
 	}
 	for _, l := range lines {
+		if s.copied != nil && s.copied(l.Data) {
+			_ = s.log.Append(s.meta.ID, nil, r.Path, l.End)
+			continue
+		}
 		evs, err := s.parser.Parse(l.Data)
 		if err != nil {
 			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", errClass(err))
@@ -606,6 +616,7 @@ func (s *session) info() *pb.Session {
 	if s.meta.Title != "" {
 		out.Title = s.meta.Title
 	}
+	out.ForkedFrom, out.ForkedSeq = s.meta.ForkedFrom, s.meta.ForkedSeq
 	out.AttentionSince = s.ordering.attentionSince(out)
 	out.EndedAt = s.ordering.endedAt
 	return out

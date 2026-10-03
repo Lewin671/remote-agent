@@ -47,6 +47,7 @@ public  final class Event extends
     TOOL_STARTED(26),
     IMAGE_GENERATED(27),
     PLAN_ANSWERED(28),
+    SESSION_FORKED(29),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -81,6 +82,7 @@ public  final class Event extends
         case 26: return TOOL_STARTED;
         case 27: return IMAGE_GENERATED;
         case 28: return PLAN_ANSWERED;
+        case 29: return SESSION_FORKED;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1365,6 +1367,58 @@ public  final class Event extends
    */
   private void clearPlanAnswered() {
     if (kindCase_ == 28) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int SESSION_FORKED_FIELD_NUMBER = 29;
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionForked() {
+    return kindCase_ == 29;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SessionForked getSessionForked() {
+    if (kindCase_ == 29) {
+       return (io.github.lewin671.remoteagent.proto.SessionForked) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.SessionForked.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionForked(io.github.lewin671.remoteagent.proto.SessionForked value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 29;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionForked(io.github.lewin671.remoteagent.proto.SessionForked value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 29 &&
+        kind_ != io.github.lewin671.remoteagent.proto.SessionForked.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.SessionForked.newBuilder((io.github.lewin671.remoteagent.proto.SessionForked) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 29;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+   */
+  private void clearSessionForked() {
+    if (kindCase_ == 29) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2685,6 +2739,54 @@ public  final class Event extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionForked() {
+      return instance.hasSessionForked();
+    }
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SessionForked getSessionForked() {
+      return instance.getSessionForked();
+    }
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    public Builder setSessionForked(io.github.lewin671.remoteagent.proto.SessionForked value) {
+      copyOnWrite();
+      instance.setSessionForked(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    public Builder setSessionForked(
+        io.github.lewin671.remoteagent.proto.SessionForked.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionForked(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    public Builder mergeSessionForked(io.github.lewin671.remoteagent.proto.SessionForked value) {
+      copyOnWrite();
+      instance.mergeSessionForked(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SessionForked session_forked = 29 [json_name = "sessionForked"];</code>
+     */
+    public Builder clearSessionForked() {
+      copyOnWrite();
+      instance.clearSessionForked();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Event)
   }
   @java.lang.Override
@@ -2728,13 +2830,14 @@ public  final class Event extends
             io.github.lewin671.remoteagent.proto.ToolStarted.class,
             io.github.lewin671.remoteagent.proto.ImageGenerated.class,
             io.github.lewin671.remoteagent.proto.PlanAnswered.class,
+            io.github.lewin671.remoteagent.proto.SessionForked.class,
           };
           java.lang.String info =
-              "\u0000\u0018\u0001\u0001\u0001\u001c\u0018\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0000\u0019\u0001\u0001\u0001\u001d\u0019\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
               "\u0003\u1009\u0000\u0004\u0208\u0005\u1009\u0001\n<\u0000\u000b<\u0000\f<\u0000\r" +
               "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
               "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a" +
-              "<\u0000\u001b<\u0000\u001c<\u0000";
+              "<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

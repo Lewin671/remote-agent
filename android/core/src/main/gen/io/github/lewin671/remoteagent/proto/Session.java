@@ -31,6 +31,7 @@ public  final class Session extends
     collaborationMode_ = "";
     inputWait_ = "";
     permissionMode_ = "";
+    forkedFrom_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1526,6 +1527,115 @@ public  final class Session extends
   private void clearEndedAt() {
     endedAt_ = null;
     bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int FORKED_FROM_FIELD_NUMBER = 31;
+  private java.lang.String forkedFrom_;
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @return The forkedFrom.
+   */
+  @java.lang.Override
+  public java.lang.String getForkedFrom() {
+    return forkedFrom_;
+  }
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @return The bytes for forkedFrom.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getForkedFromBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(forkedFrom_);
+  }
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @param value The forkedFrom to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setForkedFrom(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    forkedFrom_ = value;
+  }
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   */
+  private void clearForkedFrom() {
+
+    forkedFrom_ = getDefaultInstance().getForkedFrom();
+  }
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @param value The bytes for forkedFrom to set.
+   */
+  private void setForkedFromBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    forkedFrom_ = value.toStringUtf8();
+
+  }
+
+  public static final int FORKED_SEQ_FIELD_NUMBER = 32;
+  private long forkedSeq_;
+  /**
+   * <pre>
+   * Seq of the session's SessionForked event: the events before it are
+   * copies of the source's. 0 if it was not forked.
+   * </pre>
+   *
+   * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+   * @return The forkedSeq.
+   */
+  @java.lang.Override
+  public long getForkedSeq() {
+    return forkedSeq_;
+  }
+  /**
+   * <pre>
+   * Seq of the session's SessionForked event: the events before it are
+   * copies of the source's. 0 if it was not forked.
+   * </pre>
+   *
+   * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+   * @param value The forkedSeq to set.
+   */
+  private void setForkedSeq(long value) {
+    
+    forkedSeq_ = value;
+  }
+  /**
+   * <pre>
+   * Seq of the session's SessionForked event: the events before it are
+   * copies of the source's. 0 if it was not forked.
+   * </pre>
+   *
+   * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+   */
+  private void clearForkedSeq() {
+
+    forkedSeq_ = 0L;
   }
 
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
@@ -3169,6 +3279,118 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The session this one was forked from, empty if it was not forked.
+     * </pre>
+     *
+     * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+     * @return The forkedFrom.
+     */
+    @java.lang.Override
+    public java.lang.String getForkedFrom() {
+      return instance.getForkedFrom();
+    }
+    /**
+     * <pre>
+     * The session this one was forked from, empty if it was not forked.
+     * </pre>
+     *
+     * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+     * @return The bytes for forkedFrom.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getForkedFromBytes() {
+      return instance.getForkedFromBytes();
+    }
+    /**
+     * <pre>
+     * The session this one was forked from, empty if it was not forked.
+     * </pre>
+     *
+     * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+     * @param value The forkedFrom to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForkedFrom(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setForkedFrom(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The session this one was forked from, empty if it was not forked.
+     * </pre>
+     *
+     * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearForkedFrom() {
+      copyOnWrite();
+      instance.clearForkedFrom();
+      return this;
+    }
+    /**
+     * <pre>
+     * The session this one was forked from, empty if it was not forked.
+     * </pre>
+     *
+     * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+     * @param value The bytes for forkedFrom to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForkedFromBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setForkedFromBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Seq of the session's SessionForked event: the events before it are
+     * copies of the source's. 0 if it was not forked.
+     * </pre>
+     *
+     * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+     * @return The forkedSeq.
+     */
+    @java.lang.Override
+    public long getForkedSeq() {
+      return instance.getForkedSeq();
+    }
+    /**
+     * <pre>
+     * Seq of the session's SessionForked event: the events before it are
+     * copies of the source's. 0 if it was not forked.
+     * </pre>
+     *
+     * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+     * @param value The forkedSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForkedSeq(long value) {
+      copyOnWrite();
+      instance.setForkedSeq(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Seq of the session's SessionForked event: the events before it are
+     * copies of the source's. 0 if it was not forked.
+     * </pre>
+     *
+     * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearForkedSeq() {
+      copyOnWrite();
+      instance.clearForkedSeq();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -3216,13 +3438,16 @@ public  final class Session extends
             "fullAccessUnavailable_",
             "attentionSince_",
             "endedAt_",
+            "forkedFrom_",
+            "forkedSeq_",
           };
           java.lang.String info =
-              "\u0000\u001e\u0000\u0001\u0001\u001e\u001e\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n" +
-              "\u0208\u000b\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208" +
-              "\u0012\u0208\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208" +
-              "\u0019\f\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002";
+              "\u0000 \u0000\u0001\u0001  \u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n\u0208\u000b" +
+              "\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0208" +
+              "\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208\u0019\f" +
+              "\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002\u001f\u0208" +
+              " \u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

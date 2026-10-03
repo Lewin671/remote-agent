@@ -33,6 +33,10 @@ type meta struct {
 	// StandardContext: a Claude Code session held to the standard context
 	// window; its environment says so to the CLI, also when resumed.
 	StandardContext bool `json:"standard_context,omitempty"`
+	// ForkedFrom is the session this one was forked from, and ForkedSeq
+	// the seq of its SessionForked event, after the source's history.
+	ForkedFrom string `json:"forked_from,omitempty"`
+	ForkedSeq  uint64 `json:"forked_seq,omitempty"`
 	// Starting: the session is being created and its CLI may not have
 	// started yet; a restart that finds no tmux session undoes it.
 	Starting bool `json:"starting,omitempty"`

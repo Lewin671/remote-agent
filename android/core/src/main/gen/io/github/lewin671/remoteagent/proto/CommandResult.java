@@ -40,6 +40,7 @@ public  final class CommandResult extends
     RESUME_SESSION(21),
     RESUME_INPUT(22),
     RENAME_SESSION(23),
+    FORK_SESSION(24),
     CREATE_SESSION(30),
     LIST_MODELS(31),
     LIST_DIRECTORIES(32),
@@ -80,6 +81,7 @@ public  final class CommandResult extends
         case 21: return RESUME_SESSION;
         case 22: return RESUME_INPUT;
         case 23: return RENAME_SESSION;
+        case 24: return FORK_SESSION;
         case 30: return CREATE_SESSION;
         case 31: return LIST_MODELS;
         case 32: return LIST_DIRECTORIES;
@@ -956,6 +958,58 @@ public  final class CommandResult extends
    */
   private void clearRenameSession() {
     if (kindCase_ == 23) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int FORK_SESSION_FIELD_NUMBER = 24;
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasForkSession() {
+    return kindCase_ == 24;
+  }
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ForkSessionResponse getForkSession() {
+    if (kindCase_ == 24) {
+       return (io.github.lewin671.remoteagent.proto.ForkSessionResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.ForkSessionResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setForkSession(io.github.lewin671.remoteagent.proto.ForkSessionResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 24;
+  }
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeForkSession(io.github.lewin671.remoteagent.proto.ForkSessionResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 24 &&
+        kind_ != io.github.lewin671.remoteagent.proto.ForkSessionResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.ForkSessionResponse.newBuilder((io.github.lewin671.remoteagent.proto.ForkSessionResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 24;
+  }
+  /**
+   * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+   */
+  private void clearForkSession() {
+    if (kindCase_ == 24) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2443,6 +2497,54 @@ public  final class CommandResult extends
     }
 
     /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasForkSession() {
+      return instance.hasForkSession();
+    }
+    /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ForkSessionResponse getForkSession() {
+      return instance.getForkSession();
+    }
+    /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    public Builder setForkSession(io.github.lewin671.remoteagent.proto.ForkSessionResponse value) {
+      copyOnWrite();
+      instance.setForkSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    public Builder setForkSession(
+        io.github.lewin671.remoteagent.proto.ForkSessionResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setForkSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    public Builder mergeForkSession(io.github.lewin671.remoteagent.proto.ForkSessionResponse value) {
+      copyOnWrite();
+      instance.mergeForkSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.ForkSessionResponse fork_session = 24 [json_name = "forkSession"];</code>
+     */
+    public Builder clearForkSession() {
+      copyOnWrite();
+      instance.clearForkSession();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.v1.CreateSessionResponse create_session = 30 [json_name = "createSession"];</code>
      */
     @java.lang.Override
@@ -3004,6 +3106,7 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.ResumeSessionResponse.class,
             io.github.lewin671.remoteagent.proto.ResumeInputResponse.class,
             io.github.lewin671.remoteagent.proto.RenameSessionResponse.class,
+            io.github.lewin671.remoteagent.proto.ForkSessionResponse.class,
             io.github.lewin671.remoteagent.proto.CreateSessionResponse.class,
             io.github.lewin671.remoteagent.proto.ListModelsResponse.class,
             io.github.lewin671.remoteagent.proto.ListDirectoriesResponse.class,
@@ -3017,11 +3120,11 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
           };
           java.lang.String info =
-              "\u0000\u001b\u0001\u0000\u0001(\u001b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "\u0000\u001c\u0001\u0000\u0001(\u001c\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
               "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
-              "\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000" +
-              "\'<\u0000(<\u0000";
+              "\u0018<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000" +
+              "%<\u0000&<\u0000\'<\u0000(<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

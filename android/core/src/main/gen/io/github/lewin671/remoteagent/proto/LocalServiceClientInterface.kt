@@ -38,6 +38,13 @@ public interface LocalServiceClientInterface {
   public suspend fun resumeSession(request: ResumeSessionRequest, headers: Headers = emptyMap()): ResponseMessage<ResumeSessionResponse>
 
   /**
+   *  ForkSession starts a new session that carries on from a session's
+   *  conversation as it is now, with the CLI's own fork. The source is left
+   *  as it is.
+   */
+  public suspend fun forkSession(request: ForkSessionRequest, headers: Headers = emptyMap()): ResponseMessage<ForkSessionResponse>
+
+  /**
    *  CancelInput withdraws a message the model has not received: one still
    *  in the daemon's queue, or (Claude Code) one held in the CLI's own queue
    *  until the current tool call ends (InputStatus HELD_BY_CLI).

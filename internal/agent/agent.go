@@ -71,13 +71,13 @@ type Launcher interface {
 	// default). known is false when the configuration could not be read;
 	// varies, when settings in a session's folder may change it.
 	DefaultMode(cwd string) (mode pb.ApprovalMode, known, varies bool)
-	// Argv is the command line after the executable that starts or resumes
-	// a session. It may write files the CLI reads into l.Dir and set
-	// l.SessionID when the adapter chooses the CLI's session ID.
+	// Argv is the command line after the executable that starts, resumes
+	// or forks a session. It may write files the CLI reads into l.Dir and
+	// set l.SessionID when the adapter chooses the CLI's session ID.
 	Argv(l *Launch) ([]string, error)
 }
 
-// Launch describes a session being started or resumed.
+// Launch describes a session being started, resumed or forked.
 type Launch struct {
 	// Exe and RemoteSession enable the daemon-owned MCP only in managed launches.
 	Exe           string
@@ -94,6 +94,12 @@ type Launch struct {
 	Transcript string
 	// Resume starts the CLI again for a session that ran before.
 	Resume bool
+	// ForkOf starts a new conversation that carries on from the CLI
+	// session with this ID, with the CLI's own fork. Transcript is then the
+	// source's, of which the daemon has read ForkOffset bytes; Args,
+	// Context and FullAccess are the source's too, used as when resuming.
+	ForkOf     string
+	ForkOffset int64
 	// Context holds the settings the session last ran with, when resuming.
 	Context *pb.TurnContext
 	// FullAccess: the session could be switched to full access when it was
@@ -113,6 +119,11 @@ type Source interface {
 	// match accepts. The text is as the CLI recorded it, with its image
 	// placeholders.
 	Submitted(line []byte, match func(recorded string) bool, cliSessionID string) bool
+	// Copied returns a test for the lines of a fork's transcript that
+	// repeat records of its source, which the daemon gave the fork as
+	// events when it was forked; dir is the fork's state directory. It is
+	// nil when the CLI copies nothing into a fork's transcript.
+	Copied(dir string) func(line []byte) bool
 	// HookEvents are events a hook call shows before the transcript does;
 	// the parser is told about them and does not repeat them.
 	HookEvents(h *Hook) []*pb.Event

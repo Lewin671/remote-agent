@@ -24,6 +24,7 @@ func rpcErr(err error) error {
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning),
+		errors.Is(err, errForkBusy), errors.Is(err, errForkEmpty),
 		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, errHeldChanged), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
@@ -312,6 +313,18 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil
+}
+
+func (h *handler) ForkSession(ctx context.Context, req *connect.Request[pb.ForkSessionRequest]) (*connect.Response[pb.ForkSessionResponse], error) {
+	s, err := h.d.session(req.Msg.SessionId)
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	fork, err := h.d.fork(s.meta.ID, originOf(ctx))
+	if err != nil {
+		return nil, rpcErr(err)
+	}
+	return connect.NewResponse(&pb.ForkSessionResponse{Session: fork.info()}), nil
 }
 
 func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.BeginImageUploadRequest]) (*connect.Response[pb.BeginImageUploadResponse], error) {

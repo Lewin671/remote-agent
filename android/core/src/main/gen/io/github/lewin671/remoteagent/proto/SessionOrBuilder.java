@@ -412,4 +412,35 @@ public interface SessionOrBuilder extends
    * @return The endedAt.
    */
   com.google.protobuf.Timestamp getEndedAt();
+
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @return The forkedFrom.
+   */
+  java.lang.String getForkedFrom();
+  /**
+   * <pre>
+   * The session this one was forked from, empty if it was not forked.
+   * </pre>
+   *
+   * <code>string forked_from = 31 [json_name = "forkedFrom"];</code>
+   * @return The bytes for forkedFrom.
+   */
+  com.google.protobuf.ByteString
+      getForkedFromBytes();
+
+  /**
+   * <pre>
+   * Seq of the session's SessionForked event: the events before it are
+   * copies of the source's. 0 if it was not forked.
+   * </pre>
+   *
+   * <code>uint64 forked_seq = 32 [json_name = "forkedSeq"];</code>
+   * @return The forkedSeq.
+   */
+  long getForkedSeq();
 }

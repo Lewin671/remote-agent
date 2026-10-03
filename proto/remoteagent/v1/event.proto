@@ -39,6 +39,7 @@ message Event {
     ToolStarted tool_started = 26;
     ImageGenerated image_generated = 27;
     PlanAnswered plan_answered = 28;
+    SessionForked session_forked = 29;
   }
 }
 
@@ -154,6 +155,16 @@ message ImageGenerated {
   // The prompt as the CLI rewrote it, if recorded.
   string revised_prompt = 2;
   repeated ImageRef images = 3;
+}
+
+// SessionForked is where a forked session leaves its source: the events
+// before it are copies of the source's, made when it was forked, and those
+// after it are the fork's own. The event's origin says who forked it.
+message SessionForked {
+  string source_session_id = 1;
+  // The source's title then, for the line that says where the session
+  // comes from.
+  string source_title = 2;
 }
 
 // PlanAnswered records an answer to the CLI's plan prompt sent through

@@ -165,6 +165,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.RenameSessionRequest getRenameSession();
 
   /**
+   * <code>.remoteagent.v1.ForkSessionRequest fork_session = 15 [json_name = "forkSession"];</code>
+   * @return Whether the forkSession field is set.
+   */
+  boolean hasForkSession();
+  /**
+   * <code>.remoteagent.v1.ForkSessionRequest fork_session = 15 [json_name = "forkSession"];</code>
+   * @return The forkSession.
+   */
+  io.github.lewin671.remoteagent.proto.ForkSessionRequest getForkSession();
+
+  /**
    * <pre>
    * Commands for the machine rather than a session; their envelope
    * header names no session.
