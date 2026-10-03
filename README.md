@@ -15,17 +15,18 @@
 | `web` | TypeScript（React） | PWA 客户端：聊天视图、终端视图、权限审批 |
 | `android` | Kotlin（Jetpack Compose） | Android 原生客户端（开发中）：原生终端，在通知里审批 |
 
-> 状态：P1 完成，可以在浏览器里经自部署的 server 查看会话、发消息、审批；扫码配对、终端视图、推送等在 P2。项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
+> 当前进度和下一步见 [docs/plan.md](docs/plan.md)，项目边界见 [docs/scope.md](docs/scope.md)，全部文档见 [docs/README.md](docs/README.md)，开发规范见 [AGENTS.md](AGENTS.md)。
 
 ## 本地使用
 
-需要 Go 1.25+、tmux 3.2+ 和已登录的 codex。
+需要 Go 1.26.8+、tmux 3.2+，以及已登录的 codex 或 claude。
 
 ```sh
 scripts/install.sh             # 编译到 ~/bin/remote-agent；装过后台服务的话顺便重启 daemon
 scripts/daemon.sh install      # 把 daemon 装成后台服务（macOS 用 launchd，Linux 用 systemd --user），开机自启
 remote-agent daemon            # 或者：在前台运行 daemon
 remote-agent codex             # 另开一个终端：在当前目录启动 Codex 并 attach
+remote-agent claude            # 同上，启动 Claude Code
 remote-agent ls                # 列出会话
 remote-agent send <id> 你好     # 从别处发消息，id 可以只写前几位
 remote-agent events <id> -f    # 持续查看事件

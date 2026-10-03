@@ -124,7 +124,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 | 刚启动时欢迎框里模型一栏显示 `loading` | 太早操作会读到旧画面 |
 | 抓屏里混有历史对话、“Update available” 提示框、状态栏 | 全屏搜关键词会误判 |
 | 跳过更新提示后，“Update available” 的文字框还留在屏幕上方 | 按全屏匹配的等待脚本以为弹窗还在，连续输入了 8 个 `2`，拼进了下一条消息 |
-| 切换模型后，rollout 的 `turn_context` 要到下一轮才会记录新模型（推测，**未验证**） | 只看 rollout 的话，显示会滞后一轮 |
+| 切换模型后，rollout 的 `turn_context` 要到下一轮才会记录新模型（0.157.1 实测，见第 2 节） | 只看 rollout 的话，显示会滞后一轮 |
 
 对应的做法见 [architecture.md](architecture.md) 第 5、6 节。
 
