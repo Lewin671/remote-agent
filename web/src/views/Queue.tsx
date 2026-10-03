@@ -3,9 +3,9 @@
 // it, each cancellable; and what became of a cancel.
 
 import { useState } from "react";
-import { InputStage, InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { InputStage, InputStatus, SendMode, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { originLabel } from "../devices";
-import { machineName, queuedIds, type Derived } from "../model";
+import { agentName, agentOf, machineName, queuedIds, type Derived } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { LocalThumbs } from "./Images";
 import { promptIdOf } from "./Composer";
@@ -39,6 +39,8 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
   const sid = session.id;
+  // No turn to insert into yet: the CLI is still coming up.
+  const starting = session.info?.status === SessionStatus.STARTING;
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
   const act = async (id: string, resume = false) => {
     if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
@@ -59,7 +61,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
       const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
       const mode = a?.mode ?? o?.mode;
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : "另一客户端的消息");
-      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : paused ? "已暂停 · 中断前排着的" : mode === SendMode.QUEUE ? "排队 · 这一轮结束后发" : held ? "插入这一轮 · 等当前工具结束后并入" : "插入这一轮 · 等输入框就绪";
+      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : paused ? "已暂停 · 中断前排着的" : mode === SendMode.QUEUE ? "排队 · 这一轮结束后发" : held ? "插入这一轮 · 等当前工具结束后并入" : starting ? `已送达电脑 · 等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮 · 等输入框就绪";
       return <div className="pending-bubble me" key={id}>
         <LocalThumbs blobs={o?.thumbs} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>

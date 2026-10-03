@@ -180,7 +180,8 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     val pc = if (live) contextPercent(s) else null
     val high = (pc ?: 0) > 80
     val mode = if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
-    val subtitle = status.text + if (status == Status.EXITED) "" else " · ${mode?.text ?: "未知"}"
+    // A starting CLI has not reported its mode yet.
+    val subtitle = status.text + if (status == Status.EXITED || (status == Status.STARTING && mode == null)) "" else " · ${mode?.text ?: "审批：CLI 配置（未读到）"}"
     val rich = if (mode?.mode == Mode.FULL) androidx.compose.ui.text.buildAnnotatedString {
         append(status.text + " · ")
         pushStyle(androidx.compose.ui.text.SpanStyle(color = p.red)); append(mode.text); pop()
@@ -309,7 +310,7 @@ private fun ChatPane(
                 }
                 val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
                 items(visiblePending.size, key = { "pending-${visiblePending[it].id}" }) { i ->
-                    PendingBubble(s.id, visiblePending[i], i + 1, state, remote)
+                    PendingBubble(s.id, visiblePending[i], i + 1, state, remote, if (status == Status.STARTING) agentName(s.agent()) else null)
                 }
                 if (pendingInputs.size > 3 && !allPending) item {
                     TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true })
@@ -341,7 +342,7 @@ private fun ChatPane(
 }
 
 @Composable
-private fun PendingBubble(sid: String, pending: io.github.lewin671.remoteagent.core.PendingInput, index: Int, state: RemoteState, remote: io.github.lewin671.remoteagent.core.Remote) {
+private fun PendingBubble(sid: String, pending: io.github.lewin671.remoteagent.core.PendingInput, index: Int, state: RemoteState, remote: io.github.lewin671.remoteagent.core.Remote, starting: String?) {
     val p = pal
     var expanded by remember(pending.id) { mutableStateOf(false) }
     val cancel = Cancels.states[pending.id]
@@ -355,7 +356,9 @@ private fun PendingBubble(sid: String, pending: io.github.lewin671.remoteagent.c
         pending.paused -> "已暂停 · 中断前排着的"
         pending.held -> "插入这一轮 · 等当前工具结束后并入"
         pending.mode == SendMode.SEND_MODE_QUEUE -> "排队 · 这一轮结束后发"
-        else -> "插入这一轮 · 等待送达"
+        // No turn to insert into yet: the CLI is still coming up.
+        starting != null -> "已送达电脑 · 等 $starting 就绪后发出"
+        else -> "插入这一轮 · 等输入框就绪"
     }
     val origin = io.github.lewin671.remoteagent.core.originLabel(pending.origin, state, remote.account.deviceId, "")
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp), horizontalAlignment = Alignment.End) {

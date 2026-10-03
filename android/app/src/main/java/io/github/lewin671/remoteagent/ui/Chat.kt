@@ -63,7 +63,9 @@ fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localId
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED -> StartPrompt(prompt, "没能发送" + if (error.isEmpty()) "" else "：$error", true)
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> StartPrompt(prompt, "请到终端确认" + if (error.isEmpty()) "" else "：$error", true)
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED -> StartPrompt(prompt, "已送到终端，但没能确认 CLI 收到，不会自动重发", true)
-        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED -> StartPrompt(prompt, "已送达电脑，等待输入框就绪")
+        // Still waiting: the pending bubble shows it, with what it waits for and a way to cancel.
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED,
+        io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_HELD_BY_CLI -> null
         else -> StartPrompt(prompt, "已送达电脑")
     }
 }

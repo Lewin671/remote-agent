@@ -1391,6 +1391,18 @@ describe("the first message of a session started here (review B5, B9)", () => {
     return { r, push };
   }
 
+  it("says it waits for the CLI to come up while the session is starting, and shows it once", () => {
+    const { r } = setup();
+    act(() => {
+      const s = r.sessions.get("s-fresh")!;
+      s.info = { ...s.info!, status: SessionStatus.STARTING };
+      r.touch();
+    });
+    expect(host.textContent).toContain("已送达电脑 · 等 Codex 就绪后发出");
+    expect(host.textContent).not.toContain("插入这一轮");
+    expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
+  });
+
   it("shows its real state, not 已送达 after another client canceled it", () => {
     const { push } = setup();
     expect(host.textContent).toContain("插入这一轮 · 等输入框就绪");

@@ -213,10 +213,12 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       ))}
     </div>
   );
+  // A starting CLI has not reported its mode yet.
+  const starting = session.info?.status === SessionStatus.STARTING;
   const sub = (
     <>
       <Dot tone={st.tone} />
-      {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
+      {st.text}{!ended && !(starting && !modeOf(session)) && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
     </>
   );
   // The session's settings live in the ⋯ menu; a high context shows as
@@ -238,7 +240,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         <Dot tone={st.tone} />
         <b>{title}</b>
         <span className="muted">
-          {st.text}{!ended && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
+          {st.text}{!ended && !(starting && !modeOf(session)) && <> · <span className={modeOf(session)?.text === "完全放行" ? "red" : ""}>{modeOf(session)?.text || "审批：CLI 配置（未读到）"}</span></>}
         </span>
         {seg}
         <button className={"mr" + (high ? " context-high" : "")} onClick={() => setMenu(true)} aria-label={moreLabel}>
