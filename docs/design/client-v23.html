@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v22</title>
+<title>remote-agent 客户端设计稿 v23</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -827,14 +827,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v22 · 2026-10-03 · 上一版 v21 在 git 历史里（<code>git log -- docs/design/client-v21.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v23 · 2026-10-03 · 上一版 v22 在 git 历史里（<code>git log -- docs/design/client-v22.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v21 的改动</h4><ul><li>设备页的客户端右边写上次使用的时间（昨天使用、9月12日使用），不再一律写「已配对」；还没有使用记录的写添加日期。列表按上次使用从近到远排，当前客户端仍在最前（<a href="#devices">多端</a>）。</li><li>客户端第二行只写种类和系统，添加日期挪到详情页；详情页加「上次使用」和「添加于」两行。</li><li>客户端加入后第一次打开时问一次名字，可以跳过；还没有名字的已有客户端也问一次（<a href="#devices">多端 · 给客户端起名</a>）。</li><li>列表下的说明改短，只说右边的时间是什么、去哪里改名和移除。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v22 的改动</h4><ul><li>新会话还在启动时，第一句话是待发气泡，只出现一次：说明行写「已送达电脑 · 等 Codex 就绪后发出」，右边有「取消」；不再画成已发出的气泡，也不写「插入这一轮」（<a href="#new">新建会话</a>）。</li><li>启动中 CLI 还没报出审批模式时，导航栏第二行只写「启动中」，不写「未知」。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -941,16 +941,16 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">给登录接口加限流</span></b><span><span class="dot run"></span>启动中 · 询问</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">给登录接口加限流</span></b><span><span class="dot run"></span>启动中</span></span><span class="more">⋯</span></div>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="sysline">9:41 · ~/Code/foo</div>
-        <div class="me"><div>给登录接口加限流</div><small>已送达电脑，等 Codex 就绪后发出</small></div>
+        <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">已送达电脑 · 等 Codex 就绪后发出</span><b>取消</b></small></div>
         <div class="sysline">正在 MacBook 上启动 Codex…</div>
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap"><span class="step">3</span>发送后直接跳进新会话：第一句话已经在聊天里，Codex 启动好就开始干活。项目页的「进行中」里也多了这一条</div>
+    <div class="cap"><span class="step">3</span>发送后直接跳进新会话：第一句话已经在聊天里，是待发气泡，Codex 启动好之前可以取消，启动好就发出、开始干活。审批模式等 CLI 报出后写在「启动中」后面。项目页的「进行中」里也多了这一条</div>
   </div>
 </div>
 <div class="screens" style="margin-top:32px">
@@ -1824,9 +1824,9 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">新建 · 创建中 / 失败</div>
-    <div class="me"><div>给登录接口加限流</div><small>已送达电脑，等待启动</small></div><div class="sysline">正在 MacBook 上启动…</div>
+    <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">已送达电脑 · 等 Codex 就绪后发出</span><b>取消</b></small></div><div class="sysline">正在 MacBook 上启动…</div>
     <div class="banner err" style="margin-top:8px">启动失败：tmux 没有安装<b>重试</b></div>
-    <div class="st-c">失败时输入的内容保留</div>
+    <div class="st-c">启动中第一句话可以取消；失败时输入的内容保留</div>
   </div>
 
   <div class="st">
