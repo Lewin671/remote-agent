@@ -34,6 +34,12 @@ function csp(): Plugin {
         "  Referrer-Policy: no-referrer",
         "  Permissions-Policy: camera=(), microphone=(), geolocation=()",
         "  Strict-Transport-Security: max-age=31536000",
+        // Built assets carry a content hash in their name: never asked for
+        // again. Fonts keep their names, so they are only kept for a while.
+        "/assets/*",
+        "  Cache-Control: public, max-age=31536000, immutable",
+        "/fonts/*",
+        "  Cache-Control: public, max-age=2592000",
         "",
       ].join("\n");
       this.emitFile({ type: "asset", fileName: "_headers", source: headers });
