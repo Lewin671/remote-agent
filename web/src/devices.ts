@@ -34,9 +34,23 @@ export function platformLabel(meta?: Pick<DeviceMeta, "platform" | "description"
 /** A client's name: the one the user gave it, else its kind and short ID
  * (Android · b71c). */
 export function clientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, id = d?.id ?? ""): string {
-  const name = d?.meta?.name.trim();
-  if (name) return name;
+  return d?.meta?.name.trim() || defaultClientName(d, id);
+}
+
+/** The name a client has until the user gives it one, and again once they
+ * take theirs back. */
+export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined, id = d?.id ?? ""): string {
   return `${platformLabel(d?.meta)} · ${shortId(id)}`;
+}
+
+/** What tells clients with similar names apart in the list: an app or a
+ * browser, what it says it runs on, and the day it was added. */
+export function clientDetail(d: Partial<Pick<DeviceInfo, "meta" | "createdMs">> | undefined, now = Date.now()): string {
+  const kind = d?.meta?.platform === "android" ? "App" : d?.meta?.platform === "web" ? "浏览器" : "";
+  const t = Number(d?.createdMs ?? 0);
+  const day = new Date(t);
+  const added = t ? `${day.getFullYear() === new Date(now).getFullYear() ? "" : `${day.getFullYear()}年`}${day.getMonth() + 1}月${day.getDate()}日添加` : "";
+  return [kind, d?.meta?.description.trim(), added].filter(Boolean).join(" · ");
 }
 
 /** What this browser says about itself in its device metadata. */

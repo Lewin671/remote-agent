@@ -816,17 +816,38 @@ fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome = 
 
 // --- devices and where actions came from ---
 
-/** A client's name: the one given in its sealed metadata, else its platform and the end of its ID. */
-fun clientName(d: DeviceView?, id: String): String {
-    val name = d?.meta?.name.orEmpty().trim()
-    if (name.isNotEmpty()) return name
-    val platform = when (d?.meta?.platform) {
+/** What kind of client, from what it says it runs on: Chrome, Safari, Android; a browser that says nothing is 浏览器. */
+fun platformLabel(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): String {
+    val first = meta?.description.orEmpty().trim().split(Regex("\\s+")).first()
+    if (first.isNotEmpty() && !first[0].isDigit()) return first
+    return when (meta?.platform) {
         "android" -> "Android"
         "web" -> "浏览器"
-        null, "" -> "客户端"
-        else -> d.meta!!.platform
+        else -> "客户端"
     }
-    return "$platform · ${shortId(id)}"
+}
+
+/** A client's name: the one given in its sealed metadata, else its kind and the end of its ID (Chrome · a8f2). */
+fun clientName(d: DeviceView?, id: String): String {
+    return d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id) }
+}
+
+/** The name a client has until the user gives it one, and again once they take theirs back. */
+fun defaultClientName(d: DeviceView?, id: String): String = "${platformLabel(d?.meta)} · ${shortId(id)}"
+
+/** What tells clients with similar names apart in the list: an app or a browser, what it says it runs on, and the day it was added. */
+fun clientDetail(d: DeviceView?, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val kind = when (d?.meta?.platform) {
+        "android" -> "App"
+        "web" -> "浏览器"
+        else -> ""
+    }
+    val added = d?.createdMs?.takeIf { it > 0 }?.let {
+        val day = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
+        val year = if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) "" else "${day.year}年"
+        "$year${day.monthValue}月${day.dayOfMonth}日添加"
+    }.orEmpty()
+    return listOf(kind, d?.meta?.description.orEmpty().trim(), added).filter { it.isNotEmpty() }.joinToString(" · ")
 }
 
 /** The last four hex digits of a device ID, as shown next to a name. */

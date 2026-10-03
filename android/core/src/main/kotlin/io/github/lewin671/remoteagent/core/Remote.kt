@@ -639,13 +639,16 @@ class Remote(
      * Names a client device for the whole account, keeping what else its
      * metadata says; a conflict is redone on the stored metadata.
      */
-    suspend fun renameDevice(id: String, name: String, platform: String = "", description: String = "") {
+    suspend fun renameDevice(id: String, name: String) = changeDeviceMeta(id) { it.setName(name) }
+
+    /** Says what this client is and runs on, keeping the name it was given. */
+    suspend fun describeSelf(platform: String, description: String) =
+        changeDeviceMeta(account.deviceId) { it.setPlatform(platform).setDescription(description) }
+
+    private suspend fun changeDeviceMeta(id: String, change: (io.github.lewin671.remoteagent.proto.DeviceMeta.Builder) -> Unit) {
         var base = withContext(dispatcher) { devices[id] } ?: throw CommandException("not_found", "没有这台设备")
         repeat(5) {
-            val meta = (base.meta?.toBuilder() ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder()).setName(name).apply {
-                if (platform.isNotEmpty() && this.platform.isEmpty()) this.platform = platform
-                if (description.isNotEmpty()) this.description = description
-            }.build()
+            val meta = (base.meta?.toBuilder() ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder()).also(change).build()
             val env = Envelopes.seal(
                 keys.deviceMeta,
                 Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_DEVICE_META).setRequestId(id).setSeq(base.metaRev + 1).setSender(account.deviceId).build(),

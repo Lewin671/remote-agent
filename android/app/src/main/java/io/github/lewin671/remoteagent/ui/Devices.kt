@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
@@ -31,7 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.clientDetail
 import io.github.lewin671.remoteagent.core.clientName
+import io.github.lewin671.remoteagent.core.defaultClientName
 import io.github.lewin671.remoteagent.core.shortId
 import io.github.lewin671.remoteagent.core.whenText
 import io.github.lewin671.remoteagent.proto.DeviceKind
@@ -64,8 +67,19 @@ fun DevicesScreen() {
             } })
             GLabel("客户端 · 操作会话")
             val clients = state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT }.sortedWith(compareBy({ it.id != me }, { it.createdMs }))
-            Group(rows = clients.map { c -> @Composable { GRow(clientName(c, c.id), if (c.id == me) "当前客户端" else "已配对 ›", onClick = { nav.client(c.id) }) } })
-            Text("客户端名称在设备详情中设置；未命名时显示类型和 ID 短码。已配对不表示现在正在查看。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            Group(rows = clients.map { c -> @Composable {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { nav.client(c.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(clientName(c, c.id), style = T.body, color = p.fg)
+                        clientDetail(c, t).takeIf { it.isNotEmpty() }?.let { Text(it, style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp)) }
+                    }
+                    Text(if (c.id == me) "当前客户端" else "已配对 ›", style = T.sm, color = p.muted)
+                }
+            } })
+            Text("客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
             Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).heightIn(min = 44.dp).clickable { nav.pair() }, contentAlignment = Alignment.CenterStart) {
                 Text("＋ 添加电脑或客户端", style = T.body, color = p.blue)
             }
@@ -92,8 +106,9 @@ fun ClientScreen(id: String) {
             GLabel("客户端")
             Group(rows = listOfNotNull<@Composable () -> Unit>(
                 { GRow("名称", (d?.meta?.name?.ifEmpty { null } ?: "未命名") + " ›", onClick = if (state.conn == ConnState.ONLINE) ({ editing = true }) else null) },
+                d?.meta?.name?.takeIf { it.isNotEmpty() }?.let { { GRow("恢复默认名称", defaultClientName(d, id), onClick = { save.run({ remote.renameDevice(id, ""); null }) }, action = true, enabled = state.conn == ConnState.ONLINE) } },
                 { GRow("设备 ID", trailing = { Text("…" + shortId(id), style = T.mono13, color = p.muted) }) },
-                d?.meta?.description?.takeIf { it.isNotEmpty() }?.let { desc -> { GRow("系统", desc) } },
+                d?.meta?.description?.takeIf { it.isNotEmpty() }?.let { desc -> { GRow("运行在", desc) } },
             ))
             if (save.error.isNotEmpty()) Banner("没能保存名称：${save.error}", Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp), Tone2.ERROR)
             Text("修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
@@ -110,7 +125,7 @@ fun ClientScreen(id: String) {
             }
         }
     }
-    if (editing) InputAlert("客户端名称", d?.meta?.name.orEmpty(), "如：我的手机", "保存", onDismiss = { editing = false }) { name ->
+    if (editing) InputAlert("客户端名称", d?.meta?.name.orEmpty(), defaultClientName(d, id), "保存", onDismiss = { editing = false }) { name ->
         save.run({ remote.renameDevice(id, name.trim()); null })
     }
     if (confirm) Confirm(

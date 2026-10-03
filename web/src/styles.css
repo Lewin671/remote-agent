@@ -663,6 +663,11 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .manage-row .dots { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 15px; }
 .manage-row .dots:disabled { opacity: .45; }
 .manage-row.busy { opacity: .6; }
+.row.client { padding-top: 8px; padding-bottom: 8px; text-align: left; }
+.row.client .client-info { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.row.client small { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.row.client small:empty { display: none; }
+.row.client .v { flex: none; }
 .manage-hint { font-size: 13px; color: var(--muted); margin: 8px 16px 12px; }
 .wpage .manage-hint { margin-left: 0; margin-right: 0; }
 .wpage .pad { padding: 0; }

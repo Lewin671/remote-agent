@@ -919,7 +919,7 @@ export class DemoRemote extends Remote {
 
   private metas = new Map<string, { rev: bigint; meta: ReturnType<typeof create<typeof DeviceMetaSchema>> }>([
     [ME, { rev: 1n, meta: create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }) }],
-    [ANDROID, { rev: 1n, meta: create(DeviceMetaSchema, { platform: "android", description: "Android 16" }) }],
+    [ANDROID, { rev: 1n, meta: create(DeviceMetaSchema, { platform: "android", description: "Android 16 · Pixel 9" }) }],
   ]);
 
   override async loadDevices() {
@@ -927,7 +927,7 @@ export class DemoRemote extends Remote {
     for (const m of this.machines.values()) this.devices.set(m.id, { id: m.id, kind: DeviceKind.MACHINE, createdMs: 0n, metaRev: 0n });
     for (const id of [ME, ANDROID, BROWSER]) {
       const m = this.metas.get(id);
-      this.devices.set(id, { id, kind: DeviceKind.CLIENT, createdMs: 0n, metaRev: m?.rev ?? 0n, meta: m?.meta });
+      this.devices.set(id, { id, kind: DeviceKind.CLIENT, createdMs: BigInt(Date.now() - (id === ME ? 6 : id === ANDROID ? 21 : 300) * 86_400_000), metaRev: m?.rev ?? 0n, meta: m?.meta });
     }
     this.devicesStatus = "ready";
     this.changed();

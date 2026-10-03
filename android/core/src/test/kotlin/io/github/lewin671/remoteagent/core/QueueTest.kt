@@ -60,6 +60,19 @@ class OriginTest {
         assertEquals("Android · b71c", originLabel(o(k, "aaaab71c"), state, "me", "MacBook"))
         assertEquals("我的手机", originLabel(o(k, "cccc92de"), state, "me", "MacBook"))
         assertEquals("客户端 · 9999", originLabel(o(k, "gone9999"), state, "me", "MacBook"))
+        val meta = { name: String, platform: String, description: String -> io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setName(name).setPlatform(platform).setDescription(description).build() }
+        val zone = java.time.ZoneId.of("UTC")
+        val now = java.time.LocalDate.of(2026, 10, 3).atStartOfDay(zone).toInstant().toEpochMilli()
+        val at = { y: Int, m: Int, d: Int -> java.time.LocalDate.of(y, m, d).atStartOfDay(zone).toInstant().toEpochMilli() }
+        val browser = phone.copy(id = "dddd8a5f", createdMs = at(2026, 9, 27), meta = meta("", "web", "Chrome on macOS"))
+        assertEquals("Chrome · 8a5f", clientName(browser, browser.id))
+        assertEquals("浏览器 · 8a5f", clientName(browser.copy(meta = meta("", "web", "")), browser.id))
+        assertEquals("浏览器 · Chrome on macOS · 9月27日添加", clientDetail(browser, now, zone))
+        val pixel = browser.copy(createdMs = at(2025, 12, 1), meta = meta("我的手机", "android", "Android 16 · Pixel 9"))
+        assertEquals("我的手机", clientName(pixel, pixel.id))
+        assertEquals("Android · 8a5f", defaultClientName(pixel, pixel.id))
+        assertEquals("App · Android 16 · Pixel 9 · 2025年12月1日添加", clientDetail(pixel, now, zone))
+        assertEquals("", clientDetail(null, now, zone))
         assertEquals("MacBook 本地终端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL), state, "me", "MacBook"))
         assertEquals(null, originLabel(null, state, "me", "MacBook"))
     }

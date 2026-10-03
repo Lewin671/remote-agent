@@ -494,7 +494,8 @@ class RemoteTest {
         b.start()
         a.awaitState("a devices") { it.conn == ConnState.ONLINE && it.devices.containsKey(a.account.deviceId) }
         b.awaitState("b sees a") { it.devices.containsKey(a.account.deviceId) }
-        a.renameDevice(a.account.deviceId, "我的手机", "android", "Android 16")
+        a.describeSelf("android", "Android 16 · Pixel 9")
+        a.renameDevice(a.account.deviceId, "我的手机")
         val sb = b.awaitState("b sees the name") { it.devices[a.account.deviceId]?.meta?.name == "我的手机" }
         assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId))
     }

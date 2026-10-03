@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
-import { clientName, describeBrowser, elsewhereLabel, originLabel, platformLabel, type DeviceInfo } from "./devices";
+import { clientDetail, clientName, defaultClientName, describeBrowser, elsewhereLabel, originLabel, platformLabel, type DeviceInfo } from "./devices";
 import { OriginKind, OriginSchema } from "./gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "./gen/remoteagent/v1/relay_pb";
 import { DeviceMetaSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -30,6 +30,13 @@ describe("device names", () => {
     expect(clientName(ctx.devices.get("cccc0000cccc0000cccc0000cccc92de"))).toBe("客户端 · 92de");
     expect(platformLabel(create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }))).toBe("Chrome");
     expect(platformLabel(create(DeviceMetaSchema, { platform: "web" }))).toBe("浏览器");
+    expect(defaultClientName(dev("dddd0000dddd0000dddd0000ddddpxl1", { name: "我的手机", platform: "android", description: "Android 16 · Pixel 9" }))).toBe("Android · pxl1");
+    const now = new Date(2026, 9, 3).getTime();
+    const meta = (platform: string, description: string) => create(DeviceMetaSchema, { platform, description });
+    expect(clientDetail({ meta: meta("web", "Chrome on macOS"), createdMs: BigInt(new Date(2026, 8, 27).getTime()) }, now)).toBe("浏览器 · Chrome on macOS · 9月27日添加");
+    expect(clientDetail({ meta: meta("android", "Android 16 · Pixel 9"), createdMs: BigInt(new Date(2025, 11, 1).getTime()) }, now)).toBe("App · Android 16 · Pixel 9 · 2025年12月1日添加");
+    expect(clientDetail({ createdMs: BigInt(new Date(2026, 0, 5).getTime()) }, now)).toBe("1月5日添加");
+    expect(clientDetail(undefined, now)).toBe("");
   });
 
   it("describes this browser without its version", () => {

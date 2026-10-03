@@ -8,7 +8,7 @@ import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { Alert, Banner, Dot, NavBar, Sheet, useNow, useRemote } from "../ui";
-import { clientName, shortId } from "../devices";
+import { clientDetail, clientName, defaultClientName, shortId } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
@@ -281,13 +281,16 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
             </div>
           )}
           {(clients.length ? clients : [{ id: me, meta: undefined }]).map((d) => (
-            <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
-              {clientName(d, d.id)}
+            <button key={d.id} className="row client" onClick={() => go("c/" + d.id)}>
+              <span className="client-info">
+                {clientName(d, d.id)}
+                <small>{clientDetail(d)}</small>
+              </span>
               <span className="v">{d.id === me ? "当前客户端" : "已配对 ›"}</span>
             </button>
           ))}
         </div>
-        <div className="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码。已配对不表示现在正在查看。</div>
+        <div className="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。</div>
         <div className="grp">
           <button className="row add" onClick={() => go("add")}>
             ＋ 添加电脑或客户端
@@ -311,7 +314,7 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
   const [removing, setRemoving] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const canEdit = remote.devicesStatus === "ready" && remote.conn === "online";
-  const save = async () => {
+  const save = async (name: string) => {
     setBusy(true);
     setError("");
     try {
@@ -339,6 +342,12 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
           >
             名称<span className="v">{d?.meta?.name || "未命名"} ›</span>
           </button>
+          {d?.meta?.name && (
+            <button className="row act" disabled={!canEdit || busy} onClick={() => void save("")}>
+              恢复默认名称
+              <span className="v">{defaultClientName(d, id)}</span>
+            </button>
+          )}
           {d?.meta?.description && (
             <div className="row">
               运行在<span className="v">{d.meta.description}</span>
@@ -370,10 +379,10 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
       {renaming && (
         <Sheet onClose={() => setRenaming(false)}>
           <h4>客户端名称</h4>
-          <input className="field" autoFocus value={name} placeholder={clientName(undefined, id)} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="客户端名称" />
-          <div className="hint">名称加密后同步，服务器看不到。留空就用类型和 ID 短码。</div>
+          <input className="field" autoFocus value={name} placeholder={defaultClientName(d, id)} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="客户端名称" />
+          <div className="hint">名称加密后同步，服务器看不到。留空就用默认名称。</div>
           <div className="btns" style={{ marginTop: 12 }}>
-            <button className="btn pri" disabled={busy} onClick={() => void save()}>
+            <button className="btn pri" disabled={busy} onClick={() => void save(name)}>
               {busy ? "保存中…" : "保存"}
             </button>
           </div>
