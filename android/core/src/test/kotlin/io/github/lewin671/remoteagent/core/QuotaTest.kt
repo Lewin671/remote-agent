@@ -29,7 +29,28 @@ class QuotaTest {
         val m = machine(true, AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE)
             .setState(QuotaState.QUOTA_STATE_OK).addWindows(w).build())
         val g = quotaGroups(m, now, ZoneId.of("America/Los_Angeles")).single { it.agent == Agent.AGENT_CLAUDE }
-        assertEquals("周六 0:10 重置（北京时间）", g.rows.single().reset)
+        // Still Friday in Beijing, so the reset after midnight is not 今天.
+        assertEquals("40 分钟后重置 · 10月3日 周六 0:10", g.rows.single().reset)
+    }
+
+    @Test
+    fun resetSaysHowLongIsLeftThenTheMoment() {
+        // 9:41 in Beijing on Friday 2 October 2026.
+        val now = java.time.Instant.parse("2026-10-02T01:41:00Z").toEpochMilli()
+        fun at(utc: String) = resetText(java.time.Instant.parse(utc).toEpochMilli(), now)
+        assertEquals("3 小时 39 分后重置 · 今天 13:20", at("2026-10-02T05:20:00Z"))
+        assertEquals("6 天 4 小时后重置 · 10月8日 周四 14:10", at("2026-10-08T06:10:00Z"))
+        // Rounded down, and a zero part is still written.
+        assertEquals("6 天 0 小时后重置 · 10月8日 周四 9:41", at("2026-10-08T01:41:59Z"))
+        assertEquals("3 小时 0 分后重置 · 今天 12:41", at("2026-10-02T04:41:30Z"))
+        assertEquals("23 小时 59 分后重置 · 10月3日 周六 9:40", at("2026-10-03T01:40:00Z"))
+        assertEquals("1 天 0 小时后重置 · 10月3日 周六 9:41", at("2026-10-03T01:41:00Z"))
+        assertEquals("1 小时 0 分后重置 · 今天 10:41", at("2026-10-02T02:41:00Z"))
+        assertEquals("39 分钟后重置 · 今天 10:20", at("2026-10-02T02:20:00Z"))
+        assertEquals("1 分钟后重置 · 今天 9:42", at("2026-10-02T01:42:00Z"))
+        assertEquals("即将重置 · 今天 9:41", at("2026-10-02T01:41:59Z"))
+        // The hour is not padded; the minute is.
+        assertEquals("15 小时 24 分后重置 · 10月3日 周六 1:05", at("2026-10-02T17:05:00Z"))
     }
 
     @Test

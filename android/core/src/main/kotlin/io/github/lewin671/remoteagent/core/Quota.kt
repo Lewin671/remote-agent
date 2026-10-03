@@ -12,7 +12,7 @@ import java.time.ZoneId
 
 enum class QuotaTone { NORMAL, WARN, FULL, STALE }
 
-/** One window as shown: 5 小时 · 已用 62% · 14:10 重置, or why it cannot be trusted. */
+/** One window as shown: 5 小时 · 已用 62% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted. */
 data class QuotaRow(val label: String, val used: String, val percent: Double?, val reset: String, val tone: QuotaTone, val note: String)
 
 /** What a CLI's quota group shows instead of, or besides, its windows. */
@@ -58,6 +58,26 @@ private fun clockText(ms: Long, now: Long, zone: ZoneId): String {
     }
 }
 
+private val beijing: ZoneId = ZoneId.of("Asia/Shanghai")
+
+/**
+ * 3 小时 39 分后重置 · 今天 13:20: how long is left, rounded down, then the
+ * moment. The day, weekday and clock are Beijing's wherever the client is;
+ * the page says so once. Same text as the web.
+ */
+fun resetText(resetMs: Long, now: Long): String {
+    val minutes = (resetMs - now) / 60_000
+    val left = when {
+        minutes >= 24 * 60 -> "${minutes / (24 * 60)} 天 ${minutes % (24 * 60) / 60} 小时后重置"
+        minutes >= 60 -> "${minutes / 60} 小时 ${minutes % 60} 分后重置"
+        minutes >= 1 -> "$minutes 分钟后重置"
+        else -> "即将重置"
+    }
+    val t = Instant.ofEpochMilli(resetMs).atZone(beijing)
+    val day = if (t.toLocalDate() == Instant.ofEpochMilli(now).atZone(beijing).toLocalDate()) "今天" else "${t.monthValue}月${t.dayOfMonth}日 ${weekdays[t.dayOfWeek.value - 1]}"
+    return "$left · $day ${t.hour}:${"%02d".format(t.minute)}"
+}
+
 /** One window: used share, reset time, and whether the reading can still be trusted. */
 fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean): QuotaRow {
     val label = nameLabel(w)
@@ -65,7 +85,7 @@ fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean): QuotaRow {
     val pct = w.usedPercent
     val used = if (pct >= 100) "已用尽" else "已用 ${kotlin.math.floor(pct).toInt()}%"
     val passed = w.resetsAtMs in 1..now
-    val reset = if (w.resetsAtMs > 0 && !passed) "${clockText(w.resetsAtMs, now, ZoneId.of("Asia/Shanghai"))} 重置（北京时间）" else ""
+    val reset = if (w.resetsAtMs > 0 && !passed) resetText(w.resetsAtMs, now) else ""
     if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复")
     if (lastRecord) return QuotaRow(label, used, pct, reset, QuotaTone.STALE, "")
     return QuotaRow(label, used, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "")
