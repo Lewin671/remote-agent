@@ -26,7 +26,8 @@
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 分阶段计划、P0 任务和验收标准、待确认事项 |
-| [design/client-v18.html](design/client-v18.html) | 界面稿 | 当前设计：会话视图记在本机，宽屏会话顶栏并成一行，聊天开头只留一行「开始时间 · 目录」 |
+| [design/client-v19.html](design/client-v19.html) | 界面稿 | 当前设计：审批只有「不允许」和「允许」，永久授权只在电脑终端里选 |
+| [design/client-v18.html](design/client-v18.html) | 界面稿 | 会话视图记在本机，宽屏会话顶栏并成一行，聊天开头只留一行「开始时间 · 目录」；只读 |
 | [design/client-v17.html](design/client-v17.html) | 界面稿 | 上下文窗口是项目设置首页的一行（Claude Code），摘要里单独写出；只读 |
 | [design/client-v16.html](design/client-v16.html) | 界面稿 | 项目设置的模型页单独列出「上下文窗口」选项（标准或 1M）；只读 |
 | [design/client-v15.html](design/client-v15.html) | 界面稿 | Claude Code 的上下文窗口在项目设置的模型列表里选（1M 或标准）；只读 |
