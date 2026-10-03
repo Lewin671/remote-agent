@@ -4,7 +4,6 @@
 // internal/e2e/testdata/vectors.json keeps the two implementations in step.
 
 import { create, fromBinary, toBinary, type DescMessage, type MessageShape } from "@bufbuild/protobuf";
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
 
 export const VERSION = 1;
@@ -123,6 +122,9 @@ export async function deriveRaw(root: CryptoKey, info: string): Promise<Uint8Arr
 /** The account key pair, which signs device registrations. */
 export async function accountKey(root: CryptoKey): Promise<{ publicKey: Uint8Array; sign(msg: Uint8Array): Uint8Array }> {
   const seed = await deriveBits(root, "account-sign");
+  // Only joining and pairing sign with the account key: the curve code is
+  // fetched then, not with the page.
+  const { ed25519 } = await import("@noble/curves/ed25519.js");
   return {
     publicKey: ed25519.getPublicKey(seed),
     sign: (msg) => ed25519.sign(msg, seed),

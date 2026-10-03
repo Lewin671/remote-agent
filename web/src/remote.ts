@@ -65,7 +65,6 @@ import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import type { Prepare, Tray } from "./attach";
-import { prepareForSending } from "./sendimages";
 import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
 import { machineName, modelLabel, type Outgoing } from "./model";
 import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
@@ -282,7 +281,8 @@ export class Remote {
   // Images chosen for each draft, by draft key (a session ID, or
   // "new:" + project path), and how a chosen file is prepared for sending.
   trays = new Map<string, Tray>();
-  prepareImage: Prepare = prepareForSending;
+  // The image codecs are fetched when the first image is chosen.
+  prepareImage: Prepare = async (file, original) => (await import("./sendimages")).prepareForSending(file, original);
   // Cancels asked for from this page, by the queued message's request ID,
   // until the message leaves the queue.
   cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();

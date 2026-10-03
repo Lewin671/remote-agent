@@ -1,13 +1,17 @@
 import { usePageVisible } from "./ui";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { Remote } from "./remote";
 import { NavBar, useRemote } from "./ui";
 import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
-import { AddDevicePage, Setup } from "./views/Pairing";
 import { ProjectPage } from "./views/Project";
 import { ManagePage, RemovedPage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, RemovedScreen, Settings } from "./views/Settings";
+
+// Joining and pairing bring the QR code and curve code; fetched when used.
+const Setup = lazy(() => import("./views/Pairing").then((m) => ({ default: m.Setup })));
+const AddDevicePage = lazy(() => import("./views/Pairing").then((m) => ({ default: m.AddDevicePage })));
+const loading = <div className="center muted">加载中…</div>;
 
 // ?demo in development shows made-up machines and sessions in every state
 // the mockup draws, with no server. It is compiled out of builds.
@@ -38,7 +42,7 @@ export function App() {
     return () => remote.stop();
   }, [remote, visible]);
   if (remote === undefined) return <div className="center muted">加载中…</div>;
-  if (remote === null) return <Setup onDone={() => void load()} />;
+  if (remote === null) return <Suspense fallback={loading}><Setup onDone={() => void load()} /></Suspense>;
   return <Main remote={remote} />;
 }
 
@@ -106,7 +110,7 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind === "q") page = <QuotaPage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "c") page = <ClientPage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "m") page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
-  else if (kind === "add") page = <AddDevicePage remote={remote} onBack={back} />;
+  else if (kind === "add") page = <Suspense fallback={loading}><AddDevicePage remote={remote} onBack={back} /></Suspense>;
   else if (kind.startsWith("pair")) page = <div className="center muted">这个浏览器已经加入了账户。要让另一台设备加入，在它上面打开这个链接。</div>;
   else page = wide ? <WideHome remote={remote} go={go} /> : <Home remote={remote} go={go} />;
 
