@@ -68,6 +68,9 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .muted { color: var(--muted); } .small { font-size: 13px; } .red { color: var(--red) !important; }
 .warn-text { color: var(--orange-ink); }
 .center { display: flex; align-items: center; justify-content: center; flex: 1; height: 100%; padding: 24px; text-align: center; }
+.gone { display: flex; flex-direction: column; max-width: 340px; }
+.gone p { margin: 8px 0 20px; }
+.gone .btn + p { margin: 10px 0 4px; }
 .pad { padding: 0 16px; }
 .empty { color: var(--muted); font-size: 13px; padding: 8px 16px; margin: 0; }
 .link { color: var(--blue); font-weight: var(--w6); min-height: 32px; }

@@ -221,6 +221,33 @@ export function QuotaPage({ remote, id, onBack }: { remote: Remote; id: string; 
   );
 }
 
+/** The server turned this browser away: nothing of the account is shown
+ * until it joins again. */
+export function RemovedScreen({ remote }: { remote: Remote }) {
+  return (
+    <div className="center">
+      <div className="gone">
+        <div className="et">这个浏览器已被移出账户</div>
+        <p className="muted small">服务器不再接受它的登录：它在另一台设备上被移除了，或者服务器的数据被重置了。电脑上的会话不受影响。</p>
+        <button
+          className="btn pri"
+          onClick={async () => {
+            await forgetAccount();
+            location.hash = "";
+            location.reload();
+          }}
+        >
+          重新加入账户
+        </button>
+        <p className="muted small">会先删除这个浏览器里的账户密钥，再用配对码加入。</p>
+        <button className="link mid" onClick={() => remote.retryLogin()}>
+          再试一次
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Leaving the account on this browser: its keys go, nothing else. */
 function LeaveAlert({ onCancel }: { onCancel: () => void }) {
   return (

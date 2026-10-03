@@ -58,6 +58,7 @@ import io.github.lewin671.remoteagent.ui.ApprovalPage
 import io.github.lewin671.remoteagent.ui.DeviceScreen
 import io.github.lewin671.remoteagent.ui.HomeScreen
 import io.github.lewin671.remoteagent.ui.JoinScreen
+import io.github.lewin671.remoteagent.ui.RemovedScreen
 import io.github.lewin671.remoteagent.ui.LocalNav
 import io.github.lewin671.remoteagent.ui.LocalRemote
 import io.github.lewin671.remoteagent.ui.Nav
@@ -103,6 +104,7 @@ class MainActivity : ComponentActivity() {
                         }
                         !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         r == null -> JoinScreen(app)
+                        r.state.collectAsState().value.removed -> RemovedScreen(app, r)
                         else -> Main(r)
                     }
                 }

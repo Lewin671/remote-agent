@@ -7,7 +7,7 @@ import { AddDevicePage, Setup } from "./views/Pairing";
 import { ProjectPage } from "./views/Project";
 import { ManagePage, RemovedPage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
-import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, Settings } from "./views/Settings";
+import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, RemovedScreen, Settings } from "./views/Settings";
 
 // ?demo in development shows made-up machines and sessions in every state
 // the mockup draws, with no server. It is compiled out of builds.
@@ -75,6 +75,7 @@ function Main({ remote }: { remote: Remote }) {
   const arg = decodeURIComponent(rest.join("/"));
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
+  if (remote.removed) return <RemovedScreen remote={remote} />;
 
   let page;
   if (session) page = <SessionPage key={session.id} remote={remote} session={session} onBack={back} wide={wide} />;

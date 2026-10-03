@@ -244,6 +244,9 @@ export class Remote {
   // failed since it last was: tells "connecting" from "reconnecting" and
   // from "cannot reach the server".
   everOnline = false;
+  /** The server no longer knows this device: removed from the account,
+   * or the server's data is gone. Nothing connects until it joins again. */
+  removed = false;
   failures = 0;
   connError = "";
   // When the link to the server last went down, while it is down: what is
@@ -344,6 +347,7 @@ export class Remote {
   private sessionPushes = new Map<string, number>();
   private removedPushes = new Map<string, number>();
   private token = "";
+  private loggingIn?: Promise<void>;
   private api: Client<typeof ClientService>;
   private ws?: WebSocket;
   private retry = 1000;
@@ -393,7 +397,7 @@ export class Remote {
   // --- connection ---
 
   start() {
-    if (!this.closed && this.ws) return;
+    if (this.removed || (!this.closed && this.ws)) return;
     this.closed = false;
     this.trimHistory();
     void this.connect();
@@ -415,12 +419,37 @@ export class Remote {
     this.changed();
   }
 
-  private async login() {
+  /** One login at a time: the server keeps few challenges per device, and
+   * a denial has to mean what it says. */
+  private login(): Promise<void> {
+    return (this.loggingIn ??= this.signIn().finally(() => (this.loggingIn = undefined)));
+  }
+
+  private async signIn() {
     const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true }));
-    const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
-    const sig = await signLogin(this.account.devicePrivate, ch.challenge);
-    const res = await auth.login({ deviceId: this.account.deviceId, challenge: ch.challenge, signature: sig });
-    this.token = res.token;
+    for (let again = true; ; again = false) {
+      try {
+        const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
+        const sig = await signLogin(this.account.devicePrivate, ch.challenge);
+        const res = await auth.login({ deviceId: this.account.deviceId, challenge: ch.challenge, signature: sig });
+        this.token = res.token;
+        return;
+      } catch (e) {
+        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) throw e;
+        // A server restarted between the two calls forgets the challenge;
+        // denied a fresh one too, it no longer knows this device.
+        if (again) continue;
+        this.removed = true;
+        this.stop();
+        throw e;
+      }
+    }
+  }
+
+  /** Tries the login again after the server turned this device away. */
+  retryLogin() {
+    this.removed = false;
+    this.start();
   }
 
   private async connect() {

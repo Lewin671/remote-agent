@@ -47,6 +47,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
@@ -92,6 +94,8 @@ data class RemoteState(
     val prefs: PrefsObject? = null,
     /** The account's devices, machines and clients (ListDevices). */
     val devices: Map<String, DeviceView> = emptyMap(),
+    /** The server no longer knows this device: removed from the account, or the server's data is gone. */
+    val removed: Boolean = false,
 )
 
 /** A device of the account; a client's name is in its sealed metadata. */
@@ -208,6 +212,8 @@ class Remote(
     private var ws: WebSocket? = null
     private var retry = 1000L
     private var running = false
+    private var removed = false
+    private val signingIn = Mutex()
     private var reconnect: Job? = null
     // Bumped by stop: a connection attempt suspended in login when the app
     // went to the background must not open the stream afterwards.
@@ -234,7 +240,7 @@ class Remote(
     /** Connects and keeps reconnecting until [stop]. */
     fun start() {
         scope.launch {
-            if (running) return@launch
+            if (running || removed) return@launch
             running = true
             readCache()
             connect()
@@ -274,7 +280,46 @@ class Remote(
 
     private fun publish() {
         if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
-        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap())
+        _state.value = RemoteState(machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap(), removed)
+    }
+
+    /**
+     * Logs in, one login at a time: the server keeps few challenges per
+     * device, and a denial has to mean what it says. A server restarted
+     * between the two calls forgets the challenge; denied a fresh one too,
+     * it no longer knows this device, and nothing connects until it joins again.
+     */
+    private suspend fun signIn(): String = signingIn.withLock {
+        try {
+            login(api, account)
+        } catch (first: ConnectException) {
+            if (first.code != Code.PERMISSION_DENIED) throw first
+            try {
+                login(api, account)
+            } catch (e: ConnectException) {
+                if (e.code == Code.PERMISSION_DENIED) withContext(dispatcher) {
+                    removed = true
+                    running = false
+                    generation++
+                    reconnect?.cancel()
+                    reconnect = null
+                    ws?.close(1000, null)
+                    ws = null
+                    conn = ConnState.OFFLINE
+                    publish()
+                }
+                throw e
+            }
+        }
+    }
+
+    /** Tries the login again after the server turned this device away. */
+    fun retryLogin() {
+        scope.launch {
+            removed = false
+            publish()
+        }
+        start()
     }
 
     private suspend fun readCache() {
@@ -297,7 +342,7 @@ class Remote(
         conn = ConnState.CONNECTING
         publish()
         try {
-            token = login(api, account)
+            token = signIn()
         } catch (e: Exception) {
             if (gen == generation) fail(e)
             return
@@ -946,7 +991,7 @@ class Remote(
      * run the command, a failure here is no answer about it: it stays unknown.
      */
     private suspend fun relogin(mayHaveRun: Boolean): String = try {
-        login(api, account)
+        signIn()
     } catch (e: Exception) {
         if (!mayHaveRun) throw e
         throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e)}）")
@@ -977,7 +1022,7 @@ class Remote(
 
     /** The bearer token of the current login, for services used outside this class. */
     suspend fun currentToken(): String {
-        if (token.isEmpty()) token = login(api, account)
+        if (token.isEmpty()) token = signIn()
         return token
     }
 

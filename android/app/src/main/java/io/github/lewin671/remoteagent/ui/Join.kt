@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairLink
+import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.Secret
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.joinByPairing
@@ -60,13 +61,35 @@ private sealed interface JoinStep {
 }
 
 /** First run: join the account with a pairing code, a scanned QR code, or the account secret. */
+/** The server turned this device away: nothing of the account is shown until it joins again. */
+@Composable
+fun RemovedScreen(app: RaApp, remote: Remote) {
+    val p = pal
+    val scope = rememberCoroutineScope()
+    var leaving by remember { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxSize().background(p.card).safeDrawingPadding().padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("这台设备已被移出账户", style = T.h17, color = p.fg, textAlign = TextAlign.Center)
+        Text(
+            "服务器不再接受它的登录：它在另一台设备上被移除了，或者服务器的数据被重置了。电脑上的会话不受影响。",
+            style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+        )
+        Btn("重新加入账户", { leaving = true; scope.launch { app.logout() } }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = !leaving)
+        Text("会先删除这台设备上的账户密钥和缓存，再用配对码加入。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        TextAction("再试一次", { remote.retryLogin() }, enabled = !leaving, alignment = Alignment.Center)
+    }
+}
+
 @Composable
 fun JoinScreen(app: RaApp) {
     val p = pal
     val scope = rememberCoroutineScope()
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
     var code by remember { mutableStateOf("") }
-    var server by rememberSaveable { mutableStateOf("https://") }
+    var server by rememberSaveable { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
     var commit by remember { mutableStateOf<ByteArray?>(null) }
     var secret by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }

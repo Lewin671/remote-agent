@@ -1,7 +1,7 @@
 // Development only: a Remote with made-up machines and sessions in every
 // state docs/design/client-v8.html draws, and no server. Opened with ?demo
 // on the dev server; builds leave this file out. Options:
-//   ?demo&conn=connecting|reconnecting|fail   the server link's states
+//   ?demo&conn=connecting|reconnecting|fail|removed   the server link's states
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
@@ -697,6 +697,7 @@ export class DemoRemote extends Remote {
     if (!this.listed) this.listError = "连接超时";
     if (c === "connecting") this.conn = "connecting";
     else if (c === "reconnecting") Object.assign(this, { conn: "offline", everOnline: true });
+    else if (c === "removed") Object.assign(this, { conn: "offline", removed: true });
     else if (c === "fail") Object.assign(this, { conn: "offline", failures: 3, connError: "证书无效" });
     else Object.assign(this, { conn: "online", everOnline: true });
     if (this.conn !== "online") this.lostAt = Date.now() - 70_000;

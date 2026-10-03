@@ -82,6 +82,27 @@ class RemoteTest {
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
 
     @Test
+    fun aRemovedClientLearnsItAndStopsConnecting() = runBlocking<Unit> {
+        val r = client()
+        val other = client()
+        r.start(); other.start()
+        r.awaitState("online") { it.conn == ConnState.ONLINE }
+        other.awaitState("online") { it.conn == ConnState.ONLINE }
+        other.removeDevice(r.account.deviceId)
+        val st = r.awaitState("removed") { it.removed }
+        assertEquals(ConnState.OFFLINE, st.conn)
+        // It stays put rather than reconnecting, also when asked to start.
+        r.start()
+        delay(1500)
+        assertTrue(r.state.value.removed)
+        assertEquals(ConnState.OFFLINE, r.state.value.conn)
+        // Asked to try again, it is turned away again.
+        r.retryLogin()
+        r.awaitState("trying") { !it.removed }
+        r.awaitState("removed again") { it.removed }
+    }
+
+    @Test
     fun activeHistorySurvivesExpiryAndTheSameFlowReloadsAfterReclamation() = runBlocking<Unit> {
         val r = client(MemoryCache(), historyIdleMs = 100)
         r.start()

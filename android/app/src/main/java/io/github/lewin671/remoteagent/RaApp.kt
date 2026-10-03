@@ -142,8 +142,13 @@ class RaApp : Application() {
         use(acct)
     }
 
+    /** The server of the account just left, to fill in when joining again. Only in memory. */
+    var lastServer = ""
+        private set
+
     /** Forgets the account, the cache and the keys on this device. */
     suspend fun logout() {
+        _remote.value?.let { lastServer = it.account.server }
         Push.stop()
         _remote.value?.close()
         _remote.value = null

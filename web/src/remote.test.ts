@@ -287,3 +287,50 @@ it("lets go of a sent message's local image copies once the CLI records it", asy
   // Not yet recorded: kept for putting it back into the input.
   expect(r.outbox("s-idle").find((o) => o.sendId === failedId)?.thumbs?.length).toBe(1);
 });
+
+it("stops and says so once the server no longer knows this device", async () => {
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = (await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"])) as CryptoKeyPair;
+  class Probe extends Remote {
+    constructor() {
+      super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key });
+    }
+  }
+  const calls: string[] = [];
+  let denied = 1;
+  vi.stubGlobal("WebSocket", class { close() {} });
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const name = String(input instanceof Request ? input.url : input).split("/").pop()!;
+    calls.push(name);
+    if (name === "GetChallenge") return new Response(new Uint8Array(), { headers: { "Content-Type": "application/proto" } });
+    if (denied-- > 0) return new Response(JSON.stringify({ code: "permission_denied", message: "login failed" }), { status: 403, headers: { "Content-Type": "application/json" } });
+    return new Response(new Uint8Array(), { headers: { "Content-Type": "application/proto" } });
+  });
+  try {
+    // One denial alone is a challenge the server forgot: the next login works.
+    const r = new Probe();
+    r.start();
+    await vi.waitFor(() => expect(calls.filter((c) => c === "Login")).toHaveLength(2));
+    expect(r.removed).toBe(false);
+    r.stop();
+
+    // Denied a fresh challenge too: removed, and it stops asking.
+    denied = 2;
+    calls.length = 0;
+    const gone = new Probe();
+    gone.start();
+    await vi.waitFor(() => expect(gone.removed).toBe(true));
+    expect(gone.conn).toBe("offline");
+    gone.start();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls.filter((c) => c === "Login")).toHaveLength(2);
+
+    // Asked to try again after joining was restored on the server.
+    gone.retryLogin();
+    await vi.waitFor(() => expect(calls.filter((c) => c === "Login")).toHaveLength(3));
+    expect(gone.removed).toBe(false);
+    gone.stop();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
