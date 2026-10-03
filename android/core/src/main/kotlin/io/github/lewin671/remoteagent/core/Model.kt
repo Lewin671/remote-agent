@@ -199,6 +199,35 @@ fun titleInput(text: String): String {
  */
 fun renameTitle(typed: String, initial: String): String? = typed.trim().takeIf { it != initial }
 
+/** The session was forked from another one (Session.forked_from). */
+fun forked(s: SessionView): Boolean = s.info?.forkedFrom.orEmpty().isNotEmpty()
+
+/**
+ * Whether a message was ever sent in the session: its title comes from the
+ * first one, and the history loaded so far may show one.
+ */
+fun sentMessage(s: SessionView, events: List<Event>): Boolean = s.info?.title.orEmpty().isNotEmpty() || events.any { it.hasUserMessage() }
+
+/**
+ * Why the session cannot be forked now, as the ⋯ menu writes it under
+ * 分叉会话; null when it can. A fork takes an idle or ended session in which
+ * a message was sent. [running]: a turn is going on by the events, which
+ * can be ahead of the session's status. The menu only offers a fork while
+ * the computer is reachable and the session is read, so OFFLINE and LOADING
+ * do not come here; they read as not up yet.
+ */
+fun forkBlocked(status: Status, running: Boolean, sent: Boolean): String? = when (status) {
+    Status.RUNNING, Status.APPROVAL, Status.QUESTION -> "这一轮结束后可用"
+    Status.PLAN, Status.POPUP -> "处理完等待事项后可用"
+    Status.STARTING, Status.LOADING, Status.OFFLINE -> "启动完成后可用"
+    Status.IDLE -> if (running) "这一轮结束后可用" else if (!sent) "发过消息后可用" else null
+    Status.EXITED -> if (!sent) "发过消息后可用" else null
+}
+
+/** The session a fork made, or null when the answer names none. */
+fun forkedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): String? =
+    r?.takeIf { it.hasForkSession() && it.forkSession.hasSession() }?.forkSession?.session?.id?.takeIf { it.isNotEmpty() }
+
 /** Text for one-line previews: Markdown marks and the CLIs' image placeholders removed. */
 fun plain(text: String): String = text
     .replace(Regex("\\[Image #\\d+]\\s*"), "")
@@ -588,6 +617,18 @@ internal class EventReducer(agent: Agent) {
                     for (t in d.tools) d.unfinished += t.seq
                     d.tools.clear()
                     d.background.clear()
+                }
+                // What came before is a copy of the source's history: nothing
+                // of it is pending or running in this session.
+                Event.KindCase.SESSION_FORKED -> {
+                    d.running = false
+                    d.approvals.clear()
+                    d.questions.clear()
+                    for (t in d.tools) d.unfinished += t.seq
+                    d.tools.clear()
+                    d.background.clear()
+                    submitted = 0
+                    unclaimed = null
                 }
                 else -> {}
             }

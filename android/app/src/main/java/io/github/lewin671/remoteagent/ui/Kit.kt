@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -485,27 +486,57 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
     }
 }
 
-/** One choice of an action sheet. */
-class SheetAction(val text: String, val danger: Boolean = false, val warn: Boolean = false, val onClick: () -> Unit)
+/**
+ * One choice of an action sheet. Not [enabled]: greyed and not tappable.
+ * [note]: a small line under it, why it is not available or ([noteError])
+ * how it failed. [busy]: it is running, shown with a spinner; the other
+ * choices are then given not enabled and the sheet stays until it ends.
+ * [keepOpen]: tapping it leaves the sheet open.
+ */
+class SheetAction(
+    val text: String,
+    val danger: Boolean = false,
+    val warn: Boolean = false,
+    val enabled: Boolean = true,
+    val note: String = "",
+    val noteError: Boolean = false,
+    val busy: Boolean = false,
+    val keepOpen: Boolean = false,
+    val onClick: () -> Unit,
+)
 
 /** The ⋯ menu: a card of actions above a separate 取消, from the bottom. */
 @Composable
 fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onDismiss: () -> Unit) {
     val p = pal
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { onDismiss() }) {
+    // Leaving while a choice is running would drop its answer.
+    val busy = actions.any { it.busy }
+    val dismiss = { if (!busy) onDismiss() }
+    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { dismiss() }) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(start = 8.dp, end = 8.dp, bottom = 20.dp)) {
                 Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card)) {
                     if (info != null) Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { info() }
                     actions.forEachIndexed { i, a ->
                         if (i > 0 || info != null) HorizontalDivider(color = p.line, thickness = 1.dp)
-                        Box(Modifier.fillMaxWidth().heightIn(min = 50.dp).tap { onDismiss(); a.onClick() }, contentAlignment = Alignment.Center) {
-                            Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.blue)
+                        val on = a.enabled && !a.busy
+                        Column(
+                            Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                                // A tap on a greyed row stays on it rather than falling through to close the sheet.
+                                .then(if (on) Modifier.tap { if (!a.keepOpen) onDismiss(); a.onClick() } else Modifier.semantics { disabled() }.clickable(remember { MutableInteractionSource() }, null) {})
+                                .then(if (a.note.isNotEmpty()) Modifier.padding(horizontal = 14.dp, vertical = 6.dp) else Modifier),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
+                        ) {
+                            if (a.busy) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Mark("◌", p.muted, 14.dp)
+                                Text(a.text, style = ts(17.sp), color = p.muted)
+                            } else Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.blue, modifier = Modifier.alpha(if (a.enabled) 1f else .4f))
+                            if (a.note.isNotEmpty()) Text(a.note, style = T.meta, color = if (a.noteError) p.red else p.muted, textAlign = TextAlign.Center)
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card).heightIn(min = 50.dp).tap { onDismiss() }, contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().clip(Radii.MD).background(p.card).heightIn(min = 50.dp).tap { dismiss() }, contentAlignment = Alignment.Center) {
                     Text("取消", style = ts(17.sp, FontWeight.SemiBold), color = p.blue)
                 }
             }

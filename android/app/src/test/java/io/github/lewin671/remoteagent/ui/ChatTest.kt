@@ -72,6 +72,33 @@ class ChatTest {
     private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
 
     @Test
+    fun marksWhereAForkLeavesItsSource() {
+        val at = java.time.ZonedDateTime.now().withHour(14).withMinute(6).toEpochSecond()
+        val events = listOf(
+            ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("登录接口偶尔超时"))),
+            ev(2, Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("原因是限流器"))),
+            ev(3, Event.newBuilder().setTime(com.google.protobuf.Timestamp.newBuilder().setSeconds(at))
+                .setSessionForked(io.github.lewin671.remoteagent.proto.SessionForked.newBuilder().setSourceSessionId("src").setSourceTitle("登录接口偶尔超时"))),
+            ev(4, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("换一种做法"))),
+        )
+        val items = buildChat(events, derive(events), "MacBook")
+        assertEquals(4, items.size)
+        val fork = items[2] as ChatItem.Fork
+        assertEquals(ChatItem.Fork("e3", "14:06", "src", "登录接口偶尔超时"), fork)
+        // A message after the fork appends without losing the line.
+        val projection = ChatProjection()
+        projection.update(events.take(3), derive(events.take(3)), "MacBook")
+        assertEquals(fork, projection.update(events, derive(events), "MacBook")[2])
+
+        // The source as this client has it now; else the title the event recorded, not to be opened.
+        val renamed = io.github.lewin671.remoteagent.core.SessionView("src", "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("登录超时：限流").build())
+        assertEquals("登录超时：限流" to true, forkSource(fork, mapOf("src" to renamed)))
+        assertEquals("登录接口偶尔超时" to true, forkSource(fork, mapOf("src" to io.github.lewin671.remoteagent.core.SessionView("src", "m"))))
+        assertEquals("登录接口偶尔超时" to false, forkSource(fork, emptyMap()))
+        assertEquals("另一个会话" to false, forkSource(fork.copy(sourceTitle = ""), emptyMap()))
+    }
+
+    @Test
     fun foldsToolRunsAndNotesCompaction() {
         val events = listOf(
             ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))),

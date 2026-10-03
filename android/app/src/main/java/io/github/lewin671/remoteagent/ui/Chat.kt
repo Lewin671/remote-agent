@@ -112,6 +112,20 @@ sealed interface ChatItem {
     /** A message the session ended before writing; [text] is known when sent from here. */
     data class Unsent(override val key: String, val requestId: String, val text: String?) : ChatItem
     data class TurnEnd(override val key: String, val text: String) : ChatItem
+
+    /** Where a forked session leaves its source: [time] 分叉自 the source, by the title it had then. */
+    data class Fork(override val key: String, val time: String, val sourceId: String, val sourceTitle: String) : ChatItem
+}
+
+/**
+ * How the fork line names the source: its title now when the session is
+ * known here, else the one the event recorded; and whether it can be opened.
+ */
+fun forkSource(item: ChatItem.Fork, sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView>): Pair<String, Boolean> {
+    val source = sessions[item.sourceId]
+    val title = source?.takeIf { it.info != null }?.let { io.github.lewin671.remoteagent.core.titleOf(it) }
+        ?: io.github.lewin671.remoteagent.core.plain(item.sourceTitle).ifEmpty { "另一个会话" }
+    return title to (source != null)
 }
 
 fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
@@ -379,6 +393,10 @@ fun buildChat(
                 flush()
                 out += ChatItem.TurnEnd(k, dateTime(eventTime(e)) + " 结束")
             }
+            Event.KindCase.SESSION_FORKED -> {
+                flush()
+                out += ChatItem.Fork(k, dateTime(eventTime(e)), e.sessionForked.sourceSessionId, e.sessionForked.sourceTitle)
+            }
             else -> {}
         }
     }
@@ -437,6 +455,35 @@ fun SepLine(text: String) {
         Box(Modifier.weight(1f).height(1.dp).background(p.line))
         Text(text, style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 8.dp))
         Box(Modifier.weight(1f).height(1.dp).background(p.line))
+    }
+}
+
+/**
+ * The line where a forked session leaves its source, drawn as [SepLine]:
+ * the time, 分叉自, and the source's title on one line, cut short when long.
+ * The title opens the source when this client has it; else it is plain text.
+ */
+@Composable
+fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
+    val p = pal
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+        // The rules give way to a long title, down to a stub at each side.
+        val room = (maxWidth - 32.dp).coerceAtLeast(0.dp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f).height(1.dp).background(p.line))
+            Row(Modifier.widthIn(max = room).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("$time 分叉自", style = T.meta, color = p.muted, maxLines = 1, softWrap = false)
+                Spacer(Modifier.width(4.dp))
+                Row(
+                    Modifier.weight(1f, fill = false).then(if (onOpen != null) Modifier.tap(onClick = onOpen) else Modifier).padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(title, style = T.meta, color = if (onOpen != null) p.blue else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (onOpen != null) Text(" ›", style = T.meta, color = p.blue, maxLines = 1, softWrap = false)
+                }
+            }
+            Box(Modifier.weight(1f).height(1.dp).background(p.line))
+        }
     }
 }
 
@@ -522,6 +569,10 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             links = if (item.text != null && onPutBack != null) listOf("放回输入框" to { onPutBack(item.requestId, item.text) }) else emptyList(),
         )
         is ChatItem.TurnEnd -> SepLine(item.text)
+        is ChatItem.Fork -> {
+            val (title, known) = forkSource(item, chat?.sessions.orEmpty())
+            ForkLine(item.time, title, if (known && chat != null) ({ chat.onSession(item.sourceId) }) else null)
+        }
     }
 }
 

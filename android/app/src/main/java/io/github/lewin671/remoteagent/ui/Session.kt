@@ -84,6 +84,7 @@ import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.core.whenText
 import io.github.lewin671.remoteagent.core.pendingInputs
 import io.github.lewin671.remoteagent.proto.CancelInputRequest
+import io.github.lewin671.remoteagent.proto.ForkSessionRequest
 import io.github.lewin671.remoteagent.proto.InputStatus
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.ResumeInputRequest
@@ -139,7 +140,7 @@ fun SessionScreen(sid: String) {
 
     val term = tab == 1 && status != Status.EXITED
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
-        SessionTopBar(state, s, status, d.running || status == Status.RUNNING, dark = term)
+        SessionTopBar(state, s, status, d.running || status == Status.RUNNING, io.github.lewin671.remoteagent.core.sentMessage(s, events.events), dark = term)
         ConnBanner(state)
         SessionTabs(if (term) 1 else 0, status != Status.EXITED, status == Status.POPUP, dark = term) {
             tab = it
@@ -153,9 +154,12 @@ fun SessionScreen(sid: String) {
     }
 }
 
-/** ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 重命名, 中断本轮 and 结束会话…. */
+/**
+ * ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 重命名, 分叉会话, 中断本轮 and 结束会话….
+ * [sent]: a message was sent in the session, which a fork needs.
+ */
 @Composable
-private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, dark: Boolean) {
+private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, running: Boolean, sent: Boolean, dark: Boolean) {
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
@@ -168,6 +172,10 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     val live = status != Status.EXITED && status != Status.OFFLINE
     // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
     val canRename = state.conn == ConnState.ONLINE && machineOf(state, s)?.online == true
+    // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
+    val fork = rememberAction()
+    val forking = fork.running
+    val forkBlock = io.github.lewin671.remoteagent.core.forkBlocked(status, running, sent)
     // Claude Code records full model IDs; show the alias the list offers.
     var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
     LaunchedEffect(s.machineId, s.agent()) {
@@ -196,16 +204,37 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
         },
         actions = buildList {
             if (live) {
-                add(SheetAction("审批模式：${mode?.text ?: "未知"}", danger = mode?.mode == Mode.FULL) { sheet = 1 })
-                add(SheetAction(if (model.isEmpty()) "会话设置" else "模型：$model" + if (effort.isNotEmpty()) " · $effort" else "") { sheet = 2 })
-                pc?.let { add(SheetAction("上下文：$it%", warn = high) { sheet = 2 }) }
+                add(SheetAction("审批模式：${mode?.text ?: "未知"}", danger = mode?.mode == Mode.FULL, enabled = !forking) { sheet = 1 })
+                add(SheetAction(if (model.isEmpty()) "会话设置" else "模型：$model" + if (effort.isNotEmpty()) " · $effort" else "", enabled = !forking) { sheet = 2 })
+                pc?.let { add(SheetAction("上下文：$it%", warn = high, enabled = !forking) { sheet = 2 }) }
             }
-            add(SheetAction("项目设置") { projectSettings = true })
-            if (canRename) add(SheetAction("重命名") { rename = true })
-            if (running) add(SheetAction("中断本轮") { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
-            if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true) { confirmStop = true })
+            add(SheetAction("项目设置", enabled = !forking) { projectSettings = true })
+            if (canRename) {
+                add(SheetAction("重命名", enabled = !forking) { rename = true })
+                add(SheetAction(
+                    if (forking) "正在分叉…" else "分叉会话", enabled = forkBlock == null, busy = forking, keepOpen = true,
+                    note = if (forking) "" else forkBlock ?: if (fork.error.isNotEmpty()) "没能分叉：${fork.error}" else "",
+                    noteError = forkBlock == null,
+                ) {
+                    fork.run({
+                        remote.command(s.id, remote.cmd { forkSession = ForkSessionRequest.newBuilder().setSessionId(s.id).build() }).also {
+                            if (io.github.lewin671.remoteagent.core.forkedSession(it) == null) throw io.github.lewin671.remoteagent.core.CommandException("internal", "意外的回复")
+                        }
+                    }) { r ->
+                        // The new session may not be in the list yet: its page waits for it, as after starting one.
+                        val sid = io.github.lewin671.remoteagent.core.forkedSession(r) ?: return@run
+                        menu = false
+                        nav.session(sid)
+                    }
+                })
+            }
+            if (running) add(SheetAction("中断本轮", enabled = !forking) { act.run({ remote.command(s.id, remote.cmd { interrupt = InterruptRequest.newBuilder().setSessionId(s.id).build() }) }) })
+            if (status != Status.EXITED) add(SheetAction("结束会话…", danger = true, enabled = !forking) { confirmStop = true })
         },
-        onDismiss = { menu = false },
+        onDismiss = {
+            menu = false
+            fork.error = ""
+        },
     )
     if (projectSettings) projectConfig(state, projectKey(s))?.let { initial ->
         NewSettingsSheet(state, initial, projectName(projectKey(s)), onDone = {
@@ -290,6 +319,8 @@ private fun ChatPane(
                 s.id, s.agent(), d,
                 frozenAt = if (state.conn == ConnState.ONLINE) 0 else state.offlineSinceMs,
                 onImage = { seq, i -> nav.image(s.id, seq, i) },
+                sessions = state.sessions,
+                onSession = { nav.session(it) },
             )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
             LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {

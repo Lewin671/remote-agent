@@ -143,7 +143,7 @@ private fun EmptyAccount(state: RemoteState) {
 
 /**
  * One session in a list (client-v7): a dot, the title and time, a preview,
- * then the status word in its color · CLI · project · machine. The line
+ * then the status word in its color · 分叉 for a forked one · CLI · project · machine. The line
  * under a row starts where its text does.
  */
 @Composable
@@ -165,6 +165,7 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, last: Boolean = fals
             val pv = if (preview) previewOf(s, st) else ""
             if (pv.isNotEmpty()) Text(pv, style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val rest = buildList {
+                if (io.github.lewin671.remoteagent.core.forked(s)) add("分叉")
                 add(agentName(s.agent()))
                 if (showProject) add(projectName(projectKey(s)))
                 add(machineLabel(state, s.machineId))

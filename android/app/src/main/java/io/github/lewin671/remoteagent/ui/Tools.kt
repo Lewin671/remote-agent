@@ -64,6 +64,10 @@ class ChatContext(
     val frozenAt: Long,
     /** Opens the viewer at an event's image. */
     val onImage: (seq: Long, index: Int) -> Unit = { _, _ -> },
+    /** The sessions this client has, to name the one a fork came from. */
+    val sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView> = emptyMap(),
+    /** Opens another session. */
+    val onSession: (String) -> Unit = {},
 )
 
 val LocalChat = compositionLocalOf<ChatContext?> { null }

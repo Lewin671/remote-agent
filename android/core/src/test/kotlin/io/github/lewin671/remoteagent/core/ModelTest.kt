@@ -62,6 +62,56 @@ class ModelTest {
     }
 
     @Test
+    fun forkNeedsAnIdleOrEndedSessionWithAMessage() {
+        assertEquals(null, forkBlocked(Status.IDLE, running = false, sent = true))
+        assertEquals(null, forkBlocked(Status.EXITED, running = false, sent = true))
+        for (st in listOf(Status.RUNNING, Status.APPROVAL, Status.QUESTION)) assertEquals("这一轮结束后可用", forkBlocked(st, running = false, sent = true))
+        // The events show a turn before the session's status does.
+        assertEquals("这一轮结束后可用", forkBlocked(Status.IDLE, running = true, sent = true))
+        for (st in listOf(Status.PLAN, Status.POPUP)) assertEquals("处理完等待事项后可用", forkBlocked(st, running = false, sent = true))
+        assertEquals("启动完成后可用", forkBlocked(Status.STARTING, running = false, sent = false))
+        assertEquals("发过消息后可用", forkBlocked(Status.IDLE, running = false, sent = false))
+        assertEquals("发过消息后可用", forkBlocked(Status.EXITED, running = false, sent = false))
+        // What it waits for comes before the missing message.
+        assertEquals("这一轮结束后可用", forkBlocked(Status.RUNNING, running = true, sent = false))
+
+        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
+        val message = listOf(ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))))
+        assertTrue(sentMessage(s { title = "登录接口偶尔超时" }, emptyList()))
+        assertTrue(sentMessage(s {}, message))
+        assertEquals(false, sentMessage(s { cwd = "/Users/me/Code/foo" }, listOf(ev(1, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m"))))))
+        assertEquals(false, sentMessage(SessionView("s", "m"), emptyList()))
+
+        assertTrue(forked(s { forkedFrom = "a1" }))
+        assertEquals(false, forked(s {}))
+        assertEquals(false, forked(SessionView("s", "m")))
+
+        val made = io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setForkSession(
+            io.github.lewin671.remoteagent.proto.ForkSessionResponse.newBuilder().setSession(Session.newBuilder().setId("new")),
+        ).build()
+        assertEquals("new", forkedSession(made))
+        assertEquals(null, forkedSession(io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()))
+        assertEquals(null, forkedSession(null))
+    }
+
+    @Test
+    fun aForkCarriesNothingPendingFromItsSource() {
+        // The copy ends in the middle of things only if the daemon's own trimming missed something: nothing of it runs here.
+        val d = derive(
+            listOf(
+                ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance())),
+                ev(2, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a"))),
+                ev(3, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c").setTitle("go test"))),
+                ev(4, Event.newBuilder().setSessionForked(io.github.lewin671.remoteagent.proto.SessionForked.newBuilder().setSourceSessionId("src").setSourceTitle("登录超时"))),
+            ),
+        )
+        assertEquals(false, d.running)
+        assertTrue(d.approvals.isEmpty())
+        assertTrue(d.tools.isEmpty())
+        assertEquals(setOf(3L), d.unfinished)
+    }
+
+    @Test
     fun derivesPendingItemsAndInputs() {
         val d = derive(
             listOf(
