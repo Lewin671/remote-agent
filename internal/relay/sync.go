@@ -149,7 +149,7 @@ func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelop
 	return e2e.SealMessage(key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: e.Seq, Sender: c.acct.DeviceID,
-	}, fitEvent(e))
+	}, fitEvent(slimEvent(e)))
 }
 
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) error {
