@@ -67,4 +67,17 @@ public interface DeviceOrBuilder extends
    * @return The metaRevision.
    */
   long getMetaRevision();
+
+  /**
+   * <pre>
+   * When a client's stream last connected or closed, the current time
+   * while one is connected; 0 for a client that has not connected since
+   * the server began recording it, and for a machine, which has
+   * Machine.last_seen_ms.
+   * </pre>
+   *
+   * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+   * @return The lastSeenMs.
+   */
+  long getLastSeenMs();
 }

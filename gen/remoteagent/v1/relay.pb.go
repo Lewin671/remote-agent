@@ -3728,7 +3728,12 @@ type Device struct {
 	// DEVICE_META envelope for a client, absent until one names it.
 	Meta *Envelope `protobuf:"bytes,4,opt,name=meta,proto3" json:"meta,omitempty"`
 	// Revision of meta, 0 without one.
-	MetaRevision  uint64 `protobuf:"varint,5,opt,name=meta_revision,json=metaRevision,proto3" json:"meta_revision,omitempty"`
+	MetaRevision uint64 `protobuf:"varint,5,opt,name=meta_revision,json=metaRevision,proto3" json:"meta_revision,omitempty"`
+	// When a client's stream last connected or closed, the current time
+	// while one is connected; 0 for a client that has not connected since
+	// the server began recording it, and for a machine, which has
+	// Machine.last_seen_ms.
+	LastSeenMs    int64 `protobuf:"varint,6,opt,name=last_seen_ms,json=lastSeenMs,proto3" json:"last_seen_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3794,6 +3799,13 @@ func (x *Device) GetMeta() *Envelope {
 func (x *Device) GetMetaRevision() uint64 {
 	if x != nil {
 		return x.MetaRevision
+	}
+	return 0
+}
+
+func (x *Device) GetLastSeenMs() int64 {
+	if x != nil {
+		return x.LastSeenMs
 	}
 	return 0
 }
@@ -4646,14 +4658,16 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x05image\x18\x03 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x05image\"1\n" +
 	"\x10PutImageResponse\x12\x1d\n" +
 	"\n" +
-	"expires_ms\x18\x01 \x01(\x03R\texpiresMs\"\xba\x01\n" +
+	"expires_ms\x18\x01 \x01(\x03R\texpiresMs\"\xdc\x01\n" +
 	"\x06Device\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.DeviceKindR\x04kind\x12\x1d\n" +
 	"\n" +
 	"created_ms\x18\x03 \x01(\x03R\tcreatedMs\x12,\n" +
 	"\x04meta\x18\x04 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x04meta\x12#\n" +
-	"\rmeta_revision\x18\x05 \x01(\x04R\fmetaRevision\"\x14\n" +
+	"\rmeta_revision\x18\x05 \x01(\x04R\fmetaRevision\x12 \n" +
+	"\flast_seen_ms\x18\x06 \x01(\x03R\n" +
+	"lastSeenMs\"\x14\n" +
 	"\x12ListDevicesRequest\"s\n" +
 	"\x13ListDevicesResponse\x120\n" +
 	"\adevices\x18\x01 \x03(\v2\x16.remoteagent.v1.DeviceR\adevices\x12*\n" +

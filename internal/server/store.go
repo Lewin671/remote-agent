@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS devices (
 	signature BLOB NOT NULL,
 	created_ms INTEGER NOT NULL,
 	meta BLOB,
-	meta_revision INTEGER NOT NULL DEFAULT 0
+	meta_revision INTEGER NOT NULL DEFAULT 0,
+	last_seen_ms INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS registration_policy (
 	id INTEGER PRIMARY KEY CHECK (id = 1),

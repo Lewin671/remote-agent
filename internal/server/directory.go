@@ -39,7 +39,7 @@ func scanDevice(sc interface{ Scan(...any) error }) (*pb.Device, error) {
 	d := &pb.Device{}
 	var kind int32
 	var meta []byte
-	if err := sc.Scan(&d.Id, &kind, &d.CreatedMs, &meta, &d.MetaRevision); err != nil {
+	if err := sc.Scan(&d.Id, &kind, &d.CreatedMs, &meta, &d.MetaRevision, &d.LastSeenMs); err != nil {
 		return nil, err
 	}
 	d.Kind = pb.DeviceKind(kind)
@@ -47,7 +47,7 @@ func scanDevice(sc interface{ Scan(...any) error }) (*pb.Device, error) {
 	return d, nil
 }
 
-const deviceColumns = `id, kind, created_ms, meta, meta_revision`
+const deviceColumns = `id, kind, created_ms, meta, meta_revision, last_seen_ms`
 
 func (s *store) devices(ctx context.Context) ([]*pb.Device, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices ORDER BY created_ms, id`)
@@ -64,6 +64,12 @@ func (s *store) devices(ctx context.Context) ([]*pb.Device, error) {
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// touchDevice records that a client's stream connected or closed just now.
+func (s *store) touchDevice(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE devices SET last_seen_ms = ? WHERE id = ?`, nowMs(), id)
+	return err
 }
 
 func (s *store) deviceEntry(ctx context.Context, id string) (*pb.Device, error) {
@@ -176,6 +182,7 @@ func (c *clientService) ListDevices(ctx context.Context, req *connect.Request[pb
 	if err != nil {
 		return nil, internal(err)
 	}
+	c.s.hub.stampSeen(ds...)
 	return connect.NewResponse(&pb.ListDevicesResponse{Devices: ds, CurrentDeviceId: deviceFrom(ctx).id}), nil
 }
 
@@ -205,6 +212,9 @@ func (c *clientService) PutDeviceMeta(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	case err != nil:
 		return nil, internal(err)
+	}
+	if d != nil {
+		c.s.hub.stampSeen(d)
 	}
 	if applied {
 		c.s.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceUpdated{DeviceUpdated: &pb.DeviceUpdated{Device: d}}})

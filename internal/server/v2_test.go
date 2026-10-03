@@ -312,6 +312,12 @@ func TestDeviceDirectory(t *testing.T) {
 	if err != nil || len(list.Msg.Devices) != 3 || list.Msg.CurrentDeviceId != cid {
 		t.Fatalf("list: %v %v", list, err)
 	}
+	// Only a client that has had a stream open has a last-seen time.
+	for _, d := range list.Msg.Devices {
+		if seen := d.LastSeenMs > 0; seen != (d.Id == cid2) {
+			t.Fatalf("last seen of %s: %d", d.Id, d.LastSeenMs)
+		}
+	}
 	seal := func(sender, target string, rev uint64) *pb.Envelope {
 		env, _ := e2e.SealMessage(ts.keys.DeviceMeta, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: target, Seq: rev, Sender: sender},
 			&pb.DeviceMeta{Name: "Pixel", Platform: "android"})

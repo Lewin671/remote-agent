@@ -507,6 +507,11 @@ message Device {
   Envelope meta = 4;
   // Revision of meta, 0 without one.
   uint64 meta_revision = 5;
+  // When a client's stream last connected or closed, the current time
+  // while one is connected; 0 for a client that has not connected since
+  // the server began recording it, and for a machine, which has
+  // Machine.last_seen_ms.
+  int64 last_seen_ms = 6;
 }
 
 message ListDevicesRequest {}

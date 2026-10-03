@@ -240,6 +240,53 @@ public  final class Device extends
     metaRevision_ = 0L;
   }
 
+  public static final int LAST_SEEN_MS_FIELD_NUMBER = 6;
+  private long lastSeenMs_;
+  /**
+   * <pre>
+   * When a client's stream last connected or closed, the current time
+   * while one is connected; 0 for a client that has not connected since
+   * the server began recording it, and for a machine, which has
+   * Machine.last_seen_ms.
+   * </pre>
+   *
+   * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+   * @return The lastSeenMs.
+   */
+  @java.lang.Override
+  public long getLastSeenMs() {
+    return lastSeenMs_;
+  }
+  /**
+   * <pre>
+   * When a client's stream last connected or closed, the current time
+   * while one is connected; 0 for a client that has not connected since
+   * the server began recording it, and for a machine, which has
+   * Machine.last_seen_ms.
+   * </pre>
+   *
+   * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+   * @param value The lastSeenMs to set.
+   */
+  private void setLastSeenMs(long value) {
+    
+    lastSeenMs_ = value;
+  }
+  /**
+   * <pre>
+   * When a client's stream last connected or closed, the current time
+   * while one is connected; 0 for a client that has not connected since
+   * the server began recording it, and for a machine, which has
+   * Machine.last_seen_ms.
+   * </pre>
+   *
+   * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+   */
+  private void clearLastSeenMs() {
+
+    lastSeenMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.Device parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -571,6 +618,55 @@ public  final class Device extends
       return this;
     }
 
+    /**
+     * <pre>
+     * When a client's stream last connected or closed, the current time
+     * while one is connected; 0 for a client that has not connected since
+     * the server began recording it, and for a machine, which has
+     * Machine.last_seen_ms.
+     * </pre>
+     *
+     * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+     * @return The lastSeenMs.
+     */
+    @java.lang.Override
+    public long getLastSeenMs() {
+      return instance.getLastSeenMs();
+    }
+    /**
+     * <pre>
+     * When a client's stream last connected or closed, the current time
+     * while one is connected; 0 for a client that has not connected since
+     * the server began recording it, and for a machine, which has
+     * Machine.last_seen_ms.
+     * </pre>
+     *
+     * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+     * @param value The lastSeenMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLastSeenMs(long value) {
+      copyOnWrite();
+      instance.setLastSeenMs(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * When a client's stream last connected or closed, the current time
+     * while one is connected; 0 for a client that has not connected since
+     * the server began recording it, and for a machine, which has
+     * Machine.last_seen_ms.
+     * </pre>
+     *
+     * <code>int64 last_seen_ms = 6 [json_name = "lastSeenMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLastSeenMs() {
+      copyOnWrite();
+      instance.clearLastSeenMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Device)
   }
   @java.lang.Override
@@ -593,10 +689,11 @@ public  final class Device extends
             "createdMs_",
             "meta_",
             "metaRevision_",
+            "lastSeenMs_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0002\u0004\u1009\u0000\u0005\u0003";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0002\u0004\u1009\u0000\u0005\u0003\u0006\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

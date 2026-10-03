@@ -49,6 +49,22 @@ func (h *hub) online(machineID string) bool {
 	return h.machines[machineID] != nil
 }
 
+// stampSeen makes the current time the last-seen time of the clients with
+// a stream open: they are in use now, whenever they connected.
+func (h *hub) stampSeen(ds ...*pb.Device) {
+	now := nowMs()
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, d := range ds {
+		for p := range h.clients {
+			if p.dev.id == d.Id {
+				d.LastSeenMs = now
+				break
+			}
+		}
+	}
+}
+
 // serve handles one stream connection.
 func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	releaseHello, ok := h.s.acquireStreamHello(w)
@@ -188,6 +204,8 @@ func (h *hub) add(p *peer) {
 	if p.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
 		slog.Info("machine connected", "machine", p.dev.id)
 		h.machineChanged(p.dev.id)
+	} else {
+		_ = h.s.store.touchDevice(context.Background(), p.dev.id)
 	}
 }
 
@@ -209,6 +227,9 @@ func (h *hub) remove(p *peer) {
 		delete(h.clients, p)
 	}
 	h.mu.Unlock()
+	if p.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
+		_ = h.s.store.touchDevice(context.Background(), p.dev.id)
+	}
 	if gone {
 		slog.Info("machine disconnected", "machine", p.dev.id)
 		h.machineChanged(p.dev.id)
