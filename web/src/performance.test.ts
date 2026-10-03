@@ -203,7 +203,7 @@ async function sealedEvents(r: Remote, n: number) {
 it("opens a session from the cached history and downloads only what is new", async () => {
   const r = await probe();
   const all = await sealedEvents(r, 3);
-  const cache = { read: vi.fn(async () => all.slice(0, 2)), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined) };
+  const cache = { read: vi.fn(async () => all.slice(0, 2)), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined), get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) };
   (r as any).cache = cache;
   r.sessions.get("s")!.lastSeq = 3n;
   const getEvents = vi.fn(async ({ afterSeq }: { afterSeq: bigint }) => ({ events: all.filter((e) => e.seq > afterSeq), more: false }));
@@ -226,7 +226,7 @@ it("drops a cached history that is not this session's", async () => {
   (r as any).api = { getEvents };
   // Longer than what the server has.
   r.sessions.get("s")!.lastSeq = 2n;
-  const long = { read: vi.fn(async () => all), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined) };
+  const long = { read: vi.fn(async () => all), append: vi.fn(async () => undefined), drop: vi.fn(async () => undefined), keep: vi.fn(async () => undefined), get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) };
   (r as any).cache = long;
   r.events("s");
   await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
@@ -243,4 +243,54 @@ it("drops a cached history that is not this session's", async () => {
   expect(r.history("s").broken).toBe(false);
   expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
   clearTimeout((r as any).historyTrim); r.stop();
+});
+
+it("starts from what the browser kept: the token, and the last listing", async () => {
+  vi.stubGlobal("WebSocket", Socket);
+  const r = await probe();
+  r.sessions.clear();
+  const { sealMessage, seal } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { SessionSchema } = await import("./gen/remoteagent/v1/local_pb");
+  const { ListMachinesResponseSchema, ListRemoteSessionsResponseSchema } = await import("./gen/remoteagent/v1/relay_pb");
+  const { toBinary } = await import("@bufbuild/protobuf");
+  const key = (r as any).keys.wrap as CryptoKey;
+  const raw = crypto.getRandomValues(new Uint8Array(32));
+  const skey = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  const sessions = toBinary(ListRemoteSessionsResponseSchema, create(ListRemoteSessionsResponseSchema, { sessions: [{
+    sessionId: "kept", machineId: "m", lastSeq: 4n,
+    key: await seal(key, { kind: PayloadKind.SESSION_KEY, machineId: "m", sessionId: "kept" }, raw),
+    meta: await sealMessage(skey, { kind: PayloadKind.SESSION_META, machineId: "m", sessionId: "kept", seq: 1n }, SessionSchema, create(SessionSchema, { id: "kept", title: "from last time" })),
+  }] }));
+  const mine = { deviceId: "d", server: "https://ra.example.com" };
+  const kept: Record<string, unknown> = {
+    token: { ...mine, token: "kept-token", expiresMs: Date.now() + 10 * 86_400_000 },
+    machines: { ...mine, bytes: toBinary(ListMachinesResponseSchema, create(ListMachinesResponseSchema, { machines: [{ id: "m", online: true }] })) },
+    sessions: { ...mine, bytes: sessions },
+  };
+  (r as any).cache = { read: vi.fn(async () => []), append: vi.fn(), drop: vi.fn(), keep: vi.fn(async () => undefined), get: vi.fn(async (k: string) => kept[k]), set: vi.fn(async () => undefined) };
+  const login = vi.spyOn(r as any, "login").mockResolvedValue(undefined);
+  let notified = 0;
+  r.subscribe(() => notified++);
+  r.start();
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+  // Shown before the server has said anything, without logging in.
+  expect(login).not.toHaveBeenCalled();
+  expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
+  expect(r.machines.get("m")?.online).toBe(true);
+  expect(r.listed).toBe(false);
+  expect(r.authHeader()).toBe("Bearer kept-token");
+  // The server turning the token away is followed by a login.
+  Socket.all[0].close();
+  await vi.waitFor(() => expect(r.authHeader()).toBe("Bearer "));
+  r.stop();
+  // Another account's leftovers are not used.
+  const other = await probe();
+  (other as any).cache = { ...(r as any).cache, get: vi.fn(async (k: string) => ({ ...(kept[k] as object), deviceId: "someone else" })) };
+  const otherLogin = vi.spyOn(other as any, "login").mockResolvedValue(undefined);
+  other.sessions.clear();
+  other.start();
+  await vi.waitFor(() => expect(otherLogin).toHaveBeenCalled());
+  expect(other.sessions.size).toBe(0);
+  other.stop();
 });

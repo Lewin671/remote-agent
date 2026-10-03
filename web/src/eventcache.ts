@@ -1,6 +1,9 @@
 // Sealed events kept in this browser, so that opening a session again
 // downloads only what is new. They are stored as the server sent them:
-// still encrypted, and opened and checked like a fresh download.
+// still encrypted, and opened and checked like a fresh download. Next to
+// them are the last listing of machines and sessions, sealed likewise,
+// and the login token, so that the page shows what it knew and reaches
+// the server without logging in again.
 
 import { fromBinary, toBinary } from "@bufbuild/protobuf";
 import { EnvelopeSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
@@ -18,11 +21,15 @@ export interface EventCache {
   /** Forgets sessions the server no longer has, then the least recently
    * opened ones until the rest fits the budget. */
   keep(live: Set<string>): Promise<void>;
+  /** Small values by name: the last listings, the login token. */
+  get(name: string): Promise<unknown>;
+  set(name: string, value: unknown): Promise<void>;
 }
 
 const DB = "remote-agent-events";
 const EVENTS = "events"; // [session ID, seq] -> envelope bytes
 const SESSIONS = "sessions"; // session ID -> Usage
+const VALUES = "values"; // name -> value
 const BUDGET = 256 * 1024 * 1024;
 
 interface Usage {
@@ -34,10 +41,9 @@ let opening: Promise<IDBDatabase> | undefined;
 
 function db(): Promise<IDBDatabase> {
   return (opening ??= new Promise<IDBDatabase>((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+    const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
-      req.result.createObjectStore(EVENTS);
-      req.result.createObjectStore(SESSIONS);
+      for (const name of [EVENTS, SESSIONS, VALUES]) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name);
     };
     req.onsuccess = () => {
       // Deleting the database (forgetting the account) must not wait for
@@ -121,6 +127,15 @@ const idbCache: EventCache = {
       forget(tx, s.sid);
       total -= s.bytes;
     }
+    await done(tx);
+  },
+  async get(name) {
+    return result((await db()).transaction(VALUES).objectStore(VALUES).get(name));
+  },
+  async set(name, value) {
+    const tx = (await db()).transaction(VALUES, "readwrite");
+    if (value === undefined) tx.objectStore(VALUES).delete(name);
+    else tx.objectStore(VALUES).put(value, name);
     await done(tx);
   },
 };

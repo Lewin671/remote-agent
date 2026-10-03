@@ -35,6 +35,8 @@ import {
   ClientService,
   DeviceKind,
   DeviceRegistrationSchema,
+  ListMachinesResponseSchema,
+  ListRemoteSessionsResponseSchema,
   NotifyKind,
   PeerFrameSchema,
   ServerFrameSchema,
@@ -350,6 +352,7 @@ export class Remote {
   private sessionPushes = new Map<string, number>();
   private removedPushes = new Map<string, number>();
   private token = "";
+  private tokenExpires = 0;
   private loggingIn?: Promise<void>;
   private api: Client<typeof ClientService>;
   private ws?: WebSocket;
@@ -395,7 +398,54 @@ export class Remote {
 
   protected changed() {
     this.version++;
-    for (const fn of this.listeners) fn();
+    if (this.held) this.dirty = true;
+    else for (const fn of this.listeners) fn();
+  }
+
+  // While a listing is applied, each of its sessions is a change: the
+  // views are told once, at the end.
+  private held = 0;
+  private dirty = false;
+
+  private async quietly(fn: () => Promise<void>) {
+    this.held++;
+    try {
+      await fn();
+    } finally {
+      if (!--this.held && this.dirty) {
+        this.dirty = false;
+        for (const fn of this.listeners) fn();
+      }
+    }
+  }
+
+  // What this browser kept from the last visit: the login token, and the
+  // machines and sessions as last listed, shown until the server answers.
+  private warming?: Promise<void>;
+
+  private warm(): Promise<void> {
+    return (this.warming ??= (async () => {
+      if (!this.cache) return;
+      const mine = (v: unknown): Record<string, unknown> | undefined => {
+        const o = v as Record<string, unknown> | undefined;
+        return o && o.deviceId === this.account.deviceId && o.server === this.account.server ? o : undefined;
+      };
+      try {
+        const [token, machines, sessions] = (await Promise.all(["token", "machines", "sessions"].map((k) => this.cache!.get(k)))).map(mine);
+        if (token && !this.token) [this.token, this.tokenExpires] = [String(token.token), Number(token.expiresMs)];
+        if (machines && sessions && !this.listed)
+          await this.quietly(async () => {
+            for (const m of fromBinary(ListMachinesResponseSchema, machines.bytes as Uint8Array).machines) await this.putMachine(m);
+            for (const s of fromBinary(ListRemoteSessionsResponseSchema, sessions.bytes as Uint8Array).sessions) await this.putSession(s);
+          });
+      } catch {
+        // Nothing kept, or not readable: the server has it all.
+      }
+    })());
+  }
+
+  private keepValue(name: string, value: Record<string, unknown> | undefined) {
+    void this.cache?.set(name, value && { ...value, deviceId: this.account.deviceId, server: this.account.server }).catch(() => undefined);
   }
 
   // --- connection ---
@@ -437,12 +487,15 @@ export class Remote {
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
         const res = await auth.login({ deviceId: this.account.deviceId, challenge: ch.challenge, signature: sig });
         this.token = res.token;
+        this.tokenExpires = Number(res.expiresMs);
+        this.keepValue("token", { token: res.token, expiresMs: Number(res.expiresMs) });
         return;
       } catch (e) {
         if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) throw e;
         // A server restarted between the two calls forgets the challenge;
         // denied a fresh one too, it no longer knows this device.
         if (again) continue;
+        this.keepValue("token", undefined);
         this.removed = true;
         this.stop();
         throw e;
@@ -461,8 +514,15 @@ export class Remote {
     const generation = ++this.generation;
     this.conn = "connecting";
     this.changed();
+    if (this.cache) {
+      await this.warm();
+      if (this.closed || generation !== this.generation) return;
+    }
     try {
-      await this.login();
+      // A token kept from an earlier visit saves the two login calls. One
+      // about to expire is not worth a refused connection; the server
+      // refusing it closes the stream, and the next try logs in.
+      if (!this.token || this.tokenExpires < Date.now() + 86_400_000) await this.login();
     } catch (e) {
       if (generation === this.generation && !this.closed) this.fail(e);
       return;
@@ -507,6 +567,8 @@ export class Remote {
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.ws = undefined;
+      // Closed before it was ever ready: the token may be why.
+      if (this.conn !== "online") this.token = "";
       this.fail(new Error("与 server 的连接断开"));
     };
   }
@@ -611,11 +673,17 @@ export class Remote {
       for (const id of this.machines.keys()) if (!machines.has(id) && !pushed(this.machinePushes, mp, id)) this.machines.delete(id);
       for (const id of this.sessions.keys()) if (!sessions.has(id) && !pushed(this.sessionPushes, sp, id)) this.sessions.delete(id);
       const removed = (id: string) => pushed(this.removedPushes, rp, id);
-      for (const m of ms.machines) {
-        if (removed(m.id)) continue;
-        await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
+      await this.quietly(async () => {
+        for (const m of ms.machines) {
+          if (removed(m.id)) continue;
+          await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
+        }
+        for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
+      });
+      if (this.cache) {
+        this.keepValue("machines", { bytes: toBinary(ListMachinesResponseSchema, ms) });
+        this.keepValue("sessions", { bytes: toBinary(ListRemoteSessionsResponseSchema, ss) });
       }
-      for (const s of ss.sessions) if (!removed(s.machineId)) await this.putSession(s);
       this.listed = true;
       this.listError = "";
       this.listRetry = 2000;
