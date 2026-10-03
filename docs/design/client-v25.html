@@ -365,6 +365,13 @@
   .actsheet .ai2 { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--blue); border-top: 1px solid var(--line); }
   .actsheet .ai2:first-child { border: none; }
   .actsheet .ai2.red { color: var(--red); }
+  .actsheet .ai2.two { flex-direction: column; gap: 1px; padding: 6px 14px; }
+  .actsheet .ai2.two small { font-size: 12px; color: var(--muted); }
+  .actsheet .ai2.two small.err { color: var(--red); }
+  .actsheet .ai2.dis > span, .actsheet .ai2.dis:not(.two) { opacity: .4; }
+  .actsheet .ai2.busy { color: var(--muted); gap: 6px; }
+  .sep.fork > span { min-width: 0; display: flex; gap: 4px; white-space: nowrap; }
+  .sep.fork a { color: var(--blue); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .actsheet .info { padding: 10px 14px; font-size: 12px; color: var(--muted); text-align: center; }
   .actsheet .info .mono { color: var(--fg2); }
 
@@ -827,17 +834,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v24 · 2026-10-03 · 上一版 v23 在 git 历史里（<code>git log -- docs/design/client-v23.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v25 · 2026-10-03 · 上一版 v24 在 git 历史里（<code>git log -- docs/design/client-v24.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v23 的改动</h4><ul><li>新增「已被移出账户」画面：客户端在别的设备上被移除后，不再一直显示「连接断了，正在重连」，而是整屏说明，并给出「重新加入账户」和「再试一次」（<a href="#removed">设置与配对</a>）。</li><li>Android 重新加入时，填码页的服务器地址预填刚才那个账户的服务器。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v24 的改动</h4><ul><li>会话可以分叉：⋯ 菜单里「重命名」下面多一项「分叉会话」，从这场对话现在的位置另开一个会话，原会话不动；空闲和已结束的会话都能分叉（<a href="#fork">分叉会话</a>）。</li><li>分叉出的会话带着之前的对话，分叉处有一行分隔，写原会话的标题，点它回原会话；会话列表里这类会话的元信息多写「分叉」。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1570,13 +1577,14 @@ git status --short gen/</pre>
           <div class="ai2">模型：GPT-6-Astra · medium</div>
           <div class="ai2">上下文：23%</div>
           <div class="ai2">重命名</div>
+          <div class="ai2 two dis"><span>分叉会话</span><small>这一轮结束后可用</small></div>
           <div class="ai2">中断本轮</div>
           <div class="ai2 red">结束会话…</div>
         </div>
         <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
-    <div class="cap">⋯ 菜单：顶部写 CLI、项目、机器和目录，接着是本会话的审批模式、模型和上下文（完全放行红字，上下文高时橙字），点开是对应的设置；「重命名」改会话标题；中断只停这一轮，会话还在；结束会关掉 Codex，要二次确认</div>
+    <div class="cap">⋯ 菜单：顶部写 CLI、项目、机器和目录，接着是本会话的审批模式、模型和上下文（完全放行红字，上下文高时橙字），点开是对应的设置；「重命名」改会话标题；「分叉会话」另开一个带着这场对话的会话，运行中置灰（见 <a href="#fork">分叉会话</a>）；中断只停这一轮，会话还在；结束会关掉 Codex，要二次确认</div>
   </div>
 
   <div>
@@ -1618,6 +1626,7 @@ git status --short gen/</pre>
     <li>自己起的标题优先；没起过就用第一句用户消息的首句，截到一行；还没发过话用「目录名 · 开始时间」，如「billing · 11:25」</li>
     <li>自己起的标题不会被之后的消息改掉，所有客户端和通知里都显示它；留空保存后恢复自动标题。只改 remote-agent 里显示的标题，不改 CLI 自己的会话名</li>
     <li>标题一行，最多 60 个字，首尾空白去掉；显示不下时照常省略</li>
+    <li>分叉出的会话沿用原会话当时的标题，之后各改各的；会话列表的元信息里写「分叉」来区分</li>
   </ul>
   <h4>一行预览和长内容</h4>
   <ul>
@@ -2646,11 +2655,131 @@ git status --short gen/</pre>
         <div class="grp2">
           <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">8f02c91be7714d3a</span></div>
           <div class="ai2">重命名</div>
+          <div class="ai2">分叉会话</div>
         </div>
         <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
-    <div class="cap">已结束的会话：⋯ 菜单只剩「重命名」。电脑离线或和服务器断线时不显示这一项</div>
+    <div class="cap">已结束的会话：⋯ 菜单只剩「重命名」和「分叉会话」。电脑离线或和服务器断线时这两项都不显示</div>
+  </div>
+</div>
+
+<!-- ============================= -->
+<h2 id="fork">分叉会话</h2>
+<div class="note" style="margin:0 0 20px">从会话导航栏的 ⋯ 菜单进入，不用确认：分叉只多出一个会话，原会话不受影响。新会话在同一台电脑、同一个目录里用同一个 CLI 打开，模型、推理强度和审批模式跟原会话当前的一样，带着到这一刻为止的全部对话；之后两边各走各的。空闲和已结束的会话都能分叉，电脑要在线。分叉前出现的图片在新会话里只有预览，大图回原会话看。宽屏上是同一个菜单项，弹出菜单里这一行同样变成进度或原因。做法见 <a href="../architecture.md#13-daemon-设置与远程新建会话">architecture §13</a>。</div>
+<div class="screens">
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="actsheet">
+        <div class="grp2">
+          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
+          <div class="ai2">审批模式：询问</div>
+          <div class="ai2">模型：GPT-6-Astra · medium</div>
+          <div class="ai2">上下文：23%</div>
+          <div class="ai2">重命名</div>
+          <div class="ai2">分叉会话</div>
+          <div class="ai2 red">结束会话…</div>
+        </div>
+        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
+      </div>
+    </div>
+    <div class="cap">空闲的会话：「分叉会话」在「重命名」下面。点一下就开始，不弹确认</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="actsheet">
+        <div class="grp2">
+          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
+          <div class="ai2 dis">审批模式：询问</div>
+          <div class="ai2 dis">模型：GPT-6-Astra · medium</div>
+          <div class="ai2 dis">上下文：23%</div>
+          <div class="ai2 dis">重命名</div>
+          <div class="ai2 busy"><span class="sp">◌</span>正在分叉…</div>
+          <div class="ai2 red dis">结束会话…</div>
+        </div>
+        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
+      </div>
+    </div>
+    <div class="cap">点了以后菜单不关：这一行变成「正在分叉…」，其余各行置灰；电脑上的新会话起好后菜单关闭，直接进新会话</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">登录接口偶尔超时</span></b><span><span class="dot idle"></span>空闲 · 询问</span></span><span class="more">⋯</span></div>
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+      <div class="body chat">
+        <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
+        <div class="tool"><span class="ok">✓</span><code>go test ./auth/...</code></div>
+        <div class="ai">原因是限流器在重试时没有释放令牌。我加了释放逻辑，测试都过了。要不要顺便把重试次数做成可配置的？</div>
+        <div class="sep fork"><span>10月3日 14:06 分叉自 <a>登录接口偶尔超时 ›</a></span></div>
+      </div>
+      <div class="compose-card"><div class="draft">换一种做法试试…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
+    </div>
+    <div class="cap">新会话：标题和之前的对话都带过来，最后是一行分叉的分隔，写分叉的时刻，蓝字是原会话现在的标题，点它回原会话；标题太长就省略。不用先发消息，CLI 就绪（启动中 → 空闲）后直接接着聊</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="actsheet">
+        <div class="grp2">
+          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
+          <div class="ai2">审批模式：询问</div>
+          <div class="ai2">模型：GPT-6-Astra · medium</div>
+          <div class="ai2">上下文：23%</div>
+          <div class="ai2">重命名</div>
+          <div class="ai2 two dis"><span>分叉会话</span><small>这一轮结束后可用</small></div>
+          <div class="ai2">中断本轮</div>
+          <div class="ai2 red">结束会话…</div>
+        </div>
+        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
+      </div>
+    </div>
+    <div class="cap">还不能分叉时这一行置灰，下面写什么时候可以：运行中、等审批或等回答写「这一轮结束后可用」，计划待批准和终端弹窗写「处理完等待事项后可用」，启动中写「启动完成后可用」，还没发过消息写「发过消息后可用」</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="actsheet">
+        <div class="grp2">
+          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">1cad005ddc4b02a4</span></div>
+          <div class="ai2">审批模式：询问</div>
+          <div class="ai2">模型：GPT-6-Astra · medium</div>
+          <div class="ai2">上下文：23%</div>
+          <div class="ai2">重命名</div>
+          <div class="ai2 two"><span>分叉会话</span><small class="err">没能分叉：MacBook 没有回应</small></div>
+          <div class="ai2 red">结束会话…</div>
+        </div>
+        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
+      </div>
+    </div>
+    <div class="cap">没成功：菜单不关，这一行下面用红字写原因，可以再点一次；其余各行恢复可点</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body">
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>14:06</span></div><div class="pv">原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc"><span class="stw idle">空闲</span> · 分叉 · Codex · foo · MacBook</div></div></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>13:20</span></div><div class="pv">原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc"><span class="stw idle">空闲</span> · Codex · foo · MacBook</div></div></div>
+      </div>
+    </div>
+    <div class="cap">会话列表：分叉出的会话是一个新会话，时间是分叉的时刻，排在原会话前面；元信息在状态后面多写「分叉」。标题一开始和原会话一样，想区分就重命名</div>
   </div>
 </div>
 
