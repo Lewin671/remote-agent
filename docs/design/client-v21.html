@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v20</title>
+<title>remote-agent 客户端设计稿 v21</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -590,6 +590,10 @@
   .manage-row .pn { font-weight:600; font-size:15px; }
   .manage-row .ps { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .manage-row .dots { width:44px; height:44px; display:flex; align-items:center; justify-content:center; color:var(--blue); flex:none; }
+  .row.client { padding-top:8px; padding-bottom:8px; }
+  .row.client .client-info { flex:1; min-width:0; display:flex; flex-direction:column; overflow-wrap:anywhere; }
+  .row.client small { font-size:13px; color:var(--muted); margin-top:2px; }
+  .row.client .v { flex:none; }
   .manage-hint { font-size:13px; color:var(--muted); margin:8px 16px 12px; }
   .toast { margin:8px 12px; padding:8px 10px; border-radius:var(--r-sm); background:var(--soft); font-size:13px; display:flex; align-items:center; gap:8px; min-height:44px; }
   .toast b { margin-left:auto; color:var(--blue); min-height:44px; display:flex; align-items:center; }
@@ -823,14 +827,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v20 · 2026-10-02 · 上一版 v19 在 git 历史里（<code>git log -- docs/design/client-v19.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v21 · 2026-10-03 · 上一版 v20 在 git 历史里（<code>git log -- docs/design/client-v20.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v19 的改动</h4><ul><li>会话可以重命名：⋯ 菜单加「重命名」，点开是带输入框的对话框；自己起的标题优先于自动标题，留空保存恢复自动标题（<a href="#rename">重命名会话</a>，规则在 <a href="#states">状态集 · 会话标题</a>）。</li><li>账户额度的重置时间写成「还有多久 · 哪一天几点」，不是今天的写出日期和星期；「北京时间」在页面底部说明一次，不再每行重复（<a href="#quota">账户额度</a>）。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v20 的改动</h4><ul><li>设备页的客户端列表每行两行：上面是名称，下面一行小字写它是 App 还是浏览器、运行在什么系统上、哪天添加的，名字相近的客户端靠这一行分清（<a href="#devices">多端</a>）。</li><li>未命名客户端的默认名称在网页和 Android 上一致：浏览器写浏览器名（Chrome · a8f2），App 写 Android · b71c，什么都没说的写客户端 · 92de。</li><li>客户端详情加「运行在」一行；起过名字的客户端多一行「恢复默认名称」，右边写出恢复后的名称。改名输入框的占位文字是默认名称，留空保存同样恢复默认。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -3191,20 +3195,24 @@ git status --short gen/</pre>
 </div>
 <div class="glabel">客户端 · 操作会话</div>
 <div class="grp">
-<div class="row">Chrome · a8f2<span class="v">当前客户端</span>
+<div class="row client"><span class="client-info">Chrome · a8f2<small>浏览器 · Chrome on macOS · 9月27日添加</small></span><span class="v">当前客户端</span>
 </div>
-<div class="row">Android · b71c<span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">我的手机<small>App · Android 16 · Pixel 9 · 9月12日添加</small></span><span class="v">已配对 ›</span>
 </div>
-<div class="row">浏览器 · 92de<span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">Chrome · 04a9<small>浏览器 · Chrome on macOS · 10月1日添加</small></span><span class="v">已配对 ›</span>
+</div>
+<div class="row client"><span class="client-info">Safari · d941<small>浏览器 · Safari on iOS · 8月3日添加</small></span><span class="v">已配对 ›</span>
+</div>
+<div class="row client"><span class="client-info">客户端 · 92de<small>2025年12月1日添加</small></span><span class="v">已配对 ›</span>
 </div>
 </div>
-<div class="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码。已配对不表示现在正在查看。</div>
+<div class="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。</div>
 <div class="grp">
 <div class="row" style="color:var(--blue)">＋ 添加电脑或客户端</div>
 </div>
 </div>
 </div>
-<div class="cap">设备分组：电脑是执行位置，客户端是控制入口；不把某台电脑的在线状态当作所有客户端在线</div>
+<div class="cap">设备分组：电脑是执行位置，客户端是控制入口；不把某台电脑的在线状态当作所有客户端在线。客户端第二行写种类、系统和添加日期，没上报过的只有日期</div>
 </div>
 <div>
 <div class="phone">
@@ -3370,7 +3378,7 @@ git status --short gen/</pre>
 <span class="back">‹</span>
 <span class="title">
 <b>
-<span class="tname">Android · b71c</span>
+<span class="tname">我的手机</span>
 </b>
 <span>已配对的客户端</span>
 </span>
@@ -3382,6 +3390,10 @@ git status --short gen/</pre>
 <div class="grp">
 <div class="row">名称<span class="v">我的手机 ›</span>
 </div>
+<div class="row" style="color:var(--blue)">恢复默认名称<span class="v">Android · b71c</span>
+</div>
+<div class="row">运行在<span class="v">Android 16 · Pixel 9</span>
+</div>
 <div class="row">设备 ID<span class="v mono">…b71c</span>
 </div>
 </div>
@@ -3392,7 +3404,7 @@ git status --short gen/</pre>
 <div class="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。</div>
 </div>
 </div>
-<div class="cap">客户端详情：名称可改、ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
+<div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
 </div>
 </div>
 <!-- ============================= -->
