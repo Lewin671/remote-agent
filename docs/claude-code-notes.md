@@ -42,7 +42,7 @@
 | `type: "user"`，`isCompactSummary: true` | 压缩后的摘要 |
 | `type: "user"`，`content` 里是 `tool_result` 块 | 工具结果：`tool_use_id`、`content`、`is_error`；同一行的 `toolUseResult` 是结构化结果（Bash 为 `stdout`、`stderr`、`interrupted`；AskUserQuestion 为 `questions`、`answers`） |
 | `type: "user"`，`content` 里是 text 块 `[Request interrupted by user]` 或 `[Request interrupted by user for tool use]` | 这一轮**被中断** |
-| `type: "assistant"` | 模型输出，**每个内容块一行**（`thinking`、`text`、`tool_use`），同一次回复的几行 `message.id` 相同。带 `message.model`（完整 ID，如 `claude-haiku-4-5-20251001`）、`message.usage`、`perTurnEffort`（haiku 为 null，sonnet 为 `medium` 等） |
+| `type: "assistant"` | 模型输出，**每个内容块一行**（`thinking`、`text`、`tool_use`），同一次回复的几行 `message.id` 相同。带 `message.model`（完整 ID，如 `claude-haiku-4-5-20251001`）、`message.usage`、`perTurnEffort`（haiku 为 null，sonnet 为 `medium` 等）。`thinking` 块里有一种是**旁白**（2.1.287 实测，Opus 5.5、Fable 5.1 会写）：模型写给用户看的进度说明，终端把它当普通消息显示，不折叠成 `Thought for …`。它和思考的 JSON 字段完全一样，只有 `signature` 里的标签不同：base64 解开是 protobuf，字段 2 → 1 → 8 是字符串 `narration`（思考是 `thinking`）。旁白通常是同一次回复的第二个块（`apiBlockIndex: 1`），但也见过排在第一个的，不能靠位置判断 |
 | `type: "system"`，`subtype: "turn_duration"`，`durationMs` | 一轮**正常结束**。之前还有一条 `stop_hook_summary` |
 | `type: "system"`，`subtype: "compact_boundary"`，`compactMetadata.trigger`（`manual`/`auto`）、`preTokens`、`postTokens` | 上下文已压缩 |
 | `type: "attachment"`，`attachment.type: "queued_command"`，`prompt`，`origin.kind: "human"` | 运行中发来的消息被并入当前这一轮（第 10 节） |

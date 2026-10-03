@@ -2,14 +2,17 @@ package claude
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func parseFile(t *testing.T, p *Parser, path string) []*pb.Event {
@@ -468,6 +471,47 @@ func TestPastedContentUnwrapped(t *testing.T) {
 	} {
 		if got := unwrapPasted(in); got != want {
 			t.Errorf("unwrapPasted(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// signature builds a thinking block's signature carrying label the way
+// Claude Code 2.1.287 transcripts do.
+func signature(label string) string {
+	inner := protowire.AppendTag(nil, 1, protowire.VarintType)
+	inner = protowire.AppendVarint(inner, 18)
+	inner = protowire.AppendTag(inner, 8, protowire.BytesType)
+	inner = protowire.AppendString(inner, label)
+	header := protowire.AppendTag(nil, 1, protowire.BytesType)
+	header = protowire.AppendBytes(header, inner)
+	header = protowire.AppendTag(header, 2, protowire.BytesType)
+	header = protowire.AppendBytes(header, []byte("opaque"))
+	sig := protowire.AppendTag(nil, 1, protowire.VarintType)
+	sig = protowire.AppendVarint(sig, 4)
+	sig = protowire.AppendTag(sig, 2, protowire.BytesType)
+	sig = protowire.AppendBytes(sig, header)
+	return base64.StdEncoding.EncodeToString(sig)
+}
+
+func TestNarrationIsMessage(t *testing.T) {
+	line := func(text, sig string) []byte {
+		return []byte(`{"type":"assistant","message":{"id":"m1","stop_reason":"tool_use","content":[{"type":"thinking","thinking":` + strconv.Quote(text) + `,"signature":"` + sig + `"}]}}`)
+	}
+	p := NewParser()
+	evs, err := p.Parse(line("Four sets done.\n\n", signature("narration")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 || evs[0].GetAgentMessage().GetText() != "Four sets done." || evs[0].GetAgentMessage().GetPhase() != "commentary" {
+		t.Fatalf("narration: %v", evs)
+	}
+	for _, sig := range []string{signature("thinking"), "", "not base64", "AAAA"} {
+		evs, err = p.Parse(line("hmm", sig))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(evs) != 1 || evs[0].GetReasoning().GetText() != "hmm" {
+			t.Fatalf("thought with signature %q: %v", sig, evs)
 		}
 	}
 }

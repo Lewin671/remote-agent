@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -165,6 +167,7 @@ type block struct {
 	Type      string          `json:"type"`
 	Text      string          `json:"text"`
 	Thinking  string          `json:"thinking"`
+	Signature string          `json:"signature"`
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
 	Input     json.RawMessage `json:"input"`
@@ -412,7 +415,14 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 				evs = append(evs, &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: b.Text, Phase: phase}}})
 			}
 		case "thinking":
-			if strings.TrimSpace(b.Thinking) != "" {
+			if strings.TrimSpace(b.Thinking) == "" {
+				continue
+			}
+			// Claude Code prints a narration as a message of its own, not
+			// as a folded thought (claude-code-notes §2).
+			if narration(b.Signature) {
+				evs = append(evs, &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: strings.TrimSpace(b.Thinking), Phase: "commentary"}}})
+			} else {
 				evs = append(evs, &pb.Event{Kind: &pb.Event_Reasoning{Reasoning: &pb.Reasoning{Text: b.Thinking}}})
 			}
 		case "tool_use":
@@ -439,6 +449,46 @@ func (p *Parser) assistant(r *record) ([]*pb.Event, error) {
 		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: proto.CloneOf(u)}})
 	}
 	return evs, nil
+}
+
+// narration reports whether a thinking block is one the model wrote for the
+// user to read. The block looks like any other thought; only the label
+// inside its signature (field 2 > 1 > 8) says "narration" instead of
+// "thinking". A signature that does not parse is a thought.
+func narration(signature string) bool {
+	raw, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return false
+	}
+	header, ok := field(raw, 2)
+	if !ok {
+		return false
+	}
+	if header, ok = field(header, 1); !ok {
+		return false
+	}
+	label, ok := field(header, 8)
+	return ok && string(label) == "narration"
+}
+
+// field returns the first length-delimited field num of a protobuf message.
+func field(msg []byte, num protowire.Number) ([]byte, bool) {
+	for len(msg) > 0 {
+		n, typ, size := protowire.ConsumeTag(msg)
+		if size < 0 {
+			return nil, false
+		}
+		msg = msg[size:]
+		if n == num && typ == protowire.BytesType {
+			v, size := protowire.ConsumeBytes(msg)
+			return v, size >= 0
+		}
+		if size = protowire.ConsumeFieldValue(n, typ, msg); size < 0 {
+			return nil, false
+		}
+		msg = msg[size:]
+	}
+	return nil, false
 }
 
 func (p *Parser) toolUse(b block) []*pb.Event {
