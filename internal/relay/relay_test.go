@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -37,6 +38,7 @@ type fakeBackend struct {
 	mu        sync.Mutex
 	sessions  map[string]*eventlog.Log
 	titles    map[string]string
+	exited    map[string]bool
 	sends     []*pb.SendRequest
 	schedules []*pb.ScheduleRequest
 	term      *fakeTerminal
@@ -49,7 +51,7 @@ type fakeBackend struct {
 }
 
 func newFakeBackend(t *testing.T) *fakeBackend {
-	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, images: map[string]relay.ImageUpload{}}
+	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, exited: map[string]bool{}, images: map[string]relay.ImageUpload{}}
 }
 
 func (b *fakeBackend) add(t *testing.T, id string) *eventlog.Log {
@@ -95,7 +97,11 @@ func (b *fakeBackend) SessionInfo(id string) (*pb.Session, error) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: pb.SessionStatus_SESSION_STATUS_IDLE, LastSeq: l.LastSeq(), Title: b.titles[id]}, nil
+	status := pb.SessionStatus_SESSION_STATUS_IDLE
+	if b.exited[id] {
+		status = pb.SessionStatus_SESSION_STATUS_EXITED
+	}
+	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: status, LastSeq: l.LastSeq(), Title: b.titles[id]}, nil
 }
 
 func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error) {
@@ -438,6 +444,64 @@ func TestEventsReachClientsInOrder(t *testing.T) {
 		if bytes.Contains(b, []byte(marker)) || bytes.Contains(b, []byte("live")) {
 			t.Fatalf("%s contains plaintext", name)
 		}
+	}
+}
+
+// A restarted daemon does not send an ended session's metadata again
+// while the server still holds what it sent; a change still goes up.
+func TestEndedSessionMetadataIsNotSentAgainAfterRestart(t *testing.T) {
+	var puts sync.Map
+	count := func(id string) int {
+		n, _ := puts.Load(id)
+		c, _ := n.(*atomic.Int32)
+		if c == nil {
+			return 0
+		}
+		return int(c.Load())
+	}
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/PutSession") {
+				body, _ := io.ReadAll(r.Body)
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				for _, id := range []string{"live", "done"} {
+					if bytes.Contains(body, []byte(id)) {
+						n, _ := puts.LoadOrStore(id, &atomic.Int32{})
+						n.(*atomic.Int32).Add(1)
+					}
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	e.backend.exited["done"] = true
+	appendText(t, e.backend.add(t, "live"), "live", "one")
+	done := e.backend.add(t, "done")
+	appendText(t, done, "done", "one")
+	e.startRelay()
+	e.session(t, "live", 1)
+	e.session(t, "done", 1)
+	if count("live") != 1 || count("done") != 1 {
+		t.Fatalf("puts: live %d, done %d; want 1 each", count("live"), count("done"))
+	}
+
+	e.stopRelay()
+	e.startRelay()
+	waitFor(t, "the live session's metadata after the restart", func() bool { return count("live") == 2 })
+	// New events of the ended session still go up, without its metadata.
+	appendText(t, done, "done", "two")
+	e.session(t, "done", 2)
+	if n := count("done"); n != 1 {
+		t.Fatalf("the ended session's metadata was put %d times; want 1", n)
+	}
+
+	e.backend.mu.Lock()
+	e.backend.titles["done"] = "renamed"
+	e.backend.mu.Unlock()
+	done.Poke()
+	waitFor(t, "the changed metadata", func() bool { return e.session(t, "done", 2).Info.Title == "renamed" })
+	if n := count("done"); n != 2 {
+		t.Fatalf("the ended session's metadata was put %d times; want 2", n)
 	}
 }
 

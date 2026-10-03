@@ -1,10 +1,17 @@
 package relay
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -78,29 +85,54 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 		return err
 	}
 	var after uint64
+	var sent *pb.Session
 	if head != nil {
 		after = head.LastSeq
+		sent = c.sentMeta(id, key, head.MetaRevision)
 	}
-	var sent *pb.Session
-	for {
-		// Metadata first: the server needs the session, with its key,
-		// before it takes events.
+	// An ended session has nothing urgent: its first pass, which after a
+	// daemon restart is one request per session, takes turns with the
+	// others' so that live sessions are not queued behind them.
+	release := func() {}
+	if info, err := c.r.backend.SessionInfo(id); err == nil && info.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+		select {
+		case c.r.backlog <- struct{}{}:
+			release = sync.OnceFunc(func() { <-c.r.backlog })
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	defer release()
+	put := func() (*pb.Session, error) {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		info.LastSeq = 0 // the server tracks it; leaving it out saves updates
 		if sent == nil || !proto.Equal(info, sent) {
-			if err := c.putSession(ctx, id, key, info); err != nil {
-				return err
+			rev, err := c.putSession(ctx, id, key, info)
+			if err != nil {
+				return nil, err
 			}
 			sent = info
+			c.noteSentMeta(id, key, info, rev)
 		}
-
+		return info, nil
+	}
+	for {
+		// The server needs the session, with its key, before it takes
+		// events. Once it has it, events go first: they are what a client
+		// is waiting for, and the metadata follows in the same pass.
+		if sent == nil {
+			if _, err := put(); err != nil {
+				return err
+			}
+		}
 		evs, changed, err := c.r.backend.Events(id, after)
 		if err != nil {
 			return err
 		}
+		var uploaded []*pb.Event
 		for len(evs) > 0 {
 			n, size := 0, 0
 			var batch []*pb.StoredEvent
@@ -122,23 +154,27 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 				return fmt.Errorf("upload events: %w", err)
 			}
 			after = res.Msg.LastSeq
-			// Once stored, clients can load what the notification is about.
-			for _, e := range evs[:n] {
-				if e.Seq <= info.ForkedSeq {
-					continue // the source's history, copied into a fork
-				}
-				if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-					req, err := c.notifyRequest(id, info, kind, e)
-					if err != nil {
-						return err
-					}
-					if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
-						slog.Warn("relay: notify", "session", id, "err", err)
-					}
-				}
-			}
+			uploaded = append(uploaded, evs[:n]...)
 			evs = evs[n:]
 		}
+		// Read after the events, so it is at least as new as they are.
+		info, err := put()
+		if err != nil {
+			return err
+		}
+		// Once stored, clients can load what the notification is about.
+		for _, e := range uploaded {
+			if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+				req, err := c.notifyRequest(id, info, kind, e)
+				if err != nil {
+					return err
+				}
+				if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
+					slog.Warn("relay: notify", "session", id, "err", err)
+				}
+			}
+		}
+		release()
 		select {
 		case <-ctx.Done():
 			return nil
@@ -148,6 +184,60 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 	}
 }
 
+// sentMeta returns the metadata the server is known to hold for a
+// session: what this process last put, or after a restart what the
+// session directory records, if the session still reads the same and the
+// server still holds that revision.
+func (c *conn) sentMeta(id string, key []byte, revision uint64) *pb.Session {
+	c.r.mu.Lock()
+	sent := c.r.sentMeta[id]
+	c.r.mu.Unlock()
+	if sent != nil {
+		return sent
+	}
+	info, err := c.r.backend.SessionInfo(id)
+	if err != nil {
+		return nil
+	}
+	info.LastSeq = 0
+	mark, err := os.ReadFile(c.sentMark(id))
+	if err != nil || !bytes.Equal(mark, metaDigest(c.acct.Server, key, info, revision)) {
+		return nil
+	}
+	return info
+}
+
+// noteSentMeta remembers metadata the server accepted. Only an ended
+// session's is written down: it rarely changes again, and ended sessions
+// are nearly all of what a restarted daemon would otherwise send anew.
+func (c *conn) noteSentMeta(id string, key []byte, info *pb.Session, revision uint64) {
+	c.r.mu.Lock()
+	c.r.sentMeta[id] = info
+	c.r.mu.Unlock()
+	if info.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+		_ = os.WriteFile(c.sentMark(id), metaDigest(c.acct.Server, key, info, revision), 0o600)
+	} else {
+		_ = os.Remove(c.sentMark(id))
+	}
+}
+
+func (c *conn) sentMark(id string) string {
+	return filepath.Join(c.r.backend.SessionDir(id), "relay.sent")
+}
+
+// metaDigest identifies metadata as sent to one server at one revision.
+// It is keyed with the session key, so the file says nothing about the
+// content.
+func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []byte {
+	b, _ := proto.MarshalOptions{Deterministic: true}.Marshal(info)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(server))
+	h.Write([]byte{0})
+	h.Write(binary.BigEndian.AppendUint64(nil, revision))
+	h.Write(b)
+	return h.Sum(nil)
+}
+
 func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
 	return e2e.SealMessage(key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
@@ -155,26 +245,29 @@ func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelop
 	}, fitEvent(slimEvent(e)))
 }
 
-func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) error {
+// putSession stores a session's key and metadata, and returns the
+// metadata's revision.
+func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) (uint64, error) {
 	keyEnv, err := e2e.Seal(c.keys.Wrap, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, key)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	rev := revision()
 	meta, err := e2e.SealMessage(key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: id,
-		Seq: revision(), Sender: c.acct.DeviceID,
+		Seq: rev, Sender: c.acct.DeviceID,
 	}, info)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	_, err = c.machine.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta}))
 	if err != nil {
-		return fmt.Errorf("put session: %w", err)
+		return 0, fmt.Errorf("put session: %w", err)
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
-	return nil
+	return rev, nil
 }
 
 // Limits on what a notification carries, so that it fits FCM's 4 KB.

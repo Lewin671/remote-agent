@@ -60,6 +60,9 @@ type Relay struct {
 	cmds        *commandLog
 	calls       chan struct{} // bounds command workers across reconnects
 	machineRPCs chan struct{} // bounds session uploads across reconnects
+	// backlog admits one ended session at a time to its first sync after
+	// connecting, so that the other RPC slot stays free for live sessions.
+	backlog chan struct{}
 	// Retry is the first reconnect delay; it doubles up to a minute.
 	Retry time.Duration
 
@@ -68,11 +71,14 @@ type Relay struct {
 	// imageTries counts failed uploads per image across connections, so
 	// that one image cannot hold its session's events back for long.
 	imageTries map[string]int
+	// sentMeta is the metadata last put for each session, kept across
+	// connections: a reconnect then sends only what changed.
+	sentMeta map[string]*pb.Session
 }
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), Retry: time.Second}
+	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, Retry: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
