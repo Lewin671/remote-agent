@@ -30,26 +30,7 @@
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 各部分的当前状态和缺口、下一步、待确认事项、已完成的里程碑 |
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
-| [design/client-v19.html](design/client-v19.html) | 界面稿 | 当前设计：审批只有「不允许」和「允许」，永久授权只在电脑终端里选 |
-| [design/client-v18.html](design/client-v18.html) | 界面稿 | 会话视图记在本机，宽屏会话顶栏并成一行，聊天开头只留一行「开始时间 · 目录」；只读 |
-| [design/client-v17.html](design/client-v17.html) | 界面稿 | 上下文窗口是项目设置首页的一行（Claude Code），摘要里单独写出；只读 |
-| [design/client-v16.html](design/client-v16.html) | 界面稿 | 项目设置的模型页单独列出「上下文窗口」选项（标准或 1M）；只读 |
-| [design/client-v15.html](design/client-v15.html) | 界面稿 | Claude Code 的上下文窗口在项目设置的模型列表里选（1M 或标准）；只读 |
-| [design/client-v14.html](design/client-v14.html) | 界面稿 | 模型列表写出上下文窗口；只读 |
-| [design/client-v13.html](design/client-v13.html) | 界面稿 | 新会话设置摘要改为带底色和 `›` 的按钮，只有完全放行标红；只读 |
-| [design/client-v12.html](design/client-v12.html) | 界面稿 | Android 后台推送静默降级，状态仅在通知设置内说明；只读 |
-| [design/client-v11.html](design/client-v11.html) | 界面稿 | 默认模型也可单独指定推理强度，模型继续跟随默认配置；只读 |
-| [design/client-v10.html](design/client-v10.html) | 界面稿 | 项目配置的模型、CLI、机器和审批子页均有「完成」，直接保存并关闭；只读 |
-| [design/client-v9.html](design/client-v9.html) | 界面稿 | 「＋」直接添加图片，会话设置移到 ⋯ 菜单，标题取首句并单行，精简额度、图片存储和外观，宽屏设置页限制列宽；只读 |
-| [design/client-v8.html](design/client-v8.html) | 界面稿 | 新会话配置归入项目设置，项目页「＋」只添加图片，项目默认完全放行不再确认；只读 |
-| [design/client-v7.html](design/client-v7.html) | 界面稿 | 精简等待事项、工具详情，统一会话与新建输入框；移除只启动终端入口；只读 |
-| [design/client-v6.html](design/client-v6.html) | 界面稿 | 在 v5 全部页面上增加图片存储占用、限额与清理；只读 |
-| [design/client-v5.html](design/client-v5.html) | 界面稿 | 保留 v4 排序并统一项目卡片、历史层级、分段栏与输入控件；只读 |
-| [design/client-v4.html](design/client-v4.html) | 界面稿 | 保留 v3 全部页面并统一会话排序；只读 |
-| [design/client-v3.html](design/client-v3.html) | 界面稿 | v2 全部页面及 Android 终端字号调节；只读 |
-| [design/client-v2.html](design/client-v2.html) | 界面稿 | Claude Code、统一输入区、队列、项目管理和会话里的图片；只读 |
-| [design/client-v1.html](design/client-v1.html) | 界面稿 | 网页和 Android 已实现的基线，只读 |
-| [design/client-v0.html](design/client-v0.html) | 界面稿 | P2 的历史界面稿，只读 |
+| [design/client-v19.html](design/client-v19.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
 
 根目录的 README 写简介、上手用的命令和链接，项目状态只链接 plan.md；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 
@@ -79,14 +60,20 @@
 
 ## 5. 界面稿的版本
 
-界面稿放在 `docs/design/`，一个客户端一组文件，命名 `<客户端>-v<N>.html`，如 `client-v1.html`。
+界面稿放在 `docs/design/`，一个客户端一个文件，命名 `<客户端>-v<N>.html`，如 `client-v19.html`。**工作区里只有当前这一版**，旧版本在 git 历史里。
 
-- **定稿后不改**：一版开始按它改代码，就算定稿。之后要改界面，复制最新一版为 `v<N+1>` 再改，旧版本保持原样，只允许修相对链接这类不动内容的调整。还没定稿的最新一版可以直接改
-- **每一版都完整**：没改的界面也要带上，读最新一版就够，不用往前翻
+- **定稿后不改**：一版开始按它改代码，就算定稿。之后要改界面，用 `git mv` 把它改名为 `v<N+1>` 再改，这样上一版原样留在历史里。只允许对定稿做修相对链接这类不动内容的调整。还没定稿的一版可以直接改
+- **每一版都完整**：没改的界面也要带上，读当前这一版就够
 - **开头写相对上一版的改动**：只列改了什么；为什么改写进提交说明，取舍写进对应的 md
-- **标题写版本号和日期**，并链接到上一版
+- **标题写版本号和日期**
 - **亮色和暗色都要能看**：页面右上角放主题切换，默认跟随系统，和客户端一致
-- 新增一版时，同步第 2 节的表格；代码按哪一版实现、做到哪了，写在 plan.md
+- **出新一版时**：同一个提交里把仓库中指向上一版的链接（`git grep 'client-v<N>\.html'`，只看 md）改到新版，同步第 2 节的表格
+- **旧版本不是当前规则**：代码注释里的 `client-v7` 这类写法只说明那段代码当初照哪一版做的。要看旧版本：
+
+  ```sh
+  f=docs/design/client-v7.html
+  git show "$(git rev-list -1 HEAD -- $f)^:$f" > /tmp/client-v7.html
+  ```
 
 ## 6. 新建文档
 
