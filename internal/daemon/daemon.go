@@ -269,6 +269,10 @@ func (d *Daemon) restore() error {
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
 		} else if m.Exited {
+			// Read once to restore it; nothing reads an ended session's
+			// events again unless a client or the server asks. Letting go
+			// now keeps a start from holding every session at once.
+			log.Release(0)
 			continue
 		}
 		if !alive {
