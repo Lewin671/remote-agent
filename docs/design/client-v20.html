@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v19</title>
+<title>remote-agent 客户端设计稿 v20</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -355,6 +355,11 @@
   .alert { position: absolute; left: 30px; right: 30px; top: 190px; background: var(--card); border-radius: var(--r-lg); padding: 18px 16px 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
   .alert h5 { margin: 0 0 6px; font-size: 17px; }
   .alert p { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .alert p.err { color: var(--red); }
+  .alert.rename { top: 120px; }
+  .alert .field { margin: 12px 0 8px; text-align: left; color: var(--fg); white-space: nowrap; overflow: hidden; }
+  .alert .field .picked { background: color-mix(in srgb, var(--blue) 28%, transparent); }
+  .alert .field .caret { display: inline-block; width: 2px; height: 18px; margin-left: 1px; background: var(--blue); vertical-align: -3px; }
   .actsheet { position: absolute; left: 8px; right: 8px; bottom: 20px; }
   .actsheet .grp2 { background: var(--card); border-radius: var(--r-md); overflow: hidden; margin-top: 8px; }
   .actsheet .ai2 { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--blue); border-top: 1px solid var(--line); }
@@ -818,17 +823,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v19 · 2026-10-02 · 上一版 v18 在 git 历史里（<code>git log -- docs/design/client-v18.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v20 · 2026-10-02 · 上一版 v19 在 git 历史里（<code>git log -- docs/design/client-v19.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v18 的改动</h4><ul><li>审批只有「不允许」和「允许」两项，去掉「允许，…以后不再问」一行：永久授权只在电脑终端的原生审批框里选，客户端不提供（<a href="../architecture.md#7-审批">architecture · 审批</a>）。其余画面不变。</li></ul>
+  <h4>相对 v19 的改动</h4><ul><li>会话可以重命名：⋯ 菜单加「重命名」，点开是带输入框的对话框；自己起的标题优先于自动标题，留空保存恢复自动标题（<a href="#rename">重命名会话</a>，规则在 <a href="#states">状态集 · 会话标题</a>）。</li><li>账户额度的重置时间写成「还有多久 · 哪一天几点」，不是今天的写出日期和星期；「北京时间」在页面底部说明一次，不再每行重复（<a href="#quota">账户额度</a>）。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1560,13 +1565,14 @@ git status --short gen/</pre>
           <div class="ai2">审批模式：询问</div>
           <div class="ai2">模型：GPT-6-Astra · medium</div>
           <div class="ai2">上下文：23%</div>
+          <div class="ai2">重命名</div>
           <div class="ai2">中断本轮</div>
           <div class="ai2 red">结束会话…</div>
         </div>
         <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
       </div>
     </div>
-    <div class="cap">⋯ 菜单：顶部写 CLI、项目、机器和目录，接着是本会话的审批模式、模型和上下文（完全放行红字，上下文高时橙字），点开是对应的设置；中断只停这一轮，会话还在；结束会关掉 Codex，要二次确认</div>
+    <div class="cap">⋯ 菜单：顶部写 CLI、项目、机器和目录，接着是本会话的审批模式、模型和上下文（完全放行红字，上下文高时橙字），点开是对应的设置；「重命名」改会话标题；中断只停这一轮，会话还在；结束会关掉 Codex，要二次确认</div>
   </div>
 
   <div>
@@ -1605,7 +1611,9 @@ git status --short gen/</pre>
   </ul>
   <h4>会话标题</h4>
   <ul>
-    <li>有标题用标题；没有就用第一句用户消息，截到一行；还没发过话用「目录名 · 开始时间」，如「billing · 11:25」</li>
+    <li>自己起的标题优先；没起过就用第一句用户消息的首句，截到一行；还没发过话用「目录名 · 开始时间」，如「billing · 11:25」</li>
+    <li>自己起的标题不会被之后的消息改掉，所有客户端和通知里都显示它；留空保存后恢复自动标题。只改 remote-agent 里显示的标题，不改 CLI 自己的会话名</li>
+    <li>标题一行，最多 60 个字，首尾空白去掉；显示不下时照常省略</li>
   </ul>
   <h4>一行预览和长内容</h4>
   <ul>
@@ -2574,6 +2582,75 @@ git status --short gen/</pre>
 </div>
 </div>
 <!-- ============================= -->
+<h2 id="rename">重命名会话</h2>
+<div class="note" style="margin:0 0 20px">从会话导航栏的 ⋯ 菜单进入。标题存在电脑上，所以进行中和已结束的会话都能改，但电脑要在线；改完所有客户端同步。宽屏上是同一个对话框，居中在窗口里，Enter 保存、Esc 取消。规则见 <a href="#states">状态集 · 会话标题</a>。</div>
+<div class="screens">
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="alert rename">
+        <h5>重命名会话</h5>
+        <div class="field"><span class="picked">登录接口偶尔超时</span></div>
+        <p>留空保存会恢复自动标题</p>
+        <div class="btns"><div class="btn">取消</div><div class="btn pri">保存</div></div>
+      </div>
+      <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i style="flex:5"></i></div></div>
+    </div>
+    <div class="cap">点「重命名」：输入框里是当前标题并全选，键盘直接弹出，打字就替换</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="alert rename">
+        <h5>重命名会话</h5>
+        <div class="field">登录超时：限流和重试<i class="caret"></i></div>
+        <p>留空保存会恢复自动标题</p>
+        <div class="btns"><div class="btn">取消</div><div class="btn pri">保存</div></div>
+      </div>
+      <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i style="flex:5"></i></div></div>
+    </div>
+    <div class="cap">保存后对话框关闭，导航栏、会话列表和通知都用新标题；和原来一样时「保存」等同取消。最多 60 个字，到了就不再接受输入</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="alert rename">
+        <h5>重命名会话</h5>
+        <div class="field">登录超时：限流和重试</div>
+        <p class="err">没能保存：MacBook 不在线</p>
+        <div class="btns"><div class="btn">取消</div><div class="btn pri">保存</div></div>
+      </div>
+    </div>
+    <div class="cap">保存失败：对话框不关，说明换成红字的原因，写好的标题留着，可以再点保存。保存途中两个按钮置灰</div>
+  </div>
+
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="actsheet">
+        <div class="grp2">
+          <div class="info"><b style="color:var(--fg)">Codex</b> · foo · MacBook<br><span class="mono">~/Code/foo</span> · 会话 <span class="mono">8f02c91be7714d3a</span></div>
+          <div class="ai2">重命名</div>
+        </div>
+        <div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div>
+      </div>
+    </div>
+    <div class="cap">已结束的会话：⋯ 菜单只剩「重命名」。电脑离线或和服务器断线时不显示这一项</div>
+  </div>
+</div>
+
+<!-- ============================= -->
 <h2 id="approval-mode">审批模式</h2>
 <div class="screens">
 
@@ -2720,20 +2797,20 @@ git status --short gen/</pre>
       <div class="body">
         <div class="glabel">Codex · Pro Lite</div>
         <div class="grp">
-          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62%</span></div><div class="bar"><i style="width:62%"></i></div><div class="hint">14:10 重置（北京时间）</div></div>
-          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34%</span></div><div class="bar"><i style="width:34%"></i></div><div class="hint">周四 10:00 重置（北京时间）</div></div>
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62%</span></div><div class="bar"><i style="width:62%"></i></div><div class="hint">4 小时 29 分后重置 · 今天 14:10</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34%</span></div><div class="bar"><i style="width:34%"></i></div><div class="hint">6 天 4 小时后重置 · 10月8日 周四 14:10</div></div>
         </div>
         <div class="pad small muted" style="margin-bottom:12px">最近收到 9:40</div>
         <div class="glabel">Claude Code · Max</div>
         <div class="grp">
-          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 28%</span></div><div class="bar"><i style="width:28%"></i></div><div class="hint">13:20 重置（北京时间）</div></div>
-          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 46%</span></div><div class="bar"><i style="width:46%"></i></div><div class="hint">周五 18:00 重置（北京时间）</div></div>
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 28%</span></div><div class="bar"><i style="width:28%"></i></div><div class="hint">3 小时 39 分后重置 · 今天 13:20</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 46%</span></div><div class="bar"><i style="width:46%"></i></div><div class="hint">4 天 8 小时后重置 · 10月6日 周二 18:00</div></div>
         </div>
         <div class="pad small muted">最近收到 9:38</div>
-        <div class="pad small muted">额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
+        <div class="pad small muted">重置时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>
-    <div class="cap">正常：按 CLI 分组；套餐只有读到时才显示，写名称（Pro Lite、Max）而不是内部代号；重置时间统一按北京时间（Asia/Shanghai，UTC+8）显示，日期和星期也按北京时间判断，时间后标注「北京时间」，「最近收到」每个 CLI 只写一次</div>
+    <div class="cap">正常：按 CLI 分组；套餐只有读到时才显示，写名称（Pro Lite、Max）而不是内部代号；每个窗口先写还有多久重置，再写重置的时刻：当天写「今天 14:10」，其他日子写出日期和星期，如「10月8日 周四 14:10」；剩余时间一天以上写到小时，一天以内写到分，不到一小时写「39 分钟后重置」，不到一分钟写「即将重置」。时刻统一按北京时间（Asia/Shanghai，UTC+8），日期和星期也按北京时间判断，页面底部说明一次；「最近收到」每个 CLI 只写一次</div>
   </div>
   <div>
     <div class="phone gray">
@@ -2742,7 +2819,7 @@ git status --short gen/</pre>
       <div class="body">
         <div class="glabel">Claude Code</div>
         <div class="grp">
-          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v warn-text">已用 92%</span></div><div class="bar"><i style="width:92%;background:var(--orange)"></i></div><div class="hint">13:20 重置（北京时间）</div></div>
+          <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v warn-text">已用 92%</span></div><div class="bar"><i style="width:92%;background:var(--orange)"></i></div><div class="hint">3 小时 39 分后重置 · 今天 13:20</div></div>
         </div>
         <div class="pad small muted">最近收到 9:40</div>
         <div class="pad"><div class="banner warn">5 小时额度即将用尽，不会自动切换 CLI 或模型</div></div>
