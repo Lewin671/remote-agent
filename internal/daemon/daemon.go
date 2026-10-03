@@ -181,6 +181,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	go d.scheduleLoop(ctx)
 	go d.imageGCLoop(ctx.Done())
+	go d.releaseLogsLoop(ctx.Done())
 	if d.cfg.Started != nil {
 		go d.cfg.Started(ctx)
 	}
@@ -686,4 +687,30 @@ func (d *Daemon) resume(id string) (*session, error) {
 	s.start(d.ctx)
 	slog.Info("resumed session", "session", id)
 	return s, nil
+}
+
+// logIdle is how long a session's events stay in memory after they were
+// last read. Most sessions have ended and are read once, when the daemon
+// starts; keeping them all would grow with every session ever run.
+const logIdle = 2 * time.Minute
+
+func (d *Daemon) releaseLogsLoop(stop <-chan struct{}) {
+	t := time.NewTicker(time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-t.C:
+		}
+		d.mu.Lock()
+		all := make([]*session, 0, len(d.sessions))
+		for _, s := range d.sessions {
+			all = append(all, s)
+		}
+		d.mu.Unlock()
+		for _, s := range all {
+			s.log.Release(logIdle)
+		}
+	}
 }

@@ -13,8 +13,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,10 +29,19 @@ type record struct {
 }
 
 // Log is an open event log. It is safe for concurrent use.
+//
+// The events are kept in memory only while something reads them: Release
+// lets go of a log that has not been read for a while, and the next reader
+// loads the file again. Appending and asking for events after the last one,
+// which is all an idle session's watchers do, need only the count.
 type Log struct {
-	mu      sync.Mutex
-	f       *os.File
+	mu   sync.Mutex
+	f    *os.File
+	path string
+	// events is nil while released; n is how many the file holds.
 	events  []*pb.Event
+	n       uint64
+	usedAt  time.Time
 	rollout string
 	offset  int64
 	changed chan struct{} // closed and replaced on every append
@@ -43,8 +54,11 @@ func Open(path string) (*Log, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &Log{f: f, changed: make(chan struct{})}
-	good, err := l.load()
+	l := &Log{f: f, path: path, changed: make(chan struct{}), usedAt: time.Now()}
+	good, err := l.load(f)
+	if err == nil {
+		l.n = uint64(len(l.events))
+	}
 	if err != nil {
 		f.Close()
 		return nil, fmt.Errorf("load %s: %w", path, err)
@@ -60,8 +74,11 @@ func Open(path string) (*Log, error) {
 	return l, nil
 }
 
-func (l *Log) load() (int64, error) {
-	r := bufio.NewReader(l.f)
+// load reads the events and the checkpoint from f, and returns how many
+// bytes of it are whole records.
+func (l *Log) load(f io.Reader) (int64, error) {
+	r := bufio.NewReader(f)
+	l.events = nil
 	var good int64
 	for {
 		line, err := r.ReadBytes('\n')
@@ -104,7 +121,44 @@ func (l *Log) Checkpoint() (string, int64) {
 func (l *Log) LastSeq() uint64 {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return uint64(len(l.events))
+	return l.n
+}
+
+// Release drops the in-memory events if nothing has read them for idle.
+// The file keeps them; the next reader loads it again.
+func (l *Log) Release(idle time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.events != nil && time.Since(l.usedAt) >= idle {
+		l.events = nil
+	}
+}
+
+// loaded makes the events available again after a Release. On failure it
+// reports false and the caller sees no events: the file was readable when
+// the log was opened, and nothing else writes it.
+func (l *Log) loaded() bool {
+	l.usedAt = time.Now()
+	if l.events != nil || l.n == 0 {
+		return true
+	}
+	f, err := os.Open(l.path)
+	if err == nil {
+		// The checkpoint in memory may be ahead of the file's.
+		rollout, offset := l.rollout, l.offset
+		_, err = l.load(f)
+		l.rollout, l.offset = rollout, offset
+		f.Close()
+	}
+	if err == nil && uint64(len(l.events)) != l.n {
+		err = fmt.Errorf("%d events on disk, %d expected", len(l.events), l.n)
+	}
+	if err != nil {
+		slog.Error("reload event log", "path", l.path, "err", err)
+		l.events = nil
+		return false
+	}
+	return true
 }
 
 // Append assigns sequence numbers to evs, writes them in one write, and
@@ -118,7 +172,7 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		return nil
 	}
 	var buf bytes.Buffer
-	seq := uint64(len(l.events))
+	seq := l.n
 	for i, e := range evs {
 		seq++
 		e.Seq = seq
@@ -154,7 +208,10 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 	if err := l.f.Sync(); err != nil {
 		return err
 	}
-	l.events = append(l.events, evs...)
+	if l.events != nil || l.n == 0 {
+		l.events = append(l.events, evs...)
+	}
+	l.n = seq
 	if rollout != "" {
 		l.rollout, l.offset = rollout, offset
 	}
@@ -169,7 +226,7 @@ func (l *Log) Since(after uint64) ([]*pb.Event, <-chan struct{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	var out []*pb.Event
-	if after < uint64(len(l.events)) {
+	if after < l.n && l.loaded() {
 		out = append(out, l.events[after:]...)
 	}
 	return out, l.changed
@@ -188,6 +245,9 @@ func (l *Log) Poke() {
 func (l *Log) Each(fn func(*pb.Event)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if !l.loaded() {
+		return
+	}
 	for _, e := range l.events {
 		fn(e)
 	}

@@ -160,7 +160,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 | tmux 依赖 | 必需；安装脚本和 `remote-agent` 启动时检查是否存在、版本是否满足 | |
 | 输出来源 | Codex rollout jsonl，不从屏幕解析消息 | 屏幕内容不可靠 |
 | 审批超时 | 拒绝；默认 10 分钟，`remote-agent daemon --approval-timeout` 可调 | 安全优先；手机上从收到提醒到处理需要时间 |
-| 本地状态 | 每个会话一个目录：`session.json`、append-only 的 `events.jsonl` 和待发消息 `queue.json`；事件记录里带着读到的 rollout 位置，同时充当读取进度 | 重启后从记录的位置接着读，事件序号连续、不重复；已受理的消息不丢；单用户、单机，不需要数据库 |
+| 本地状态 | 每个会话一个目录：`session.json`、append-only 的 `events.jsonl` 和待发消息 `queue.json`；事件记录里带着读到的 rollout 位置，同时充当读取进度。事件只在有人读的时候留在内存里，两分钟没读就释放，下次读时再从文件加载；追加和等待新事件只需要条数，不用加载 | 重启后从记录的位置接着读，事件序号连续、不重复；已受理的消息不丢；单用户、单机，不需要数据库 |
 | `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到（[codex-notes §6](codex-notes.md#6-踩过的坑)） |
 | 上下文提示 | 占用超过 80% 时提示，并提供「压缩」按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
 

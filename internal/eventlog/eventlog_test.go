@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
@@ -65,5 +66,54 @@ func TestAppendReopen(t *testing.T) {
 	}
 	if l.LastSeq() != 5 {
 		t.Fatalf("seq after torn line %d", l.LastSeq())
+	}
+}
+
+func TestReleasedLogReadsItsFileAgain(t *testing.T) {
+	l, err := Open(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	if err := l.Append("s1", []*pb.Event{msg("a"), msg("b")}, "/r.jsonl", 100); err != nil {
+		t.Fatal(err)
+	}
+	l.Append("s1", nil, "/r.jsonl", 150)
+	l.Release(time.Hour)
+	if l.events == nil {
+		t.Fatal("a log just read was released")
+	}
+	l.Release(0)
+	if l.events != nil {
+		t.Fatal("not released")
+	}
+	// Watching for more and appending need no events in memory.
+	if evs, _ := l.Since(2); len(evs) != 0 || l.events != nil {
+		t.Fatalf("waiting for more loaded the log: %v", evs)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("c")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if l.events != nil || l.LastSeq() != 3 {
+		t.Fatalf("append to a released log: loaded=%v last=%d", l.events != nil, l.LastSeq())
+	}
+	evs, _ := l.Since(1)
+	if len(evs) != 2 || evs[0].GetAgentMessage().Text != "b" || evs[1].Seq != 3 || evs[1].GetAgentMessage().Text != "c" {
+		t.Fatalf("events after reload: %v", evs)
+	}
+	if r, off := l.Checkpoint(); r != "/r.jsonl" || off != 150 {
+		t.Fatalf("reload moved the checkpoint back: %s %d", r, off)
+	}
+	l.Release(0)
+	n := 0
+	l.Each(func(*pb.Event) { n++ })
+	if n != 3 {
+		t.Fatalf("each saw %d events", n)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("d")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if evs, _ := l.Since(0); len(evs) != 4 || evs[3].Seq != 4 {
+		t.Fatalf("append to a loaded log: %v", evs)
 	}
 }
