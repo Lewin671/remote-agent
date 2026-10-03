@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,10 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.clientDetail
 import io.github.lewin671.remoteagent.core.clientName
+import io.github.lewin671.remoteagent.core.clientUsed
+import io.github.lewin671.remoteagent.core.dayText
+import io.github.lewin671.remoteagent.core.lastUsed
+import io.github.lewin671.remoteagent.core.sortClients
 import io.github.lewin671.remoteagent.core.defaultClientName
 import io.github.lewin671.remoteagent.core.shortId
 import io.github.lewin671.remoteagent.core.whenText
@@ -52,6 +57,8 @@ fun DevicesScreen() {
     val p = pal
     val t = now()
     val me = remote.account.deviceId
+    // The times on this page are as of opening it.
+    LaunchedEffect(Unit) { if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices() }
     PageScaffold("设备") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             GLabel("电脑 · 运行 CLI")
@@ -66,7 +73,7 @@ fun DevicesScreen() {
                 })
             } })
             GLabel("客户端 · 操作会话")
-            val clients = state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT }.sortedWith(compareBy({ it.id != me }, { it.createdMs }))
+            val clients = sortClients(state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT }, me)
             Group(rows = clients.map { c -> @Composable {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { nav.client(c.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -74,12 +81,12 @@ fun DevicesScreen() {
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(clientName(c, c.id), style = T.body, color = p.fg)
-                        clientDetail(c, t).takeIf { it.isNotEmpty() }?.let { Text(it, style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp)) }
+                        Text(clientDetail(c), style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
                     }
-                    Text(if (c.id == me) "当前客户端" else "已配对 ›", style = T.sm, color = p.muted)
+                    Text(if (c.id == me) "当前客户端" else "${clientUsed(c, t)} ›", style = T.sm, color = p.muted)
                 }
             } })
-            Text("客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            Text("右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
             Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).heightIn(min = 44.dp).clickable { nav.pair() }, contentAlignment = Alignment.CenterStart) {
                 Text("＋ 添加电脑或客户端", style = T.body, color = p.blue)
             }
@@ -97,6 +104,7 @@ fun ClientScreen(id: String) {
     val p = pal
     val me = remote.account.deviceId
     val d = state.devices[id]
+    val t = now()
     var editing by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
     val save = rememberAction()
@@ -107,8 +115,10 @@ fun ClientScreen(id: String) {
             Group(rows = listOfNotNull<@Composable () -> Unit>(
                 { GRow("名称", (d?.meta?.name?.ifEmpty { null } ?: "未命名") + " ›", onClick = if (state.conn == ConnState.ONLINE) ({ editing = true }) else null) },
                 d?.meta?.name?.takeIf { it.isNotEmpty() }?.let { { GRow("恢复默认名称", defaultClientName(d, id), onClick = { save.run({ remote.renameDevice(id, ""); null }) }, action = true, enabled = state.conn == ConnState.ONLINE) } },
-                { GRow("设备 ID", trailing = { Text("…" + shortId(id), style = T.mono13, color = p.muted) }) },
                 d?.meta?.description?.takeIf { it.isNotEmpty() }?.let { desc -> { GRow("运行在", desc) } },
+                { GRow("上次使用", if (id == me) "现在" else lastUsed(d, t).ifEmpty { "没有记录" }) },
+                d?.createdMs?.takeIf { it > 0 }?.let { created -> { GRow("添加于", dayText(created, t)) } },
+                { GRow("设备 ID", trailing = { Text("…" + shortId(id), style = T.mono13, color = p.muted) }) },
             ))
             if (save.error.isNotEmpty()) Banner("没能保存名称：${save.error}", Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp), Tone2.ERROR)
             Text("修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))

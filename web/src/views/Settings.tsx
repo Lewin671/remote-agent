@@ -7,8 +7,8 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
-import { Alert, Banner, Dot, NavBar, Sheet, useNow, useRemote } from "../ui";
-import { clientDetail, clientName, defaultClientName, shortId } from "../devices";
+import { Alert, Banner, Dot, NavBar, Sheet, useEscape, useNow, useRemote } from "../ui";
+import { clientDetail, clientName, clientUsed, dayText, defaultClientName, lastUsed, shortId, sortClients, type DeviceInfo } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
@@ -245,7 +245,11 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
   useRemote(remote);
   const me = remote.account.deviceId;
   const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
-  const clients = [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT).sort((a, b) => (a.id === me ? -1 : b.id === me ? 1 : Number(a.createdMs - b.createdMs)));
+  const clients = sortClients([...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT), me);
+  // The times on this page are as of opening it.
+  useEffect(() => {
+    void remote.loadDevices();
+  }, [remote]);
   return (
     <div className="page">
       <NavBar onBack={onBack} title={<span className="tname">设备</span>} />
@@ -280,17 +284,17 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
               </button>
             </div>
           )}
-          {(clients.length ? clients : [{ id: me, meta: undefined }]).map((d) => (
+          {(clients.length ? clients : [{ id: me }]).map((d: Partial<DeviceInfo> & { id: string }) => (
             <button key={d.id} className="row client" onClick={() => go("c/" + d.id)}>
               <span className="client-info">
                 {clientName(d, d.id)}
                 <small>{clientDetail(d)}</small>
               </span>
-              <span className="v">{d.id === me ? "当前客户端" : "已配对 ›"}</span>
+              <span className="v">{d.id === me ? "当前客户端" : `${clientUsed(d)} ›`}</span>
             </button>
           ))}
         </div>
-        <div className="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。</div>
+        <div className="manage-hint">右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。</div>
         <div className="grp">
           <button className="row add" onClick={() => go("add")}>
             ＋ 添加电脑或客户端
@@ -351,6 +355,14 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
           {d?.meta?.description && (
             <div className="row">
               运行在<span className="v">{d.meta.description}</span>
+            </div>
+          )}
+          <div className="row">
+            上次使用<span className="v">{current ? "现在" : lastUsed(d) || "没有记录"}</span>
+          </div>
+          {!!d?.createdMs && (
+            <div className="row">
+              添加于<span className="v">{dayText(d.createdMs)}</span>
             </div>
           )}
           <div className="row">
@@ -804,4 +816,68 @@ function ImageStorageSettings({ remote, id, settings, onSave, online }: { remote
     {error && <div className="gbanner"><Banner kind="err">{error}</Banner></div>}
     {clean && <Alert title="清理可回收图片？" text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话历史保留；尚未同步的大图会只显示预览。" ok="清理" onCancel={() => setClean(false)} onOk={async () => { setClean(false); await run(settings, true); }} />}
   </>;
+}
+
+const nameAskedKey = (id: string) => "ra-name-asked/" + id;
+
+/** Asks once for this client's name, after joining and for a client that
+ * has none yet, so that the other clients' lists can tell it apart. */
+export function NameClientPrompt({ remote }: { remote: Remote }) {
+  useRemote(remote);
+  const me = remote.account.deviceId;
+  const d = remote.devices.get(me);
+  const [asked, setAsked] = useState(() => localStorage.getItem(nameAskedKey(me)) !== null);
+  if (asked || !d || d.meta?.name || remote.devicesStatus !== "ready" || remote.conn !== "online") return null;
+  const done = () => {
+    localStorage.setItem(nameAskedKey(me), "1");
+    setAsked(true);
+  };
+  return <NameClientDialog remote={remote} onDone={done} />;
+}
+
+function NameClientDialog({ remote, onDone: done }: { remote: Remote; onDone: () => void }) {
+  const me = remote.account.deviceId;
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEscape(done);
+  const save = async () => {
+    if (!name.trim()) return done();
+    setBusy(true);
+    setError("");
+    try {
+      await remote.renameDevice(me, name);
+      done();
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="overlay">
+      <div className="dim" />
+      <form
+        className="alert rename"
+        role="dialog"
+        aria-modal="true"
+        aria-label="给这个客户端起个名字"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!busy) void save();
+        }}
+      >
+        <h5>给这个客户端起个名字</h5>
+        <input className="field" autoFocus aria-label="客户端名称" value={name} placeholder="如：公司电脑的 Chrome" maxLength={40} enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
+        {error ? <p className="red">没能保存：{error}</p> : <p>其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改</p>}
+        <div className="btns">
+          <button type="button" className="btn" disabled={busy} onClick={done}>
+            跳过
+          </button>
+          <button type="submit" className="btn pri" disabled={busy}>
+            保存
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }

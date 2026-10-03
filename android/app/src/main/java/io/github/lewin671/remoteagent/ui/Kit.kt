@@ -602,7 +602,7 @@ fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
 
 /** A confirmation with one line of text to enter, such as a name. */
 @Composable
-fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, dismiss: String = "取消", text: String? = null, onConfirm: (String) -> Unit) {
     val p = pal
     var value by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(initial) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -610,8 +610,9 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
             Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {
                 Text(title, style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
                 ReasonField(value, { value = it.take(40) }, placeholder)
+                if (text != null) Text(text, style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 Btns(Modifier.padding(top = 6.dp)) {
-                    Btn("取消", onDismiss, Modifier.weight(1f))
+                    Btn(dismiss, onDismiss, Modifier.weight(1f))
                     Btn(confirm, { onDismiss(); onConfirm(value) }, Modifier.weight(1f), BtnKind.PRIMARY)
                 }
             }

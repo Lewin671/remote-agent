@@ -1092,7 +1092,7 @@ export class Remote {
     // may have landed, or the device gone, in the meantime.
     if ((this.deviceRemovals.get(d.id) ?? 0) !== removals) return;
     const cur = this.devices.get(d.id);
-    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: cur?.metaRev ?? 0n, meta: cur?.meta };
+    const info: DeviceInfo = { id: d.id, kind: d.kind, createdMs: d.createdMs, metaRev: cur?.metaRev ?? 0n, meta: cur?.meta, lastSeenMs: d.lastSeenMs };
     if (meta && d.metaRevision >= info.metaRev) {
       info.meta = meta;
       info.metaRev = d.metaRevision;

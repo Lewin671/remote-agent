@@ -7,7 +7,7 @@ import { AddDevicePage, Setup } from "./views/Pairing";
 import { ProjectPage } from "./views/Project";
 import { ManagePage, RemovedPage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
-import { ClientPage, DevicesPage, MachinePage, QuotaPage, Settings } from "./views/Settings";
+import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, Settings } from "./views/Settings";
 
 // ?demo in development shows made-up machines and sessions in every state
 // the mockup draws, with no server. It is compiled out of builds.
@@ -109,11 +109,14 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind.startsWith("pair")) page = <div className="center muted">这个浏览器已经加入了账户。要让另一台设备加入，在它上面打开这个链接。</div>;
   else page = wide ? <WideHome remote={remote} go={go} /> : <Home remote={remote} go={go} />;
 
+  // Asked on the home and settings pages, not over a session being read.
+  const naming = (kind === "" || kind === "settings") && <NameClientPrompt remote={remote} />;
   if (wide)
     return (
       <div className="desk">
         <Sidebar remote={remote} go={go} selected={session?.id} project={kind === "p" ? arg : undefined} />
         <main className="dm">{page}</main>
+        {naming}
       </div>
     );
   const tabs = kind === "" || kind === "settings";
@@ -121,6 +124,7 @@ function Main({ remote }: { remote: Remote }) {
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>
       {page}
+      {naming}
       {tabs && (
         <nav className="tabbar">
           <button className={kind === "" ? "on" : ""} onClick={() => go("")}>

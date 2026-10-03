@@ -101,6 +101,8 @@ data class DeviceView(
     val createdMs: Long,
     val meta: io.github.lewin671.remoteagent.proto.DeviceMeta? = null,
     val metaRev: Long = 0,
+    /** When it was last used, 0 without a record. */
+    val lastSeenMs: Long = 0,
 )
 
 /** A session's events, contiguous from seq 1. */
@@ -605,6 +607,9 @@ class Remote(
         }
     }
 
+    /** Reads the device list again, for a page whose times are as of opening it. */
+    suspend fun refreshDevices() = withContext(dispatcher) { loadDevices() }
+
     private suspend fun loadDevices() {
         try {
             val r = api.client.listDevices(io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(), Api.headers(token)).value()
@@ -619,7 +624,7 @@ class Remote(
 
     private fun putDevice(d: io.github.lewin671.remoteagent.proto.Device) {
         val old = devices[d.id]
-        var view = DeviceView(d.id, d.kind, d.createdMs, old?.meta, old?.metaRev ?: 0)
+        var view = DeviceView(d.id, d.kind, d.createdMs, old?.meta, old?.metaRev ?: 0, d.lastSeenMs)
         if (d.hasMeta() && ucmp(d.metaRevision, view.metaRev) >= 0) {
             try {
                 val (_, meta) = Envelopes.openMessage(

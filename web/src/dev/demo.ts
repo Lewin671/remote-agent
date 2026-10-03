@@ -924,10 +924,10 @@ export class DemoRemote extends Remote {
 
   override async loadDevices() {
     this.devices.clear();
-    for (const m of this.machines.values()) this.devices.set(m.id, { id: m.id, kind: DeviceKind.MACHINE, createdMs: 0n, metaRev: 0n });
+    for (const m of this.machines.values()) this.devices.set(m.id, { id: m.id, kind: DeviceKind.MACHINE, createdMs: 0n, metaRev: 0n, lastSeenMs: 0n });
     for (const id of [ME, ANDROID, BROWSER]) {
       const m = this.metas.get(id);
-      this.devices.set(id, { id, kind: DeviceKind.CLIENT, createdMs: BigInt(Date.now() - (id === ME ? 6 : id === ANDROID ? 21 : 300) * 86_400_000), metaRev: m?.rev ?? 0n, meta: m?.meta });
+      this.devices.set(id, { id, kind: DeviceKind.CLIENT, createdMs: BigInt(Date.now() - (id === ME ? 6 : id === ANDROID ? 21 : 300) * 86_400_000), metaRev: m?.rev ?? 0n, meta: m?.meta, lastSeenMs: id === BROWSER ? 0n : BigInt(Date.now() - (id === ME ? 0 : 86_400_000)) });
     }
     this.devicesStatus = "ready";
     this.changed();

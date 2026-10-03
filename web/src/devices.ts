@@ -14,6 +14,8 @@ export interface DeviceInfo {
   createdMs: bigint;
   meta?: DeviceMeta;
   metaRev: bigint;
+  // When it was last used, 0 without a record.
+  lastSeenMs: bigint;
 }
 
 /** The last four characters of a device ID, as lists show it. */
@@ -43,14 +45,45 @@ export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined
   return `${platformLabel(d?.meta)} · ${shortId(id)}`;
 }
 
-/** What tells clients with similar names apart in the list: an app or a
- * browser, what it says it runs on, and the day it was added. */
-export function clientDetail(d: Partial<Pick<DeviceInfo, "meta" | "createdMs">> | undefined, now = Date.now()): string {
+/** What a client is, under its name in the list: an app or a browser, and
+ * what it says it runs on. */
+export function clientDetail(d: Partial<Pick<DeviceInfo, "meta">> | undefined): string {
   const kind = d?.meta?.platform === "android" ? "App" : d?.meta?.platform === "web" ? "浏览器" : "";
-  const t = Number(d?.createdMs ?? 0);
-  const day = new Date(t);
-  const added = t ? `${day.getFullYear() === new Date(now).getFullYear() ? "" : `${day.getFullYear()}年`}${day.getMonth() + 1}月${day.getDate()}日添加` : "";
-  return [kind, d?.meta?.description.trim(), added].filter(Boolean).join(" · ");
+  return [kind, d?.meta?.description.trim()].filter(Boolean).join(" · ") || "种类未知";
+}
+
+/** A day as lists write it: 9月27日, with the year when it is not this one. */
+export function dayText(ms: number | bigint, now = Date.now()): string {
+  const day = new Date(Number(ms));
+  return `${day.getFullYear() === new Date(now).getFullYear() ? "" : `${day.getFullYear()}年`}${day.getMonth() + 1}月${day.getDate()}日`;
+}
+
+/** When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日;
+ * "" when the server has no record of it. */
+export function lastUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs">> | undefined, now = Date.now()): string {
+  const t = Number(d?.lastSeenMs ?? 0);
+  if (!t) return "";
+  const ago = now - t;
+  if (ago < 60_000) return "刚刚";
+  if (ago < 3_600_000) return `${Math.floor(ago / 60_000)} 分钟前`;
+  const then = new Date(t);
+  if (then.toDateString() === new Date(now).toDateString()) return `今天 ${then.getHours()}:${String(then.getMinutes()).padStart(2, "0")}`;
+  if (then.toDateString() === new Date(now - 86_400_000).toDateString()) return "昨天";
+  return dayText(t, now);
+}
+
+/** What the list says beside a client: when it was last used, else the
+ * day it was added. */
+export function clientUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs" | "createdMs">> | undefined, now = Date.now()): string {
+  const used = lastUsed(d, now);
+  if (used) return `${used}${/\d$/.test(used) ? " " : ""}使用`;
+  return Number(d?.createdMs ?? 0) ? `${dayText(d!.createdMs!, now)}添加` : "已配对";
+}
+
+/** Clients as the list orders them: this one, then the most recently used
+ * first, then those with no record, the newest first. */
+export function sortClients<T extends Pick<DeviceInfo, "id" | "createdMs" | "lastSeenMs">>(clients: T[], me: string): T[] {
+  return [...clients].sort((a, b) => Number(b.id === me) - Number(a.id === me) || Number(b.lastSeenMs - a.lastSeenMs) || Number(b.createdMs - a.createdMs));
 }
 
 /** What this browser says about itself in its device metadata. */

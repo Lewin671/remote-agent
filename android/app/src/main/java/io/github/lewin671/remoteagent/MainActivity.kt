@@ -41,6 +41,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -129,10 +132,10 @@ class MainActivity : ComponentActivity() {
         }
         // Say what this client is, sealed, so other clients can tell it apart.
         val devices by remote.state.collectAsState()
+        // The phone's own name where the system has one (小米 14), else its model number.
+        val phone = remember { android.provider.Settings.Global.getString(contentResolver, android.provider.Settings.Global.DEVICE_NAME)?.trim().orEmpty().ifEmpty { Build.MODEL } }
         LaunchedEffect(devices.devices[remote.account.deviceId]?.metaRev, devices.conn) {
             val me = devices.devices[remote.account.deviceId]
-            // The phone's own name where the system has one (小米 14), else its model number.
-            val phone = android.provider.Settings.Global.getString(contentResolver, android.provider.Settings.Global.DEVICE_NAME)?.trim().orEmpty().ifEmpty { Build.MODEL }
             val description = "Android ${Build.VERSION.RELEASE} · $phone"
             if (me != null && (me.meta?.platform != "android" || me.meta?.description != description) && devices.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) {
                 runCatching { remote.describeSelf("android", description) }
@@ -142,6 +145,19 @@ class MainActivity : ComponentActivity() {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
             val tabs = route == "home" || route == "settings"
+            // Asked once for this client's name, after joining and when it has none yet,
+            // on the home and settings pages rather than over a session being read.
+            val me = devices.devices[remote.account.deviceId]
+            val asked = remember { getSharedPreferences("client-name", MODE_PRIVATE) }
+            var naming by remember { mutableStateOf(!asked.contains(remote.account.deviceId)) }
+            if (naming && tabs && me != null && me.meta?.name.isNullOrEmpty() && devices.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) {
+                val scope = rememberCoroutineScope()
+                val done = { asked.edit().putBoolean(remote.account.deviceId, true).apply(); naming = false }
+                io.github.lewin671.remoteagent.ui.InputAlert(
+                    "给这个客户端起个名字", phone.take(40), "如：我的手机", "保存", onDismiss = done, dismiss = "跳过",
+                    text = "其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改",
+                ) { name -> if (name.isNotBlank()) scope.launch { runCatching { remote.renameDevice(me.id, name.trim()) } } }
+            }
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 NavHost(nav, "home", Modifier.weight(1f)) {
                     composable("home") { HomeScreen() }

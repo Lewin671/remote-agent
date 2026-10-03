@@ -835,20 +835,47 @@ fun clientName(d: DeviceView?, id: String): String {
 /** The name a client has until the user gives it one, and again once they take theirs back. */
 fun defaultClientName(d: DeviceView?, id: String): String = "${platformLabel(d?.meta)} · ${shortId(id)}"
 
-/** What tells clients with similar names apart in the list: an app or a browser, what it says it runs on, and the day it was added. */
-fun clientDetail(d: DeviceView?, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+/** What a client is, under its name in the list: an app or a browser, and what it says it runs on. */
+fun clientDetail(d: DeviceView?): String {
     val kind = when (d?.meta?.platform) {
         "android" -> "App"
         "web" -> "浏览器"
         else -> ""
     }
-    val added = d?.createdMs?.takeIf { it > 0 }?.let {
-        val day = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-        val year = if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) "" else "${day.year}年"
-        "$year${day.monthValue}月${day.dayOfMonth}日添加"
-    }.orEmpty()
-    return listOf(kind, d?.meta?.description.orEmpty().trim(), added).filter { it.isNotEmpty() }.joinToString(" · ")
+    return listOf(kind, d?.meta?.description.orEmpty().trim()).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "种类未知" }
 }
+
+/** A day as lists write it: 9月27日, with the year when it is not this one. */
+fun dayText(ms: Long, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val day = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+    val year = if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) "" else "${day.year}年"
+    return "$year${day.monthValue}月${day.dayOfMonth}日"
+}
+
+/** When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日; "" when the server has no record of it. */
+fun lastUsed(d: DeviceView?, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val t = d?.lastSeenMs ?: 0
+    if (t <= 0) return ""
+    val ago = now - t
+    if (ago < 60_000) return "刚刚"
+    if (ago < 3_600_000) return "${ago / 60_000} 分钟前"
+    val then = Instant.ofEpochMilli(t).atZone(zone).toLocalDate()
+    val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+    if (then == today) return "今天 ${hhmm(t, zone)}"
+    if (then == today.minusDays(1)) return "昨天"
+    return dayText(t, now, zone)
+}
+
+/** What the list says beside a client: when it was last used, else the day it was added. */
+fun clientUsed(d: DeviceView?, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val used = lastUsed(d, now, zone)
+    if (used.isNotEmpty()) return used + (if (used.last().isDigit()) " " else "") + "使用"
+    return if ((d?.createdMs ?: 0) > 0) "${dayText(d!!.createdMs, now, zone)}添加" else "已配对"
+}
+
+/** Clients as the list orders them: this one, then the most recently used first, then those with no record, the newest first. */
+fun sortClients(clients: Collection<DeviceView>, me: String): List<DeviceView> =
+    clients.sortedWith(compareBy<DeviceView> { it.id != me }.thenByDescending { it.lastSeenMs }.thenByDescending { it.createdMs })
 
 /** The last four hex digits of a device ID, as shown next to a name. */
 fun shortId(id: String): String = id.takeLast(4)
