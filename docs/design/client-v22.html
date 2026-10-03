@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v21</title>
+<title>remote-agent 客户端设计稿 v22</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -827,14 +827,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v21 · 2026-10-03 · 上一版 v20 在 git 历史里（<code>git log -- docs/design/client-v20.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v22 · 2026-10-03 · 上一版 v21 在 git 历史里（<code>git log -- docs/design/client-v21.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v20 的改动</h4><ul><li>设备页的客户端列表每行两行：上面是名称，下面一行小字写它是 App 还是浏览器、运行在什么系统上、哪天添加的，名字相近的客户端靠这一行分清（<a href="#devices">多端</a>）。</li><li>未命名客户端的默认名称在网页和 Android 上一致：浏览器写浏览器名（Chrome · a8f2），App 写 Android · b71c，什么都没说的写客户端 · 92de。</li><li>客户端详情加「运行在」一行；起过名字的客户端多一行「恢复默认名称」，右边写出恢复后的名称。改名输入框的占位文字是默认名称，留空保存同样恢复默认。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v21 的改动</h4><ul><li>设备页的客户端右边写上次使用的时间（昨天使用、9月12日使用），不再一律写「已配对」；还没有使用记录的写添加日期。列表按上次使用从近到远排，当前客户端仍在最前（<a href="#devices">多端</a>）。</li><li>客户端第二行只写种类和系统，添加日期挪到详情页；详情页加「上次使用」和「添加于」两行。</li><li>客户端加入后第一次打开时问一次名字，可以跳过；还没有名字的已有客户端也问一次（<a href="#devices">多端 · 给客户端起名</a>）。</li><li>列表下的说明改短，只说右边的时间是什么、去哪里改名和移除。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -3195,24 +3195,24 @@ git status --short gen/</pre>
 </div>
 <div class="glabel">客户端 · 操作会话</div>
 <div class="grp">
-<div class="row client"><span class="client-info">Chrome · a8f2<small>浏览器 · Chrome on macOS · 9月27日添加</small></span><span class="v">当前客户端</span>
+<div class="row client"><span class="client-info">Chrome · a8f2<small>浏览器 · Chrome on macOS</small></span><span class="v">当前客户端</span>
 </div>
-<div class="row client"><span class="client-info">我的手机<small>App · Android 16 · Pixel 9 · 9月12日添加</small></span><span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">我的手机<small>App · Android 16 · Pixel 9</small></span><span class="v">刚刚使用 ›</span>
 </div>
-<div class="row client"><span class="client-info">Chrome · 04a9<small>浏览器 · Chrome on macOS · 10月1日添加</small></span><span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">Chrome · 04a9<small>浏览器 · Chrome on macOS</small></span><span class="v">昨天使用 ›</span>
 </div>
-<div class="row client"><span class="client-info">Safari · d941<small>浏览器 · Safari on iOS · 8月3日添加</small></span><span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">Safari · d941<small>浏览器 · Safari on iOS</small></span><span class="v">8月3日使用 ›</span>
 </div>
-<div class="row client"><span class="client-info">客户端 · 92de<small>2025年12月1日添加</small></span><span class="v">已配对 ›</span>
+<div class="row client"><span class="client-info">客户端 · 92de<small>种类未知</small></span><span class="v">2025年12月1日添加 ›</span>
 </div>
 </div>
-<div class="manage-hint">客户端名称在设备详情中设置；未命名时显示类型和 ID 短码，下面一行是它的种类、系统和添加日期。已配对不表示现在正在查看。</div>
+<div class="manage-hint">右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。</div>
 <div class="grp">
 <div class="row" style="color:var(--blue)">＋ 添加电脑或客户端</div>
 </div>
 </div>
 </div>
-<div class="cap">设备分组：电脑是执行位置，客户端是控制入口；不把某台电脑的在线状态当作所有客户端在线。客户端第二行写种类、系统和添加日期，没上报过的只有日期</div>
+<div class="cap">设备分组：电脑是执行位置，客户端是控制入口。客户端第二行写种类和系统，右边写上次使用的时间，按它从近到远排；还没有使用记录的写添加日期，排在最后。上次使用不表示现在正在查看</div>
 </div>
 <div>
 <div class="phone">
@@ -3394,6 +3394,10 @@ git status --short gen/</pre>
 </div>
 <div class="row">运行在<span class="v">Android 16 · Pixel 9</span>
 </div>
+<div class="row">上次使用<span class="v">刚刚</span>
+</div>
+<div class="row">添加于<span class="v">9月12日</span>
+</div>
 <div class="row">设备 ID<span class="v mono">…b71c</span>
 </div>
 </div>
@@ -3404,7 +3408,22 @@ git status --short gen/</pre>
 <div class="manage-hint">移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。</div>
 </div>
 </div>
-<div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
+<div class="cap">客户端详情：名称可改，起过名字的可以恢复默认名称，未命名时不显示这一行；上次使用没有记录时写「没有记录」；ID 可核对；移除前确认影响，当前客户端用“退出并删除本机密钥”</div>
+</div>
+<div>
+<div class="phone">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body"></div>
+<div class="dim"></div>
+<div class="alert rename">
+<h5>给这个客户端起个名字</h5>
+<div class="field"><span class="picked">Pixel 9</span></div>
+<p>其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改</p>
+<div class="btns"><div class="btn">跳过</div><div class="btn pri">保存</div></div>
+</div>
+<div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i style="flex:5"></i></div></div>
+</div>
+<div class="cap">给客户端起名：加入后第一次打开时问一次，还没有名字的已有客户端也问一次；跳过后不再问。App 里预填手机自己的名称并全选，浏览器里输入框是空的，占位文字是「如：公司电脑的 Chrome」</div>
 </div>
 </div>
 <!-- ============================= -->
