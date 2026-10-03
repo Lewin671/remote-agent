@@ -10,7 +10,7 @@ const now = Date.parse("2026-09-30T09:40:00+08:00");
 const lim = (usedPercent: number, windowMinutes: number, resetInMin: number) => create(RateLimitSchema, { usedPercent, windowMinutes: BigInt(windowMinutes), resetsAt: BigInt(Math.floor((now + resetInMin * 60_000) / 1000)) });
 
 it("shows use and reset, warns from 80% and calls 100% used up", () => {
-  expect(quotaRow(lim(62, 300, 270), "5 小时", now, true)).toMatchObject({ label: "5 小时", used: "已用 62%", reset: "14:10 重置（北京时间）", tone: "" });
+  expect(quotaRow(lim(62, 300, 270), "5 小时", now, true)).toMatchObject({ label: "5 小时", used: "已用 62%", reset: "4 小时 30 分后重置 · 今天 14:10", tone: "" });
   expect(quotaRow(lim(92, 300, 30), "5 小时", now, true).tone).toBe("warn");
   expect(quotaRow(lim(100, 10080, 3 * 1440), "7 天", now, true)).toMatchObject({ label: "7 天", used: "已用尽", tone: "full" });
 });
@@ -37,8 +37,8 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const [v] = quotaViews([q({ agent: Agent.CODEX, state: QuotaState.OK, plan: "Pro Lite", observedMs: BigInt(at(9, 40)), windows: [w("primary", 62, 14, 300), w("secondary", 34, 20, 10080)] })], [Agent.CODEX], now, true);
     expect(v.title).toBe("Codex · Pro Lite");
     expect(v.rows.map((r) => [r.label, r.used, r.reset, r.tone])).toEqual([
-      ["5 小时", "已用 62%", "14:10 重置（北京时间）", ""],
-      ["7 天", "已用 34%", "20:10 重置（北京时间）", ""],
+      ["5 小时", "已用 62%", "4 小时 29 分后重置 · 今天 14:10", ""],
+      ["7 天", "已用 34%", "10 小时 29 分后重置 · 今天 20:10", ""],
     ]);
     expect(v.seen).toBe(`最近收到 ${new Date(at(9, 40)).getHours()}:40`);
   });
@@ -72,7 +72,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     const claude = views.find((v) => v.agent === Agent.CLAUDE)!;
     expect(claude).toMatchObject({ kind: "waiting", head: "暂未获取额度" });
     expect(codex).toMatchObject({ kind: "failed", error: "没能读取 Codex 额度：rollout unreadable", title: "Codex · 上次记录" });
-    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "13:10 重置（北京时间）" });
+    expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "3 小时 29 分后重置 · 今天 13:10" });
     expect(codex.seen).toBe(`最近成功收到 ${new Date(at(9, 20)).getHours()}:20`);
     const [unsup] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.UNSUPPORTED, detail: "托管设置固定了状态栏" })], [Agent.CLAUDE], now, true);
     expect(unsup).toMatchObject({ kind: "unsupported", head: "暂不支持读取额度", detail: "托管设置固定了状态栏" });
@@ -119,7 +119,17 @@ it("uses Beijing dates across midnight regardless of the client timezone", () =>
   const now = Date.parse("2026-10-02T15:30:00Z");
   const reset = Date.parse("2026-10-02T16:10:00Z");
   const l = create(RateLimitSchema, { usedPercent: 95, resetsAt: BigInt(reset / 1000) });
-  expect(quotaRow(l, "7 天", now, true).reset).toBe("周六 0:10 重置（北京时间）");
+  expect(quotaRow(l, "7 天", now, true).reset).toBe("40 分钟后重置 · 10月3日 周六 0:10");
   const q = create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.OK, windows: [create(QuotaWindowSchema, { name: "secondary", usedPercent: 95, resetsAtMs: BigInt(reset) })] });
-  expect(quotaViews([q], [Agent.CODEX], now, true)[0].rows[0].reset).toBe("周六 0:10 重置（北京时间）");
+  expect(quotaViews([q], [Agent.CODEX], now, true)[0].rows[0].reset).toBe("40 分钟后重置 · 10月3日 周六 0:10");
+});
+
+it("says how long until a reset: to the hour from a day on, to the minute below", () => {
+  const reset = (min: number) => quotaRow(lim(10, 10080, min), "7 天", now, true).reset;
+  expect(reset(6 * 1440 + 4 * 60 + 29)).toBe("6 天 4 小时后重置 · 10月6日 周二 14:09");
+  expect(reset(1440)).toBe("1 天 0 小时后重置 · 10月1日 周四 9:40");
+  expect(reset(1439)).toBe("23 小时 59 分后重置 · 10月1日 周四 9:39");
+  expect(reset(60)).toBe("1 小时 0 分后重置 · 今天 10:40");
+  expect(reset(59)).toBe("59 分钟后重置 · 今天 10:39");
+  expect(quotaRow(create(RateLimitSchema, { usedPercent: 10, resetsAt: BigInt(Math.floor(now / 1000) + 30) }), "7 天", now, true).reset).toBe("即将重置 · 今天 9:40");
 });

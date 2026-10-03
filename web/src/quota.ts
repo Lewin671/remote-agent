@@ -11,21 +11,32 @@ export interface QuotaRow {
   label: string; // 5 小时, 7 天
   used: string; // 已用 62%, 已用尽, 未获取
   percent?: number;
-  reset: string; // 14:10 重置, 周四 10:00 重置
+  reset: string; // 4 小时 29 分后重置 · 今天 14:10
   tone: "" | "warn" | "full" | "stale";
   note: string; // why the reading may be old
 }
 
 const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
-/** Reset instants are shown in Beijing regardless of the device timezone. */
+/** How long until a reset, rounded down: to the hour from a day on, to
+ * the minute below that. */
+function untilReset(ms: number): string {
+  const m = Math.floor(ms / 60_000);
+  if (m < 1) return "即将重置";
+  if (m < 60) return `${m} 分钟后重置`;
+  if (m < 24 * 60) return `${Math.floor(m / 60)} 小时 ${m % 60} 分后重置`;
+  return `${Math.floor(m / (24 * 60))} 天 ${Math.floor((m % (24 * 60)) / 60)} 小时后重置`;
+}
+
+/** How long until the reset, then its day and time. The instant is shown
+ * in Beijing regardless of the device timezone; the page says so once. */
 function resetTime(ms: number, now: number): string {
   // Shanghai is UTC+8 without DST for current quota windows.
   const beijing = (t: number) => new Date(t + 8 * 60 * 60 * 1000);
   const d = beijing(ms);
   const today = beijing(now);
-  const day = d.toISOString().slice(0, 10) === today.toISOString().slice(0, 10) ? "" : days[d.getUTCDay()] + " ";
-  return `${day}${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")} 重置（北京时间）`;
+  const day = d.toISOString().slice(0, 10) === today.toISOString().slice(0, 10) ? "今天" : `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${days[d.getUTCDay()]}`;
+  return `${untilReset(ms - now)} · ${day} ${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 }
 
 export function windowLabel(minutes: number): string {
