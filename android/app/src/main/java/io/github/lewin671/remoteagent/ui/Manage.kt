@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.HomeScope
 import io.github.lewin671.remoteagent.core.PrefsOp
 import io.github.lewin671.remoteagent.core.Project
 import io.github.lewin671.remoteagent.core.Remote
@@ -140,11 +142,14 @@ fun ManageProjectsScreen() {
 private fun ManageRow(state: RemoteState, pr: Project, pinned: Boolean, blocked: Boolean) {
     val p = pal
     val remote = LocalRemote.current
+    val nav = LocalNav.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var menu by remember { mutableStateOf(false) }
     val change = PrefsChanges.states[pr.key]
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Avatar(pr.key, 22)
-        Column(Modifier.weight(1f)) {
+        // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
+        Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable(onClickLabel = "在主页看这个项目") { HomeScopes.choose(context, HomeScope.Of(pr.key)); nav.home() }, verticalArrangement = Arrangement.Center) {
             Text(pr.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(shortPath(pr.key), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when (change) {

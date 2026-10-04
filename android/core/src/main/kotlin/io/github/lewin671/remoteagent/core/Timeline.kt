@@ -1,0 +1,228 @@
+// The home page as a session timeline with a scope (client-v27,
+// architecture §8 「主页的范围」): which sessions it lists, how the ended
+// ones are grouped by day, what a row writes, and filtering by title.
+package io.github.lewin671.remoteagent.core
+
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+
+/** What the home page lists: one project, or every project. */
+sealed interface HomeScope {
+    data object All : HomeScope
+    data class Of(val key: String) : HomeScope
+}
+
+/** 需要处理 shows this many cards before 「还有 N 项待处理」. */
+const val ATTENTION_MAX = 3
+
+/** 进行中 shows this many rows before 「还有 N 个进行中」. */
+const val RUNNING_MAX = 5
+
+/** Ended sessions are rendered this many at a time. */
+const val ENDED_PAGE = 30
+
+/** With more sessions than this in the scope the home page offers the title filter; with more projects, the scope menu a search. */
+const val FILTER_OVER = 8
+
+/** The projects on the lists: pinned in their order, then the others; removed ones are not among them. */
+fun listedProjects(state: RemoteState): List<Project> = projectGroups(state).let { it.pinned + it.others }
+
+/** The scope before the user chose one: the only listed project, else every project. */
+fun defaultScope(state: RemoteState): HomeScope = listedProjects(state).singleOrNull()?.let { HomeScope.Of(it.key) } ?: HomeScope.All
+
+/**
+ * The scope the home page uses: the one remembered on this device, or the
+ * default when none was chosen, when the remembered project was removed or
+ * is not there, and when 全部项目 was remembered but there is no more than
+ * one project to tell apart (the menu does not offer it then).
+ */
+fun resolveScope(remembered: HomeScope?, state: RemoteState): HomeScope {
+    val listed = listedProjects(state)
+    return when (remembered) {
+        is HomeScope.Of -> if (listed.any { it.key == remembered.key }) remembered else defaultScope(state)
+        HomeScope.All -> if (listed.size > 1) remembered else defaultScope(state)
+        null -> defaultScope(state)
+    }
+}
+
+/** The scope as this device's settings keep it. */
+fun encodeScope(scope: HomeScope): String = when (scope) {
+    HomeScope.All -> "all"
+    is HomeScope.Of -> "project:" + scope.key
+}
+
+/** The scope read back; null for nothing stored or something else. */
+fun decodeScope(stored: String?): HomeScope? = when {
+    stored == "all" -> HomeScope.All
+    stored != null && stored.startsWith("project:") -> HomeScope.Of(stored.removePrefix("project:"))
+    else -> null
+}
+
+/** Which of 项目, CLI and 机器 a row's third line writes: only what differs between the rows of its list. */
+data class RowMeta(val project: Boolean = false, val agent: Boolean = false, val machine: Boolean = false)
+
+/**
+ * What the rows of a list write: the project only where the list spans
+ * projects, the CLI only when [sessions] (everything in the scope or the
+ * list) used more than one, the machine only when the account has more than
+ * one computer.
+ */
+fun rowMeta(state: RemoteState, sessions: Collection<SessionView>, project: Boolean): RowMeta =
+    RowMeta(project = project, agent = sessions.map { it.agent() }.distinct().size > 1, machine = state.machines.size > 1)
+
+/** A row's third line: 分叉 · 项目 · CLI · 机器, each only when it says something; empty for no third line. */
+fun metaLine(state: RemoteState, s: SessionView, meta: RowMeta): String = buildList {
+    if (forked(s)) add("分叉")
+    if (meta.project) add(projectName(projectKey(s)))
+    if (meta.agent) add(agentName(s.agent()))
+    if (meta.machine) add(machineName(state.machines[s.machineId], s.machineId))
+}.joinToString(" · ")
+
+/** Whether a title has [query] in it, ignoring case; a blank query matches everything. */
+fun titleMatches(s: SessionView, query: String, zone: ZoneId = ZoneId.systemDefault()): Boolean =
+    query.isBlank() || titleOf(s, zone).contains(query.trim(), ignoreCase = true)
+
+/**
+ * The home page's lists for a scope.
+ * [attention] is not scoped: every session of the account that waits, so a
+ * project chosen as the scope never hides another one's approval.
+ * [running] and [ended] are the scope's own; under 全部项目 a removed
+ * project's sessions are only among the first two.
+ * [total] counts the scope's sessions before [query] was applied.
+ */
+class HomeTimeline(
+    val attention: List<SessionView>,
+    val running: List<SessionView>,
+    val ended: List<SessionView>,
+    val total: Int,
+    val meta: RowMeta,
+) {
+    /** How many sessions are listed, for the line under a filtered list. */
+    val size: Int get() = attention.size + running.size + ended.size
+}
+
+/** Whether a session belongs to another project than the one the scope names. */
+fun outsideScope(s: SessionView, scope: HomeScope): Boolean = scope is HomeScope.Of && projectKey(s) != scope.key
+
+fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault()): HomeTimeline {
+    val all = state.sessions.values
+    val waiting = all.filter { needsAttention(it, state.machines[it.machineId]) }.sortedWith(attentionOrder(state))
+    val waitingIds = waiting.mapTo(HashSet()) { it.id }
+    val hidden = state.prefs?.hidden.orEmpty()
+    val running = all.filter { !exited(it) && it.id !in waitingIds && !outsideScope(it, scope) }.sortedWith(liveOrder)
+    val ended = all.filter { exited(it) && if (scope is HomeScope.Of) projectKey(it) == scope.key else projectKey(it) !in hidden }.sortedWith(endedOrder)
+    val inScope = waiting.filter { !outsideScope(it, scope) } + running + ended
+    val match = { s: SessionView -> titleMatches(s, query, zone) }
+    return HomeTimeline(
+        attention = waiting.filter(match),
+        running = running.filter(match),
+        ended = ended.filter(match),
+        total = inScope.size,
+        meta = rowMeta(state, inScope, project = scope == HomeScope.All),
+    )
+}
+
+/** The line under a card of 需要处理: the project where the list spans projects or the card is from outside the scope, and the machine when there are several. */
+fun cardMeta(state: RemoteState, s: SessionView, scope: HomeScope): List<String> = buildList {
+    if (scope == HomeScope.All || outsideScope(s, scope)) add(projectName(projectKey(s)))
+    if (state.machines.size > 1) add(machineName(state.machines[s.machineId], s.machineId))
+}
+
+// --- ended sessions by day ---
+
+/** The groups ended sessions fall in, by the local calendar day they ended on. */
+sealed interface EndedGroup {
+    data object Today : EndedGroup
+    data object Yesterday : EndedGroup
+    /** Two to six days ago. */
+    data object Week : EndedGroup
+    data class Month(val year: Int, val month: Int) : EndedGroup
+}
+
+private fun dayOf(ms: Long, zone: ZoneId): LocalDate = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+
+/** The group of a session that ended at [ms]; a time ahead of this device's clock counts as today. */
+fun endedGroup(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): EndedGroup {
+    val day = dayOf(ms, zone)
+    return when (ChronoUnit.DAYS.between(day, dayOf(now, zone))) {
+        in Long.MIN_VALUE..0 -> EndedGroup.Today
+        1L -> EndedGroup.Yesterday
+        in 2..6 -> EndedGroup.Week
+        else -> EndedGroup.Month(day.year, day.monthValue)
+    }
+}
+
+/** 今天, 昨天, 近 7 天, 9 月, and 2025 年 12 月 for a month of another year. */
+fun groupTitle(g: EndedGroup, now: Long, zone: ZoneId = ZoneId.systemDefault()): String = when (g) {
+    EndedGroup.Today -> "今天"
+    EndedGroup.Yesterday -> "昨天"
+    EndedGroup.Week -> "近 7 天"
+    is EndedGroup.Month -> if (g.year == dayOf(now, zone).year) "${g.month} 月" else "${g.year} 年 ${g.month} 月"
+}
+
+private val weekdays = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
+/**
+ * When an ended session ended, as its row writes it: the time of day under
+ * 今天 and 昨天, the weekday under 近 7 天, the date before that. Empty when
+ * the time is not known.
+ */
+fun endedTime(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    if (ms <= 0) return ""
+    return when (endedGroup(ms, now, zone)) {
+        EndedGroup.Today, EndedGroup.Yesterday -> hhmm(ms, zone)
+        EndedGroup.Week -> weekdays[dayOf(ms, zone).dayOfWeek.value - 1]
+        is EndedGroup.Month -> dayOf(ms, zone).let { "${it.monthValue}月${it.dayOfMonth}日" }
+    }
+}
+
+/** Ended sessions under their groups, both in the order given (newest first). */
+fun groupEnded(ended: List<SessionView>, now: Long, zone: ZoneId = ZoneId.systemDefault()): List<Pair<EndedGroup, List<SessionView>>> {
+    val groups = LinkedHashMap<EndedGroup, MutableList<SessionView>>()
+    for (s in ended) groups.getOrPut(endedGroup(endedMs(s), now, zone)) { mutableListOf() } += s
+    return groups.map { it.key to it.value }
+}
+
+/** The line that ends the list: how many ended sessions there are, once they do not fit one page; null before that. */
+fun endedTail(total: Int, shown: Int): String? = when {
+    total <= ENDED_PAGE -> null
+    shown < total -> "共 $total 个，滚到底加载更早的"
+    else -> "共 $total 个"
+}
+
+/** The line that ends a filtered list. */
+fun filterTail(count: Int, query: String): String =
+    if (count == 0) "没有标题里有「${query.trim()}」的会话" else "$count 个会话的标题里有「${query.trim()}」"
+
+// --- the scope menu ---
+
+/** A row of 看哪个项目. */
+data class ScopeRow(val scope: HomeScope, val name: String, val detail: String, val current: Boolean)
+
+/** What a project's row says under its name: the path, then how many sessions run there or when it was last active. */
+fun projectDetail(pr: Project, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    val live = pr.sessions.count { !exited(it) }
+    return listOf(shortPath(pr.key), if (live > 0) "$live 个进行中" else whenText(pr.updatedMs, now, zone)).filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/**
+ * The scope menu: 全部项目 when there is more than one project to choose
+ * between, then the pinned projects, then the others in the lists' order.
+ * [search] keeps the projects whose name or path has it.
+ */
+fun scopeRows(state: RemoteState, current: HomeScope, now: Long, search: String = "", zone: ZoneId = ZoneId.systemDefault()): List<ScopeRow> {
+    val listed = listedProjects(state)
+    val q = search.trim()
+    return buildList {
+        if (listed.size > 1 && q.isEmpty()) {
+            val live = state.sessions.values.count { !exited(it) }
+            add(ScopeRow(HomeScope.All, "全部项目", if (live > 0) "$live 个进行中" else "${listed.size} 个项目", current == HomeScope.All))
+        }
+        for (pr in listed) {
+            if (q.isNotEmpty() && !pr.name.contains(q, ignoreCase = true) && !pr.key.contains(q, ignoreCase = true)) continue
+            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(pr, now, zone), current == HomeScope.Of(pr.key)))
+        }
+    }
+}

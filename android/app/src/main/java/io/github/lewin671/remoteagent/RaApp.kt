@@ -153,6 +153,7 @@ class RaApp : Application() {
         _remote.value?.close()
         _remote.value = null
         AccountMemory.clear()
+        io.github.lewin671.remoteagent.ui.HomeScopes.clear(this)
         // Notifications may show the old account's approvals in full.
         getSystemService(NotificationManager::class.java).cancelAll()
         withContext(Dispatchers.IO) {

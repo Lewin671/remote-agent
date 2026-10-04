@@ -185,24 +185,31 @@ fun StatusNavBar(title: String, agent: String?, status: Status, rest: String, on
     NavBar(title, onBack, agent, status.text + if (rest.isNotEmpty()) " · $rest" else "", p.tone(status.tone), more, dark)
 }
 
-/** A first-level page title: 会话, 设置. */
+/** A first-level page title: 设置. The home page's title is its scope (ScopeTitle in Home.kt). */
 @Composable
 fun LargeTitle(text: String, modifier: Modifier = Modifier, action: (() -> Unit)? = null, actionLabel: String = "新会话") {
     val p = pal
     Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text, style = T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
-        if (action != null) Box(
-            Modifier.size(44.dp).tap { action() }.semantics { contentDescription = actionLabel },
-            contentAlignment = Alignment.Center,
-        ) {
-            androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
-                val stroke = 2.dp.toPx()
-                drawRoundRect(p.blue, topLeft = androidx.compose.ui.geometry.Offset(stroke, stroke),
-                    size = androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), size.height - 5.dp.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-                drawLine(p.blue, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .65f),
-                    androidx.compose.ui.geometry.Offset(size.width * .96f, size.height * .16f), strokeWidth = 3.dp.toPx())
-            }
+        if (action != null) NewSessionButton(action, actionLabel)
+    }
+}
+
+/** The new-session button at the right of a first-level title: a pencil on a sheet, 44 dp. */
+@Composable
+fun NewSessionButton(onClick: () -> Unit, label: String = "新会话") {
+    val p = pal
+    Box(
+        Modifier.size(44.dp).tap { onClick() }.semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
+            val stroke = 2.dp.toPx()
+            drawRoundRect(p.blue, topLeft = androidx.compose.ui.geometry.Offset(stroke, stroke),
+                size = androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), size.height - 5.dp.toPx()),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            drawLine(p.blue, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .65f),
+                androidx.compose.ui.geometry.Offset(size.width * .96f, size.height * .16f), strokeWidth = 3.dp.toPx())
         }
     }
 }

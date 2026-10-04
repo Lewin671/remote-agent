@@ -276,6 +276,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedWith(sessionOrder)
     val active = sessions.filter { !exited(it) }
     val ended = sessions.filter { exited(it) }
+    // The rows are one project's: never the project, the CLI only when its sessions used more than one (client-v27).
+    val meta = io.github.lewin671.remoteagent.core.rowMeta(state, sessions, project = false)
     var showEnded by rememberSaveable { mutableStateOf(false) }
     val machines = sessions.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.SessionView> { it.updatedMs }.thenBy { it.id })
         .map { machineLabel(state, it.machineId) }.distinct()
@@ -323,12 +325,12 @@ fun ProjectScreen(key: String, focus: Boolean) {
             if (hidden) item { HiddenBanner(state, key) }
             if (active.isNotEmpty()) {
                 item { Label("进行中", active.size) }
-                items(active, key = { it.id }) { s -> SessionRow(state, s, t, last = s == active.last(), showProject = false, preview = !compact) }
+                items(active, key = { it.id }) { s -> SessionRow(state, s, t, meta, last = s == active.last(), preview = !compact) }
             }
             val recent = if (showEnded) ended else ended.take(3)
             if (recent.isNotEmpty() && !compact) {
                 item { Label(if (showEnded) "已结束" else "最近结束", if (showEnded) ended.size else null) }
-                items(recent, key = { it.id }) { s -> SessionRow(state, s, t, last = s == recent.last(), showProject = false) }
+                items(recent, key = { it.id }) { s -> EndedRow(s, t) }
             }
             item { Spacer(Modifier.height(12.dp)) }
         }
