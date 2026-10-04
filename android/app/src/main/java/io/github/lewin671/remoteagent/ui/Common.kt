@@ -60,7 +60,10 @@ val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
  * Asks for a session that is not held here by its ID: the listing comes a
  * page at a time, so one opened from a notification, a link or a fork's
  * source may not have been fetched (architecture §8 「按 ID 取」). True once
- * the server said it has no such session; until then it is still being read.
+ * the server said it has no such session and kept saying so for a while: a
+ * session just started is acknowledged by its daemon before the daemon has
+ * uploaded it, and must not be called missing in between. Until then it is
+ * still being read.
  */
 @Composable
 fun sessionGone(sid: String): Boolean {
@@ -72,10 +75,16 @@ fun sessionGone(sid: String): Boolean {
     LaunchedEffect(sid, held, online) {
         if (held) gone = false
         if (held || !online) return@LaunchedEffect
+        var absent = 0
         while (true) {
             try {
-                gone = !remote.fetchSession(sid)
-                break
+                if (remote.fetchSession(sid)) break
+                // Asked five times over ten seconds, it does not exist.
+                if (++absent >= 5) {
+                    gone = true
+                    break
+                }
+                delay(2_500)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {

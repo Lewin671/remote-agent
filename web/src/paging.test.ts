@@ -45,8 +45,9 @@ async function setup() {
     listMachines: async () => ({ machines: machines.map((id) => ({ id, online: true, lastSeenMs: 0n })) }),
     listRemoteSessions: async (req: { after?: SessionCursor; limit?: number; sessionIds?: string[] }) => {
       calls.push(req);
-      onList?.();
+      const hook = onList;
       onList = undefined;
+      hook?.();
       if (failNext) {
         failNext = false;
         throw new Error("offline");
@@ -204,4 +205,23 @@ it("does not ask again at once for a session whose lookup failed", async () => {
   await r.ensureSession(ended(1));
   expect(calls.length).toBe(n);
   expect(r.missing.has(ended(1))).toBe(false);
+});
+
+it("drops a page that was on its way when the listing started over", async () => {
+  const { r, server, before, setMachines } = await setup();
+  server.set(ended(200), { machineId: "m1", endedMs: 5000 });
+  for (let i = 1; i <= 80; i++) server.set(ended(i), { machineId: "m2", endedMs: 1000 + i });
+  setMachines(["m1", "m2"]);
+  await r.refresh();
+  // While the second page is in flight, m2 turns out to have been removed.
+  let again: Promise<void> | undefined;
+  before(() => {
+    setMachines(["m1"]);
+    for (let i = 1; i <= 80; i++) server.delete(ended(i));
+    again = r.refresh();
+  });
+  await r.loadMoreSessions();
+  await again;
+  expect([...r.sessions.keys()]).toEqual([ended(200)]);
+  expect(r.moreSessions).toBe(false);
 });

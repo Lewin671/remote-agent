@@ -706,7 +706,9 @@ class Remote(
                 val rp = HashMap(removedPushes)
                 val res = api.client.listRemoteSessions(ListRemoteSessionsRequest.newBuilder().addSessionIds(id).build(), Api.headers(currentToken())).value()
                 val rs = res.sessionsList.firstOrNull { it.sessionId == id }
-                if (rs != null && !pushed(removedPushes, rp, rs.machineId)) putSession(rs, save = onFirstPage(rs))
+                // A session of a machine removed meanwhile, or one the listing of
+                // machines no longer has, is as good as gone.
+                if (rs != null && !pushed(removedPushes, rp, rs.machineId) && (!loaded || machines.containsKey(rs.machineId))) putSession(rs, save = onFirstPage(rs))
                 sessions[id] != null
             } finally {
                 byId.remove(id)

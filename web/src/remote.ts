@@ -96,6 +96,9 @@ export interface SessionView {
   endedMs: bigint;
 }
 
+/** How long a failed page or lookup waits before it is asked for again. */
+const RETRY_MS = 5000;
+
 /** Ended sessions fetched per page of the listing. */
 export const SESSION_PAGE = 50;
 
@@ -712,6 +715,12 @@ export class Remote {
     }
   }
 
+  /** Tells the views again once a retry is due: they ask as they render,
+   * and nothing else may make them render by then. */
+  private wake(ms: number) {
+    setTimeout(() => !this.closed && this.changed(), ms + 50);
+  }
+
   /** Whether a machine was removed since removals was copied from
    * removedPushes: an answer asked for before must not bring its
    * sessions back. */
@@ -811,19 +820,20 @@ export class Remote {
       try {
         const rp = new Map(this.removedPushes);
         const res = await this.api.listRemoteSessions({ after, limit: SESSION_PAGE });
+        // The listing was started over meanwhile: this page continued the
+        // one before, which may have held sessions that are gone since,
+        // and it is not where the new listing continues.
+        if (listing !== this.listing) return true;
         await this.quietly(async () => {
           for (const s of res.sessions) if (!this.goneSince(rp, s.machineId)) await this.putSession(s);
         });
-        // A page of a listing that was since started over still holds
-        // sessions, but is not where the new listing continues.
-        if (listing === this.listing) {
-          this.nextSessions = res.next;
-          this.moreSessions = !!res.next;
-        }
+        this.nextSessions = res.next;
+        this.moreSessions = !!res.next;
         return true;
       } catch (e) {
         this.report(e);
-        this.pageRetryAt = Date.now() + 5000;
+        this.pageRetryAt = Date.now() + RETRY_MS;
+        this.wake(RETRY_MS);
         return false;
       } finally {
         this.paging = undefined;
@@ -858,13 +868,15 @@ export class Remote {
       const rp = new Map(this.removedPushes);
       const res = await this.api.listRemoteSessions({ sessionIds: [id] });
       const rs = res.sessions.find((s) => s.sessionId === id);
-      // A session of a machine removed meanwhile is as good as gone.
-      if (rs && !this.goneSince(rp, rs.machineId)) await this.putSession(rs);
+      // A session of a machine removed meanwhile, or one the listing of
+      // machines no longer has, is as good as gone.
+      if (rs && !this.goneSince(rp, rs.machineId) && (!this.listed || this.machines.has(rs.machineId))) await this.putSession(rs);
       else this.missing.add(id);
       this.askRetryAt.delete(id);
     } catch (e) {
       this.report(e);
-      this.askRetryAt.set(id, Date.now() + 5000);
+      this.askRetryAt.set(id, Date.now() + RETRY_MS);
+      this.wake(RETRY_MS);
     } finally {
       this.asking.delete(id);
       this.changed();
