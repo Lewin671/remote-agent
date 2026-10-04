@@ -96,6 +96,11 @@ object Drafts {
     /** The new-session draft of a project; [initial] only seeds one that does not exist yet. */
     fun newSession(project: String, initial: NewConfig?): NewSession = newSessions.getOrPut(project) { NewSession(initial) }
 
+    /** Drops a project's draft that holds nothing yet, so that it is seeded anew. */
+    fun forgetEmpty(project: String) {
+        if (newSessions[project]?.text?.value.isNullOrEmpty()) newSessions.remove(project)
+    }
+
     fun clear() {
         texts.clear()
         newSessions.clear()

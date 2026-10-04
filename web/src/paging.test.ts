@@ -162,7 +162,8 @@ it("knows a project from its machine when none of its sessions are held", () => 
   const by = Object.fromEntries(list.map((p) => [p.key, p]));
   expect(by["/old"]).toMatchObject({ ended: 12, hasLive: false, latestCreatedMs: 5000, updatedMs: 6000, machines: ["m1"] });
   expect(by["/old"].sessions).toHaveLength(0);
-  expect(by["/p"]).toMatchObject({ ended: 40, hasLive: true, machines: ["m2", "m1"] });
+  // Counted machine by machine: m1 says 40, and one of m2, which says nothing, is held.
+  expect(by["/p"]).toMatchObject({ ended: 41, hasLive: true, machines: ["m2", "m1"] });
   // No machine counts it yet: what is held is the least there can be.
   expect(by["/new"].ended).toBe(1);
 });

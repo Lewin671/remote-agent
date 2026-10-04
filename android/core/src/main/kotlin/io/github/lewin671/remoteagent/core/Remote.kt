@@ -241,6 +241,7 @@ class Remote(
     private val eventFlows = ConcurrentHashMap<String, MutableStateFlow<SessionEvents>>()
     private var conn = ConnState.CONNECTING
     private var error = ""
+    private var relisting = false // the first page has arrived and is being applied
     private var loaded = false
     private var offlineSince = 0L
     private var prefs: PrefsObject? = null
@@ -588,6 +589,9 @@ class Remote(
             val ss = api.client.listRemoteSessions(ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(), Api.headers(token)).value()
             // The listing starts over: a later page still in flight continued the old one.
             listing++
+            // The cursor held belongs to the listing before: until this one is in,
+            // no page is asked for with it (the writes below suspend).
+            relisting = true
             // Forget what the server no longer has, e.g. a machine another
             // device removed while this one was offline.
             val mids = ms.machinesList.map { it.id }.toSet()
@@ -621,6 +625,7 @@ class Remote(
             }
             for (s in ss.sessionsList) if (!pushed(removedPushes, rp, s.machineId)) putSession(s, publish = false)
             next = end
+            relisting = false
             firstEnd = end
             firstPage = true
             pageError = ""
@@ -628,6 +633,8 @@ class Remote(
             publish()
         } catch (e: Exception) {
             report(e)
+        } finally {
+            relisting = false
         }
     }
 
@@ -670,6 +677,11 @@ class Remote(
 
     private suspend fun fetchPage(): Boolean {
         val after = next ?: return false
+        if (relisting) {
+            // The first page is being put in place: its cursor is the one to continue from.
+            delay(50)
+            return true
+        }
         val epoch = listing
         val rp = HashMap(removedPushes)
         try {

@@ -301,6 +301,13 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
     // The page of project settings that is open ("" is the first), or null.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
+    // A project known only from its machines' summaries had sessions, but none is held:
+    // how it was last started is on a page not fetched yet. Pages are fetched until one of
+    // its sessions is here, and no session starts before, so that it is not started with a
+    // machine's defaults; the draft is seeded once they are known.
+    val unread = project != null && sessions.isEmpty() && project.ended > 0 && savedSettings(state, key) == null && state.moreSessions
+    FetchEarlier(state, page = unread)
+    if (unread) Drafts.forgetEmpty(key)
     val entry = Drafts.newSession(key, projectConfig(state, key))
     // The summary describes the CLI selected next to the message box.
     val selected = projectConfig(state, key, draftPick(state, entry))
@@ -356,7 +363,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
         }
         // A hidden project stays reachable from its sessions and
         // notifications; starting a new session there restores it first.
-        if (!hidden) NewSessionBox(state, projectConfig(state, key, entry.agent.value), projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" })
+        if (unread) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(16.dp))
+        else if (!hidden) NewSessionBox(state, projectConfig(state, key, entry.agent.value), projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" })
     }
     val open = settingsOpen
     if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->

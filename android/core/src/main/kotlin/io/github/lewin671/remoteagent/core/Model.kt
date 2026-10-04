@@ -63,7 +63,7 @@ fun projectName(key: String): String = key.split("/").lastOrNull { it.isNotEmpty
 
 /** What the machines say of a project (MachineMeta.projects), added up. */
 private class ProjectSums {
-    var ended = 0
+    val endedBy = HashMap<String, Int>()
     var latestCreatedMs = 0L
     var latestEndedMs = 0L
     val machineIds = ArrayList<String>()
@@ -86,7 +86,7 @@ fun projects(state: RemoteState): List<Project> {
         .sortedWith(compareByDescending<Pair<String, io.github.lewin671.remoteagent.proto.ProjectSummary>> { it.second.latestCreatedMs }.thenBy { it.first })
     for ((machineId, p) in summaries) {
         val sum = sums.getOrPut(p.path) { ProjectSums() }
-        sum.ended += p.ended
+        sum.endedBy[machineId] = p.ended
         sum.latestCreatedMs = maxOf(sum.latestCreatedMs, p.latestCreatedMs)
         sum.latestEndedMs = maxOf(sum.latestEndedMs, p.latestEndedMs)
         if (machineId !in sum.machineIds) sum.machineIds += machineId
@@ -105,7 +105,9 @@ fun projects(state: RemoteState): List<Project> {
             paths = sorted.mapNotNull { it.info?.cwd?.takeIf { c -> c.isNotEmpty() } }.distinct().ifEmpty { listOf(key).filter { it.isNotEmpty() } },
             machines = machineIds.map { machineName(state.machines[it], it) }.distinct(),
             machineIds = machineIds,
-            ended = maxOf(sum?.ended ?: 0, sorted.count { exited(it) }),
+            // Counted machine by machine: each machine's count, or what is held of its
+            // sessions where that is more (its metadata may not have arrived, or be behind).
+            ended = machineIds.sumOf { m -> maxOf(sum?.endedBy?.get(m) ?: 0, sorted.count { it.machineId == m && exited(it) }) },
         )
     }.sortedWith(compareByDescending<Project> { it.hasLive }.thenByDescending { it.latestCreatedMs }.thenBy { it.key })
 }

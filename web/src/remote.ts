@@ -754,7 +754,10 @@ export class Remote {
       const sp = new Map(this.sessionPushes);
       const rp = new Map(this.removedPushes);
       const pushed = (now: Map<string, number>, then: Map<string, number>, id: string) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
+      // From here on the cursor held belongs to the listing before: no
+      // page is to be asked for with it, nor taken, until this one is in.
       const listing = ++this.listing;
+      this.nextSessions = undefined;
       const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({ limit: SESSION_PAGE })]);
       if (listing !== this.listing) return;
       // Forget what the server no longer has, e.g. a machine another
@@ -825,8 +828,11 @@ export class Remote {
         // and it is not where the new listing continues.
         if (listing !== this.listing) return true;
         await this.quietly(async () => {
-          for (const s of res.sessions) if (!this.goneSince(rp, s.machineId)) await this.putSession(s);
+          for (const s of res.sessions) if (listing === this.listing && !this.goneSince(rp, s.machineId)) await this.putSession(s);
         });
+        // Opening the page took a while too: the cursor is only this
+        // page's to move if the listing is still the one it continued.
+        if (listing !== this.listing) return true;
         this.nextSessions = res.next;
         this.moreSessions = !!res.next;
         return true;

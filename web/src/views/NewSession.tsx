@@ -152,6 +152,14 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
+  // A project known only from its machines' summaries had sessions, but
+  // none is held: how it was last started is on a page not fetched yet.
+  // Pages are fetched until one of its sessions is here, and no session
+  // starts before, so that it is not started with a machine's defaults.
+  const unread = !!p && p.sessions.length === 0 && p.ended > 0 && !saved && remote.moreSessions;
+  useEffect(() => {
+    if (unread) void remote.loadMoreSessions();
+  });
   const [latched, setLatched] = useState<{ key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> }>();
   const held = latched?.key === key ? latched : undefined;
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
@@ -296,7 +304,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先恢复" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先恢复" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     current.abandon();
@@ -304,7 +312,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   };
   /** Holds the launch settings as they are now, once a draft begins. */
   const latch = () => {
-    if (!saved && !held) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: inherit(Agent.CODEX), [Agent.CLAUDE]: inherit(Agent.CLAUDE) } });
+    if (!saved && !held && !unread) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: inherit(Agent.CODEX), [Agent.CLAUDE]: inherit(Agent.CLAUDE) } });
   };
   // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);

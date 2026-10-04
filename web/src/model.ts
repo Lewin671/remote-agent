@@ -108,18 +108,30 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
     p.updatedMs = Math.max(p.updatedMs, Number(s.updatedMs));
     if (!p.machines.includes(s.machineId)) p.machines.push(s.machineId);
   }
+  // Ended sessions are counted machine by machine: each machine's count,
+  // or what is held of its sessions where that is more (its metadata may
+  // not have arrived, or may be behind).
+  const counted = new Map<string, Map<string, number>>();
+  const count = (key: string, machineId: string, n: number) => {
+    const by = counted.get(key) ?? new Map<string, number>();
+    counted.set(key, by);
+    by.set(machineId, Math.max(by.get(machineId) ?? 0, n));
+  };
+  for (const p of byKey.values()) {
+    const held = new Map<string, number>();
+    for (const s of p.sessions) if (exited(s)) held.set(s.machineId, (held.get(s.machineId) ?? 0) + 1);
+    for (const [machineId, n] of held) count(p.key, machineId, n);
+  }
   for (const m of machines) {
     for (const x of m.meta?.projects ?? []) {
       const p = project(x.path);
-      p.ended += x.ended;
+      count(x.path, m.id, x.ended);
       p.latestCreatedMs = Math.max(p.latestCreatedMs, Number(x.latestCreatedMs));
       p.updatedMs = Math.max(p.updatedMs, Number(x.latestCreatedMs), Number(x.latestEndedMs));
       if (!p.machines.includes(m.id)) p.machines.push(m.id);
     }
   }
-  // A machine whose metadata has not arrived counts none: what is held is
-  // then the least there can be.
-  for (const p of byKey.values()) p.ended = Math.max(p.ended, p.sessions.filter(exited).length);
+  for (const p of byKey.values()) p.ended = [...(counted.get(p.key)?.values() ?? [])].reduce((a, b) => a + b, 0);
   return [...byKey.values()].sort(compareProjects);
 }
 
