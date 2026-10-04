@@ -877,7 +877,9 @@ export class Remote {
       // A session of a machine removed meanwhile, or one the listing of
       // machines no longer has, is as good as gone.
       if (rs && !this.goneSince(rp, rs.machineId) && (!this.listed || this.machines.has(rs.machineId))) await this.putSession(rs);
-      else this.missing.add(id);
+      // One whose key does not open is not held either, and asking again
+      // would bring the same record: it cannot be shown.
+      if (!this.sessions.has(id)) this.missing.add(id);
       this.askRetryAt.delete(id);
     } catch (e) {
       this.report(e);

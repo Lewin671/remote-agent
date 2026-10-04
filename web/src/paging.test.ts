@@ -226,3 +226,21 @@ it("drops a page that was on its way when the listing started over", async () =>
   expect([...r.sessions.keys()]).toEqual([ended(200)]);
   expect(r.moreSessions).toBe(false);
 });
+
+it("gives up on a session whose record does not open, rather than asking for it forever", async () => {
+  const { r, server, calls } = await setup();
+  server.set(ended(1), { machineId: "m1", endedMs: 1001 });
+  // The key was sealed for another place: it does not open here.
+  const api = (r as unknown as { api: { listRemoteSessions(q: object): Promise<{ sessions: RemoteSession[] }> } }).api;
+  const list = api.listRemoteSessions;
+  api.listRemoteSessions = async (q) => {
+    const res = await list(q);
+    return { ...res, sessions: res.sessions.map((s) => ({ ...s, sessionId: s.sessionId, key: { ...s.key!, nonce: new Uint8Array(12) } })) };
+  };
+  await r.ensureSession(ended(1));
+  expect(r.sessions.has(ended(1))).toBe(false);
+  expect(r.missing.has(ended(1))).toBe(true);
+  const n = calls.length;
+  await r.ensureSession(ended(1));
+  expect(calls.length).toBe(n);
+});
