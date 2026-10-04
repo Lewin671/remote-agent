@@ -701,7 +701,9 @@ class Remote(
             // The first page was fetched again meanwhile: this page continued
             // the listing before it, and the new cursor is not its to move.
             if (epoch != listing) return next != null
-            for (s in res.sessionsList) if (!pushed(removedPushes, rp, s.machineId)) putSession(s, save = false, publish = false)
+            // Putting a session suspends on the cache: the listing may start over meanwhile too.
+            for (s in res.sessionsList) if (epoch == listing && !pushed(removedPushes, rp, s.machineId)) putSession(s, save = false, publish = false)
+            if (epoch != listing) return next != null
             next = if (res.hasNext()) SessionPlace(res.next.endedMs, res.next.sessionId) else null
             pageError = ""
             return next != null

@@ -352,8 +352,8 @@ describe("new sessions follow the project", () => {
 
   it("copies the latest session", () => {
     const list = [
-      sess({ model: "old", ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }),
-      sess({ model: "gpt-6-astra", effort: "medium", agent: Agent.CLAUDE, ...ctx }, { id: "b", updatedMs: 5n }),
+      sess({ model: "old", ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }),
+      sess({ model: "gpt-6-astra", effort: "medium", agent: Agent.CLAUDE, ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n }),
     ];
     const c = inheritConfig(projects(list)[0], machines(true, true));
     expect(c).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.AUTO, cwd: "/Users/me/Code/foo" });
@@ -368,7 +368,7 @@ describe("new sessions follow the project", () => {
   });
 
   it("keeps the last machine until the user picks another", () => {
-    const list = [sess({ model: "x", ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ model: "y", ...ctx }, { id: "b", updatedMs: 5n })];
+    const list = [sess({ model: "x", ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ model: "y", ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n })];
     expect(inheritConfig(projects(list)[0], machines(false, true))).toMatchObject({ machineId: "m1", model: "y" });
   });
 
@@ -380,7 +380,7 @@ describe("new sessions follow the project", () => {
     ]);
     // The latest session ran Codex on m1, which is offline; m2 only has
     // Claude Code.
-    const list = [sess({ ...ctx }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ ...ctx }, { id: "b", updatedMs: 5n })];
+    const list = [sess({ ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n })];
     expect(inheritConfig(projects(list)[0], ms)).toMatchObject({ machineId: "m1", agent: Agent.CODEX });
   });
 
@@ -389,8 +389,8 @@ describe("new sessions follow the project", () => {
   });
 
   it("takes each CLI's settings from the project's latest session on that CLI", () => {
-    const codex = sess({ model: "gpt-6-sol", effort: "high" }, { id: "a", updatedMs: 5n });
-    const claude = sess({ model: "sonnet", agent: Agent.CLAUDE }, { id: "b", machineId: "m2", updatedMs: 1n });
+    const codex = sess({ model: "gpt-6-sol", effort: "high", createdAt: timestampFromMs(5) }, { id: "a", updatedMs: 5n });
+    const claude = sess({ model: "sonnet", agent: Agent.CLAUDE, createdAt: timestampFromMs(1) }, { id: "b", machineId: "m2", updatedMs: 1n });
     const p = projects([codex, claude])[0];
     // The machine is the latest session's, whichever CLI is asked for.
     expect(inheritConfig(p, machines(true, true), p.key, Agent.CLAUDE)).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "sonnet" });

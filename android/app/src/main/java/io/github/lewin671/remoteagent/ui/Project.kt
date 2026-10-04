@@ -123,7 +123,9 @@ data class NewConfig(
 fun savedSettings(state: RemoteState, key: String): ProjectSettings? = state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }
 
 // Of the sessions held here: every one that has not ended, and the ended ones fetched so far (architecture §8 「会话列表分页」).
-private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
+// In the order of the listing, live sessions before ended ones (architecture §8): the listing is
+// fetched in that order, so the pages held always include the session settings are inherited from.
+private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedWith(io.github.lewin671.remoteagent.core.sessionOrder)
 
 /**
  * The machines a project has sessions on, by the sessions held here and the
@@ -369,7 +371,9 @@ fun ProjectScreen(key: String, focus: Boolean) {
         }
         // A hidden project stays reachable from its sessions and
         // notifications; starting a new session there restores it first.
-        if (unread) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(16.dp))
+        // A page that failed says so here, with the tap that tries again.
+        if (unread && state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(16.dp))
+        else if (unread) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(16.dp))
         else if (!hidden) NewSessionBox(state, projectConfig(state, key, entry.agent.value), projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" })
     }
     val open = settingsOpen

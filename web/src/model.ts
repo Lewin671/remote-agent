@@ -542,10 +542,14 @@ export interface NewConfig {
  * passing state; an offline machine stays selected until the user picks
  * another for this start. */
 export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map<string, MachineLike>, cwd = p?.key ?? "", agent?: Agent): NewConfig | undefined {
-  const latest = p?.sessions[0];
+  // In the order of the listing, live sessions before ended ones: the
+  // listing is fetched in that order, so the pages held always include
+  // the session inherited from.
+  const order = p ? [...p.sessions.filter((s) => !exited(s)).sort(compareLive), ...p.sessions.filter(exited).sort(compareEnded)] : [];
+  const latest = order[0];
   if (!p || !latest) return undefined;
   const a = agent ?? agentOf(latest);
-  const from = p.sessions.find((s) => agentOf(s) === a);
+  const from = order.find((s) => agentOf(s) === a);
   void machines;
   const mode = (from && modeOf(from)?.mode) ?? ApprovalMode.UNSPECIFIED;
   const keep = mode === ApprovalMode.ASK || mode === ApprovalMode.AUTO || mode === ApprovalMode.FULL_ACCESS;
