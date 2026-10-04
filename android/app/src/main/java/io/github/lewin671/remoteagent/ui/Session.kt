@@ -100,11 +100,15 @@ fun SessionScreen(sid: String) {
     val p = pal
     // Not held here: the listing comes a page at a time, so it is asked for by its ID, and
     // only the server saying it has none makes it missing (architecture §8 「按 ID 取」).
-    val gone = sessionGone(sid)
+    var lookupAttempt by remember(sid) { mutableStateOf(0) }
+    val lookup = sessionLookup(sid, lookupAttempt)
     if (s == null) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            if (gone) {
-                Text("找不到这个会话", style = MaterialTheme.typography.titleMedium)
+            val note = io.github.lewin671.remoteagent.core.lookupNote(lookup).takeIf { state.conn == ConnState.ONLINE || lookup == io.github.lewin671.remoteagent.core.SessionLookup.Missing }
+            if (note != null) {
+                Text(note, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                // The server could not be asked: it is asked again by itself, and at once on a tap.
+                if (lookup is io.github.lewin671.remoteagent.core.SessionLookup.Failed) TextButton(onClick = { lookupAttempt++ }) { Text("重试") }
                 TextButton(onClick = nav.back) { Text("返回") }
             } else {
                 CircularProgressIndicator()

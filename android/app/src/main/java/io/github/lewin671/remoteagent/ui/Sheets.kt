@@ -284,7 +284,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
-    sessionGone(sid) // Fetches it by its ID when it is not held here.
+    val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
     val a = d.approvals[aid]
@@ -295,7 +295,7 @@ fun ApprovalPage(sid: String, aid: String) {
     PageScaffold("审批详情", subtitle = s?.let { titleOf(it) + if (a != null && a.hasDeadline()) " · 剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "" }) {
         if (s == null || a == null) {
             val r = d.resolved[aid]
-            Text(if (r != null) "这条审批已经处理了。" else "读取中…", style = T.body, color = p.muted, modifier = Modifier.padding(16.dp))
+            Text(if (r != null) "这条审批已经处理了。" else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", style = T.body, color = p.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
@@ -315,13 +315,13 @@ fun PlanPage(sid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
-    sessionGone(sid) // Fetches it by its ID when it is not held here.
+    val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
     PageScaffold("计划", subtitle = s?.let { titleOf(it) }) {
         val plan = d.plan
         if (s == null || plan == null) {
-            Text("读取中…", style = T.body, color = pal.muted, modifier = Modifier.padding(16.dp))
+            Text(io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", style = T.body, color = pal.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Markdown(plan.text) }

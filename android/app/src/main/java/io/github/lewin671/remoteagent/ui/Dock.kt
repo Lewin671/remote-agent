@@ -473,13 +473,13 @@ fun QuestionPage(sid: String, qid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
-    sessionGone(sid) // Fetches it by its ID when it is not held here.
+    val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val q = d.questions[qid]
     PageScaffold("回答提问", subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
         if (s == null || q == null) {
-            PageNote(if (d.answered.containsKey(qid)) "这个问题已经回答了。" else "读取中…")
+            PageNote(if (d.answered.containsKey(qid)) "这个问题已经回答了。" else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…")
             return@PageScaffold
         }
         val act = rememberAction()

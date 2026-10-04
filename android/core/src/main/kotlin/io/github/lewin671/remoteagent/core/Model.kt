@@ -273,6 +273,56 @@ fun forkBlocked(status: Status, running: Boolean, sent: Boolean): String? = when
 fun forkedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): String? =
     r?.takeIf { it.hasForkSession() && it.forkSession.hasSession() }?.forkSession?.session?.id?.takeIf { it.isNotEmpty() }
 
+/** How a session that is not held here is being looked up by its ID. */
+sealed interface SessionLookup {
+    /** Asked for, with no answer that settles it yet. */
+    data object Reading : SessionLookup
+    /** The server has no such session, and kept saying so. */
+    data object Missing : SessionLookup
+    /** The server could not be asked; it is asked again after a while. */
+    data class Failed(val reason: String) : SessionLookup
+}
+
+/** A session the server does not have is asked for this many times, [SESSION_ABSENT_WAIT_MS] apart, before it counts as missing. */
+const val SESSION_ABSENT_TRIES = 5
+const val SESSION_ABSENT_WAIT_MS = 2_500L
+
+/**
+ * Looks a session up by its ID until it is held ([fetch] returns true) or
+ * known to be missing (architecture §8 「按 ID 取」). A session just started
+ * is acknowledged by its daemon before the daemon has uploaded it, so the
+ * server not having it only counts once it said so for ten seconds. The
+ * server not answering is no answer: it is asked again, after three seconds
+ * and then twice as long each time up to half a minute, and [report] says
+ * why meanwhile.
+ */
+suspend fun lookUpSession(fetch: suspend () -> Boolean, wait: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) }, report: (SessionLookup) -> Unit) {
+    var absent = 0
+    var pause = 3_000L
+    while (true) {
+        try {
+            if (fetch()) return
+            if (++absent >= SESSION_ABSENT_TRIES) return report(SessionLookup.Missing)
+            report(SessionLookup.Reading)
+            pause = 3_000L
+            wait(SESSION_ABSENT_WAIT_MS)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            report(SessionLookup.Failed(errorText(e)))
+            wait(pause)
+            pause = minOf(pause * 2, 30_000L)
+        }
+    }
+}
+
+/** What a page about a session says instead of its content while the session is not held; null while it is only being read. */
+fun lookupNote(l: SessionLookup?): String? = when (l) {
+    SessionLookup.Missing -> "找不到这个会话"
+    is SessionLookup.Failed -> "没能读取这个会话：${l.reason}"
+    else -> null
+}
+
 /** Text for one-line previews: Markdown marks and the CLIs' image placeholders removed. */
 fun plain(text: String): String = text
     .replace(Regex("\\[Image #\\d+]\\s*"), "")

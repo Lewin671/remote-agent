@@ -45,7 +45,9 @@ import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.SessionLookup
 import io.github.lewin671.remoteagent.core.SessionView
+import io.github.lewin671.remoteagent.core.lookUpSession
 import io.github.lewin671.remoteagent.core.Status
 import io.github.lewin671.remoteagent.core.avatarIndex
 import io.github.lewin671.remoteagent.core.machineName
@@ -59,41 +61,24 @@ val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
 /**
  * Asks for a session that is not held here by its ID: the listing comes a
  * page at a time, so one opened from a notification, a link or a fork's
- * source may not have been fetched (architecture §8 「按 ID 取」). True once
- * the server said it has no such session and kept saying so for a while: a
- * session just started is acknowledged by its daemon before the daemon has
- * uploaded it, and must not be called missing in between. Until then it is
- * still being read.
+ * source may not have been fetched (architecture §8 「按 ID 取」). Null once
+ * it is held; else how the lookup stands ([lookUpSession]): still reading,
+ * missing, or why the server could not be asked. It waits for the
+ * connection, and [attempt] changing asks again at once.
  */
 @Composable
-fun sessionGone(sid: String): Boolean {
+fun sessionLookup(sid: String, attempt: Int = 0): SessionLookup? {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val held = state.sessions[sid] != null
     val online = state.conn == ConnState.ONLINE
-    var gone by remember(sid) { mutableStateOf(false) }
-    LaunchedEffect(sid, held, online) {
-        if (held) gone = false
+    var lookup by remember(sid) { mutableStateOf<SessionLookup>(SessionLookup.Reading) }
+    LaunchedEffect(sid, held, online, attempt) {
+        if (held) lookup = SessionLookup.Reading
         if (held || !online) return@LaunchedEffect
-        var absent = 0
-        while (true) {
-            try {
-                if (remote.fetchSession(sid)) break
-                // Asked five times over ten seconds, it does not exist.
-                if (++absent >= 5) {
-                    gone = true
-                    break
-                }
-                delay(2_500)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // The server could not be asked: that is not an answer.
-                delay(3_000)
-            }
-        }
+        lookUpSession({ remote.fetchSession(sid) }) { lookup = it }
     }
-    return gone && !held
+    return if (held) null else lookup
 }
 
 /**

@@ -93,7 +93,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
-    sessionGone(sid) // Fetches it by its ID when it is not held here.
+    val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val all = remember(events.events) { sessionImages(events.events) }
     val start = remember(all.size > 0) {
@@ -105,7 +105,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
     BackHandler { nav.back() }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (all.isEmpty()) {
-            Text("读取中…", Modifier.align(Alignment.Center), color = Color.White)
+            Text(io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", Modifier.align(Alignment.Center), color = Color.White)
             return@Box
         }
         val pager = rememberPagerState(initialPage = start) { all.size }
