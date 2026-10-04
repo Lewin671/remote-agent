@@ -386,7 +386,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   const { DemoRemote } = await import("./dev/demo");
   const { Agent } = await import("./gen/remoteagent/v1/event_pb");
   const kept = new Map<string, unknown>();
-  const cache = { read: async () => [], append: async () => undefined, drop: async () => undefined, keep: async () => undefined, get: async (k: string) => kept.get(k), set: async (k: string, v: unknown) => void kept.set(k, v) };
+  const cache = { read: async () => [], append: async () => undefined, drop: async () => undefined, trim: async () => undefined, get: async (k: string) => kept.get(k), set: async (k: string, v: unknown) => void kept.set(k, v) };
   const account = { server: "https://ra.example.com", root: {} as CryptoKey, rootRaw: new Uint8Array(32), devicePrivate: {} as CryptoKey, deviceId: "me" };
   class Kept extends DemoRemote {
     static open() {
