@@ -817,11 +817,13 @@ input.field { margin: 0; }
 .wide-start-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .wide-start-title .chip { font-size: inherit; font-weight: inherit; color: var(--blue); }
 /* Next to the new-session box: the CLI switch, and on a wide page the summary of the CLI picked. */
-.launch { flex: none; display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; margin: 0 10px; }
+/* It lines up with the page's text (16), not with the box's rounded edge; a wide page has one edge for the head, the box, this row and the lists. */
+.launch { flex: none; display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; margin: 0 16px; }
 .launch .pick { margin-left: 0; }
 .launch .pick button { white-space: nowrap; }
 .launch .project-summary.chip { flex: 0 1 auto; min-width: 0; margin: 0 0 0 auto; }
-.start .launch, .wpage .launch { margin: -6px 10px 0; }
+.start .launch, .wpage .launch { margin: -6px 0 0; }
+.start .compose-card, .wpage .compose-card { margin-left: 0; margin-right: 0; }
 .setrows + .cli-tabs { margin-top: 10px; }
 .cli-tabs + .setrows { margin-top: 8px; }
 .send-wrap { position: relative; grid-column: 3; grid-row: 1; align-self: end; }

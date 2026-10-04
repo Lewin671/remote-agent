@@ -312,12 +312,13 @@
   .proj-cfg .red { color:var(--red); flex:none; }
   .proj-cfg::after { content:"›"; color:var(--faint); font-size:17px; flex:none; }
   /* 新建输入框旁的 CLI 切换，只装了一个 CLI 时不出现；宽屏上右边跟着所选 CLI 的设置摘要 */
-  .launch { flex:none; display:flex; align-items:center; gap:8px; min-height:44px; margin:0 10px; min-width:0; }
+  .launch { flex:none; display:flex; align-items:center; gap:8px; min-height:44px; margin:0 16px; min-width:0; }
   .launch .pick { margin-left:0; flex:none; }
   .launch .pick span { white-space:nowrap; }
   .launch a.proj-cfg { flex:0 1 auto; min-width:0; margin:0 0 0 auto; }
   .start .launch { margin:6px 0 0; }
-  .wpage .launch { margin:-4px 10px 0; }
+  .wpage .launch { margin:-4px 0 0; }
+  .wpage .compose-card { margin-left:0; margin-right:0; }
   .ps-id { display:flex; gap:12px; align-items:center; margin-bottom:6px; }
   .ps-id small { display:block; font:12px ui-monospace, Menlo, monospace; color:var(--muted); overflow-wrap:anywhere; }
   .sr .v.red, .sr .v.red em { color:var(--red); }
