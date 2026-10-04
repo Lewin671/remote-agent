@@ -185,8 +185,11 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
     !p.sessions.some((s) => agentOf(s) === a && !remote.pastPages(s));
   const unread = unreadFor(agent);
+  // The CLI whose set the settings sheet shows is read likewise: changing
+  // one of its settings stores the whole set.
+  const [watch, setWatch] = useState<Agent>();
   useEffect(() => {
-    if (unread) void remote.loadMoreSessions();
+    if (unread || (watch !== undefined && unreadFor(watch))) void remote.loadMoreSessions();
   });
   /** What a session of CLI a starts with: the set chosen on this page,
    * the stored one, else the project's latest session on that CLI. base:
@@ -325,9 +328,21 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
    * be on a page not fetched is left open, and read when it is used. */
   const settled = (a: Agent) => (unreadFor(a) ? undefined : inherit(a));
   /** Holds the launch settings as they are now, once a draft begins. */
+  const hold = () => setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: settled(Agent.CODEX), [Agent.CLAUDE]: settled(Agent.CLAUDE) } });
+  // A draft begun while its CLI's settings were still being fetched is
+  // held as soon as they are here.
+  const [begun, setBegun] = useState<string>();
   const latch = () => {
-    if (!saved && !held && !unread) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: settled(Agent.CODEX), [Agent.CLAUDE]: settled(Agent.CLAUDE) } });
+    if (saved || held) return;
+    if (unread) setBegun(key);
+    else hold();
   };
+  useEffect(() => {
+    if (begun === key && !unread && !saved && !held) hold();
+    // What the draft's CLI inherits was left open when the draft began:
+    // once known, it is held like the rest.
+    else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
+  });
   // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
   const modeText = modeTextOf(cfg, machine);
@@ -348,6 +363,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     setAgent,
     missing,
     latch,
+    unreadFor,
+    setWatch,
+    // The CLI's last settings are still being fetched: no session starts before.
+    reading: unread && remote.conn === "online",
     issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode),
     parts,
     tray,
@@ -488,6 +507,7 @@ export function NewBox({
           {machineName(ns.machine)} {text ? "已离线，任务尚未开始。草稿和配置保留，不会自动换机器或 CLI" : "不在线"}
         </Banner>
       )}
+      {ns.reading && !offline && <Banner>正在读取这个项目上次的设置…</Banner>}
       {ns.missing !== undefined && !offline && (
         <Banner action="换机器" onAction={() => setConfig("machine")}>
           {machineName(ns.machine)} 没有 {agentName(ns.missing)}，这次用 {agentName(ns.cfg.agent)}
@@ -582,7 +602,18 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
   const other = useMachineInfo(remote, agent === ns.cfg.agent ? "" : cfg.machineId, agent);
   const info = agent === ns.cfg.agent ? ns.info : other;
   const parts = describeParts(cfg, machine, info);
-  const set = (patch: Partial<NewConfig>) => ns.setCfg({ ...cfg, ...patch });
+  // How this CLI last ran in the project may be on a page of sessions not
+  // fetched yet. Until it is here its set is not shown as if known, nor
+  // changed: a change stores the whole set.
+  const open = ns.unreadFor(agent);
+  const { setWatch } = ns;
+  useEffect(() => {
+    setWatch(agent);
+    return () => setWatch(undefined);
+  }, [agent, setWatch]);
+  const set = (patch: Partial<NewConfig>) => {
+    if (!open) ns.setCfg({ ...cfg, ...patch });
+  };
   const def = defaultsOf(info.settings, cfg.agent);
   useEffect(() => {
     if (pick === "model") info.retry();
@@ -699,6 +730,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
   const titles: Record<Pick, string> = { "": "项目设置", machine: "机器", model: "模型", mode: "审批" };
   const modelLine = parts.model;
   const many = ns.agents.length > 1;
+  if (open && pick && pick !== "machine") body = <div className="hint">正在读取这个项目上次的设置…</div>;
   return (
     <Sheet onClose={onClose}>
       <div className="ns-head">
@@ -730,35 +762,39 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               ))}
             </div>
           )}
-          <div className="setrows">
-            <button className="sr" onClick={() => setPick("model")}>
-              <span className="lbl">模型</span>
-              <span className={"v" + (info.loading ? " muted" : "")}>
-                <em>{info.loading ? `读取 ${machineName(machine)} 的设置…` : modelLine}</em>
-                <ChevronRight className="chev" />
-              </span>
-            </button>
-            {cfg.agent === Agent.CLAUDE && (
-              <div className="sr">
-                <span className="lbl">上下文</span>
-                {parts.fixedWindow ? (
-                  <span className="fixed">标准 200k · 这个模型只有标准窗口</span>
-                ) : (
-                  <div className="pick" role="group" aria-label="上下文窗口">
-                    <button className={cfg.standardContext ? "" : "on"} onClick={() => set({ standardContext: false })}>1M</button>
-                    <button className={cfg.standardContext ? "on" : ""} onClick={() => set({ standardContext: true })}>标准 200k</button>
-                  </div>
-                )}
-              </div>
-            )}
-            <button className="sr" onClick={() => setPick("mode")}>
-              <span className="lbl">审批</span>
-              <span className="v">
-                <em>{modeTextOf(cfg, machine)}</em>
-                <ChevronRight className="chev" />
-              </span>
-            </button>
-          </div>
+          {open ? (
+            <div className="hint">正在读取这个项目上次的设置…</div>
+          ) : (
+            <div className="setrows">
+              <button className="sr" onClick={() => setPick("model")}>
+                <span className="lbl">模型</span>
+                <span className={"v" + (info.loading ? " muted" : "")}>
+                  <em>{info.loading ? `读取 ${machineName(machine)} 的设置…` : modelLine}</em>
+                  <ChevronRight className="chev" />
+                </span>
+              </button>
+              {cfg.agent === Agent.CLAUDE && (
+                <div className="sr">
+                  <span className="lbl">上下文</span>
+                  {parts.fixedWindow ? (
+                    <span className="fixed">标准 200k · 这个模型只有标准窗口</span>
+                  ) : (
+                    <div className="pick" role="group" aria-label="上下文窗口">
+                      <button className={cfg.standardContext ? "" : "on"} onClick={() => set({ standardContext: false })}>1M</button>
+                      <button className={cfg.standardContext ? "on" : ""} onClick={() => set({ standardContext: true })}>标准 200k</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button className="sr" onClick={() => setPick("mode")}>
+                <span className="lbl">审批</span>
+                <span className="v">
+                  <em>{modeTextOf(cfg, machine)}</em>
+                  <ChevronRight className="chev" />
+                </span>
+              </button>
+            </div>
+          )}
           {info.error && (
             <Banner kind="warn" action="重试" onAction={info.retry}>
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型

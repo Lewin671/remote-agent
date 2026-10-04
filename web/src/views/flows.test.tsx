@@ -2139,3 +2139,40 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(host.querySelector(".wide-start-title")?.textContent).toBe("开始一个任务");
   });
 });
+
+it("fetches a CLI's earlier sessions before a session starts on it, and before its settings can be changed", async () => {
+  const { ProjectSummarySchema } = await import("../gen/remoteagent/v1/remote_pb");
+  const r = demo();
+  const project = "/Users/me/Code/ai-bot/remote-agent";
+  // Its one session held here ran Codex; its machine counts more ended ones than are held.
+  const held = [...r.sessions.values()].filter((s) => s.info?.cwd === project);
+  expect(held.every((s) => s.info?.agent !== Agent.CLAUDE)).toBe(true);
+  const m = r.machines.get(held[0].machineId)!;
+  m.meta!.projects.push(create(ProjectSummarySchema, { path: project, ended: 9 }));
+  let pages = 0;
+  r.moreSessions = true;
+  r.loadMoreSessions = async () => (pages++, false);
+  mount(<WideHome remote={r} go={() => undefined} project={project} />);
+  const start = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
+  const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "对一下三月的账");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  // A Codex session within the pages is held: Codex is settled, nothing is fetched for it.
+  expect(pages).toBe(0);
+  await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
+  // Claude Code has no session held, and there are ended ones not fetched.
+  await click(cliSwitch("Claude Code"));
+  expect(pages).toBeGreaterThan(0);
+  expect(start().disabled).toBe(true);
+  expect(host.textContent).toContain("正在读取这个项目上次的设置…");
+  // Its settings are not offered for change meanwhile.
+  await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
+  expect(document.querySelector(".sheet")?.textContent).toContain("正在读取这个项目上次的设置…");
+  // Every page is in and none was Claude Code's: it starts with the machine's defaults.
+  r.moreSessions = false;
+  act(() => (r as unknown as { changed(): void }).changed());
+  expect(document.querySelector(".sheet")?.textContent).not.toContain("正在读取这个项目上次的设置…");
+  await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
+});
