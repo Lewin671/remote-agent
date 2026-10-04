@@ -608,7 +608,7 @@ export class DemoRemote extends Remote {
         info.title = (info.title || "长会话标题") + "：检查输入区、项目列表和跨端状态同步是否正确处理长标题";
         if (info.cwd === "/Users/me/Code/foo") info.cwd = "/Users/me/Code/remote-agent-with-a-very-long-project-name";
       }
-      this.sessions.set(id, { id, machineId: f.machine, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: BigInt(f.events.length), updatedMs: BigInt(f.updated) });
+      this.sessions.set(id, { id, machineId: f.machine, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: BigInt(f.events.length), updatedMs: BigInt(f.updated), endedMs: 0n });
       this.evs.set(
         id,
         f.events.map((e, i) => {
@@ -620,7 +620,7 @@ export class DemoRemote extends Remote {
     if (this.opts.has("many")) for (let i = 0; i < 16; i++) {
       const id = `s-extra-${i}`;
       const info = create(SessionSchema, { title: `项目 ${i + 1} 的会话`, cwd: `/Users/me/Code/project-${i + 1}`, status: i < 7 ? SessionStatus.RUNNING : SessionStatus.IDLE, model: "gpt-6-astra", effort: "medium", createdAt: timestampFromMs(now - (i + 1) * min) });
-      this.sessions.set(id, { id, machineId: "mac", key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(now - (i + 1) * min) });
+      this.sessions.set(id, { id, machineId: "mac", key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(now - (i + 1) * min), endedMs: 0n });
       this.evs.set(id, []);
     }
     if (this.opts.has("long")) for (const m of this.machines.values()) if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
@@ -826,7 +826,7 @@ export class DemoRemote extends Remote {
         const id = "s-fork-" + Math.random().toString(16).slice(2, 8);
         const history = this.events(sid).filter((e) => e.kind.case !== "sessionState" && e.kind.case !== "inputState");
         const info: Session = { ...(src.info ?? create(SessionSchema, {})), id, status: SessionStatus.STARTING, statusDetail: "", createdAt: timestampFromMs(Date.now()), forkedFrom: sid, forkedSeq: BigInt(history.length + 1) };
-        const view: SessionView = { id, machineId: src.machineId, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(Date.now()) };
+        const view: SessionView = { id, machineId: src.machineId, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(Date.now()), endedMs: 0n };
         setTimeout(() => {
           this.sessions.set(id, view);
           const list = this.events(id);
@@ -883,7 +883,7 @@ export class DemoRemote extends Remote {
         if (v.prompt?.includes("失败")) throw new CommandError("failed_precondition", "tmux 没有安装");
         const id = "s-new-" + Math.random().toString(16).slice(2, 8);
         const info = create(SessionSchema, { id, cwd: v.cwd, status: SessionStatus.STARTING, title: v.prompt?.split("\n")[0] ?? "", agent: v.agent, model: v.model, effort: v.effort, createdAt: timestampFromMs(Date.now()) });
-        const view: SessionView = { id, machineId, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(Date.now()) };
+        const view: SessionView = { id, machineId, key: {} as CryptoKey, info, metaRev: 1n, lastSeq: 0n, updatedMs: BigInt(Date.now()), endedMs: 0n };
         setTimeout(() => {
           this.sessions.set(id, view);
           if (v.prompt) this.push(id, { case: "inputState", value: { requestId: "p-" + id, status: InputStatus.QUEUED } });

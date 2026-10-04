@@ -24,6 +24,12 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
   const machines = (p?.machines.length ? p.machines : [ns.cfg.machineId]).filter(Boolean).map((id) => machineName(remote.machines.get(id)));
   const [shownEnded, setShownEnded] = useState(3);
+  // Ended sessions come a page at a time; the project's machines say how
+  // many there are until every page is here.
+  const totalEnded = remote.moreSessions ? Math.max(p?.ended ?? 0, ended.length) : ended.length;
+  useEffect(() => {
+    if (shownEnded > ended.length && ended.length < totalEnded) void remote.loadMoreSessions();
+  });
   const cols = colsOf(remote, p?.sessions ?? [], false);
   const [scrolled, setScrolled] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -44,11 +50,11 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
           <button
             className="link"
             onClick={() => {
-              setShownEnded(ended.length);
+              setShownEnded(Math.max(ended.length, PAGE));
               setTimeout(() => endedRef.current?.scrollIntoView({ behavior: "smooth" }));
             }}
           >
-            已结束 {ended.length}<ChevronRight />
+            已结束 {totalEnded}<ChevronRight />
           </button>
         </div>
         <ConfigSummary summary={ns.summary} chip onClick={() => setSettingsOpen(true)} />
@@ -77,9 +83,9 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
       {ended.slice(0, shownEnded).map((s) => (
         <EndedRow key={s.id} s={s} go={go} />
       ))}
-      {ended.length > shownEnded && (
-        <button className="todo-more" onClick={() => setShownEnded((n) => n + PAGE)}>
-          全部 {ended.length} 个已结束的会话<ChevronRight />
+      {totalEnded > Math.min(shownEnded, ended.length) && (
+        <button className="todo-more" onClick={() => setShownEnded((n) => Math.min(n, ended.length) + PAGE)}>
+          {shownEnded > ended.length ? "正在加载更早的会话…" : <>全部 {totalEnded} 个已结束的会话<ChevronRight /></>}
         </button>
       )}
       {!p && !hidden && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}

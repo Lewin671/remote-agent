@@ -200,7 +200,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
     }
   }
   const r = new Probe();
-  r.sessions.set("s1", { id: "s1", machineId: "m1", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n });
+  r.sessions.set("s1", { id: "s1", machineId: "m1", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
   const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
   const seal = (imageId: string, format: number, data: Uint8Array) =>
     sealMessage(key, { kind: PayloadKind.IMAGE, machineId: "m1", sessionId: "s1", requestId: imageId }, ImagePayloadSchema, create(ImagePayloadSchema, { format, width: 2, height: 1, data }));

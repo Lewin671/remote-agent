@@ -24,7 +24,7 @@ async function probe() {
   const device = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]) as CryptoKeyPair;
   class Probe extends Remote { constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key }); } }
   const r = new Probe();
-  r.sessions.set("s", { id: "s", machineId: "m", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n });
+  r.sessions.set("s", { id: "s", machineId: "m", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
   return r;
 }
 it("does not open a stale main socket when stopped during login", async () => {

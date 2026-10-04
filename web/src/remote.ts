@@ -46,6 +46,7 @@ import {
   type Device,
   type Machine as RemoteMachine,
   type RemoteSession,
+  type SessionCursor,
   type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
 import {
@@ -90,7 +91,13 @@ export interface SessionView {
   metaRev: bigint;
   lastSeq: bigint;
   updatedMs: bigint;
+  // When the session ended as the server lists it, 0 while it has not:
+  // its place in the paged listing. What is shown comes from info.
+  endedMs: bigint;
 }
+
+/** Ended sessions fetched per page of the listing. */
+export const SESSION_PAGE = 50;
 
 interface EventBuffer {
   events: Event[]; // contiguous from seq 1
@@ -264,6 +271,20 @@ export class Remote {
   // the last listing failed.
   listed = false;
   listError = "";
+  // The listing of sessions comes a page at a time: every session that
+  // has not ended, then the ended ones from the latest. moreSessions says
+  // the server has ended sessions not fetched yet; loadingSessions that a
+  // page is on its way. missing are sessions asked for by ID that do not
+  // exist.
+  moreSessions = false;
+  loadingSessions = false;
+  missing = new Set<string>();
+  private nextSessions?: SessionCursor;
+  private listing = 0; // counts first pages, so a late page of an older listing is not continued from
+  private paging?: Promise<boolean>;
+  private pageRetryAt = 0; // a page that failed is not asked for again at once
+  private loadingAll = false;
+  private asking = new Set<string>();
   private listRetry = 2000;
   private listTimer?: ReturnType<typeof setTimeout>;
   // First messages of sessions started here, shown until the CLI takes
@@ -660,7 +681,7 @@ export class Remote {
       case "machineRemoved":
         this.bump(this.removedPushes, kind.value.machineId);
         this.machines.delete(kind.value.machineId);
-        for (const [id, s] of this.sessions) if (s.machineId === kind.value.machineId) this.sessions.delete(id);
+        for (const [id, s] of this.sessions) if (s.machineId === kind.value.machineId) this.forget(id);
         this.changed();
         break;
       case "machineUpdated":
@@ -690,6 +711,13 @@ export class Remote {
     }
   }
 
+  /** Drops a session of a machine that is gone, with its kept events:
+   * no listing will say again that it no longer exists. */
+  private forget(id: string) {
+    this.sessions.delete(id);
+    void this.cache?.drop(id).catch(() => undefined);
+  }
+
   private bump(pushes: Map<string, number>, id: string) {
     pushes.set(id, (pushes.get(id) ?? 0) + 1);
   }
@@ -702,13 +730,26 @@ export class Remote {
       const sp = new Map(this.sessionPushes);
       const rp = new Map(this.removedPushes);
       const pushed = (now: Map<string, number>, then: Map<string, number>, id: string) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
-      const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({})]);
+      const listing = ++this.listing;
+      const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({ limit: SESSION_PAGE })]);
+      if (listing !== this.listing) return;
       // Forget what the server no longer has, e.g. a machine another
-      // device removed while this one was offline.
+      // device removed while this one was offline. The first page holds
+      // every session that has not ended and the latest ended ones: a
+      // session held here and not on it is kept only if it belongs to a
+      // later page, that is, it ended before the page's last.
       const machines = new Set(ms.machines.map((m) => m.id));
       const sessions = new Set(ss.sessions.map((s) => s.sessionId));
+      const later = (s: SessionView) => !!ss.next && s.endedMs !== 0n && afterCursor(s, ss.next);
       for (const id of this.machines.keys()) if (!machines.has(id) && !pushed(this.machinePushes, mp, id)) this.machines.delete(id);
-      for (const id of this.sessions.keys()) if (!sessions.has(id) && !pushed(this.sessionPushes, sp, id)) this.sessions.delete(id);
+      for (const [id, s] of this.sessions) {
+        if (sessions.has(id) || pushed(this.sessionPushes, sp, id)) continue;
+        if (!machines.has(s.machineId)) this.forget(id);
+        else if (!later(s)) this.sessions.delete(id);
+      }
+      this.nextSessions = ss.next;
+      this.moreSessions = !!ss.next;
+      this.missing.clear();
       const removed = (id: string) => pushed(this.removedPushes, rp, id);
       await this.quietly(async () => {
         for (const m of ms.machines) {
@@ -724,7 +765,7 @@ export class Remote {
       this.listed = true;
       this.listError = "";
       this.listRetry = 2000;
-      void this.cache?.keep(sessions).catch(() => undefined);
+      void this.cache?.trim().catch(() => undefined);
       this.changed();
     } catch (e) {
       // The stream is up but the lists are not: say so, and try again
@@ -741,6 +782,73 @@ export class Remote {
   }
 
   /** Lists machines and sessions again now, after a failure. */
+  /** Fetches the next page of ended sessions, if the server has one.
+   * Calls while a page is on its way share it. Resolves to whether a
+   * page arrived. */
+  loadMoreSessions(): Promise<boolean> {
+    if (this.paging) return this.paging;
+    const after = this.nextSessions;
+    if (!after || this.conn !== "online" || Date.now() < this.pageRetryAt) return Promise.resolve(false);
+    const listing = this.listing;
+    this.loadingSessions = true;
+    this.changed();
+    this.paging = (async () => {
+      try {
+        const res = await this.api.listRemoteSessions({ after, limit: SESSION_PAGE });
+        await this.quietly(async () => {
+          for (const s of res.sessions) await this.putSession(s);
+        });
+        // A page of a listing that was since started over still holds
+        // sessions, but is not where the new listing continues.
+        if (listing === this.listing) {
+          this.nextSessions = res.next;
+          this.moreSessions = !!res.next;
+        }
+        return true;
+      } catch (e) {
+        this.report(e);
+        this.pageRetryAt = Date.now() + 5000;
+        return false;
+      } finally {
+        this.paging = undefined;
+        this.loadingSessions = false;
+        this.changed();
+      }
+    })();
+    return this.paging;
+  }
+
+  /** Fetches every page that is left: filtering by title has to see all
+   * the titles. Stops at the first page that fails. */
+  async loadAllSessions() {
+    if (this.loadingAll) return;
+    this.loadingAll = true;
+    try {
+      while (this.moreSessions && (await this.loadMoreSessions()));
+    } finally {
+      this.loadingAll = false;
+    }
+  }
+
+  /** Fetches a session that is not among the pages held: one opened from
+   * a notification, a link or a fork's source. One that does not exist
+   * is noted in missing. */
+  async ensureSession(id: string) {
+    if (!id || this.sessions.has(id) || this.missing.has(id) || this.asking.has(id) || this.conn !== "online") return;
+    this.asking.add(id);
+    try {
+      const res = await this.api.listRemoteSessions({ sessionIds: [id] });
+      const rs = res.sessions.find((s) => s.sessionId === id);
+      if (rs) await this.putSession(rs);
+      else this.missing.add(id);
+    } catch (e) {
+      this.report(e);
+    } finally {
+      this.asking.delete(id);
+      this.changed();
+    }
+  }
+
   retryList() {
     clearTimeout(this.listTimer);
     this.listError = "";
@@ -789,11 +897,13 @@ export class Remote {
           metaRev: 0n,
           lastSeq: 0n,
           updatedMs: 0n,
+          endedMs: 0n,
         };
         this.sessions.set(rs.sessionId, view);
       }
       if (view.machineId !== rs.machineId) throw new Error("会话记录的机器被改动");
       view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
+      if (rs.updatedMs >= view.updatedMs) view.endedMs = rs.endedMs;
       view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
       if (rs.meta) {
         const { header, msg } = await openMessage(
@@ -1502,7 +1612,7 @@ export class Remote {
     await this.api.removeDevice({ deviceId });
     this.deviceRemovals.set(deviceId, (this.deviceRemovals.get(deviceId) ?? 0) + 1);
     this.devices.delete(deviceId);
-    for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.sessions.delete(id);
+    for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.forget(id);
     this.machines.delete(deviceId);
     this.changed();
   }
@@ -1603,6 +1713,12 @@ export class Remote {
 /** Request IDs of the messages recorded among events. */
 function recordedIds(events: Event[]): string[] {
   return events.flatMap((e) => (e.kind.case === "userMessage" && e.kind.value.requestId ? [e.kind.value.requestId] : []));
+}
+
+/** Whether an ended session comes after a cursor in the listing, which
+ * runs from the latest ended to the earliest, then by session ID. */
+function afterCursor(s: SessionView, c: SessionCursor): boolean {
+  return s.endedMs < c.endedMs || (s.endedMs === c.endedMs && s.id > c.sessionId);
 }
 
 function maxBig(a: bigint, ...rest: bigint[]): bigint {

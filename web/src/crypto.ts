@@ -4,7 +4,7 @@
 // internal/e2e/testdata/vectors.json keeps the two implementations in step.
 
 import { create, fromBinary, toBinary, type DescMessage, type MessageShape } from "@bufbuild/protobuf";
-import { EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
+import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
 
 export const VERSION = 1;
 export const REGISTER_CONTEXT = "remote-agent/v1/register\0";
@@ -171,9 +171,48 @@ export async function signEnvelope(device: CryptoKey, env: Envelope): Promise<En
 
 export class OpenError extends Error {}
 
-/** Seals plaintext; the header is serialized once and authenticated as sent. */
+// Packing limits, as in internal/e2e: a payload under PACK_MIN goes as it
+// is, and one that unpacks to more than MAX_UNPACKED is refused, so that
+// a small envelope cannot fill memory.
+export const PACK_MIN = 256;
+export const MAX_UNPACKED = 64 << 20;
+
+/** Session keys are random, images are compressed already, and pairing
+ * payloads are read before the devices have compared protocol versions. */
+const packs = (kind: PayloadKind | undefined) => kind !== PayloadKind.SESSION_KEY && kind !== PayloadKind.IMAGE && kind !== PayloadKind.PAIRING;
+
+/** Runs bytes through a (de)compression stream, up to limit bytes out. */
+async function through(stream: CompressionStream | DecompressionStream, bytes: Uint8Array, limit: number): Promise<Uint8Array> {
+  const writer = stream.writable.getWriter();
+  // Errors surface on the reading side; unhandled here they would only be noise.
+  void writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => undefined);
+  void writer.close().catch(() => undefined);
+  const reader = stream.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > limit) {
+      void reader.cancel().catch(() => undefined);
+      throw new OpenError("payload is too large");
+    }
+    chunks.push(value);
+  }
+  return concat(...chunks);
+}
+
+/** Seals plaintext; the header is serialized once and authenticated as
+ * sent. A payload that deflates smaller is sealed packed, which the
+ * header says. */
 export async function seal(key: CryptoKey, header: Omit<Partial<Header>, "$typeName">, plaintext: Uint8Array): Promise<Envelope> {
-  const h = toBinary(HeaderSchema, create(HeaderSchema, { version: VERSION, ...header }));
+  let compression = Compression.NONE;
+  if (packs(header.kind) && plaintext.length >= PACK_MIN) {
+    const packed = await through(new CompressionStream("deflate-raw"), plaintext, plaintext.length).catch(() => undefined);
+    if (packed && packed.length < plaintext.length) [plaintext, compression] = [packed, Compression.DEFLATE];
+  }
+  const h = toBinary(HeaderSchema, create(HeaderSchema, { version: VERSION, ...header, compression }));
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: h }, key, plaintext as Uint8Array<ArrayBuffer>);
   return create(EnvelopeSchema, { header: h, nonce, ciphertext: new Uint8Array(ct) });
@@ -188,7 +227,8 @@ export async function sealMessage<D extends DescMessage>(
   return seal(key, header, toBinary(schema, msg));
 }
 
-/** Opens an envelope and returns the header exactly as sealed. */
+/** Opens an envelope, unpacks a packed payload, and returns the header
+ * exactly as sealed. */
 export async function open(key: CryptoKey, env: Envelope | undefined): Promise<{ header: Header; plaintext: Uint8Array }> {
   if (!env || env.nonce.length !== 12) throw new OpenError("envelope does not open");
   let pt: ArrayBuffer;
@@ -203,7 +243,13 @@ export async function open(key: CryptoKey, env: Envelope | undefined): Promise<{
   }
   const header = fromBinary(HeaderSchema, env.header);
   if (header.version !== VERSION) throw new OpenError("unsupported envelope version");
-  return { header, plaintext: new Uint8Array(pt) };
+  if (header.compression === Compression.NONE) return { header, plaintext: new Uint8Array(pt) };
+  if (header.compression !== Compression.DEFLATE) throw new OpenError("unknown compression");
+  try {
+    return { header, plaintext: await through(new DecompressionStream("deflate-raw"), new Uint8Array(pt), MAX_UNPACKED) };
+  } catch {
+    throw new OpenError("payload does not unpack");
+  }
 }
 
 /** Header fields to check; unset fields are not checked, except kind. */

@@ -66,6 +66,9 @@ export interface Project<S extends SessionLike = SessionLike> {
   hasLive: boolean;
   latestCreatedMs: number; // stable list position, independent of output
   machines: string[]; // machine IDs, most recent first
+  // How many of its sessions have ended, as its machines count them: the
+  // sessions held here are only the pages fetched so far.
+  ended: number;
 }
 
 /** The project a session belongs to: its working directory's absolute
@@ -81,22 +84,42 @@ export function projectName(key: string): string {
 
 export const compareProjects = (a: Pick<Project, "key" | "hasLive" | "latestCreatedMs">, b: Pick<Project, "key" | "hasLive" | "latestCreatedMs">) => Number(b.hasLive) - Number(a.hasLive) || b.latestCreatedMs - a.latestCreatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
-export function projects<S extends SessionLike>(sessions: Iterable<S>): Project<S>[] {
+/** The account's projects: those of the sessions held, and those the
+ * machines report (MachineMeta.projects). Sessions are listed a page at a
+ * time, so a project whose sessions all ended long ago is known only from
+ * its machine; whether a project has live sessions is still read from the
+ * sessions, which are all held while they live. */
+export function projects<S extends SessionLike>(sessions: Iterable<S>, machines: Iterable<MachineLike> = []): Project<S>[] {
   const byKey = new Map<string, Project<S>>();
-  const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b));
-  for (const s of sorted) {
-    const key = projectKey(s);
+  const project = (key: string) => {
     let p = byKey.get(key);
     if (!p) {
-      p = { key, name: projectName(key), sessions: [], updatedMs: 0, hasLive: false, latestCreatedMs: 0, machines: [] };
+      p = { key, name: projectName(key), sessions: [], updatedMs: 0, hasLive: false, latestCreatedMs: 0, machines: [], ended: 0 };
       byKey.set(key, p);
     }
+    return p;
+  };
+  const sorted = [...sessions].sort((a, b) => Number(b.updatedMs - a.updatedMs) || byID(a, b));
+  for (const s of sorted) {
+    const p = project(projectKey(s));
     p.sessions.push(s);
     p.hasLive ||= !exited(s);
     p.latestCreatedMs = Math.max(p.latestCreatedMs, createdMs(s));
     p.updatedMs = Math.max(p.updatedMs, Number(s.updatedMs));
     if (!p.machines.includes(s.machineId)) p.machines.push(s.machineId);
   }
+  for (const m of machines) {
+    for (const x of m.meta?.projects ?? []) {
+      const p = project(x.path);
+      p.ended += x.ended;
+      p.latestCreatedMs = Math.max(p.latestCreatedMs, Number(x.latestCreatedMs));
+      p.updatedMs = Math.max(p.updatedMs, Number(x.latestCreatedMs), Number(x.latestEndedMs));
+      if (!p.machines.includes(m.id)) p.machines.push(m.id);
+    }
+  }
+  // A machine whose metadata has not arrived counts none: what is held is
+  // then the least there can be.
+  for (const p of byKey.values()) p.ended = Math.max(p.ended, p.sessions.filter(exited).length);
   return [...byKey.values()].sort(compareProjects);
 }
 

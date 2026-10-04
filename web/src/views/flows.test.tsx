@@ -7,6 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
+import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems } from "../model";
@@ -2092,6 +2093,32 @@ describe("the home timeline and its scope (client-v27)", () => {
     // The session on screen stays listed though it is not billing's.
     expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
     expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");
+  });
+
+  it("fetches further pages when shown past what is held, and all of them to filter", async () => {
+    const r = demo();
+    saveScope(ALL);
+    let pages = 0;
+    let all = 0;
+    r.moreSessions = true;
+    r.loadMoreSessions = async () => (pages++, false);
+    r.loadAllSessions = async () => void all++;
+    mount(<Home remote={r} go={() => undefined} />);
+    // No machine counts more ended sessions than are held: nothing to fetch.
+    expect(pages).toBe(0);
+    expect(all).toBe(0);
+    // One does: what is shown reaches past the pages held, so the next is asked for.
+    const m = [...r.machines.values()][0];
+    m.meta = create(MachineMetaSchema, { hostname: "MacBook", projects: [{ path: "/Users/me/Code/foo", ended: 90 }] });
+    act(() => (r as unknown as { changed(): void }).changed());
+    expect(pages).toBeGreaterThan(0);
+    expect(host.querySelector(".tail")?.textContent).toMatch(/^共 \d+ 个，滚到底加载更早的$/);
+    await type(host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!, "readme");
+    expect(all).toBeGreaterThan(0);
+    expect(host.querySelector(".tail")?.textContent).toBe("正在加载更早的会话…");
+    r.moreSessions = false;
+    act(() => (r as unknown as { changed(): void }).changed());
+    expect(host.querySelector(".tail")?.textContent).toBe("1 个会话的标题里有「readme」");
   });
 
   it("makes a project the scope from project management", async () => {

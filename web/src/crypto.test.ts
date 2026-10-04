@@ -1,8 +1,8 @@
-import { create, fromBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect as want, it } from "vitest";
 import vectors from "../../internal/e2e/testdata/vectors.json";
-import { EnvelopeSchema, HeaderSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
+import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import {
   accountKey,
   concat,
@@ -15,6 +15,7 @@ import {
   importSessionKey,
   open,
   OpenError,
+  PACK_MIN,
   parseSecret,
   REGISTER_CONTEXT,
   seal,
@@ -52,6 +53,49 @@ describe("matches the Go implementation", () => {
     const moved = fromHex(v.header);
     moved[moved.length - 1] ^= 1;
     await want(open(key, create(EnvelopeSchema, { ...env, header: moved }))).rejects.toThrow(OpenError);
+  });
+
+  it("opens a packed Go envelope", async () => {
+    const v = vectors.packed;
+    const key = await importSessionKey(fromHex(v.key));
+    const env = create(EnvelopeSchema, { header: fromHex(v.header), nonce: fromHex(v.nonce), ciphertext: fromHex(v.ciphertext) });
+    const { header, plaintext } = await open(key, env);
+    want(header.compression).toBe(Compression.DEFLATE);
+    want(new TextDecoder().decode(plaintext)).toBe(v.plaintext);
+    want(env.ciphertext.length).toBeLessThan(plaintext.length);
+  });
+
+  it("packs what gets smaller, and nothing else", async () => {
+    const key = await importSessionKey(crypto.getRandomValues(new Uint8Array(32)));
+    const big = utf8("the same line again\n".repeat(500));
+    const env = await seal(key, { kind: PayloadKind.EVENT, sessionId: "s" }, big);
+    want(env.ciphertext.length).toBeLessThan(big.length / 4);
+    const got = await open(key, env);
+    want(got.header.compression).toBe(Compression.DEFLATE);
+    want(hex(got.plaintext)).toBe(hex(big));
+    const plain = async (kind: PayloadKind, bytes: Uint8Array) => {
+      const e = await seal(key, { kind }, bytes);
+      const o = await open(key, e);
+      want(o.header.compression).toBe(Compression.NONE);
+      want(hex(o.plaintext)).toBe(hex(bytes));
+    };
+    await plain(PayloadKind.EVENT, crypto.getRandomValues(new Uint8Array(4096)));
+    await plain(PayloadKind.EVENT, utf8("a".repeat(PACK_MIN - 1)));
+    await plain(PayloadKind.IMAGE, big);
+  });
+
+  it("refuses a compression it does not know and a payload that does not unpack", async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importSessionKey(raw);
+    const sealed = async (compression: number, plaintext: Uint8Array) => {
+      const header = toBinary(HeaderSchema, create(HeaderSchema, { version: 1, kind: PayloadKind.EVENT, compression }));
+      const nonce = new Uint8Array(12);
+      const k = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+      const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: header }, k, plaintext as Uint8Array<ArrayBuffer>);
+      return create(EnvelopeSchema, { header, nonce, ciphertext: new Uint8Array(ct) });
+    };
+    await want(open(key, await sealed(9, utf8("x")))).rejects.toThrow(OpenError);
+    await want(open(key, await sealed(Compression.DEFLATE, utf8("not deflate at all, surely")))).rejects.toThrow(OpenError);
   });
 
   it("parses the secret", () => {

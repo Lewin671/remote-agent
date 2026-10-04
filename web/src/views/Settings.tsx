@@ -596,7 +596,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
       setPick(undefined);
     }
   };
-  const projs = projects(remote.sessions.values()).filter((p) => p.sessions.some((s) => s.machineId === id));
+  const projs = projects(remote.sessions.values(), remote.machines.values()).filter((p) => p.machines.includes(id));
   const name = machineName(m);
   const meta = m.meta;
   const codex = meta?.agents.find((a) => a.agent === Agent.CODEX) ?? (meta?.codexVersion ? { agent: Agent.CODEX, version: meta.codexVersion, verified: meta.codexVerified } : undefined);

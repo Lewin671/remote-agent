@@ -386,3 +386,13 @@ func TestUnpackLimit(t *testing.T) {
 		t.Fatalf("oversized payload: %v", err)
 	}
 }
+
+// What a browser's CompressionStream("deflate-raw") writes, which is how
+// the web client packs, unpacks here.
+func TestUnpackBrowserDeflate(t *testing.T) {
+	packed, _ := hex.DecodeString("4b2aca2f2f4e2d5228484cce4e4d51783467b242d2a8d0a810612100")
+	got, err := unpack(packed)
+	if err != nil || string(got) != strings.Repeat("browser packed ✓ ", 30) {
+		t.Fatalf("browser deflate: %q, %v", got, err)
+	}
+}

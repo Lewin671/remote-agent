@@ -86,13 +86,19 @@ function Main({ remote }: { remote: Remote }) {
   const arg = decodeURIComponent(rest.join("/"));
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
+  // A session opened from a link may not be among the pages of the
+  // listing held here: it is asked for by its ID.
+  const absent = kind === "s" && !session && remote.listed && !remote.created.has(arg);
+  useEffect(() => {
+    if (absent) void remote.ensureSession(arg);
+  });
   if (remote.removed) return <RemovedScreen remote={remote} />;
 
   let page;
   if (session) page = <SessionPage key={session.id} remote={remote} session={session} onBack={back} wide={wide} />;
   else if (kind === "s")
     page =
-      remote.listed && !remote.created.has(arg) ? (
+      absent && remote.missing.has(arg) ? (
         <div className="page">
           <NavBar onBack={() => go("")} />
           <div className="center">

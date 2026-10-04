@@ -14,7 +14,7 @@ import { ChevronRight, Ellipsis, LoaderCircle } from "../icons";
 
 /** The account's projects as the lists group them. */
 export function useProjectGroups(remote: Remote) {
-  const list = projects(remote.sessions.values());
+  const list = projects(remote.sessions.values(), remote.machines.values());
   return groupProjects(list, remote.projectPrefs());
 }
 

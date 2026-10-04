@@ -20,9 +20,10 @@ export interface EventCache {
   read(sid: string): Promise<CachedEvent[]>;
   append(sid: string, events: CachedEvent[]): Promise<void>;
   drop(sid: string): Promise<void>;
-  /** Forgets sessions the server no longer has, then the least recently
-   * opened ones until the rest fits the budget. */
-  keep(live: Set<string>): Promise<void>;
+  /** Forgets the least recently opened sessions until the rest fits the
+   * budget. Which sessions the server still has is not known here: the
+   * listing comes a page at a time. */
+  trim(): Promise<void>;
   /** Small values by name: the last listings, the login token. */
   get(name: string): Promise<unknown>;
   set(name: string, value: unknown): Promise<void>;
@@ -117,11 +118,11 @@ const idbCache: EventCache = {
     forget(tx, sid);
     await done(tx);
   },
-  async keep(live) {
+  async trim() {
     const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
     const ids = result(tx.objectStore(SESSIONS).getAllKeys() as IDBRequest<string[]>);
     const usages = await result(tx.objectStore(SESSIONS).getAll() as IDBRequest<Usage[]>);
-    const kept = (await ids).map((sid, i) => ({ sid, ...usages[i] })).filter((s) => live.has(s.sid) || (forget(tx, s.sid), false));
+    const kept = (await ids).map((sid, i) => ({ sid, ...usages[i] }));
     kept.sort((a, b) => a.usedAt - b.usedAt);
     let total = kept.reduce((n, s) => n + s.bytes, 0);
     for (const s of kept) {
