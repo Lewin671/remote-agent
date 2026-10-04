@@ -143,12 +143,21 @@ fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone:
  * the pages fetched: sessions kept from before a reconnect, or fetched on
  * their own, with others not fetched yet before them. A page may hold none
  * of a project's sessions; asking again goes on until enough are held or no
- * page is left.
+ * page is left. Before the listing's first page came, that page is the one
+ * due.
  */
 fun needsEndedPage(state: RemoteState, held: List<SessionView>, want: Int, total: Int): Boolean {
-    val next = state.sessionsNext ?: return false
-    return held.size < minOf(want, total) || held.take(want).any { afterPlace(it.listedEndedMs, it.id, next) }
+    if (!state.moreSessions) return false
+    return held.size < minOf(want, total) || held.take(want).any { pastFetched(state, it) }
 }
+
+/**
+ * Whether a session held here lies past the pages fetched: kept from before
+ * a reconnect, or fetched by its ID, with sessions not fetched yet before
+ * it in the listing. One that has not ended never does.
+ */
+fun pastFetched(state: RemoteState, s: SessionView): Boolean =
+    state.sessionsNext?.let { afterPlace(s.listedEndedMs, s.id, it) } == true
 
 /** The line under a card of 需要处理: the project where the list spans projects or the card is from outside the scope, and the machine when there are several. */
 fun cardMeta(state: RemoteState, s: SessionView, scope: HomeScope): List<String> = buildList {
@@ -235,6 +244,7 @@ const val EARLIER_OFFLINE = "连上服务器后加载更早的会话"
  */
 fun earlierTail(state: RemoteState): String = when {
     state.conn != ConnState.ONLINE -> EARLIER_OFFLINE
+    state.sessionsError.isNotEmpty() && !state.sessionsListed -> "没能读取会话列表：${state.sessionsError} · 点这里重试"
     state.sessionsError.isNotEmpty() -> "没能加载更早的会话：${state.sessionsError} · 点这里重试"
     else -> LOADING_EARLIER
 }

@@ -192,13 +192,15 @@ fun HomeScreen() {
         val tailModifier = Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("timeline-tail")
         // What a filter matched is only known once every page is here.
         val tail = if (filtering) filterTail(tl.size, query).takeUnless { wantAll } else endedTail(tl.endedTotal, more)
-        if (tail != null || more || wantAll || wantPage) item(key = "tail") {
+        // The listing's first page could not be fetched: said here with its retry, whatever the list wants.
+        val listFailed = !state.sessionsListed && state.sessionsError.isNotEmpty()
+        if (tail != null || more || wantAll || wantPage || listFailed) item(key = "tail") {
             // Reaching the end shows the next thirty, once the ones before them are all rendered;
             // those not fetched yet are asked for above.
             if (more && shownEnded <= tl.ended.size) LaunchedEffect(shownEnded, tl.ended.size) { shownEnded += ENDED_PAGE }
             // While pages are on their way the line says so, unless it already counts the scope's sessions;
             // a page that failed is said either way, with its retry.
-            if ((wantAll || wantPage) && (tail == null || state.sessionsError.isNotEmpty())) EarlierTail(state, tailModifier)
+            if (listFailed || ((wantAll || wantPage) && (tail == null || state.sessionsError.isNotEmpty()))) EarlierTail(state, tailModifier)
             else Text(tail.orEmpty(), style = T.meta, color = p.muted, modifier = tailModifier)
         }
         item { Spacer(Modifier.height(24.dp)) }

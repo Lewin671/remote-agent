@@ -273,6 +273,15 @@ class TimelineTest {
         val old = session("old", "/a", ended = now - 900_000).copy(listedEndedMs = now - 900_000)
         assertTrue(needsEndedPage(more, held(20) + old, 30, 21))
         assertFalse(needsEndedPage(more, held(20) + old, 20, 21))
+        assertTrue(pastFetched(more, old))
+        assertFalse(pastFetched(more, held(1).single()))
+        assertFalse(pastFetched(base, old))
+        // Before the first page came (a cached page shown at start), that page is due while more are to be shown than are held.
+        val unlisted = base.copy(sessionsListed = false)
+        assertTrue(unlisted.moreSessions)
+        assertTrue(needsEndedPage(unlisted, held(50), 60, 200))
+        assertFalse(needsEndedPage(unlisted, held(50), 30, 200))
+        assertFalse(pastFetched(unlisted, old))
     }
 
     @Test
@@ -281,6 +290,8 @@ class TimelineTest {
         assertEquals("正在加载更早的会话…", earlierTail(online))
         assertEquals("连上服务器后加载更早的会话", earlierTail(online.copy(conn = ConnState.OFFLINE)))
         assertEquals("没能加载更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时")))
+        // The first page itself: there is no listing yet to have earlier pages.
+        assertEquals("没能读取会话列表：超时 · 点这里重试", earlierTail(RemoteState(conn = ConnState.ONLINE, sessionsError = "超时", sessionsListed = false)))
     }
 
     @Test

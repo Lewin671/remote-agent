@@ -61,8 +61,8 @@ class SessionPagingTest {
         server.close()
     }
 
-    private suspend fun client(cache: CipherCache? = null): Remote {
-        val r = Remote(joinWithRoot(root, server.url, http), http, cache)
+    private suspend fun client(cache: CipherCache? = null, http: okhttp3.OkHttpClient = this.http): Remote {
+        val r = Remote(joinWithRoot(root, server.url, this.http), http, cache)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -313,7 +313,10 @@ class SessionPagingTest {
         server.stop()
         again.start()
         val st = again.awaitState("the cached page") { it.loaded && it.sessions.size == 52 }
-        assertFalse(st.moreSessions)
+        // What the cache kept is one page of an earlier run: whether there are more is not known until the first page comes.
+        assertFalse(st.sessionsListed)
+        assertTrue(st.moreSessions)
+        assertNull(st.sessionsNext)
         assertNull(st.sessions[endedId(1)])
         assertEquals(1, cache.events(endedId(1)).size)
         // After reconnecting the cache is the new first page: e071 left it for live2.
@@ -323,6 +326,149 @@ class SessionPagingTest {
         withTimeout(5_000) { while (cache.sessions().any { it.sessionId == endedId(71) }) kotlinx.coroutines.delay(20) }
         assertEquals((listOf("live1", "live2") + (72..120).map(::endedId)).sorted(), cache.sessions().map { it.sessionId }.sorted())
         assertEquals(1, cache.events(endedId(1)).size)
+    }
+
+    /** A cache whose machine writes wait while [hold] is set: the first page stays half put in place. */
+    private class HeldCache(private val inner: MemoryCache = MemoryCache()) : CipherCache by inner {
+        @Volatile var hold: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+        val reached = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+
+        override suspend fun putMachine(m: io.github.lewin671.remoteagent.proto.Machine) {
+            hold?.let {
+                reached.trySend(Unit)
+                it.await()
+            }
+            inner.putMachine(m)
+        }
+    }
+
+    @Test
+    fun aPageAskedForWhileTheListingStartsOverIsFetchedFromTheNewCursor() = runBlocking<Unit> {
+        val cache = HeldCache()
+        val r = client(cache)
+        r.started()
+        r.stop()
+        r.awaitState("offline") { it.conn == ConnState.OFFLINE }
+        // Nothing changed meanwhile: the first page again ends where it did, so the cursor does not move.
+        val hold = kotlinx.coroutines.CompletableDeferred<Unit>()
+        cache.hold = hold
+        r.start()
+        withTimeout(15_000) { cache.reached.receive() }
+        assertEquals(ConnState.ONLINE, r.state.value.conn)
+        val page = async { r.loadMoreSessions() }
+        // The request does not end with nothing fetched: it waits for the first page.
+        kotlinx.coroutines.delay(500)
+        assertFalse(page.isCompleted)
+        assertEquals(52, r.state.value.sessions.size)
+        cache.hold = null
+        hold.complete(Unit)
+        assertTrue(withTimeout(15_000) { page.await() })
+        val st = r.state.value
+        assertEquals((120 downTo 21).map(::endedId), st.endedIds())
+        assertEquals(SessionPlace(endedAt(21), endedId(21)), st.sessionsNext)
+        assertFalse(st.loadingSessions)
+    }
+
+    /** An HTTP client whose listing of machines fails while [down] is set, with the stream and everything else working. */
+    private class Flaky {
+        @Volatile var down = false
+        val http: okhttp3.OkHttpClient = Api.defaultHttp().newBuilder().addInterceptor { chain ->
+            if (down && chain.request().url.encodedPath.endsWith("ListMachines")) throw java.io.IOException("listing down")
+            chain.proceed(chain.request())
+        }.build()
+    }
+
+    @Test
+    fun aFirstPageThatFailsSaysSoAndIsTriedAgainByItself() = runBlocking<Unit> {
+        val flaky = Flaky().apply { down = true }
+        val r = client(http = flaky.http)
+        r.start()
+        // Connected, with no listing: it is not taken for an empty one, nor for one with nothing more to fetch.
+        val failed = r.awaitState("the failed listing") { it.conn == ConnState.ONLINE && it.sessionsError.isNotEmpty() }
+        assertFalse(failed.sessionsListed)
+        assertFalse(failed.loaded)
+        assertTrue(failed.moreSessions)
+        assertNull(failed.sessionsNext)
+        flaky.down = false
+        // No reconnect and no call from the screen: it comes by itself.
+        val st = r.awaitState("the first page") { it.sessionsListed && it.sessions.size == 52 }
+        assertEquals("", st.sessionsError)
+        assertEquals(firstEnd, st.sessionsNext)
+        assertEquals(ConnState.ONLINE, st.conn)
+    }
+
+    @Test
+    fun askingForAPageBeforeTheFirstOneCameFetchesTheFirst() = runBlocking<Unit> {
+        val flaky = Flaky().apply { down = true }
+        val r = client(http = flaky.http)
+        r.start()
+        r.awaitState("the failed listing") { it.conn == ConnState.ONLINE && it.sessionsError.isNotEmpty() }
+        // Still failing: the retry says so and leaves nothing loading.
+        try {
+            r.loadMoreSessions()
+            fail("expected the first page to fail")
+        } catch (e: Exception) {
+            if (e is AssertionError) throw e
+        }
+        assertFalse(r.state.value.loadingSessions)
+        assertFalse(r.state.value.sessionsListed)
+        flaky.down = false
+        // The tap that tries again: the first page, and only it.
+        assertTrue(r.loadMoreSessions())
+        val st = r.state.value
+        assertTrue(st.sessionsListed)
+        assertEquals(firstEnd, st.sessionsNext)
+        assertEquals(52, st.sessions.size)
+        // Every page left, asked for before the first one came, starts with the first.
+        val again = client(http = Flaky().apply { down = true }.also { f -> closers += AutoCloseable { f.down = false } }.http)
+        again.start()
+        again.awaitState("the failed listing") { it.conn == ConnState.ONLINE && it.sessionsError.isNotEmpty() }
+        try {
+            again.loadAllSessions()
+            fail("expected the pages to fail")
+        } catch (e: Exception) {
+            if (e is AssertionError) throw e
+        }
+    }
+
+    @Test
+    fun ofTwoFirstPagesInFlightOnlyTheLaterAskedForIsPutInPlace() = runBlocking<Unit> {
+        val r = client()
+        r.started()
+        assertTrue(r.loadMoreSessions())
+        // As when a stream was replaced while the lists of the one before were still on their way.
+        val answers = listOf(async { r.refresh() }, async { r.refresh() }).awaitAll()
+        assertEquals(listOf(false, true), answers)
+        val st = r.state.value
+        assertEquals(firstEnd, st.sessionsNext)
+        assertEquals((120 downTo 21).map(::endedId), st.endedIds())
+        assertEquals("", st.sessionsError)
+        // The listing goes on from there.
+        r.loadAllSessions()
+        assertEquals(122, r.state.value.sessions.size)
+    }
+
+    @Test
+    fun noPageIsAskedForWithoutTheConnection() = runBlocking<Unit> {
+        val r = client()
+        r.started()
+        r.stop()
+        r.awaitState("offline") { it.conn == ConnState.OFFLINE }
+        // In the background nothing is fetched, though the server is there; a run of every page stops too.
+        for (ask in listOf<suspend () -> Any>({ r.loadMoreSessions() }, { r.loadAllSessions() })) {
+            try {
+                ask()
+                fail("expected no page without the connection")
+            } catch (e: CommandException) {
+                assertEquals(CommandException.UNAVAILABLE, e.code)
+            }
+        }
+        assertEquals(52, r.state.value.sessions.size)
+        assertEquals(firstEnd, r.state.value.sessionsNext)
+        // Back online the reason is gone and the listing goes on.
+        r.start()
+        r.awaitState("online again") { it.conn == ConnState.ONLINE && it.sessionsError.isEmpty() }
+        assertTrue(r.loadMoreSessions())
     }
 
     // --- projects from the machines' summaries and the sessions held ---

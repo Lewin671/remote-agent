@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -100,6 +101,9 @@ fun afterPlace(endedMs: Long, sessionId: String, place: SessionPlace): Boolean =
 /** Ended sessions asked for per page of the listing. */
 const val SESSION_PAGE = 50
 
+/** How long after the lists could not be fetched they are asked for again; twice as long each time, up to half a minute. */
+private const val LIST_RETRY_MS = 2_000L
+
 data class RemoteState(
     val machines: Map<String, MachineView> = emptyMap(),
     val sessions: Map<String, SessionView> = emptyMap(),
@@ -119,16 +123,22 @@ data class RemoteState(
      * Where the next page of ended sessions starts (architecture §8
      * 「会话列表分页」): [sessions] holds every session that has not ended and
      * the ended ones up to here, besides any fetched on their own. Null when
-     * every page was fetched, and before the first one.
+     * every page was fetched, and before the first one ([sessionsListed]).
      */
     val sessionsNext: SessionPlace? = null,
     /** A page of the listing is being fetched. */
     val loadingSessions: Boolean = false,
     /** Why the last page could not be fetched; empty once one was, or the first page came again. */
     val sessionsError: String = "",
+    /**
+     * The listing's first page was fetched in this run. Before that the
+     * sessions held are what the cache kept of an earlier run, and how many
+     * pages there are is not known.
+     */
+    val sessionsListed: Boolean = true,
 ) {
-    /** The server has ended sessions that were not fetched yet. */
-    val moreSessions: Boolean get() = sessionsNext != null
+    /** The server has, or may have, ended sessions that were not fetched yet. */
+    val moreSessions: Boolean get() = !sessionsListed || sessionsNext != null
 }
 
 /** A device of the account; a client's name is in its sealed metadata. */
@@ -248,7 +258,6 @@ class Remote(
     private val eventFlows = ConcurrentHashMap<String, MutableStateFlow<SessionEvents>>()
     private var conn = ConnState.CONNECTING
     private var error = ""
-    private var relisting = false // the first page has arrived and is being applied
     private var loaded = false
     private var offlineSince = 0L
     private var prefs: PrefsObject? = null
@@ -280,7 +289,16 @@ class Remote(
     // The listing of ended sessions comes a page at a time. next is where the
     // page after the ones fetched starts, firstEnd where the first page ended:
     // what the cache keeps is that page. A fetch of the first page starts the
-    // listing over (listing), and a page asked for before that is dropped.
+    // listing over (listing): a page asked for before that continued the old
+    // one and is asked for again from the new cursor. While a first page is on
+    // its way (listsInFlight) no other page is asked for. Of several first
+    // pages in flight, as when a stream was replaced while the one before was
+    // still being listed, only the latest asked for is put in place (refreshRun).
+    private val listsInFlight = MutableStateFlow(0)
+    private var refreshRun = 0
+    private val applying = Mutex()
+    private var listRetry: Job? = null
+    private var listBackoff = LIST_RETRY_MS
     private var next: SessionPlace? = null
     private var firstEnd: SessionPlace? = null
     private var firstPage = false
@@ -324,6 +342,8 @@ class Remote(
             generation++
             reconnect?.cancel()
             reconnect = null
+            listRetry?.cancel()
+            listRetry = null
             ws?.close(1000, null)
             ws = null
             conn = ConnState.OFFLINE
@@ -352,7 +372,7 @@ class Remote(
         if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
         _state.value = RemoteState(
             machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap(), removed,
-            sessionsNext = next, loadingSessions = pageJob != null, sessionsError = pageError,
+            sessionsNext = next, loadingSessions = pageJob != null, sessionsError = pageError, sessionsListed = firstPage,
         )
     }
 
@@ -585,63 +605,102 @@ class Remote(
     /**
      * Reloads machines and the first page of sessions: every session that
      * has not ended and the latest ended ones. Pushes that arrive while the
-     * lists are in flight are newer and win.
+     * lists are in flight are newer and win. Returns whether the lists are
+     * in place. When they could not be fetched [RemoteState.sessionsError]
+     * says why, and it is tried again by itself, ever more slowly, while the
+     * connection holds.
      */
-    suspend fun refresh() = withContext(dispatcher) {
+    suspend fun refresh(): Boolean = withContext(dispatcher) {
+        val run = ++refreshRun
+        listRetry?.cancel()
+        listRetry = null
+        listsInFlight.value++
         try {
             val mp = HashMap(machinePushes)
             val sp = HashMap(sessionPushes)
             val rp = HashMap(removedPushes)
             val ms = api.client.listMachines(ListMachinesRequest.getDefaultInstance(), Api.headers(token)).value()
             val ss = api.client.listRemoteSessions(ListRemoteSessionsRequest.newBuilder().setLimit(SESSION_PAGE).build(), Api.headers(token)).value()
-            // The listing starts over: a later page still in flight continued the old one.
-            listing++
-            // The cursor held belongs to the listing before: until this one is in,
-            // no page is asked for with it (the writes below suspend).
-            relisting = true
-            // Forget what the server no longer has, e.g. a machine another
-            // device removed while this one was offline.
-            val mids = ms.machinesList.map { it.id }.toSet()
-            val sids = ss.sessionsList.map { it.sessionId }.toSet()
-            val end = if (ss.hasNext()) SessionPlace(ss.next.endedMs, ss.next.sessionId) else null
-            for (id in machines.keys.toList()) if (id !in mids && !pushed(machinePushes, mp, id)) dropMachine(id)
-            fun hasMachine(id: String) = id in mids || machines.containsKey(id)
-            // A session held here that this page does not have (architecture §8
-            // 「重新连接后」): one that ended and comes after the page's end is
-            // a later page's and stays; any other goes. Without a later page
-            // the page is the whole listing, and what it lacks does not exist.
-            for (v in sessions.values.toList()) {
-                if (v.id in sids || pushed(sessionPushes, sp, v.id)) continue
-                if (end != null && hasMachine(v.machineId) && afterPlace(v.listedEndedMs, v.id, end)) continue
-                sessions.remove(v.id)
-                sessionKeys.remove(v.id)
-                listed.remove(v.id)
-                // Its events go with it only when it is known not to exist; else it
-                // may be on a later page with what is held here out of date.
-                if (end == null || !hasMachine(v.machineId)) cache?.removeSession(v.id) else cache?.unlistSession(v.id)
+            // Putting the lists in place suspends on the cache: one at a time.
+            applying.withLock {
+                // Asked for again since: that answer is the newer one, and this one would undo it.
+                if (run != refreshRun) return@withContext false
+                // The listing starts over: a later page still in flight continued the old one.
+                listing++
+                // Forget what the server no longer has, e.g. a machine another
+                // device removed while this one was offline.
+                val mids = ms.machinesList.map { it.id }.toSet()
+                val sids = ss.sessionsList.map { it.sessionId }.toSet()
+                val end = if (ss.hasNext()) SessionPlace(ss.next.endedMs, ss.next.sessionId) else null
+                for (id in machines.keys.toList()) if (id !in mids && !pushed(machinePushes, mp, id)) dropMachine(id)
+                fun hasMachine(id: String) = id in mids || machines.containsKey(id)
+                // A session held here that this page does not have (architecture §8
+                // 「重新连接后」): one that ended and comes after the page's end is
+                // a later page's and stays; any other goes. Without a later page
+                // the page is the whole listing, and what it lacks does not exist.
+                for (v in sessions.values.toList()) {
+                    if (v.id in sids || pushed(sessionPushes, sp, v.id)) continue
+                    if (end != null && hasMachine(v.machineId) && afterPlace(v.listedEndedMs, v.id, end)) continue
+                    sessions.remove(v.id)
+                    sessionKeys.remove(v.id)
+                    listed.remove(v.id)
+                    // Its events go with it only when it is known not to exist; else it
+                    // may be on a later page with what is held here out of date.
+                    try {
+                        if (end == null || !hasMachine(v.machineId)) cache?.removeSession(v.id) else cache?.unlistSession(v.id)
+                    } catch (e: Exception) {
+                        report(e)
+                    }
+                }
+                // The cache keeps the first page only.
+                for (id in listed.toList()) {
+                    if (id in sids || pushed(sessionPushes, sp, id)) continue
+                    listed.remove(id)
+                    try {
+                        cache?.unlistSession(id)
+                    } catch (e: Exception) {
+                        report(e)
+                    }
+                }
+                for (m in ms.machinesList) {
+                    if (pushed(removedPushes, rp, m.id)) continue
+                    putMachine(m, staleOnline = pushed(machinePushes, mp, m.id))
+                }
+                for (s in ss.sessionsList) if (!pushed(removedPushes, rp, s.machineId)) putSession(s, publish = false)
+                next = end
+                firstEnd = end
+                firstPage = true
+                pageError = ""
+                listBackoff = LIST_RETRY_MS
+                loaded = true
+                publish()
             }
-            // The cache keeps the first page only.
-            for (id in listed.toList()) {
-                if (id in sids || pushed(sessionPushes, sp, id)) continue
-                listed.remove(id)
-                cache?.unlistSession(id)
-            }
-            for (m in ms.machinesList) {
-                if (pushed(removedPushes, rp, m.id)) continue
-                putMachine(m, staleOnline = pushed(machinePushes, mp, m.id))
-            }
-            for (s in ss.sessionsList) if (!pushed(removedPushes, rp, s.machineId)) putSession(s, publish = false)
-            next = end
-            relisting = false
-            firstEnd = end
-            firstPage = true
-            pageError = ""
-            loaded = true
-            publish()
+            true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             report(e)
+            // What is held stays as it was, with the cursor it had.
+            if (run == refreshRun) {
+                pageError = errorText(e)
+                retryListing(run)
+            }
+            publish()
+            false
         } finally {
-            relisting = false
+            listsInFlight.value--
+        }
+    }
+
+    /** Asks for the lists again after a while, unless they were asked for meanwhile or the connection is gone. */
+    private fun retryListing(run: Int) {
+        val wait = listBackoff
+        listBackoff = minOf(listBackoff * 2, 30_000)
+        listRetry = scope.launch {
+            delay(wait)
+            // Not this job's to cancel itself from refresh.
+            listRetry = null
+            if (running && conn == ConnState.ONLINE && run == refreshRun) refresh()
         }
     }
 
@@ -652,8 +711,9 @@ class Remote(
         firstPage && firstEnd.let { it == null || !afterPlace(rs.endedMs, rs.sessionId, it) }
 
     /**
-     * Fetches the next page of ended sessions; calls made while one is in
-     * flight wait for that one. Returns whether there are more after it.
+     * Fetches the next page of ended sessions, which is the first one while
+     * that has not come ([RemoteState.sessionsListed]); calls made while one
+     * is in flight wait for that one. Returns whether there are more after it.
      * Throws when the page could not be fetched, which [RemoteState.sessionsError]
      * then says until a page comes.
      */
@@ -675,7 +735,7 @@ class Remote(
     suspend fun loadAllSessions() = withContext(dispatcher) {
         allJob ?: scope.async {
             try {
-                while (next != null) loadMoreSessions()
+                while (!firstPage || next != null) loadMoreSessions()
             } finally {
                 allJob = null
             }
@@ -683,36 +743,62 @@ class Remote(
     }.await()
 
     private suspend fun fetchPage(): Boolean {
-        val after = next ?: return false
-        if (relisting) {
-            // The first page is being put in place: its cursor is the one to continue from.
-            delay(50)
-            return true
-        }
-        val epoch = listing
-        val rp = HashMap(removedPushes)
-        try {
-            val res = api.client.listRemoteSessions(
-                ListRemoteSessionsRequest.newBuilder()
-                    .setAfter(SessionCursor.newBuilder().setEndedMs(after.endedMs).setSessionId(after.sessionId))
-                    .setLimit(SESSION_PAGE).build(),
-                Api.headers(currentToken()),
-            ).value()
-            // The first page was fetched again meanwhile: this page continued
-            // the listing before it, and the new cursor is not its to move.
-            if (epoch != listing) return next != null
+        while (true) {
+            // A first page on its way, or being put in place, has the cursor to go on from;
+            // where none was held, it is the page that was asked for.
+            val listedBefore = firstPage
+            listsInFlight.first { it == 0 }
+            if (!listedBefore && firstPage) return next != null
+            if (conn != ConnState.ONLINE) {
+                // Nothing is asked for in the background, or over a connection that is gone.
+                pageError = "没有连上服务器"
+                throw CommandException(CommandException.UNAVAILABLE, pageError)
+            }
+            if (!firstPage) {
+                // The first page never came: it is the one to fetch.
+                if (refresh()) return next != null
+                // Asked for again meanwhile: that one is waited for above.
+                if (listsInFlight.value > 0 || firstPage) continue
+                throw CommandException(CommandException.UNAVAILABLE, pageError.ifEmpty { "没能读取会话列表" })
+            }
+            val after = next ?: return false
+            val epoch = listing
+            val rp = HashMap(removedPushes)
+            val res = try {
+                api.client.listRemoteSessions(
+                    ListRemoteSessionsRequest.newBuilder()
+                        .setAfter(SessionCursor.newBuilder().setEndedMs(after.endedMs).setSessionId(after.sessionId))
+                        .setLimit(SESSION_PAGE).build(),
+                    Api.headers(currentToken()),
+                ).value()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The first page was fetched again meanwhile: what failed continued the listing before it.
+                if (epoch != listing) continue
+                log("remote-agent: " + errorText(e))
+                pageError = errorText(e)
+                throw e
+            }
+            // The first page was fetched again meanwhile: this page continued the
+            // listing before it. The caller still wants a page: the one after the new cursor.
+            if (epoch != listing) continue
             // Putting a session suspends on the cache: the listing may start over meanwhile too.
-            for (s in res.sessionsList) if (epoch == listing && !pushed(removedPushes, rp, s.machineId)) putSession(s, save = false, publish = false)
-            if (epoch != listing) return next != null
+            for (s in res.sessionsList) if (epoch == listing && accepts(s, rp)) putSession(s, save = false, publish = false)
+            if (epoch != listing) continue
             next = if (res.hasNext()) SessionPlace(res.next.endedMs, res.next.sessionId) else null
             pageError = ""
             return next != null
-        } catch (e: Exception) {
-            log("remote-agent: " + errorText(e))
-            if (epoch == listing) pageError = errorText(e)
-            throw e
         }
     }
+
+    /**
+     * Whether a session the server answered a request with is taken: not
+     * one of a machine removed since the request was made ([removalsThen]),
+     * nor of one the listing of machines does not have.
+     */
+    private fun accepts(rs: RemoteSession, removalsThen: Map<String, Int>): Boolean =
+        !pushed(removedPushes, removalsThen, rs.machineId) && (!firstPage || machines.containsKey(rs.machineId))
 
     /**
      * Fetches one session by its ID when it is not held here: one opened
@@ -729,7 +815,7 @@ class Remote(
                 val rs = res.sessionsList.firstOrNull { it.sessionId == id }
                 // A session of a machine removed meanwhile, or one the listing of
                 // machines no longer has, is as good as gone.
-                if (rs != null && !pushed(removedPushes, rp, rs.machineId) && (!firstPage || machines.containsKey(rs.machineId))) putSession(rs, save = onFirstPage(rs))
+                if (rs != null && accepts(rs, rp)) putSession(rs, save = onFirstPage(rs))
                 sessions[id] != null
             } finally {
                 byId.remove(id)
