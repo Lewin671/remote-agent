@@ -143,6 +143,131 @@ class ProjectTest {
         assertEquals(set(Agent.AGENT_CLAUDE), agentSet(state(stored, sessions.take(1), mac), path, Agent.AGENT_CLAUDE))
     }
 
+    // --- what a start inherits while the listing is only partly fetched (architecture §8 「会话列表分页」) ---
+
+    /** An ended session as a page of the listing brings it: [at] is when it ended, which is its place there. */
+    private fun ended(id: String, agent: Agent, model: String, at: Long, machine: String = "mac", effort: String = "", mode: ApprovalMode = ApprovalMode.APPROVAL_MODE_UNSPECIFIED) = SessionView(
+        id, machine,
+        Session.newBuilder().setCwd(path).setModel(model).setEffort(effort).setAgent(agent).setMode(mode).setStatus(io.github.lewin671.remoteagent.proto.SessionStatus.SESSION_STATUS_EXITED)
+            .setEndedAt(com.google.protobuf.Timestamp.newBuilder().setSeconds(at / 1000)).build(),
+        updatedMs = at, listedEndedMs = at,
+    )
+
+    /** A machine whose summary says the project has [count] ended sessions. */
+    private fun summed(id: String, count: Int, vararg agents: Agent) = MachineView(id, true, 0, MachineMeta.newBuilder()
+        .addAllAgents(agents.map { AgentInfo.newBuilder().setAgent(it).build() })
+        .addProjects(io.github.lewin671.remoteagent.proto.ProjectSummary.newBuilder().setPath(path).setEnded(count)).build())
+
+    /** Pages fetched down to [cursor]; null for every page. */
+    private fun paged(st: RemoteState, cursor: Long?) = st.copy(sessionsNext = cursor?.let { io.github.lewin671.remoteagent.core.SessionPlace(it, "") })
+
+    @Test
+    fun whatACliStartsWithIsNotSettledWhileItsLatestSessionMayBeOnAPageNotFetched() {
+        val claude = ended("c1", Agent.AGENT_CLAUDE, "sonnet", 90_000, effort = "high", mode = ApprovalMode.APPROVAL_MODE_AUTO)
+        val st = paged(state(null, listOf(claude), summed("mac", 9, *both)), 50_000)
+        // The project's first session in the listing is held: the machine, the CLI and its set are settled.
+        assertEquals(ProjectStart(NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet", "high", Mode.AUTO), settled = true), projectStart(st, path))
+        // Codex has no session among the pages fetched, and eight ended sessions are not fetched: one of them may be Codex's.
+        val codex = projectStart(st, path, pick = Agent.AGENT_CODEX)!!
+        assertEquals(false, codex.settled)
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CODEX), codex.config)
+        assertEquals(false, agentSetSettled(st, path, Agent.AGENT_CODEX))
+        assertEquals(true, agentSetSettled(st, path, Agent.AGENT_CLAUDE))
+        // A stored set settles it, as does having every page, or every ended session of the project.
+        assertEquals(true, projectStart(st.copy(prefs = PrefsObject(1, ProjectPrefs.newBuilder().addSettings(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "sol"))).build())), path)!!.settled)
+        assertEquals(true, projectStart(paged(st, null), path, pick = Agent.AGENT_CODEX)!!.settled)
+        assertEquals(true, projectStart(paged(state(null, listOf(claude), summed("mac", 1, *both)), 50_000), path, pick = Agent.AGENT_CODEX)!!.settled)
+        // The page with it came: settled, with its settings.
+        val old = ended("x1", Agent.AGENT_CODEX, "astra", 40_000, effort = "low", mode = ApprovalMode.APPROVAL_MODE_ASK)
+        val fetched = paged(state(null, listOf(claude, old), summed("mac", 9, *both)), 30_000)
+        assertEquals(ProjectStart(NewConfig("mac", path, Agent.AGENT_CODEX, "astra", "low", Mode.ASK), settled = true), projectStart(fetched, path, pick = Agent.AGENT_CODEX))
+    }
+
+    @Test
+    fun aSessionHeldPastThePagesFetchedDoesNotSettleIt() {
+        // Fetched by its ID, or kept from before a reconnect: sessions not fetched yet come before it, and one of them may be the latest.
+        val old = ended("x0", Agent.AGENT_CODEX, "old-model", 10_000)
+        val st = paged(state(null, listOf(old), summed("mac", 9, *both)), 50_000)
+        val start = projectStart(st, path)!!
+        assertEquals(false, start.settled)
+        // The guess is still the best one held.
+        assertEquals("old-model", start.config.model)
+        // The pages reached it: it is the first.
+        assertEquals(ProjectStart(NewConfig("mac", path, Agent.AGENT_CODEX, "old-model"), settled = true), projectStart(paged(st, 9_000), path))
+        // A session that has not ended is on the first page, always held: it settles it whatever else is not fetched.
+        val live = session("l", "mac", Agent.AGENT_CODEX, "astra", 5)
+        assertEquals(ProjectStart(NewConfig("mac", path, Agent.AGENT_CODEX, "astra"), settled = true), projectStart(paged(state(null, listOf(old, live), summed("mac", 9, *both)), 50_000), path))
+    }
+
+    @Test
+    fun itIsSettledForTheCliTheSessionReallyStartsOn() {
+        // Claude Code is remembered, with its set, and the machine only has Codex: the session starts on Codex,
+        // whose latest session is on a page not fetched.
+        val stored = saved("vps", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet"))
+        val held = listOf(ended("c1", Agent.AGENT_CLAUDE, "sonnet", 90_000, machine = "vps"), ended("c2", Agent.AGENT_CLAUDE, "sonnet", 80_000, machine = "vps"))
+        val st = paged(state(stored, held, summed("vps", 9, Agent.AGENT_CODEX)), 50_000)
+        val start = projectStart(st, path)!!
+        assertEquals(Agent.AGENT_CODEX, start.config.agent)
+        assertEquals(false, start.settled)
+        // With Claude Code installed its stored set is used: nothing to wait for.
+        assertEquals(ProjectStart(NewConfig("vps", path, Agent.AGENT_CLAUDE, "sonnet"), settled = true), projectStart(paged(state(stored, held, summed("vps", 9, *both)), 50_000), path))
+    }
+
+    @Test
+    fun beforeTheFirstPageCameNothingInheritedIsSettledUnlessTheCachedPageHasIt() {
+        // At start only the cached page of an earlier run is held, and how many pages there are is not known.
+        val claude = ended("c1", Agent.AGENT_CLAUDE, "sonnet", 90_000)
+        val st = state(null, listOf(claude), summed("mac", 9, *both)).copy(sessionsListed = false)
+        assertEquals(true, projectStart(st, path)!!.settled)
+        assertEquals(false, projectStart(st, path, pick = Agent.AGENT_CODEX)!!.settled)
+        // A project only the summaries name: its machine is a guess too.
+        val none = state(null, emptyList(), summed("mac", 9, *both)).copy(sessionsListed = false)
+        assertEquals(ProjectStart(NewConfig("mac", path, Agent.AGENT_CODEX), settled = false), projectStart(none, path))
+        // A folder nothing names has nothing to inherit.
+        assertEquals(ProjectStart(NewConfig("mac", "/work/new", Agent.AGENT_CODEX), settled = true),
+            projectStart(none, "/work/new", machine = "mac")?.let { it.copy(config = it.config.copy(cwd = "/work/new")) })
+    }
+
+    @Test
+    fun aDraftWrittenOverAGuessTakesTheSettingsOnceTheyAreKnown() {
+        val guess = NewConfig("mac", path, Agent.AGENT_CODEX)
+        val inherited = NewConfig("mac", path, Agent.AGENT_CODEX, "astra", "low", Mode.ASK)
+        // Seeded with a guess, then written: the settings fetched replace the guess, and stay.
+        val seeded = DraftConfig(guess, settled = false)
+        seeded.follow(guess, drafting = true, settled = false)
+        assertEquals(guess, seeded.value)
+        seeded.follow(inherited, drafting = true, settled = true)
+        assertEquals(inherited, seeded.value)
+        seeded.follow(NewConfig("m2", path, Agent.AGENT_CLAUDE), drafting = true)
+        assertEquals(inherited, seeded.value)
+        // Written first, then switched to a CLI whose settings are not known yet: the same.
+        val d = DraftConfig(NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet"))
+        d.follow(NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet"), drafting = true)
+        d.retarget(guess, settled = false)
+        assertEquals(guess, d.value)
+        d.follow(guess, drafting = true, settled = false)
+        d.follow(inherited, drafting = true, settled = true)
+        assertEquals(inherited, d.value)
+        // A switch to a CLI whose settings are known is not a guess: the draft keeps it.
+        d.retarget(inherited)
+        d.follow(guess, drafting = true)
+        assertEquals(inherited, d.value)
+        // What the user chose on this page is never replaced, guess or not.
+        val mine = NewConfig("mac", path, Agent.AGENT_CODEX, "sol", mode = Mode.FULL)
+        val chosen = DraftConfig(guess, settled = false)
+        chosen.choose(mine)
+        chosen.follow(inherited, drafting = true, settled = true)
+        assertEquals(mine, chosen.value)
+        chosen.follow(inherited, drafting = false, settled = true)
+        assertEquals(mine, chosen.value)
+        // The draft of a project keeps whether its seed was a guess.
+        val entry = Drafts.newSession("/work/guessed", guess.copy(cwd = "/work/guessed"), settled = false)
+        entry.text.value = "先写着"
+        entry.config.follow(inherited, drafting = true, settled = true)
+        assertEquals(inherited, entry.config.value)
+        assertEquals("先写着", entry.text.value)
+    }
+
     @Test
     fun theFirstStartEstablishesTheSettingsAndLaterOnesOnlyFillIn() {
         val used = NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet", "high", Mode.AUTO, standardContext = true)

@@ -89,6 +89,7 @@ import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.core.PrefsOp
 import io.github.lewin671.remoteagent.core.applySettings
+import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.settingsAgents
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentSettings
@@ -123,8 +124,7 @@ data class NewConfig(
 fun savedSettings(state: RemoteState, key: String): ProjectSettings? = state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }
 
 // Of the sessions held here: every one that has not ended, and the ended ones fetched so far (architecture §8 「会话列表分页」).
-// In the order of the listing, live sessions before ended ones (architecture §8): the listing is
-// fetched in that order, so the pages held always include the session settings are inherited from.
+// In the order of the listing, live sessions before ended ones (architecture §8).
 private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedWith(io.github.lewin671.remoteagent.core.sessionOrder)
 
 /**
@@ -135,22 +135,59 @@ fun projectMachines(state: RemoteState, key: String): List<String> =
     io.github.lewin671.remoteagent.core.project(state, key)?.machineIds.orEmpty().ifEmpty { state.machines.keys.toList() }
 
 /**
+ * Where a project's new sessions inherit from (architecture §13 「初值」): the
+ * first session in the listing's order, of the project or of one CLI in it.
+ * The listing comes a page at a time, in that order, so the answer is the
+ * first such session among those within the pages fetched ([sure]): every
+ * session before it is held. While none of them matches and the project has
+ * ended sessions that were not fetched, the answer is not known: the session
+ * may be among those, and one held past the pages fetched (kept from before
+ * a reconnect, or fetched by its ID) may not be the first.
+ */
+private class Inheritance(state: RemoteState, key: String) {
+    private val all = projectSessions(state, key)
+    private val sure = all.filter { !io.github.lewin671.remoteagent.core.pastFetched(state, it) }
+    private val unfetched = state.moreSessions && (io.github.lewin671.remoteagent.core.project(state, key)?.ended ?: 0) > all.count { exited(it) }
+
+    /** Set once a session was looked for whose place among those not fetched is not known. */
+    var unsettled = false
+        private set
+
+    /** The first session that matches; when [unsettled] turns true, only the best guess of those held. */
+    fun first(match: (SessionView) -> Boolean = { true }): SessionView? {
+        sure.firstOrNull(match)?.let { return it }
+        if (unfetched) unsettled = true
+        return all.firstOrNull(match)
+    }
+}
+
+/**
  * The CLI a project's next session is meant to use, before looking at what
  * the machine has: the one picked next to the message box, else the one the
  * latest new session used, else the latest session's. Null when nothing says.
  */
 fun wantedAgent(state: RemoteState, key: String, pick: Agent? = null, saved: ProjectSettings? = savedSettings(state, key)): Agent? =
-    pick ?: saved?.agent?.takeIf { it in settingsAgents } ?: projectSessions(state, key).firstOrNull()?.agent()
+    wantedAgent(Inheritance(state, key), pick, saved)
+
+private fun wantedAgent(from: Inheritance, pick: Agent?, saved: ProjectSettings?): Agent? =
+    pick ?: saved?.agent?.takeIf { it in settingsAgents } ?: from.first()?.agent()
 
 /**
  * One CLI's set in a project: the stored entry (empty fields are the
  * machine's defaults), else what the project's latest session on that CLI
  * runs with, else the machine's defaults. Plan is never carried over.
  */
-fun agentSet(state: RemoteState, key: String, agent: Agent, saved: ProjectSettings? = savedSettings(state, key)): AgentSettings {
+fun agentSet(state: RemoteState, key: String, agent: Agent, saved: ProjectSettings? = savedSettings(state, key)): AgentSettings =
+    agentSet(Inheritance(state, key), agent, saved)
+
+/** Whether [agentSet] is settled for this CLI: see [ProjectStart.settled]. */
+fun agentSetSettled(state: RemoteState, key: String, agent: Agent, saved: ProjectSettings? = savedSettings(state, key)): Boolean =
+    Inheritance(state, key).also { agentSet(it, agent, saved) }.unsettled.not()
+
+private fun agentSet(from: Inheritance, agent: Agent, saved: ProjectSettings?): AgentSettings {
     saved?.agentsList?.firstOrNull { it.agent == agent }?.let { return it }
     val b = AgentSettings.newBuilder().setAgent(agent)
-    projectSessions(state, key).firstOrNull { it.agent() == agent }?.let { last ->
+    from.first { it.agent() == agent }?.let { last ->
         b.setModel(last.info?.model.orEmpty()).setEffort(last.info?.effort.orEmpty())
         modeOf(last)?.takeIf { it in newSessionModes }?.let { b.setMode(it.proto) }
     }
@@ -158,20 +195,36 @@ fun agentSet(state: RemoteState, key: String, agent: Agent, saved: ProjectSettin
 }
 
 /**
+ * What a project's next session starts with, and whether that is settled.
+ * It is not while something in it would be inherited from a session and
+ * which session that is cannot be told yet ([Inheritance]): [config] is
+ * then only the best guess, no session is started with it, and the pages
+ * of the listing are fetched until it is settled. This is the one place
+ * that answers both, for the CLI the session would really start on, which
+ * is not the remembered one where the machine lacks that.
+ */
+data class ProjectStart(val config: NewConfig, val settled: Boolean)
+
+/**
  * What a project's next session starts with (architecture §13). The machine
  * is the stored one, else the latest session's, else the one whose summary
  * has the project's newest session (its sessions may all be on pages not
- * fetched), else [machine]. The CLI is
- * [wantedAgent], or the machine's first when it has none or lacks that one,
- * with that CLI's own set. Null while no machine is known.
+ * fetched), else [machine]. The CLI is [wantedAgent], or the machine's first
+ * when it has none or lacks that one, with that CLI's own set. Null while no
+ * machine is known.
  */
-fun projectConfig(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): NewConfig? {
-    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: projectSessions(state, key).firstOrNull()?.machineId
+fun projectStart(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): ProjectStart? {
+    val from = Inheritance(state, key)
+    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: from.first()?.machineId
         ?: io.github.lewin671.remoteagent.core.project(state, key)?.machineIds?.firstOrNull() ?: machine ?: return null
     val agents = machineAgents(state.machines[machineId])
-    val agent = wantedAgent(state, key, pick, saved)?.takeIf { it in agents } ?: agents.first()
-    return agentConfig(machineId, key, agentSet(state, key, agent, saved))
+    val agent = wantedAgent(from, pick, saved)?.takeIf { it in agents } ?: agents.first()
+    return ProjectStart(agentConfig(machineId, key, agentSet(from, agent, saved)), !from.unsettled)
 }
+
+/** The configuration of [projectStart], settled or not. */
+fun projectConfig(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): NewConfig? =
+    projectStart(state, key, pick, machine, saved)?.config
 
 fun agentConfig(machineId: String, cwd: String, s: AgentSettings): NewConfig =
     NewConfig(machineId, cwd, s.agent, s.model, s.effort, modeOf(s.mode)?.takeIf { it in newSessionModes }, s.standardContext)
@@ -233,25 +286,37 @@ fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent): String = when {
  * whose latest session or machines may change, until a draft is begun or the
  * user changes it, then it stays, so an update never retargets a draft.
  */
-class DraftConfig(initial: NewConfig?) {
+class DraftConfig(initial: NewConfig?, settled: Boolean = true) {
     var value by mutableStateOf(initial)
         private set
     private var chosen = false
+    // What it holds was only a guess ([ProjectStart.settled]): what the project
+    // says next replaces it even under a draft, whose text stays.
+    private var guess = !settled
 
-    /** A new suggestion from the project; taken only while nothing is written or chosen. */
-    fun follow(initial: NewConfig?, drafting: Boolean) {
-        if (value == null || (!chosen && !drafting)) value = initial
+    /**
+     * A new suggestion from the project; taken while nothing is written or
+     * chosen, and over a guess unless the user chose. [settled]: whether
+     * the suggestion is more than a guess itself.
+     */
+    fun follow(initial: NewConfig?, drafting: Boolean, settled: Boolean = true) {
+        if (value == null || (!chosen && (!drafting || guess))) {
+            value = initial
+            guess = !settled
+        }
     }
 
     /** Another CLI for this draft: taken at once, written or not, and still following the project. */
-    fun retarget(c: NewConfig) {
+    fun retarget(c: NewConfig, settled: Boolean = true) {
         value = c
+        guess = !settled
     }
 
     /** The user's own choice, kept from now on. */
     fun choose(c: NewConfig) {
         value = c
         chosen = true
+        guess = false
     }
 }
 
@@ -295,28 +360,21 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val project = io.github.lewin671.remoteagent.core.project(state, key)
     val endedTotal = maxOf(project?.ended ?: 0, ended.size)
     val machines = project?.machineIds.orEmpty().map { machineLabel(state, it) }.distinct()
-    // 最近结束 wants three; the whole list asks for a page each time its end is reached.
-    FetchEarlier(state, page = !showEnded && io.github.lewin671.remoteagent.core.needsEndedPage(state, ended, 3, endedTotal))
+    // 最近结束 wants three; the whole list asks for a page each time its end is reached. Either
+    // way what is shown must not reach past the pages fetched: a session kept from before a
+    // reconnect, or fetched by its ID, has others before it that are fetched first.
+    FetchEarlier(state, page = io.github.lewin671.remoteagent.core.needsEndedPage(state, ended, if (showEnded) ended.size else 3, endedTotal))
     val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var typing by remember { mutableStateOf(false) }
     val compact = ime && typing
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
     // The page of project settings that is open ("" is the first), or null.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
-    // What a CLI starts with, where no set is stored for it, is how the project's latest
-    // session on it ran. Sessions come a page at a time: while the project has ended
-    // sessions not fetched and none of this CLI is held, that session may be among them.
-    // Pages are fetched until it is here or the project's are all here, and no session
-    // starts before, so that it is not started with a machine's defaults; a draft that
-    // holds nothing yet is seeded once they are known.
-    val cli = Drafts.peekAgent(key) ?: wantedAgent(state, key)
-    val unread = project != null && state.moreSessions && project.ended > ended.size &&
-        savedSettings(state, key)?.agentsList?.any { it.agent == cli } != true &&
-        // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
-        sessions.none { s -> (cli == null || s.agent() == cli) && state.sessionsNext?.let { io.github.lewin671.remoteagent.core.afterPlace(s.listedEndedMs, s.id, it) } != true }
-    FetchEarlier(state, page = unread)
-    if (unread) Drafts.forgetEmpty(key)
-    val entry = Drafts.newSession(key, projectConfig(state, key))
+    // What the next session starts with, and whether the session it inherits from is known
+    // yet ([ProjectStart]): the message box fetches pages until it is, and starts nothing before.
+    val seed = projectStart(state, key)
+    val entry = Drafts.newSession(key, seed?.config, seed?.settled != false)
+    val start = projectStart(state, key, entry.agent.value)
     // The summary describes the CLI selected next to the message box.
     val selected = projectConfig(state, key, draftPick(state, entry))
     var summaryModels by remember(key, selected?.machineId, selected?.agent) { mutableStateOf<ListModelsResponse?>(null) }
@@ -371,10 +429,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
         }
         // A hidden project stays reachable from its sessions and
         // notifications; starting a new session there restores it first.
-        // A page that failed says so here, with the tap that tries again.
-        if (unread && state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(16.dp))
-        else if (unread) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(16.dp))
-        else if (!hidden) NewSessionBox(state, projectConfig(state, key, entry.agent.value), projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" })
+        if (!hidden) NewSessionBox(state, start?.config, projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
     }
     val open = settingsOpen
     if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->
@@ -506,24 +561,28 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
  * (client-v26). An offline machine is replaced only by the user's choice for
  * this send. The first message starts the session: there is no start without
  * one. [onMachine] opens the machine choice of project settings.
+ * [settled]: whether [initial] is more than a guess ([ProjectStart]). While
+ * it is not, the pages of the listing are fetched and nothing starts; what
+ * is written stays, and takes the settings once they are known.
  */
 @Composable
-fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onFocus: (Boolean) -> Unit = {}, onMachine: () -> Unit = {}) {
+fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onFocus: (Boolean) -> Unit = {}, onMachine: () -> Unit = {}, settled: Boolean = true) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val key = initial?.cwd ?: name
     // Text and configuration live and come back together, so a draft
     // reopened later still goes where it was going.
-    val entry = Drafts.newSession(key, initial)
+    val entry = Drafts.newSession(key, initial, settled)
     val draft = entry.config
+    FetchEarlier(state, page = !settled)
     val config = draft.value
     var text by entry.text
     val images = ImageDrafts.forProject(key)
     val act = rememberAction()
     val fr = remember { FocusRequester() }
     val drafting = text.isNotBlank() || images.images.isNotEmpty()
-    LaunchedEffect(initial, drafting) { draft.follow(initial, drafting) }
+    LaunchedEffect(initial, drafting, settled) { draft.follow(initial, drafting, settled) }
     LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
     val machine = config?.machineId
     val online = state.conn == ConnState.ONLINE
@@ -574,6 +633,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         }
     }
     fun start() {
+        if (!settled) return
         val cfg = config ?: return
         val st = Starts.of(key)
         // Other content is a new start; the unknown one is given up.
@@ -587,6 +647,9 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val missing = c?.let { missingAgent(state, it, entry.agent.value) }
     val notices = @Composable {
         Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Why nothing can start yet; a page that failed says so, with the tap that tries again.
+            if (!settled && (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty())) EarlierTail(state, Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
+            else if (!settled) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
             else if (c != null && state.machines[c.machineId]?.online != true) Banner("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = Tone2.WARN)
             if (c != null && missing != null) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
@@ -607,11 +670,12 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     notices()
     if (c != null && agents.size > 1) AgentSwitch(agents, c.agent, Modifier.padding(horizontal = 16.dp)) { a ->
         entry.agent.value = a
-        draft.retarget(switchAgent(c, projectConfig(state, key, a, c.machineId), a))
+        val to = projectStart(state, key, a, c.machineId)
+        draft.retarget(switchAgent(c, to?.config, a), to?.settled != false)
     }
     ComposeBox(
         text, { text = it }, "描述任务…",
-        canSend = c != null && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
+        canSend = c != null && settled && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
         onSend = ::start,
         onPlus = pick, plusEnabled = blocked == null,
         sendLabel = "开始", focusRequester = fr, onFocus = onFocus,
@@ -710,6 +774,9 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     val agents = machineAgents(state.machines[machine])
     val cur = if (tab in agents) tab else agents.first()
     val c = edited[cur] ?: if (moved) NewConfig(machine, cwd, cur) else agentConfig(machine, cwd, agentSet(state, cwd, cur))
+    // What this CLI's set starts from may be a session not fetched yet: it is fetched before the set can be changed here.
+    val unread = !moved && edited[cur] == null && !agentSetSettled(state, cwd, cur)
+    FetchEarlier(state, page = unread)
     fun edit(next: NewConfig) {
         edited[cur] = next
     }
@@ -768,7 +835,17 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         r()
                     }
                 }
-                if (agents.size > 1) {
+                val reading: @Composable () -> Unit = {
+                    if (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(14.dp))
+                    else Text("正在读取 ${agentName(cur)} 上次的设置…", style = T.sm, color = p.muted, modifier = Modifier.fillMaxWidth().padding(14.dp))
+                }
+                if (unread && agents.size > 1) {
+                    card(listOf(machineRow))
+                    ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                    card(listOf(reading))
+                } else if (unread) {
+                    card(listOf(machineRow, reading))
+                } else if (agents.size > 1) {
                     // The machine is shared; each CLI has its own set, seen under its tab.
                     card(listOf(machineRow))
                     ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
@@ -1004,8 +1081,11 @@ fun NewProjectAtScreen(machine: String, path: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val p = pal
-    val entry = Drafts.newSession(path, projectConfig(state, path, machine = machine))
-    val initial = projectConfig(state, path, entry.agent.value, machine) ?: NewConfig(machine, path)
+    // The folder may be a project that has sessions already: what it starts with is settled the same way.
+    val seed = projectStart(state, path, machine = machine)
+    val entry = Drafts.newSession(path, seed?.config, seed?.settled != false)
+    val start = projectStart(state, path, entry.agent.value, machine)
+    val initial = start?.config ?: NewConfig(machine, path)
     val selected = entry.config.value ?: initial
     var summaryModels by remember(selected.machineId, selected.agent) { mutableStateOf<ListModelsResponse?>(null) }
     LaunchedEffect(selected.machineId, selected.agent) {
@@ -1016,7 +1096,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
         NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
         SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
         Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
-        NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" })
+        NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
     }
     val open = settingsOpen
     if (open != null) NewSettingsSheet(state, path, projectName(path), selected.machineId, selected.agent, open, onDone = { op ->
