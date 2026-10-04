@@ -18,7 +18,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
 
-代码按界面稿 [client-v29](design/client-v29.html) 实现。它相对 v27 只改了新会话的设置摘要：只写审批模式、机器和模型，只有一台机器时不写机器名，放不下时先省略机器名；网页和 Android 都已实现，验证程度见[记录](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。
+代码按界面稿 [client-v29](design/client-v29.html) 实现。它相对 v28 只把图标从字体里的符号字符换成 Lucide（[design-system §5](design-system.md#5-图标)），布局、文案和交互不变；网页和 Android 都已实现，验证程度见[记录](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。
 
 ## 下一步
 
