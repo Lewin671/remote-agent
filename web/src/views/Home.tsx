@@ -277,7 +277,7 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
         <div className="tail">{total ? `${total} 个会话的标题里有「${query.trim()}」` : `没有标题里有「${query.trim()}」的会话`}</div>
       ) : ended.length > shown ? (
         <More onMore={() => setShown((n) => n + PAGE)}>共 {ended.length} 个，滚到底加载更早的</More>
-      ) : ended.length > 0 ? (
+      ) : ended.length > PAGE ? (
         <div className="tail">共 {ended.length} 个</div>
       ) : (
         total === 0 && scope !== ALL && (
