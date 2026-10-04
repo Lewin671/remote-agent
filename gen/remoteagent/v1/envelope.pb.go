@@ -126,6 +126,56 @@ func (PayloadKind) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_v1_envelope_proto_rawDescGZIP(), []int{0}
 }
 
+// Compression says how an envelope's plaintext was packed before it was
+// sealed. Ciphertext does not compress, so what is to be saved in transit
+// and on the server has to be saved here.
+type Compression int32
+
+const (
+	Compression_COMPRESSION_NONE Compression = 0
+	// Raw DEFLATE (RFC 1951), no zlib or gzip wrapper.
+	Compression_COMPRESSION_DEFLATE Compression = 1
+)
+
+// Enum value maps for Compression.
+var (
+	Compression_name = map[int32]string{
+		0: "COMPRESSION_NONE",
+		1: "COMPRESSION_DEFLATE",
+	}
+	Compression_value = map[string]int32{
+		"COMPRESSION_NONE":    0,
+		"COMPRESSION_DEFLATE": 1,
+	}
+)
+
+func (x Compression) Enum() *Compression {
+	p := new(Compression)
+	*p = x
+	return p
+}
+
+func (x Compression) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Compression) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_v1_envelope_proto_enumTypes[1].Descriptor()
+}
+
+func (Compression) Type() protoreflect.EnumType {
+	return &file_remoteagent_v1_envelope_proto_enumTypes[1]
+}
+
+func (x Compression) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Compression.Descriptor instead.
+func (Compression) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_v1_envelope_proto_rawDescGZIP(), []int{1}
+}
+
 // Envelope is the unit of end-to-end encrypted data. The server stores and
 // forwards envelopes but never holds a key that opens them.
 type Envelope struct {
@@ -236,7 +286,13 @@ type Header struct {
 	// Unix milliseconds after which a COMMAND must not run.
 	DeadlineMs int64 `protobuf:"varint,7,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
 	// Device ID of the sender.
-	Sender        string `protobuf:"bytes,8,opt,name=sender,proto3" json:"sender,omitempty"`
+	Sender string `protobuf:"bytes,8,opt,name=sender,proto3" json:"sender,omitempty"`
+	// How the plaintext was packed before sealing. A sender packs a payload
+	// when that makes it smaller; session keys, images and pairing payloads
+	// are never packed. A receiver unpacks before reading, refuses a
+	// compression it does not know, and refuses a payload that unpacks to
+	// more than 64 MiB.
+	Compression   Compression `protobuf:"varint,9,opt,name=compression,proto3,enum=remoteagent.v1.Compression" json:"compression,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,6 +383,13 @@ func (x *Header) GetSender() string {
 	return ""
 }
 
+func (x *Header) GetCompression() Compression {
+	if x != nil {
+		return x.Compression
+	}
+	return Compression_COMPRESSION_NONE
+}
+
 var File_remoteagent_v1_envelope_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_envelope_proto_rawDesc = "" +
@@ -338,7 +401,7 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\n" +
 	"ciphertext\x18\x03 \x01(\fR\n" +
 	"ciphertext\x12\x1c\n" +
-	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xfb\x01\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xba\x02\n" +
 	"\x06Header\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12/\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.remoteagent.v1.PayloadKindR\x04kind\x12\x1d\n" +
@@ -351,7 +414,8 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"request_id\x18\x06 \x01(\tR\trequestId\x12\x1f\n" +
 	"\vdeadline_ms\x18\a \x01(\x03R\n" +
 	"deadlineMs\x12\x16\n" +
-	"\x06sender\x18\b \x01(\tR\x06sender*\xa6\x03\n" +
+	"\x06sender\x18\b \x01(\tR\x06sender\x12=\n" +
+	"\vcompression\x18\t \x01(\x0e2\x1b.remoteagent.v1.CompressionR\vcompression*\xa6\x03\n" +
 	"\vPayloadKind\x12\x1c\n" +
 	"\x18PAYLOAD_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PAYLOAD_KIND_EVENT\x10\x01\x12\x1d\n" +
@@ -367,7 +431,10 @@ const file_remoteagent_v1_envelope_proto_rawDesc = "" +
 	"\x12\x16\n" +
 	"\x12PAYLOAD_KIND_IMAGE\x10\v\x12\x1e\n" +
 	"\x1aPAYLOAD_KIND_ACCOUNT_PREFS\x10\f\x12\x1c\n" +
-	"\x18PAYLOAD_KIND_DEVICE_META\x10\rB\xbf\x01\n" +
+	"\x18PAYLOAD_KIND_DEVICE_META\x10\r*<\n" +
+	"\vCompression\x12\x14\n" +
+	"\x10COMPRESSION_NONE\x10\x00\x12\x17\n" +
+	"\x13COMPRESSION_DEFLATE\x10\x01B\xbf\x01\n" +
 	"\x12com.remoteagent.v1B\rEnvelopeProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 
 var (
@@ -382,20 +449,22 @@ func file_remoteagent_v1_envelope_proto_rawDescGZIP() []byte {
 	return file_remoteagent_v1_envelope_proto_rawDescData
 }
 
-var file_remoteagent_v1_envelope_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_remoteagent_v1_envelope_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_remoteagent_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_remoteagent_v1_envelope_proto_goTypes = []any{
 	(PayloadKind)(0), // 0: remoteagent.v1.PayloadKind
-	(*Envelope)(nil), // 1: remoteagent.v1.Envelope
-	(*Header)(nil),   // 2: remoteagent.v1.Header
+	(Compression)(0), // 1: remoteagent.v1.Compression
+	(*Envelope)(nil), // 2: remoteagent.v1.Envelope
+	(*Header)(nil),   // 3: remoteagent.v1.Header
 }
 var file_remoteagent_v1_envelope_proto_depIdxs = []int32{
 	0, // 0: remoteagent.v1.Header.kind:type_name -> remoteagent.v1.PayloadKind
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 1: remoteagent.v1.Header.compression:type_name -> remoteagent.v1.Compression
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_envelope_proto_init() }
@@ -408,7 +477,7 @@ func file_remoteagent_v1_envelope_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_envelope_proto_rawDesc), len(file_remoteagent_v1_envelope_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,

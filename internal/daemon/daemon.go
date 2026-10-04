@@ -491,8 +491,44 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m.ProtocolVersion = protocol.Version
 	d.mu.Lock()
 	m.Quotas = d.quotaEntriesLocked()
+	sessions := make([]*session, 0, len(d.sessions))
+	for _, s := range d.sessions {
+		sessions = append(sessions, s)
+	}
 	d.mu.Unlock()
+	m.Projects = projectSummaries(sessions)
 	return m
+}
+
+// projectSummaries counts the sessions of each working directory: how
+// many ended, when the newest was created and when one last ended. It
+// reads only what changes when a session starts or ends, so the machine's
+// metadata is not sent anew as sessions merely run.
+func projectSummaries(sessions []*session) []*pb.ProjectSummary {
+	byPath := map[string]*pb.ProjectSummary{}
+	for _, s := range sessions {
+		s.mu.Lock()
+		cwd, created, exited, ended := s.meta.Cwd, s.meta.CreatedAt.UnixMilli(), s.status == pb.SessionStatus_SESSION_STATUS_EXITED, s.ordering.endedAt
+		s.mu.Unlock()
+		p := byPath[cwd]
+		if p == nil {
+			p = &pb.ProjectSummary{Path: cwd}
+			byPath[cwd] = p
+		}
+		p.LatestCreatedMs = max(p.LatestCreatedMs, created)
+		if exited {
+			p.Ended++
+			if ended != nil {
+				p.LatestEndedMs = max(p.LatestEndedMs, ended.AsTime().UnixMilli())
+			}
+		}
+	}
+	out := make([]*pb.ProjectSummary, 0, len(byPath))
+	for _, p := range byPath {
+		out = append(out, p)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out
 }
 
 // installed lists the CLIs on this machine and their versions.

@@ -9,6 +9,7 @@ package e2e
 
 import (
 	"bytes"
+	"compress/flate"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ed25519"
@@ -20,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -117,7 +119,51 @@ func DeviceID(pub ed25519.PublicKey) string {
 	return hex.EncodeToString(sum[:16])
 }
 
+// Packing limits. A payload below PackMin is sent as it is: packing would
+// save nothing worth the work. A payload that unpacks to more than
+// MaxUnpacked is refused, so that a small envelope cannot fill memory.
+const (
+	PackMin     = 256
+	MaxUnpacked = 64 << 20
+)
+
+// packs reports whether payloads of a kind are packed before sealing.
+// Session keys are random, images are already compressed, and pairing
+// payloads are small and read before the devices share a protocol check.
+func packs(kind pb.PayloadKind) bool {
+	switch kind {
+	case pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, pb.PayloadKind_PAYLOAD_KIND_IMAGE, pb.PayloadKind_PAYLOAD_KIND_PAIRING:
+		return false
+	}
+	return true
+}
+
+// pack returns plaintext deflated, or nil when that is not smaller.
+func pack(plaintext []byte) []byte {
+	var b bytes.Buffer
+	w, err := flate.NewWriter(&b, flate.DefaultCompression)
+	if err != nil {
+		return nil
+	}
+	if _, err := w.Write(plaintext); err != nil || w.Close() != nil || b.Len() >= len(plaintext) {
+		return nil
+	}
+	return b.Bytes()
+}
+
+// unpack inflates what pack produced, up to MaxUnpacked bytes.
+func unpack(packed []byte) ([]byte, error) {
+	r := flate.NewReader(bytes.NewReader(packed))
+	defer r.Close()
+	out, err := io.ReadAll(io.LimitReader(r, MaxUnpacked+1))
+	if err != nil || len(out) > MaxUnpacked {
+		return nil, ErrOpen
+	}
+	return out, nil
+}
+
 // Seal encrypts plaintext under key, authenticating h as additional data.
+// A payload that packs smaller is sealed packed, which the header says.
 func Seal(key []byte, h *pb.Header, plaintext []byte) (*pb.Envelope, error) {
 	nonce := make([]byte, 12)
 	if _, err := rand.Read(nonce); err != nil {
@@ -127,9 +173,15 @@ func Seal(key []byte, h *pb.Header, plaintext []byte) (*pb.Envelope, error) {
 }
 
 func sealWithNonce(key []byte, h *pb.Header, plaintext, nonce []byte) (*pb.Envelope, error) {
+	h = proto.CloneOf(h)
 	if h.Version == 0 {
-		h = proto.CloneOf(h)
 		h.Version = Version
+	}
+	h.Compression = pb.Compression_COMPRESSION_NONE
+	if packs(h.Kind) && len(plaintext) >= PackMin {
+		if packed := pack(plaintext); packed != nil {
+			plaintext, h.Compression = packed, pb.Compression_COMPRESSION_DEFLATE
+		}
 	}
 	header, err := proto.MarshalOptions{Deterministic: true}.Marshal(h)
 	if err != nil {
@@ -158,8 +210,9 @@ var (
 	ErrPlace   = errors.New("e2e: envelope header does not match where it was found")
 )
 
-// Open authenticates and decrypts env. It returns the header exactly as
-// sealed; the caller must check it with Expect.
+// Open authenticates and decrypts env, and unpacks a packed payload. It
+// returns the header exactly as sealed; the caller must check it with
+// Expect.
 func Open(key []byte, env *pb.Envelope) (*pb.Header, []byte, error) {
 	if env == nil || len(env.Nonce) != 12 {
 		return nil, nil, ErrOpen
@@ -178,6 +231,15 @@ func Open(key []byte, env *pb.Envelope) (*pb.Header, []byte, error) {
 	}
 	if h.Version != Version {
 		return nil, nil, ErrVersion
+	}
+	switch h.Compression {
+	case pb.Compression_COMPRESSION_NONE:
+	case pb.Compression_COMPRESSION_DEFLATE:
+		if plaintext, err = unpack(plaintext); err != nil {
+			return nil, nil, err
+		}
+	default:
+		return nil, nil, ErrOpen
 	}
 	return h, plaintext, nil
 }

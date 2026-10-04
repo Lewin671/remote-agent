@@ -13,6 +13,13 @@
     "ciphertext": "57e9e5fdd084a419d44229a4754e37fadd24d9a2417bae4263079a2bfe",
     "plaintext": "plaintext ✓"
   },
+  "packed": {
+    "key": "0707070707070707070707070707070707070707070707070707070707070707",
+    "header": "080110011a076d616368696e65220773657373696f6e280442076d616368696e654801",
+    "nonce": "0a0a0a0a0a0a0a0a0a0a0a0a",
+    "ciphertext": "1fd67be991e98493b1ac76b7943c06a3670507ee070925afd30613ec816d7f632de3ca708c365623f4df5b6e1277a35c407fcb88",
+    "plaintext": "packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ packed plaintext ✓ "
+  },
   "register_signature": {
     "message": "726567697374726174696f6e",
     "signature": "8caaac70959f2add62d436afa3b994dd48f15604feac0644101aad6f9c52e361f7e8538401d2ca31e21e2f6f00949fcb74a9e4b0ed3bfa5a6150077fc733cf07"

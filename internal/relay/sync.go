@@ -18,6 +18,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Upload batches stay well below the server's limits.
@@ -89,6 +90,11 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 	if head != nil {
 		after = head.LastSeq
 		sent = c.sentMeta(id, key, head.MetaRevision)
+		// The server pages its listing by when a session ended; if it
+		// holds another time than the metadata says, it gets it again.
+		if sent != nil && head.EndedMs != EndedMs(sent) {
+			sent = nil
+		}
 	}
 	// An ended session has nothing urgent: its first pass, which after a
 	// daemon restart is one request per session, takes turns with the
@@ -245,6 +251,21 @@ func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelop
 	}, fitEvent(slimEvent(e)))
 }
 
+// EndedMs is when a session ended as the server is told in the clear, 0
+// while it has not ended. It is the time clients order ended sessions by:
+// the recorded end, or for a session without one its creation.
+func EndedMs(info *pb.Session) int64 {
+	if info.GetStatus() != pb.SessionStatus_SESSION_STATUS_EXITED {
+		return 0
+	}
+	for _, t := range []*timestamppb.Timestamp{info.EndedAt, info.CreatedAt} {
+		if ms := t.AsTime().UnixMilli(); t != nil && ms > 0 {
+			return ms
+		}
+	}
+	return 1
+}
+
 // putSession stores a session's key and metadata, and returns the
 // metadata's revision.
 func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.Session) (uint64, error) {
@@ -262,7 +283,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	if err != nil {
 		return 0, err
 	}
-	_, err = c.machine.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta}))
+	_, err = c.machine.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}))
 	if err != nil {
 		return 0, fmt.Errorf("put session: %w", err)
 	}

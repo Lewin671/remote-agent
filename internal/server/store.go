@@ -62,8 +62,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 	meta BLOB,
 	meta_revision INTEGER NOT NULL DEFAULT 0,
 	last_seq INTEGER NOT NULL DEFAULT 0,
-	updated_ms INTEGER NOT NULL
+	updated_ms INTEGER NOT NULL,
+	-- When the session ended, 0 while it has not: the one thing about a
+	-- session's state the server is told in the clear, to page the listing.
+	ended_ms INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS sessions_ended ON sessions (ended_ms DESC, session_id);
 CREATE TABLE IF NOT EXISTS events (
 	session_id TEXT NOT NULL,
 	seq INTEGER NOT NULL,
@@ -275,9 +279,10 @@ func (s *store) machine(ctx context.Context, id string) (*pb.Machine, error) {
 
 var errOtherMachine = errors.New("session belongs to another machine")
 
-// putSession creates the session with key, or updates its metadata unless
-// a newer revision is stored. It returns the stored session.
-func (s *store) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64) (*pb.RemoteSession, error) {
+// putSession creates the session with key, or updates its metadata, and
+// with it when the session ended, unless a newer revision is stored. It
+// returns the stored session.
+func (s *store) putSession(ctx context.Context, machineID, sessionID string, key, meta []byte, revision uint64, endedMs int64) (*pb.RemoteSession, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -290,15 +295,15 @@ func (s *store) putSession(ctx context.Context, machineID, sessionID string, key
 		if key == nil {
 			return nil, errNoKey
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (session_id, machine_id, key, meta, meta_revision, updated_ms)
-			VALUES (?, ?, ?, ?, ?, ?)`, sessionID, machineID, key, meta, revision, nowMs())
+		_, err = tx.ExecContext(ctx, `INSERT INTO sessions (session_id, machine_id, key, meta, meta_revision, updated_ms, ended_ms)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, sessionID, machineID, key, meta, revision, nowMs(), endedMs)
 	case err != nil:
 		return nil, err
 	case owner != machineID:
 		return nil, errOtherMachine
 	case meta != nil:
-		_, err = tx.ExecContext(ctx, `UPDATE sessions SET meta = ?, meta_revision = ?, updated_ms = ?
-			WHERE session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), sessionID, revision)
+		_, err = tx.ExecContext(ctx, `UPDATE sessions SET meta = ?, meta_revision = ?, updated_ms = ?, ended_ms = ?
+			WHERE session_id = ? AND meta_revision <= ?`, meta, revision, nowMs(), endedMs, sessionID, revision)
 	}
 	if err != nil {
 		return nil, err
@@ -319,8 +324,8 @@ type querier interface {
 func sessionTx(ctx context.Context, q querier, id string) (*pb.RemoteSession, error) {
 	rs := &pb.RemoteSession{SessionId: id}
 	var key, meta []byte
-	err := q.QueryRowContext(ctx, `SELECT machine_id, key, meta, last_seq, updated_ms FROM sessions WHERE session_id = ?`, id).
-		Scan(&rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs)
+	err := q.QueryRowContext(ctx, `SELECT machine_id, key, meta, last_seq, updated_ms, ended_ms FROM sessions WHERE session_id = ?`, id).
+		Scan(&rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs, &rs.EndedMs)
 	if err != nil {
 		return nil, err
 	}
@@ -328,17 +333,15 @@ func sessionTx(ctx context.Context, q querier, id string) (*pb.RemoteSession, er
 	return rs, nil
 }
 
-func (s *store) sessions(ctx context.Context) ([]*pb.RemoteSession, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT session_id, machine_id, key, meta, last_seq, updated_ms FROM sessions ORDER BY updated_ms DESC`)
-	if err != nil {
-		return nil, err
-	}
+const sessionColumns = `session_id, machine_id, key, meta, last_seq, updated_ms, ended_ms`
+
+func scanSessions(rows *sql.Rows) ([]*pb.RemoteSession, error) {
 	defer rows.Close()
 	var out []*pb.RemoteSession
 	for rows.Next() {
 		rs := &pb.RemoteSession{}
 		var key, meta []byte
-		if err := rows.Scan(&rs.SessionId, &rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs); err != nil {
+		if err := rows.Scan(&rs.SessionId, &rs.MachineId, &key, &meta, &rs.LastSeq, &rs.UpdatedMs, &rs.EndedMs); err != nil {
 			return nil, err
 		}
 		rs.Key, rs.Meta = unmarshalEnv(key), unmarshalEnv(meta)
@@ -347,8 +350,55 @@ func (s *store) sessions(ctx context.Context) ([]*pb.RemoteSession, error) {
 	return out, rows.Err()
 }
 
+// liveSessions returns every session that has not ended.
+func (s *store) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE ended_ms = 0 ORDER BY updated_ms DESC`)
+	if err != nil {
+		return nil, err
+	}
+	return scanSessions(rows)
+}
+
+// endedSessions returns up to limit ended sessions after the cursor, from
+// the latest ended to the earliest, and the cursor for the rest if there
+// are more.
+func (s *store) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
+	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE ended_ms != 0`
+	var args []any
+	if after != nil {
+		query += ` AND (ended_ms < ? OR (ended_ms = ? AND session_id > ?))`
+		args = append(args, after.EndedMs, after.EndedMs, after.SessionId)
+	}
+	rows, err := s.db.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := scanSessions(rows)
+	if err != nil || len(out) <= limit {
+		return out, nil, err
+	}
+	last := out[limit-1]
+	return out[:limit], &pb.SessionCursor{EndedMs: last.EndedMs, SessionId: last.SessionId}, nil
+}
+
+// sessionsByID returns those of the sessions named that exist.
+func (s *store) sessionsByID(ctx context.Context, ids []string) ([]*pb.RemoteSession, error) {
+	var out []*pb.RemoteSession
+	for _, id := range ids {
+		rs, err := sessionTx(ctx, s.db, id)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rs)
+	}
+	return out, nil
+}
+
 func (s *store) sessionHeads(ctx context.Context, machineID string) ([]*pb.SessionHead, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision FROM sessions WHERE machine_id = ?`, machineID)
+	rows, err := s.db.QueryContext(ctx, `SELECT session_id, last_seq, meta_revision, ended_ms FROM sessions WHERE machine_id = ?`, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +406,7 @@ func (s *store) sessionHeads(ctx context.Context, machineID string) ([]*pb.Sessi
 	var out []*pb.SessionHead
 	for rows.Next() {
 		h := &pb.SessionHead{}
-		if err := rows.Scan(&h.SessionId, &h.LastSeq, &h.MetaRevision); err != nil {
+		if err := rows.Scan(&h.SessionId, &h.LastSeq, &h.MetaRevision, &h.EndedMs); err != nil {
 			return nil, err
 		}
 		out = append(out, h)

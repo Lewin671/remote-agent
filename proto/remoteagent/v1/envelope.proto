@@ -66,6 +66,15 @@ enum PayloadKind {
   PAYLOAD_KIND_DEVICE_META = 13;
 }
 
+// Compression says how an envelope's plaintext was packed before it was
+// sealed. Ciphertext does not compress, so what is to be saved in transit
+// and on the server has to be saved here.
+enum Compression {
+  COMPRESSION_NONE = 0;
+  // Raw DEFLATE (RFC 1951), no zlib or gzip wrapper.
+  COMPRESSION_DEFLATE = 1;
+}
+
 // Header binds an envelope to its place. The receiver checks every field
 // against where the envelope was found, so the server cannot move an
 // envelope to another machine, session, position or request.
@@ -89,4 +98,10 @@ message Header {
   int64 deadline_ms = 7;
   // Device ID of the sender.
   string sender = 8;
+  // How the plaintext was packed before sealing. A sender packs a payload
+  // when that makes it smaller; session keys, images and pairing payloads
+  // are never packed. A receiver unpacks before reading, refuses a
+  // compression it does not know, and refuses a payload that unpacks to
+  // more than 64 MiB.
+  Compression compression = 9;
 }

@@ -218,6 +218,19 @@ message RemoteSession {
   // Highest event sequence number stored on the server.
   uint64 last_seq = 5;
   int64 updated_ms = 6;
+  // When the session ended, as its daemon told the server in the clear so
+  // that ended sessions can be listed a page at a time; 0 while it has
+  // not ended. It only places the session in the listing: what a client
+  // shows comes from the sealed metadata.
+  int64 ended_ms = 7;
+}
+
+// SessionCursor is a place in the listing of ended sessions, which runs
+// from the latest ended_ms to the earliest, and by session ID where
+// those are equal.
+message SessionCursor {
+  int64 ended_ms = 1;
+  string session_id = 2;
 }
 
 message StoredEvent {
@@ -232,10 +245,22 @@ message ListMachinesResponse {
   repeated Machine machines = 1;
 }
 
-message ListRemoteSessionsRequest {}
+// The listing comes a page at a time. The first page (no cursor) holds
+// every session that has not ended, then the latest ended ones; each
+// further page holds the ended sessions after the cursor. With
+// session_ids set, the answer is just those sessions, as far as they
+// exist, and neither cursor nor limit applies.
+message ListRemoteSessionsRequest {
+  SessionCursor after = 1;
+  // At most this many ended sessions; the server caps it.
+  uint32 limit = 2;
+  repeated string session_ids = 3;
+}
 
 message ListRemoteSessionsResponse {
   repeated RemoteSession sessions = 1;
+  // The cursor for the next page, unset when this was the last.
+  SessionCursor next = 2;
 }
 
 message GetEventsRequest {
@@ -292,6 +317,9 @@ message PutSessionRequest {
   // never changes.
   Envelope key = 2;
   Envelope meta = 3;
+  // When the session in meta ended, 0 if it has not. Read with meta; the
+  // server keeps it in the clear to page the listing of ended sessions.
+  int64 ended_ms = 4;
 }
 
 message PutSessionResponse {}
@@ -312,6 +340,8 @@ message SessionHead {
   uint64 last_seq = 2;
   // Revision of the stored SESSION_META, 0 if none.
   uint64 meta_revision = 3;
+  // The ended_ms stored with it.
+  int64 ended_ms = 4;
 }
 
 message ListSessionHeadsResponse {

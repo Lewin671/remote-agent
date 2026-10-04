@@ -2,12 +2,14 @@ package e2e
 
 import (
 	"bytes"
+	"compress/flate"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"os"
+	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -153,6 +155,16 @@ type vectors struct {
 		Ciphertext string `json:"ciphertext"`
 		Plaintext  string `json:"plaintext"`
 	} `json:"envelope"`
+	// An envelope sealed packed (Header.compression), for the other
+	// implementations to open. Its bytes depend on the deflate encoder, so
+	// they are written with -update and otherwise only opened here.
+	Packed struct {
+		Key        string `json:"key"`
+		Header     string `json:"header"`
+		Nonce      string `json:"nonce"`
+		Ciphertext string `json:"ciphertext"`
+		Plaintext  string `json:"plaintext"`
+	} `json:"packed"`
 	RegisterSignature struct {
 		Message   string `json:"message"`
 		Signature string `json:"signature"`
@@ -217,12 +229,49 @@ func TestVectors(t *testing.T) {
 	pv.SAS, pv.Key = hex.EncodeToString(ps.SAS[:]), hex.EncodeToString(ps.Key)
 	pv.Emoji = SASEmoji[:]
 
+	const path = "testdata/vectors.json"
+	packedText := strings.Repeat("packed plaintext ✓ ", 40)
+	if *update {
+		penv, err := sealWithNonce(key, &pb.Header{
+			Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: "machine", SessionId: "session", Seq: 4, Sender: "machine",
+		}, []byte(packedText), bytes.Repeat([]byte{0x0a}, 12))
+		if err != nil {
+			t.Fatal(err)
+		}
+		v.Packed.Key = hex.EncodeToString(key)
+		v.Packed.Header, v.Packed.Nonce, v.Packed.Ciphertext = hex.EncodeToString(penv.Header), hex.EncodeToString(penv.Nonce), hex.EncodeToString(penv.Ciphertext)
+		v.Packed.Plaintext = packedText
+	} else {
+		var stored vectors
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(b, &stored); err != nil {
+			t.Fatal(err)
+		}
+		v.Packed = stored.Packed
+	}
+	unhex := func(s string) []byte {
+		b, err := hex.DecodeString(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	ph, pp, err := Open(key, &pb.Envelope{Header: unhex(v.Packed.Header), Nonce: unhex(v.Packed.Nonce), Ciphertext: unhex(v.Packed.Ciphertext)})
+	if err != nil || string(pp) != packedText || v.Packed.Plaintext != packedText {
+		t.Fatalf("packed vector does not open: %v", err)
+	}
+	if ph.Compression != pb.Compression_COMPRESSION_DEFLATE || len(v.Packed.Ciphertext)/2 >= len(packedText) {
+		t.Fatal("packed vector is not packed")
+	}
+
 	got, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
 	got = append(got, '\n')
-	const path = "testdata/vectors.json"
 	if *update {
 		if err := os.WriteFile(path, got, 0o644); err != nil {
 			t.Fatal(err)
@@ -267,5 +316,73 @@ func TestPairing(t *testing.T) {
 			t.Fatalf("emoji table has %q twice or empty", e)
 		}
 		seen[e] = true
+	}
+}
+
+func TestPacking(t *testing.T) {
+	key := NewKey()
+	big := bytes.Repeat([]byte("the same line again\n"), 500)
+	h := &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: "m", SessionId: "s", Seq: 1}
+	env, err := Seal(key, h, big)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(env.Ciphertext) >= len(big)/4 {
+		t.Fatalf("a repetitive payload was sealed in %d bytes of %d", len(env.Ciphertext), len(big))
+	}
+	if h.Compression != pb.Compression_COMPRESSION_NONE {
+		t.Fatal("Seal changed the caller's header")
+	}
+	got, plain, err := Open(key, env)
+	if err != nil || !bytes.Equal(plain, big) || got.Compression != pb.Compression_COMPRESSION_DEFLATE {
+		t.Fatalf("packed envelope did not open: %v", err)
+	}
+	// What does not get smaller, is small, or is of a kind never packed
+	// goes as it is.
+	for name, c := range map[string]struct {
+		kind  pb.PayloadKind
+		plain []byte
+	}{
+		"random": {pb.PayloadKind_PAYLOAD_KIND_EVENT, NewKey()[:KeySize]},
+		"small":  {pb.PayloadKind_PAYLOAD_KIND_EVENT, bytes.Repeat([]byte("a"), PackMin-1)},
+		"image":  {pb.PayloadKind_PAYLOAD_KIND_IMAGE, big},
+	} {
+		env, err := Seal(key, &pb.Header{Kind: c.kind}, c.plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, plain, err := Open(key, env)
+		if err != nil || !bytes.Equal(plain, c.plain) || got.Compression != pb.Compression_COMPRESSION_NONE {
+			t.Fatalf("%s: sealed packed or did not open: %v", name, err)
+		}
+	}
+	// A header naming a compression this version does not know is refused,
+	// as is a payload that is not what the header says.
+	raw := func(c pb.Compression, plain []byte) *pb.Envelope {
+		header, _ := proto.MarshalOptions{Deterministic: true}.Marshal(&pb.Header{Version: Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, Compression: c})
+		aead, _ := newGCM(key)
+		nonce := make([]byte, 12)
+		return &pb.Envelope{Header: header, Nonce: nonce, Ciphertext: aead.Seal(nil, nonce, plain, header)}
+	}
+	if _, _, err := Open(key, raw(pb.Compression(9), big)); err != ErrOpen {
+		t.Fatalf("unknown compression: %v", err)
+	}
+	if _, _, err := Open(key, raw(pb.Compression_COMPRESSION_DEFLATE, []byte("not deflate at all, surely"))); err != ErrOpen {
+		t.Fatalf("payload that is not deflate: %v", err)
+	}
+}
+
+func TestUnpackLimit(t *testing.T) {
+	// A few kilobytes that unpack to more than the limit are refused
+	// without being held in full.
+	var b bytes.Buffer
+	w, _ := flate.NewWriter(&b, flate.BestSpeed)
+	zeros := make([]byte, 1<<20)
+	for i := 0; i < MaxUnpacked>>20+1; i++ {
+		w.Write(zeros)
+	}
+	w.Close()
+	if _, err := unpack(b.Bytes()); err != ErrOpen {
+		t.Fatalf("oversized payload: %v", err)
 	}
 }

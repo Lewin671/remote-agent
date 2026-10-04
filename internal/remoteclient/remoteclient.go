@@ -122,21 +122,28 @@ type Session struct {
 	LastSeq   uint64
 }
 
-// Sessions lists sessions with their keys and metadata opened.
+// Sessions lists every session with its key and metadata opened, reading
+// the listing page by page.
 func (c *Client) Sessions(ctx context.Context) ([]Session, error) {
-	res, err := c.api.ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
-	if err != nil {
-		return nil, err
-	}
 	var out []Session
-	for _, rs := range res.Msg.Sessions {
-		s, err := c.OpenSession(rs)
+	req := &pb.ListRemoteSessionsRequest{}
+	for {
+		res, err := c.api.ListRemoteSessions(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, s)
+		for _, rs := range res.Msg.Sessions {
+			s, err := c.OpenSession(rs)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, s)
+		}
+		if res.Msg.Next == nil {
+			return out, nil
+		}
+		req = &pb.ListRemoteSessionsRequest{After: res.Msg.Next}
 	}
-	return out, nil
 }
 
 // OpenSession opens a session record.

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/envelope.proto.
  */
 export const file_remoteagent_v1_envelope: GenFile = /*@__PURE__*/
-  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEiUAoIRW52ZWxvcGUSDgoGaGVhZGVyGAEgASgMEg0KBW5vbmNlGAIgASgMEhIKCmNpcGhlcnRleHQYAyABKAwSEQoJc2lnbmF0dXJlGAQgASgMIrIBCgZIZWFkZXISDwoHdmVyc2lvbhgBIAEoDRIpCgRraW5kGAIgASgOMhsucmVtb3RlYWdlbnQudjEuUGF5bG9hZEtpbmQSEgoKbWFjaGluZV9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEgsKA3NlcRgFIAEoBBISCgpyZXF1ZXN0X2lkGAYgASgJEhMKC2RlYWRsaW5lX21zGAcgASgDEg4KBnNlbmRlchgIIAEoCSqmAwoLUGF5bG9hZEtpbmQSHAoYUEFZTE9BRF9LSU5EX1VOU1BFQ0lGSUVEEAASFgoSUEFZTE9BRF9LSU5EX0VWRU5UEAESHQoZUEFZTE9BRF9LSU5EX1NFU1NJT05fTUVUQRACEhwKGFBBWUxPQURfS0lORF9TRVNTSU9OX0tFWRADEh0KGVBBWUxPQURfS0lORF9NQUNISU5FX01FVEEQBBIYChRQQVlMT0FEX0tJTkRfQ09NTUFORBAFEh8KG1BBWUxPQURfS0lORF9DT01NQU5EX1JFU1VMVBAGEiAKHFBBWUxPQURfS0lORF9URVJNSU5BTF9PVVRQVVQQBxIfChtQQVlMT0FEX0tJTkRfVEVSTUlOQUxfSU5QVVQQCBIYChRQQVlMT0FEX0tJTkRfUEFJUklORxAJEhcKE1BBWUxPQURfS0lORF9OT1RJRlkQChIWChJQQVlMT0FEX0tJTkRfSU1BR0UQCxIeChpQQVlMT0FEX0tJTkRfQUNDT1VOVF9QUkVGUxAMEhwKGFBBWUxPQURfS0lORF9ERVZJQ0VfTUVUQRANYgZwcm90bzM");
+  fileDesc("Ch1yZW1vdGVhZ2VudC92MS9lbnZlbG9wZS5wcm90bxIOcmVtb3RlYWdlbnQudjEiUAoIRW52ZWxvcGUSDgoGaGVhZGVyGAEgASgMEg0KBW5vbmNlGAIgASgMEhIKCmNpcGhlcnRleHQYAyABKAwSEQoJc2lnbmF0dXJlGAQgASgMIuQBCgZIZWFkZXISDwoHdmVyc2lvbhgBIAEoDRIpCgRraW5kGAIgASgOMhsucmVtb3RlYWdlbnQudjEuUGF5bG9hZEtpbmQSEgoKbWFjaGluZV9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEgsKA3NlcRgFIAEoBBISCgpyZXF1ZXN0X2lkGAYgASgJEhMKC2RlYWRsaW5lX21zGAcgASgDEg4KBnNlbmRlchgIIAEoCRIwCgtjb21wcmVzc2lvbhgJIAEoDjIbLnJlbW90ZWFnZW50LnYxLkNvbXByZXNzaW9uKqYDCgtQYXlsb2FkS2luZBIcChhQQVlMT0FEX0tJTkRfVU5TUEVDSUZJRUQQABIWChJQQVlMT0FEX0tJTkRfRVZFTlQQARIdChlQQVlMT0FEX0tJTkRfU0VTU0lPTl9NRVRBEAISHAoYUEFZTE9BRF9LSU5EX1NFU1NJT05fS0VZEAMSHQoZUEFZTE9BRF9LSU5EX01BQ0hJTkVfTUVUQRAEEhgKFFBBWUxPQURfS0lORF9DT01NQU5EEAUSHwobUEFZTE9BRF9LSU5EX0NPTU1BTkRfUkVTVUxUEAYSIAocUEFZTE9BRF9LSU5EX1RFUk1JTkFMX09VVFBVVBAHEh8KG1BBWUxPQURfS0lORF9URVJNSU5BTF9JTlBVVBAIEhgKFFBBWUxPQURfS0lORF9QQUlSSU5HEAkSFwoTUEFZTE9BRF9LSU5EX05PVElGWRAKEhYKElBBWUxPQURfS0lORF9JTUFHRRALEh4KGlBBWUxPQURfS0lORF9BQ0NPVU5UX1BSRUZTEAwSHAoYUEFZTE9BRF9LSU5EX0RFVklDRV9NRVRBEA0qPAoLQ29tcHJlc3Npb24SFAoQQ09NUFJFU1NJT05fTk9ORRAAEhcKE0NPTVBSRVNTSU9OX0RFRkxBVEUQAWIGcHJvdG8z");
 
 /**
  * Envelope is the unit of end-to-end encrypted data. The server stores and
@@ -129,6 +129,17 @@ export type Header = Message<"remoteagent.v1.Header"> & {
    * @generated from field: string sender = 8;
    */
   sender: string;
+
+  /**
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   *
+   * @generated from field: remoteagent.v1.Compression compression = 9;
+   */
+  compression: Compression;
 };
 
 /**
@@ -254,4 +265,31 @@ export enum PayloadKind {
  */
 export const PayloadKindSchema: GenEnum<PayloadKind> = /*@__PURE__*/
   enumDesc(file_remoteagent_v1_envelope, 0);
+
+/**
+ * Compression says how an envelope's plaintext was packed before it was
+ * sealed. Ciphertext does not compress, so what is to be saved in transit
+ * and on the server has to be saved here.
+ *
+ * @generated from enum remoteagent.v1.Compression
+ */
+export enum Compression {
+  /**
+   * @generated from enum value: COMPRESSION_NONE = 0;
+   */
+  NONE = 0,
+
+  /**
+   * Raw DEFLATE (RFC 1951), no zlib or gzip wrapper.
+   *
+   * @generated from enum value: COMPRESSION_DEFLATE = 1;
+   */
+  DEFLATE = 1,
+}
+
+/**
+ * Describes the enum remoteagent.v1.Compression.
+ */
+export const CompressionSchema: GenEnum<Compression> = /*@__PURE__*/
+  enumDesc(file_remoteagent_v1_envelope, 1);
 

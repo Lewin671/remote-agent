@@ -162,11 +162,34 @@ func (c *clientService) ListMachines(ctx context.Context, req *connect.Request[p
 }
 
 func (c *clientService) ListRemoteSessions(ctx context.Context, req *connect.Request[pb.ListRemoteSessionsRequest]) (*connect.Response[pb.ListRemoteSessionsResponse], error) {
-	ss, err := c.s.store.sessions(ctx)
+	if ids := req.Msg.SessionIds; len(ids) > 0 {
+		if len(ids) > maxSessionPage {
+			return nil, invalid("at most %d session IDs per request", maxSessionPage)
+		}
+		ss, err := c.s.store.sessionsByID(ctx, ids)
+		if err != nil {
+			return nil, internal(err)
+		}
+		return connect.NewResponse(&pb.ListRemoteSessionsResponse{Sessions: ss}), nil
+	}
+	limit := int(req.Msg.Limit)
+	if limit <= 0 {
+		limit = defaultSessionPage
+	}
+	limit = min(limit, maxSessionPage)
+	var out []*pb.RemoteSession
+	if req.Msg.After == nil {
+		live, err := c.s.store.liveSessions(ctx)
+		if err != nil {
+			return nil, internal(err)
+		}
+		out = live
+	}
+	ended, next, err := c.s.store.endedSessions(ctx, req.Msg.After, limit)
 	if err != nil {
 		return nil, internal(err)
 	}
-	return connect.NewResponse(&pb.ListRemoteSessionsResponse{Sessions: ss}), nil
+	return connect.NewResponse(&pb.ListRemoteSessionsResponse{Sessions: append(out, ended...), Next: next}), nil
 }
 
 func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.GetEventsRequest]) (*connect.Response[pb.GetEventsResponse], error) {
@@ -264,7 +287,10 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 		meta, _ = proto.Marshal(req.Msg.Meta)
 		revision = h.Seq
 	}
-	rs, err := m.s.store.putSession(ctx, id, sid, key, meta, revision)
+	if req.Msg.EndedMs < 0 {
+		return nil, invalid("ended_ms must not be negative")
+	}
+	rs, err := m.s.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs)
 	switch {
 	case errors.Is(err, errNoKey):
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)

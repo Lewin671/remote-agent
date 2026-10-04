@@ -58,7 +58,10 @@ const (
 	maxPairingRequestBytes = 2 << 20
 	maxFrameBytes          = 2 << 20
 	defaultEventPage       = 200
-	maxEventPage           = 1000
+	// Ended sessions per page of the listing.
+	defaultSessionPage = 50
+	maxSessionPage     = 200
+	maxEventPage       = 1000
 	// Bound memory as well as event count; legal envelopes can be 1 MiB.
 	// A page is also what a client waits for before it shows anything
 	// more, so it is kept to a few seconds of a slow link.

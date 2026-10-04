@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"net/http"
 	"testing"
 
@@ -20,13 +21,16 @@ func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
 	key := e2e.NewKey()
 	env, _ := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "large-events"}, key[:])
 	raw, _ := marshalEnv(env)
-	if _, err := ts.srv.store.putSession(ctx, mid, "large-events", raw, nil, 0); err != nil {
+	if _, err := ts.srv.store.putSession(ctx, mid, "large-events", raw, nil, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	const count = 24
 	events := make([]*pb.StoredEvent, 0, count)
+	// Random bytes: a payload that packs would not fill the pages.
+	payload := make([]byte, 512<<10)
+	rand.Read(payload)
 	for seq := uint64(1); seq <= count; seq++ {
-		envelope, err := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: mid, SessionId: "large-events", Seq: seq}, make([]byte, 512<<10))
+		envelope, err := e2e.Seal(key, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: mid, SessionId: "large-events", Seq: seq}, payload)
 		if err != nil {
 			t.Fatal(err)
 		}
