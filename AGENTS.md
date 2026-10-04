@@ -48,9 +48,9 @@
 可能有多个 agent 同时开发，每个 agent 在自己的 `git worktree` 里干活，不在主工作区里改代码。这样暂存区、`go test` 和 rebase 都互不干扰。
 
 ```sh
-# 开工：从最新的 main 建 worktree，放在仓库外的同级目录
+# 开工：从最新的 main 建 worktree，放在所在工作区的 worktrees/remote-agent/ 下（主工作区在 projects/remote-agent/）
 git fetch
-git worktree add -b wt/<任务名> ../remote-agent.worktrees/<任务名> origin/main
+git worktree add -b wt/<任务名> ../../worktrees/remote-agent/<任务名> origin/main
 
 # 做完：在 worktree 里提交后，rebase 到最新的 main，测试通过再推
 git fetch && git rebase origin/main
@@ -58,7 +58,7 @@ go test ./...
 git push origin HEAD:main
 
 # 收尾：确认已推送后清理，并把主工作区快进到最新
-git worktree remove ../remote-agent.worktrees/<任务名>
+git worktree remove ../../worktrees/remote-agent/<任务名>
 git branch -D wt/<任务名>
 git -C <主工作区> merge --ff-only origin/main
 ```
