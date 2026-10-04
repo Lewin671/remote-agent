@@ -1,18 +1,19 @@
-// A project: its live sessions, the recently ended ones, and the box to
-// start a new session in it.
+// A project on a phone: its live sessions, the recently ended ones, and
+// the box to start a new session in it. A wide window has no such page:
+// the sidebar lists the project and the home starts a session in it.
 
 import { useEffect, useRef, useState } from "react";
 import { compareLive, compareEnded, exited, machineName, projectName, shortPath } from "../model";
 import type { Remote } from "../remote";
 import { Avatar, NavBar, useNow, useRemote } from "../ui";
-import { SessionRow } from "./Home";
+import { colsOf, EndedRow, SessionRow } from "./Home";
 import { ConfigSheet, ConfigSummary, NewBox, useNewSession, type Go } from "./NewSession";
 import { RemovedNotice } from "./Projects";
 import { isHidden } from "../prefs";
 
 const PAGE = 20;
 
-export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote; pkey: string; go: Go; onBack: () => void; wide: boolean }) {
+export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey: string; go: Go; onBack: () => void }) {
   useRemote(remote);
   useNow(30_000);
   const ns = useNewSession(remote, pkey, go);
@@ -21,7 +22,8 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
   const live = p?.sessions.filter((s) => !exited(s)).sort(compareLive) ?? [];
   const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
   const machines = (p?.machines.length ? p.machines : [ns.cfg.machineId]).filter(Boolean).map((id) => machineName(remote.machines.get(id)));
-  const [shownEnded, setShownEnded] = useState(wide ? PAGE : 3);
+  const [shownEnded, setShownEnded] = useState(3);
+  const cols = colsOf(remote, p?.sessions ?? [], false);
   const [scrolled, setScrolled] = useState(false);
   const [typing, setTyping] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(() => remote.demoFlag("project-settings"));
@@ -48,7 +50,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
             已结束 {ended.length} ›
           </button>
         </div>
-        {!wide && <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />}
+        <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />
       </div>
     </div>
   );
@@ -64,41 +66,24 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
         </div>
       )}
       {live.map((s, i) => (
-        <SessionRow key={s.id} remote={remote} s={s} go={go} showProject={false} last={i === live.length - 1} />
+        <SessionRow key={s.id} remote={remote} s={s} go={go} cols={cols} last={i === live.length - 1} />
       ))}
       {ended.length > 0 && (
         <div className="label" ref={endedRef}>
-          {wide ? (
-            <>
-              已结束 <span>{ended.length}</span>
-            </>
-          ) : (
-            "最近结束"
-          )}
+          最近结束
         </div>
       )}
       {ended.slice(0, shownEnded).map((s) => (
-        <SessionRow key={s.id} remote={remote} s={s} go={go} showProject={false} />
+        <EndedRow key={s.id} s={s} go={go} />
       ))}
       {ended.length > shownEnded && (
         <button className="todo-more" onClick={() => setShownEnded((n) => n + PAGE)}>
-          {wide ? "更多" : `全部 ${ended.length} 个已结束的会话`} ›
+          全部 {ended.length} 个已结束的会话 ›
         </button>
       )}
       {!p && !hidden && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}
     </>
   );
-  if (wide)
-    return (
-      <div className="body">
-        <div className="wpage">
-          {head}
-          {settingsOpen && <ConfigSheet ns={ns} onClose={() => setSettingsOpen(false)} />}
-          {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} variant="prompt" />}
-          {lists}
-        </div>
-      </div>
-    );
   return (
     <div className="page">
       {/* With the keyboard up the project's head folds into the bar. */}

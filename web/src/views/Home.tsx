@@ -1,7 +1,8 @@
-// The home page (需要处理, 进行中, 项目), its wide-screen form with the
-// sidebar, and the list rows they share.
+// The home page: a timeline of sessions within a scope (one project, or
+// all of them), its wide-screen form as the sidebar, and the list rows
+// they share (client-v27).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   agentName,
   agentOf,
@@ -9,7 +10,9 @@ import {
   compareLive,
   compareProjects,
   compareEnded,
+  dayGroup,
   endedMs,
+  endedTime,
   ago,
   askTitle,
   derive,
@@ -20,15 +23,16 @@ import {
   previewOf,
   projectKey,
   projectName,
-  projects,
   shortPath,
   stateOf,
   titleOf,
   when,
   type Project,
 } from "../model";
+import { isHidden } from "../prefs";
 import type { Remote, SessionView } from "../remote";
-import { Avatar, Banner, Dot, Skeleton, useNow, useRemote } from "../ui";
+import { ALL, resolveScope, savedScope, saveScope, subscribeScope } from "../scope";
+import { Avatar, Banner, Dot, Sheet, Skeleton, useEscape, useNow, useRemote } from "../ui";
 import { deadlineOf, useDerived } from "./actions";
 import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
@@ -38,6 +42,34 @@ import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
 export type { Go };
 
 function ComposeIcon() { return <svg className="compose-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 13v6H5V5h6" strokeLinecap="round" strokeLinejoin="round"/><path d="m11 13 8-8 2 2-8 8-3 1 1-3Z" strokeLinejoin="round"/></svg>; }
+
+/** Which of a row's attributes differ within the list it is in. A row
+ * names only those: what every row shares is noise. */
+export type Cols = { project?: boolean; agent?: boolean; machine?: boolean };
+
+/** The third line of a row: 分叉, then what its list does not share. */
+function metaOf(remote: Remote, s: SessionView, cols: Cols): string {
+  return [
+    s.info?.forkedFrom ? "分叉" : "",
+    cols.project ? projectName(projectKey(s)) : "",
+    cols.agent ? agentName(agentOf(s)) : "",
+    cols.machine ? machineName(remote.machines.get(s.machineId)) : "",
+  ].filter(Boolean).join(" · ");
+}
+
+/** The columns of a list of sessions: the CLI when they used more than
+ * one, the machine when the account has more than one. */
+export function colsOf(remote: Remote, sessions: SessionView[], project: boolean): Cols {
+  return { project, agent: new Set(sessions.map(agentOf)).size > 1, machine: remote.machines.size > 1 };
+}
+
+/** The scope shown, and the listed projects it is picked from. */
+function useScope(remote: Remote) {
+  const groups = useProjectGroups(remote);
+  const list = [...groups.pinned, ...groups.others];
+  const saved = useSyncExternalStore(subscribeScope, savedScope);
+  return { scope: resolveScope(saved, list.map((p) => p.key)), list, groups };
+}
 
 /** Sessions waiting for the user, oldest wait first. */
 export function todoList(remote: Remote): SessionView[] {
@@ -55,7 +87,7 @@ function liveList(remote: Remote): SessionView[] {
 
 /** A session waiting for the user. Command approvals are handled right
  * on the card; questions, plans and popups link into the session. */
-function TodoCard({ remote, s, go, wide }: { remote: Remote; s: SessionView; go: Go; wide?: boolean }) {
+function TodoCard({ remote, s, go, cols }: { remote: Remote; s: SessionView; go: Go; cols: Cols }) {
   const now = useNow(1000);
   const d = useDerived(remote, s.id);
   const machine = remote.machines.get(s.machineId);
@@ -63,7 +95,7 @@ function TodoCard({ remote, s, go, wide }: { remote: Remote; s: SessionView; go:
   const agent = agentOf(s);
   const a = st.kind === "approval" ? [...d.approvals.values()][0] : undefined;
   const q = st.kind === "question" ? [...d.questions.values()][0] : undefined;
-  const where = `${projectName(projectKey(s))} · ${machineName(machine)}`;
+  const where = metaOf(remote, s, cols);
   const open = () => go("s/" + s.id);
   const kind = a ? approvalTitle(a) : st.kind === "question" ? askTitle(agent) : st.text;
   const deadline = a ? deadlineOf(a) : 0;
@@ -81,85 +113,58 @@ function TodoCard({ remote, s, go, wide }: { remote: Remote; s: SessionView; go:
         </button>
       </div>
       <div className="m">
-        {where}
-        {wide && a?.description && ` · ${approvalDisplay(a.description)}`}
-        {q?.questions[0] && ` · ${q.questions[0].text}`}
-        {st.kind === "popup" && s.info?.statusDetail && ` · ${s.info.statusDetail}`}
+        {[where, q?.questions[0]?.text, st.kind === "popup" && s.info?.statusDetail].filter(Boolean).join(" · ")}
       </div>
       {a && (
         <>
-          {!wide && a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
+          {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
           <pre>{approvalText(a)}</pre>
           {/* Keyed by approval: the next one must not inherit this one's locked buttons. */}
-          <ApprovalActions key={a.approvalId} remote={remote} sid={s.id} a={a} agent={agent} wideRow={wide} />
+          <ApprovalActions key={a.approvalId} remote={remote} sid={s.id} a={a} agent={agent} />
         </>
       )}
     </div>
   );
 }
 
-function TodoSection({ remote, go, wide }: { remote: Remote; go: Go; wide?: boolean }) {
-  const [all, setAll] = useState(false);
-  const todo = todoList(remote);
-  if (!todo.length) return null;
-  const shown = all ? todo : todo.slice(0, 3);
-  return (
-    <>
-      <div className="label">
-        需要处理 <span>{todo.length}</span>
-      </div>
-      {shown.map((s) => (
-        <TodoCard key={s.id} remote={remote} s={s} go={go} wide={wide} />
-      ))}
-      {todo.length > shown.length && (
-        <button className="todo-more" onClick={() => setAll(true)}>
-          还有 {todo.length - shown.length} 项待处理 ›
-        </button>
-      )}
-    </>
-  );
-}
-
-/** A session in a list: the dot, and the state word beside it. */
-export function SessionRow({
-  remote,
-  s,
-  go,
-  selected,
-  compact,
-  showProject = true,
-  last,
-}: {
-  remote: Remote;
-  s: SessionView;
-  go: Go;
-  selected?: boolean;
-  compact?: boolean;
-  showProject?: boolean;
-  last?: boolean;
-}) {
+/** A live session in a list: the dot, the state word and what it is
+ * doing, then whatever its list does not share. */
+export function SessionRow({ remote, s, go, selected, cols = {}, last }: { remote: Remote; s: SessionView; go: Go; selected?: boolean; cols?: Cols; last?: boolean }) {
   const machine = remote.machines.get(s.machineId);
   const st = stateOf(s, machine);
   // Waiting sessions preview what they wait for, which is in the events.
-  const waiting = st.tone === "wait" && !compact;
+  const waiting = st.tone === "wait";
   useEffect(() => waiting ? remote.retainHistory(s.id) : undefined, [remote, s.id, waiting]);
-  const pending = waiting ? pendingOf(remote, s.id) : undefined;
+  const pv = previewOf(s, st, waiting ? pendingOf(remote, s.id) : undefined);
   const ended = st.kind === "ended";
+  const meta = metaOf(remote, s, cols);
   return (
-    <button className={`sess ${st.tone}${ended ? " ended" : ""}${selected ? " sel" : ""}${last ? " last" : ""}`} onClick={() => go("s/" + s.id)}>
+    <button className={`sess ${st.tone}${selected ? " sel" : ""}${last ? " last" : ""}`} onClick={() => go("s/" + s.id)}>
       <Dot tone={st.tone} />
       <div className="sm">
         <div className="row1">
           <b>{titleOf(s)}</b>
           <span>{when(ended ? BigInt(endedMs(s)) : s.updatedMs)}</span>
         </div>
-        {!compact && <div className="pv">{previewOf(s, st, pending)}</div>}
-        <div className="mc">
+        <div className="pv">
           <span className={"stw " + st.tone}>{st.text}</span>
-          {s.info?.forkedFrom ? " · 分叉" : ""} · {agentName(agentOf(s))}
-          {showProject && ` · ${projectName(projectKey(s))}`} · {machineName(machine)}
+          {pv && pv !== st.text && ` · ${pv}`}
         </div>
+        {meta && <div className="mc">{meta}</div>}
       </div>
+    </button>
+  );
+}
+
+/** An ended session: one line, under the date group that says when. */
+export function EndedRow({ s, go, selected, project }: { s: SessionView; go: Go; selected?: boolean; project?: boolean }) {
+  return (
+    <button className={"old" + (selected ? " sel" : "")} onClick={() => go("s/" + s.id)}>
+      <span>{titleOf(s)}</span>
+      <span>
+        {project && projectName(projectKey(s)) + " · "}
+        {endedTime(endedMs(s))}
+      </span>
     </button>
   );
 }
@@ -170,23 +175,234 @@ function pendingOf(remote: Remote, sid: string) {
   return { approval: [...d.approvals.values()][0], question: [...d.questions.values()][0] };
 }
 
-function ProjectRow({ p, go }: { p: Project<SessionView>; go: Go }) {
-  const live = p.sessions.filter((s) => !exited(s)).length;
+const PAGE = 30;
+
+/** The sessions of a scope: 需要处理 for the whole account, then the
+ * scope's live sessions and its ended ones by date. With more than eight
+ * sessions it can be filtered by title. The session on screen stays
+ * listed and highlighted even when it is outside the scope. */
+function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: Go; scope: string; selected?: string; wide?: boolean }) {
+  const now = useNow(30_000);
+  const [query, setQuery] = useState("");
+  const [allTodo, setAllTodo] = useState(false);
+  const [allLive, setAllLive] = useState(false);
+  const [shown, setShown] = useState(PAGE);
+  const input = useRef<HTMLInputElement>(null);
+  const prefs = remote.projectPrefs();
+  const q = query.trim().toLocaleLowerCase();
+  const match = (s: SessionView) => !q || titleOf(s).toLocaleLowerCase().includes(q);
+  const within = (s: SessionView) => scope === ALL || projectKey(s) === scope;
+  const inScope = [...remote.sessions.values()].filter(within);
+  const todo = todoList(remote).filter(match);
+  const live = liveList(remote).filter(within).filter(match);
+  // A removed project's ended sessions are not listed under all projects.
+  const everEnded = inScope.filter((s) => exited(s) && (scope !== ALL || !isHidden(prefs, projectKey(s)))).sort(compareEnded);
+  const ended = everEnded.filter(match);
+  const cols = colsOf(remote, inScope, scope === ALL);
+  const sel = selected ? remote.sessions.get(selected) : undefined;
+  // Keep the open session in view where it would have been.
+  if (sel && !q && !todo.includes(sel) && !live.includes(sel) && !ended.slice(0, shown).includes(sel)) live.unshift(sel);
+  const cut = <T,>(list: T[], max: number, all: boolean) => (all || q || (sel && list.indexOf(sel as T) >= max) ? list : list.slice(0, max));
+  const todoShown = cut(todo, 3, allTodo);
+  const liveShown = cut(live, 5, allLive);
+  const endedShown = ended.slice(0, shown);
+  // ⌘/Ctrl+K reaches the filter from anywhere on a wide window.
+  useEffect(() => {
+    if (!wide) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && input.current) {
+        e.preventDefault();
+        input.current.focus();
+      }
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [wide]);
+  const total = live.length + ended.length + todo.length;
+  let group = "";
   return (
-    <button className="proj" onClick={() => go("p/" + encodeURIComponent(p.key))}>
-      <Avatar name={p.name} />
-      <div className="pt">
-        <div>
-          <div className="pn">
-            {p.name}
-          </div>
-          <div className="ps">
-            {shortPath(p.key)} · {live ? `${live} 个进行中` : ago(p.updatedMs)}
-          </div>
+    <>
+      {(liveList(remote).filter(within).length + everEnded.length > 8 || query) && (
+        <label className={"find" + (query ? " typed" : "")}>
+          <span>⌕</span>
+          <input ref={input} aria-label="按标题筛选" placeholder="按标题筛选" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
+          {query ? (
+            <button className="x" aria-label="清空筛选" onClick={() => setQuery("")}>
+              ✕
+            </button>
+          ) : (
+            wide && <kbd>{/Mac|iP/.test(navigator.platform) ? "⌘K" : "Ctrl K"}</kbd>
+          )}
+        </label>
+      )}
+      {todo.length > 0 && (
+        <div className="label">
+          需要处理 <span>{todo.length}</span>
         </div>
-        <span className="chev">›</span>
-      </div>
+      )}
+      {todoShown.map((s) => {
+        const c = { ...cols, project: scope === ALL || projectKey(s) !== scope };
+        return wide ? <SessionRow key={s.id} remote={remote} s={s} go={go} cols={c} selected={s.id === selected} /> : <TodoCard key={s.id} remote={remote} s={s} go={go} cols={c} />;
+      })}
+      {todo.length > todoShown.length && (
+        <button className="todo-more" onClick={() => setAllTodo(true)}>
+          还有 {todo.length - todoShown.length} 项待处理 ›
+        </button>
+      )}
+      {live.length > 0 && (
+        <div className="label">
+          进行中 <span>{live.length}</span>
+        </div>
+      )}
+      {liveShown.map((s, i) => (
+        <SessionRow key={s.id} remote={remote} s={s} go={go} cols={{ ...cols, project: scope === ALL || projectKey(s) !== scope }} selected={s.id === selected} last={i === liveShown.length - 1} />
+      ))}
+      {live.length > liveShown.length && (
+        <button className="todo-more" onClick={() => setAllLive(true)}>
+          还有 {live.length - liveShown.length} 个进行中 ›
+        </button>
+      )}
+      {endedShown.map((s) => {
+        const g = dayGroup(endedMs(s), now);
+        const head = g !== group && <div className="label">{g}</div>;
+        group = g;
+        return (
+          <div key={s.id}>
+            {head}
+            <EndedRow s={s} go={go} project={scope === ALL} selected={s.id === selected} />
+          </div>
+        );
+      })}
+      {q ? (
+        <div className="tail">{total ? `${total} 个会话的标题里有「${query.trim()}」` : `没有标题里有「${query.trim()}」的会话`}</div>
+      ) : ended.length > shown ? (
+        <More onMore={() => setShown((n) => n + PAGE)}>共 {ended.length} 个，滚到底加载更早的</More>
+      ) : ended.length > 0 ? (
+        <div className="tail">共 {ended.length} 个</div>
+      ) : (
+        total === 0 && scope !== ALL && (
+          <div className="empty-state">
+            <div className="et">这个项目还没有会话</div>
+            <div className="ed">点右上角的新建按钮开始一个</div>
+          </div>
+        )
+      )}
+    </>
+  );
+}
+
+/** The end of a page of ended sessions: reaching it, or clicking it,
+ * shows the next page. */
+function More({ onMore, children }: { onMore: () => void; children: React.ReactNode }) {
+  const el = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!el.current || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && onMore());
+    io.observe(el.current);
+    return () => io.disconnect();
+  });
+  return (
+    <button ref={el} className="tail" onClick={onMore}>
+      {children}
     </button>
+  );
+}
+
+/** The title of the home and of the sidebar: the scope, which opens the
+ * menu to pick another. With no project yet it is just 会话. */
+function ScopeTitle({ remote, go, wide, onPicked }: { remote: Remote; go: Go; wide?: boolean; onPicked?: () => void }) {
+  const { scope, list, groups } = useScope(remote);
+  const [open, setOpen] = useState<"" | "menu" | "new">("");
+  if (!list.length) return wide ? <b className="scope plain">会话</b> : <h3>会话</h3>;
+  const name = scope === ALL ? "全部项目" : projectName(scope);
+  return (
+    <>
+      <button className={"scope" + (open === "menu" ? " open" : "")} aria-haspopup="dialog" aria-expanded={open === "menu"} aria-label={`范围：${name}`} title={scope === ALL ? undefined : shortPath(scope)} onClick={() => setOpen(open ? "" : "menu")}>
+        {scope === ALL ? <div className="av sm all">全</div> : <Avatar name={name} size="sm" />}
+        <b>{name}</b>
+        <i className="dn">›</i>
+      </button>
+      {open === "menu" && (
+        <ScopeMenu
+          remote={remote}
+          scope={scope}
+          projects={[...groups.pinned, ...groups.others]}
+          wide={wide}
+          onClose={() => setOpen("")}
+          onPick={(key) => {
+            saveScope(key);
+            setOpen("");
+            onPicked?.();
+          }}
+          onNew={() => setOpen("new")}
+          onManage={() => {
+            setOpen("");
+            go("projects");
+          }}
+        />
+      )}
+      {open === "new" && <NewFlow remote={remote} go={go} start="new" onClose={() => setOpen("")} />}
+    </>
+  );
+}
+
+/** The scopes to pick from: all projects when there is more than one,
+ * then the projects in the order of the lists, each with its path and
+ * how many sessions are live. A sheet on a phone, a menu on a wide page. */
+function ScopeMenu({ remote, scope, projects, wide, onClose, onPick, onNew, onManage }: { remote: Remote; scope: string; projects: Project<SessionView>[]; wide?: boolean; onClose: () => void; onPick: (key: string) => void; onNew: () => void; onManage: () => void }) {
+  const [query, setQuery] = useState("");
+  const liveOf = (list: SessionView[]) => {
+    const n = list.filter((s) => !exited(s)).length;
+    return n ? `${n} 个进行中` : "";
+  };
+  const row = (key: string, name: string, sub: string, lead: React.ReactNode) => (
+    <button key={key} className="pi" role="menuitemradio" aria-checked={key === scope} onClick={() => onPick(key)}>
+      {lead}
+      <div>
+        <b>{name}</b>
+        <small>{sub}</small>
+      </div>
+      <span className="ck">{key === scope ? "✓" : ""}</span>
+    </button>
+  );
+  const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
+  const body = (
+    <>
+      {projects.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
+      <div className="plist" role="menu">
+        {projects.length > 1 && !query && row(ALL, "全部项目", liveOf([...remote.sessions.values()]) || `${projects.length} 个项目`, <div className="av sm all">全</div>)}
+        {projects.filter(match).map((p) => row(p.key, p.name, `${shortPath(p.key)} · ${liveOf(p.sessions) || ago(p.updatedMs)}`, <Avatar name={p.name} size="sm" />))}
+        <button className="pi act" onClick={onNew}>
+          新项目…
+        </button>
+        <button className="pi act" onClick={onManage}>
+          管理项目 ›
+        </button>
+      </div>
+    </>
+  );
+  if (!wide)
+    return (
+      <Sheet onClose={onClose}>
+        <div className="ns-head">
+          <b>看哪个项目</b>
+          <button className="link" onClick={onClose}>
+            取消
+          </button>
+        </div>
+        {body}
+      </Sheet>
+    );
+  return <Popover onClose={onClose}>{body}</Popover>;
+}
+
+function Popover({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  useEscape(onClose);
+  return (
+    <>
+      <div className="pop-back" onClick={onClose} />
+      <div className="pop">{children}</div>
+    </>
   );
 }
 
@@ -220,42 +436,6 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
   );
 }
 
-/** The project list: pinned projects first with 管理 beside their title,
- * then the others with live projects first, by latest session creation. Removed projects are not listed; their
- * sessions still are, above, wherever they need the user. */
-function ProjectSections({ remote, go }: { remote: Remote; go: Go }) {
-  const g = useProjectGroups(remote);
-  const manage = (
-    <button className="link" onClick={() => go("projects")}>
-      管理 ›
-    </button>
-  );
-  return (
-    <>
-      <div className="pad">
-        <PrefsBanner remote={remote} quiet />
-      </div>
-      {g.pinned.length > 0 && (
-        <>
-          <div className="label">常用项目 {manage}</div>
-          {g.pinned.map((p) => (
-            <ProjectRow key={p.key} p={p} go={go} />
-          ))}
-        </>
-      )}
-      <div className="label">
-        {g.pinned.length ? "其他项目" : "项目"}
-        {g.pinned.length === 0 && manage}
-      </div>
-      {g.others.slice(0, 5).map((p) => (
-        <ProjectRow key={p.key} p={p} go={go} />
-      ))}
-      {g.others.length > 5 && <button className="todo-more" onClick={() => go("projects")}>全部项目 ›</button>}
-      {g.others.length === 0 && <p className="empty">{g.hidden.length ? "其余项目都已从列表移除" : "没有其他项目"}</p>}
-    </>
-  );
-}
-
 /** Listing sessions failed while connected: say so, offer a retry. */
 function ListError({ remote }: { remote: Remote }) {
   if (!remote.listError) return null;
@@ -276,44 +456,39 @@ function HomeConn({ remote }: { remote: Remote }) {
 
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
-  useNow(30_000);
   const [picking, setPicking] = useState(() => remote.demoFlag("pick"));
-  const [allLive, setAllLive] = useState(false);
-  const live = liveList(remote);
-  const list = projects(remote.sessions.values());
+  const { scope } = useScope(remote);
+  const none = remote.sessions.size === 0;
+  // Within a project the new session is its own; under all projects one is picked first.
+  const start = () => {
+    if (scope === ALL) return setPicking(true);
+    remote.focusProject = scope;
+    go("p/" + encodeURIComponent(scope));
+  };
   return (
     <div className="body">
       <div className="large">
-        <h3>会话</h3>
+        <ScopeTitle remote={remote} go={go} />
         <HomeConn remote={remote} />
-        <button className="hit" onClick={() => setPicking(true)} aria-label="新会话">
+        <button className="hit" onClick={start} aria-label="新会话">
           <ComposeIcon />
         </button>
       </div>
       <ListError remote={remote} />
-      {!remote.listed && list.length === 0 ? (
+      {!remote.listed && none ? (
         !remote.listError && (
           <div className="pad">
             <Skeleton />
           </div>
         )
-      ) : list.length === 0 ? (
+      ) : none ? (
         <Empty remote={remote} go={go} onStart={() => setPicking(true)} />
       ) : (
         <>
-          <TodoSection remote={remote} go={go} />
-          {live.length > 0 && (
-            <>
-              <div className="label">
-                进行中 <span>{live.length}</span>
-              </div>
-              {(allLive ? live : live.slice(0, 5)).map((s, i) => (
-                <SessionRow key={s.id} remote={remote} s={s} go={go} last={i === live.length - 1} />
-              ))}
-              {!allLive && live.length > 5 && <button className="todo-more" onClick={() => setAllLive(true)}>还有 {live.length - 5} 个进行中 ›</button>}
-            </>
-          )}
-          <ProjectSections remote={remote} go={go} />
+          <div className="pad">
+            <PrefsBanner remote={remote} quiet />
+          </div>
+          <Timeline key={scope} remote={remote} go={go} scope={scope} />
         </>
       )}
       {picking && <NewFlow remote={remote} go={go} onClose={() => setPicking(false)} />}
@@ -321,72 +496,21 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
   );
 }
 
-/** The wide sidebar: 需要处理, 进行中, and every project; a project's arrow
- * opens its recently ended sessions. The session on screen stays listed
- * and highlighted even after its state changes. */
+/** The wide sidebar: the scope, and its timeline. `project` is the
+ * project the main area is opened on, if it is. */
 export function Sidebar({ remote, go, selected, project }: { remote: Remote; go: Go; selected?: string; project?: string }) {
   useRemote(remote);
-  useNow(30_000);
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const todo = todoList(remote);
-  const live = liveList(remote);
-  const sel = selected ? remote.sessions.get(selected) : undefined;
-  // Keep the open session in view where it would have been.
-  if (sel && !todo.includes(sel) && !live.includes(sel)) live.unshift(sel);
-  const list = projects(remote.sessions.values());
-  const groups = useProjectGroups(remote);
-  const projectRow = (p: Project<SessionView>) => {
-    const n = p.sessions.filter((s) => !exited(s)).length;
-    const ended = p.sessions.filter(exited).sort(compareEnded);
-    const isOpen = open.has(p.key);
-    return (
-      <div key={p.key}>
-        <div className={"ph" + (project === p.key ? " sel" : "")}>
-          <button
-            className="arr"
-            aria-label={isOpen ? "收起" : "展开最近结束的会话"}
-            aria-expanded={isOpen}
-            onClick={() =>
-              setOpen((o) => {
-                const x = new Set(o);
-                if (x.has(p.key)) x.delete(p.key);
-                else x.add(p.key);
-                return x;
-              })
-            }
-          >
-            {isOpen ? "▾" : "▸"}
-          </button>
-          <button className="pname" onClick={() => go("p/" + encodeURIComponent(p.key))} title={shortPath(p.key)}>
-            <Avatar name={p.name} size="sm" />
-            <span className="nm">{p.name}</span>
-            <span className={n ? "live" : ""}>{n ? `${n} 进行中` : ago(p.updatedMs)}</span>
-          </button>
-        </div>
-        {isOpen && (
-          <>
-            {ended.slice(0, 2).map((s) => (
-              <button key={s.id} className={"sub-sess" + (s.id === selected ? " sel" : "")} onClick={() => go("s/" + s.id)}>
-                <span>{titleOf(s)}</span>
-                <span>{ago(endedMs(s))}</span>
-              </button>
-            ))}
-            <button className="sub-sess link" onClick={() => go("p/" + encodeURIComponent(p.key))}>
-              <span>{ended.length ? `全部 ${p.sessions.length} 个` : "没有结束的会话"}</span>
-              <span />
-            </button>
-          </>
-        )}
-      </div>
-    );
-  };
+  const { scope } = useScope(remote);
   const conn = remote.conn === "online" ? ["idle", "已连接"] : remote.everOnline ? ["wait", "重连中"] : ["off", remote.failures >= 2 ? "连不上" : "连接中"];
   return (
     <aside className="side">
       <div className="sh">
-        <b>会话</b>
+        {/* The main area follows the scope unless it shows something else. */}
+        <ScopeTitle remote={remote} go={go} wide onPicked={() => project !== undefined && go("")} />
         <button
           className="nb"
+          aria-label="新会话"
+          title="新会话"
           onClick={() => {
             remote.focusProject = "*";
             go("");
@@ -397,41 +521,12 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
       </div>
       <div className="scroll">
         <ListError remote={remote} />
-        {!remote.listed && !remote.listError && list.length === 0 && (
+        {!remote.listed && !remote.listError && remote.sessions.size === 0 && (
           <div className="pad">
             <Skeleton />
           </div>
         )}
-        {todo.length > 0 && <div className="label">需要处理</div>}
-        {todo.map((s) => (
-          <SessionRow key={s.id} remote={remote} s={s} go={go} compact selected={s.id === selected} />
-        ))}
-        {live.length > 0 && <div className="label">进行中</div>}
-        {live.map((s) => (
-          <SessionRow key={s.id} remote={remote} s={s} go={go} compact selected={s.id === selected} />
-        ))}
-        {list.length > 0 && (
-          <>
-            {groups.pinned.length > 0 && (
-              <div className="label">
-                常用项目
-                <button className="link" onClick={() => go("projects")}>
-                  管理 ›
-                </button>
-              </div>
-            )}
-            {groups.pinned.map((p) => projectRow(p))}
-            <div className="label">
-              {groups.pinned.length ? "其他项目" : "项目"}
-              {groups.pinned.length === 0 && (
-                <button className="link" onClick={() => go("projects")}>
-                  管理 ›
-                </button>
-              )}
-            </div>
-            {groups.others.map((p) => projectRow(p))}
-          </>
-        )}
+        <Timeline key={scope} remote={remote} go={go} scope={scope} selected={selected} wide />
       </div>
       <div className="foot">
         <button onClick={() => go("settings")}>⚙︎ 设置</button>
@@ -443,18 +538,25 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
   );
 }
 
-/** The wide home: a new-session box for the first project, and what
- * waits for the user. */
-export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
+/** The wide home: a new-session box. Within a project's scope, or opened
+ * on a project, the box is that project's; under all projects it names
+ * the project and lets another be picked. */
+export function WideHome({ remote, go, project }: { remote: Remote; go: Go; project?: string }) {
   useRemote(remote);
-  const g = useProjectGroups(remote);
+  const { scope, list: listed } = useScope(remote);
+  // Opening a listed project makes it the scope.
+  const known = project !== undefined && listed.some((p) => p.key === project);
+  useEffect(() => {
+    if (known) saveScope(project);
+  }, [known, project]);
+  const fixed = project ?? (scope !== ALL ? scope : undefined);
   // The first project by liveness and creation time; a removed one is not offered.
-  const list = [...g.pinned, ...g.others].sort(compareProjects);
+  const list = [...listed].sort(compareProjects);
   const [key, setKey] = useState<string>();
   const [picking, setPicking] = useState<"" | "pick" | "new">(() => remote.demoFlag("pick") ? "pick" : "");
-  const pkey = key ?? list[0]?.key ?? "";
+  const pkey = fixed ?? key ?? list[0]?.key ?? "";
   const ns = useNewSession(remote, pkey, go);
-  const focus = remote.focusProject === "*";
+  const focus = remote.focusProject === "*" || (project !== undefined && remote.focusProject === project);
   if (focus) remote.focusProject = "";
   const name = projectName(pkey);
   return (
@@ -477,10 +579,12 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
               // projects do meanwhile.
               onDraft={() => setKey((k) => k ?? pkey)}
               lead={
-                <button className="chip" onClick={() => setPicking("pick")}>
-                  <Avatar name={name} size="xs" />
-                  {name} ▾
-                </button>
+                fixed === undefined && (
+                  <button className="chip" onClick={() => setPicking("pick")}>
+                    <Avatar name={name} size="xs" />
+                    {name} ▾
+                  </button>
+                )
               }
             />
           </>
@@ -491,6 +595,7 @@ export function WideHome({ remote, go }: { remote: Remote; go: Go }) {
           key={picking}
           remote={remote}
           go={go}
+          start={picking === "new" ? "new" : undefined}
           onClose={() => setPicking("")}
           onPicked={(k) => {
             setKey(k);

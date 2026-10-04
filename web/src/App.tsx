@@ -108,7 +108,8 @@ function Main({ remote }: { remote: Remote }) {
       ) : (
         <div className="center muted">正在打开会话…</div>
       );
-  else if (kind === "p") page = <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} wide={wide} />;
+  // A wide window has no project page: the sidebar lists the project and the main area starts a session in it.
+  else if (kind === "p") page = wide ? <WideHome key={arg} remote={remote} go={go} project={arg} /> : <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} />;
   else if (kind === "projects") page = rest[0] === "removed" ? <RemovedPage remote={remote} onBack={back} wide={wide} /> : <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "devices") page = <DevicesPage remote={remote} go={go} onBack={back} />;

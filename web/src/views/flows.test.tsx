@@ -15,7 +15,8 @@ import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/r
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, PlanPage, QuestionPage } from "./Dock";
-import { Home, todoList, WideHome } from "./Home";
+import { Home, Sidebar, todoList, WideHome } from "./Home";
+import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
 import { useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
@@ -179,7 +180,7 @@ const savedSet = (r: DemoRemote, path: string, agent = Agent.CODEX) => r.project
 
 it("keeps saved project settings as sessions change", () => {
   const r = demo();
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // The remembered CLI is the one picked next to the box and the one the summary names.
   const line = () => `${host.querySelector(".launch .pick .on")?.textContent} / ${host.querySelector(".phead .project-summary")?.textContent}`;
   expect(line()).toMatch(/^Codex \/ Codex · /);
@@ -535,7 +536,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
     }
     throw new CommandError("unavailable", "no");
   };
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
   await act(async () => {
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
@@ -649,7 +650,7 @@ describe("an unknown session start", () => {
       }
       throw o;
     };
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     const type = async (value: string) =>
       act(async () => {
         const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
@@ -716,7 +717,7 @@ describe("an unknown session start", () => {
 
 it("keeps a project's model and effort after the page remounts", async () => {
   const project = "/Users/me/Code/ai-bot/remote-agent";
-  const page = (r: DemoRemote) => <ProjectPage remote={r} pkey={project} go={() => undefined} onBack={() => undefined} wide />;
+  const page = (r: DemoRemote) => <WideHome remote={r} go={() => undefined} project={project} />;
   const r = demo();
   mount(page(r));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
@@ -779,7 +780,7 @@ it("keeps project settings by path and carries full access without a new confirm
 it("keeps the default model while saving a chosen reasoning effort", async () => {
   const r = demo();
   const project = "/Users/me/Code/foo";
-  mount(<ProjectPage remote={r} pkey={project} go={() => undefined} onBack={() => undefined} wide />);
+  mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置 ›");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await click(button(/^默认模型/, document));
@@ -799,7 +800,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   // The machine's default is a model Codex leaves out of its list.
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   r.draftMachines.set("/Users/me/Code/new", "mac");
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await fromMenu("新会话设置 ›");
   await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
@@ -811,7 +812,7 @@ it("shows the effective approval mode in project settings while keeping the defa
   // Codex reports its effective mode, with no explicit new-project override.
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
   r.draftMachines.set("/Users/me/Code/new", "mac");
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("自动"));
   await fromMenu("新会话设置 ›");
   expect(setting("审批")).toBe("自动");
@@ -970,7 +971,7 @@ describe("a new-session draft", () => {
   it("keeps the launch settings it was begun with", async () => {
     const r = demo();
     const sent = capture(r);
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await type("加限流");
     // The project's Claude Code session becomes its latest meanwhile.
     bump(r, "s-claude");
@@ -989,7 +990,7 @@ describe("a new-session draft", () => {
     // The machine reports Codex's default as full access.
     r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("完全放行"), { timeout: 3000 });
     await type("加限流");
     await click(button("↑"));
@@ -1089,7 +1090,7 @@ describe("switching a new session's CLI (v2)", () => {
       void slot;
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
@@ -1120,7 +1121,7 @@ describe("switching a new session's CLI (v2)", () => {
       void slot;
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
-    const page = () => <ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} wide={false} />;
+    const page = () => <ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />;
     mount(page());
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await click(cliSwitch("Claude Code"));
@@ -1148,7 +1149,7 @@ describe("switching a new session's CLI (v2)", () => {
   it("edits one CLI's set under its tab and picks nothing by looking", async () => {
     const r = demo();
     const foo = "/Users/me/Code/foo";
-    mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await fromMenu("新会话设置 ›");
     const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) => b.textContent === name);
@@ -1170,7 +1171,7 @@ describe("switching a new session's CLI (v2)", () => {
     const foo = "/Users/me/Code/foo";
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await r.changePrefs("settings", foo, { id: "t1", kind: "settings", path: foo, at: Date.now(), settings: { machineId: "vps", agent: Agent.CLAUDE } });
-    mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     expect(host.querySelector(".launch")).toBeNull();
     expect(host.textContent).toContain("VPS-dev 没有 Claude Code，这次用 Codex");
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
@@ -1182,8 +1183,8 @@ describe("switching a new session's CLI (v2)", () => {
 
   it("puts the switch and the rest of the summary under the box on a wide page", async () => {
     const r = demo();
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide />);
-    expect(host.querySelector(".phead .project-summary")).toBeNull();
+    mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
+    expect(host.querySelector(".wide-start-title")?.textContent).toBe("开始一个任务");
     const row = host.querySelector(".launch")!;
     expect(row.previousElementSibling?.className).toContain("compose-card");
     expect(row.querySelector(".pick .on")?.textContent).toBe("Codex");
@@ -1212,8 +1213,9 @@ describe("project management (v2)", () => {
     // still waits for the user.
     await r.changePrefs("hide", "/Users/me/Code/shop");
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
-    expect(names(".proj .pn")).not.toContain("shop");
-    expect(names(".proj .pn")).toContain("foo");
+    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    expect(names(".plist .pi b")).not.toContain("shop");
+    expect(names(".plist .pi b")).toContain("foo");
     expect(todoList(r).map((x) => x.id)).toContain("s-plan");
   });
 
@@ -1225,7 +1227,7 @@ describe("project management (v2)", () => {
     mount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
     expect(host.textContent).not.toContain("~/Code/shop");
     expect(host.textContent).toContain("常用项目");
-    act(() => root!.render(<ProjectPage remote={r} pkey="/Users/me/Code/shop" go={() => undefined} onBack={() => undefined} wide={false} />));
+    act(() => root!.render(<ProjectPage remote={r} pkey="/Users/me/Code/shop" go={() => undefined} onBack={() => undefined} />));
     expect(host.textContent).toContain("这个项目已从列表移除");
     expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeNull();
     // Its sessions are all still there.
@@ -1561,7 +1563,7 @@ describe("an image-only new-session draft (review B8)", () => {
   it("keeps its launch settings once an image is chosen", async () => {
     const r = demo();
     stub(r);
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await pick();
     bump(r, "s-claude");
     await fromMenu("新会话设置 ›");
@@ -1648,7 +1650,7 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
     void slot;
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   await act(async () => {
     const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
     Object.defineProperty(input, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
@@ -1689,7 +1691,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
   let ns: ReturnType<typeof useNewSession> | undefined;
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // A launch override chosen by the user, mode left to the default.
   await fromMenu("新会话设置 ›");
   await click(button(/^模型/));
@@ -1775,7 +1777,7 @@ describe("the client-v7 conversation", () => {
 
   it("starts sessions only with a first message, and folds the project head while typing", async () => {
     const r = demo();
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(host.textContent).not.toContain("只打开终端");
     expect(host.querySelector(".phead")).toBeTruthy();
     await act(async () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.focus());
@@ -1859,7 +1861,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
     return original(machine, cmd);
   };
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} wide />);
+  mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
   await fromMenu("新会话设置 ›");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6.1-Sol", document)).toBeDefined());
@@ -1965,4 +1967,105 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   const link = host.querySelector<HTMLAnchorElement>(".sep.fork a")!;
   expect(link.textContent).toBe("补充接口文档 ›");
   expect(link.getAttribute("href")).toBe("#/s/s-idle");
+});
+
+describe("the home timeline and its scope (client-v27)", () => {
+  const texts = (sel: string) => [...host.querySelectorAll(sel)].map((e) => e.textContent ?? "");
+  const foo = "/Users/me/Code/foo";
+  const type = async (input: HTMLInputElement, value: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+  it("lists every project's sessions under all projects, naming the project on each row", () => {
+    const r = demo();
+    mount(<Home remote={r} go={() => undefined} />);
+    expect(host.querySelector(".large .scope b")?.textContent).toBe("全部项目");
+    expect(host.textContent).not.toContain("常用项目");
+    // More than one project, CLI and machine: every live row has its third line.
+    const live = [...host.querySelectorAll(".sess")];
+    expect(live.length).toBeGreaterThan(0);
+    for (const row of live) expect(row.querySelector(".mc")?.textContent).toMatch(/ · /);
+    // Ended sessions are one line each, under a date group, with their project.
+    expect(texts(".old span:first-child")).toContain("补充 README");
+    expect(texts(".old span:last-child").every((x) => x.includes(" · "))).toBe(true);
+    expect(host.querySelector(".old .dot")).toBeNull();
+  });
+
+  it("keeps a project's rows to what differs, and still shows what waits elsewhere", async () => {
+    const r = demo();
+    const went: string[] = [];
+    mount(<Home remote={r} go={(x) => went.push(x)} />);
+    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    expect(document.querySelector(".sheet")?.textContent).toContain("看哪个项目");
+    await click([...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("b")?.textContent === "foo"));
+    expect(document.querySelector(".sheet")).toBeNull();
+    expect(host.querySelector(".large .scope b")?.textContent).toBe("foo");
+    // Live rows are foo's only, and do not name the project.
+    const live = texts(".sess .row1 b");
+    expect(live).toContain("修复登录超时");
+    expect(live).not.toContain("整理错误码");
+    expect(texts(".sess .mc").some((x) => x.includes("foo"))).toBe(false);
+    expect(texts(".old span:last-child").some((x) => x.includes("foo"))).toBe(false);
+    // 需要处理 is the account's: bar's question is there, with its project.
+    const bar = [...host.querySelectorAll(".todo")].find((c) => c.textContent?.includes("升级依赖"));
+    expect(bar?.querySelector(".m")?.textContent).toContain("bar");
+    // The new button goes straight to the project.
+    await click(host.querySelector<HTMLButtonElement>('button[aria-label="新会话"]')!);
+    expect(went).toEqual(["p/" + encodeURIComponent(foo)]);
+    expect(r.focusProject).toBe(foo);
+  });
+
+  it("falls back to all projects when the saved project leaves the list", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    saveScope("/Users/me/Code/shop");
+    mount(<Home remote={r} go={() => undefined} />);
+    expect(host.querySelector(".large .scope b")?.textContent).toBe("shop");
+    await act(async () => { await r.changePrefs("hide", "/Users/me/Code/shop"); });
+    expect(host.querySelector(".large .scope b")?.textContent).toBe("全部项目");
+  });
+
+  it("filters by title without regard to case, keeping the groups", async () => {
+    const r = demo();
+    saveScope(ALL);
+    mount(<Home remote={r} go={() => undefined} />);
+    const box = host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!;
+    expect(box).toBeTruthy();
+    await type(box, "readme");
+    expect(texts(".old span:first-child")).toEqual(["补充 README"]);
+    expect(host.querySelectorAll(".sess, .todo")).toHaveLength(0);
+    expect(host.querySelector(".tail")?.textContent).toBe("1 个会话的标题里有「readme」");
+    await type(box, "没有这个标题");
+    expect(host.querySelector(".tail")?.textContent).toBe("没有标题里有「没有这个标题」的会话");
+    await click(host.querySelector<HTMLButtonElement>('button[aria-label="清空筛选"]')!);
+    expect(texts(".sess .row1 b")).toContain("修复登录超时");
+  });
+
+  it("is the sidebar on a wide window, where picking a project sends the main area home", async () => {
+    const r = demo();
+    const went: string[] = [];
+    mount(<Sidebar remote={r} go={(x) => went.push(x)} selected="s-run" project="/Users/me/Code/bar" />);
+    expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
+    // Waiting sessions are rows here, not cards.
+    expect(host.querySelector(".todo")).toBeNull();
+    await click(host.querySelector<HTMLButtonElement>(".sh .scope")!);
+    expect(host.querySelector(".pop")).toBeTruthy();
+    await click([...host.querySelectorAll<HTMLButtonElement>(".pop .pi")].find((b) => b.querySelector("b")?.textContent === "billing"));
+    expect(host.querySelector(".pop")).toBeNull();
+    expect(went).toEqual([""]);
+    expect(host.querySelector(".sh .scope b")?.textContent).toBe("billing");
+    // The session on screen stays listed though it is not billing's.
+    expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
+    expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");
+  });
+
+  it("starts in the scope's project on the wide home, and names the project only under all projects", () => {
+    const r = demo();
+    mount(<WideHome remote={r} go={() => undefined} />);
+    expect(host.querySelector(".wide-start-title")?.textContent).toMatch(/^在 .+ 里开始一个任务$/);
+    act(() => saveScope(foo));
+    expect(host.querySelector(".wide-start-title")?.textContent).toBe("开始一个任务");
+  });
 });

@@ -515,7 +515,7 @@ export function NewBox({
     // Wide: the switch and the summary of the CLI picked, under the box.
     body = (
       <>
-        {variant === "start" && <h3 className="wide-start-title">在 {lead} 里开始一个任务</h3>}
+        {variant === "start" && <h3 className="wide-start-title">{lead ? <>在 {lead} 里开始一个任务</> : "开始一个任务"}</h3>}
         {error}
         {notes}
         {card}
@@ -905,8 +905,8 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: R
 
 /** The ＋ flow: pick a project, or make a new one; then its page with the
  * box focused. */
-export function NewFlow({ remote, go, onClose, onPicked }: { remote: Remote; go: Go; onClose: () => void; onPicked?: (key: string) => void }) {
-  const [step, setStep] = useState<"project" | "new">(remote.sessions.size ? "project" : "new");
+export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remote; go: Go; onClose: () => void; onPicked?: (key: string) => void; start?: "new" }) {
+  const [step, setStep] = useState<"project" | "new">(remote.sessions.size && !start ? "project" : "new");
   const open = (key: string) => {
     onClose();
     if (onPicked) return onPicked(key);
@@ -917,7 +917,7 @@ export function NewFlow({ remote, go, onClose, onPicked }: { remote: Remote; go:
     return (
       <NewProjectSheet
         remote={remote}
-        onBack={remote.sessions.size ? () => setStep("project") : undefined}
+        onBack={remote.sessions.size && !start ? () => setStep("project") : undefined}
         onClose={onClose}
         onDone={(machineId, path) => {
           remote.draftMachines.set(path, machineId);

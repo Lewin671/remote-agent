@@ -255,6 +255,36 @@ export function ago(ms: number | bigint, now = Date.now()): string {
   return when(t, now);
 }
 
+/** Whole calendar days from a time to now, by local midnight. */
+function daysAgo(ms: number, now: number): number {
+  const day = (t: number) => {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  return Math.round((day(now) - day(ms)) / 86_400_000);
+}
+
+/** The date group an ended session is listed under on the home timeline. */
+export function dayGroup(ms: number, now = Date.now()): string {
+  const n = daysAgo(ms, now);
+  if (n <= 0) return "今天";
+  if (n === 1) return "昨天";
+  if (n < 7) return "近 7 天";
+  const d = new Date(ms);
+  return d.getFullYear() === new Date(now).getFullYear() ? `${d.getMonth() + 1} 月` : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+}
+
+/** When a session ended, in the terms of its date group: the time under
+ * 今天 and 昨天, the weekday under 近 7 天, the date under a month. */
+export function endedTime(ms: number, now = Date.now()): string {
+  if (!ms) return "";
+  const n = daysAgo(ms, now);
+  if (n <= 1) return hhmm(ms);
+  const d = new Date(ms);
+  return n < 7 ? "周" + "日一二三四五六"[d.getDay()] : `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
 export function hhmm(ms: number): string {
   const d = new Date(ms);
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
