@@ -9,6 +9,7 @@ import { projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
 import { ActionSheet, Avatar, Banner, NavBar, useNow, useRemote } from "../ui";
 import type { Go } from "./NewSession";
+import { saveScope } from "../scope";
 
 /** The account's projects as the lists group them. */
 export function useProjectGroups(remote: Remote) {
@@ -100,16 +101,17 @@ function useActions(remote: Remote) {
   return { open: setMenu, sheet, toast, undone: undo, blocked };
 }
 
-function ManageRow({ p, onMore, busy }: { p: { key: string; name: string }; onMore: () => void; busy: boolean }) {
+/** A listed project: its name makes it the home's scope, ⋯ manages it. */
+function ManageRow({ p, onMore, onOpen, busy }: { p: { key: string; name: string }; onMore: () => void; onOpen: () => void; busy: boolean }) {
   return (
     <div className={"manage-row" + (busy ? " busy" : "")}>
       <Avatar name={p.name} size="sm" />
-      <div className="pt">
+      <button className="pt" onClick={onOpen} aria-label={`看 ${p.name} 的会话`}>
         <div className="pn">
           {p.name}
         </div>
         <div className="ps">{shortPath(p.key)}</div>
-      </div>
+      </button>
       <button className="dots" onClick={onMore} aria-label={`管理 ${p.name}`}>
         {busy ? "◌" : "⋯"}
       </button>
@@ -187,13 +189,13 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           </div>
         )}
         {g.pinned.map((p) => (
-          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} />
+          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} onOpen={() => { saveScope(p.key); go(""); }} />
         ))}
         <div className="label">
           其他项目 <span>{g.others.length}</span>
         </div>
         {g.others.map((p) => (
-          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} />
+          <ManageRow key={p.key} p={p} busy={pending.has(p.key)} onMore={() => a.open(p)} onOpen={() => { saveScope(p.key); go(""); }} />
         ))}
         {a.undone && <div className="manage-hint">{a.undone.name} 的会话和历史仍然保留。有新的待处理项时，主页仍会显示。</div>}
         <div className="label">

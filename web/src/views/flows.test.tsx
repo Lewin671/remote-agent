@@ -2061,6 +2061,16 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");
   });
 
+  it("makes a project the scope from project management", async () => {
+    const r = demo();
+    const went: string[] = [];
+    mount(<ManagePage remote={r} go={(x) => went.push(x)} onBack={() => undefined} wide={false} />);
+    await click(host.querySelector<HTMLButtonElement>('[aria-label="看 shop 的会话"]')!);
+    expect(went).toEqual([""]);
+    act(() => root!.render(<Home remote={r} go={() => undefined} />));
+    expect(host.querySelector(".large .scope b")?.textContent).toBe("shop");
+  });
+
   it("starts in the scope's project on the wide home, and names the project only under all projects", () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} />);

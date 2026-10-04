@@ -648,7 +648,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .pin { font-size: 12px; color: var(--blue); margin-left: 5px; font-weight: var(--w5); }
 .label .link { font-size: 13px; min-height: 32px; margin: -6px 0; }
 .manage-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
-.manage-row .pt { flex: 1; min-width: 0; }
+.manage-row .pt { flex: 1; min-width: 0; text-align: left; min-height: 44px; }
 .manage-row .pn { font-weight: var(--w6); font-size: 15px; }
 .manage-row .ps { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .manage-row .dots { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 15px; }
