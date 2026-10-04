@@ -14,6 +14,13 @@
         "plaintext": "来自 Kotlin ✓",
         "seq": "18446744073709551600"
     },
+    "packed": {
+        "key": "3333333333333333333333333333333333333333333333333333333333333333",
+        "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b280542086465766963652d6b4801",
+        "nonce": "0e0e0e0e0e0e0e0e0e0e0e0e",
+        "ciphertext": "539d6253976e5d433b381fc6eb4a837adb16d134db806933bff60d88ba4e937a96d9e1d66135a6819a1cc0e18ee32edc1264093bf5dab007a9fa2dbde084e950bdf89c43",
+        "plaintext": "来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ "
+    },
     "register_signature": {
         "message": "6b6f746c696e20726567697374726174696f6e",
         "signature": "3840ebe56ff72a53cbfe113fc6cde8e53a3bd0655309b1a3d48b73abb16776335874c73e4a54672108a3f8631c023f8473d6b64defd23d53ec8d64568fbdd90b"

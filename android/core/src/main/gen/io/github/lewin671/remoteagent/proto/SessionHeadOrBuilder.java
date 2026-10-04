@@ -37,4 +37,14 @@ public interface SessionHeadOrBuilder extends
    * @return The metaRevision.
    */
   long getMetaRevision();
+
+  /**
+   * <pre>
+   * The ended_ms stored with it.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+   * @return The endedMs.
+   */
+  long getEndedMs();
 }

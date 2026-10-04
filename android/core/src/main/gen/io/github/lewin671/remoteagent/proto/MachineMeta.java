@@ -25,6 +25,7 @@ public  final class MachineMeta extends
     codexVersion_ = "";
     agents_ = emptyProtobufList();
     quotas_ = emptyProtobufList();
+    projects_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int HOSTNAME_FIELD_NUMBER = 1;
@@ -734,6 +735,169 @@ public  final class MachineMeta extends
   private void clearProtocolVersion() {
 
     protocolVersion_ = 0;
+  }
+
+  public static final int PROJECTS_FIELD_NUMBER = 13;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ProjectSummary> projects_;
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.ProjectSummary> getProjectsList() {
+    return projects_;
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.ProjectSummaryOrBuilder> 
+      getProjectsOrBuilderList() {
+    return projects_;
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.Override
+  public int getProjectsCount() {
+    return projects_.size();
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.ProjectSummary getProjects(int index) {
+    return projects_.get(index);
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.ProjectSummaryOrBuilder getProjectsOrBuilder(
+      int index) {
+    return projects_.get(index);
+  }
+  private void ensureProjectsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.ProjectSummary> tmp = projects_;
+    if (!tmp.isModifiable()) {
+      projects_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setProjects(
+      int index, io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureProjectsIsMutable();
+    projects_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addProjects(io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureProjectsIsMutable();
+    projects_.add(value);
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addProjects(
+      int index, io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureProjectsIsMutable();
+    projects_.add(index, value);
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  private void addAllProjects(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ProjectSummary> values) {
+    ensureProjectsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, projects_);
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  private void clearProjects() {
+    projects_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  private void removeProjects(int index) {
+    ensureProjectsIsMutable();
+    projects_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
@@ -1580,6 +1744,180 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.ProjectSummary> getProjectsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getProjectsList());
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    @java.lang.Override
+    public int getProjectsCount() {
+      return instance.getProjectsCount();
+    }/**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.ProjectSummary getProjects(int index) {
+      return instance.getProjects(index);
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder setProjects(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+      copyOnWrite();
+      instance.setProjects(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder setProjects(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.setProjects(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder addProjects(io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+      copyOnWrite();
+      instance.addProjects(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder addProjects(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSummary value) {
+      copyOnWrite();
+      instance.addProjects(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder addProjects(
+        io.github.lewin671.remoteagent.proto.ProjectSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.addProjects(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder addProjects(
+        int index, io.github.lewin671.remoteagent.proto.ProjectSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.addProjects(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder addAllProjects(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.ProjectSummary> values) {
+      copyOnWrite();
+      instance.addAllProjects(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder clearProjects() {
+      copyOnWrite();
+      instance.clearProjects();
+      return this;
+    }
+    /**
+     * <pre>
+     * The projects this machine has sessions in. Clients list sessions a
+     * page at a time, so they learn of projects, and how many ended sessions
+     * each has, from here rather than from the sessions they happen to hold.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+     */
+    public Builder removeProjects(int index) {
+      copyOnWrite();
+      instance.removeProjects(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -1608,10 +1946,12 @@ public  final class MachineMeta extends
             "quotas_",
             io.github.lewin671.remoteagent.proto.AgentQuota.class,
             "protocolVersion_",
+            "projects_",
+            io.github.lewin671.remoteagent.proto.ProjectSummary.class,
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\f\t\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0006\u0208" +
-              "\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b";
+              "\u0000\n\u0000\u0001\u0001\r\n\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0006\u0208" +
+              "\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

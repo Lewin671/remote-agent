@@ -53,4 +53,15 @@ public interface PutSessionRequestOrBuilder extends
    * @return The meta.
    */
   io.github.lewin671.remoteagent.proto.Envelope getMeta();
+
+  /**
+   * <pre>
+   * When the session in meta ended, 0 if it has not. Read with meta; the
+   * server keeps it in the clear to page the listing of ended sessions.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+   * @return The endedMs.
+   */
+  long getEndedMs();
 }

@@ -87,4 +87,17 @@ public interface RemoteSessionOrBuilder extends
    * @return The updatedMs.
    */
   long getUpdatedMs();
+
+  /**
+   * <pre>
+   * When the session ended, as its daemon told the server in the clear so
+   * that ended sessions can be listed a page at a time; 0 while it has
+   * not ended. It only places the session in the listing: what a client
+   * shows comes from the sealed metadata.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+   * @return The endedMs.
+   */
+  long getEndedMs();
 }

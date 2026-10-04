@@ -187,6 +187,47 @@ public  final class PutSessionRequest extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int ENDED_MS_FIELD_NUMBER = 4;
+  private long endedMs_;
+  /**
+   * <pre>
+   * When the session in meta ended, 0 if it has not. Read with meta; the
+   * server keeps it in the clear to page the listing of ended sessions.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+   * @return The endedMs.
+   */
+  @java.lang.Override
+  public long getEndedMs() {
+    return endedMs_;
+  }
+  /**
+   * <pre>
+   * When the session in meta ended, 0 if it has not. Read with meta; the
+   * server keeps it in the clear to page the listing of ended sessions.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+   * @param value The endedMs to set.
+   */
+  private void setEndedMs(long value) {
+    
+    endedMs_ = value;
+  }
+  /**
+   * <pre>
+   * When the session in meta ended, 0 if it has not. Read with meta; the
+   * server keeps it in the clear to page the listing of ended sessions.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+   */
+  private void clearEndedMs() {
+
+    endedMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.PutSessionRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -457,6 +498,49 @@ public  final class PutSessionRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * When the session in meta ended, 0 if it has not. Read with meta; the
+     * server keeps it in the clear to page the listing of ended sessions.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+     * @return The endedMs.
+     */
+    @java.lang.Override
+    public long getEndedMs() {
+      return instance.getEndedMs();
+    }
+    /**
+     * <pre>
+     * When the session in meta ended, 0 if it has not. Read with meta; the
+     * server keeps it in the clear to page the listing of ended sessions.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+     * @param value The endedMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEndedMs(long value) {
+      copyOnWrite();
+      instance.setEndedMs(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * When the session in meta ended, 0 if it has not. Read with meta; the
+     * server keeps it in the clear to page the listing of ended sessions.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 4 [json_name = "endedMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEndedMs() {
+      copyOnWrite();
+      instance.clearEndedMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PutSessionRequest)
   }
   @java.lang.Override
@@ -477,10 +561,11 @@ public  final class PutSessionRequest extends
             "sessionId_",
             "key_",
             "meta_",
+            "endedMs_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

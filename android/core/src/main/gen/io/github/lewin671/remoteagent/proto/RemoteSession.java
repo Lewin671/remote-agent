@@ -315,6 +315,53 @@ public  final class RemoteSession extends
     updatedMs_ = 0L;
   }
 
+  public static final int ENDED_MS_FIELD_NUMBER = 7;
+  private long endedMs_;
+  /**
+   * <pre>
+   * When the session ended, as its daemon told the server in the clear so
+   * that ended sessions can be listed a page at a time; 0 while it has
+   * not ended. It only places the session in the listing: what a client
+   * shows comes from the sealed metadata.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+   * @return The endedMs.
+   */
+  @java.lang.Override
+  public long getEndedMs() {
+    return endedMs_;
+  }
+  /**
+   * <pre>
+   * When the session ended, as its daemon told the server in the clear so
+   * that ended sessions can be listed a page at a time; 0 while it has
+   * not ended. It only places the session in the listing: what a client
+   * shows comes from the sealed metadata.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+   * @param value The endedMs to set.
+   */
+  private void setEndedMs(long value) {
+    
+    endedMs_ = value;
+  }
+  /**
+   * <pre>
+   * When the session ended, as its daemon told the server in the clear so
+   * that ended sessions can be listed a page at a time; 0 while it has
+   * not ended. It only places the session in the listing: what a client
+   * shows comes from the sealed metadata.
+   * </pre>
+   *
+   * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+   */
+  private void clearEndedMs() {
+
+    endedMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.RemoteSession parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -720,6 +767,55 @@ public  final class RemoteSession extends
       return this;
     }
 
+    /**
+     * <pre>
+     * When the session ended, as its daemon told the server in the clear so
+     * that ended sessions can be listed a page at a time; 0 while it has
+     * not ended. It only places the session in the listing: what a client
+     * shows comes from the sealed metadata.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+     * @return The endedMs.
+     */
+    @java.lang.Override
+    public long getEndedMs() {
+      return instance.getEndedMs();
+    }
+    /**
+     * <pre>
+     * When the session ended, as its daemon told the server in the clear so
+     * that ended sessions can be listed a page at a time; 0 while it has
+     * not ended. It only places the session in the listing: what a client
+     * shows comes from the sealed metadata.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+     * @param value The endedMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEndedMs(long value) {
+      copyOnWrite();
+      instance.setEndedMs(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * When the session ended, as its daemon told the server in the clear so
+     * that ended sessions can be listed a page at a time; 0 while it has
+     * not ended. It only places the session in the listing: what a client
+     * shows comes from the sealed metadata.
+     * </pre>
+     *
+     * <code>int64 ended_ms = 7 [json_name = "endedMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEndedMs() {
+      copyOnWrite();
+      instance.clearEndedMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.RemoteSession)
   }
   @java.lang.Override
@@ -743,10 +839,11 @@ public  final class RemoteSession extends
             "meta_",
             "lastSeq_",
             "updatedMs_",
+            "endedMs_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0003\u0006\u0002";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0003\u0006\u0002\u0007\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

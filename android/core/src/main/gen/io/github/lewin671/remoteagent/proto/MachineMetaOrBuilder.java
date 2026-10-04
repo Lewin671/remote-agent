@@ -178,4 +178,36 @@ public interface MachineMetaOrBuilder extends
    * @return The protocolVersion.
    */
   int getProtocolVersion();
+
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.ProjectSummary> 
+      getProjectsList();
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.ProjectSummary getProjects(int index);
+  /**
+   * <pre>
+   * The projects this machine has sessions in. Clients list sessions a
+   * page at a time, so they learn of projects, and how many ended sessions
+   * each has, from here rather than from the sessions they happen to hold.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.ProjectSummary projects = 13 [json_name = "projects"];</code>
+   */
+  int getProjectsCount();
 }

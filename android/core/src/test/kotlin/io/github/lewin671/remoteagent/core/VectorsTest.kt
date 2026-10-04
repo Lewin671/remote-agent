@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.proto.Compression
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
@@ -72,6 +73,22 @@ class VectorsTest {
     }
 
     @Test
+    fun opensAPackedGoEnvelope() {
+        // Sealed packed by Go (Header.compression): its plaintext went through DEFLATE first.
+        val e = v["packed"]!!.jsonObject
+        val env = Envelope.newBuilder()
+            .setHeader(ByteString.copyFrom(s(e, "header").unhex()))
+            .setNonce(ByteString.copyFrom(s(e, "nonce").unhex()))
+            .setCiphertext(ByteString.copyFrom(s(e, "ciphertext").unhex()))
+            .build()
+        val (h, pt) = Envelopes.open(s(e, "key").unhex(), env)
+        assertEquals(s(e, "plaintext"), String(pt, Charsets.UTF_8))
+        assertEquals(Compression.COMPRESSION_DEFLATE, h.compression)
+        assertTrue(env.ciphertext.size() < pt.size)
+        Envelopes.expect(h, Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = "machine", sessionId = "session", seq = 4))
+    }
+
+    @Test
     fun parsesTheSecret() {
         val sec = Secret.parse(s(v, "secret"))
         assertEquals(s(v, "root"), sec.root.hex())
@@ -135,6 +152,13 @@ class KotlinVectorsTest {
             payload.toByteArray(),
             nonce = ByteArray(12) { 0x0d },
         )
+        // An envelope sealed packed, for Go and TypeScript to open.
+        val packedText = "来自 Kotlin 的压缩载荷 ✓ ".repeat(40)
+        val packedEnv = Envelopes.seal(
+            envKey,
+            Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_EVENT).setMachineId("machine-k").setSessionId("session-k").setSeq(5).setSender("device-k").build(),
+            packedText.toByteArray(), nonce = ByteArray(12) { 0x0e },
+        )
         return buildJsonObject {
             put("root", root.hex())
             put("account_public_key", keys.account.publicKey.hex())
@@ -150,6 +174,13 @@ class KotlinVectorsTest {
                 put("ciphertext", env.ciphertext.toByteArray().hex())
                 put("plaintext", plaintext)
                 put("seq", java.lang.Long.toUnsignedString(seq))
+            }
+            putJsonObject("packed") {
+                put("key", envKey.hex())
+                put("header", packedEnv.header.toByteArray().hex())
+                put("nonce", packedEnv.nonce.toByteArray().hex())
+                put("ciphertext", packedEnv.ciphertext.toByteArray().hex())
+                put("plaintext", packedText)
             }
             putJsonObject("register_signature") {
                 put("message", registration.hex())
@@ -185,11 +216,31 @@ class KotlinVectorsTest {
 
     @Test
     fun vectorsAreUpToDate() {
-        val got = generate()
+        var got = generate()
         if (System.getProperty("updateVectors") != null) {
             file.writeText(Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), got) + "\n")
         }
-        assertEquals("kotlin-vectors.json is stale; run ./gradlew :core:test -PupdateVectors", Json.parseToJsonElement(file.readText()), got)
+        val stored = Json.parseToJsonElement(file.readText()).jsonObject
+        // The packed envelope's bytes depend on the deflate encoder, which is
+        // the JDK's zlib: they are written with -PupdateVectors and otherwise
+        // only opened (packedEnvelopeOpens), as Go does with its own.
+        got = JsonObject(got + ("packed" to stored["packed"]!!))
+        assertEquals("kotlin-vectors.json is stale; run ./gradlew :core:test -PupdateVectors", stored, got)
+    }
+
+    @Test
+    fun packedEnvelopeOpens() {
+        val e = Json.parseToJsonElement(file.readText()).jsonObject["packed"]!!.jsonObject
+        val env = Envelope.newBuilder()
+            .setHeader(ByteString.copyFrom(e["header"]!!.jsonPrimitive.content.unhex()))
+            .setNonce(ByteString.copyFrom(e["nonce"]!!.jsonPrimitive.content.unhex()))
+            .setCiphertext(ByteString.copyFrom(e["ciphertext"]!!.jsonPrimitive.content.unhex()))
+            .build()
+        val (h, pt) = Envelopes.open(e["key"]!!.jsonPrimitive.content.unhex(), env)
+        assertEquals(e["plaintext"]!!.jsonPrimitive.content, String(pt, Charsets.UTF_8))
+        assertEquals(Compression.COMPRESSION_DEFLATE, h.compression)
+        assertEquals(5L, h.seq)
+        assertTrue(env.ciphertext.size() < pt.size / 4)
     }
 
     @Test
@@ -204,5 +255,111 @@ class KotlinVectorsTest {
         assertEquals("18446744073709551600", java.lang.Long.toUnsignedString(h.seq))
         assertArrayEquals(e["plaintext"]!!.jsonPrimitive.content.toByteArray(), pt)
         assertFalse(h.seq > 0)
+    }
+}
+
+/** Payloads are packed before sealing when that makes them smaller (architecture §10 「压缩」), as TestPacking in Go. */
+class PackingTest {
+    private val key = randomBytes(KEY_SIZE)
+    private val big = "the same line again\n".repeat(500).toByteArray()
+
+    private fun header(kind: PayloadKind = PayloadKind.PAYLOAD_KIND_EVENT) = Header.newBuilder().setKind(kind).setMachineId("m").setSessionId("s").setSeq(1).build()
+
+    /** An envelope whose header and plaintext are taken as given, as a sender that does not follow the rules would make it. */
+    private fun raw(compression: Int, plaintext: ByteArray): Envelope {
+        val h = header().toBuilder().setVersion(Envelopes.VERSION).setCompressionValue(compression).build().toByteArray()
+        val nonce = ByteArray(12)
+        val c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(javax.crypto.Cipher.ENCRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"), javax.crypto.spec.GCMParameterSpec(128, nonce))
+        c.updateAAD(h)
+        return Envelope.newBuilder().setHeader(ByteString.copyFrom(h)).setNonce(ByteString.copyFrom(nonce)).setCiphertext(ByteString.copyFrom(c.doFinal(plaintext))).build()
+    }
+
+    @Test
+    fun aPayloadThatPacksSmallerIsSealedPackedAndOpensWhole() {
+        val h = header()
+        val env = Envelopes.seal(key, h, big)
+        assertTrue("sealed in ${env.ciphertext.size()} bytes of ${big.size}", env.ciphertext.size() < big.size / 4)
+        // The caller's header is not changed, and what it says of compression is not what is sent.
+        assertEquals(Compression.COMPRESSION_NONE, h.compression)
+        val (got, plain) = Envelopes.open(key, env)
+        assertArrayEquals(big, plain)
+        assertEquals(Compression.COMPRESSION_DEFLATE, got.compression)
+        // The header as sent is the additional data: one that says the payload is not packed does not open.
+        val lied = Header.parseFrom(env.header).toBuilder().setCompression(Compression.COMPRESSION_NONE).build()
+        assertThrows(OpenException::class.java) { Envelopes.open(key, env.toBuilder().setHeader(lied.toByteString()).build()) }
+        // A message goes the same way.
+        val msg = io.github.lewin671.remoteagent.proto.UserMessage.newBuilder().setText("重复的内容 ".repeat(200)).build()
+        val (mh, opened) = Envelopes.openMessage(key, Envelopes.seal(key, h, msg), Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = "m", sessionId = "s", seq = 1), io.github.lewin671.remoteagent.proto.UserMessage::parseFrom)
+        assertEquals(msg, opened)
+        assertEquals(Compression.COMPRESSION_DEFLATE, mh.compression)
+    }
+
+    @Test
+    fun whatDoesNotGetSmallerIsSmallOrIsOfAKindNeverPackedGoesAsItIs() {
+        val cases = mapOf(
+            "random" to (PayloadKind.PAYLOAD_KIND_EVENT to randomBytes(4096)),
+            "small" to (PayloadKind.PAYLOAD_KIND_EVENT to ByteArray(PACK_MIN - 1) { 'a'.code.toByte() }),
+            "image" to (PayloadKind.PAYLOAD_KIND_IMAGE to big),
+            "session key" to (PayloadKind.PAYLOAD_KIND_SESSION_KEY to big),
+            "pairing" to (PayloadKind.PAYLOAD_KIND_PAIRING to big),
+        )
+        for ((name, c) in cases) {
+            val (kind, plain) = c
+            // A caller's own claim of compression is not sent either.
+            val env = Envelopes.seal(key, header(kind).toBuilder().setCompression(Compression.COMPRESSION_DEFLATE).build(), plain)
+            assertEquals(name, plain.size + 16, env.ciphertext.size())
+            val (got, opened) = Envelopes.open(key, env)
+            assertArrayEquals(name, plain, opened)
+            assertEquals(name, Compression.COMPRESSION_NONE, got.compression)
+        }
+        // At the threshold a payload is packed.
+        val at = ByteArray(PACK_MIN) { 'a'.code.toByte() }
+        assertEquals(Compression.COMPRESSION_DEFLATE, Envelopes.open(key, Envelopes.seal(key, header(), at)).first.compression)
+    }
+
+    @Test
+    fun anUnknownCompressionIsRefused() {
+        assertThrows(OpenException::class.java) { Envelopes.open(key, raw(9, big)) }
+        // The same envelope with a compression it knows opens.
+        assertArrayEquals(big, Envelopes.open(key, raw(Compression.COMPRESSION_NONE_VALUE, big)).second)
+    }
+
+    @Test
+    fun aPayloadThatIsNotDeflateIsRefused() {
+        assertThrows(OpenException::class.java) { Envelopes.open(key, raw(Compression.COMPRESSION_DEFLATE_VALUE, "not deflate at all, surely".toByteArray())) }
+        // Deflate that stops before its end, and nothing at all.
+        val packed = pack(big)!!
+        assertArrayEquals(big, Envelopes.open(key, raw(Compression.COMPRESSION_DEFLATE_VALUE, packed)).second)
+        assertThrows(OpenException::class.java) { Envelopes.open(key, raw(Compression.COMPRESSION_DEFLATE_VALUE, packed.copyOf(packed.size / 2))) }
+        assertThrows(OpenException::class.java) { Envelopes.open(key, raw(Compression.COMPRESSION_DEFLATE_VALUE, ByteArray(0))) }
+    }
+
+    @Test
+    fun aPayloadThatUnpacksPastTheLimitIsRefused() {
+        // A few kilobytes that unpack to one byte more than the limit, made without holding them unpacked.
+        val d = java.util.zip.Deflater(java.util.zip.Deflater.BEST_SPEED, true)
+        val out = java.io.ByteArrayOutputStream()
+        val zeros = ByteArray(1 shl 20)
+        val buf = ByteArray(64 * 1024)
+        fun drain() {
+            while (true) {
+                val n = d.deflate(buf)
+                if (n == 0) break
+                out.write(buf, 0, n)
+            }
+        }
+        repeat(MAX_UNPACKED shr 20) { d.setInput(zeros); drain() }
+        d.setInput(ByteArray(1))
+        d.finish()
+        while (!d.finished()) out.write(buf, 0, d.deflate(buf))
+        d.end()
+        val bomb = out.toByteArray()
+        assertTrue(bomb.size < 1 shl 20)
+        assertThrows(OpenException::class.java) { unpack(bomb) }
+        assertThrows(OpenException::class.java) { Envelopes.open(key, raw(Compression.COMPRESSION_DEFLATE_VALUE, bomb)) }
+        // The limit itself is allowed, and a lower one stops before the rest is produced.
+        assertArrayEquals(big, unpack(pack(big)!!, big.size))
+        assertThrows(OpenException::class.java) { unpack(pack(big)!!, big.size - 1) }
     }
 }

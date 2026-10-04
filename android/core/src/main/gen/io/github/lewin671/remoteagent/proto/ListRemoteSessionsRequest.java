@@ -6,6 +6,14 @@
 package io.github.lewin671.remoteagent.proto;
 
 /**
+ * <pre>
+ * The listing comes a page at a time. The first page (no cursor) holds
+ * every session that has not ended, then the latest ended ones; each
+ * further page holds the ended sessions after the cursor. With
+ * session_ids set, the answer is just those sessions, as far as they
+ * exist, and neither cursor nor limit applies.
+ * </pre>
+ *
  * Protobuf type {@code remoteagent.v1.ListRemoteSessionsRequest}
  */
 @com.google.protobuf.Generated
@@ -15,7 +23,190 @@ public  final class ListRemoteSessionsRequest extends
     // @@protoc_insertion_point(message_implements:remoteagent.v1.ListRemoteSessionsRequest)
     ListRemoteSessionsRequestOrBuilder {
   private ListRemoteSessionsRequest() {
+    sessionIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
+  private int bitField0_;
+  public static final int AFTER_FIELD_NUMBER = 1;
+  private io.github.lewin671.remoteagent.proto.SessionCursor after_;
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAfter() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SessionCursor getAfter() {
+    return after_ == null ? io.github.lewin671.remoteagent.proto.SessionCursor.getDefaultInstance() : after_;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAfter(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+    value.getClass();  // minimal bytecode null check
+    after_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeAfter(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+    value.getClass();  // minimal bytecode null check
+    if (after_ != null &&
+        after_ != io.github.lewin671.remoteagent.proto.SessionCursor.getDefaultInstance()) {
+      after_ =
+        io.github.lewin671.remoteagent.proto.SessionCursor.newBuilder(after_).mergeFrom(value).buildPartial();
+    } else {
+      after_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   */
+  private void clearAfter() {
+    after_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int LIMIT_FIELD_NUMBER = 2;
+  private int limit_;
+  /**
+   * <pre>
+   * At most this many ended sessions; the server caps it.
+   * </pre>
+   *
+   * <code>uint32 limit = 2 [json_name = "limit"];</code>
+   * @return The limit.
+   */
+  @java.lang.Override
+  public int getLimit() {
+    return limit_;
+  }
+  /**
+   * <pre>
+   * At most this many ended sessions; the server caps it.
+   * </pre>
+   *
+   * <code>uint32 limit = 2 [json_name = "limit"];</code>
+   * @param value The limit to set.
+   */
+  private void setLimit(int value) {
+    
+    limit_ = value;
+  }
+  /**
+   * <pre>
+   * At most this many ended sessions; the server caps it.
+   * </pre>
+   *
+   * <code>uint32 limit = 2 [json_name = "limit"];</code>
+   */
+  private void clearLimit() {
+
+    limit_ = 0;
+  }
+
+  public static final int SESSION_IDS_FIELD_NUMBER = 3;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> sessionIds_;
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @return A list containing the sessionIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getSessionIdsList() {
+    return sessionIds_;
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @return The count of sessionIds.
+   */
+  @java.lang.Override
+  public int getSessionIdsCount() {
+    return sessionIds_.size();
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The sessionIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getSessionIds(int index) {
+    return sessionIds_.get(index);
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the sessionIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSessionIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        sessionIds_.get(index));
+  }
+  private void ensureSessionIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        sessionIds_;  if (!tmp.isModifiable()) {
+      sessionIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The sessionIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSessionIdsIsMutable();
+    sessionIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param value The sessionIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSessionIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSessionIdsIsMutable();
+    sessionIds_.add(value);
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param values The sessionIds to add.
+   */
+  private void addAllSessionIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureSessionIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, sessionIds_);
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   */
+  private void clearSessionIds() {
+    sessionIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param value The bytes of the sessionIds to add.
+   */
+  private void addSessionIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureSessionIdsIsMutable();
+    sessionIds_.add(value.toStringUtf8());
+  }
+
   public static io.github.lewin671.remoteagent.proto.ListRemoteSessionsRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -100,6 +291,14 @@ public  final class ListRemoteSessionsRequest extends
   }
 
   /**
+   * <pre>
+   * The listing comes a page at a time. The first page (no cursor) holds
+   * every session that has not ended, then the latest ended ones; each
+   * further page holds the ended sessions after the cursor. With
+   * session_ids set, the answer is just those sessions, as far as they
+   * exist, and neither cursor nor limit applies.
+   * </pre>
+   *
    * Protobuf type {@code remoteagent.v1.ListRemoteSessionsRequest}
    */
   public static final class Builder extends
@@ -112,6 +311,185 @@ public  final class ListRemoteSessionsRequest extends
       super(DEFAULT_INSTANCE);
     }
 
+
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAfter() {
+      return instance.hasAfter();
+    }
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SessionCursor getAfter() {
+      return instance.getAfter();
+    }
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    public Builder setAfter(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+      copyOnWrite();
+      instance.setAfter(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    public Builder setAfter(
+        io.github.lewin671.remoteagent.proto.SessionCursor.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAfter(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    public Builder mergeAfter(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+      copyOnWrite();
+      instance.mergeAfter(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+     */
+    public Builder clearAfter() {  copyOnWrite();
+      instance.clearAfter();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * At most this many ended sessions; the server caps it.
+     * </pre>
+     *
+     * <code>uint32 limit = 2 [json_name = "limit"];</code>
+     * @return The limit.
+     */
+    @java.lang.Override
+    public int getLimit() {
+      return instance.getLimit();
+    }
+    /**
+     * <pre>
+     * At most this many ended sessions; the server caps it.
+     * </pre>
+     *
+     * <code>uint32 limit = 2 [json_name = "limit"];</code>
+     * @param value The limit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLimit(int value) {
+      copyOnWrite();
+      instance.setLimit(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * At most this many ended sessions; the server caps it.
+     * </pre>
+     *
+     * <code>uint32 limit = 2 [json_name = "limit"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLimit() {
+      copyOnWrite();
+      instance.clearLimit();
+      return this;
+    }
+
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @return A list containing the sessionIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getSessionIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSessionIdsList());
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @return The count of sessionIds.
+     */
+    @java.lang.Override
+    public int getSessionIdsCount() {
+      return instance.getSessionIdsCount();
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param index The index of the element to return.
+     * @return The sessionIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getSessionIds(int index) {
+      return instance.getSessionIds(index);
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the sessionIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSessionIdsBytes(int index) {
+      return instance.getSessionIdsBytes(index);
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The sessionIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSessionIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setSessionIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param value The sessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSessionIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addSessionIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param values The sessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllSessionIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllSessionIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSessionIds() {
+      copyOnWrite();
+      instance.clearSessionIds();
+      return this;
+    }
+    /**
+     * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+     * @param value The bytes of the sessionIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSessionIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addSessionIdsBytes(value);
+      return this;
+    }
 
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ListRemoteSessionsRequest)
   }
@@ -128,9 +506,15 @@ public  final class ListRemoteSessionsRequest extends
         return new Builder();
       }
       case BUILD_MESSAGE_INFO: {
-          java.lang.Object[] objects = null;
+          java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
+            "after_",
+            "limit_",
+            "sessionIds_",
+          };
           java.lang.String info =
-              "\u0000\u0000";
+              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u1009\u0000\u0002" +
+              "\u000b\u0003\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -8,6 +8,7 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.MessageLite
+import io.github.lewin671.remoteagent.proto.Compression
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
@@ -21,6 +22,9 @@ import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
+import java.util.zip.DataFormatException
+import java.util.zip.Deflater
+import java.util.zip.Inflater
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -168,16 +172,84 @@ data class Place(
     val requestId: String = "",
 )
 
+/**
+ * Packing limits, as in internal/e2e. A payload below [PACK_MIN] is sent as
+ * it is: packing would save nothing worth the work. One that unpacks to
+ * more than [MAX_UNPACKED] is refused, so that a small envelope cannot fill
+ * memory.
+ */
+const val PACK_MIN = 256
+const val MAX_UNPACKED = 64 shl 20
+
+/**
+ * Whether payloads of a kind are packed before sealing. Session keys are
+ * random, images are already compressed, and pairing payloads are read
+ * before the devices share a protocol check.
+ */
+private fun packs(kind: PayloadKind): Boolean = when (kind) {
+    PayloadKind.PAYLOAD_KIND_SESSION_KEY, PayloadKind.PAYLOAD_KIND_IMAGE, PayloadKind.PAYLOAD_KIND_PAIRING -> false
+    else -> true
+}
+
+/** [plaintext] as raw DEFLATE (RFC 1951, no zlib or gzip wrapper), or null when that is not smaller. */
+internal fun pack(plaintext: ByteArray): ByteArray? {
+    val d = Deflater(Deflater.DEFAULT_COMPRESSION, true)
+    try {
+        d.setInput(plaintext)
+        d.finish()
+        // Only a result smaller than the input is of use: a buffer of that size is enough to tell.
+        val out = ByteArray(plaintext.size)
+        val n = d.deflate(out)
+        return if (d.finished() && n < plaintext.size) out.copyOf(n) else null
+    } finally {
+        d.end()
+    }
+}
+
+/**
+ * Inflates what [pack] produced. It stops at [max] bytes: a payload that
+ * would unpack to more is refused before the rest of it is produced.
+ */
+internal fun unpack(packed: ByteArray, max: Int = MAX_UNPACKED): ByteArray {
+    val bad = OpenException("envelope does not open")
+    val inf = Inflater(true)
+    try {
+        inf.setInput(packed)
+        val out = java.io.ByteArrayOutputStream(minOf(max, maxOf(packed.size * 4, 1024)))
+        val buf = ByteArray(64 * 1024)
+        while (!inf.finished()) {
+            val n = inf.inflate(buf)
+            // No progress: the data ends before the stream does, or asks for a dictionary.
+            if (n == 0 && (inf.needsInput() || inf.needsDictionary())) throw bad
+            if (out.size() + n > max) throw bad
+            out.write(buf, 0, n)
+        }
+        return out.toByteArray()
+    } catch (e: DataFormatException) {
+        throw bad
+    } finally {
+        inf.end()
+    }
+}
+
 object Envelopes {
     const val VERSION = ENVELOPE_VERSION
 
-    /** Seals plaintext; the header is serialized once and authenticated as sent. */
+    /**
+     * Seals plaintext; the header is serialized once and authenticated as
+     * sent. A payload that packs smaller is sealed packed, which the header
+     * says (Header.compression); the caller's value of it is not used.
+     */
     fun seal(key: ByteArray, header: Header, plaintext: ByteArray, nonce: ByteArray = randomBytes(12)): Envelope {
-        val h = (if (header.version == 0) header.toBuilder().setVersion(VERSION).build() else header).toByteArray()
+        val packed = if (packs(header.kind) && plaintext.size >= PACK_MIN) pack(plaintext) else null
+        val h = header.toBuilder()
+            .setVersion(if (header.version == 0) VERSION else header.version)
+            .setCompression(if (packed != null) Compression.COMPRESSION_DEFLATE else Compression.COMPRESSION_NONE)
+            .build().toByteArray()
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
         c.updateAAD(h)
-        val ct = c.doFinal(plaintext)
+        val ct = c.doFinal(packed ?: plaintext)
         return Envelope.newBuilder()
             .setHeader(ByteString.copyFrom(h))
             .setNonce(ByteString.copyFrom(nonce))
@@ -187,7 +259,7 @@ object Envelopes {
 
     fun seal(key: ByteArray, header: Header, msg: MessageLite): Envelope = seal(key, header, msg.toByteArray())
 
-    /** Opens an envelope and returns the header exactly as sealed. */
+    /** Opens an envelope, unpacks a packed payload, and returns the header exactly as sealed. */
     fun open(key: ByteArray, env: Envelope?): Pair<Header, ByteArray> {
         if (env == null || env.nonce.size() != 12) throw OpenException("envelope does not open")
         val header = env.header.toByteArray()
@@ -205,7 +277,12 @@ object Envelopes {
             throw OpenException("malformed header")
         }
         if (h.version != VERSION) throw OpenException("unsupported envelope version")
-        return h to pt
+        return h to when (h.compression) {
+            Compression.COMPRESSION_NONE -> pt
+            Compression.COMPRESSION_DEFLATE -> unpack(pt)
+            // A compression this version does not know.
+            else -> throw OpenException("envelope does not open")
+        }
     }
 
     fun expect(h: Header, want: Place) {

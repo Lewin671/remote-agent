@@ -23,4 +23,23 @@ public interface ListRemoteSessionsResponseOrBuilder extends
    * <code>repeated .remoteagent.v1.RemoteSession sessions = 1 [json_name = "sessions"];</code>
    */
   int getSessionsCount();
+
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   * @return Whether the next field is set.
+   */
+  boolean hasNext();
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   * @return The next.
+   */
+  io.github.lewin671.remoteagent.proto.SessionCursor getNext();
 }

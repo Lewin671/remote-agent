@@ -9,4 +9,50 @@ package io.github.lewin671.remoteagent.proto;
 public interface ListRemoteSessionsRequestOrBuilder extends
     // @@protoc_insertion_point(interface_extends:remoteagent.v1.ListRemoteSessionsRequest)
     com.google.protobuf.MessageLiteOrBuilder {
+
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   * @return Whether the after field is set.
+   */
+  boolean hasAfter();
+  /**
+   * <code>.remoteagent.v1.SessionCursor after = 1 [json_name = "after"];</code>
+   * @return The after.
+   */
+  io.github.lewin671.remoteagent.proto.SessionCursor getAfter();
+
+  /**
+   * <pre>
+   * At most this many ended sessions; the server caps it.
+   * </pre>
+   *
+   * <code>uint32 limit = 2 [json_name = "limit"];</code>
+   * @return The limit.
+   */
+  int getLimit();
+
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @return A list containing the sessionIds.
+   */
+  java.util.List<java.lang.String>
+      getSessionIdsList();
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @return The count of sessionIds.
+   */
+  int getSessionIdsCount();
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The sessionIds at the given index.
+   */
+  java.lang.String getSessionIds(int index);
+  /**
+   * <code>repeated string session_ids = 3 [json_name = "sessionIds"];</code>
+   * @param index The index of the element to return.
+   * @return The sessionIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getSessionIdsBytes(int index);
 }

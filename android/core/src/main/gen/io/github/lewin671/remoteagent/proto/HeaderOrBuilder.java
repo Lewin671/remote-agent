@@ -122,4 +122,31 @@ public interface HeaderOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSenderBytes();
+
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @return The enum numeric value on the wire for compression.
+   */
+  int getCompressionValue();
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @return The compression.
+   */
+  io.github.lewin671.remoteagent.proto.Compression getCompression();
 }

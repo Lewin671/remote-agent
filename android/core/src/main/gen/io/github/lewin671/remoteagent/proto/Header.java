@@ -436,6 +436,88 @@ public  final class Header extends
 
   }
 
+  public static final int COMPRESSION_FIELD_NUMBER = 9;
+  private int compression_;
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @return The enum numeric value on the wire for compression.
+   */
+  @java.lang.Override
+  public int getCompressionValue() {
+    return compression_;
+  }
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @return The compression.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Compression getCompression() {
+    io.github.lewin671.remoteagent.proto.Compression result = io.github.lewin671.remoteagent.proto.Compression.forNumber(compression_);
+    return result == null ? io.github.lewin671.remoteagent.proto.Compression.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @param value The enum numeric value on the wire for compression to set.
+   */
+  private void setCompressionValue(int value) {
+      compression_ = value;
+  }
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   * @param value The compression to set.
+   */
+  private void setCompression(io.github.lewin671.remoteagent.proto.Compression value) {
+    compression_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * How the plaintext was packed before sealing. A sender packs a payload
+   * when that makes it smaller; session keys, images and pairing payloads
+   * are never packed. A receiver unpacks before reading, refuses a
+   * compression it does not know, and refuses a payload that unpacks to
+   * more than 64 MiB.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+   */
+  private void clearCompression() {
+
+    compression_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.Header parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -963,6 +1045,92 @@ public  final class Header extends
       return this;
     }
 
+    /**
+     * <pre>
+     * How the plaintext was packed before sealing. A sender packs a payload
+     * when that makes it smaller; session keys, images and pairing payloads
+     * are never packed. A receiver unpacks before reading, refuses a
+     * compression it does not know, and refuses a payload that unpacks to
+     * more than 64 MiB.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+     * @return The enum numeric value on the wire for compression.
+     */
+    @java.lang.Override
+    public int getCompressionValue() {
+      return instance.getCompressionValue();
+    }
+    /**
+     * <pre>
+     * How the plaintext was packed before sealing. A sender packs a payload
+     * when that makes it smaller; session keys, images and pairing payloads
+     * are never packed. A receiver unpacks before reading, refuses a
+     * compression it does not know, and refuses a payload that unpacks to
+     * more than 64 MiB.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+     * @param value The compression to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCompressionValue(int value) {
+      copyOnWrite();
+      instance.setCompressionValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * How the plaintext was packed before sealing. A sender packs a payload
+     * when that makes it smaller; session keys, images and pairing payloads
+     * are never packed. A receiver unpacks before reading, refuses a
+     * compression it does not know, and refuses a payload that unpacks to
+     * more than 64 MiB.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+     * @return The compression.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Compression getCompression() {
+      return instance.getCompression();
+    }
+    /**
+     * <pre>
+     * How the plaintext was packed before sealing. A sender packs a payload
+     * when that makes it smaller; session keys, images and pairing payloads
+     * are never packed. A receiver unpacks before reading, refuses a
+     * compression it does not know, and refuses a payload that unpacks to
+     * more than 64 MiB.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+     * @param value The enum numeric value on the wire for compression to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCompression(io.github.lewin671.remoteagent.proto.Compression value) {
+      copyOnWrite();
+      instance.setCompression(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * How the plaintext was packed before sealing. A sender packs a payload
+     * when that makes it smaller; session keys, images and pairing payloads
+     * are never packed. A receiver unpacks before reading, refuses a
+     * compression it does not know, and refuses a payload that unpacks to
+     * more than 64 MiB.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Compression compression = 9 [json_name = "compression"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCompression() {
+      copyOnWrite();
+      instance.clearCompression();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Header)
   }
   @java.lang.Override
@@ -987,10 +1155,11 @@ public  final class Header extends
             "requestId_",
             "deadlineMs_",
             "sender_",
+            "compression_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u000b\u0002\f\u0003\u0208" +
-              "\u0004\u0208\u0005\u0003\u0006\u0208\u0007\u0002\b\u0208";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0000\u0000\u0001\u000b\u0002\f\u0003\u0208" +
+              "\u0004\u0208\u0005\u0003\u0006\u0208\u0007\u0002\b\u0208\t\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

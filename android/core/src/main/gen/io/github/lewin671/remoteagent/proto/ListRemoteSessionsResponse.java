@@ -17,6 +17,7 @@ public  final class ListRemoteSessionsResponse extends
   private ListRemoteSessionsResponse() {
     sessions_ = emptyProtobufList();
   }
+  private int bitField0_;
   public static final int SESSIONS_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.RemoteSession> sessions_;
   /**
@@ -112,6 +113,74 @@ public  final class ListRemoteSessionsResponse extends
   private void removeSessions(int index) {
     ensureSessionsIsMutable();
     sessions_.remove(index);
+  }
+
+  public static final int NEXT_FIELD_NUMBER = 2;
+  private io.github.lewin671.remoteagent.proto.SessionCursor next_;
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   */
+  @java.lang.Override
+  public boolean hasNext() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SessionCursor getNext() {
+    return next_ == null ? io.github.lewin671.remoteagent.proto.SessionCursor.getDefaultInstance() : next_;
+  }
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNext(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+    value.getClass();  // minimal bytecode null check
+    next_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeNext(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+    value.getClass();  // minimal bytecode null check
+    if (next_ != null &&
+        next_ != io.github.lewin671.remoteagent.proto.SessionCursor.getDefaultInstance()) {
+      next_ =
+        io.github.lewin671.remoteagent.proto.SessionCursor.newBuilder(next_).mergeFrom(value).buildPartial();
+    } else {
+      next_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * The cursor for the next page, unset when this was the last.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+   */
+  private void clearNext() {
+    next_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.proto.ListRemoteSessionsResponse parseFrom(
@@ -313,6 +382,77 @@ public  final class ListRemoteSessionsResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    @java.lang.Override
+    public boolean hasNext() {
+      return instance.hasNext();
+    }
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SessionCursor getNext() {
+      return instance.getNext();
+    }
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    public Builder setNext(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+      copyOnWrite();
+      instance.setNext(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    public Builder setNext(
+        io.github.lewin671.remoteagent.proto.SessionCursor.Builder builderForValue) {
+      copyOnWrite();
+      instance.setNext(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    public Builder mergeNext(io.github.lewin671.remoteagent.proto.SessionCursor value) {
+      copyOnWrite();
+      instance.mergeNext(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The cursor for the next page, unset when this was the last.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.SessionCursor next = 2 [json_name = "next"];</code>
+     */
+    public Builder clearNext() {  copyOnWrite();
+      instance.clearNext();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ListRemoteSessionsResponse)
   }
   @java.lang.Override
@@ -329,11 +469,14 @@ public  final class ListRemoteSessionsResponse extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "sessions_",
             io.github.lewin671.remoteagent.proto.RemoteSession.class,
+            "next_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0001\u0000\u0001\u001b";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u001b\u0002\u1009" +
+              "\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
