@@ -281,6 +281,12 @@ export class Remote {
   // exist.
   moreSessions = false;
   loadingSessions = false;
+  /** Whether there may be ended sessions that are not held: the server
+   * has further pages, or has not been asked yet and what is held is
+   * what this browser kept from its last visit. */
+  get sessionsOpen(): boolean {
+    return this.moreSessions || !this.listed;
+  }
   missing = new Set<string>();
   private nextSessions?: SessionCursor;
   private listing = 0; // counts first pages, so a late page of an older listing is not continued from

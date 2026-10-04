@@ -181,7 +181,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const heldEnded = p?.sessions.filter(exited).length ?? 0;
   /** Whether what CLI a would inherit is still to be fetched. */
   const unreadFor = (a: Agent) =>
-    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[a] && !saved?.agents.some((x) => x.agent === a) &&
+    !!p && remote.sessionsOpen && p.ended > heldEnded && !local?.sets[a] && !saved?.agents.some((x) => x.agent === a) &&
     // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
     !p.sessions.some((s) => agentOf(s) === a && !remote.pastPages(s));
   const unread = unreadFor(agent);

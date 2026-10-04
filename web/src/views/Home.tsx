@@ -202,7 +202,7 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
   // is what its machines count, until every page is here.
   const groups = useProjectGroups(remote);
   const counted = [...groups.pinned, ...groups.others].filter((p) => scope === ALL || p.key === scope).reduce((n, p) => n + p.ended, 0);
-  const totalEnded = remote.moreSessions ? Math.max(counted, everEnded.length) : everEnded.length;
+  const totalEnded = remote.sessionsOpen ? Math.max(counted, everEnded.length) : everEnded.length;
   // Showing past the pages held fetches the next; a page may hold none of
   // this scope's sessions, and then the one after is fetched in turn.
   // Filtering has to see every title, so it fetches all that is left.
@@ -288,7 +288,7 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
         );
       })}
       {q ? (
-        <div className="tail">{remote.moreSessions ? "正在加载更早的会话…" : total ? `${total} 个会话的标题里有「${query.trim()}」` : `没有标题里有「${query.trim()}」的会话`}</div>
+        <div className="tail">{remote.sessionsOpen ? "正在加载更早的会话…" : total ? `${total} 个会话的标题里有「${query.trim()}」` : `没有标题里有「${query.trim()}」的会话`}</div>
       ) : totalEnded > endedShown.length ? (
         // Never further than one page past what is held: the rest waits for the server.
         <More onMore={() => setShown((n) => Math.min(n + PAGE, everEnded.length + PAGE))}>共 {totalEnded} 个，滚到底加载更早的</More>

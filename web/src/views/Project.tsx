@@ -26,7 +26,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   const [shownEnded, setShownEnded] = useState(3);
   // Ended sessions come a page at a time; the project's machines say how
   // many there are until every page is here.
-  const totalEnded = remote.moreSessions ? Math.max(p?.ended ?? 0, ended.length) : ended.length;
+  const totalEnded = remote.sessionsOpen ? Math.max(p?.ended ?? 0, ended.length) : ended.length;
   useEffect(() => {
     if ((shownEnded > ended.length && ended.length < totalEnded) || ended.slice(0, shownEnded).some((s) => remote.pastPages(s))) void remote.loadMoreSessions();
   });
