@@ -89,7 +89,6 @@ import io.github.lewin671.remoteagent.proto.InterruptRequest
 import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
 import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -99,13 +98,9 @@ fun SessionScreen(sid: String) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val p = pal
-    var gone by remember { mutableStateOf(false) }
-    LaunchedEffect(s == null, state.loaded) {
-        if (s == null && state.loaded) {
-            delay(15_000)
-            gone = true
-        }
-    }
+    // Not held here: the listing comes a page at a time, so it is asked for by its ID, and
+    // only the server saying it has none makes it missing (architecture §8 「按 ID 取」).
+    val gone = sessionGone(sid)
     if (s == null) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             if (gone) {
@@ -113,7 +108,7 @@ fun SessionScreen(sid: String) {
                 TextButton(onClick = nav.back) { Text("返回") }
             } else {
                 CircularProgressIndicator()
-                Text("读取中…", color = p.muted, modifier = Modifier.padding(top = 12.dp))
+                Text(if (state.conn == ConnState.ONLINE) "读取中…" else "连上服务器后读取这个会话", color = p.muted, modifier = Modifier.padding(top = 12.dp))
             }
         }
         return

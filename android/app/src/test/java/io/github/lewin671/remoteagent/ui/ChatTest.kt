@@ -90,12 +90,13 @@ class ChatTest {
         projection.update(events.take(3), derive(events.take(3)), "MacBook")
         assertEquals(fork, projection.update(events, derive(events), "MacBook")[2])
 
-        // The source as this client has it now; else the title the event recorded, not to be opened.
+        // The source as this client has it now; else the title the event recorded. A source not held
+        // here may be on a page not fetched yet: opening it asks for it by its ID.
         val renamed = io.github.lewin671.remoteagent.core.SessionView("src", "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("登录超时：限流").build())
-        assertEquals("登录超时：限流" to true, forkSource(fork, mapOf("src" to renamed)))
-        assertEquals("登录接口偶尔超时" to true, forkSource(fork, mapOf("src" to io.github.lewin671.remoteagent.core.SessionView("src", "m"))))
-        assertEquals("登录接口偶尔超时" to false, forkSource(fork, emptyMap()))
-        assertEquals("另一个会话" to false, forkSource(fork.copy(sourceTitle = ""), emptyMap()))
+        assertEquals("登录超时：限流", forkSource(fork, mapOf("src" to renamed)))
+        assertEquals("登录接口偶尔超时", forkSource(fork, mapOf("src" to io.github.lewin671.remoteagent.core.SessionView("src", "m"))))
+        assertEquals("登录接口偶尔超时", forkSource(fork, emptyMap()))
+        assertEquals("另一个会话", forkSource(fork.copy(sourceTitle = ""), emptyMap()))
     }
 
     @Test

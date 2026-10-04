@@ -473,6 +473,7 @@ fun QuestionPage(sid: String, qid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
+    sessionGone(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
     val q = d.questions[qid]

@@ -46,6 +46,9 @@ interface CacheDao {
     @Query("DELETE FROM events WHERE sessionId = :sid") suspend fun deleteEvents(sid: String)
     @Query("SELECT id FROM sessions WHERE machineId = :mid") suspend fun sessionsOf(mid: String): List<String>
 
+    // The sessions table holds the listing's first page (architecture §8
+    // 「会话列表分页」); events are kept for any session that was opened, and
+    // go only with a session known not to exist any more.
     @Transaction
     suspend fun removeMachine(id: String) {
         for (sid in sessionsOf(id)) {
@@ -87,6 +90,7 @@ class RoomCache(private val dao: CacheDao, private val images: ImageEnvelopes? =
         dao.put(events.map { EventRow(sessionId, it.seq, it.toByteArray()) })
     override suspend fun removeMachine(id: String) = dao.removeMachine(id)
     override suspend fun removeSession(id: String) = dao.removeSession(id)
+    override suspend fun unlistSession(id: String) = dao.deleteSession(id)
     override suspend fun blob(name: String) = dao.blob(name)?.data
     override suspend fun putBlob(name: String, data: ByteArray) = dao.put(BlobRow(name, data))
 }

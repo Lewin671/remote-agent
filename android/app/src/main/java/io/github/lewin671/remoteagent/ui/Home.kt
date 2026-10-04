@@ -73,6 +73,8 @@ import io.github.lewin671.remoteagent.core.filterTail
 import io.github.lewin671.remoteagent.core.groupEnded
 import io.github.lewin671.remoteagent.core.groupTitle
 import io.github.lewin671.remoteagent.core.homeTimeline
+import io.github.lewin671.remoteagent.core.needsEndedPage
+import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.listedProjects
 import io.github.lewin671.remoteagent.core.metaLine
 import io.github.lewin671.remoteagent.core.minutesLeft
@@ -138,7 +140,13 @@ fun HomeScreen() {
     var pick by rememberSaveable { mutableStateOf(false) }
     var menu by rememberSaveable { mutableStateOf(false) }
     // Without any project, removed ones included, there is nothing to scope by.
-    val anyProject = state.sessions.isNotEmpty()
+    val anyProject = remember(state) { projects(state).isNotEmpty() }
+    // The ended sessions come a page at a time (architecture §8 「会话列表分页」):
+    // another page when more are to be shown than were fetched, and every
+    // page left once a filter is typed, which has to see every title.
+    val wantAll = filtering && state.moreSessions
+    val wantPage = !filtering && needsEndedPage(state, tl.ended, shownEnded, tl.endedTotal)
+    FetchEarlier(state, page = wantPage, all = wantAll)
 
     LazyColumn(Modifier.fillMaxSize().background(p.card)) {
         item {
@@ -152,7 +160,7 @@ fun HomeScreen() {
         }
         if (!state.loaded && state.sessions.isEmpty()) {
             item { Skeleton() }
-        } else if (state.sessions.isEmpty()) {
+        } else if (state.sessions.isEmpty() && !anyProject) {
             item { EmptyAccount(state) }
         } else if (scope is HomeScope.Of && tl.total == 0 && !filtering) {
             item { EmptyScope() }
@@ -178,12 +186,20 @@ fun HomeScreen() {
             item(key = "g$group") { Label(groupTitle(group, t)) }
             items(list, key = { "e" + it.id }) { s -> EndedRow(s, t, project = tl.meta.project) }
         }
-        val more = ended.size < tl.ended.size
-        val tail = if (filtering) filterTail(tl.size, query) else endedTail(tl.ended.size, ended.size)
-        if (tail != null || more) item(key = "tail") {
-            // Every summary is already on this device: reaching the end only renders the next page.
-            if (more) LaunchedEffect(shownEnded) { shownEnded += ENDED_PAGE }
-            Text(tail.orEmpty(), style = T.meta, color = p.muted, modifier = Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("timeline-tail"))
+        // More to show: held here and not rendered yet, or still on the server.
+        val held = ended.size < tl.ended.size
+        val more = held || (!filtering && state.moreSessions && tl.ended.size < tl.endedTotal)
+        val tailModifier = Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("timeline-tail")
+        // What a filter matched is only known once every page is here.
+        val tail = if (filtering) filterTail(tl.size, query).takeUnless { wantAll } else endedTail(tl.endedTotal, more)
+        if (tail != null || more || wantAll || wantPage) item(key = "tail") {
+            // Reaching the end shows the next thirty, once the ones before them are all rendered;
+            // those not fetched yet are asked for above.
+            if (more && shownEnded <= tl.ended.size) LaunchedEffect(shownEnded, tl.ended.size) { shownEnded += ENDED_PAGE }
+            // While pages are on their way the line says so, unless it already counts the scope's sessions;
+            // a page that failed is said either way, with its retry.
+            if ((wantAll || wantPage) && (tail == null || state.sessionsError.isNotEmpty())) EarlierTail(state, tailModifier)
+            else Text(tail.orEmpty(), style = T.meta, color = p.muted, modifier = tailModifier)
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

@@ -580,4 +580,8 @@ class MemoryCache : CipherCache {
         events.remove(id)
     }
 
+    override suspend fun unlistSession(id: String) {
+        sessions.remove(id)
+    }
+
 }

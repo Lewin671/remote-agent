@@ -63,6 +63,24 @@ class ProjectTest {
     }
 
     @Test
+    fun aProjectWhoseSessionsAreAllOnPagesNotFetchedStartsOnTheMachineItsSummaryNames() {
+        // The listing comes a page at a time: no session of the project is held, only the machines' summaries name it.
+        fun summed(id: String, created: Long?) = MachineView(id, true, 0, MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE))
+            .apply { if (created != null) addProjects(io.github.lewin671.remoteagent.proto.ProjectSummary.newBuilder().setPath(path).setEnded(4).setLatestCreatedMs(created)) }.build())
+        val st = state(null, emptyList(), summed("idle", null), summed("earlier", 100), summed("latest", 200))
+        // The machine with the project's newest session, not just any machine.
+        assertEquals(NewConfig("latest", path, Agent.AGENT_CLAUDE), projectConfig(st, path))
+        // The machines offered for it are those the summaries name, and every machine for a folder nothing names.
+        assertEquals(listOf("latest", "earlier"), projectMachines(st, path))
+        assertEquals(listOf("idle", "earlier", "latest"), projectMachines(st, "/work/other"))
+        assertEquals(null, projectConfig(st, "/work/other"))
+        // A session held here still says more than a summary: the latest one's machine comes first.
+        val held = state(null, listOf(session("s", "earlier", Agent.AGENT_CLAUDE, "sonnet", 999)), summed("earlier", 100), summed("latest", 200))
+        assertEquals("earlier", projectConfig(held, path)!!.machineId)
+        assertEquals(listOf("earlier", "latest"), projectMachines(held, path))
+    }
+
+    @Test
     fun theCliIsThePickThenTheRememberedOneThenTheLatestSessionsThenTheMachinesFirst() {
         val mac = host("mac", *both)
         val sessions = listOf(session("a", "mac", Agent.AGENT_CLAUDE, "sonnet", 20), session("b", "mac", Agent.AGENT_CODEX, "astra", 10))

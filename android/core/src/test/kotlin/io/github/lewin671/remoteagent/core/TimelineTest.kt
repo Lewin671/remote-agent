@@ -213,9 +213,74 @@ class TimelineTest {
 
     @Test
     fun theTailCountsEndedSessionsOnceTheyTakeMoreThanAPage() {
-        assertNull(endedTail(30, 30))
-        assertEquals("共 71 个，滚到底加载更早的", endedTail(71, 30))
-        assertEquals("共 71 个", endedTail(71, 71))
+        assertNull(endedTail(30, more = false))
+        assertEquals("共 71 个，滚到底加载更早的", endedTail(71, more = true))
+        assertEquals("共 71 个", endedTail(71, more = false))
+    }
+
+    private fun summary(path: String, ended: Int) = io.github.lewin671.remoteagent.proto.ProjectSummary.newBuilder().setPath(path).setEnded(ended).build()
+
+    private fun withSummaries(st: RemoteState, vararg byMachine: Pair<String, List<io.github.lewin671.remoteagent.proto.ProjectSummary>>) = st.copy(
+        machines = st.machines + byMachine.associate { (id, list) ->
+            id to MachineView(id, online = true, lastSeenMs = 0, meta = io.github.lewin671.remoteagent.proto.MachineMeta.newBuilder().addAllProjects(list).build())
+        },
+    )
+
+    @Test
+    fun theScopeCountsEndedSessionsByTheSummariesNotByThePagesFetched() {
+        // Two machines have ended sessions in /a; only two of them are held here.
+        val st = withSummaries(
+            state(
+                session("1", "/a"), session("2", "/a", ended = now - 1000), session("3", "/a", ended = now - 2000),
+                session("4", "/b", ended = now - 3000), session("5", "/gone", ended = now - 4000),
+                hidden = listOf("/gone"), machines = listOf("m", "n"),
+            ),
+            "m" to listOf(summary("/a", 40), summary("/b", 7), summary("/gone", 100)),
+            "n" to listOf(summary("/a", 2), summary("/old", 5)),
+        )
+        val a = homeTimeline(st, HomeScope.Of("/a"), zone = zone)
+        assertEquals(listOf("2", "3"), a.ended.map { it.id })
+        assertEquals(42, a.endedTotal)
+        // The filter is offered by what the scope has, not by what is held: one running and 42 ended.
+        assertEquals(43, a.total)
+        // Every project leaves out the removed ones, and counts a project nothing of which is held.
+        val all = homeTimeline(st, HomeScope.All, zone = zone)
+        assertEquals(40 + 2 + 7 + 5, all.endedTotal)
+        assertEquals(1 + all.endedTotal, all.total)
+        // A filter changes what is listed, not how many the scope has.
+        assertEquals(42, homeTimeline(st, HomeScope.Of("/a"), "zzz", zone).endedTotal)
+        // Summaries behind the sessions held never count fewer than those.
+        assertEquals(2, homeTimeline(withSummaries(st, "m" to emptyList(), "n" to emptyList()), HomeScope.Of("/a"), zone = zone).endedTotal)
+        // A project known from a summary alone can be the scope.
+        assertEquals(HomeScope.Of("/old"), resolveScope(HomeScope.Of("/old"), st))
+        assertEquals(5, homeTimeline(st, HomeScope.Of("/old"), zone = zone).total)
+    }
+
+    @Test
+    fun anotherPageIsDueWhileFewerAreHeldThanShownOrTheShownReachPastThePagesFetched() {
+        fun held(n: Int) = (1..n).map { session("e$it", "/a", ended = now - it * 1000L).copy(listedEndedMs = now - it * 1000L) }
+        val base = state(*held(50).toTypedArray())
+        // Every page is here: nothing to ask for, whatever the summaries say.
+        assertFalse(needsEndedPage(base, held(50), 60, 200))
+        val more = base.copy(sessionsNext = SessionPlace(now - 50_000, "e50"))
+        assertFalse(needsEndedPage(more, held(50), 30, 200))
+        assertTrue(needsEndedPage(more, held(50), 60, 200))
+        // The scope has no more than are held: the pages left are other projects'.
+        assertFalse(needsEndedPage(more, held(50), 60, 50))
+        // A page may hold none of the scope's sessions: it is due until enough are held.
+        assertTrue(needsEndedPage(more, emptyList(), 30, 4))
+        // Kept from before a reconnect, or fetched on its own: others not fetched yet come before it.
+        val old = session("old", "/a", ended = now - 900_000).copy(listedEndedMs = now - 900_000)
+        assertTrue(needsEndedPage(more, held(20) + old, 30, 21))
+        assertFalse(needsEndedPage(more, held(20) + old, 20, 21))
+    }
+
+    @Test
+    fun theEndSaysWhatBecomesOfTheEarlierPages() {
+        val online = RemoteState(conn = ConnState.ONLINE, sessionsNext = SessionPlace(1, "a"))
+        assertEquals("正在加载更早的会话…", earlierTail(online))
+        assertEquals("连上服务器后加载更早的会话", earlierTail(online.copy(conn = ConnState.OFFLINE)))
+        assertEquals("没能加载更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时")))
     }
 
     @Test

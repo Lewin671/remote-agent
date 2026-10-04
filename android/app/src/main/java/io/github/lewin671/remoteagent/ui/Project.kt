@@ -122,7 +122,15 @@ data class NewConfig(
 /** The project's stored settings, or null while none were saved. */
 fun savedSettings(state: RemoteState, key: String): ProjectSettings? = state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }
 
+// Of the sessions held here: every one that has not ended, and the ended ones fetched so far (architecture §8 「会话列表分页」).
 private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
+
+/**
+ * The machines a project has sessions on, by the sessions held here and the
+ * machines' project summaries; every machine when nothing names it yet.
+ */
+fun projectMachines(state: RemoteState, key: String): List<String> =
+    io.github.lewin671.remoteagent.core.project(state, key)?.machineIds.orEmpty().ifEmpty { state.machines.keys.toList() }
 
 /**
  * The CLI a project's next session is meant to use, before looking at what
@@ -149,12 +157,15 @@ fun agentSet(state: RemoteState, key: String, agent: Agent, saved: ProjectSettin
 
 /**
  * What a project's next session starts with (architecture §13). The machine
- * is the stored one, else the latest session's, else [machine]. The CLI is
+ * is the stored one, else the latest session's, else the one whose summary
+ * has the project's newest session (its sessions may all be on pages not
+ * fetched), else [machine]. The CLI is
  * [wantedAgent], or the machine's first when it has none or lacks that one,
  * with that CLI's own set. Null while no machine is known.
  */
 fun projectConfig(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): NewConfig? {
-    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: projectSessions(state, key).firstOrNull()?.machineId ?: machine ?: return null
+    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: projectSessions(state, key).firstOrNull()?.machineId
+        ?: io.github.lewin671.remoteagent.core.project(state, key)?.machineIds?.firstOrNull() ?: machine ?: return null
     val agents = machineAgents(state.machines[machineId])
     val agent = wantedAgent(state, key, pick, saved)?.takeIf { it in agents } ?: agents.first()
     return agentConfig(machineId, key, agentSet(state, key, agent, saved))
@@ -277,8 +288,13 @@ fun ProjectScreen(key: String, focus: Boolean) {
     // The rows are one project's: never the project, the CLI only when its sessions used more than one (client-v27).
     val meta = io.github.lewin671.remoteagent.core.rowMeta(state, sessions, project = false)
     var showEnded by rememberSaveable { mutableStateOf(false) }
-    val machines = sessions.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.SessionView> { it.updatedMs }.thenBy { it.id })
-        .map { machineLabel(state, it.machineId) }.distinct()
+    // The project as the machines' summaries and the sessions held here have it: its ended
+    // sessions come a page at a time, so how many there are is the summaries' to say.
+    val project = io.github.lewin671.remoteagent.core.project(state, key)
+    val endedTotal = maxOf(project?.ended ?: 0, ended.size)
+    val machines = project?.machineIds.orEmpty().map { machineLabel(state, it) }.distinct()
+    // 最近结束 wants three; the whole list asks for a page each time its end is reached.
+    FetchEarlier(state, page = !showEnded && io.github.lewin671.remoteagent.core.needsEndedPage(state, ended, 3, endedTotal))
     val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var typing by remember { mutableStateOf(false) }
     val compact = ime && typing
@@ -305,7 +321,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
                         Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.sm, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("${active.size} 个进行中 · ", style = T.sm, color = p.muted)
-                            Box(Modifier.clickable(enabled = ended.isNotEmpty()) { showEnded = !showEnded }) { ArrowText("已结束 ${ended.size}", p.blue, T.smB, down = showEnded) }
+                            Box(Modifier.clickable(enabled = endedTotal > 0) { showEnded = !showEnded }) { ArrowText("已结束 $endedTotal", p.blue, T.smB, down = showEnded) }
                         }
                         if (selected != null) {
                             val full = selected.mode == Mode.FULL || (selected.mode == null && defaultModeOf(state.machines[selected.machineId], selected.agent).mode == Mode.FULL)
@@ -326,9 +342,15 @@ fun ProjectScreen(key: String, focus: Boolean) {
                 items(active, key = { it.id }) { s -> SessionRow(state, s, t, meta, last = s == active.last(), preview = !compact) }
             }
             val recent = if (showEnded) ended else ended.take(3)
-            if (recent.isNotEmpty() && !compact) {
-                item { Label(if (showEnded) "已结束" else "最近结束", if (showEnded) ended.size else null) }
+            val earlier = state.moreSessions && ended.size < endedTotal
+            if ((recent.isNotEmpty() || (showEnded && earlier)) && !compact) {
+                item { Label(if (showEnded) "已结束" else "最近结束", if (showEnded) endedTotal else null) }
                 items(recent, key = { it.id }) { s -> EndedRow(s, t) }
+                // Composed when the end of the list is reached: that is when the next page is fetched.
+                if (showEnded && earlier) item(key = "earlier") {
+                    FetchEarlier(state, page = true)
+                    EarlierTail(state, Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("project-earlier"))
+                }
             }
             item { Spacer(Modifier.height(12.dp)) }
         }
@@ -591,8 +613,7 @@ fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus:
 @Composable
 private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoose: (NewConfig) -> Unit) {
     val p = pal
-    val others = state.sessions.values.filter { projectKey(it) == c.cwd }.map { it.machineId }.distinct()
-        .ifEmpty { state.machines.keys.toList() }.filter { it != c.machineId && state.machines[it]?.online == true }
+    val others = projectMachines(state, c.cwd).filter { it != c.machineId && state.machines[it]?.online == true }
     Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft).padding(horizontal = 12.dp, vertical = 9.dp)) {
         Text("${machineLabel(state, c.machineId)} 已离线，任务尚未开始", style = T.sm, color = p.orangeInk)
         Text("草稿已保留，请选择在线机器；不自动换机器或 CLI。", style = T.meta, color = p.muted)
@@ -692,7 +713,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
         runCatching { remote.machineCommand(c.machineId, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings }
             .onSuccess { settings = it }
     }
-    val used = state.sessions.values.filter { projectKey(it) == cwd }.map { it.machineId }.distinct().ifEmpty { state.machines.keys.toList() }
+    val used = projectMachines(state, cwd)
     val blockedPrefs = prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
     val shownModel = models?.let { projectModel(c, it, settings) }
@@ -826,7 +847,7 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
             Avatar(pr.key, 22)
             Column(Modifier.weight(1f)) {
                 Text(pr.name, style = T.bodyB, color = p.fg)
-                val ms = pr.sessions.map { it.machineId }.distinct().joinToString("、") { id ->
+                val ms = pr.machineIds.joinToString("、") { id ->
                     machineLabel(state, id) + if (state.machines[id]?.online == true) "" else "（不在线）"
                 }
                 Text(shortPath(pr.key) + if (ms.isNotEmpty()) " · $ms" else "", style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)

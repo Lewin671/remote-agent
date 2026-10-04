@@ -27,7 +27,9 @@ import androidx.compose.material3.TextButton
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,8 +52,73 @@ import io.github.lewin671.remoteagent.core.machineName
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.statusOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
+
+/**
+ * Asks for a session that is not held here by its ID: the listing comes a
+ * page at a time, so one opened from a notification, a link or a fork's
+ * source may not have been fetched (architecture §8 「按 ID 取」). True once
+ * the server said it has no such session; until then it is still being read.
+ */
+@Composable
+fun sessionGone(sid: String): Boolean {
+    val remote = LocalRemote.current
+    val state by remote.state.collectAsState()
+    val held = state.sessions[sid] != null
+    val online = state.conn == ConnState.ONLINE
+    var gone by remember(sid) { mutableStateOf(false) }
+    LaunchedEffect(sid, held, online) {
+        if (held) gone = false
+        if (held || !online) return@LaunchedEffect
+        while (true) {
+            try {
+                gone = !remote.fetchSession(sid)
+                break
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The server could not be asked: that is not an answer.
+                delay(3_000)
+            }
+        }
+    }
+    return gone && !held
+}
+
+/**
+ * Fetches earlier pages of the session listing while a list wants them:
+ * the next one for [page], every page left for [all] (filtering by title).
+ * It waits for the connection, and after a failed page for a retry.
+ */
+@Composable
+fun FetchEarlier(state: RemoteState, page: Boolean, all: Boolean = false) {
+    val remote = LocalRemote.current
+    val ready = state.moreSessions && state.conn == ConnState.ONLINE && state.sessionsError.isEmpty()
+    LaunchedEffect(page, all, ready, state.sessionsNext) {
+        if (!ready) return@LaunchedEffect
+        try {
+            if (all) remote.loadAllSessions() else if (page) remote.loadMoreSessions()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // RemoteState.sessionsError says why; the line at the end offers the retry.
+        }
+    }
+}
+
+/** The line that ends a list whose earlier sessions are wanted and not all fetched; after a failure a tap tries again. */
+@Composable
+fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
+    val remote = LocalRemote.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
+    Text(
+        io.github.lewin671.remoteagent.core.earlierTail(state), style = T.meta, color = pal.muted,
+        modifier = modifier.then(if (failed) Modifier.clickable { scope.launch { runCatching { remote.loadMoreSessions() } } } else Modifier),
+    )
+}
 
 /** Navigation actions shared by the screens. */
 class Nav(

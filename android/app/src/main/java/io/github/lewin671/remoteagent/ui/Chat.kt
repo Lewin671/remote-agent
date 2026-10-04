@@ -120,14 +120,13 @@ sealed interface ChatItem {
 
 /**
  * How the fork line names the source: its title now when the session is
- * known here, else the one the event recorded; and whether it can be opened.
+ * held here, else the one the event recorded. The line opens the source
+ * either way: one on a page of the listing not fetched yet is fetched by
+ * its ID when opened (architecture §8 「按 ID 取」).
  */
-fun forkSource(item: ChatItem.Fork, sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView>): Pair<String, Boolean> {
-    val source = sessions[item.sourceId]
-    val title = source?.takeIf { it.info != null }?.let { io.github.lewin671.remoteagent.core.titleOf(it) }
+fun forkSource(item: ChatItem.Fork, sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView>): String =
+    sessions[item.sourceId]?.takeIf { it.info != null }?.let { io.github.lewin671.remoteagent.core.titleOf(it) }
         ?: io.github.lewin671.remoteagent.core.plain(item.sourceTitle).ifEmpty { "另一个会话" }
-    return title to (source != null)
-}
 
 fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
 
@@ -580,8 +579,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         )
         is ChatItem.TurnEnd -> SepLine(item.text)
         is ChatItem.Fork -> {
-            val (title, known) = forkSource(item, chat?.sessions.orEmpty())
-            ForkLine(item.time, title, if (known && chat != null) ({ chat.onSession(item.sourceId) }) else null)
+            ForkLine(item.time, forkSource(item, chat?.sessions.orEmpty()), if (chat != null && item.sourceId.isNotEmpty()) ({ chat.onSession(item.sourceId) }) else null)
         }
     }
 }

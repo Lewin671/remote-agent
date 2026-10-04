@@ -90,7 +90,11 @@ fun titleMatches(s: SessionView, query: String, zone: ZoneId = ZoneId.systemDefa
  * project chosen as the scope never hides another one's approval.
  * [running] and [ended] are the scope's own; under 全部项目 a removed
  * project's sessions are only among the first two.
- * [total] counts the scope's sessions before [query] was applied.
+ * [ended] holds the ended sessions fetched so far: the listing comes a
+ * page at a time (architecture §8 「会话列表分页」). [endedTotal] is how many
+ * the scope has by the machines' project summaries, and [total] the scope's
+ * sessions: those that have not ended and [endedTotal]. Neither depends on
+ * [query].
  */
 class HomeTimeline(
     val attention: List<SessionView>,
@@ -98,6 +102,7 @@ class HomeTimeline(
     val ended: List<SessionView>,
     val total: Int,
     val meta: RowMeta,
+    val endedTotal: Int = ended.size,
 ) {
     /** How many sessions are listed, for the line under a filtered list. */
     val size: Int get() = attention.size + running.size + ended.size
@@ -113,15 +118,36 @@ fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone:
     val hidden = state.prefs?.hidden.orEmpty()
     val running = all.filter { !exited(it) && it.id !in waitingIds && !outsideScope(it, scope) }.sortedWith(liveOrder)
     val ended = all.filter { exited(it) && if (scope is HomeScope.Of) projectKey(it) == scope.key else projectKey(it) !in hidden }.sortedWith(endedOrder)
-    val inScope = waiting.filter { !outsideScope(it, scope) } + running + ended
+    val live = waiting.filter { !outsideScope(it, scope) } + running
+    val inScope = live + ended
+    // How many ended sessions the scope has is the summaries' to say: only
+    // some of them are held here. Never fewer than are.
+    val summed = projects(state).filter { if (scope is HomeScope.Of) it.key == scope.key else it.key !in hidden }.sumOf { it.ended }
+    val endedTotal = maxOf(summed, ended.size)
     val match = { s: SessionView -> titleMatches(s, query, zone) }
     return HomeTimeline(
         attention = waiting.filter(match),
         running = running.filter(match),
         ended = ended.filter(match),
-        total = inScope.size,
+        total = live.size + endedTotal,
         meta = rowMeta(state, inScope, project = scope == HomeScope.All),
+        endedTotal = endedTotal,
     )
+}
+
+/**
+ * Whether showing the first [want] of a scope's ended sessions takes another
+ * page of the listing. [held] are the ones fetched so far, newest first, and
+ * [total] how many the scope has by the summaries. A page is due while fewer
+ * are held than are to be shown, and while what would be shown reaches past
+ * the pages fetched: sessions kept from before a reconnect, or fetched on
+ * their own, with others not fetched yet before them. A page may hold none
+ * of a project's sessions; asking again goes on until enough are held or no
+ * page is left.
+ */
+fun needsEndedPage(state: RemoteState, held: List<SessionView>, want: Int, total: Int): Boolean {
+    val next = state.sessionsNext ?: return false
+    return held.size < minOf(want, total) || held.take(want).any { afterPlace(it.listedEndedMs, it.id, next) }
 }
 
 /** The line under a card of 需要处理: the project where the list spans projects or the card is from outside the scope, and the machine when there are several. */
@@ -185,11 +211,32 @@ fun groupEnded(ended: List<SessionView>, now: Long, zone: ZoneId = ZoneId.system
     return groups.map { it.key to it.value }
 }
 
-/** The line that ends the list: how many ended sessions there are, once they do not fit one page; null before that. */
-fun endedTail(total: Int, shown: Int): String? = when {
+/**
+ * The line that ends the list: how many ended sessions the scope has
+ * ([total], by the summaries), once they do not fit one page; null before
+ * that. [more]: not all of them are shown yet.
+ */
+fun endedTail(total: Int, more: Boolean): String? = when {
     total <= ENDED_PAGE -> null
-    shown < total -> "共 $total 个，滚到底加载更早的"
+    more -> "共 $total 个，滚到底加载更早的"
     else -> "共 $total 个"
+}
+
+/** The line that ends a list while earlier pages of the listing are on their way. */
+const val LOADING_EARLIER = "正在加载更早的会话…"
+
+/** The same place while there is no connection to fetch them over. */
+const val EARLIER_OFFLINE = "连上服务器后加载更早的会话"
+
+/**
+ * The line that ends a list whose earlier sessions are not all fetched and
+ * are wanted now: on their way, waiting for the connection, or why the last
+ * page failed (a tap tries again).
+ */
+fun earlierTail(state: RemoteState): String = when {
+    state.conn != ConnState.ONLINE -> EARLIER_OFFLINE
+    state.sessionsError.isNotEmpty() -> "没能加载更早的会话：${state.sessionsError} · 点这里重试"
+    else -> LOADING_EARLIER
 }
 
 /** The line that ends a filtered list. */

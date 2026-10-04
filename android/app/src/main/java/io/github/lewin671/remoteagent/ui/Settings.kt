@@ -342,7 +342,7 @@ fun DeviceScreen(id: String) {
             settings?.let { s ->
                 MachineImageStorage(s, imageStorage, m.online && !save.running, onChange = { next, clean -> update(next, clean) })
             }
-            val projects = state.sessions.values.filter { it.machineId == id }.mapNotNull { it.info?.cwd }.distinct()
+            val projects = io.github.lewin671.remoteagent.core.machineProjects(state, id)
             if (projects.isNotEmpty()) {
                 GLabel("项目")
                 Group(rows = projects.map { cwd -> @Composable { GRow(projectName(cwd), shortPath(cwd), onClick = { nav.project(cwd) }) } })

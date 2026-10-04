@@ -284,6 +284,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
+    sessionGone(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
     val a = d.approvals[aid]
@@ -314,6 +315,7 @@ fun PlanPage(sid: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
+    sessionGone(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events.events, s?.agent() ?: Agent.AGENT_CODEX)
     PageScaffold("计划", subtitle = s?.let { titleOf(it) }) {

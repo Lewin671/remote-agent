@@ -127,20 +127,21 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient) : AutoClo
         token = login(Api(account.server, http), account)
     }
 
-    suspend fun putMachine(hostname: String, protocol: Int = PROTOCOL_VERSION) {
+    suspend fun putMachine(hostname: String, protocol: Int = PROTOCOL_VERSION, projects: List<io.github.lewin671.remoteagent.proto.ProjectSummary> = emptyList()) {
         metaRev++
-        val meta = MachineMeta.newBuilder().setHostname(hostname).setOs("darwin").setHome("/Users/me").setProtocolVersion(protocol).build()
+        val meta = MachineMeta.newBuilder().setHostname(hostname).setOs("darwin").setHome("/Users/me").setProtocolVersion(protocol).addAllProjects(projects).build()
         val env = Envelopes.seal(keys.meta, header(PayloadKind.PAYLOAD_KIND_MACHINE_META).setSeq(metaRev).build(), meta)
         api.putMachine(PutMachineRequest.newBuilder().setMeta(env).build(), Api.headers(token)).value()
     }
 
-    suspend fun putSession(sid: String, info: Session) {
+    /** [endedMs] is what the daemon tells the server in the clear to page the listing by: 0 while the session has not ended. */
+    suspend fun putSession(sid: String, info: Session, endedMs: Long = 0) {
         val key = sessionKeys.getOrPut(sid) { randomBytes(32) }
         val rev = (sessionRevs[sid] ?: 0) + 1
         sessionRevs[sid] = rev
         val keyEnv = Envelopes.seal(keys.wrap, header(PayloadKind.PAYLOAD_KIND_SESSION_KEY).setSessionId(sid).build(), key)
         val meta = Envelopes.seal(key, header(PayloadKind.PAYLOAD_KIND_SESSION_META).setSessionId(sid).setSeq(rev).build(), info.toBuilder().setId(sid).build())
-        api.putSession(PutSessionRequest.newBuilder().setSessionId(sid).setKey(keyEnv).setMeta(meta).build(), Api.headers(token)).value()
+        api.putSession(PutSessionRequest.newBuilder().setSessionId(sid).setKey(keyEnv).setMeta(meta).setEndedMs(endedMs).build(), Api.headers(token)).value()
     }
 
     /** Stores an image's display copy for a session, as the daemon does before the event that refers to it. */
