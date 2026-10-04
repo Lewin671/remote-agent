@@ -381,3 +381,41 @@ it("stops and says so once the server no longer knows this device", async () => 
     vi.unstubAllGlobals();
   }
 });
+
+it("restores, for the next visit's first paint, the model lists and settings the machines last reported", async () => {
+  const { DemoRemote } = await import("./dev/demo");
+  const { Agent } = await import("./gen/remoteagent/v1/event_pb");
+  const kept = new Map<string, unknown>();
+  const cache = { read: async () => [], append: async () => undefined, drop: async () => undefined, keep: async () => undefined, get: async (k: string) => kept.get(k), set: async (k: string, v: unknown) => void kept.set(k, v) };
+  const account = { server: "https://ra.example.com", root: {} as CryptoKey, rootRaw: new Uint8Array(32), devicePrivate: {} as CryptoKey, deviceId: "me" };
+  class Kept extends DemoRemote {
+    static open() {
+      return new Kept(account, {} as never, cache);
+    }
+    warmed() {
+      return (this as unknown as { warm(): Promise<void> }).warm();
+    }
+  }
+  const first = Kept.open();
+  (first as unknown as { seed(): void }).seed(); // the demo's machines, online
+  expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
+  const models = await first.listModels("mac", Agent.CODEX);
+  await first.settings("mac");
+  await vi.waitFor(() => expect(kept.has("info")).toBe(true));
+
+  // The next visit knows them before any machine answers.
+  const next = Kept.open();
+  await next.warmed();
+  expect(next.cachedModels("mac", Agent.CODEX)?.models.map((m) => m.displayName)).toEqual(models.models.map((m) => m.displayName));
+  expect(next.cachedModels("mac", Agent.CLAUDE)).toBeUndefined();
+  expect(next.cachedSettings("mac")).toEqual(first.cachedSettings("mac"));
+
+  // Another account's or device's values are not taken.
+  const other = new (class extends DemoRemote {
+    constructor() {
+      super({ ...account, deviceId: "someone-else" }, {} as never, cache);
+    }
+  })();
+  await (other as unknown as { warm(): Promise<void> }).warm();
+  expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
+});

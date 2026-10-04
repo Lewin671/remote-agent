@@ -46,7 +46,8 @@ export function App() {
       remote.stop();
     };
   }, [remote, visible]);
-  if (remote === undefined) return <div className="center muted">加载中…</div>;
+  // Reading what this browser kept takes a moment; the words come only if it takes long.
+  if (remote === undefined) return <div className="center muted late">加载中…</div>;
   if (remote === null) return <Suspense fallback={loading}><Setup onDone={() => void load()} /></Suspense>;
   return <Main remote={remote} />;
 }

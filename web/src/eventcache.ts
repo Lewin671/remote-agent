@@ -1,8 +1,10 @@
 // Sealed events kept in this browser, so that opening a session again
 // downloads only what is new. They are stored as the server sent them:
 // still encrypted, and opened and checked like a fresh download. Next to
-// them are the last listing of machines and sessions, sealed likewise,
-// and the login token, so that the page shows what it knew and reaches
+// them are the last listing of machines and sessions and the account's
+// project preferences, sealed likewise, the login token, and the model
+// lists and settings the machines last reported (decoded: they name
+// models and defaults), so that the page shows what it knew and reaches
 // the server without logging in again.
 
 import { fromBinary, toBinary } from "@bufbuild/protobuf";

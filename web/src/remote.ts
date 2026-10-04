@@ -29,7 +29,7 @@ import {
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { Agent, ImageFormat, InputStatus, SendMode, SessionStatus, type Event } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
-import { SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
+import { DaemonSettingsSchema, ListModelsResponseSchema, SessionSchema, type ImageStorageUsage, type DaemonSettings, type ListModelsResponse, type Session } from "./gen/remoteagent/v1/local_pb";
 import {
   AuthService,
   ClientService,
@@ -42,6 +42,7 @@ import {
   ServerFrameSchema,
   TermHelloSchema,
   type AccountPrefsObject,
+  AccountPrefsObjectSchema,
   type Device,
   type Machine as RemoteMachine,
   type RemoteSession,
@@ -383,7 +384,10 @@ export class Remote {
   static async load(): Promise<Remote | undefined> {
     const acct = await loadAccount();
     if (!acct) return undefined;
-    return new Remote(acct, await deriveKeys(acct.root), eventCache());
+    const r = new Remote(acct, await deriveKeys(acct.root), eventCache());
+    // What the last visit kept is there for the first paint.
+    await r.warm();
+    return r;
   }
 
   // --- change notification for React ---
@@ -424,7 +428,8 @@ export class Remote {
   }
 
   // What this browser kept from the last visit: the login token, and the
-  // machines and sessions as last listed, shown until the server answers.
+  // machines, sessions and project preferences as last read, and what each
+  // machine said of its models and settings, shown until they answer again.
   private warming?: Promise<void>;
 
   private warm(): Promise<void> {
@@ -435,13 +440,20 @@ export class Remote {
         return o && o.deviceId === this.account.deviceId && o.server === this.account.server ? o : undefined;
       };
       try {
-        const [token, machines, sessions] = (await Promise.all(["token", "machines", "sessions"].map((k) => this.cache!.get(k)))).map(mine);
+        const [token, machines, sessions, prefs, info] = (await Promise.all(["token", "machines", "sessions", "prefs", "info"].map((k) => this.cache!.get(k)))).map(mine);
         if (token && !this.token) [this.token, this.tokenExpires] = [String(token.token), Number(token.expiresMs)];
         if (machines && sessions && !this.listed)
           await this.quietly(async () => {
             for (const m of fromBinary(ListMachinesResponseSchema, machines.bytes as Uint8Array).machines) await this.putMachine(m);
             for (const s of fromBinary(ListRemoteSessionsResponseSchema, sessions.bytes as Uint8Array).sessions) await this.putSession(s);
           });
+        // Still "loading": the list is shown as it was, and changed only once the server's copy is read.
+        if (prefs && !this.prefs.snap) this.prefs = { ...this.prefs, snap: await this.openPrefs(fromBinary(AccountPrefsObjectSchema, prefs.bytes as Uint8Array)) };
+        if (info) {
+          for (const [k, b] of Object.entries((info.models ?? {}) as Record<string, Uint8Array>)) if (!this.modelLists.has(k)) this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
+          for (const [k, b] of Object.entries((info.settings ?? {}) as Record<string, Uint8Array>)) if (!this.settingsRead.has(k)) this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
+        }
+        if (prefs || info) this.changed();
       } catch {
         // Nothing kept, or not readable: the server has it all.
       }
@@ -1290,7 +1302,9 @@ export class Remote {
     put: async (expected, next) => {
       const env = await sealMessage(this.keys.prefs, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: expected + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, next);
       const r = await this.api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: expected, envelope: env });
-      return { applied: r.applied, current: await this.openPrefs(r.object) };
+      const current = await this.openPrefs(r.object);
+      this.keepPrefs(r.object);
+      return { applied: r.applied, current };
     },
   };
 
@@ -1299,6 +1313,11 @@ export class Remote {
     const { msg } = await openMessage(this.keys.prefs, o.envelope, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision }, ProjectPrefsSchema);
     if (msg.schema !== 1) throw new Error("项目偏好的格式比这个网页新，请刷新网页");
     return { revision: o.revision, prefs: msg };
+  }
+
+  /** Keeps the server's copy, sealed as it came, for the next visit's first paint. */
+  private keepPrefs(o: AccountPrefsObject | undefined) {
+    if (o && this.cache) this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, o) });
   }
 
   /** The account's pinned and removed projects; empty until read. */
@@ -1321,6 +1340,7 @@ export class Remote {
   private async takePrefs(o: AccountPrefsObject | undefined, pushed: boolean) {
     try {
       const snap = await this.openPrefs(o);
+      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision) this.keepPrefs(o);
       if (this.prefs.snap && snap.revision <= this.prefs.snap.revision) return;
       // Changed by another client while nothing of this one's is in flight.
       const elsewhere = pushed && this.prefs.pending.size === 0 && !!this.prefs.snap;
@@ -1509,6 +1529,7 @@ export class Remote {
       p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
         if (r.kind.case !== "listModels") throw new Error("意外的回复");
         this.modelLists.set(key, r.kind.value);
+        this.keepInfo();
         this.changed();
         return r.kind.value;
       });
@@ -1527,6 +1548,17 @@ export class Remote {
   private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
   private settingsRead = new Map<string, DaemonSettings | undefined>();
 
+  /** Keeps the model lists and settings read so far for the next visit: the
+   * names of models and the CLIs' defaults, as the machines answered. */
+  private keepInfo() {
+    if (!this.cache) return;
+    const models: Record<string, Uint8Array> = {};
+    for (const [k, v] of this.modelLists) models[k] = toBinary(ListModelsResponseSchema, v);
+    const settings: Record<string, Uint8Array> = {};
+    for (const [k, v] of this.settingsRead) if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
+    this.keepValue("info", { models, settings });
+  }
+
   /** The daemon settings last read from a machine, if any. */
   cachedSettings(machineId: string): DaemonSettings | undefined {
     return this.settingsRead.get(machineId);
@@ -1540,6 +1572,7 @@ export class Remote {
         if (r.kind.case !== "getSettings") throw new Error("意外的回复");
         if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
         this.settingsRead.set(machineId, r.kind.value.settings);
+        this.keepInfo();
         this.changed();
         return r.kind.value.settings;
       });
@@ -1556,6 +1589,7 @@ export class Remote {
     this.changed();
     this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
     this.settingsRead.set(machineId, r.kind.value.settings);
+    this.keepInfo();
     return r.kind.value.settings;
   }
 

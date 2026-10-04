@@ -68,6 +68,9 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .muted { color: var(--muted); } .small { font-size: 13px; } .red { color: var(--red) !important; }
 .warn-text { color: var(--orange-ink); }
 .center { display: flex; align-items: center; justify-content: center; flex: 1; height: 100%; padding: 24px; text-align: center; }
+/* Shown only when it has lasted: a quick load does not flash its words. */
+.center.late { animation: late-in 0s .4s both; }
+@keyframes late-in { from { visibility: hidden; } to { visibility: visible; } }
 .gone { display: flex; flex-direction: column; max-width: 340px; }
 .gone p { margin: 8px 0 20px; }
 .gone .btn + p { margin: 10px 0 4px; }
