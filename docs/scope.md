@@ -78,7 +78,7 @@
 ### MVP 之后要做
 
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
-- **客户端界面**：支持 Codex / Claude Code 的统一输入区和能力差异；设备页按 CLI 展示可获取的账户额度及缺失、过期状态；项目管理支持常用置顶、从列表移除及恢复，保留会话和历史，不移动或删除本地目录；会话可以重命名，也可以分叉（用 CLI 自己的分叉从当前对话另开一个会话，原会话不动）；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密；显示会话里出现的图片（在电脑上粘贴的、Agent 查看或生成的），也能从客户端发图片给 Agent。界面见 [design/client-v28.html](design/client-v28.html)
+- **客户端界面**：支持 Codex / Claude Code 的统一输入区和能力差异；设备页按 CLI 展示可获取的账户额度及缺失、过期状态；项目管理支持常用置顶、从列表移除及恢复，保留会话和历史，不移动或删除本地目录；会话可以重命名，也可以分叉（用 CLI 自己的分叉从当前对话另开一个会话，原会话不动）；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密；显示会话里出现的图片（在电脑上粘贴的、Agent 查看或生成的），也能从客户端发图片给 Agent。界面见 [design/client-v29.html](design/client-v29.html)
 - **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店。选型见 [android-client.md](android-client.md)，进度见 [plan.md](plan.md)
 
 ### 不做（MVP 之后再评估）
