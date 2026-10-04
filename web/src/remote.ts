@@ -776,12 +776,23 @@ export class Remote {
       const machines = new Set(ms.machines.map((m) => m.id));
       const sessions = new Set(ss.sessions.map((s) => s.sessionId));
       const later = (s: SessionView) => !!ss.next && s.endedMs !== 0n && afterCursor(s, ss.next);
-      for (const id of this.machines.keys()) if (!machines.has(id) && !pushed(this.machinePushes, mp, id)) this.machines.delete(id);
+      // A machine found gone here counts as removed, as if its removal
+      // had been pushed: a session of its that is being opened for a page
+      // or a lookup asked for before must not be taken after this.
+      const gone = new Set<string>();
+      for (const id of this.machines.keys()) {
+        if (machines.has(id) || pushed(this.machinePushes, mp, id)) continue;
+        this.machines.delete(id);
+        gone.add(id);
+      }
       for (const [id, s] of this.sessions) {
         if (sessions.has(id) || pushed(this.sessionPushes, sp, id)) continue;
-        if (!machines.has(s.machineId)) this.forget(id);
-        else if (!later(s)) this.sessions.delete(id);
+        if (!machines.has(s.machineId)) {
+          this.forget(id);
+          gone.add(s.machineId);
+        } else if (!later(s)) this.sessions.delete(id);
       }
+      for (const id of gone) this.bump(this.removedPushes, id);
       this.nextSessions = ss.next;
       this.moreSessions = !!ss.next;
       this.missing.clear();

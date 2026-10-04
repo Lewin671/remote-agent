@@ -586,6 +586,9 @@ class Remote(
     }
 
     private suspend fun dropMachine(id: String) {
+        // However it was found gone, pushed or by a listing: a session of its that is being
+        // opened for a page or a lookup asked for before must not be taken after this.
+        removedPushes[id] = (removedPushes[id] ?: 0) + 1
         machines.remove(id)
         val sids = sessions.values.filter { it.machineId == id }.map { it.id }
         for (sid in sids) {

@@ -2,7 +2,7 @@
 
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { PayloadKind, seal, sealMessage } from "./crypto";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "./gen/remoteagent/v1/event_pb";
@@ -243,4 +243,33 @@ it("gives up on a session whose record does not open, rather than asking for it 
   const n = calls.length;
   await r.ensureSession(ended(1));
   expect(calls.length).toBe(n);
+});
+
+it("does not take a session that was being opened when its machine turned out to be gone", async () => {
+  const { r, server, setMachines } = await setup();
+  server.set(ended(200), { machineId: "m1", endedMs: 5000 });
+  for (let i = 1; i <= 80; i++) server.set(ended(i), { machineId: "m2", endedMs: 1000 + i });
+  setMachines(["m1", "m2"]);
+  await r.refresh();
+  // The next page arrives. While the key of its first session is being
+  // imported, a refresh finds m2 removed and is done before the key is in.
+  const real = crypto.subtle.importKey.bind(crypto.subtle);
+  let again: Promise<void> | undefined;
+  const spy = vi.spyOn(crypto.subtle, "importKey").mockImplementation(async (...args: Parameters<typeof real>) => {
+    // Only the client's own import of a session key, not the fake server's sealing.
+    if (!again && (args[4] as string[]).includes("decrypt")) {
+      setMachines(["m1"]);
+      for (let i = 1; i <= 80; i++) server.delete(ended(i));
+      again = r.refresh();
+      await again;
+    }
+    return real(...args);
+  });
+  try {
+    await r.loadMoreSessions();
+  } finally {
+    spy.mockRestore();
+  }
+  expect(again).toBeDefined();
+  expect([...r.sessions.keys()]).toEqual([ended(200)]);
 });
