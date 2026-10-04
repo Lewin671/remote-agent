@@ -10,6 +10,7 @@ import { getTheme, setTheme, type Theme } from "../theme";
 import { Alert, Banner, Dot, NavBar, Sheet, useEscape, useNow, useRemote } from "../ui";
 import { clientDetail, clientName, clientUsed, dayText, defaultClientName, lastUsed, shortId, sortClients, type DeviceInfo } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { Check, ChevronRight, Laptop, Plus } from "../icons";
 
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
   useRemote(remote);
@@ -29,7 +30,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       <div className="glabel with-link">
         电脑
         <button className="link" onClick={() => go("devices")}>
-          全部设备 ›
+          全部设备<ChevronRight />
         </button>
       </div>
       <div className="grp">
@@ -46,7 +47,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
           return quota ? (
             <button key={m.id} className="row machine-summary" onClick={() => go("m/" + m.id)}>
               <span className="ico" style={{ background: "#5b8def" }}>
-                ⌘
+                <Laptop />
               </span>
               <span className="machine-info">
                 <span className="machine-name">
@@ -55,37 +56,37 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
                 </span>
                 <span className="machine-quota">{quota}</span>
               </span>
-              <span className="machine-chevron">›</span>
+              <ChevronRight className="machine-chevron" />
             </button>
           ) : (
             <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
               <span className="ico" style={{ background: "#5b8def" }}>
-                ⌘
+                <Laptop />
               </span>
               {machineName(m)}
-              <span className="v">{status} ›</span>
+              <span className="v">{status}<ChevronRight /></span>
             </button>
           );
         })}
         <button className="row add" onClick={() => go("add")}>
-          ＋ 添加设备
+          <Plus /> 添加设备
         </button>
       </div>
       <div className="glabel">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
           {clientName(remote.devices.get(me), me)}
-          <span className="v">当前 ›</span>
+          <span className="v">当前<ChevronRight /></span>
         </button>
         {others.slice(0, 3).map((d) => (
           <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
             {clientName(d)}
-            <span className="v">已配对 ›</span>
+            <span className="v">已配对<ChevronRight /></span>
           </button>
         ))}
         {others.length > 3 && (
           <button className="row add" onClick={() => go("devices")}>
-            全部客户端 ›
+            全部客户端<ChevronRight />
           </button>
         )}
       </div>
@@ -141,7 +142,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
           return (
             <button className={"row quota-line" + tone} key={a} onClick={() => go("q/" + m.id)}>
               <span className="nw">{agentName(a)}</span>
-              <span className="v">{quotaSummary(mine)} ›</span>
+              <span className="v">{quotaSummary(mine)}<ChevronRight /></span>
             </button>
           );
         })}
@@ -294,8 +295,8 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
                   </>
                 ) : (
                   ago(m.lastSeenMs) || "离线"
-                )}{" "}
-                ›
+                )}
+                <ChevronRight />
               </span>
             </button>
           ))}
@@ -317,14 +318,14 @@ export function DevicesPage({ remote, go, onBack }: { remote: Remote; go: (r: st
                 {clientName(d, d.id)}
                 <small>{clientDetail(d)}</small>
               </span>
-              <span className="v">{d.id === me ? "当前客户端" : `${clientUsed(d)} ›`}</span>
+              <span className="v">{d.id === me ? "当前客户端" : <>{clientUsed(d)}<ChevronRight /></>}</span>
             </button>
           ))}
         </div>
         <div className="manage-hint">右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。</div>
         <div className="grp">
           <button className="row add" onClick={() => go("add")}>
-            ＋ 添加电脑或客户端
+            <Plus /> 添加电脑或客户端
           </button>
         </div>
       </div>
@@ -371,7 +372,7 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
               setRenaming(true);
             }}
           >
-            名称<span className="v">{d?.meta?.name || "未命名"} ›</span>
+            名称<span className="v">{d?.meta?.name || "未命名"}<ChevronRight /></span>
           </button>
           {d?.meta?.name && (
             <button className="row act" disabled={!canEdit || busy} onClick={() => void save("")}>
@@ -612,7 +613,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             {timeouts.map((t) => (
               <button key={t} className="mi" onClick={() => void save({ ...st, approvalTimeoutSeconds: t })}>
                 <div className="mt">{t / 60} 分钟</div>
-                {t === st.approvalTimeoutSeconds && <span className="ck">✓</span>}
+                {t === st.approvalTimeoutSeconds && <span className="ck"><Check /></span>}
               </button>
             ))}
           </div>
@@ -653,7 +654,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
             {opts.map((o) => (
               <button key={o.key} className="mi" onClick={() => void save(o.next)}>
                 <div className="mt">{o.label}</div>
-                {o.on && <span className="ck">✓</span>}
+                {o.on && <span className="ck"><Check /></span>}
               </button>
             ))}
           </div>
@@ -706,13 +707,13 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
                 <div className="glabel">{agentName(a)} · 新项目默认设置</div>
                 <div className="grp">
                   <button className="row" onClick={() => setPick({ agent: a, what: "model" })}>
-                    模型<span className="v">{def.model ? modelName(a, def.model) : follow} ›</span>
+                    模型<span className="v">{def.model ? modelName(a, def.model) : follow}<ChevronRight /></span>
                   </button>
                   <button className="row" onClick={() => setPick({ agent: a, what: "effort" })}>
-                    推理强度<span className="v">{def.effort || follow} ›</span>
+                    推理强度<span className="v">{def.effort || follow}<ChevronRight /></span>
                   </button>
                   <button className="row" onClick={() => setPick({ agent: a, what: "mode" })}>
-                    审批模式<span className="v">{modeName(def.mode) || follow} ›</span>
+                    审批模式<span className="v">{modeName(def.mode) || follow}<ChevronRight /></span>
                   </button>
                   {!def.mode && (
                     <div className="row help">不指定时实际用：{modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(m, a), a).replace(/^默认：/, "")}</div>
@@ -724,7 +725,7 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
         {st && (
           <div className="grp">
             <button className="row" onClick={() => setPick({ what: "timeout" })}>
-              审批超时<span className="v">{Math.round(st.approvalTimeoutSeconds / 60)} 分钟 ›</span>
+              审批超时<span className="v">{Math.round(st.approvalTimeoutSeconds / 60)} 分钟<ChevronRight /></span>
             </button>
           </div>
         )}

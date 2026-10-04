@@ -1,8 +1,9 @@
 import { usePageVisible, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
 const font = 'ui-monospace, Menlo, "SF Mono", monospace';
 const enc = new TextEncoder();
@@ -17,15 +18,15 @@ function charRatio(): number {
 
 // Special keys for phones, in two rows as in the mockup: the arrows and
 // Enter first, then Tab, Ctrl+C and the keyboard. None hides in a scroll.
-const keys: [string, string, string][] = [
+const keys: [ReactNode, string, string][] = [
   ["Esc", "\x1b", "Esc"],
-  ["←", "\x1b[D", "左"],
-  ["↑", "\x1b[A", "上"],
-  ["↓", "\x1b[B", "下"],
-  ["→", "\x1b[C", "右"],
-  ["↵", "\r", "回车"],
+  [<ArrowLeft />, "\x1b[D", "左"],
+  [<ArrowUp />, "\x1b[A", "上"],
+  [<ArrowDown />, "\x1b[B", "下"],
+  [<ArrowRight />, "\x1b[C", "右"],
+  [<CornerDownLeft />, "\r", "回车"],
 ];
-const keys2: [string, string, string][] = [
+const keys2: [ReactNode, string, string][] = [
   ["Tab", "\t", "Tab"],
   ["Ctrl+C", "\x03", "Ctrl+C"],
 ];
@@ -187,7 +188,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         <span>
           {!live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
         </span>
-        {live && <button onClick={toggleFit}>{fitted ? "还原" : wide ? "⤢ 适配" : "⤢ 适配我的屏幕"}</button>}
+        {live && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
       </div>
       <div className="term" ref={box} onClick={() => term.current?.focus()}>
         <div ref={host} className={state === "closed" ? "stale" : ""} />
@@ -226,19 +227,19 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         <div className={"keys" + (live ? "" : " off")}>
           <div className="keyrow">
             {keys.map(([label, seq, name]) => (
-              <button key={label} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+              <button key={name} onClick={() => send(seq)} disabled={!live} aria-label={name}>
                 {label}
               </button>
             ))}
           </div>
           <div className="keyrow">
             {keys2.map(([label, seq, name]) => (
-              <button key={label} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+              <button key={name} onClick={() => send(seq)} disabled={!live} aria-label={name}>
                 {label}
               </button>
             ))}
             <button onClick={() => term.current?.focus()} disabled={!live} aria-label="键盘">
-              ⌨ 键盘
+              <Keyboard /> 键盘
             </button>
           </div>
         </div>

@@ -35,6 +35,7 @@ import { Avatar, Banner, Dot, Sheet } from "../ui";
 import { groupProjects, isHidden } from "../prefs";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
+import { ArrowUp, Check, ChevronLeft, ChevronRight, Plus } from "../icons";
 
 export type Go = (route: string) => void;
 
@@ -478,7 +479,7 @@ export function NewBox({
   );
   const go = (
     <button className={"go44" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
-      ↑
+      <ArrowUp />
     </button>
   );
   // One row, as in a session: ＋ adds images, the task starts a session.
@@ -565,7 +566,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
   const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   const back = (
     <button className="back2" onClick={back2} aria-label="返回">
-      ‹
+      <ChevronLeft />
     </button>
   );
   let body;
@@ -595,7 +596,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 )
               )}
             </div>
-            {m.id === cfg.machineId && <span className="ck">✓</span>}
+            {m.id === cfg.machineId && <span className="ck"><Check /></span>}
           </button>
         ))}
       </div>
@@ -615,12 +616,12 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             <div className="mt">
               默认模型<div className="md">用 {machineName(machine)} 的新项目默认设置</div>
             </div>
-            {!cfg.model && <span className="ck">✓</span>}
+            {!cfg.model && <span className="ck"><Check /></span>}
           </button>
           {info.models?.models.map((m) => (
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
               <div className="mt">{m.displayName || m.slug}</div>
-              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck">✓</span>}
+              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck"><Check /></span>}
             </button>
           ))}
         </div>
@@ -664,7 +665,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               <b>{m.name}</b>
               <div className="md">{m.desc}</div>
             </div>
-            {m.mode === cfg.mode && <span className="ck">✓</span>}
+            {m.mode === cfg.mode && <span className="ck"><Check /></span>}
           </button>
         ))}
       </div>
@@ -691,6 +692,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               <span className="v">
                 <Dot tone={machine?.online ? "idle" : "off"} />
                 <em>{machineName(machine)}</em>
+                <ChevronRight className="chev" />
               </span>
             </button>
           </div>
@@ -708,6 +710,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               <span className="lbl">模型</span>
               <span className={"v" + (info.loading ? " muted" : "")}>
                 <em>{info.loading ? `读取 ${machineName(machine)} 的设置…` : modelLine}</em>
+                <ChevronRight className="chev" />
               </span>
             </button>
             {cfg.agent === Agent.CLAUDE && (
@@ -727,6 +730,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               <span className="lbl">审批</span>
               <span className="v">
                 <em>{modeTextOf(cfg, machine)}</em>
+                <ChevronRight className="chev" />
               </span>
             </button>
           </div>
@@ -805,13 +809,13 @@ export function DirBrowser({
       <div className="list dirs">
         {dir?.parent && (
           <button className="mi" disabled={!!loading} onClick={() => void open(dir.parent)}>
-            <div className="mt">‹ 上一级</div>
+            <div className="mt"><ChevronLeft /> 上一级</div>
           </button>
         )}
         {dir?.dirs.map((d) => (
           <button key={d} className="mi" disabled={!!loading} onClick={() => void open(dir.path.replace(/\/$/, "") + "/" + d)}>
             <div className="mt">{d}</div>
-            <span className="muted">›</span>
+            <ChevronRight className="chev" />
           </button>
         ))}
         {dir && dir.dirs.length === 0 && <div className="hint">没有子目录</div>}
@@ -847,7 +851,7 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
             .join("、")}
         </small>
       </div>
-      <span className="chev">›</span>
+      <ChevronRight className="chev" />
     </button>
   );
   return (
@@ -865,7 +869,7 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
         {g.pinned.length > 0 && g.others.length > 0 && <div className="fl">其他项目</div>}
         {g.others.filter(match).map(row)}
         <button className="pi add" onClick={onNew}>
-          ＋ 新项目…<small>选机器和目录</small>
+          <Plus /> 新项目…<small>选机器和目录</small>
         </button>
       </div>
     </Sheet>
@@ -882,7 +886,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: R
       <div className="ns-head">
         {onBack && (
           <button className="back2" onClick={onBack} aria-label="返回">
-            ‹
+            <ChevronLeft />
           </button>
         )}
         <b>新项目 · 选目录</b>
@@ -956,6 +960,7 @@ export function ConfigSummary({ summary, bare, chip, onClick }: { summary: Summa
         {machine && <span className="machine">{machine}</span>}
         {rest && <span>{(machine ? sep : "") + rest}</span>}
       </span>
+      {chip && <ChevronRight className="chev" />}
     </button>
   );
 }

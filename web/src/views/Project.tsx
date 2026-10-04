@@ -10,6 +10,7 @@ import { colsOf, EndedRow, SessionRow } from "./Home";
 import { ConfigSheet, ConfigSummary, NewBox, useNewSession, type Go } from "./NewSession";
 import { RemovedNotice } from "./Projects";
 import { isHidden } from "../prefs";
+import { ChevronRight, Ellipsis } from "../icons";
 
 const PAGE = 20;
 
@@ -47,7 +48,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
               setTimeout(() => endedRef.current?.scrollIntoView({ behavior: "smooth" }));
             }}
           >
-            已结束 {ended.length} ›
+            已结束 {ended.length}<ChevronRight />
           </button>
         </div>
         <ConfigSummary summary={ns.summary} chip onClick={() => setSettingsOpen(true)} />
@@ -78,7 +79,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
       ))}
       {ended.length > shownEnded && (
         <button className="todo-more" onClick={() => setShownEnded((n) => n + PAGE)}>
-          全部 {ended.length} 个已结束的会话 ›
+          全部 {ended.length} 个已结束的会话<ChevronRight />
         </button>
       )}
       {!p && !hidden && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}
@@ -87,7 +88,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   return (
     <div className="page">
       {/* With the keyboard up the project's head folds into the bar. */}
-      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
+      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置"><Ellipsis /></button>} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
         {!typing && <div className="pad">{head}</div>}
         {lists}

@@ -51,6 +51,9 @@ function demo(): DemoRemote {
 const button = (text: string | RegExp, within: ParentNode = host) =>
   [...within.querySelectorAll("button")].find((b) => (typeof text === "string" ? b.textContent === text : text.test(b.textContent ?? ""))) as HTMLButtonElement | undefined;
 
+/** The round button at the input's right: sends, or starts a new session. */
+const sendButton = () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"], button[aria-label="开始新会话"]') ?? undefined;
+
 async function click(b: HTMLElement | undefined) {
   expect(b).toBeTruthy();
   await act(async () => b!.click());
@@ -58,7 +61,7 @@ async function click(b: HTMLElement | undefined) {
 
 /** Opens the project's settings, or an item of a session's ⋯ menu. */
 async function fromMenu(item: string | RegExp, within: ParentNode = host) {
-  if (item === "新会话设置 ›") return click(within.querySelector<HTMLButtonElement>(".project-summary")!);
+  if (item === "新会话设置") return click(within.querySelector<HTMLButtonElement>(".project-summary")!);
   await click(within.querySelector<HTMLButtonElement>(".navbar .more")!);
   await click(button(item));
 }
@@ -543,18 +546,18 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
     set.call(input(), "加限流");
     input().dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await click(button("↑"));
+  await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
   await click(button("重试"));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   // Retried as the same request; then the daemon no longer knew it.
   expect(sent[1]).toBe(sent[0]);
   await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
-  expect(button("↑")?.disabled).toBe(true);
+  expect(sendButton()?.disabled).toBe(true);
   expect(sent).toHaveLength(2);
   // Only giving it up allows a new start, under a new request ID.
   await click(button("放弃这次启动"));
-  await click(button("↑"));
+  await click(sendButton());
   await vi.waitFor(() => expect(sent).toHaveLength(3));
   expect(sent[2]).not.toBe(sent[0]);
 });
@@ -658,7 +661,7 @@ describe("an unknown session start", () => {
         input.dispatchEvent(new Event("input", { bubbles: true }));
       });
     const send = async (n: number) => {
-      await click(button("↑"));
+      await click(sendButton());
       await vi.waitFor(() => expect(sent).toHaveLength(n));
       await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
     };
@@ -677,7 +680,7 @@ describe("an unknown session start", () => {
   it("is not given up by typing while it is on its way", async () => {
     const t = setup(["wait"]);
     await t.type("加限流");
-    await click(button("↑"));
+    await click(sendButton());
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     await t.type("加限流\n");
     await act(async () => t.release());
@@ -705,9 +708,9 @@ describe("an unknown session start", () => {
     await t.send(1);
     await t.send(2);
     await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
-    expect(button("↑")?.disabled).toBe(true);
+    expect(sendButton()?.disabled).toBe(true);
     await t.type("给登录接口加限流");
-    expect(button("↑")?.disabled).toBe(false);
+    expect(sendButton()?.disabled).toBe(false);
     await t.send(3);
     expect(t.sent[2].id).not.toBe(t.sent[0].id);
     expect(t.sent[2].prompt).toBe("给登录接口加限流");
@@ -721,7 +724,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   const r = demo();
   mount(page(r));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6-Sol", document)).toBeDefined());
   await click(button("GPT-6-Sol", document));
@@ -736,7 +739,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   const reloaded = r;
   mount(page(reloaded));
   await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   expect(setting("模型")).toContain("GPT-6-Sol · low");
   await click(button("完成", document));
   const real = reloaded.machineCommand.bind(reloaded);
@@ -781,17 +784,17 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   const r = demo();
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await click(button(/^默认模型/, document));
   await vi.waitFor(() => expect(button("high", document)).toBeDefined());
   await click(button("high", document));
-  expect(document.querySelector(".mi .ck")?.textContent).toBe("✓");
+  expect(document.querySelector(".mi .ck svg")).toBeTruthy();
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
-  expect(document.querySelector(".mi .ck")?.textContent).toBe("✓");
+  expect(document.querySelector(".mi .ck svg")).toBeTruthy();
   await vi.waitFor(() => expect(button("high", document)?.className).toBe("on"));
 });
 
@@ -801,7 +804,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
@@ -814,12 +817,12 @@ it("shows the effective approval mode in project settings while keeping the defa
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("自动"));
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   expect(setting("审批")).toBe("自动");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("审批")));
   const defaultOption = [...document.querySelectorAll<HTMLButtonElement>(".mi")].find((b) => b.textContent?.includes("跟随 Codex 自己的配置"));
   expect(defaultOption?.textContent).toContain("默认");
-  expect(defaultOption?.querySelector(".ck")?.textContent).toBe("✓");
+  expect(defaultOption?.querySelector(".ck svg")).toBeTruthy();
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
@@ -962,8 +965,8 @@ describe("a new-session draft", () => {
     act(() => { r.sessions.get("s-plan")!.info!.createdAt = timestampFromMs(Date.now() + 172_800_000); });
     bump(r, "s-plan");
     expect(host.querySelector(".wide-start-title .chip")!.textContent).toBe(before);
-    await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
-    await click(button("↑"));
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].cwd).toBe("/Users/me/Code/foo");
   });
@@ -975,11 +978,11 @@ describe("a new-session draft", () => {
     await type("加限流");
     // The project's Claude Code session becomes its latest meanwhile.
     bump(r, "s-claude");
-    await fromMenu("新会话设置 ›");
+    await fromMenu("新会话设置");
     expect(setting("CLI")).not.toContain("Claude Code");
     await click(button("完成", document));
-    await vi.waitFor(() => expect(button("↑")?.disabled).toBe(false));
-    await click(button("↑"));
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].agent).toBe(Agent.CODEX);
   });
@@ -993,7 +996,7 @@ describe("a new-session draft", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("完全放行"), { timeout: 3000 });
     await type("加限流");
-    await click(button("↑"));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]).toMatchObject({ mode: ApprovalMode.UNSPECIFIED });
   });
@@ -1102,10 +1105,10 @@ describe("switching a new session's CLI (v2)", () => {
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
     // Nothing is stored for Claude Code here: the project's latest Claude Code session says how it starts, not Codex's set.
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Claude Code · 询问 · MacBook · Sonnet/), { timeout: 3000 });
-    await fromMenu("新会话设置 ›");
+    await fromMenu("新会话设置");
     expect(setting("CLI")).toBe("");
     await click(button("完成", document));
-    await click(button("↑"));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.ASK, prompt: "加限流" });
     // Picking is not saving: the project still remembers Codex.
@@ -1130,7 +1133,7 @@ describe("switching a new session's CLI (v2)", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "梳理登录流程");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await click(button("↑"));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].agent).toBe(Agent.CLAUDE);
     // The next one starts with Claude Code picked; Codex's set is as it was.
@@ -1151,7 +1154,7 @@ describe("switching a new session's CLI (v2)", () => {
     const foo = "/Users/me/Code/foo";
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    await fromMenu("新会话设置 ›");
+    await fromMenu("新会话设置");
     const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) => b.textContent === name);
     expect(tab("Codex")?.className).toBe("on");
     expect(setting("上下文")).toBe("");
@@ -1177,7 +1180,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
     // The project still remembers Claude Code.
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CLAUDE);
-    await fromMenu("新会话设置 ›");
+    await fromMenu("新会话设置");
     expect(document.querySelector(".cli-tabs")).toBeNull();
   });
 
@@ -1426,12 +1429,11 @@ describe("sending images (v2)", () => {
     const t = setup((n) => n === "b.png");
     await t.pick("a.png", "b.png");
     await vi.waitFor(() => expect(host.textContent).toContain("1 张图没能传到电脑"));
-    const send = () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!;
-    expect(send().disabled).toBe(true);
+    expect(sendButton()?.disabled).toBe(true);
     // Removing the failed one lets the rest go, with only their IDs.
     await click(host.querySelectorAll<HTMLButtonElement>(".att-tray .x")[1]);
-    await vi.waitFor(() => expect(send().disabled).toBe(false));
-    await click(send());
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     expect(t.sent[0]).toEqual({ text: "", imageIds: ["id-a.png"] });
     expect(host.querySelector(".att-tray")).toBeNull();
@@ -1597,7 +1599,7 @@ describe("an image-only new-session draft (review B8)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await pick();
     bump(r, "s-claude");
-    await fromMenu("新会话设置 ›");
+    await fromMenu("新会话设置");
     expect(setting("CLI")).not.toContain("Claude Code");
     await click(button("完成", document));
   });
@@ -1724,7 +1726,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
   let ns: ReturnType<typeof useNewSession> | undefined;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // A launch override chosen by the user, mode left to the default.
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click(button(/^模型/));
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
@@ -1736,7 +1738,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await click(button("↑"));
+  await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
   await click(button("重试"));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
@@ -1893,7 +1895,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   };
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6.1-Sol", document)).toBeDefined());
   expect(button(/^默认模型/, document)).toBeDefined();
@@ -1905,7 +1907,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
   const before = reads;
-  await fromMenu("新会话设置 ›");
+  await fromMenu("新会话设置");
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
 });
@@ -1979,7 +1981,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   location.hash = "";
   await click(row());
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } });
-  expect(row().textContent).toBe("◌正在分叉…");
+  expect(row().textContent).toBe("正在分叉…");
   expect(button("重命名")!.disabled).toBe(true);
   await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
   expect(host.querySelector(".actsheet")).toBeNull();
@@ -1996,7 +1998,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   await vi.waitFor(() => expect(host.querySelector(".sep.fork")).toBeTruthy());
   expect(host.querySelector(".ccol")?.textContent).toContain("已补充 12 个接口的说明");
   const link = host.querySelector<HTMLAnchorElement>(".sep.fork a")!;
-  expect(link.textContent).toBe("补充接口文档 ›");
+  expect(link.textContent).toBe("补充接口文档");
   expect(link.getAttribute("href")).toBe("#/s/s-idle");
 });
 

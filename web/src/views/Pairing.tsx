@@ -5,6 +5,7 @@ import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { initiate, joinByPairing, PairCanceled, parsePairLink, type Initiation } from "../pairing";
 import { errorText, join, type Remote } from "../remote";
 import { Banner, NavBar, useRemote } from "../ui";
+import { Check, LoaderCircle } from "../icons";
 
 /** A QR code drawn as SVG from the module grid. */
 export function QR({ text }: { text: string }) {
@@ -93,11 +94,11 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
           {error}
         </Banner>
       );
-  } else if (state === "sending") banner = <Banner>◌ 正在把密钥交给{who}…</Banner>;
+  } else if (state === "sending") banner = <Banner><LoaderCircle /> 正在把密钥交给{who}…</Banner>;
   else if (state === "done")
     banner = (
       <Banner action="完成" onAction={onBack}>
-        ✓ {who}已加入
+        <Check /> {who}已加入
       </Banner>
     );
   return (
@@ -117,7 +118,7 @@ export function AddDevicePage({ remote, onBack }: { remote: Remote; onBack: () =
             </p>
           </>
         )}
-        {!p && !error && <p className="center-text muted small">◌ 准备中…</p>}
+        {!p && !error && <p className="center-text muted small"><LoaderCircle /> 准备中…</p>}
         {req && state !== "done" && !error && (
           <div className="req">
             <div className="small">
@@ -270,7 +271,7 @@ export function Setup({ onDone }: { onDone: () => void }) {
         <div className="emoji big">{emoji.join(" ")}</div>
         <p className="muted center-text small">确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。</p>
         <p className="muted center-text small" style={{ marginTop: 24 }}>
-          {registering ? "◌ 另一台设备已允许，正在登记这个浏览器…" : "◌ 等待允许…"}
+          <LoaderCircle /> {registering ? "另一台设备已允许，正在登记这个浏览器…" : "等待允许…"}
         </p>
         <div className="pair-wait-actions">
           <button className="btn" disabled={registering} onClick={giveUp}>

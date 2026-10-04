@@ -117,6 +117,8 @@
 | `message-square` / `settings` | 会话 / 设置 | 底部标签栏、宽屏侧栏底部 |
 | `laptop` | 一台电脑 | 设备列表行首的色块里 |
 | `arrow-left` `arrow-up` `arrow-down` `arrow-right` `corner-down-left` | 方向键和回车 | 终端的按键栏 |
+| `keyboard` | 调出屏幕键盘 | 终端按键栏的「键盘」前 |
+| `maximize-2` | 让终端适配这块屏幕 | 终端工具条的「适配」前 |
 
 - 同一个意思只用一个图标；要加新图标时先在 Lucide 里找，并在上表补一行
 - 画法不改：24 网格、线宽 2、圆头圆角，颜色跟随所在文字（`currentColor`）。只有中断的 `square` 填实

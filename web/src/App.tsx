@@ -7,6 +7,7 @@ import { ProjectPage } from "./views/Project";
 import { ManagePage, RemovedPage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, RemovedScreen, Settings } from "./views/Settings";
+import { MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
 const Setup = lazy(() => import("./views/Pairing").then((m) => ({ default: m.Setup })));
@@ -140,11 +141,11 @@ function Main({ remote }: { remote: Remote }) {
       {tabs && (
         <nav className="tabbar">
           <button className={kind === "" ? "on" : ""} onClick={() => go("")}>
-            <i>▦</i>会话
+            <MessageSquare />会话
             {todo > 0 && <span className="n">{todo}</span>}
           </button>
           <button className={kind === "settings" ? "on" : ""} onClick={() => go("settings")}>
-            <i>⚙︎</i>设置
+            <SettingsIcon />设置
           </button>
         </nav>
       )}

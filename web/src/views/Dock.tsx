@@ -13,6 +13,7 @@ import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem }
 import type { Remote } from "../remote";
 import { Banner, Exp, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
+import { Check, ChevronRight } from "../icons";
 
 export function approvalTitle(a: ApprovalRequested): string {
   return a.command ? "请求执行" : "请求权限 · " + approvalDisplay(a.toolName);
@@ -155,7 +156,7 @@ function Pending({
   return (
     <div className={"dock pending" + (open ? " open" : "") + (busy ? " submitting" : "") + (reasoning ? " reasoning" : "")}>
       <button className="pending-sum" aria-expanded={open} onMouseDown={(e) => e.preventDefault()} onClick={frame.onToggle}>
-        <span className="pending-dot">●</span>
+        <span className="pending-dot" />
         <span className="pending-label">{label}</span>
         <span className="pending-brief">{[brief, more > 0 ? `还有 ${more} 项` : ""].filter(Boolean).join(" · ")}</span>
         <span className="pending-action">
@@ -290,7 +291,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
             disabled={multi ? frozen : !!ans.busy}
             onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
           >
-            {multi ? <span className={"box" + (on ? " on" : "")}>{on ? "✓" : ""}</span> : on && <span className="ck">✓</span>}
+            {multi ? <span className={"box" + (on ? " on" : "")}>{on && <Check />}</span> : on && <span className="ck"><Check /></span>}
             <div>
               {text}
               {status === "err" && !multi ? (
@@ -328,7 +329,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
         <>
           <span>{page && multi ? (ticked.length ? `已选 ${ticked.length} 项` : "") : "都不合适？"}</span>
           <button className="link" onClick={onTerminal}>
-            其他回答：去终端 ›
+            其他回答：去终端<ChevronRight />
           </button>
         </>
       )}
@@ -428,7 +429,7 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
             {frame.more > 0 && <span className="muted">还有 {frame.more} 项 · </span>}
             {plan && (
               <button className="link" onClick={onFull}>
-                展开全文 ›
+                展开全文<ChevronRight />
               </button>
             )}
           </span>

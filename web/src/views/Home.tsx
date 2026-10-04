@@ -38,10 +38,9 @@ import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
+import { Check, ChevronDown, ChevronRight, LoaderCircle, Search, Settings, SquarePen, X } from "../icons";
 
 export type { Go };
-
-function ComposeIcon() { return <svg className="compose-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 13v6H5V5h6" strokeLinecap="round" strokeLinejoin="round"/><path d="m11 13 8-8 2 2-8 8-3 1 1-3Z" strokeLinejoin="round"/></svg>; }
 
 /** Which of a row's attributes differ within the list it is in. A row
  * names only those: what every row shares is noise. */
@@ -99,17 +98,17 @@ function TodoCard({ remote, s, go, cols }: { remote: Remote; s: SessionView; go:
   const open = () => go("s/" + s.id);
   const kind = a ? approvalTitle(a) : st.kind === "question" ? askTitle(agent) : st.text;
   const deadline = a ? deadlineOf(a) : 0;
-  const link = { approval: "查看会话 ›", question: "去回答 ›", plan: "去批准 ›", popup: "去处理 ›" }[st.kind as string] ?? "查看会话 ›";
+  const link = { approval: "查看会话", question: "去回答", plan: "去批准", popup: "去处理" }[st.kind as string] ?? "查看会话";
   return (
     <div className="todo">
       <div className="k">
-        <span>● {kind}</span>
+        <span><i className="pending-dot" /> {kind}</span>
         <span>{deadline ? minutesLeft(deadline, now) + (deadline > now ? "，超时拒绝" : "") : when(s.updatedMs, now)}</span>
       </div>
       <div className="t">
         <span>{titleOf(s)}</span>
         <button className="link" onClick={open}>
-          {link}
+          {link}<ChevronRight />
         </button>
       </div>
       <div className="m">
@@ -224,11 +223,11 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
     <>
       {(liveList(remote).filter(within).length + everEnded.length > 8 || query) && (
         <label className={"find" + (query ? " typed" : "")}>
-          <span>⌕</span>
+          <Search />
           <input ref={input} aria-label="按标题筛选" placeholder="按标题筛选" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
           {query ? (
             <button className="x" aria-label="清空筛选" onClick={() => setQuery("")}>
-              ✕
+              <X />
             </button>
           ) : (
             wide && <kbd>{/Mac|iP/.test(navigator.platform) ? "⌘K" : "Ctrl K"}</kbd>
@@ -246,7 +245,7 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
       })}
       {todo.length > todoShown.length && (
         <button className="todo-more" onClick={() => setAllTodo(true)}>
-          还有 {todo.length - todoShown.length} 项待处理 ›
+          还有 {todo.length - todoShown.length} 项待处理<ChevronRight />
         </button>
       )}
       {live.length > 0 && (
@@ -259,7 +258,7 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
       ))}
       {live.length > liveShown.length && (
         <button className="todo-more" onClick={() => setAllLive(true)}>
-          还有 {live.length - liveShown.length} 个进行中 ›
+          还有 {live.length - liveShown.length} 个进行中<ChevronRight />
         </button>
       )}
       {endedShown.map((s) => {
@@ -320,7 +319,7 @@ function ScopeTitle({ remote, go, wide, onPicked }: { remote: Remote; go: Go; wi
       <button className={"scope" + (open === "menu" ? " open" : "")} aria-haspopup="dialog" aria-expanded={open === "menu"} aria-label={`范围：${name}`} title={scope === ALL ? undefined : shortPath(scope)} onClick={() => setOpen(open ? "" : "menu")}>
         {scope === ALL ? <div className="av sm all">全</div> : <Avatar name={name} size="sm" />}
         <b>{name}</b>
-        <i className="dn">›</i>
+        <ChevronDown className="dn" />
       </button>
       {open === "menu" && (
         <ScopeMenu
@@ -362,7 +361,7 @@ function ScopeMenu({ remote, scope, projects, wide, onClose, onPick, onNew, onMa
         <b>{name}</b>
         <small>{sub}</small>
       </div>
-      <span className="ck">{key === scope ? "✓" : ""}</span>
+      <span className="ck">{key === scope && <Check />}</span>
     </button>
   );
   const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
@@ -376,7 +375,7 @@ function ScopeMenu({ remote, scope, projects, wide, onClose, onPick, onNew, onMa
           新项目…
         </button>
         <button className="pi act" onClick={onManage}>
-          管理项目 ›
+          管理项目<ChevronRight />
         </button>
       </div>
     </>
@@ -451,7 +450,7 @@ function ListError({ remote }: { remote: Remote }) {
 function HomeConn({ remote }: { remote: Remote }) {
   if (remote.conn === "online") return null;
   const failed = !remote.everOnline && remote.failures >= 2;
-  return <span className={"conn" + (failed ? " err" : "")}>{failed ? "✕ 连不上服务器" : remote.everOnline ? "◌ 连接断了，正在重连" : "◌ 连接中…"}</span>;
+  return <span className={"conn" + (failed ? " err" : "")}>{failed ? <><X /> 连不上服务器</> : <><LoaderCircle /> {remote.everOnline ? "连接断了，正在重连" : "连接中…"}</>}</span>;
 }
 
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
@@ -471,7 +470,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         <ScopeTitle remote={remote} go={go} />
         <HomeConn remote={remote} />
         <button className="hit" onClick={start} aria-label="新会话">
-          <ComposeIcon />
+          <SquarePen className="compose-icon" />
         </button>
       </div>
       <ListError remote={remote} />
@@ -516,7 +515,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
             go("");
           }}
         >
-          <ComposeIcon />
+          <SquarePen className="compose-icon" />
         </button>
       </div>
       <div className="scroll">
@@ -529,7 +528,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
         <Timeline key={scope} remote={remote} go={go} scope={scope} selected={selected} wide />
       </div>
       <div className="foot">
-        <button onClick={() => go("settings")}>⚙︎ 设置</button>
+        <button onClick={() => go("settings")}><Settings /> 设置</button>
         <span>
           <Dot tone={conn[0] as "idle"} /> {conn[1]}
         </span>
@@ -582,7 +581,7 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
                 fixed === undefined && (
                   <button className="chip" onClick={() => setPicking("pick")}>
                     <Avatar name={name} size="xs" />
-                    {name} ▾
+                    {name}<ChevronDown />
                   </button>
                 )
               }

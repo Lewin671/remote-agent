@@ -10,6 +10,7 @@ import type { Remote, SessionView } from "../remote";
 import { ActionSheet, Avatar, Banner, NavBar, useNow, useRemote } from "../ui";
 import type { Go } from "./NewSession";
 import { saveScope } from "../scope";
+import { ChevronRight, Ellipsis, LoaderCircle } from "../icons";
 
 /** The account's projects as the lists group them. */
 export function useProjectGroups(remote: Remote) {
@@ -35,7 +36,7 @@ export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean
         没能保存，列表保持原样：{p.failed.error}
       </Banner>
     );
-  if (p.pending.size > 0) return <Banner>◌ 正在同步项目列表…</Banner>;
+  if (p.pending.size > 0) return <Banner><LoaderCircle /> 正在同步项目列表…</Banner>;
   if (quiet) return null;
   const blocked = prefsBlocked(remote);
   if (blocked)
@@ -113,7 +114,7 @@ function ManageRow({ p, onMore, onOpen, busy }: { p: { key: string; name: string
         <div className="ps">{shortPath(p.key)}</div>
       </button>
       <button className="dots" onClick={onMore} aria-label={`管理 ${p.name}`}>
-        {busy ? "◌" : "⋯"}
+        {busy ? <LoaderCircle /> : <Ellipsis />}
       </button>
     </div>
   );
@@ -151,11 +152,11 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
                         </td>
                         <td>
                           <button className="link" disabled={a.blocked || pending.has(p.key)} onClick={() => void remote.changePrefs(pinned ? "unpin" : "pin", p.key)}>
-                            {pending.has(p.key) ? "◌" : pinned ? "取消常用" : "设为常用"}
+                            {pending.has(p.key) ? <LoaderCircle /> : pinned ? "取消常用" : "设为常用"}
                           </button>
                           {" · "}
                           <button className="link" onClick={() => a.open(p)} aria-label={`管理 ${p.name}`}>
-                            ⋯
+                            <Ellipsis />
                           </button>
                         </td>
                       </tr>
@@ -167,7 +168,7 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           )}
           <div className="wide-project-tools">
             <button className="chip linkchip" onClick={() => go("projects/removed")}>
-              {hiddenCount ? `已移除 ${hiddenCount} 个 · 查看与恢复 ›` : "没有已移除的项目"}
+              {hiddenCount ? <>已移除 {hiddenCount} 个 · 查看与恢复<ChevronRight /></> : "没有已移除的项目"}
             </button>
           </div>
           {a.toast}
@@ -201,7 +202,7 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
         <div className="label">
           <span>已移除 {hiddenCount} 个项目</span>
           <button className="link" onClick={() => go("projects/removed")}>
-            查看 ›
+            查看<ChevronRight />
           </button>
         </div>
         <div className="manage-hint">常用和已移除项目在账户内同步。断线时可查看缓存，修改暂停；不会影响会话和提醒。</div>
@@ -232,7 +233,7 @@ export function RemovedPage({ remote, onBack, wide }: { remote: Remote; onBack: 
             <div className="ps">{shortPath(h.path)}</div>
           </div>
           <button className="dots restore" disabled={blocked || remote.prefs.pending.has(h.path)} onClick={() => void remote.changePrefs("unhide", h.path)}>
-            {remote.prefs.pending.has(h.path) ? "◌" : "恢复"}
+            {remote.prefs.pending.has(h.path) ? <LoaderCircle /> : "恢复"}
           </button>
         </div>
       ))}

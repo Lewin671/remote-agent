@@ -11,6 +11,7 @@ import { hhmm } from "../model";
 import { aspectOf, baseName, extOf, matchesFormat, mimeOf, sizeText, type SessionImage } from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
 import { Exp, useRemote } from "../ui";
+import { ChevronLeft, ChevronRight, X } from "../icons";
 
 /** Opens the viewer at a picture; provided by the session page. */
 export const OpenImage = createContext<(ref: ImageRef) => void>(() => undefined);
@@ -306,15 +307,15 @@ export function ImageViewer({
             {i + 1} / {images.length} · {sourceText(img, agent)}
           </span>
           <button onClick={onClose} aria-label="关闭">
-            ✕
+            <X />
           </button>
         </div>
         <button className="arr" onClick={() => go(-1)} disabled={i === 0} aria-label="上一张">
-          ‹
+          <ChevronLeft />
         </button>
         <div className="lb-img">{picture}</div>
         <button className="arr" onClick={() => go(1)} disabled={i >= images.length - 1} aria-label="下一张">
-          ›
+          <ChevronRight />
         </button>
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
@@ -335,7 +336,7 @@ export function ImageViewer({
     <div className="viewer" role="dialog" aria-modal="true" aria-label="查看图片">
       <div className="vbar">
         <button onClick={onClose} aria-label="关闭">
-          ✕
+          <X />
         </button>
         <span className="small">
           {i + 1} / {images.length}

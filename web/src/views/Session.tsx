@@ -57,6 +57,7 @@ import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, toolTitle, type Short }
 
 import { RowState, RememberDetails } from "./RowState";
 import { HistoryRows } from "./HistoryRows";
+import { ArrowDown, Check, ChevronRight, Ellipsis, LoaderCircle, Minus, X } from "../icons";
 
 type Tab = View;
 
@@ -217,7 +218,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       {tabs.map(([t, name]) => (
         <button key={t} role="tab" aria-selected={t === tab} className={t === tab ? "on" : ""} disabled={t !== "chat" && inactive} onClick={() => pickTab(t)}>
           {name}
-          {t === "term" && st.kind === "popup" && <span className="n">●</span>}
+          {t === "term" && st.kind === "popup" && <span className="n" />}
         </button>
       ))}
     </div>
@@ -263,7 +264,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const forkWhy = forkBlocked(session, machine, d.running);
   const more = (
     <button className={"more" + (high ? " context-high" : "")} onClick={openMenu} aria-label={moreLabel}>
-      ⋯
+      <Ellipsis />
     </button>
   );
 
@@ -277,7 +278,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
         </span>
         {seg}
         <button className={"mr" + (high ? " context-high" : "")} onClick={openMenu} aria-label={moreLabel}>
-          ⋯
+          <Ellipsis />
         </button>
       </div>
     </header>
@@ -583,7 +584,7 @@ function ChatBody({
             setUnseen(0);
           }}
         >
-          ↓ {unseen} 条新消息
+          <ArrowDown /> {unseen} 条新消息
         </button>
       )}
     </div>
@@ -607,7 +608,7 @@ function Pending({ remote, sid, o, phase, agent }: { remote: Remote; sid: string
     <div className={"me" + (phase === "sending" ? " pending" : "")}>
       <LocalThumbs blobs={o.thumbs} />
       {o.text && <div>{o.text}</div>}
-      <small>{phase === "sending" ? "◌ 发送中…" : phase === "written" ? `已送入终端，等 ${agentName(agent)} 记录` : "已送达电脑"}</small>
+      <small>{phase === "sending" ? <><LoaderCircle /> 发送中…</> : phase === "written" ? `已送入终端，等 ${agentName(agent)} 记录` : "已送达电脑"}</small>
     </div>
   );
 }
@@ -712,7 +713,7 @@ function Row({
       const canceled = r.decision === ApprovalDecision.CANCELED || r.decision === ApprovalDecision.TERMINAL;
       return (
         <div className="record">
-          <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? "–" : ok ? "✓" : "✕"}</span>
+          <span className={canceled ? "muted" : ok ? "ok" : "x"}>{canceled ? <Minus /> : ok ? <Check /> : <X />}</span>
           <code>{k.value.command || k.value.toolName}</code>
           <span className="muted">
             {r.decision === ApprovalDecision.ALLOW_ALWAYS ? alwaysText(r.message) : decisionText(r.decision)}
@@ -856,7 +857,7 @@ function Row({
             {t ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} ` : ""}分叉自
             {src ? (
               <a className="src" href={"#/s/" + encodeURIComponent(src.id)}>
-                {titleOf(src)} ›
+                {titleOf(src)}<ChevronRight />
               </a>
             ) : (
               <span className="src">{plain(k.value.sourceTitle) || "另一个会话"}</span>

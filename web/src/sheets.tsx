@@ -7,6 +7,7 @@ import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_p
 import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet, useEscape } from "./ui";
+import { Check, ChevronRight, LoaderCircle } from "./icons";
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
   const claude = agent === Agent.CLAUDE;
@@ -148,7 +149,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
                 <b>{m.name}</b>
                 <div className="md">{why || m.desc}</div>
               </div>
-              {m.mode === cur && <span className="ck">✓</span>}
+              {m.mode === cur && <span className="ck"><Check /></span>}
             </button>
           );
         })}
@@ -227,7 +228,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <div>
             <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{pct}%</div>
             <div className="muted small">
-              {compacting ? "◌ 正在压缩…" : `上下文 ${tokens(s.info!.contextTokens)} / ${tokens(s.info!.contextWindow)}`}
+              {compacting ? <><LoaderCircle /> 正在压缩…</> : `上下文 ${tokens(s.info!.contextTokens)} / ${tokens(s.info!.contextWindow)}`}
             </div>
           </div>
           <button className="act" disabled={compacting || running || offline} onClick={() => void compact()}>
@@ -249,12 +250,12 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
               {m.displayName || m.slug}
               {m.efforts.length === 0 ? <small>无推理强度</small> : agent !== Agent.CLAUDE && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
             </div>
-            {m === cur && <span className="ck">✓</span>}
+            {m === cur && <span className="ck"><Check /></span>}
           </button>
         ))}
         {models && !all && !few && (
           <button className="mi link-row" onClick={() => setAll(true)}>
-            全部模型 ›
+            全部模型<ChevronRight />
           </button>
         )}
       </div>

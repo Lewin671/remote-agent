@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { avatarClass, type Tone } from "./model";
 import type { Remote } from "./remote";
+import { ChevronDown, ChevronLeft, ChevronUp, LoaderCircle, X } from "./icons";
 
 export function useRemote(remote: Remote) {
   useSyncExternalStore(remote.subscribe, remote.snapshot);
@@ -128,7 +129,7 @@ export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; acti
                 a.onClick();
               }}
             >
-              {a.busy && <span className="sp">◌</span>}
+              {a.busy && <LoaderCircle />}
               {a.note ? <span>{a.label}</span> : a.label}
               {a.note && <small className={a.noteRed ? "err" : ""}>{a.note}</small>}
             </button>
@@ -166,11 +167,11 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   if (!remote.everOnline && remote.failures >= 2 && remote.connError)
     return (
       <div className={className + " err"}>
-        <span>✕ 连不上服务器{details ? "：" + remote.connError : ""}</span>
+        <span><X /> 连不上服务器{details ? "：" + remote.connError : ""}</span>
         {!details && <button onClick={() => setDetails(true)}>详情</button>}
       </div>
     );
-  return <div className={className}>◌ {remote.everOnline ? "连接断了，正在重连 · 内容可能不是最新的" : "连接中…"}</div>;
+  return <div className={className}><LoaderCircle /> {remote.everOnline ? "连接断了，正在重连 · 内容可能不是最新的" : "连接中…"}</div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {
@@ -191,7 +192,7 @@ export function NavBar({ onBack, title, sub, right, className = "" }: { onBack?:
     <header className={"navbar " + className}>
       {onBack ? (
         <button className="back" onClick={onBack} aria-label="返回">
-          ‹
+          <ChevronLeft />
         </button>
       ) : (
         <span className="back" />
@@ -213,8 +214,8 @@ export function usePageVisible() {
   );
 }
 
-/** The arrow of something that opens in place: › turned down, or up once
- * open (design-system §5). */
+/** The arrow of something that opens in place: down, or up once open
+ * (design-system §5). */
 export function Exp({ up }: { up?: boolean }) {
-  return <i className={"exp" + (up ? " up" : "")} aria-hidden>›</i>;
+  return up ? <ChevronUp className="exp" /> : <ChevronDown className="exp" />;
 }

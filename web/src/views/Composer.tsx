@@ -6,6 +6,7 @@ import type { Derived } from "../model";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert } from "../ui";
+import { ArrowUp, Square } from "../icons";
 
 /** The draft grows to about six lines, then scrolls inside. */
 const DRAFT_MAX = 132;
@@ -124,7 +125,7 @@ export function Composer({
         }}
         aria-label="消息"
       />
-      {d.running && !t && !images ? <button className="go44 stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮">■</button> : <div className="send-wrap"><button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }} onPointerUp={() => clearTimeout(hold.current)} onPointerLeave={() => clearTimeout(hold.current)} onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }} onClick={() => { if (held.current) { held.current = false; return; } submit(); }} aria-label="发送">↑</button>{sendMenu && <div className="send-menu"><button onClick={() => submit()}><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></button><button onClick={() => submit(false, SendMode.QUEUE)}><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></button></div>}</div>}
+      {d.running && !t && !images ? <button className="go44 stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮"><Square /></button> : <div className="send-wrap"><button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }} onPointerUp={() => clearTimeout(hold.current)} onPointerLeave={() => clearTimeout(hold.current)} onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }} onClick={() => { if (held.current) { held.current = false; return; } submit(); }} aria-label="发送"><ArrowUp /></button>{sendMenu && <div className="send-menu"><button onClick={() => submit()}><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></button><button onClick={() => submit(false, SendMode.QUEUE)}><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></button></div>}</div>}
       {slash !== undefined && (
         <Alert
           title="作为普通消息发送？"

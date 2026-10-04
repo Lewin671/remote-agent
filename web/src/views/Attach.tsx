@@ -7,6 +7,7 @@ import { Tray, type TrayItem } from "../attach";
 import { machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
+import { Plus, X } from "../icons";
 
 /** The tray of a draft (a session's input, or a project's new-session
  * card), kept on the Remote so it survives leaving the page. */
@@ -57,14 +58,14 @@ export function AttachButton({
   blocked,
   onBlocked,
   className = "cm-plus",
-  label = "＋",
+  label = <Plus />,
 }: {
   tray: Tray;
   blocked: string;
   onBlocked: (why: string) => void;
   className?: string;
   // The ＋ on the input's left; it opens the image picker itself.
-  label?: string;
+  label?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const off = !!blocked || tray.full();
@@ -118,7 +119,7 @@ function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => vo
         </button>
       )}
       <button className="x" onClick={onRemove} aria-label="移除这张图">
-        ✕
+        <X />
       </button>
     </span>
   );
