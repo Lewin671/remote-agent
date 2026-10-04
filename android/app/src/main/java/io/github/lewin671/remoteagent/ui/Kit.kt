@@ -236,13 +236,14 @@ fun LabelWithLink(text: String, action: String, onAction: () -> Unit) {
 
 /**
  * Tabs that switch a view (聊天 / 终端): underlined, on phones and wide
- * screens alike (design-system §6). [dot] marks a tab that needs you.
+ * screens alike (design-system §6). [dot] marks a tab that needs you;
+ * [inset] is the space at the sides, none inside a sheet.
  */
 @Composable
-fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enabled: (Int) -> Boolean = { true }, dot: Int = -1, dark: Boolean = false, modifier: Modifier = Modifier) {
+fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enabled: (Int) -> Boolean = { true }, dot: Int = -1, dark: Boolean = false, modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 16.dp) {
     val p = pal
     val line = if (dark) TermColors.line else p.line
-    Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 4.dp).bottomLine(line).selectableGroup()) {
+    Row(modifier.fillMaxWidth().padding(start = inset, end = inset, bottom = 4.dp).bottomLine(line).selectableGroup()) {
         items.forEachIndexed { i, title ->
             val on = i == selected
             val ok = enabled(i)

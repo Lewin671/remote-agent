@@ -6,6 +6,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
@@ -47,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,7 +89,11 @@ import io.github.lewin671.remoteagent.core.projectKey
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.shortPath
+import io.github.lewin671.remoteagent.core.PrefsOp
+import io.github.lewin671.remoteagent.core.applySettings
+import io.github.lewin671.remoteagent.core.settingsAgents
 import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.AgentSettings
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.CreateSessionRequest
 import io.github.lewin671.remoteagent.proto.DaemonSettings
@@ -106,24 +121,73 @@ data class NewConfig(
     val standardContext: Boolean = false,
 )
 
+/** The project's stored settings, or null while none were saved. */
+fun savedSettings(state: RemoteState, key: String): ProjectSettings? = state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }
+
+private fun projectSessions(state: RemoteState, key: String) = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
+
 /**
- * The configuration follows the project (architecture §13): the latest
- * session's machine, folder, CLI, model, effort and mode. Full access and
- * plan are not carried over. If that machine is offline, another online
- * machine the project used, with its defaults.
+ * The CLI a project's next session is meant to use, before looking at what
+ * the machine has: the one picked next to the message box, else the one the
+ * latest new session used, else the latest session's. Null when nothing says.
  */
-fun projectConfig(state: RemoteState, key: String): NewConfig? {
-    state.prefs?.prefs?.settingsList?.firstOrNull { it.path == key }?.let {
-        return NewConfig(it.machineId, key, effectiveAgent(it.agent), it.model, it.effort, modeOf(it.mode)?.takeUnless { m -> m == Mode.PLAN }, it.standardContext)
+fun wantedAgent(state: RemoteState, key: String, pick: Agent? = null, saved: ProjectSettings? = savedSettings(state, key)): Agent? =
+    pick ?: saved?.agent?.takeIf { it in settingsAgents } ?: projectSessions(state, key).firstOrNull()?.agent()
+
+/**
+ * One CLI's set in a project: the stored entry (empty fields are the
+ * machine's defaults), else what the project's latest session on that CLI
+ * runs with, else the machine's defaults. Plan is never carried over.
+ */
+fun agentSet(state: RemoteState, key: String, agent: Agent, saved: ProjectSettings? = savedSettings(state, key)): AgentSettings {
+    saved?.agentsList?.firstOrNull { it.agent == agent }?.let { return it }
+    val b = AgentSettings.newBuilder().setAgent(agent)
+    projectSessions(state, key).firstOrNull { it.agent() == agent }?.let { last ->
+        b.setModel(last.info?.model.orEmpty()).setEffort(last.info?.effort.orEmpty())
+        modeOf(last)?.takeIf { it in newSessionModes }?.let { b.setMode(it.proto) }
     }
-    val sessions = state.sessions.values.filter { projectKey(it) == key }.sortedByDescending { it.updatedMs }
-    val last = sessions.firstOrNull() ?: return null
-    val mode = modeOf(last)?.takeUnless { it == Mode.PLAN }
-    return NewConfig(last.machineId, key, last.agent(), last.info?.model.orEmpty(), last.info?.effort.orEmpty(), mode)
+    return b.build()
 }
 
-fun NewConfig.settings(now: Long): ProjectSettings = ProjectSettings.newBuilder().setPath(cwd).setMachineId(machineId)
-    .setAgent(agent).setModel(model).setEffort(effort).setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setStandardContext(standardContext).setUpdatedMs(now).build()
+/**
+ * What a project's next session starts with (architecture §13). The machine
+ * is the stored one, else the latest session's, else [machine]. The CLI is
+ * [wantedAgent], or the machine's first when it has none or lacks that one,
+ * with that CLI's own set. Null while no machine is known.
+ */
+fun projectConfig(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): NewConfig? {
+    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: projectSessions(state, key).firstOrNull()?.machineId ?: machine ?: return null
+    val agents = machineAgents(state.machines[machineId])
+    val agent = wantedAgent(state, key, pick, saved)?.takeIf { it in agents } ?: agents.first()
+    return agentConfig(machineId, key, agentSet(state, key, agent, saved))
+}
+
+fun agentConfig(machineId: String, cwd: String, s: AgentSettings): NewConfig =
+    NewConfig(machineId, cwd, s.agent, s.model, s.effort, modeOf(s.mode)?.takeIf { it in newSessionModes }, s.standardContext)
+
+/** The configuration's CLI set, as project settings store it. */
+fun NewConfig.agentSettings(): AgentSettings = AgentSettings.newBuilder().setAgent(agent).setModel(model).setEffort(effort)
+    .setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setStandardContext(agent == Agent.AGENT_CLAUDE && standardContext).build()
+
+/**
+ * The CLI that was meant but that the machine of [c] does not have, so [c]
+ * uses another: said above the message box, never silently.
+ */
+fun missingAgent(state: RemoteState, c: NewConfig, pick: Agent? = null): Agent? =
+    wantedAgent(state, c.cwd, pick)?.takeIf { it != c.agent && it !in machineAgents(state.machines[c.machineId]) }
+
+/**
+ * What a started session leaves in the project's settings, or null when
+ * nothing changes. The first one establishes them; later ones only remember
+ * the CLI and add its set if the project has none for it. [project] is the
+ * project's own configuration for that start: a machine picked just for this
+ * start is not stored, and neither are that machine's defaults.
+ */
+fun startSettings(saved: ProjectSettings?, project: NewConfig, used: NewConfig): PrefsOp.SetSettings? {
+    if (saved != null && saved.agent == used.agent && saved.agentsList.any { it.agent == used.agent }) return null
+    val set = if (used.machineId == project.machineId) used else project.takeIf { it.agent == used.agent }
+    return PrefsOp.SetSettings(used.cwd, project.machineId, agent = used.agent, sets = listOfNotNull(set?.agentSettings()), keepExisting = true)
+}
 
 /**
  * The mode a CLI gives a session started without one, as the daemon reads
@@ -166,6 +230,11 @@ class DraftConfig(initial: NewConfig?) {
     /** A new suggestion from the project; taken only while nothing is written or chosen. */
     fun follow(initial: NewConfig?, drafting: Boolean) {
         if (value == null || (!chosen && !drafting)) value = initial
+    }
+
+    /** Another CLI for this draft: taken at once, written or not, and still following the project. */
+    fun retarget(c: NewConfig) {
+        value = c
     }
 
     /** The user's own choice, kept from now on. */
@@ -214,15 +283,19 @@ fun ProjectScreen(key: String, focus: Boolean) {
     var typing by remember { mutableStateOf(false) }
     val compact = ime && typing
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
-    var settingsOpen by remember { mutableStateOf(false) }
-    val selected = projectConfig(state, key)
+    // The page of project settings that is open ("" is the first), or null.
+    var settingsOpen by remember { mutableStateOf<String?>(null) }
+    val entry = Drafts.newSession(key, projectConfig(state, key))
+    // The summary describes the CLI selected next to the message box.
+    val selected = projectConfig(state, key, draftPick(state, entry))
     var summaryModels by remember(key, selected?.machineId, selected?.agent) { mutableStateOf<ListModelsResponse?>(null) }
     LaunchedEffect(selected?.machineId, selected?.agent) {
         val cfg = selected ?: return@LaunchedEffect
         summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
     }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) shortPath(key) else null, more = { settingsOpen = true })
+        val folded = selected?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), machineLabel(state, it.machineId)).joinToString(" · ") }
+        NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
         LazyColumn(Modifier.weight(1f)) {
             if (!compact) item {
                 Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -236,7 +309,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
                         }
                         if (selected != null) {
                             val full = selected.mode == Mode.FULL || (selected.mode == null && defaultModeOf(state.machines[selected.machineId], selected.agent).mode == Mode.FULL)
-                            SummaryChip(projectSummary(state, selected, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = true }
+                            SummaryChip(projectSummary(state, selected, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = "" }
                         }
                     }
                 }
@@ -261,13 +334,51 @@ fun ProjectScreen(key: String, focus: Boolean) {
         }
         // A hidden project stays reachable from its sessions and
         // notifications; starting a new session there restores it first.
-        if (!hidden) NewSessionBox(state, projectConfig(state, key), projectName(key), focus, onFocus = { typing = it })
+        if (!hidden) NewSessionBox(state, projectConfig(state, key, entry.agent.value), projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" })
     }
-    if (settingsOpen && selected != null) NewSettingsSheet(state, selected, projectName(key), onDone = {
-        PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
-        Drafts.newSession(key, selected).config.choose(it)
-        settingsOpen = false
-    }, onClose = { settingsOpen = false })
+    val open = settingsOpen
+    if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->
+        if (op != null) {
+            PrefsChanges.run(remote, op)
+            // The draft takes the new settings at once, written or not.
+            projectConfig(state, key, entry.agent.value, saved = applySettings(savedSettings(state, key), op, System.currentTimeMillis()))?.let { entry.config.choose(it) }
+        }
+        settingsOpen = null
+    }, onClose = { settingsOpen = null })
+}
+
+/**
+ * The CLI a draft is on, as the pick its project's configuration is read
+ * with. A CLI the draft only fell back to is not one: the pick stays.
+ */
+private fun draftPick(state: RemoteState, entry: Drafts.NewSession): Agent? =
+    entry.config.value?.takeIf { missingAgent(state, it, entry.agent.value) == null }?.agent ?: entry.agent.value
+
+/**
+ * The CLI of the next session, in a row of its own above the message box
+ * (client-v26): a grey pill of the machine's CLIs, each 44 dp to touch.
+ */
+@Composable
+fun AgentSwitch(agents: List<Agent>, selected: Agent, modifier: Modifier = Modifier, onSelect: (Agent) -> Unit) {
+    val p = pal
+    Row(modifier.fillMaxWidth()) {
+        Row(
+            Modifier.drawBehind { drawRoundRect(p.chip, Offset(0f, 4.dp.toPx()), Size(size.width, size.height - 8.dp.toPx()), CornerRadius(10.dp.toPx())) }
+                .padding(horizontal = 2.dp).selectableGroup().semantics { contentDescription = "新会话使用的 CLI" },
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            for (a in agents) {
+                val on = a == selected
+                Box(Modifier.heightIn(min = 44.dp).selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(a) }).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.widthIn(min = 56.dp).heightIn(min = 32.dp)
+                            .then(if (on) Modifier.shadow(1.dp, RoundedCornerShape(8.dp)).background(p.card, RoundedCornerShape(8.dp)) else Modifier).padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(agentName(a), style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted, maxLines = 1) }
+                }
+            }
+        }
+    }
 }
 
 /** The new-session settings as a button that opens the project's settings; only 完全放行 is red. */
@@ -319,7 +430,7 @@ private fun HiddenBanner(state: RemoteState, key: String) {
         Banner(
             if (change == PrefsChanges.State.Saving) "正在恢复到项目列表…" else "这个项目已从列表移除",
             action = if (blocked == null && change != PrefsChanges.State.Saving) "恢复" else null,
-            onAction = { PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.Unhide(key)) },
+            onAction = { PrefsChanges.run(remote, PrefsOp.Unhide(key)) },
         )
         if (blocked != null) Hint(blocked, color = pal.orangeInk)
         if (change is PrefsChanges.State.Failed) Hint("没能保存：${change.error}", color = pal.red)
@@ -327,14 +438,14 @@ private fun HiddenBanner(state: RemoteState, key: String) {
 }
 
 /**
- * Another CLI for a draft (client-v2): the text and images stay; the model
- * and effort belong to the old CLI and go, so the new one starts with its
- * own defaults; the mode is kept when the new CLI has it. The machine's
- * default mode for the new CLI still decides when none is chosen, and full
- * access is still confirmed at send.
+ * Another CLI for a draft (client-v26): the text and images stay, and the
+ * draft takes the project's set for that CLI ([project]). On a machine
+ * picked just for this start the model and effort are that machine's defaults.
  */
-fun switchAgent(c: NewConfig, agent: Agent): NewConfig =
-    if (c.agent == agent) c else c.copy(agent = agent, model = "", effort = "", mode = c.mode?.takeIf { it in newSessionModes })
+fun switchAgent(c: NewConfig, project: NewConfig?, agent: Agent): NewConfig {
+    val set = project?.takeIf { it.agent == agent } ?: NewConfig(c.machineId, c.cwd, agent)
+    return if (set.machineId == c.machineId) set else set.copy(machineId = c.machineId, model = "", effort = "")
+}
 
 /**
  * Another machine for a draft: the model and effort were that machine's
@@ -351,12 +462,14 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
 
 /**
  * The new-session box (client-v8): ＋ adds images; configuration comes from
- * project settings and stays with an active draft. An offline machine is
- * replaced only by the user's choice for this send. The first message starts
- * the session: there is no start without one.
+ * project settings and stays with an active draft, except the CLI, which is
+ * switched in the row above the box when the machine has more than one
+ * (client-v26). An offline machine is replaced only by the user's choice for
+ * this send. The first message starts the session: there is no start without
+ * one. [onMachine] opens the machine choice of project settings.
  */
 @Composable
-fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onFocus: (Boolean) -> Unit = {}) {
+fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onFocus: (Boolean) -> Unit = {}, onMachine: () -> Unit = {}) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -409,8 +522,9 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             // Only a session that started takes the draft; a refusal that asks
             // for confirmation, or no answer, leaves text and images as they are.
             val sid = startedSession(r) ?: return@run
-            if (state.prefs?.prefs?.settingsList?.any { it.path == key } != true)
-                PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings((initial ?: cfg).settings(System.currentTimeMillis())))
+            startSettings(savedSettings(state, key), projectConfig(state, key, cfg.agent, initial?.machineId) ?: cfg, cfg)?.let { PrefsChanges.run(remote, it) }
+            // The project remembers this CLI now; the next draft starts from it.
+            entry.agent.value = null
             Outbox.rememberPrompt(sid, start.prompt)
             nav.session(sid)
             if (text.trim() == start.prompt) text = ""
@@ -430,10 +544,13 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         launch(cfg, cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
     }
     val c = config
+    val agents = c?.let { machineAgents(state.machines[it.machineId]) }.orEmpty()
+    val missing = c?.let { missingAgent(state, it, entry.agent.value) }
     val notices = @Composable {
         Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
             else if (c != null && state.machines[c.machineId]?.online != true) Banner("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = Tone2.WARN)
+            if (c != null && missing != null) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
             if (act.running) Banner("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
             val frozen = Starts.of(key)
             // An unknown start has its own notice below.
@@ -449,6 +566,10 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         }
     }
     notices()
+    if (c != null && agents.size > 1) AgentSwitch(agents, c.agent, Modifier.padding(horizontal = 16.dp)) { a ->
+        entry.agent.value = a
+        draft.retarget(switchAgent(c, projectConfig(state, key, a, c.machineId), a))
+    }
     ComposeBox(
         text, { text = it }, "描述任务…",
         canSend = c != null && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
@@ -528,16 +649,32 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
 }
 
 /**
- * 项目设置 (client-v8): CLI, machine, model and effort, and approval mode,
- * each chosen on a page of the sheet. The folder is the project's read-only path.
- * Changing the CLI or machine keeps the draft.
+ * 项目设置 (client-v26): the machine, and for each CLI the machine has its
+ * own model and effort, context window (Claude Code) and approval mode,
+ * under a tab per CLI when there is more than one; each is chosen on a page
+ * of the sheet. The folder is the project's read-only path. It opens on
+ * [agent], the CLI selected next to the message box, and on [open]. Which
+ * CLI a new session uses is not chosen here. [onDone] gets the change to
+ * store, or null when nothing was changed.
  */
 @Composable
-fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDone: (NewConfig) -> Unit, onClose: () -> Unit) {
+fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    var c by remember { mutableStateOf(initial) }
-    var page by remember { mutableStateOf("") }
+    var machine by remember { mutableStateOf(machineId) }
+    var tab by remember { mutableStateOf(agent) }
+    // The sets changed here, by CLI; the others stay as stored.
+    val edited = remember { mutableStateMapOf<Agent, NewConfig>() }
+    var page by remember { mutableStateOf(open) }
+    // Models are per machine: on another one every CLI starts over.
+    val moved = machine != machineId
+    val agents = machineAgents(state.machines[machine])
+    val cur = if (tab in agents) tab else agents.first()
+    val c = edited[cur] ?: if (moved) NewConfig(machine, cwd, cur) else agentConfig(machine, cwd, agentSet(state, cwd, cur))
+    fun edit(next: NewConfig) {
+        edited[cur] = next
+    }
+    fun done() = onDone(if (!moved && edited.isEmpty()) null else PrefsOp.SetSettings(cwd, machine, moved = moved, sets = edited.values.map { it.agentSettings() }))
     var models by remember { mutableStateOf<ListModelsResponse?>(null) }
     var modelsError by remember { mutableStateOf("") }
     LaunchedEffect(c.machineId, c.agent, page == "model") {
@@ -555,84 +692,92 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
         runCatching { remote.machineCommand(c.machineId, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings }
             .onSuccess { settings = it }
     }
-    val used = state.sessions.values.filter { projectKey(it) == initial.cwd }.map { it.machineId }.distinct().ifEmpty { state.machines.keys.toList() }
-    val agents = machineAgents(state.machines[c.machineId])
+    val used = state.sessions.values.filter { projectKey(it) == cwd }.map { it.machineId }.distinct().ifEmpty { state.machines.keys.toList() }
     val blockedPrefs = prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
     val shownModel = models?.let { projectModel(c, it, settings) }
     Sheet(onClose) {
         when (page) {
             "" -> {
-                SheetHead("项目设置", if (blockedPrefs == null) "完成" else null, { onDone(c) })
+                SheetHead("项目设置", if (blockedPrefs == null) "完成" else null, { done() })
                 if (blockedPrefs != null) Banner(blockedPrefs)
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Avatar(c.cwd, 22)
+                    Avatar(cwd, 22)
                     Column(Modifier.weight(1f)) {
                         Text(name, style = T.bodyB, color = p.fg)
-                        Text(shortPath(c.cwd), style = T.mono, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(shortPath(cwd), style = T.mono, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 FieldLabel("新会话")
-                Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
-                    val rows = listOf<@Composable () -> Unit>(
-                        { SetRow("CLI", agentName(c.agent), if (agents.size > 1) ({ page = "cli" }) else null) },
-                        { SetRow("机器", machineLabel(state, c.machineId), { page = "machine" }, dot = if (state.machines[c.machineId]?.online == true) p.green else p.gray) },
-                        {
-                            SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
-                        },
-                        *(if (c.agent == Agent.AGENT_CLAUDE) arrayOf<@Composable () -> Unit>({
-                            // A model without a larger window has nothing to choose.
-                            val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
-                            SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))
-                        }) else emptyArray()),
-                        { SetRow("审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
-                    )
+                val machineRow: @Composable () -> Unit =
+                    { SetRow("机器", machineLabel(state, machine), { page = "machine" }, dot = if (state.machines[machine]?.online == true) p.green else p.gray) }
+                val rows = listOf<@Composable () -> Unit>(
+                    {
+                        SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
+                    },
+                    *(if (c.agent == Agent.AGENT_CLAUDE) arrayOf<@Composable () -> Unit>({
+                        // A model without a larger window has nothing to choose.
+                        val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
+                        SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))
+                    }) else emptyArray()),
+                    { SetRow("审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
+                )
+                @Composable
+                fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
                     rows.forEachIndexed { i, r ->
                         if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.line, thickness = 1.dp)
                         r()
                     }
                 }
-                Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
-                TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, c.cwd)) "取消常用" else "设为常用", {
-                    PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, c.cwd)) io.github.lewin671.remoteagent.core.PrefsOp.Unpin(c.cwd) else io.github.lewin671.remoteagent.core.PrefsOp.Pin(c.cwd))
-                }, enabled = blockedPrefs == null)
-                TextAction("从项目列表移除", { PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.Hide(c.cwd)); onClose() }, enabled = blockedPrefs == null, color = p.red)
-            }
-            "cli" -> {
-                SheetHead("新会话使用的 CLI", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
-                agents.forEachIndexed { i, a ->
-                    ListItem(agentName(a), "${machineLabel(state, c.machineId)} 上已安装", checked = a == c.agent, last = i == agents.size - 1, onClick = { c = switchAgent(c, a); page = "" })
+                if (agents.size > 1) {
+                    // The machine is shared; each CLI has its own set, seen under its tab.
+                    card(listOf(machineRow))
+                    ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                    card(rows)
+                    Hint("两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                } else {
+                    card(listOf(machineRow) + rows)
+                    Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 }
-                Hint("切换后采用该 CLI 的默认模型和有效模式，草稿保留。当前机器只有一种 CLI 时只显示名称。")
-                val missing = Agent.entries.filter { it != Agent.AGENT_UNSPECIFIED && it != Agent.UNRECOGNIZED && it !in agents }
-                for (a in missing) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(a)}", Modifier.padding(top = 8.dp), action = "换机器", onAction = { page = "machine" })
+                TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) "取消常用" else "设为常用", {
+                    PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) PrefsOp.Unpin(cwd) else PrefsOp.Pin(cwd))
+                }, enabled = blockedPrefs == null)
+                TextAction("从项目列表移除", { PrefsChanges.run(remote, PrefsOp.Hide(cwd)); onClose() }, enabled = blockedPrefs == null, color = p.red)
             }
             "machine" -> {
-                SheetHead("机器", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
+                SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
                 used.forEachIndexed { i, id ->
                     val online = state.machines[id]?.online == true
-                    val has = c.agent in machineAgents(state.machines[id])
+                    // Said for the CLI selected next to the message box: 换机器 comes here to find it.
+                    val has = agent in machineAgents(state.machines[id])
                     ListItem(
-                        machineLabel(state, id), if (!online) "不在线，现在不能新建" else if (!has) "没有 ${agentName(c.agent)}，会改用 ${agentName(machineAgents(state.machines[id]).first())}" else null,
-                        checked = c.machineId == id, enabled = online, last = i == used.size - 1,
-                        onClick = { c = switchMachine(c, id, machineAgents(state.machines[id])); page = "" },
+                        machineLabel(state, id), if (!online) "不在线，现在不能新建" else if (!has) "没有 ${agentName(agent)}" else null,
+                        checked = machine == id, enabled = online, last = i == used.size - 1,
+                        onClick = {
+                            if (id != machine) {
+                                machine = id
+                                edited.clear()
+                            }
+                            page = ""
+                        },
                         trailing = { Dot(if (online) p.green else p.gray) },
                     )
                 }
+                Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
             }
             "model" -> {
-                SheetHead("模型", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
+                SheetHead("模型", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
                 val ms = models
                 when {
                     modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
                     ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
                         val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
-                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { c = c.copy(model = "", effort = "") })
+                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         ms.modelsList.forEachIndexed { i, m ->
                             ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
                                 val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
-                                c = c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO })
+                                edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO }))
                             })
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
@@ -640,24 +785,24 @@ fun NewSettingsSheet(state: RemoteState, initial: NewConfig, name: String, onDon
                                 (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.effort.orEmpty() else settings?.defaultEffort.orEmpty()).ifEmpty { m.defaultEffort }
                             } else m.defaultEffort
                             FieldLabel("推理强度")
-                            ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { c = c.copy(effort = it) }
+                            ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { edit(c.copy(effort = it)) }
                         }
                     }
                 }
             }
             "context" -> {
-                SheetHead("上下文窗口", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
-                ListItem("1M", "Claude Code 的默认窗口", checked = !c.standardContext, onClick = { c = c.copy(standardContext = false); page = "" })
-                ListItem("标准 200k", "超过 200k 前自动压缩", checked = c.standardContext, last = true, onClick = { c = c.copy(standardContext = true); page = "" })
+                SheetHead("上下文窗口", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
+                ListItem("1M", "Claude Code 的默认窗口", checked = !c.standardContext, onClick = { edit(c.copy(standardContext = false)); page = "" })
+                ListItem("标准 200k", "超过 200k 前自动压缩", checked = c.standardContext, last = true, onClick = { edit(c.copy(standardContext = true)); page = "" })
                 Hint("窗口在会话开始时确定，改了只影响之后新建的会话。")
             }
             "mode" -> {
-                SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { onDone(c) }, onBack = { page = "" })
-                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { c = c.copy(mode = null); page = "" })
+                SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
+                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
                 newSessionModes.forEachIndexed { i, m ->
                     // Claude Code's haiku has no auto mode.
                     val off = m == Mode.AUTO && c.agent == Agent.AGENT_CLAUDE && c.model.contains("haiku", ignoreCase = true)
-                    ListItem(m.text, if (off) "当前 Haiku 模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { c = c.copy(mode = m); page = "" })
+                    ListItem(m.text, if (off) "当前 Haiku 模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
                 }
                 Hint("完全放行的新会话直接按此设置启动。")
             }
@@ -823,25 +968,28 @@ fun NewProjectAtScreen(machine: String, path: String) {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val p = pal
-    val initial = projectConfig(state, path) ?: NewConfig(machine, path, machineAgents(state.machines[machine]).first())
-    val entry = Drafts.newSession(path, initial)
+    val entry = Drafts.newSession(path, projectConfig(state, path, machine = machine))
+    val initial = projectConfig(state, path, entry.agent.value, machine) ?: NewConfig(machine, path)
     val selected = entry.config.value ?: initial
     var summaryModels by remember(selected.machineId, selected.agent) { mutableStateOf<ListModelsResponse?>(null) }
     LaunchedEffect(selected.machineId, selected.agent) {
         summaryModels = runCatching { remote.listModels(selected.machineId, selected.agent) }.getOrNull()
     }
-    var settingsOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = true })
-        SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = true }
+        NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
+        SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
         Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
-        NewSessionBox(state, initial, projectName(path), focus = true)
+        NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" })
     }
-    if (settingsOpen) NewSettingsSheet(state, selected, projectName(path), onDone = {
-        entry.config.choose(it)
-        PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
-        settingsOpen = false
-    }, onClose = { settingsOpen = false })
+    val open = settingsOpen
+    if (open != null) NewSettingsSheet(state, path, projectName(path), selected.machineId, selected.agent, open, onDone = { op ->
+        if (op != null) {
+            PrefsChanges.run(remote, op)
+            projectConfig(state, path, entry.agent.value, machine, applySettings(savedSettings(state, path), op, System.currentTimeMillis()))?.let { entry.config.choose(it) }
+        }
+        settingsOpen = null
+    }, onClose = { settingsOpen = null })
 }
 
 /** New-session starts per project, for this run of the app: one whose outcome is unknown is retried as it was. */

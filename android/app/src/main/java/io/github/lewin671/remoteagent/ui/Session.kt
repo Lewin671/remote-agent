@@ -236,9 +236,10 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
             fork.error = ""
         },
     )
+    // On the session's own CLI: its set is the one this page is about.
     if (projectSettings) projectConfig(state, projectKey(s))?.let { initial ->
-        NewSettingsSheet(state, initial, projectName(projectKey(s)), onDone = {
-            PrefsChanges.run(remote, io.github.lewin671.remoteagent.core.PrefsOp.SetSettings(it.settings(System.currentTimeMillis())))
+        NewSettingsSheet(state, projectKey(s), projectName(projectKey(s)), initial.machineId, s.agent(), onDone = {
+            if (it != null) PrefsChanges.run(remote, it)
             projectSettings = false
         }, onClose = { projectSettings = false })
     }

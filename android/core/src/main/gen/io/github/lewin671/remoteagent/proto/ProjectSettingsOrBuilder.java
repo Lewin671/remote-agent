@@ -23,11 +23,21 @@ public interface ProjectSettingsOrBuilder extends
       getPathBytes();
 
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @return The enum numeric value on the wire for agent.
    */
   int getAgentValue();
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @return The agent.
    */
@@ -54,49 +64,6 @@ public interface ProjectSettingsOrBuilder extends
       getMachineIdBytes();
 
   /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @return The model.
-   */
-  java.lang.String getModel();
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @return The bytes for model.
-   */
-  com.google.protobuf.ByteString
-      getModelBytes();
-
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @return The effort.
-   */
-  java.lang.String getEffort();
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @return The bytes for effort.
-   */
-  com.google.protobuf.ByteString
-      getEffortBytes();
-
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @return The enum numeric value on the wire for mode.
-   */
-  int getModeValue();
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @return The mode.
-   */
-  io.github.lewin671.remoteagent.proto.ApprovalMode getMode();
-
-  /**
    * <pre>
    * Unix milliseconds of the last change.
    * </pre>
@@ -108,12 +75,30 @@ public interface ProjectSettingsOrBuilder extends
 
   /**
    * <pre>
-   * Claude Code only: new sessions get the standard context window
-   * instead of 1M.
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
    * </pre>
    *
-   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-   * @return The standardContext.
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
    */
-  boolean getStandardContext();
+  java.util.List<io.github.lewin671.remoteagent.proto.AgentSettings> 
+      getAgentsList();
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.AgentSettings getAgents(int index);
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  int getAgentsCount();
 }

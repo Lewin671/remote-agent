@@ -1,7 +1,19 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.Mode
+import io.github.lewin671.remoteagent.core.MachineView
+import io.github.lewin671.remoteagent.core.PrefsObject
+import io.github.lewin671.remoteagent.core.PrefsOp
+import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.SessionView
+import io.github.lewin671.remoteagent.core.applySettings
 import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.AgentInfo
+import io.github.lewin671.remoteagent.proto.AgentSettings
+import io.github.lewin671.remoteagent.proto.MachineMeta
+import io.github.lewin671.remoteagent.proto.ProjectPrefs
+import io.github.lewin671.remoteagent.proto.ProjectSettings
+import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -16,24 +28,149 @@ class ProjectTest {
         val c = NewConfig("mac", "/work/app", effort = "high")
         assertEquals(listOf("high", "ultra"), projectModel(c, models, settings)?.effortsList)
         assertEquals(listOf("low"), projectModel(c, models)?.effortsList)
-        assertEquals("", c.settings(1).model)
-        assertEquals("high", c.settings(1).effort)
+        assertEquals("", c.agentSettings().model)
+        assertEquals("high", c.agentSettings().effort)
         org.junit.Assert.assertNull(projectModel(c.copy(model = "unknown"), models, settings))
     }
 
+    private val path = "/work/app"
+
+    private fun set(agent: Agent, model: String = "", effort: String = "", mode: ApprovalMode = ApprovalMode.APPROVAL_MODE_UNSPECIFIED, standard: Boolean = false) =
+        AgentSettings.newBuilder().setAgent(agent).setModel(model).setEffort(effort).setMode(mode).setStandardContext(standard).build()
+
+    private fun saved(machine: String, agent: Agent = Agent.AGENT_UNSPECIFIED, vararg sets: AgentSettings) =
+        ProjectSettings.newBuilder().setPath(path).setMachineId(machine).setAgent(agent).addAllAgents(sets.toList()).build()
+
+    private fun session(id: String, machine: String, agent: Agent, model: String, at: Long, mode: ApprovalMode = ApprovalMode.APPROVAL_MODE_UNSPECIFIED, effort: String = "") =
+        SessionView(id, machine, Session.newBuilder().setCwd(path).setModel(model).setEffort(effort).setAgent(agent).setMode(mode).build(), updatedMs = at)
+
+    private fun host(id: String, vararg agents: Agent, online: Boolean = true) =
+        MachineView(id, online, 0, MachineMeta.newBuilder().addAllAgents(agents.map { AgentInfo.newBuilder().setAgent(it).build() }).build())
+
+    private val both = arrayOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)
+
+    private fun state(saved: ProjectSettings? = null, sessions: List<SessionView> = emptyList(), vararg machines: MachineView) = RemoteState(
+        prefs = PrefsObject(1, ProjectPrefs.newBuilder().apply { if (saved != null) addSettings(saved) }.build()),
+        sessions = sessions.associateBy { it.id }, machines = machines.associateBy { it.id })
+
     @Test
     fun savedSettingsWinOverLatestSessionAndStayOnOfflineMachine() {
-        val saved = io.github.lewin671.remoteagent.proto.ProjectSettings.newBuilder().setPath("/work/app").setMachineId("old")
-            .setAgent(Agent.AGENT_CLAUDE).setModel("sonnet").setEffort("high").setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS).build()
-        val latest = io.github.lewin671.remoteagent.core.SessionView("s", "new",
-            io.github.lewin671.remoteagent.proto.Session.newBuilder().setCwd("/work/app").setModel("astra").setAgent(Agent.AGENT_CODEX).build(), updatedMs = 999)
-        val state = io.github.lewin671.remoteagent.core.RemoteState(
-            prefs = io.github.lewin671.remoteagent.core.PrefsObject(1, io.github.lewin671.remoteagent.proto.ProjectPrefs.newBuilder().addSettings(saved).build()),
-            sessions = mapOf(latest.id to latest), machines = mapOf("old" to io.github.lewin671.remoteagent.core.MachineView("old", false, 0)))
-        val config = projectConfig(state, "/work/app")!!
-        assertEquals("old", config.machineId)
-        assertEquals(Mode.FULL, config.mode)
-        assertEquals(saved, config.settings(saved.updatedMs))
+        val stored = saved("old", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet", "high", ApprovalMode.APPROVAL_MODE_FULL_ACCESS, standard = true))
+        val st = state(stored, listOf(session("s", "new", Agent.AGENT_CODEX, "astra", 999)), host("old", *both, online = false), host("new", *both))
+        val config = projectConfig(st, path)!!
+        assertEquals(NewConfig("old", path, Agent.AGENT_CLAUDE, "sonnet", "high", Mode.FULL, standardContext = true), config)
+        assertEquals(stored.agentsList.single(), config.agentSettings())
+    }
+
+    @Test
+    fun theCliIsThePickThenTheRememberedOneThenTheLatestSessionsThenTheMachinesFirst() {
+        val mac = host("mac", *both)
+        val sessions = listOf(session("a", "mac", Agent.AGENT_CLAUDE, "sonnet", 20), session("b", "mac", Agent.AGENT_CODEX, "astra", 10))
+        // Nothing stored: the latest session's machine and CLI.
+        assertEquals(Agent.AGENT_CLAUDE, projectConfig(state(null, sessions, mac), path)!!.agent)
+        // The remembered CLI wins over the latest session's.
+        val remembered = state(saved("mac", Agent.AGENT_CODEX), sessions, mac)
+        assertEquals(Agent.AGENT_CODEX, projectConfig(remembered, path)!!.agent)
+        // The pick next to the message box wins over both.
+        assertEquals(Agent.AGENT_CLAUDE, projectConfig(remembered, path, pick = Agent.AGENT_CLAUDE)!!.agent)
+        // Settings that remember no CLI (stored before a session started) leave it to the latest session.
+        assertEquals(Agent.AGENT_CLAUDE, projectConfig(state(saved("mac"), sessions, mac), path)!!.agent)
+        // No session and nothing stored: the machine given, with its first CLI.
+        org.junit.Assert.assertNull(projectConfig(state(null, emptyList(), mac), path))
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CLAUDE), projectConfig(state(null, emptyList(), host("mac", Agent.AGENT_CLAUDE, Agent.AGENT_CODEX)), path, machine = "mac"))
+        // The stored machine wins over the latest session's.
+        assertEquals("vps", projectConfig(state(saved("vps", Agent.AGENT_CODEX), sessions, mac, host("vps", *both)), path)!!.machineId)
+    }
+
+    @Test
+    fun aCliTheMachineLacksFallsBackToItsFirstAndIsNamed() {
+        val vps = host("vps", Agent.AGENT_CODEX)
+        val stored = saved("vps", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet"), set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_ASK))
+        val st = state(stored, emptyList(), vps)
+        val config = projectConfig(st, path)!!
+        // The CLI the machine has, with its own set; what is remembered is not touched.
+        assertEquals(NewConfig("vps", path, Agent.AGENT_CODEX, "astra", mode = Mode.ASK), config)
+        assertEquals(Agent.AGENT_CLAUDE, missingAgent(st, config))
+        assertEquals(Agent.AGENT_CLAUDE, wantedAgent(st, path))
+        // With the CLI installed there is nothing to say.
+        val ok = state(stored, emptyList(), host("vps", *both))
+        org.junit.Assert.assertNull(missingAgent(ok, projectConfig(ok, path)!!))
+        // A draft kept on the other CLI while the machine has both is not a fallback.
+        org.junit.Assert.assertNull(missingAgent(ok, NewConfig("vps", path, Agent.AGENT_CODEX)))
+        // Nothing remembered and no session: the machine's first CLI is not a fallback.
+        val fresh = state(null, emptyList(), vps)
+        org.junit.Assert.assertNull(missingAgent(fresh, NewConfig("vps", path, Agent.AGENT_CODEX)))
+    }
+
+    @Test
+    fun aCliWithoutAStoredSetStartsFromItsOwnLatestSession() {
+        val mac = host("mac", *both)
+        val sessions = listOf(
+            session("new-codex", "mac", Agent.AGENT_CODEX, "astra", 30, ApprovalMode.APPROVAL_MODE_PLAN, "low"),
+            session("claude", "mac", Agent.AGENT_CLAUDE, "sonnet", 20, ApprovalMode.APPROVAL_MODE_AUTO, "high"),
+            session("old-claude", "mac", Agent.AGENT_CLAUDE, "opus", 10, ApprovalMode.APPROVAL_MODE_ASK),
+        )
+        val stored = saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "sol"))
+        val st = state(stored, sessions, mac)
+        // Codex has an entry: it is used as stored, empty fields meaning the machine's defaults.
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CODEX, "sol"), projectConfig(st, path))
+        // Claude Code has none: its own latest session, not the project's latest.
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet", "high", Mode.AUTO), projectConfig(st, path, pick = Agent.AGENT_CLAUDE))
+        // Plan is never carried over.
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CODEX, "astra", "low"), projectConfig(state(null, sessions, mac), path, pick = Agent.AGENT_CODEX))
+        // An empty entry is the machine's defaults, not the latest session.
+        val empty = state(saved("mac", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE)), sessions, mac)
+        assertEquals(NewConfig("mac", path, Agent.AGENT_CLAUDE), projectConfig(empty, path))
+        // No entry and no session on that CLI: the machine's defaults.
+        assertEquals(set(Agent.AGENT_CLAUDE), agentSet(state(stored, sessions.take(1), mac), path, Agent.AGENT_CLAUDE))
+    }
+
+    @Test
+    fun theFirstStartEstablishesTheSettingsAndLaterOnesOnlyFillIn() {
+        val used = NewConfig("mac", path, Agent.AGENT_CLAUDE, "sonnet", "high", Mode.AUTO, standardContext = true)
+        // Nothing stored: the machine, the CLI and its set.
+        val first = startSettings(null, used, used)!!
+        assertEquals(PrefsOp.SetSettings(path, "mac", agent = Agent.AGENT_CLAUDE, sets = listOf(used.agentSettings()), keepExisting = true), first)
+        val stored = applySettings(null, first, 1)
+        assertEquals(saved("mac", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet", "high", ApprovalMode.APPROVAL_MODE_AUTO, true)).toBuilder().setUpdatedMs(1).build(), stored)
+        // The same CLI again changes nothing.
+        org.junit.Assert.assertNull(startSettings(stored, used, used.copy(model = "opus")))
+        // The other CLI: remembered, and its set added; Claude Code's stays.
+        val codex = NewConfig("mac", path, Agent.AGENT_CODEX, "astra")
+        val next = applySettings(stored, startSettings(stored, codex, codex)!!, 2)
+        assertEquals(Agent.AGENT_CODEX, next.agent)
+        assertEquals(listOf(codex.agentSettings(), used.agentSettings()), next.agentsList)
+        // Back to Claude Code: only the remembered CLI changes.
+        val back = applySettings(next, startSettings(next, used, used.copy(model = "opus"))!!, 3)
+        assertEquals(Agent.AGENT_CLAUDE, back.agent)
+        assertEquals(next.agentsList, back.agentsList)
+    }
+
+    @Test
+    fun aMachinePickedJustForOneStartIsNotStored() {
+        val project = NewConfig("mac", path, Agent.AGENT_CODEX, "astra", "high", Mode.ASK)
+        val once = switchMachine(project, "vps", listOf(Agent.AGENT_CODEX))
+        // Stored settings keep their machine, whatever the op carries.
+        val stored = saved("mac", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet"))
+        val next = applySettings(stored, startSettings(stored, project, once)!!, 2)
+        assertEquals("mac", next.machineId)
+        // The set added is the project's, not the other machine's defaults.
+        assertEquals(listOf(project.agentSettings(), set(Agent.AGENT_CLAUDE, "sonnet")), next.agentsList)
+        // The first start: the project's machine is the one established.
+        assertEquals("mac", applySettings(null, startSettings(null, project, once)!!, 1).machineId)
+        // The other machine only had another CLI: remembered, with no set from a machine it does not belong to.
+        val other = NewConfig("vps", path, Agent.AGENT_CLAUDE)
+        assertEquals(PrefsOp.SetSettings(path, "mac", agent = Agent.AGENT_CLAUDE, keepExisting = true), startSettings(null, project, other))
+    }
+
+    @Test
+    fun anotherMachineInProjectSettingsStartsEveryCliOver() {
+        val stored = saved("mac", Agent.AGENT_CLAUDE, set(Agent.AGENT_CODEX, "astra"), set(Agent.AGENT_CLAUDE, "sonnet", mode = ApprovalMode.APPROVAL_MODE_AUTO))
+        val moved = applySettings(stored, PrefsOp.SetSettings(path, "vps", moved = true), 5)
+        val st = state(moved, listOf(session("s", "mac", Agent.AGENT_CLAUDE, "opus", 9)), host("vps", *both))
+        // The empty entries stand for that machine's defaults: no model from the old machine or its sessions.
+        assertEquals(NewConfig("vps", path, Agent.AGENT_CLAUDE), projectConfig(st, path))
+        assertEquals(NewConfig("vps", path, Agent.AGENT_CODEX), projectConfig(st, path, pick = Agent.AGENT_CODEX))
     }
 
     @Test fun summaryUsesTheMachineModelDisplayName() {
@@ -132,15 +269,14 @@ class SwitchTest {
     private val c = NewConfig("mac", "/p", io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, "gpt-6-astra", "medium", io.github.lewin671.remoteagent.core.Mode.AUTO)
 
     @org.junit.Test
-    fun anotherCliDropsTheModelAndKeepsASharedMode() {
-        val s = switchAgent(c, io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
-        org.junit.Assert.assertEquals("", s.model)
-        org.junit.Assert.assertEquals("", s.effort)
-        org.junit.Assert.assertEquals(io.github.lewin671.remoteagent.core.Mode.AUTO, s.mode)
-        org.junit.Assert.assertEquals("mac", s.machineId)
-        // Full access is an explicit project setting and remains selected.
-        val full = switchAgent(c.copy(mode = io.github.lewin671.remoteagent.core.Mode.FULL), io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
-        org.junit.Assert.assertEquals(io.github.lewin671.remoteagent.core.Mode.FULL, full.mode)
+    fun anotherCliTakesTheProjectsSetForIt() {
+        val claude = NewConfig("mac", "/p", Agent.AGENT_CLAUDE, "sonnet", "high", Mode.ASK, standardContext = true)
+        org.junit.Assert.assertEquals(claude, switchAgent(c, claude, Agent.AGENT_CLAUDE))
+        // On a machine picked just for this start the model is that machine's default.
+        val once = c.copy(machineId = "vps")
+        org.junit.Assert.assertEquals(claude.copy(machineId = "vps", model = "", effort = ""), switchAgent(once, claude, Agent.AGENT_CLAUDE))
+        // A project that knows nothing of that CLI: the machine's defaults.
+        org.junit.Assert.assertEquals(NewConfig("mac", "/p", Agent.AGENT_CLAUDE), switchAgent(c, null, Agent.AGENT_CLAUDE))
     }
 
     @org.junit.Test

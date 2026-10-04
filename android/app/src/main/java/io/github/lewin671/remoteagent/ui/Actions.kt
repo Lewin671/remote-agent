@@ -84,6 +84,8 @@ object Drafts {
     class NewSession(initial: NewConfig?) {
         val text = mutableStateOf("")
         val config = DraftConfig(initial)
+        /** The CLI picked next to the message box for this draft, or null to use the one the project remembers. */
+        val agent = mutableStateOf<io.github.lewin671.remoteagent.proto.Agent?>(null)
     }
 
     private val texts = HashMap<String, androidx.compose.runtime.MutableState<String>>()

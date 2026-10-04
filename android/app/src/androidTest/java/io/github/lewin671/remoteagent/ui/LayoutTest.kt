@@ -139,12 +139,11 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
-                    NewSettingsSheet(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY),
-                        NewConfig(machineId, key, model = "a-very-long-model-name", mode = Mode.ASK), "remote-agent", {}, {})
+                    NewSettingsSheet(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY), key, "remote-agent", machineId, Agent.AGENT_CODEX, onDone = {}, onClose = {})
                 }
             }
         }
-        ui.onNodeWithText("CLI").assertIsDisplayed()
+        ui.onNodeWithText("机器").assertIsDisplayed()
         ui.onNodeWithText("审批").performScrollTo().assertIsDisplayed()
     }
     @Test fun wideSettingsKeepAReadableColumnAndACompactThemePicker() {

@@ -7,8 +7,8 @@ package io.github.lewin671.remoteagent.proto;
 
 /**
  * <pre>
- * ProjectSettings are a project's settings for new sessions. Empty fields
- * fall back to the machine's defaults.
+ * ProjectSettings are a project's settings for new sessions: the machine,
+ * the CLI last used, and one set of settings per CLI (architecture §13).
  * </pre>
  *
  * Protobuf type {@code remoteagent.v1.ProjectSettings}
@@ -22,8 +22,7 @@ public  final class ProjectSettings extends
   private ProjectSettings() {
     path_ = "";
     machineId_ = "";
-    model_ = "";
-    effort_ = "";
+    agents_ = emptyProtobufList();
   }
   public static final int PATH_FIELD_NUMBER = 1;
   private java.lang.String path_;
@@ -76,6 +75,11 @@ public  final class ProjectSettings extends
   public static final int AGENT_FIELD_NUMBER = 2;
   private int agent_;
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @return The enum numeric value on the wire for agent.
    */
@@ -84,6 +88,11 @@ public  final class ProjectSettings extends
     return agent_;
   }
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @return The agent.
    */
@@ -93,6 +102,11 @@ public  final class ProjectSettings extends
     return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
   }
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @param value The enum numeric value on the wire for agent to set.
    */
@@ -100,6 +114,11 @@ public  final class ProjectSettings extends
       agent_ = value;
   }
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    * @param value The agent to set.
    */
@@ -108,6 +127,11 @@ public  final class ProjectSettings extends
 
   }
   /**
+   * <pre>
+   * The CLI the latest new session used: the next one starts with it
+   * selected.
+   * </pre>
+   *
    * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
    */
   private void clearAgent() {
@@ -183,164 +207,6 @@ public  final class ProjectSettings extends
 
   }
 
-  public static final int MODEL_FIELD_NUMBER = 4;
-  private java.lang.String model_;
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @return The model.
-   */
-  @java.lang.Override
-  public java.lang.String getModel() {
-    return model_;
-  }
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @return The bytes for model.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getModelBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(model_);
-  }
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @param value The model to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setModel(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    model_ = value;
-  }
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   */
-  private void clearModel() {
-
-    model_ = getDefaultInstance().getModel();
-  }
-  /**
-   * <code>string model = 4 [json_name = "model"];</code>
-   * @param value The bytes for model to set.
-   */
-  private void setModelBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    model_ = value.toStringUtf8();
-
-  }
-
-  public static final int EFFORT_FIELD_NUMBER = 5;
-  private java.lang.String effort_;
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @return The effort.
-   */
-  @java.lang.Override
-  public java.lang.String getEffort() {
-    return effort_;
-  }
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @return The bytes for effort.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getEffortBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(effort_);
-  }
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @param value The effort to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEffort(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    effort_ = value;
-  }
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   */
-  private void clearEffort() {
-
-    effort_ = getDefaultInstance().getEffort();
-  }
-  /**
-   * <code>string effort = 5 [json_name = "effort"];</code>
-   * @param value The bytes for effort to set.
-   */
-  private void setEffortBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    effort_ = value.toStringUtf8();
-
-  }
-
-  public static final int MODE_FIELD_NUMBER = 6;
-  private int mode_;
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @return The enum numeric value on the wire for mode.
-   */
-  @java.lang.Override
-  public int getModeValue() {
-    return mode_;
-  }
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @return The mode.
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.ApprovalMode getMode() {
-    io.github.lewin671.remoteagent.proto.ApprovalMode result = io.github.lewin671.remoteagent.proto.ApprovalMode.forNumber(mode_);
-    return result == null ? io.github.lewin671.remoteagent.proto.ApprovalMode.UNRECOGNIZED : result;
-  }
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @param value The enum numeric value on the wire for mode to set.
-   */
-  private void setModeValue(int value) {
-      mode_ = value;
-  }
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   * @param value The mode to set.
-   */
-  private void setMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
-    mode_ = value.getNumber();
-
-  }
-  /**
-   * <pre>
-   * Never PLAN: a plan is a passing state, not a default.
-   * </pre>
-   *
-   * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-   */
-  private void clearMode() {
-
-    mode_ = 0;
-  }
-
   public static final int UPDATED_MS_FIELD_NUMBER = 7;
   private long updatedMs_;
   /**
@@ -379,45 +245,156 @@ public  final class ProjectSettings extends
     updatedMs_ = 0L;
   }
 
-  public static final int STANDARD_CONTEXT_FIELD_NUMBER = 8;
-  private boolean standardContext_;
+  public static final int AGENTS_FIELD_NUMBER = 9;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.AgentSettings> agents_;
   /**
    * <pre>
-   * Claude Code only: new sessions get the standard context window
-   * instead of 1M.
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
    * </pre>
    *
-   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-   * @return The standardContext.
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
    */
   @java.lang.Override
-  public boolean getStandardContext() {
-    return standardContext_;
+  public java.util.List<io.github.lewin671.remoteagent.proto.AgentSettings> getAgentsList() {
+    return agents_;
   }
   /**
    * <pre>
-   * Claude Code only: new sessions get the standard context window
-   * instead of 1M.
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
    * </pre>
    *
-   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-   * @param value The standardContext to set.
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
    */
-  private void setStandardContext(boolean value) {
-    
-    standardContext_ = value;
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.AgentSettingsOrBuilder> 
+      getAgentsOrBuilderList() {
+    return agents_;
   }
   /**
    * <pre>
-   * Claude Code only: new sessions get the standard context window
-   * instead of 1M.
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
    * </pre>
    *
-   * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
    */
-  private void clearStandardContext() {
+  @java.lang.Override
+  public int getAgentsCount() {
+    return agents_.size();
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AgentSettings getAgents(int index) {
+    return agents_.get(index);
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.AgentSettingsOrBuilder getAgentsOrBuilder(
+      int index) {
+    return agents_.get(index);
+  }
+  private void ensureAgentsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.AgentSettings> tmp = agents_;
+    if (!tmp.isModifiable()) {
+      agents_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
 
-    standardContext_ = false;
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAgents(
+      int index, io.github.lewin671.remoteagent.proto.AgentSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAgentsIsMutable();
+    agents_.set(index, value);
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addAgents(io.github.lewin671.remoteagent.proto.AgentSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAgentsIsMutable();
+    agents_.add(value);
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addAgents(
+      int index, io.github.lewin671.remoteagent.proto.AgentSettings value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAgentsIsMutable();
+    agents_.add(index, value);
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  private void addAllAgents(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.AgentSettings> values) {
+    ensureAgentsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, agents_);
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  private void clearAgents() {
+    agents_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * At most one entry per CLI. A CLI without one starts from the project's
+   * latest session on it, else from the machine's defaults.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+   */
+  private void removeAgents(int index) {
+    ensureAgentsIsMutable();
+    agents_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.ProjectSettings parseFrom(
@@ -505,8 +482,8 @@ public  final class ProjectSettings extends
 
   /**
    * <pre>
-   * ProjectSettings are a project's settings for new sessions. Empty fields
-   * fall back to the machine's defaults.
+   * ProjectSettings are a project's settings for new sessions: the machine,
+   * the CLI last used, and one set of settings per CLI (architecture §13).
    * </pre>
    *
    * Protobuf type {@code remoteagent.v1.ProjectSettings}
@@ -572,6 +549,11 @@ public  final class ProjectSettings extends
     }
 
     /**
+     * <pre>
+     * The CLI the latest new session used: the next one starts with it
+     * selected.
+     * </pre>
+     *
      * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
      * @return The enum numeric value on the wire for agent.
      */
@@ -580,6 +562,11 @@ public  final class ProjectSettings extends
       return instance.getAgentValue();
     }
     /**
+     * <pre>
+     * The CLI the latest new session used: the next one starts with it
+     * selected.
+     * </pre>
+     *
      * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
      * @param value The agent to set.
      * @return This builder for chaining.
@@ -590,6 +577,11 @@ public  final class ProjectSettings extends
       return this;
     }
     /**
+     * <pre>
+     * The CLI the latest new session used: the next one starts with it
+     * selected.
+     * </pre>
+     *
      * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
      * @return The agent.
      */
@@ -598,6 +590,11 @@ public  final class ProjectSettings extends
       return instance.getAgent();
     }
     /**
+     * <pre>
+     * The CLI the latest new session used: the next one starts with it
+     * selected.
+     * </pre>
+     *
      * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
      * @param value The enum numeric value on the wire for agent to set.
      * @return This builder for chaining.
@@ -608,6 +605,11 @@ public  final class ProjectSettings extends
       return this;
     }
     /**
+     * <pre>
+     * The CLI the latest new session used: the next one starts with it
+     * selected.
+     * </pre>
+     *
      * <code>.remoteagent.v1.Agent agent = 2 [json_name = "agent"];</code>
      * @return This builder for chaining.
      */
@@ -687,170 +689,6 @@ public  final class ProjectSettings extends
     }
 
     /**
-     * <code>string model = 4 [json_name = "model"];</code>
-     * @return The model.
-     */
-    @java.lang.Override
-    public java.lang.String getModel() {
-      return instance.getModel();
-    }
-    /**
-     * <code>string model = 4 [json_name = "model"];</code>
-     * @return The bytes for model.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getModelBytes() {
-      return instance.getModelBytes();
-    }
-    /**
-     * <code>string model = 4 [json_name = "model"];</code>
-     * @param value The model to set.
-     * @return This builder for chaining.
-     */
-    public Builder setModel(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setModel(value);
-      return this;
-    }
-    /**
-     * <code>string model = 4 [json_name = "model"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearModel() {
-      copyOnWrite();
-      instance.clearModel();
-      return this;
-    }
-    /**
-     * <code>string model = 4 [json_name = "model"];</code>
-     * @param value The bytes for model to set.
-     * @return This builder for chaining.
-     */
-    public Builder setModelBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setModelBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>string effort = 5 [json_name = "effort"];</code>
-     * @return The effort.
-     */
-    @java.lang.Override
-    public java.lang.String getEffort() {
-      return instance.getEffort();
-    }
-    /**
-     * <code>string effort = 5 [json_name = "effort"];</code>
-     * @return The bytes for effort.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getEffortBytes() {
-      return instance.getEffortBytes();
-    }
-    /**
-     * <code>string effort = 5 [json_name = "effort"];</code>
-     * @param value The effort to set.
-     * @return This builder for chaining.
-     */
-    public Builder setEffort(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setEffort(value);
-      return this;
-    }
-    /**
-     * <code>string effort = 5 [json_name = "effort"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearEffort() {
-      copyOnWrite();
-      instance.clearEffort();
-      return this;
-    }
-    /**
-     * <code>string effort = 5 [json_name = "effort"];</code>
-     * @param value The bytes for effort to set.
-     * @return This builder for chaining.
-     */
-    public Builder setEffortBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setEffortBytes(value);
-      return this;
-    }
-
-    /**
-     * <pre>
-     * Never PLAN: a plan is a passing state, not a default.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-     * @return The enum numeric value on the wire for mode.
-     */
-    @java.lang.Override
-    public int getModeValue() {
-      return instance.getModeValue();
-    }
-    /**
-     * <pre>
-     * Never PLAN: a plan is a passing state, not a default.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-     * @param value The mode to set.
-     * @return This builder for chaining.
-     */
-    public Builder setModeValue(int value) {
-      copyOnWrite();
-      instance.setModeValue(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Never PLAN: a plan is a passing state, not a default.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-     * @return The mode.
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.ApprovalMode getMode() {
-      return instance.getMode();
-    }
-    /**
-     * <pre>
-     * Never PLAN: a plan is a passing state, not a default.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-     * @param value The enum numeric value on the wire for mode to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMode(io.github.lewin671.remoteagent.proto.ApprovalMode value) {
-      copyOnWrite();
-      instance.setMode(value);
-      return this;
-    }
-    /**
-     * <pre>
-     * Never PLAN: a plan is a passing state, not a default.
-     * </pre>
-     *
-     * <code>.remoteagent.v1.ApprovalMode mode = 6 [json_name = "mode"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMode() {
-      copyOnWrite();
-      instance.clearMode();
-      return this;
-    }
-
-    /**
      * <pre>
      * Unix milliseconds of the last change.
      * </pre>
@@ -892,44 +730,163 @@ public  final class ProjectSettings extends
 
     /**
      * <pre>
-     * Claude Code only: new sessions get the standard context window
-     * instead of 1M.
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
      * </pre>
      *
-     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-     * @return The standardContext.
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
      */
     @java.lang.Override
-    public boolean getStandardContext() {
-      return instance.getStandardContext();
+    public java.util.List<io.github.lewin671.remoteagent.proto.AgentSettings> getAgentsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getAgentsList());
     }
     /**
      * <pre>
-     * Claude Code only: new sessions get the standard context window
-     * instead of 1M.
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
      * </pre>
      *
-     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-     * @param value The standardContext to set.
-     * @return This builder for chaining.
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
      */
-    public Builder setStandardContext(boolean value) {
+    @java.lang.Override
+    public int getAgentsCount() {
+      return instance.getAgentsCount();
+    }/**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AgentSettings getAgents(int index) {
+      return instance.getAgents(index);
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder setAgents(
+        int index, io.github.lewin671.remoteagent.proto.AgentSettings value) {
       copyOnWrite();
-      instance.setStandardContext(value);
+      instance.setAgents(index, value);
       return this;
     }
     /**
      * <pre>
-     * Claude Code only: new sessions get the standard context window
-     * instead of 1M.
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
      * </pre>
      *
-     * <code>bool standard_context = 8 [json_name = "standardContext"];</code>
-     * @return This builder for chaining.
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
      */
-    public Builder clearStandardContext() {
+    public Builder setAgents(
+        int index, io.github.lewin671.remoteagent.proto.AgentSettings.Builder builderForValue) {
       copyOnWrite();
-      instance.clearStandardContext();
+      instance.setAgents(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder addAgents(io.github.lewin671.remoteagent.proto.AgentSettings value) {
+      copyOnWrite();
+      instance.addAgents(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder addAgents(
+        int index, io.github.lewin671.remoteagent.proto.AgentSettings value) {
+      copyOnWrite();
+      instance.addAgents(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder addAgents(
+        io.github.lewin671.remoteagent.proto.AgentSettings.Builder builderForValue) {
+      copyOnWrite();
+      instance.addAgents(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder addAgents(
+        int index, io.github.lewin671.remoteagent.proto.AgentSettings.Builder builderForValue) {
+      copyOnWrite();
+      instance.addAgents(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder addAllAgents(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.AgentSettings> values) {
+      copyOnWrite();
+      instance.addAllAgents(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder clearAgents() {
+      copyOnWrite();
+      instance.clearAgents();
+      return this;
+    }
+    /**
+     * <pre>
+     * At most one entry per CLI. A CLI without one starts from the project's
+     * latest session on it, else from the machine's defaults.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.AgentSettings agents = 9 [json_name = "agents"];</code>
+     */
+    public Builder removeAgents(int index) {
+      copyOnWrite();
+      instance.removeAgents(index);
       return this;
     }
 
@@ -952,15 +909,13 @@ public  final class ProjectSettings extends
             "path_",
             "agent_",
             "machineId_",
-            "model_",
-            "effort_",
-            "mode_",
             "updatedMs_",
-            "standardContext_",
+            "agents_",
+            io.github.lewin671.remoteagent.proto.AgentSettings.class,
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0208" +
-              "\u0004\u0208\u0005\u0208\u0006\f\u0007\u0002\b\u0007";
+              "\u0000\u0005\u0000\u0000\u0001\t\u0005\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003" +
+              "\u0208\u0007\u0002\t\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

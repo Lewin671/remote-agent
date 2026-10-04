@@ -6,6 +6,8 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.AccountPrefsObject
+import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.AgentSettings
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
@@ -24,9 +26,43 @@ sealed interface PrefsOp {
     data class Unpin(override val path: String) : PrefsOp
     data class Hide(override val path: String) : PrefsOp
     data class Unhide(override val path: String) : PrefsOp
-    data class SetSettings(val settings: ProjectSettings) : PrefsOp {
-        override val path: String get() = settings.path
+
+    /**
+     * A change to one project's settings (architecture §13). It names only
+     * what changes, so redone on a newer object the rest stays as another
+     * client left it.
+     */
+    data class SetSettings(
+        override val path: String,
+        /** Stored when the project has no settings yet, or with [moved]. */
+        val machineId: String,
+        /** The user chose another machine: every CLI starts over from that machine's defaults. */
+        val moved: Boolean = false,
+        /** The CLI a new session just used, or null to keep the one remembered. */
+        val agent: Agent? = null,
+        /** The CLIs' sets to store, each replacing that CLI's entry. */
+        val sets: List<AgentSettings> = emptyList(),
+        /** A start: [sets] only fill in a CLI that has no entry yet. */
+        val keepExisting: Boolean = false,
+    ) : PrefsOp
+}
+
+/** The CLIs a project keeps a set of settings for. */
+val settingsAgents = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)
+
+/** [op] applied to a project's stored settings, or to none. */
+fun applySettings(stored: ProjectSettings?, op: PrefsOp.SetSettings, now: Long): ProjectSettings {
+    val b = stored?.toBuilder() ?: ProjectSettings.newBuilder().setPath(op.path).setMachineId(op.machineId)
+    val sets = LinkedHashMap<Agent, AgentSettings>()
+    for (s in b.agentsList) sets[s.agent] = s
+    if (op.moved) {
+        b.setMachineId(op.machineId)
+        // Models are per machine: an empty entry means that machine's defaults.
+        for (a in settingsAgents) sets[a] = AgentSettings.newBuilder().setAgent(a).build()
     }
+    if (op.agent != null) b.setAgent(op.agent)
+    for (s in op.sets) if (!op.keepExisting || s.agent !in sets) sets[s.agent] = s
+    return b.clearAgents().addAllAgents(sets.values.sortedBy { it.agentValue }).setUpdatedMs(now).build()
 }
 
 /**
@@ -59,7 +95,7 @@ fun applyPrefsOp(base: ProjectPrefs, op: PrefsOp, opId: String, now: Long): Proj
         .clearHidden().addAllHidden(hidden).clearRecentOps().addAllRecentOps(ops)
         .apply {
             if (op is PrefsOp.SetSettings) {
-                val entries = base.settingsList.filter { it.path != op.path } + op.settings
+                val entries = base.settingsList.filter { it.path != op.path } + applySettings(base.settingsList.firstOrNull { it.path == op.path }, op, now)
                 clearSettings().addAllSettings(entries)
             }
         }.build()
