@@ -296,11 +296,12 @@ class DraftConfig(initial: NewConfig?, settled: Boolean = true) {
 
     /**
      * A new suggestion from the project; taken while nothing is written or
-     * chosen, and over a guess unless the user chose. [settled]: whether
-     * the suggestion is more than a guess itself.
+     * chosen, and always over a guess: a guess is never the user's choice,
+     * even after they chose for another CLI and then switched to this one.
+     * [settled]: whether the suggestion is more than a guess itself.
      */
     fun follow(initial: NewConfig?, drafting: Boolean, settled: Boolean = true) {
-        if (value == null || (!chosen && (!drafting || guess))) {
+        if (value == null || guess || (!chosen && !drafting)) {
             value = initial
             guess = !settled
         }

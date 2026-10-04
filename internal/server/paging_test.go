@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -101,5 +102,34 @@ func TestSessionPaging(t *testing.T) {
 		if h.SessionId == "ended-7" && h.EndedMs != 4000 {
 			t.Fatalf("head of ended-7 has ended_ms %d", h.EndedMs)
 		}
+	}
+}
+
+// A later page seeks to its cursor in the index rather than scanning the
+// pages before it.
+func TestSessionPageSeeks(t *testing.T) {
+	st, err := openStore(filepath.Join(t.TempDir(), "s.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	rows, err := st.db.Query(`EXPLAIN QUERY PLAN SELECT session_id FROM sessions
+		WHERE ended_ms > 0 AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)
+		ORDER BY ended_ms DESC, session_id LIMIT ?`, 5, 5, "x", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var plan string
+	for rows.Next() {
+		var id, parent, unused int
+		var detail string
+		if err := rows.Scan(&id, &parent, &unused, &detail); err != nil {
+			t.Fatal(err)
+		}
+		plan += detail + "\n"
+	}
+	if !strings.Contains(plan, "SEARCH sessions USING") || !strings.Contains(plan, "sessions_ended (ended_ms>? AND ended_ms<?)") || strings.Contains(plan, "TEMP B-TREE") {
+		t.Fatalf("the page query does not seek, or sorts:\n%s", plan)
 	}
 }

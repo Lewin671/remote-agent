@@ -363,10 +363,12 @@ func (s *store) liveSessions(ctx context.Context) ([]*pb.RemoteSession, error) {
 // the latest ended to the earliest, and the cursor for the rest if there
 // are more.
 func (s *store) endedSessions(ctx context.Context, after *pb.SessionCursor, limit int) ([]*pb.RemoteSession, *pb.SessionCursor, error) {
-	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE ended_ms != 0`
+	query := `SELECT ` + sessionColumns + ` FROM sessions WHERE ended_ms > 0`
 	var args []any
 	if after != nil {
-		query += ` AND (ended_ms < ? OR (ended_ms = ? AND session_id > ?))`
+		// The bound on ended_ms alone lets SQLite seek into the index to
+		// the cursor; without it every page scans the ones before it.
+		query += ` AND ended_ms <= ? AND (ended_ms < ? OR session_id > ?)`
 		args = append(args, after.EndedMs, after.EndedMs, after.SessionId)
 	}
 	rows, err := s.db.QueryContext(ctx, query+` ORDER BY ended_ms DESC, session_id LIMIT ?`, append(args, limit+1)...)
