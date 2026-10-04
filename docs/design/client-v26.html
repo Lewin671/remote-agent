@@ -306,19 +306,18 @@
   .plist .pi .chev { color: var(--faint); font-size: 18px; }
   .plist .pi.add { color: var(--blue); font-weight: 600; border: none; }
   .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
-  /* 新会话的设置摘要，按钮样式，点开项目设置；放在 .launch 里，和 CLI 切换同一行 */
+  /* 新会话的设置摘要，按钮样式，点开项目设置；宽屏上放在 .launch 里，和 CLI 切换同一行 */
   .proj-cfg { display:inline-flex; align-items:center; gap:6px; max-width:100%; margin-top:6px; padding:0 10px; font-size:13px; color:var(--fg2); background:var(--chip); border-radius:var(--r-sm); text-decoration:none; min-height:32px; white-space:nowrap; overflow:hidden; }
   .proj-cfg em { font-style:normal; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .proj-cfg .red { color:var(--red); flex:none; }
   .proj-cfg::after { content:"›"; color:var(--faint); font-size:17px; flex:none; }
-  /* 新建输入框旁的一行：左边切 CLI（只有一个时是 .cli-only 文字），右边是所选 CLI 的设置摘要 */
+  /* 新建输入框旁的 CLI 切换，只装了一个 CLI 时不出现；宽屏上右边跟着所选 CLI 的设置摘要 */
   .launch { flex:none; display:flex; align-items:center; gap:8px; min-height:44px; margin:0 10px; min-width:0; }
   .launch .pick { margin-left:0; flex:none; }
   .launch .pick span { white-space:nowrap; }
-  .launch .cli-only { flex:none; font-size:13px; font-weight:600; color:var(--fg); padding:0 6px; }
   .launch a.proj-cfg { flex:0 1 auto; min-width:0; margin:0 0 0 auto; }
-  .start .launch, .wpage .launch { margin:6px 0 0; }
-  .big2x .launch { flex-wrap:wrap; justify-content:flex-end; }
+  .start .launch { margin:6px 0 0; }
+  .wpage .launch { margin:-4px 10px 0; }
   .ps-id { display:flex; gap:12px; align-items:center; margin-bottom:6px; }
   .ps-id small { display:block; font:12px ui-monospace, Menlo, monospace; color:var(--muted); overflow-wrap:anywhere; }
   .sr .v.red, .sr .v.red em { color:var(--red); }
@@ -849,7 +848,7 @@
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v25 的改动</h4><ul><li>新建时直接选 CLI：输入框旁多一行，左边是 Codex / Claude Code 的切换，点一下就换，草稿保留；右边是这个 CLI 的设置摘要，点开是项目设置。手机上这一行在输入框上方，键盘弹出时也在；宽屏在输入框下方（<a href="#new">新建会话</a>）。</li><li>项目记住上次用的 CLI，下次新建默认还是它；两个 CLI 各存一套模型、审批和上下文，来回切换不会丢另一套。</li><li>项目设置去掉「CLI」一行和 CLI 选择弹层，改成机器一行加按 CLI 分的两套设置；项目标题下不再放设置摘要。</li><li>这台机器只装了一个 CLI 时不显示切换，只写名称；上次用的 CLI 在这台机器上没有时用提示条说明（<a href="#cli">Claude Code</a>）。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v25 的改动</h4><ul><li>新建时直接选 CLI：输入框旁多一个 Codex / Claude Code 的切换，点一下就换，草稿保留。手机上在输入框上方，键盘弹出时也在；宽屏在输入框下方，和设置摘要同一行（<a href="#new">新建会话</a>）。</li><li>项目记住上次用的 CLI，下次新建默认还是它；两个 CLI 各存一套模型、审批和上下文，来回切换不会丢另一套。</li><li>项目设置去掉「CLI」一行和 CLI 选择弹层，改成机器一行加按 CLI 分的两套设置；设置摘要的位置和写法不变，写的是选中的那个 CLI。</li><li>这台机器只装了一个 CLI 时不显示切换；上次用的 CLI 在这台机器上没有时用提示条说明（<a href="#cli">Claude Code</a>）。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -924,7 +923,7 @@
       <div class="body">
         <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
           <div class="av lg c1">f</div>
-          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div></div>
+          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div><a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · MacBook · GPT-6-Astra · medium</em></a></div>
         </div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv">请求执行 go test ./... -count=1</div><div class="mc"><span class="stw wait">等待审批</span> · Codex · VPS-dev</div></div></div>
@@ -933,26 +932,26 @@
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · Claude Code · MacBook</div></div></div>
         <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · Codex · MacBook</div></div></div>
       </div>
-      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="draft">描述任务…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
     </div>
-    <div class="cap"><span class="step">1</span>输入框上方一行：左边选这个任务用哪个 CLI，默认是这个项目上次用的；右边是所选 CLI 的设置摘要，点它或导航栏 ⋯ 进入项目设置，放不下就省略。输入框仍只有「＋ 添加图片、描述任务、发送」；字号放大到一行放不下时，摘要换到下一行靠右</div>
+    <div class="cap"><span class="step">1</span>输入框上方是 CLI 切换，默认选中这个项目上次用的；项目标题下一行写选中的 CLI 和它的设置，点它或导航栏 ⋯ 进入项目设置。输入框仍只有「＋ 添加图片、描述任务、发送」</div>
   </div>
 
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back">‹</span><span class="title"><b>foo</b><span>~/Code/foo</span></span><span class="more">⋯</span></div>
+      <div class="navbar"><span class="back">‹</span><span class="title"><b>foo</b><span>Claude Code · 自动 · MacBook</span></span><span class="more">⋯</span></div>
       <div class="body">
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · VPS-dev</div></div></div>
         <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
       </div>
-      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>自动 · MacBook · Sonnet · high · 1M</em></a></div>
+      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 Agent，点一下切换：摘要换成 Claude Code 在这个项目里的那一套，草稿保留。键盘弹出时项目标题收进导航栏，切换行仍贴在输入框上方；空消息不发送</div>
+    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 Agent，点一下切换：设置摘要换成 Claude Code 在这个项目里的那一套，草稿保留。键盘弹出时项目标题和设置摘要收进导航栏，切换仍贴在输入框上方；空消息不发送</div>
   </div>
 
   <div>
@@ -1843,9 +1842,9 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">新建 · 项目默认完全放行 / 模式未知</div>
-    <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><span class="red">完全放行</span><em>· MacBook · GPT-6-Astra</em></a></div>
+    <a class="proj-cfg" href="#project-settings"><em>Codex ·</em> <span class="red">完全放行</span><em>· MacBook · GPT-6-Astra</em></a>
     <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
-    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要里只把「完全放行」标红并排在最前，放不下时省略的是后面的机器和模型，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
+    <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要按钮里只把「完全放行」标红，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
   </div>
   <div class="st">
     <div class="st-h">主页 · 加载中 / 空账户</div>
@@ -2143,7 +2142,7 @@ git status --short gen/</pre>
         <div class="label">会话</div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>首页改版</b><span>9:38</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · MacBook</div></div></div>
       </div>
-      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>自动 · MacBook · Sonnet · high · 1M</em></a></div>
+      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="pct"><b style="width:62%"></b></span><span class="x">✕</span></i></div><div class="att-meta"><span class="orig on"><i></i>原图 · 共 9.8 MB</span><span>2 / 6</span></div><div class="draft typed">按截图把设置页重做一遍</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
     </div>
     <div class="cap">新建会话的第一条消息同样可以带图：图先传到选中的机器，会话建好后和第一句话一起发出。选了原图时写总大小，底部细条是分块上传的进度；两个 CLI 仍会把过大的图缩到 2000px 左右，原图保住的是画质</div>
@@ -2240,7 +2239,7 @@ git status --short gen/</pre>
 </div>
 </div>
 </div>
-<div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>自动 · MacBook · Sonnet · high · 1M</em></a></div>
+<div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
 <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
 </div>
 <div class="cap">混合 CLI 的项目页：输入框仍是一行，上方点一下换 CLI，草稿保留；已经开始的会话不能换 CLI</div>
@@ -2248,16 +2247,15 @@ git status --short gen/</pre>
 <div>
 <div class="phone">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">foo</span></b><span>~/Code/foo</span></span><span class="more">⋯</span></div>
+<div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">foo</span></b><span>Codex · 询问 · VPS-dev</span></span><span class="more">⋯</span></div>
 <div class="body pad">
 <div class="label">进行中</div>
 <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>梳理登录流程</b><span>8:12</span></div><div class="mc">空闲 · Claude Code · MacBook</div></div></div>
 </div>
 <div class="banner" style="margin:0 10px 2px">VPS-dev 没有 Claude Code，这次用 Codex<b>换机器</b></div>
-<div class="launch"><span class="cli-only">Codex</span><a class="proj-cfg" href="#project-settings"><em>询问 · VPS-dev · GPT-6-Astra · medium</em></a></div>
 <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
 </div>
-<div class="cap">只列这台机器装了的 CLI：只有一个时不显示切换，只写名称。上次用的 CLI 在这台机器上没有时，提示条说明这次用哪个，不默默回退，也不改项目记住的选择；「换机器」打开项目设置的机器</div>
+<div class="cap">只列这台机器装了的 CLI：只有一个时不显示切换，和 v25 一样只有输入框，用哪个 CLI 看设置摘要。上次用的 CLI 在这台机器上没有时，提示条说明这次用哪个，不默默回退，也不改项目记住的选择；「换机器」打开项目设置的机器</div>
 </div>
 <div>
 <div class="phone">
@@ -3716,7 +3714,7 @@ git status --short gen/</pre>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏分需要处理、进行中和项目三段，点项目名进项目页、点箭头展开最近结束的；右上的新建图标回到这里。主区域只做一件事：新建任务。标题里的项目名就是项目选择，默认最近用的项目；输入框下一行左边切 CLI，默认是这个项目上次用的，右边是所选 CLI 的设置摘要，点开是项目设置。需要处理只在侧栏，点进会话在停靠区处理</div>
+<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏分需要处理、进行中和项目三段，点项目名进项目页、点箭头展开最近结束的；右上的新建图标回到这里。主区域只做一件事：新建任务。标题里的项目名就是项目选择，默认最近用的项目；输入框下一行左边切 CLI，默认是这个项目上次用的，右边是所选 CLI 的设置摘要（紧挨着切换，不再重复写 CLI 名），点开是项目设置。需要处理只在侧栏，点进会话在停靠区处理</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 并排</span></div>
