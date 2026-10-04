@@ -24,7 +24,7 @@
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 
-当前的 VPS 上已经有 Happy 用 docker compose 跑的 Caddy（占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
+当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
 网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），自定义域名 `remote-agent.top` 由阿里云 DNS 用 CNAME 指过去。用的是经典的 Pages 而不是 Workers 静态资源：Workers 绑定自定义域名要求域名托管在 Cloudflare，Pages 则支持外部 DNS 用 CNAME 接入。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
 

@@ -18,4 +18,4 @@ services:
 networks:
   proxy:
     external: true
-    name: ${PROXY_NETWORK:-happy_default}
+    name: ${PROXY_NETWORK:-proxy}
