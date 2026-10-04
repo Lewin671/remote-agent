@@ -181,6 +181,15 @@ class ProjectTest {
             NewConfig("mac", "/work/app", model = "gpt-6-astra", mode = Mode.ASK), models)
         org.junit.Assert.assertTrue(text, text.endsWith("询问 · GPT-6-Astra"))
     }
+    @Test fun summaryNamesTheMachineOnlyAmongSeveralAndCutsALongName() {
+        fun mv(id: String, host: String) = io.github.lewin671.remoteagent.core.MachineView(id, true, 0, io.github.lewin671.remoteagent.proto.MachineMeta.newBuilder().setHostname(host).build())
+        val one = io.github.lewin671.remoteagent.core.RemoteState(machines = mapOf("a" to mv("a", "MacBook")))
+        assertEquals("", summaryMachine(one, "a"))
+        val two = io.github.lewin671.remoteagent.core.RemoteState(machines = mapOf("a" to mv("a", "workstationM1-Pro-office-2024"), "b" to mv("b", "VPS")))
+        assertEquals("workstationM1-P…", summaryMachine(two, "a"))
+        assertEquals("VPS", summaryMachine(two, "b"))
+    }
+
     @Test
     fun aNewSessionCannotBeStartedInPlan() {
         assertEquals(listOf(Mode.ASK, Mode.AUTO, Mode.FULL), newSessionModes)

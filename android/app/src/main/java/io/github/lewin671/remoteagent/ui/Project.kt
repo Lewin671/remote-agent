@@ -402,8 +402,11 @@ private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Mod
     }
 }
 
-/** The machine as the summary names it: only where there is more than one to mean. */
-private fun summaryMachine(state: RemoteState, id: String): String = if (state.machines.size > 1) machineLabel(state, id) else ""
+/** The machine as the summary names it: only where there is more than one to mean, and cut short when long, so it is the name that gives way and not the model after it. */
+internal fun summaryMachine(state: RemoteState, id: String): String =
+    if (state.machines.size > 1) machineLabel(state, id).let { if (it.length > SUMMARY_MACHINE_MAX) it.take(SUMMARY_MACHINE_MAX - 1) + "…" else it } else ""
+
+private const val SUMMARY_MACHINE_MAX = 16
 
 /** Mode, machine and model; the effort and the context window are in the project's settings. */
 fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse? = null): String {
