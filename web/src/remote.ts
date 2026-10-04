@@ -1496,6 +1496,11 @@ export class Remote {
     return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
   }
 
+  /** The model list last read from a machine's CLI, if any: what a page shows while it reads again. */
+  cachedModels(machineId: string, agent: Agent): ListModelsResponse | undefined {
+    return this.modelLists.get(machineId + "/" + agent);
+  }
+
   /** The models a machine's CLI offers; pickers refresh completed reads. */
   listModels(machineId: string, agent: Agent = Agent.CODEX, fresh = false): Promise<ListModelsResponse> {
     const key = machineId + "/" + agent;
@@ -1520,6 +1525,12 @@ export class Remote {
   imageStorage = new Map<string, ImageStorageUsage>();
 
   private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
+  private settingsRead = new Map<string, DaemonSettings | undefined>();
+
+  /** The daemon settings last read from a machine, if any. */
+  cachedSettings(machineId: string): DaemonSettings | undefined {
+    return this.settingsRead.get(machineId);
+  }
 
   /** A machine's daemon settings, fetched once per page load. */
   settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
@@ -1528,6 +1539,7 @@ export class Remote {
       p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error("意外的回复");
         if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+        this.settingsRead.set(machineId, r.kind.value.settings);
         this.changed();
         return r.kind.value.settings;
       });
@@ -1543,6 +1555,7 @@ export class Remote {
     if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
     this.changed();
     this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
+    this.settingsRead.set(machineId, r.kind.value.settings);
     return r.kind.value.settings;
   }
 

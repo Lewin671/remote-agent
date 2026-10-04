@@ -45,33 +45,38 @@ function defaultsOf(st: DaemonSettings | undefined, agent: Agent): { model: stri
   return { model: st.defaultModel, effort: st.defaultEffort, mode: st.defaultMode };
 }
 
-/** A machine's model list and settings, for showing what defaults mean. */
+/** A machine's model list and settings, for showing what defaults mean.
+ * What was read before shows at once and is read again behind it, so
+ * coming back to a machine or a CLI does not blink through 读取设置…. */
 export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) {
-  const [models, setModels] = useState<ListModelsResponse>();
-  const [settings, setSettings] = useState<DaemonSettings>();
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const key = machineId + "/" + agent;
+  const [got, setGot] = useState<{ key: string; models?: ListModelsResponse; settings?: DaemonSettings; error: string; done: boolean }>();
   const [attempt, setAttempt] = useState(0);
   const online = remote.machines.get(machineId)?.online ?? false;
   useEffect(() => {
     let alive = true;
-    setModels(undefined);
-    setSettings(undefined);
-    setError("");
+    setGot((g) => (g?.key === key ? { ...g, error: "", done: false } : g));
     if (!machineId || !online) return;
-    setLoading(true);
     Promise.allSettled([remote.listModels(machineId, agent, true), remote.settings(machineId)]).then(([m, s]) => {
       if (!alive) return;
-      setLoading(false);
-      if (m.status === "fulfilled") setModels(m.value);
-      else setError(errorText(m.reason));
-      if (s.status === "fulfilled") setSettings(s.value);
+      setGot({
+        key,
+        models: m.status === "fulfilled" ? m.value : undefined,
+        settings: s.status === "fulfilled" ? s.value : undefined,
+        error: m.status === "fulfilled" ? "" : errorText(m.reason),
+        done: true,
+      });
     });
     return () => {
       alive = false;
     };
   }, [remote, machineId, agent, online, attempt]);
-  return { models, settings, error, loading, retry: () => setAttempt((a) => a + 1) };
+  // Another machine's or CLI's answer is never shown for this one.
+  const mine = got?.key === key ? got : undefined;
+  const models = mine?.models ?? remote.cachedModels(machineId, agent);
+  const settings = mine?.settings ?? remote.cachedSettings(machineId);
+  const loading = !!machineId && online && !mine?.done && !models;
+  return { models, settings, error: mine?.error ?? "", loading, retry: () => setAttempt((a) => a + 1) };
 }
 
 /** What the configuration says, part by part: the machine, the CLI, the

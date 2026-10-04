@@ -1191,6 +1191,21 @@ describe("switching a new session's CLI (v2)", () => {
     expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
   });
 
+  it("shows what was read before at once when coming back to a CLI", async () => {
+    const r = demo();
+    mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
+    const text = () => host.querySelector(".launch .project-summary")!.textContent;
+    await vi.waitFor(() => expect(text()).toMatch(/GPT-6-Astra$/));
+    await click(button("Claude Code", host.querySelector(".launch")!));
+    await vi.waitFor(() => expect(text()).not.toMatch(/GPT|读取/));
+    const claude = text();
+    // No 读取设置… and no raw model id on the way back, in either direction.
+    act(() => button("Codex", host.querySelector(".launch")!)!.click());
+    expect(text()).toMatch(/GPT-6-Astra$/);
+    act(() => button("Claude Code", host.querySelector(".launch")!)!.click());
+    expect(text()).toBe(claude);
+  });
+
   it("names the machine in the summary only when there is more than one", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
