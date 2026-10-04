@@ -285,6 +285,7 @@ export class Remote {
   private pageRetryAt = 0; // a page that failed is not asked for again at once
   private loadingAll = false;
   private asking = new Set<string>();
+  private askRetryAt = new Map<string, number>();
   private listRetry = 2000;
   private listTimer?: ReturnType<typeof setTimeout>;
   // First messages of sessions started here, shown until the CLI takes
@@ -711,6 +712,20 @@ export class Remote {
     }
   }
 
+  /** Whether a machine was removed since removals was copied from
+   * removedPushes: an answer asked for before must not bring its
+   * sessions back. */
+  private goneSince(removals: Map<string, number>, machineId: string): boolean {
+    return (this.removedPushes.get(machineId) ?? 0) !== (removals.get(machineId) ?? 0);
+  }
+
+  /** Whether a session held here lies past where the fetched pages end:
+   * kept from before a reconnect, or fetched by its ID. Sessions not
+   * fetched yet may come before it in the listing. */
+  pastPages(s: SessionView): boolean {
+    return !!this.nextSessions && s.endedMs !== 0n && afterCursor(s, this.nextSessions);
+  }
+
   /** Drops a session of a machine that is gone, with its kept events:
    * no listing will say again that it no longer exists. */
   private forget(id: string) {
@@ -794,9 +809,10 @@ export class Remote {
     this.changed();
     this.paging = (async () => {
       try {
+        const rp = new Map(this.removedPushes);
         const res = await this.api.listRemoteSessions({ after, limit: SESSION_PAGE });
         await this.quietly(async () => {
-          for (const s of res.sessions) await this.putSession(s);
+          for (const s of res.sessions) if (!this.goneSince(rp, s.machineId)) await this.putSession(s);
         });
         // A page of a listing that was since started over still holds
         // sessions, but is not where the new listing continues.
@@ -835,14 +851,20 @@ export class Remote {
    * is noted in missing. */
   async ensureSession(id: string) {
     if (!id || this.sessions.has(id) || this.missing.has(id) || this.asking.has(id) || this.conn !== "online") return;
+    // One that failed is not asked for again at once: callers ask on every render.
+    if (Date.now() < (this.askRetryAt.get(id) ?? 0)) return;
     this.asking.add(id);
     try {
+      const rp = new Map(this.removedPushes);
       const res = await this.api.listRemoteSessions({ sessionIds: [id] });
       const rs = res.sessions.find((s) => s.sessionId === id);
-      if (rs) await this.putSession(rs);
+      // A session of a machine removed meanwhile is as good as gone.
+      if (rs && !this.goneSince(rp, rs.machineId)) await this.putSession(rs);
       else this.missing.add(id);
+      this.askRetryAt.delete(id);
     } catch (e) {
       this.report(e);
+      this.askRetryAt.set(id, Date.now() + 5000);
     } finally {
       this.asking.delete(id);
       this.changed();
@@ -1023,7 +1045,7 @@ export class Remote {
     for (const se of stored) {
       if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
       try {
-        const { msg } = await openMessage(
+        const { msg, size } = await openMessage(
           s.key,
           se.envelope,
           { kind: PayloadKind.EVENT, machineId: s.machineId, sessionId: s.id, seq: se.seq },
@@ -1032,7 +1054,8 @@ export class Remote {
         if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
         b.pending.set(se.seq, msg);
-        b.bytes = (b.bytes ?? 0) + se.envelope!.ciphertext.byteLength + 256;
+        // What is held is the opened event: a packed envelope is smaller than it.
+        b.bytes = (b.bytes ?? 0) + size + 256;
         fresh.push({ seq: se.seq, envelope: se.envelope! });
       } catch (e) {
         b.broken = true;

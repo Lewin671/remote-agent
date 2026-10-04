@@ -25,6 +25,7 @@ async function setup() {
   let machines = ["m1"];
   const calls: { after?: SessionCursor; limit?: number; sessionIds?: string[] }[] = [];
   let failNext = false;
+  let onList: (() => void) | undefined; // runs while the next listing is in flight
   const remote = async (id: string): Promise<RemoteSession> => {
     const s = server.get(id)!;
     const info = create(SessionSchema, { id, cwd: "/p", title: id, status: s.endedMs ? SessionStatus.EXITED : SessionStatus.IDLE, endedAt: s.endedMs ? timestampFromMs(s.endedMs) : undefined });
@@ -44,6 +45,8 @@ async function setup() {
     listMachines: async () => ({ machines: machines.map((id) => ({ id, online: true, lastSeenMs: 0n })) }),
     listRemoteSessions: async (req: { after?: SessionCursor; limit?: number; sessionIds?: string[] }) => {
       calls.push(req);
+      onList?.();
+      onList = undefined;
       if (failNext) {
         failNext = false;
         throw new Error("offline");
@@ -61,7 +64,7 @@ async function setup() {
     },
   };
   r.conn = "online";
-  return { r, server, calls, setMachines: (m: string[]) => (machines = m), fail: () => (failNext = true) };
+  return { r, server, calls, setMachines: (m: string[]) => (machines = m), fail: () => (failNext = true), before: (fn: () => void) => (onList = fn) };
 }
 
 const ended = (n: number) => `e${String(n).padStart(3, "0")}`;
@@ -161,4 +164,44 @@ it("knows a project from its machine when none of its sessions are held", () => 
   expect(by["/p"]).toMatchObject({ ended: 40, hasLive: true, machines: ["m2", "m1"] });
   // No machine counts it yet: what is held is the least there can be.
   expect(by["/new"].ended).toBe(1);
+});
+
+it("fetches what comes before a session held past the pages", async () => {
+  const { r, server } = await setup();
+  for (let i = 1; i <= 120; i++) server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
+  await r.refresh();
+  // Fetched by its ID, it lies beyond the first page: sessions not here yet come before it.
+  await r.ensureSession(ended(5));
+  expect(r.pastPages(r.sessions.get(ended(5))!)).toBe(true);
+  expect(r.pastPages(r.sessions.get(ended(100))!)).toBe(false);
+  await r.loadAllSessions();
+  expect(r.pastPages(r.sessions.get(ended(5))!)).toBe(false);
+});
+
+it("does not bring back the sessions of a machine removed while a page was on its way", async () => {
+  const { r, server, before } = await setup();
+  for (let i = 1; i <= 80; i++) server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });
+  await r.refresh();
+  const removed = () => {
+    const x = r as unknown as { removedPushes: Map<string, number>; sessions: Map<string, unknown> };
+    x.removedPushes.set("m1", (x.removedPushes.get("m1") ?? 0) + 1);
+    x.sessions.clear();
+  };
+  before(removed);
+  await r.loadMoreSessions();
+  expect(r.sessions.size).toBe(0);
+  before(removed);
+  await r.ensureSession(ended(1));
+  expect(r.sessions.size).toBe(0);
+});
+
+it("does not ask again at once for a session whose lookup failed", async () => {
+  const { r, server, calls, fail } = await setup();
+  server.set(ended(1), { machineId: "m1", endedMs: 1001 });
+  fail();
+  await r.ensureSession(ended(1));
+  const n = calls.length;
+  await r.ensureSession(ended(1));
+  expect(calls.length).toBe(n);
+  expect(r.missing.has(ended(1))).toBe(false);
 });

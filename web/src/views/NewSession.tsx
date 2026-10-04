@@ -157,7 +157,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
   const first = inherit();
   // Where it starts without a choice made on this page.
-  const baseMachine = saved?.machineId || held?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key)).machineId;
+  // A project none of whose sessions are held starts on a machine that
+  // has it, as its summary says, rather than on any machine.
+  const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
+  const baseMachine = saved?.machineId || held?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key) ?? known).machineId;
   const machineId = local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);

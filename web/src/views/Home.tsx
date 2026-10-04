@@ -208,7 +208,10 @@ function Timeline({ remote, go, scope, selected, wide }: { remote: Remote; go: G
   // Filtering has to see every title, so it fetches all that is left.
   useEffect(() => {
     if (q) void remote.loadAllSessions();
-    else if (shown > everEnded.length && everEnded.length < totalEnded) void remote.loadMoreSessions();
+    // A session shown that lies past the pages fetched (kept from before
+    // a reconnect, or fetched by its ID) may have others before it that
+    // are not here yet.
+    else if ((shown > everEnded.length && everEnded.length < totalEnded) || everEnded.slice(0, shown).some((s) => remote.pastPages(s))) void remote.loadMoreSessions();
   });
   const sel = selected ? remote.sessions.get(selected) : undefined;
   // Keep the open session in view where it would have been.

@@ -278,7 +278,7 @@ export async function openMessage<D extends DescMessage>(
   env: Envelope | undefined,
   want: Place,
   schema: D,
-): Promise<{ header: Header; msg: MessageShape<D> }> {
+): Promise<{ header: Header; msg: MessageShape<D>; size: number }> {
   const { header, plaintext } = await open(key, env);
   expect(header, want);
   let msg: MessageShape<D>;
@@ -287,7 +287,8 @@ export async function openMessage<D extends DescMessage>(
   } catch {
     throw new OpenError("malformed content");
   }
-  return { header, msg };
+  // size is the payload as opened, which a packed envelope's length does not tell.
+  return { header, msg, size: plaintext.length };
 }
 
 export function newRequestID(): string {

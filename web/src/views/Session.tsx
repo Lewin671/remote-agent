@@ -848,16 +848,17 @@ function Row({
     }
     case "sessionForked": {
       const t = eventTime(e);
-      // The source as it is titled now; one this client no longer has is
-      // named as it was, without a way there.
+      // The source as it is titled now, or, while it is not among the
+      // pages of the listing held here, as it was titled at the fork. The
+      // link asks for it by its ID.
       const src = remote.sessions.get(k.value.sourceSessionId);
       return (
         <div className="sep fork">
           <span>
             {t ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} ` : ""}分叉自
-            {src ? (
-              <a className="src" href={"#/s/" + encodeURIComponent(src.id)}>
-                {titleOf(src)}<ChevronRight />
+            {k.value.sourceSessionId ? (
+              <a className="src" href={"#/s/" + encodeURIComponent(k.value.sourceSessionId)}>
+                {src ? titleOf(src) : plain(k.value.sourceTitle) || "另一个会话"}<ChevronRight />
               </a>
             ) : (
               <span className="src">{plain(k.value.sourceTitle) || "另一个会话"}</span>
