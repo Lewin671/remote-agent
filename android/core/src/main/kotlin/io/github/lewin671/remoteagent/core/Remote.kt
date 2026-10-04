@@ -17,6 +17,7 @@ import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.ListMachinesRequest
 import io.github.lewin671.remoteagent.proto.ListModelsResponse
 import io.github.lewin671.remoteagent.proto.ListRemoteSessionsRequest
+import io.github.lewin671.remoteagent.proto.LoginResponse
 import io.github.lewin671.remoteagent.proto.Machine
 import io.github.lewin671.remoteagent.proto.MachineMeta
 import io.github.lewin671.remoteagent.proto.PayloadKind
@@ -60,6 +61,7 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 enum class ConnState { CONNECTING, ONLINE, OFFLINE }
@@ -168,6 +170,12 @@ internal fun umax(a: Long, b: Long): Long = if (ucmp(a, b) >= 0) a else b
 
 const val COMMAND_TTL_MS = 60_000L
 
+/** How often stream connections ping; the server pings at the same pace. */
+private const val STREAM_PING_SECONDS = 20L
+
+/** The WebSocket close code the server refuses a hello with. */
+private const val POLICY_VIOLATION = 1008
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class Remote(
     val account: Account,
@@ -209,6 +217,10 @@ class Remote(
     private val removedPushes = HashMap<String, Int>()
 
     @Volatile private var token = ""
+    @Volatile private var tokenExpires = 0L
+    // The stream pings so that a link that died silently, as when a phone
+    // changes networks, is noticed and replaced. Requests share its pool.
+    private val streamHttp = http.newBuilder().pingInterval(STREAM_PING_SECONDS, TimeUnit.SECONDS).build()
     private var ws: WebSocket? = null
     private var retry = 1000L
     private var running = false
@@ -291,11 +303,11 @@ class Remote(
      */
     private suspend fun signIn(): String = signingIn.withLock {
         try {
-            login(api, account)
+            signedIn(loginResponse(api, account))
         } catch (first: ConnectException) {
             if (first.code != Code.PERMISSION_DENIED) throw first
             try {
-                login(api, account)
+                signedIn(loginResponse(api, account))
             } catch (e: ConnectException) {
                 if (e.code == Code.PERMISSION_DENIED) withContext(dispatcher) {
                     removed = true
@@ -311,6 +323,11 @@ class Remote(
                 throw e
             }
         }
+    }
+
+    private fun signedIn(res: LoginResponse): String {
+        tokenExpires = res.expiresMs
+        return res.token
     }
 
     /** Tries the login again after the server turned this device away. */
@@ -342,7 +359,11 @@ class Remote(
         conn = ConnState.CONNECTING
         publish()
         try {
-            token = signIn()
+            // A token kept from the last connection saves the two login calls
+            // each time the app comes back. One about to expire is not worth a
+            // refused connection; the server refusing it closes the stream,
+            // and the next try logs in.
+            if (token.isEmpty() || tokenExpires < clock() + 86_400_000) token = signIn()
         } catch (e: Exception) {
             if (gen == generation) fail(e)
             return
@@ -353,7 +374,8 @@ class Remote(
         // from history after reconnecting, instead of queueing without end.
         val frames = Channel<ByteArray>(frameQueue)
         val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
-        val socket = http.newWebSocket(
+        val refused = java.util.concurrent.atomic.AtomicBoolean(false)
+        val socket = streamHttp.newWebSocket(
             Request.Builder().url(url).build(),
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -368,6 +390,7 @@ class Remote(
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    if (code == POLICY_VIOLATION) refused.set(true)
                     webSocket.close(1000, null)
                     frames.close()
                 }
@@ -396,6 +419,9 @@ class Remote(
             frames.cancel()
             if (ws === socket) {
                 ws = null
+                // The server refused the hello: the token is why. A stream the
+                // network dropped says nothing about it, and keeps the login.
+                if (refused.get()) token = ""
                 fail(Exception("与 server 的连接断开"))
             }
         }
@@ -1123,7 +1149,7 @@ class Remote(
         }
         var last = 0L
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
-        val ws = http.newWebSocket(
+        val ws = streamHttp.newWebSocket(
             Request.Builder().url(url).build(),
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {

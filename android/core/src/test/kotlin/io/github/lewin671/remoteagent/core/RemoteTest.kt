@@ -305,6 +305,26 @@ class RemoteTest {
     }
 
     @Test
+    fun comingBackReusesTheLogin() = runBlocking<Unit> {
+        val logins = java.util.concurrent.atomic.AtomicInteger()
+        val counting = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/Login")) logins.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(joinWithRoot(root, server.url, http), counting)
+        closers += AutoCloseable { r.close() }
+        r.start()
+        r.awaitState("online") { it.conn == ConnState.ONLINE }
+        assertEquals(1, logins.get())
+        // The app went to the background and came back: no second login.
+        r.stop()
+        r.awaitState("offline") { it.conn == ConnState.OFFLINE }
+        r.start()
+        r.awaitState("online again") { it.conn == ConnState.ONLINE }
+        assertEquals(1, logins.get())
+    }
+
+    @Test
     fun reconnectsWithoutLosingOrRepeatingEvents() = runBlocking<Unit> {
         val cache = MemoryCache()
         val r = client(cache)

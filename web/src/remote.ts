@@ -237,6 +237,9 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
   return stored;
 }
 
+/** How long the stream may take from dialing to the server's ready. */
+const OPEN_TIMEOUT_MS = 15_000;
+
 export class Remote {
   /** Development fixture hooks; the real client never enables these. */
   demoFlag(_name: string): boolean { return false; }
@@ -360,6 +363,7 @@ export class Remote {
   private closed = false;
   private generation = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
+  private openTimer?: ReturnType<typeof setTimeout>;
   private terminals = new Set<WebSocket>();
   private listeners = new Set<() => void>();
   private version = 0;
@@ -464,6 +468,7 @@ export class Remote {
     this.generation++;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
+    clearTimeout(this.openTimer);
     this.ws?.close();
     this.ws = undefined;
     for (const terminal of this.terminals) terminal.close();
@@ -471,6 +476,16 @@ export class Remote {
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
     this.changed();
+  }
+
+  /** Connects now instead of waiting out the backoff, e.g. when the
+   * network came back. */
+  reconnectNow() {
+    if (this.closed || this.removed || this.ws || this.retryTimer === undefined) return;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
+    this.retry = 1000;
+    void this.connect();
   }
 
   /** One login at a time: the server keeps few challenges per device, and
@@ -511,6 +526,7 @@ export class Remote {
 
   private async connect() {
     if (this.closed) return;
+    this.retryTimer = undefined;
     const generation = ++this.generation;
     this.conn = "connecting";
     this.changed();
@@ -532,6 +548,12 @@ export class Remote {
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
     this.ws = ws;
+    // A browser gives up on a handshake whose packets are lost only after
+    // minutes; the next attempt usually gets through much sooner.
+    clearTimeout(this.openTimer);
+    this.openTimer = setTimeout(() => {
+      if (this.ws === ws && this.conn !== "online") ws.close();
+    }, OPEN_TIMEOUT_MS);
     ws.onopen = () => {
       const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
       ws.send(toBinary(PeerFrameSchema, hello));
@@ -564,11 +586,13 @@ export class Remote {
       }).catch((e) => { this.report(e); ws.close(); })
         .finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
     };
-    ws.onclose = () => {
+    ws.onclose = (e) => {
       if (this.ws !== ws) return;
       this.ws = undefined;
-      // Closed before it was ever ready: the token may be why.
-      if (this.conn !== "online") this.token = "";
+      clearTimeout(this.openTimer);
+      // The server refused the hello: the token is why. A handshake the
+      // network dropped says nothing about it, and keeps the login.
+      if (e?.code === 1008) this.token = "";
       this.fail(new Error("与 server 的连接断开"));
     };
   }
@@ -591,6 +615,7 @@ export class Remote {
     if (this.closed || generation !== this.generation) return;
     switch (kind.case) {
       case "ready":
+        clearTimeout(this.openTimer);
         this.retry = 1000;
         this.conn = "online";
         this.lostAt = undefined;

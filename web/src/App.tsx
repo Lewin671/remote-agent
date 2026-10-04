@@ -39,7 +39,12 @@ export function App() {
   useEffect(() => {
     if (!remote || !visible) return;
     remote.start();
-    return () => remote.stop();
+    const online = () => remote.reconnectNow();
+    addEventListener("online", online);
+    return () => {
+      removeEventListener("online", online);
+      remote.stop();
+    };
   }, [remote, visible]);
   if (remote === undefined) return <div className="center muted">加载中…</div>;
   if (remote === null) return <Suspense fallback={loading}><Setup onDone={() => void load()} /></Suspense>;

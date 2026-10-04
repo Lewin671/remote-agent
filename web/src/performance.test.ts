@@ -8,13 +8,15 @@ class Socket {
   static OPEN = 1;
   readyState = 0;
   onopen?: () => void;
-  onclose?: () => void;
+  onclose?: (e?: { code: number }) => void;
   onerror?: () => void;
   onmessage?: (m: { data: ArrayBuffer }) => void;
   send = vi.fn();
   constructor(readonly url: string) { Socket.all.push(this); }
   open() { this.readyState = 1; this.onopen?.(); }
   close() { this.readyState = 3; queueMicrotask(() => this.onclose?.()); }
+  /** The server closes the stream with a status, as when it refuses the hello. */
+  closedBy(code: number) { this.readyState = 3; this.onclose?.({ code }); }
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); Socket.all = []; });
 async function probe() {
@@ -280,9 +282,14 @@ it("starts from what the browser kept: the token, and the last listing", async (
   expect(r.machines.get("m")?.online).toBe(true);
   expect(r.listed).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
-  // The server turning the token away is followed by a login.
+  // A handshake the network dropped keeps the token.
   Socket.all[0].close();
-  await vi.waitFor(() => expect(r.authHeader()).toBe("Bearer "));
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(2), { timeout: 3000 });
+  expect(r.authHeader()).toBe("Bearer kept-token");
+  expect(login).not.toHaveBeenCalled();
+  // The server turning the token away is followed by a login.
+  Socket.all[1].closedBy(1008);
+  expect(r.authHeader()).toBe("Bearer ");
   r.stop();
   // Another account's leftovers are not used.
   const other = await probe();

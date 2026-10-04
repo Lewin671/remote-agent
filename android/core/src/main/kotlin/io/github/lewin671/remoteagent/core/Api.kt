@@ -16,6 +16,7 @@ import io.github.lewin671.remoteagent.proto.DeviceKind
 import io.github.lewin671.remoteagent.proto.DeviceRegistration
 import io.github.lewin671.remoteagent.proto.GetChallengeRequest
 import io.github.lewin671.remoteagent.proto.LoginRequest
+import io.github.lewin671.remoteagent.proto.LoginResponse
 import io.github.lewin671.remoteagent.proto.PairingServiceClient
 import io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
 import okhttp3.OkHttpClient
@@ -103,7 +104,10 @@ suspend fun joinWithRoot(
 }
 
 /** Logs in with the device key and returns a bearer token. */
-suspend fun login(api: Api, account: Account): String {
+suspend fun login(api: Api, account: Account): String = loginResponse(api, account).token
+
+/** Logs in with the device key and returns the token with its expiry. */
+suspend fun loginResponse(api: Api, account: Account): LoginResponse {
     val ch = api.auth.getChallenge(GetChallengeRequest.newBuilder().setDeviceId(account.deviceId).build(), emptyMap()).value()
     val sig = SigningKey(account.deviceSeed).sign(loginMessage(ch.challenge.toByteArray()))
     return api.auth.login(
@@ -113,7 +117,7 @@ suspend fun login(api: Api, account: Account): String {
             .setSignature(ByteString.copyFrom(sig))
             .build(),
         emptyMap(),
-    ).value().token
+    ).value()
 }
 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
