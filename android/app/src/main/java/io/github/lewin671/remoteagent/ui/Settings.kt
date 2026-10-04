@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -45,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -113,10 +112,10 @@ private fun ToggleRow(title: String, sub: String, value: Boolean, onChange: (Boo
     }
 }
 
-/** A small colored square with a sign, in front of a machine's row. */
+/** A small colored square with an icon, in front of a machine's row. */
 @Composable
-private fun Ico(text: String, bg: Color) {
-    Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(bg), contentAlignment = Alignment.Center) { Text(text, style = T.sm, color = Color.White) }
+private fun Ico(icon: ImageVector, bg: Color) {
+    Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(bg), contentAlignment = Alignment.Center) { Ic(icon, 16.dp, Color.White) }
 }
 
 /** 设置 (client-v7): computers, clients, notifications, this phone's storage, appearance and the account, on a grey page. */
@@ -151,7 +150,7 @@ fun SettingsScreen() {
         GLabel("电脑", "全部设备", onAction = { nav.devices() })
         Group(rows = state.machines.values.sortedBy { machineLabel(state, it.id) }.map { m -> @Composable {
             Row(Modifier.fillMaxWidth().clickable { nav.device(m.id) }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Ico("⌘", p.blueBg)
+                Ico(Lucide.Laptop, p.blueBg)
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(machineLabel(state, m.id), style = T.body, color = p.fg)
@@ -165,14 +164,14 @@ fun SettingsScreen() {
                 }
                 Arrow(p.muted, T.body)
             }
-        } } + listOf(@Composable { GRow("＋ 添加设备", onClick = { nav.pair() }, action = true) }))
+        } } + listOf(@Composable { GRow("添加设备", onClick = { nav.pair() }, action = true, icon = Lucide.Plus) }))
         GLabel("客户端")
         val me = remote.account.deviceId
         val others = state.devices.values.filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != me }.sortedBy { it.createdMs }.take(3)
         Group(rows = listOf<@Composable () -> Unit>(
             { GRow(io.github.lewin671.remoteagent.core.clientName(state.devices[me], me), "当前", onClick = { nav.client(me) }) },
-        ) + others.map { c -> @Composable { GRow(io.github.lewin671.remoteagent.core.clientName(c, c.id), "已配对 ›", onClick = { nav.client(c.id) }) } } + listOf(
-            @Composable { GRow("全部客户端 ›", onClick = { nav.devices() }, action = true) },
+        ) + others.map { c -> @Composable { GRow(io.github.lewin671.remoteagent.core.clientName(c, c.id), "已配对", onClick = { nav.client(c.id) }, chevron = true) } } + listOf(
+            @Composable { GRow("全部客户端", onClick = { nav.devices() }, action = true, chevron = true) },
         ))
         GLabel("本客户端的通知")
         Group(rows = listOf(
@@ -295,7 +294,7 @@ fun DeviceScreen(id: String) {
             val groups = io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())
             // A line for each CLI's quota, leading to all of it.
             GLabel("账户额度")
-            Group(rows = groups.map { g -> @Composable { GRow(g.title.substringBefore(" · "), io.github.lewin671.remoteagent.core.quotaLine(g) + " ›", onClick = { nav.quota(id) }) } })
+            Group(rows = groups.map { g -> @Composable { GRow(g.title.substringBefore(" · "), io.github.lewin671.remoteagent.core.quotaLine(g), onClick = { nav.quota(id) }, chevron = true) } })
             if (meta != null) {
                 val agents = meta.agentsList.ifEmpty {
                     listOf(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setVersion(meta.codexVersion).setVerified(meta.codexVerified).build())
@@ -323,16 +322,16 @@ fun DeviceScreen(id: String) {
                     // What a session started without a mode really gets, as the machine reads it.
                     val eff = defaultModeOf(m, agent)
                     val cur = modeOf(d.mode)
-                    val timeoutRow: @Composable () -> Unit = { GRow("审批超时", "${s.approvalTimeoutSeconds / 60} 分钟 ›", onClick = if (save.running) null else ({ pickTimeout = true })) }
+                    val timeoutRow: @Composable () -> Unit = { GRow("审批超时", "${s.approvalTimeoutSeconds / 60} 分钟", onClick = if (save.running) null else ({ pickTimeout = true }), chevron = true) }
                     GLabel("${agentName(agent)} · 新项目默认设置")
                     Group(rows = listOfNotNull<@Composable () -> Unit>(
-                        @Composable { GRow("模型", d.model.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
-                        @Composable { GRow("推理强度", d.effort.ifEmpty { "默认" } + " ›", onClick = if (save.running) null else ({ pickModel = agent })) },
+                        @Composable { GRow("模型", d.model.ifEmpty { "默认" }, onClick = if (save.running) null else ({ pickModel = agent }), chevron = true) },
+                        @Composable { GRow("推理强度", d.effort.ifEmpty { "默认" }, onClick = if (save.running) null else ({ pickModel = agent }), chevron = true) },
                         @Composable {
                             // One line: that project settings may differ is said in the picker.
                             GRow(
-                                "审批模式", (cur?.text ?: modeLabel(null, eff.copy(varies = false), agent)) + " ›", onClick = if (save.running) null else ({ pickMode = agent }),
-                                valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
+                                "审批模式", cur?.text ?: modeLabel(null, eff.copy(varies = false), agent), onClick = if (save.running) null else ({ pickMode = agent }),
+                                valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null, chevron = true,
                             )
                         },
                         timeoutRow.takeIf { agent == Agent.AGENT_CODEX || machineAgents(m).size == 1 },
@@ -574,7 +573,7 @@ fun PairScreen() {
                     }
                     Text(i.code.chunked(4).joinToString(" "), style = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = 4.sp), color = p.fg)
                     Text("在新设备上扫码，或输入这 8 位配对码。5 分钟内有效。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
-                    Text("◌ 等待新设备…", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 10.dp))
+                    IconText(Lucide.LoaderCircle, "等待新设备…", p.muted, T.sm, Modifier.padding(top = 10.dp))
                 }
                 "emoji", "sending" -> Column(Modifier.padding(top = 14.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(Modifier.fillMaxWidth()) {
@@ -600,7 +599,7 @@ fun PairScreen() {
                     }
                 }
                 "done" -> {
-                    Banner("✓ 新设备已加入", Modifier.padding(top = 14.dp), action = "完成", onAction = nav.back)
+                    Banner("新设备已加入", Modifier.padding(top = 14.dp), action = "完成", onAction = nav.back, lead = { Mark(Lucide.Check, p.fg2, iconSize(T.sm)) })
                 }
                 else -> Banner(error, Modifier.padding(top = 14.dp), Tone2.ERROR, action = "换一个", onAction = { attempt++ })
             }
@@ -624,7 +623,7 @@ private fun MachineImageStorage(settings: DaemonSettings, usage: ImageStorageUsa
     GLabel("图片存储")
     Group(rows = listOf(
         { GRow("上传的图片", usage?.let { imageBytes(it.uploadBytes) + if (parts.isNotEmpty()) " · $parts" else "" } ?: "读取中…") },
-        { GRow("空间上限", mib(settings.imageUploadQuotaBytes) + " ›", onClick = if (enabled) ({ limit = true }) else null) },
+        { GRow("空间上限", mib(settings.imageUploadQuotaBytes), onClick = if (enabled) ({ limit = true }) else null, chevron = true) },
         { GRow("预览缓存", usage?.let { imageBytes(it.cacheBytes) } ?: "—") },
         { GRow("清理…", usage?.let { if (free > 0) "可释放 ${imageBytes(free)}" else "没有可清理的" }.orEmpty(), onClick = if (enabled && free > 0) ({ clean = true }) else null, action = true, enabled = enabled && free > 0) },
     ))
@@ -647,6 +646,11 @@ private val bundledFonts = listOf(
     Triple("Sarasa Fixed SC（符号子集）", "终端里的符号", io.github.lewin671.remoteagent.R.raw.ofl_sarasa_gothic),
 )
 
+/** The icons, drawn from Lucide's paths, with its ISC text from res/raw. */
+private val bundledIcons = listOf(
+    Triple("Lucide", "界面中的图标", io.github.lewin671.remoteagent.R.raw.isc_lucide),
+)
+
 @Composable
 fun LicensesPage(onBack: () -> Unit) {
     val p = pal
@@ -656,11 +660,14 @@ fun LicensesPage(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(p.soft)) {
         NavBar("开源许可", onBack)
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            GLabel("字体 · SIL Open Font License 1.1")
-            Group(rows = bundledFonts.mapIndexed { i, (name, use, _) -> @Composable { GRow(name, use, onClick = { open = if (open == i) null else i }) } })
-            open?.let { i ->
-                val text = remember(i) { res.openRawResource(bundledFonts[i].third).bufferedReader().use { it.readText() } }
-                Text(text, style = T.meta, color = p.fg2, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            for ((label, items) in listOf("字体 · SIL Open Font License 1.1" to bundledFonts, "图标 · ISC License" to bundledIcons)) {
+                GLabel(label)
+                Group(rows = items.map { (name, use, id) -> @Composable { GRow(name, use, onClick = { open = if (open == id) null else id }) } })
+                // The text opens under the group its row is in.
+                open?.takeIf { id -> items.any { it.third == id } }?.let { id ->
+                    val text = remember(id) { res.openRawResource(id).bufferedReader().use { it.readText() } }
+                    Text(text, style = T.meta, color = p.fg2, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
             }
             Spacer(Modifier.height(24.dp))
         }

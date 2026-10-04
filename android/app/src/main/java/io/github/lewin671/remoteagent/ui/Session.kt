@@ -25,9 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -155,7 +152,7 @@ fun SessionScreen(sid: String) {
 }
 
 /**
- * ‹, the title, the status and mode, and ⋯: the session's mode, model and context (an orange dot when it is high), 重命名, 分叉会话, 中断本轮 and 结束会话….
+ * Back, the title, the status and mode, and more: the session's mode, model and context (an orange dot when it is high), 重命名, 分叉会话, 中断本轮 and 结束会话….
  * [sent]: a message was sent in the session, which a fork needs.
  */
 @Composable
@@ -366,7 +363,7 @@ private fun ChatPane(
                         .clip(RoundedCornerShape(16.dp)).background(p.card)
                         .clickable { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } }.padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text("↓ $fresh 条新消息", style = T.smB, color = p.blue) }
+                ) { IconText(Lucide.ArrowDown, "$fresh 条新消息", p.blue, T.smB) }
             }
         }
         Bottom(state, s, status, d, onTerminal, onDetail = { aid -> nav.approval(s.id, aid) }, onPlan = { nav.plan(s.id) })
@@ -417,6 +414,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
     val failed = input == InputStatus.INPUT_STATUS_FAILED || input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL ||
         (input == null && o.state != Outgoing.State.SENDING && o.state != Outgoing.State.SENT)
     val links = mutableListOf<Pair<String, () -> Unit>>()
+    var sending = false
     val (caption, color) = when {
         // Nothing was submitted and the terminal is as it was.
         input == InputStatus.INPUT_STATUS_FAILED -> {
@@ -434,7 +432,10 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
             links += "移除此提示" to { Outbox.remove(sid, o); o.images.forEach { it.release() } }
             "已送到终端，但没能确认 ${agentName(agent)} 收到，不会自动重发" to p.orangeInk
         }
-        o.state == Outgoing.State.SENDING -> "◌ 发送中…" to p.muted
+        o.state == Outgoing.State.SENDING -> {
+            sending = true
+            "发送中…" to p.muted
+        }
         o.state == Outgoing.State.SENT -> "已送达电脑" to p.muted
         else -> {
             links += "重试" to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
@@ -448,7 +449,7 @@ private fun OutgoingView(sid: String, o: Outgoing, input: InputStatus?, failure:
                 androidx.compose.foundation.Image(it, null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
             }
         }
-        MeBubble(o.text.ifEmpty { null }, caption = caption, captionColor = color, failed = failed, links = links, padded = false)
+        MeBubble(o.text.ifEmpty { null }, caption = caption, captionColor = color, captionIcon = if (sending) Lucide.LoaderCircle else null, failed = failed, links = links, padded = false)
     }
 }
 
@@ -524,8 +525,8 @@ private fun EndCard(title: String, text: String, dot: androidx.compose.ui.graphi
 }
 
 /**
- * The message box: ＋ adds images, the text from one line up to about six,
- * and ↑. The mode, the model and the context are in the ⋯ menu of the
+ * The message box: the plus adds images, the text from one line up to about
+ * six, and send. The mode, the model and the context are in the more menu of the
  * navigation bar. Without the server connection the draft stays and sending
  * waits.
  */

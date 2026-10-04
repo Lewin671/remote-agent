@@ -171,7 +171,7 @@ fun HomeScreen() {
             item { Label("进行中", tl.running.size) }
             val shown = if (showRunning || filtering) tl.running else tl.running.take(RUNNING_MAX)
             items(shown, key = { "r" + it.id }) { s -> SessionRow(state, s, t, tl.meta, last = s == shown.last()) }
-            if (shown.size < tl.running.size) item { TextAction("还有 ${tl.running.size - shown.size} 个进行中 ›", { showRunning = true }, Modifier.padding(horizontal = 16.dp)) }
+            if (shown.size < tl.running.size) item { TextAction("还有 ${tl.running.size - shown.size} 个进行中", { showRunning = true }, Modifier.padding(horizontal = 16.dp), arrow = true) }
         }
         val ended = tl.ended.take(shownEnded)
         for ((group, list) in groupEnded(ended, t)) {
@@ -193,7 +193,7 @@ fun HomeScreen() {
 
 /**
  * The home page's title is its scope (client-v27): the project's avatar and
- * name, or 全 on grey and 全部项目, 22 with a › pointing down; a tap opens
+ * name, or 全 on grey and 全部项目, 22 with an arrow down; a tap opens
  * 看哪个项目. Without any project ([scope] null) it is a plain 会话 that
  * does nothing. The new-session button stays at the right.
  */
@@ -239,7 +239,7 @@ private fun ScopeAvatar(scope: HomeScope, size: Int) {
 /**
  * 看哪个项目 (client-v27): 全部项目 when there is more than one project,
  * the pinned ones, then the others, each with its path and what runs there,
- * ✓ on the current scope; a search above more than eight. 新项目… picks a
+ * a check on the current scope; a search above more than eight. 新项目… picks a
  * machine and a folder in the same sheet; 管理项目 goes to 项目管理.
  */
 @Composable
@@ -268,18 +268,18 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, t: Long, onPick: (H
                     Text(row.detail, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Box(Modifier.size(16.dp).semantics { if (row.current) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
-                    if (row.current) Mark("✓", p.blue, 16.dp, 1.8.dp)
+                    if (row.current) Mark(Lucide.Check, p.blue, 16.dp)
                 }
             }
         }
         TextAction("新项目…", { browsing = true }, Modifier.fillMaxWidth(), style = T.body)
-        TextAction("管理项目 ›", { onClose(); nav.manageProjects() }, Modifier.fillMaxWidth(), style = T.body)
+        TextAction("管理项目", { onClose(); nav.manageProjects() }, Modifier.fillMaxWidth(), style = T.body, arrow = true)
     }
 }
 
 /**
  * The title filter (client-v27, design-system §6 筛选框): a pill on chip
- * grey with ⌕, 按标题筛选 until something is typed, then ✕ to clear.
+ * grey with a search icon, 按标题筛选 until something is typed, then an x to clear.
  */
 @Composable
 private fun FilterBox(value: String, onChange: (String) -> Unit) {
@@ -293,7 +293,7 @@ private fun FilterBox(value: String, onChange: (String) -> Unit) {
                     Modifier.fillMaxWidth().heightIn(min = 36.dp).clip(RoundedCornerShape(18.dp)).background(p.chip).padding(start = 14.dp, end = if (value.isEmpty()) 14.dp else 44.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text("⌕", style = T.body, color = p.muted)
+                    Ic(Lucide.Search, iconSize(T.body), p.muted)
                     Box(Modifier.weight(1f)) {
                         if (value.isEmpty()) Text("按标题筛选", style = T.body, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         inner()
@@ -302,7 +302,7 @@ private fun FilterBox(value: String, onChange: (String) -> Unit) {
             },
         )
         if (value.isNotEmpty()) Box(Modifier.align(Alignment.CenterEnd).size(44.dp).tap { onChange("") }.semantics { contentDescription = "清空筛选" }, contentAlignment = Alignment.Center) {
-            Text("✕", style = T.meta, color = p.faint)
+            Ic(Lucide.X, 16.dp, p.faint)
         }
     }
 }

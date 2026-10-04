@@ -8,8 +8,8 @@ import org.junit.Test
 class KeysTest {
     @Test
     fun arrowsFollowTheCursorKeyMode() {
-        val left = keyRows[0].first { it.label == "←" }
-        val right = keyRows[0].first { it.label == "→" }
+        val left = keyRows[0].first { it.label == "左" }
+        val right = keyRows[0].first { it.label == "右" }
         assertEquals("\u001b[D", keySequence(left, appCursor = false))
         assertEquals("\u001bOD", keySequence(left, appCursor = true))
         assertEquals("\u001b[C", keySequence(right, appCursor = false))
@@ -17,7 +17,7 @@ class KeysTest {
 
     @Test
     fun theFirstRowHasEscArrowsAndEnter() {
-        assertEquals(listOf("Esc", "←", "↑", "↓", "→", "↵"), keyRows[0].map { it.label })
+        assertEquals(listOf("Esc", "左", "上", "下", "右", "回车"), keyRows[0].map { it.label })
         assertEquals(listOf("Tab", "Ctrl+C"), keyRows[1].map { it.label })
     }
 

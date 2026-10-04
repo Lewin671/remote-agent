@@ -2,7 +2,6 @@ package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.animation.core.animateFloat
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,9 +31,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.materialIcon
-import androidx.compose.material.icons.materialPath
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
@@ -52,11 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -99,19 +91,29 @@ fun Dot(color: Color, size: Int = 8) {
     Box(Modifier.size(size.dp).clip(CircleShape).background(color))
 }
 
-/** An arrow: › goes to another page; [down] / [up] open and close in place (design-system §5). */
+/** An arrow as tall as text in [style]: to the right it goes to another page; [down] / [up] open and close in place (design-system §5). */
 @Composable
 fun Arrow(color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
-    Text("›", style = style, color = color, modifier = if (down) Modifier.rotate(90f) else if (up) Modifier.rotate(-90f) else Modifier)
+    Ic(if (down) Lucide.ChevronDown else if (up) Lucide.ChevronUp else Lucide.ChevronRight, iconSize(style), color)
 }
 
-/** Text with a trailing arrow, as "处理 ⌄" or "管理 ›". */
+/** Text with a trailing arrow, as 处理 with one down or 管理 with one to the right. */
 @Composable
 fun ArrowText(text: String, color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(text, style = style, color = color, maxLines = 1)
         Spacer(Modifier.width(4.dp))
         Arrow(color, style, down, up)
+    }
+}
+
+/** Text after an icon of its height, as the plus of 添加设备 or the turning circle of 正在连接…. */
+@Composable
+fun IconText(icon: ImageVector, text: String, color: Color, style: TextStyle = T.sm, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Mark(icon, color, iconSize(style))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = style, color = color)
     }
 }
 
@@ -133,7 +135,7 @@ fun Avatar(key: String, size: Int = 40) {
 }
 
 /**
- * The navigation bar: ‹ and ⋯ in 44 dp, the title centered with the CLI
+ * The navigation bar: back and more in 44 dp, the title centered with the CLI
  * beside it, and a second line for the status, project and machine.
  */
 @Composable
@@ -154,7 +156,7 @@ fun NavBar(
     val link = if (dark) TermColors.link else p.blue
     Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).then(if (onBack != null) Modifier.tap { onBack() } else Modifier), contentAlignment = Alignment.Center) {
-            if (onBack != null) Text("‹", color = link, style = ts(26.sp, lineHeight = 1f))
+            if (onBack != null) Ic(Lucide.ChevronLeft, 22.dp, link, contentDescription = "返回")
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -172,7 +174,7 @@ fun NavBar(
         }
         Box(Modifier.size(44.dp).then(if (more != null) Modifier.tap { more() } else Modifier), contentAlignment = Alignment.Center) {
             if (right != null) right()
-            else if (more != null) Text("⋯", color = link, style = ts(20.sp, lineHeight = 1f))
+            else if (more != null) Ic(Lucide.Ellipsis, 22.dp, link, contentDescription = "更多")
             if (moreDot) Box(Modifier.align(Alignment.TopEnd).offset((-6).dp, 8.dp).size(5.dp).clip(CircleShape).background(p.orange))
         }
     }
@@ -203,14 +205,7 @@ fun NewSessionButton(onClick: () -> Unit, label: String = "新会话") {
         Modifier.size(44.dp).tap { onClick() }.semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
-            val stroke = 2.dp.toPx()
-            drawRoundRect(p.blue, topLeft = androidx.compose.ui.geometry.Offset(stroke, stroke),
-                size = androidx.compose.ui.geometry.Size(size.width - 6.dp.toPx(), size.height - 5.dp.toPx()),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-            drawLine(p.blue, androidx.compose.ui.geometry.Offset(size.width * .55f, size.height * .65f),
-                androidx.compose.ui.geometry.Offset(size.width * .96f, size.height * .16f), strokeWidth = 3.dp.toPx())
-        }
+        Ic(Lucide.SquarePen, 22.dp, p.blue)
     }
 }
 
@@ -263,7 +258,10 @@ fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enable
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
             ) {
                 Text(title, style = if (on) T.smB else T.sm, color = if (dark) (if (on) TermColors.fg else TermColors.dim) else if (on) p.fg else p.muted)
-                if (i == dot) Text("●", style = ts(13.sp, FontWeight.Bold), color = p.orange, modifier = Modifier.padding(start = 3.dp))
+                if (i == dot) {
+                    Spacer(Modifier.width(3.dp))
+                    Dot(p.orange)
+                }
             }
         }
     }
@@ -323,11 +321,11 @@ fun Banner(text: String, modifier: Modifier = Modifier, tone: Tone2 = Tone2.PLAI
     }
 }
 
-/** A text action: blue, or red for 中断; 44 dp tall. */
+/** A text action: blue, or red for 中断; 44 dp tall. One that goes to another page ends in an [arrow]. */
 @Composable
-fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true, alignment: Alignment = Alignment.CenterStart) {
+fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true, alignment: Alignment = Alignment.CenterStart, arrow: Boolean = false) {
     Box(modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else .45f), contentAlignment = alignment) {
-        Text(text, style = style, color = color ?: pal.blue, maxLines = 1)
+        if (arrow) ArrowText(text, color ?: pal.blue, style) else Text(text, style = style, color = color ?: pal.blue, maxLines = 1)
     }
 }
 
@@ -345,7 +343,9 @@ fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
 
 /**
  * A row in a group: 15 with a value at the right. A row that goes somewhere
- * ends in ›; one that does something is blue ([action]) or red ([danger]).
+ * has a [chevron], after its value, or at its end without one; one that does
+ * something is blue ([action]) or red ([danger]), its chevron right after
+ * the text and an [icon] such as a plus before it.
  */
 @Composable
 fun GRow(
@@ -359,19 +359,22 @@ fun GRow(
     valueColor: Color? = null,
     lead: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    icon: ImageVector? = null,
 ) {
     val p = pal
+    val ink = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted
     if (value != null && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f) {
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 lead?.invoke()
-                Text(text, style = T.body, color = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted,
-                    maxLines = 1, modifier = Modifier.weight(1f))
+                Text(text, style = T.body, color = ink, maxLines = 1, modifier = Modifier.weight(1f))
                 trailing?.invoke()
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)) {
+                Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
                 if (chevron) Arrow(p.muted, T.sm)
             }
-            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth())
         }
         return
     }
@@ -381,10 +384,23 @@ fun GRow(
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         lead?.invoke()
-        Text(text, style = T.body, color = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted, modifier = Modifier.weight(1f).padding(vertical = 11.dp))
-        if (value != null) Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.widthIn(max = 200.dp))
+        Row(Modifier.weight(1f).padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Ic(icon, iconSize(T.body), ink)
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(text, style = T.body, color = ink, modifier = Modifier.weight(1f, fill = false))
+            if (chevron && action) {
+                Spacer(Modifier.width(4.dp))
+                Arrow(ink, T.body)
+            }
+        }
+        if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = 2, modifier = Modifier.widthIn(max = 200.dp))
+            if (chevron) Arrow(p.muted, T.sm)
+        }
         trailing?.invoke()
-        if (chevron) Arrow(p.muted, T.sm)
+        if (chevron && value == null && !action) Arrow(p.muted, T.sm)
     }
 }
 
@@ -403,7 +419,7 @@ fun GLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null)
 fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = null, onBack: (() -> Unit)? = null) {
     val p = pal
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Text("‹", style = ts(22.sp, lineHeight = 1f), color = p.blue) }
+        if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = "返回") }
         Text(title, style = T.h17, color = p.fg, modifier = Modifier.weight(1f))
         if (action != null) Box(Modifier.size(44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.body, color = p.blue) }
     }
@@ -449,10 +465,11 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) {
     Text(text, style = T.metaB, color = pal.muted, modifier = modifier.padding(top = 12.dp, bottom = 6.dp))
 }
 
-/** A choice in a sheet's list: title, optional description, ✓ when chosen. */
+/** A choice in a sheet's list: title, optional description, a check when chosen; [icon] goes before the title. */
 @Composable
-fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onClick: (() -> Unit)?, enabled: Boolean = true, danger: Boolean = false, small: String? = null, last: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
+fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onClick: (() -> Unit)?, enabled: Boolean = true, danger: Boolean = false, small: String? = null, last: Boolean = false, trailing: (@Composable () -> Unit)? = null, icon: ImageVector? = null) {
     val p = pal
+    val ink = if (!enabled) p.muted else if (danger) p.red else p.fg
     Row(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (!last) Modifier.bottomLine(p.line) else Modifier)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier).padding(horizontal = 2.dp),
@@ -460,13 +477,17 @@ fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onCl
     ) {
         Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = if (desc != null) T.bodyB else T.body, color = if (!enabled) p.muted else if (danger) p.red else p.fg)
+                if (icon != null) {
+                    Ic(icon, iconSize(T.body), ink)
+                    Spacer(Modifier.width(4.dp))
+                }
+                Text(title, style = if (desc != null) T.bodyB else T.body, color = ink)
                 if (small != null) Text(small, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 4.dp))
             }
             if (desc != null) Text(desc, style = ts(12.sp, lineHeight = 1.45f), color = p.muted)
         }
         trailing?.invoke()
-        if (checked) Mark("✓", p.blue, 16.dp, 1.8.dp)
+        if (checked) Mark(Lucide.Check, p.blue, 16.dp)
     }
 }
 
@@ -513,7 +534,7 @@ class SheetAction(
     val onClick: () -> Unit,
 )
 
-/** The ⋯ menu: a card of actions above a separate 取消, from the bottom. */
+/** The more menu: a card of actions above a separate 取消, from the bottom. */
 @Composable
 fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onDismiss: () -> Unit) {
     val p = pal
@@ -536,7 +557,7 @@ fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onD
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
                         ) {
                             if (a.busy) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Mark("◌", p.muted, 14.dp)
+                                Mark(Lucide.LoaderCircle, p.muted, 14.dp)
                                 Text(a.text, style = ts(17.sp), color = p.muted)
                             } else Text(a.text, style = ts(17.sp), color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.blue, modifier = Modifier.alpha(if (a.enabled) 1f else .4f))
                             if (a.note.isNotEmpty()) Text(a.note, style = T.meta, color = if (a.noteError) p.red else p.muted, textAlign = TextAlign.Center)
@@ -590,31 +611,6 @@ fun Page(
     }
 }
 
-/** Material's outlined chat bubble, copied (Apache License 2.0) so the app ships only the core icon set: the extended set is 11,000 classes that R8 has to read on every release build. */
-private val ChatBubbleOutline by lazy {
-    materialIcon("Outlined.ChatBubbleOutline") {
-        materialPath {
-            moveTo(20f, 2f)
-            lineTo(4f, 2f)
-            curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
-            verticalLineToRelative(18f)
-            lineToRelative(4f, -4f)
-            horizontalLineToRelative(14f)
-            curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
-            lineTo(22f, 4f)
-            curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
-            close()
-            moveTo(20f, 16f)
-            lineTo(6f, 16f)
-            lineToRelative(-2f, 2f)
-            lineTo(4f, 4f)
-            horizontalLineToRelative(16f)
-            verticalLineToRelative(12f)
-            close()
-        }
-    }
-}
-
 /** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
 @Composable
 fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
@@ -624,10 +620,7 @@ fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
             val on = route == r
             Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable { if (!on) onSelect(r) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 Box {
-                    androidx.compose.material3.Icon(
-                        if (r == "home") ChatBubbleOutline else androidx.compose.material.icons.Icons.Outlined.Settings,
-                        null, tint = if (on) p.blue else p.muted, modifier = Modifier.size(22.dp),
-                    )
+                    Ic(if (r == "home") Lucide.MessageSquare else Lucide.Settings, 22.dp, if (on) p.blue else p.muted)
                     if (r == "home" && waiting > 0) Text(
                         "$waiting", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
                         modifier = Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp).clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
@@ -660,37 +653,17 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
 }
 
 /**
- * ✓ ✕ ◌ drawn as strokes (design-system §5), so the marks keep one size and
- * weight instead of taking whatever glyph the system font has. Other marks
- * fall back to text.
+ * A status mark (design-system §5): check for done, x for failed, minus for
+ * canceled, and loader-circle for in progress, which turns once in 0.9 s.
+ * With the system's animations off the transition does not run and it
+ * stays still.
  */
 @Composable
-fun Mark(mark: String, color: Color, size: Dp = 12.dp, stroke: Dp = 1.4.dp) {
-    when (mark) {
-        "✓", "✕", "◌", "○" -> {
-            val rotation = if (mark == "◌") {
-                val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "tool spinner")
-                val angle by transition.animateFloat(0f, 360f,
-                    androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
-                    label = "rotation")
-                angle
-            } else 0f
-            Canvas(Modifier.size(size).then(if (mark == "◌") Modifier.rotate(rotation) else Modifier)) {
-            val w = stroke.toPx()
-            val s = this.size.minDimension
-            when (mark) {
-                "✓" -> drawPath(
-                    Path().apply { moveTo(s * 0.12f, s * 0.54f); lineTo(s * 0.4f, s * 0.8f); lineTo(s * 0.9f, s * 0.22f) },
-                    color, style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                )
-                "✕" -> {
-                    drawLine(color, Offset(s * 0.2f, s * 0.2f), Offset(s * 0.8f, s * 0.8f), w, StrokeCap.Round)
-                    drawLine(color, Offset(s * 0.8f, s * 0.2f), Offset(s * 0.2f, s * 0.8f), w, StrokeCap.Round)
-                }
-                else -> drawCircle(color, radius = s * 0.34f, style = Stroke(w, pathEffect = if (mark == "◌") PathEffect.dashPathEffect(floatArrayOf(w * 1.2f, w * 1.3f)) else null))
-            }
-            }
-        }
-        else -> Text(mark, style = T.meta, color = color)
-    }
+fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
+    if (icon !== Lucide.LoaderCircle) return Ic(icon, size, color)
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "spinner")
+    val angle by transition.animateFloat(0f, 360f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "rotation")
+    Ic(icon, size, color, Modifier.rotate(angle))
 }

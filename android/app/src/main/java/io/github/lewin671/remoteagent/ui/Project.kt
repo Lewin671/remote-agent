@@ -39,8 +39,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -462,7 +460,7 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
         (listOf(c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" })
 
 /**
- * The new-session box (client-v8): ＋ adds images; configuration comes from
+ * The new-session box (client-v8): the plus adds images; configuration comes from
  * project settings and stays with an active draft, except the CLI, which is
  * switched in the row above the box when the machine has more than one
  * (client-v26). An offline machine is replaced only by the user's choice for
@@ -616,7 +614,7 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
     }
 }
 
-/** A project-setting row: a short label, the value at the right, ›. */
+/** A project-setting row: a short label, the value at the right, an arrow. */
 @Composable
 private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: androidx.compose.ui.graphics.Color? = null, valueColor: androidx.compose.ui.graphics.Color? = null) {
     val p = pal
@@ -627,7 +625,8 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
                 if (dot != null) Dot(dot)
                 Text(value, style = T.sm, color = valueColor ?: p.fg2, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                     modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false))
-                Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint, modifier = Modifier.padding(start = 8.dp))
+                Spacer(Modifier.width(8.dp))
+                Arrow(p.faint, ts(18.sp))
             }
         }
         return
@@ -639,7 +638,7 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
         Text(label, style = T.sm, color = p.muted, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
         if (dot != null) Dot(dot)
         Text(value, style = T.sm, color = valueColor ?: p.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.widthIn(max = 200.dp))
-        Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint)
+        Arrow(p.faint, ts(18.sp))
     }
 }
 
@@ -832,7 +831,7 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
                 }
                 Text(shortPath(pr.key) + if (ms.isNotEmpty()) " · $ms" else "", style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text("›", style = ts(18.sp, lineHeight = 1f), color = p.faint)
+            Arrow(p.faint, ts(18.sp))
         }
     }
     if (groups.pinned.any(match)) FieldLabel("常用项目")
@@ -840,13 +839,13 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
     if (groups.others.any(match)) FieldLabel(if (groups.pinned.isNotEmpty()) "其他项目" else "项目")
     groups.others.filter(match).forEach { row(it) }
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onNew), verticalAlignment = Alignment.CenterVertically) {
-        Text("＋ 新项目…", style = T.bodyB, color = p.blue)
+        IconText(Lucide.Plus, "新项目…", p.blue, T.bodyB)
         Text("  选机器和目录", style = T.meta, color = p.muted)
     }
 }
 
 /**
- * 新会话 · 选项目 from the ＋ on the home page, as a sheet; 新项目… turns it
+ * 新会话 · 选项目 from the new-session button on the home page, as a sheet; 新项目… turns it
  * into 新项目 · 选目录. Choosing opens the project with its box focused.
  */
 @Composable
@@ -936,13 +935,10 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
                 },
                 style = T.mono13, color = p.muted, modifier = Modifier.padding(bottom = 6.dp),
             )
-            val rows = buildList<Pair<String, () -> Unit>> {
-                if (d.parent.isNotEmpty()) add("‹ 上一级" to { path = d.parent })
-                for (name in d.dirsList) add(name to { path = d.path.trimEnd('/') + "/" + name })
-            }
             if (d.dirsList.isEmpty()) Text("没有子目录", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 8.dp))
-            rows.forEachIndexed { i, (label, go) ->
-                ListItem(label, last = i == rows.size - 1, onClick = go, trailing = if (label.startsWith("‹")) null else ({ Text("›", style = T.body, color = p.muted) }))
+            if (d.parent.isNotEmpty()) ListItem("上一级", last = d.dirsList.isEmpty(), onClick = { path = d.parent }, icon = Lucide.ChevronLeft)
+            d.dirsList.forEachIndexed { i, name ->
+                ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.muted, T.body) })
             }
             Btn("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), BtnKind.PRIMARY)
         }

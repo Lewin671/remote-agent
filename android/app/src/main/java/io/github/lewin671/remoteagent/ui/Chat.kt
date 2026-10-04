@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
@@ -106,7 +107,7 @@ sealed interface ChatItem {
     /** Two or more completed tool calls in a row, folded into one line. */
     data class Tools(override val key: String, val calls: List<ToolCall>, val callSeqs: List<Long> = emptyList()) : ChatItem
     /** A line of its own: a centred note, or with [icon] a record like a tool row, [meta] at its right. */
-    data class Note(override val key: String, val text: String, val icon: String = "", val tone: Int = 0, val meta: String = "") : ChatItem
+    data class Note(override val key: String, val text: String, val icon: ImageVector? = null, val tone: Int = 0, val meta: String = "") : ChatItem
     data class Plan(override val key: String, val text: String) : ChatItem
 
     /** A message the session ended before writing; [text] is known when sent from here. */
@@ -334,13 +335,13 @@ fun buildChat(
                 val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW || r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
                 val by = who(d.resolvedBy[a.approvalId])?.takeIf { it != "本客户端" }
-                out += ChatItem.Note(k, what, if (ok) "✓" else "✕", if (ok) 1 else 2, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: ""))
+                out += ChatItem.Note(k, what, if (ok) Lucide.Check else Lucide.X, if (ok) 1 else 2, decisionLine(r.first, r.second) + (by?.let { " · $it" } ?: ""))
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
                 val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
-                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + (by?.let { " · $it" } ?: ""), "✓", 1)
+                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + (by?.let { " · $it" } ?: ""), Lucide.Check, 1)
             }
             Event.KindCase.IMAGE_GENERATED -> if (e.imageGenerated.imagesCount > 0) {
                 flush()
@@ -416,13 +417,15 @@ fun duration(ms: Long): String {
 /**
  * A message of the user's, on the right: soft, 18 dp corners with a small
  * one at the bottom right, at most 80% wide; [caption] under it says where
- * it came from or how sending went, with [links] after it.
+ * it came from or how sending went, [captionIcon] before it and [links]
+ * after it.
  */
 @Composable
 fun MeBubble(
     text: String?,
     caption: String? = null,
     captionColor: Color? = null,
+    captionIcon: ImageVector? = null,
     failed: Boolean = false,
     links: List<Pair<String, () -> Unit>> = emptyList(),
     padded: Boolean = true,
@@ -441,6 +444,10 @@ fun MeBubble(
             }
         }
         if (caption != null || links.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (captionIcon != null) {
+                Mark(captionIcon, captionColor ?: p.muted, iconSize(T.meta))
+                Spacer(Modifier.width(4.dp))
+            }
             if (caption != null) Text(caption, style = T.meta, color = captionColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
             for ((label, go) in links) Text(label, style = T.metaB, color = p.blue, modifier = Modifier.padding(start = 6.dp).clickable(onClick = go))
         }
@@ -479,7 +486,10 @@ fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(title, style = T.meta, color = if (onOpen != null) p.blue else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    if (onOpen != null) Text(" ›", style = T.meta, color = p.blue, maxLines = 1, softWrap = false)
+                    if (onOpen != null) {
+                        Spacer(Modifier.width(4.dp))
+                        Arrow(p.blue, T.meta)
+                    }
                 }
             }
             Box(Modifier.weight(1f).height(1.dp).background(p.line))
@@ -489,7 +499,7 @@ fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
 
 /** A tool's line: a quiet mark, what it did in mono, and a note at the right. */
 @Composable
-fun ToolLine(mark: String, markColor: Color, title: String, modifier: Modifier = Modifier, meta: String = "", metaColor: Color? = null, onClick: (() -> Unit)? = null, bold: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
+fun ToolLine(mark: ImageVector, markColor: Color, title: String, modifier: Modifier = Modifier, meta: String = "", metaColor: Color? = null, onClick: (() -> Unit)? = null, bold: Boolean = false, trailing: (@Composable () -> Unit)? = null) {
     val p = pal
     Row(
         modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 4.dp).heightIn(min = 20.dp),
@@ -526,7 +536,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 14.dp)) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
-            ToolLine("✓", p.muted, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
+            ToolLine(Lucide.Check, p.muted, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
                 Arrow(p.muted, T.sm, down = !open, up = open)
             }
             if (open) Column(Modifier.padding(start = 12.dp)) {
@@ -550,7 +560,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         }
         is ChatItem.Generated -> GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
         is ChatItem.Note ->
-            if (item.icon.isNotEmpty()) ToolLine(item.icon, p.muted, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.muted)
+            if (item.icon != null) ToolLine(item.icon, p.muted, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.muted)
             else Text(item.text, style = T.meta, color = p.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
         is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp)) {
             Text("计划", style = T.smB, color = p.fg2)
@@ -576,7 +586,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
     }
 }
 
-/** A line that opens what is under it in place: 思考过程 ⌄. */
+/** A line that opens what is under it in place: 思考过程 and an arrow down. */
 @Composable
 fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = null, content: @Composable () -> Unit) {
     val p = pal
@@ -598,7 +608,7 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
         if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
         decision.takeIf { it.isNotEmpty() },
     ).joinToString(" · ").ifEmpty { if (t.durationMs >= 1000) "${t.durationMs / 1000}s" else "" }
-    ToolLine(if (ok) "✓" else "✕", if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
+    ToolLine(if (ok) Lucide.Check else Lucide.X, if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
         meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.muted)
 }
 
@@ -612,7 +622,7 @@ private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: Stri
     val p = pal
     val title = toolTitle(t, cwd, home).lines().first()
     val generic = (t.title.isEmpty() || t.title == "ToolCall" || t.title == "CommandExecution") && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")
-    ToolLine("◌", p.blue, if (generic) "后台运行" else title, meta = if (generic) "" else "后台运行")
+    ToolLine(Lucide.LoaderCircle, p.blue, if (generic) "后台运行" else title, meta = if (generic) "" else "后台运行")
 }
 
 /** Ordinary messages append without rebuilding old rows. State-changing events use the full builder. */

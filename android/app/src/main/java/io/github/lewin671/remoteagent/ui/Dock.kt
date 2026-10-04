@@ -127,21 +127,21 @@ fun DockHead(title: String, right: String = "", rightLink: (() -> Unit)? = null,
         Text(title, style = T.smB, color = p.fg2, modifier = Modifier.weight(1f))
         extra?.invoke()
         if (right.isNotEmpty()) {
-            if (rightLink != null) Text(right, style = T.smB, color = p.blue, modifier = Modifier.clickable(onClick = rightLink))
+            if (rightLink != null) Box(Modifier.clickable(onClick = rightLink)) { ArrowText(right, p.blue, T.smB) }
             else Text(right, style = T.sm, color = p.muted)
         }
     }
 }
 
-/** The grey line under a dock's buttons: a question at the left, one link at the right. */
+/** The grey line under a dock's buttons: a question at the left, one link at the right, with an [arrow] when it goes somewhere else. */
 @Composable
-fun DockFoot(left: String, link: String, danger: Boolean = false, onLink: () -> Unit) {
+fun DockFoot(left: String, link: String, danger: Boolean = false, arrow: Boolean = false, onLink: () -> Unit) {
     val p = pal
     // With nothing at the left the link starts the line.
     Row(Modifier.fillMaxWidth().padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         if (left.isNotEmpty()) Text(left, style = T.meta, color = p.muted, modifier = Modifier.weight(1f))
         Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onLink), contentAlignment = Alignment.CenterStart) {
-            Text(link, style = T.metaB, color = if (danger) p.red else p.blue)
+            if (arrow) ArrowText(link, if (danger) p.red else p.blue, T.metaB) else Text(link, style = T.metaB, color = if (danger) p.red else p.blue)
         }
     }
 }
@@ -389,7 +389,7 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
         if (full) Text(progress, style = T.meta, color = p.muted, modifier = Modifier.padding(top = 12.dp))
         else DockHead("${agentName(s.agent())} 在问你", progress, extra = if (qs.size > 1) ({ Steps(qs.size, index) }) else null)
         Text(cur.text, style = if (full) T.h17 else T.bodyB, color = p.fg, maxLines = if (full) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (full) 8.dp else 6.dp, bottom = if (full) 12.dp else 6.dp))
-        if (!full && longQuestion(cur)) Text("展开全文 ›", style = T.smB, color = p.blue, modifier = Modifier.clickable(onClick = onLong).padding(bottom = 4.dp))
+        if (!full && longQuestion(cur)) Box(Modifier.clickable(onClick = onLong).padding(bottom = 4.dp)) { ArrowText("展开全文", p.blue, T.smB) }
         cur.optionsList.forEachIndexed { i, o ->
             val (label, rec) = optionLabel(o.label)
             val sel = if (cur.multiSelect) i in (QuestionPicks.multi[key] ?: emptySet()) else QuestionPicks.single[key] == i
@@ -413,8 +413,8 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
                     Modifier.padding(top = 1.dp).size(18.dp).clip(RoundedCornerShape(4.dp)).background(if (sel) p.blueBg else androidx.compose.ui.graphics.Color.Transparent)
                         .border(1.dp, if (sel) p.blueBg else p.muted, RoundedCornerShape(4.dp)),
                     contentAlignment = Alignment.Center,
-                ) { if (sel) Mark("✓", androidx.compose.ui.graphics.Color.White, 12.dp, 1.8.dp) }
-                else if (sel) Box(Modifier.padding(top = 3.dp)) { Mark("✓", p.blue, 13.dp, 1.6.dp) }
+                ) { if (sel) Mark(Lucide.Check, androidx.compose.ui.graphics.Color.White, 12.dp) }
+                else if (sel) Box(Modifier.padding(top = 3.dp)) { Mark(Lucide.Check, p.blue, 13.dp) }
                 Column(Modifier.weight(1f)) {
                     Text(label, style = T.sm, color = p.fg)
                     if (o.description.isNotEmpty()) Text(o.description, style = T.meta, color = p.muted)
@@ -442,8 +442,8 @@ fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full:
                 if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项", { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
                 Modifier.fillMaxWidth().padding(top = 6.dp), BtnKind.PRIMARY, enabled = !act.running && n > 0,
             )
-            DockFoot(if (n > 0) "已选 $n 项" else "", "其他回答：去终端 ›", onLink = onTerminal)
-        } else DockFoot("都不合适？", "其他回答：去终端 ›", onLink = onTerminal)
+            DockFoot(if (n > 0) "已选 $n 项" else "", "其他回答：去终端", arrow = true, onLink = onTerminal)
+        } else DockFoot("都不合适？", "其他回答：去终端", arrow = true, onLink = onTerminal)
     }
 }
 
@@ -496,7 +496,7 @@ fun QuestionPage(sid: String, qid: String) {
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     val p = pal
     PendingDock(DockItem.Plan(text), agentName(s.agent()), more, body = {
-        DockHead("计划待批准", "展开全文 ›", rightLink = onFull)
+        DockHead("计划待批准", "展开全文", rightLink = onFull)
         Text(
             text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(4).joinToString("\n"),
             style = ts(13.sp, lineHeight = 1.6f), color = p.fg, maxLines = 4, overflow = TextOverflow.Ellipsis,

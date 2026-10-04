@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,7 +66,7 @@ fun DevicesScreen() {
                 GRow(machineLabel(state, m.id), onClick = { nav.device(m.id) }, trailing = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         if (m.online) Dot(p.green)
-                        Text((if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" }) + " ›", style = T.sm, color = p.muted)
+                        ArrowText(if (m.online) "在线" else whenText(m.lastSeenMs, t).ifEmpty { "不在线" }, p.muted, T.sm)
                     }
                 })
             } })
@@ -83,12 +81,12 @@ fun DevicesScreen() {
                         Text(clientName(c, c.id), style = T.body, color = p.fg)
                         Text(clientDetail(c), style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
                     }
-                    Text(if (c.id == me) "当前客户端" else "${clientUsed(c, t)} ›", style = T.sm, color = p.muted)
+                    if (c.id == me) Text("当前客户端", style = T.sm, color = p.muted) else ArrowText(clientUsed(c, t), p.muted, T.sm)
                 }
             } })
             Text("右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
             Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).heightIn(min = 44.dp).clickable { nav.pair() }, contentAlignment = Alignment.CenterStart) {
-                Text("＋ 添加电脑或客户端", style = T.body, color = p.blue)
+                IconText(Lucide.Plus, "添加电脑或客户端", p.blue, T.body)
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -113,7 +111,7 @@ fun ClientScreen(id: String) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             GLabel("客户端")
             Group(rows = listOfNotNull<@Composable () -> Unit>(
-                { GRow("名称", (d?.meta?.name?.ifEmpty { null } ?: "未命名") + " ›", onClick = if (state.conn == ConnState.ONLINE) ({ editing = true }) else null) },
+                { GRow("名称", (d?.meta?.name?.ifEmpty { null } ?: "未命名"), onClick = if (state.conn == ConnState.ONLINE) ({ editing = true }) else null, chevron = true) },
                 d?.meta?.name?.takeIf { it.isNotEmpty() }?.let { { GRow("恢复默认名称", defaultClientName(d, id), onClick = { save.run({ remote.renameDevice(id, ""); null }) }, action = true, enabled = state.conn == ConnState.ONLINE) } },
                 d?.meta?.description?.takeIf { it.isNotEmpty() }?.let { desc -> { GRow("运行在", desc) } },
                 { GRow("上次使用", if (id == me) "现在" else lastUsed(d, t).ifEmpty { "没有记录" }) },

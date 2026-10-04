@@ -26,10 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -124,7 +121,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
         }
         val cur = all[pager.currentPage]
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = nav.back) { Icon(Icons.Default.Close, "关闭", tint = Color.White) }
+            IconButton(onClick = nav.back) { Ic(Lucide.X, 22.dp, Color.White, contentDescription = "关闭") }
             Text("${pager.currentPage + 1} / ${all.size}", color = Color.White, style = MaterialTheme.typography.titleSmall)
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xAA000000)).padding(horizontal = 16.dp, vertical = 10.dp)) {

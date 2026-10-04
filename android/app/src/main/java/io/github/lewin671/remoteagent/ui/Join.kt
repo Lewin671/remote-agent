@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -163,13 +164,13 @@ fun JoinScreen(app: RaApp) {
                     NavBar("核对图案", null, right = { Text("取消", style = T.body, color = p.blue, modifier = Modifier.clickable { cancel() }) }, more = { cancel() })
                     Text(s.emoji.joinToString("  "), fontSize = 30.sp, modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 12.dp), textAlign = TextAlign.Center)
                     Text("确认另一台设备上显示的 4 个图案和这里一模一样，然后在那台设备上点「图案一致，允许」。", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-                    Text("◌ 等待允许…", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp))
+                    IconText(Lucide.LoaderCircle, "等待允许…", p.muted, T.sm, Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth())
                     Btn("图案不一致，返回填码", { cancel() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                     Hint("返回后停止这次等待；请让另一台设备拒绝旧请求，再生成新的配对码。", Modifier.padding(horizontal = 16.dp))
                 }
                 JoinStep.Working -> {
                     JoinTitle("加入账户")
-                    Text("◌ 正在连接…", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp))
+                    IconText(Lucide.LoaderCircle, "正在连接…", p.muted, T.sm, Modifier.padding(horizontal = 16.dp))
                 }
                 JoinStep.Secret -> {
                     JoinTitle("用账户密钥加入")

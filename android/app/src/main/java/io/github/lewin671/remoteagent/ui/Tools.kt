@@ -105,10 +105,10 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     val title = toolTitle(tool, cwd, home).lines().first()
     // The turn completed without this tool's result: say only that.
     if (item.unfinished && tool.seq in ctx.derived.noResult) {
-        io.github.lewin671.remoteagent.ui.ToolLine("◌", p.faint, title, Modifier.padding(horizontal = 14.dp), meta = "等待同步")
+        io.github.lewin671.remoteagent.ui.ToolLine(Lucide.LoaderCircle, p.faint, title, Modifier.padding(horizontal = 14.dp), meta = "等待同步")
         return
     }
     val timer = toolTimer(tool, state, t, ctx.frozenAt)
-    ToolLine("◌", p.blue, title, Modifier.padding(horizontal = 14.dp),
+    ToolLine(Lucide.LoaderCircle, p.blue, title, Modifier.padding(horizontal = 14.dp),
         meta = if (state == ToolState.SYNC) "等待同步" else if (item.unfinished) "后台运行" else if (state == ToolState.APPROVAL) state.text else timer)
 }

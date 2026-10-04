@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -153,7 +151,7 @@ private fun ManageRow(state: RemoteState, pr: Project, pinned: Boolean, blocked:
             Text(pr.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(shortPath(pr.key), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when (change) {
-                PrefsChanges.State.Saving -> Text("◌ 正在同步…", style = T.meta, color = p.muted)
+                PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, "正在同步…", p.muted, T.meta)
                 is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("没能保存，列表保持原样：${change.error}", style = T.meta, color = p.red, modifier = Modifier.weight(1f, fill = false))
                     Text(" · 重试", style = T.metaB, color = p.blue, modifier = Modifier.clickable(enabled = !blocked) { PrefsChanges.run(remote, change.op) })
@@ -162,7 +160,7 @@ private fun ManageRow(state: RemoteState, pr: Project, pinned: Boolean, blocked:
             }
         }
         Box(Modifier.size(44.dp).clickable(enabled = !blocked && change != PrefsChanges.State.Saving) { menu = true }.alpha(if (blocked) .4f else 1f), contentAlignment = Alignment.Center) {
-            Text("⋯", style = T.body, color = p.blue)
+            Ic(Lucide.Ellipsis, 20.dp, p.blue, contentDescription = "更多")
         }
     }
     if (menu) ActionSheet(

@@ -38,13 +38,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -57,7 +55,7 @@ private class RightAboveProvider(private val gap: Int) : PopupPositionProvider {
 }
 
 /**
- * The shared message box: ＋ to add images, one to six lines of text, and the
+ * The shared message box: a plus to add images, one to six lines of text, and the
  * send position. In a running session that position becomes interrupt when
  * empty; long-press send offers queue when supported.
  */
@@ -93,7 +91,7 @@ fun ComposeBox(
                         .semantics { contentDescription = "添加图片" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("＋", style = ts(22.sp, lineHeight = 1f), color = p.muted)
+                    Ic(Lucide.Plus, 22.dp, p.muted)
                 }
                 BasicTextField(
                     text, onText,
@@ -120,7 +118,7 @@ fun ComposeBox(
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(Modifier.size(32.dp).alpha(if (if (interrupt) canInterrupt else canSend) 1f else .4f).clip(CircleShape).background(if (interrupt) p.chip else p.blueBg), contentAlignment = Alignment.Center) {
-                        Text(if (interrupt) "■" else "↑", style = ts(16.sp, FontWeight.SemiBold, 1f), color = if (interrupt) p.red else Color.White)
+                        if (interrupt) Ic(Lucide.Square, 14.dp, p.red) else Ic(Lucide.ArrowUp, 20.dp, Color.White)
                     }
                 }
             }

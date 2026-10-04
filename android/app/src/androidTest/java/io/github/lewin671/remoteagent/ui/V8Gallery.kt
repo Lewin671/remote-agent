@@ -276,7 +276,7 @@ class V8Gallery {
 
     @Test fun sessionMenu() {
         shoot("11-session-menu", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_IDLE, context = 87_000)), mapOf("run" to runEvents.dropLast(1)),
-            then = { ui.onNodeWithText("⋯").performClick() }) { SessionScreen("run") }
+            then = { ui.onNodeWithContentDescription("更多").performClick() }) { SessionScreen("run") }
     }
 
     private val apiSession = session("api", "vps", foo, "重构 API 层", approvals = 1)
@@ -356,7 +356,7 @@ class V8Gallery {
 
     @Test fun modeSheet() {
         shoot("21-mode-sheet", sessionState(session("run", "mac", foo, "修复登录超时", mode = ApprovalMode.APPROVAL_MODE_AUTO)), mapOf("run" to runEvents.dropLast(1)), then = {
-            ui.onNodeWithText("⋯").performClick()
+            ui.onNodeWithContentDescription("更多").performClick()
             ui.onNodeWithText("审批模式：自动").performClick()
         }) { SessionScreen("run") }
     }

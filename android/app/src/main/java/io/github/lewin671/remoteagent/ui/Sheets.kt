@@ -327,7 +327,7 @@ fun PlanPage(sid: String) {
     }
 }
 
-/** A page with ‹, a centered title and an optional second line; [gray] for grouped settings pages. */
+/** A page with back, a centered title and an optional second line; [gray] for grouped settings pages. */
 @Composable
 fun PageScaffold(title: String, subtitle: String? = null, gray: Boolean = false, action: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val nav = LocalNav.current

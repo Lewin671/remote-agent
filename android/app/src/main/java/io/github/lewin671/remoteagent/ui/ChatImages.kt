@@ -118,7 +118,7 @@ fun GeneratedCard(item: ChatItem.Generated, onOpen: (Int) -> Unit) {
                 val r = item.images.firstOrNull()
                 val size = r?.let { if (it.width > 0) " · ${it.width} × ${it.height}" else "" }.orEmpty()
                 Text("生成的图片$size", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = p.muted)
-                if (item.prompt.isNotEmpty()) Text(if (open) "提示词 ▾" else "提示词 ▸", Modifier.clickable { open = !open }.padding(6.dp), color = p.blue, style = MaterialTheme.typography.bodySmall)
+                if (item.prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText("提示词", p.blue, MaterialTheme.typography.bodySmall, down = !open, up = open) }
             }
             if (open) Text(item.prompt, style = MaterialTheme.typography.bodyMedium, color = p.fg2)
         }

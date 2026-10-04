@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.term
 
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +13,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.ui.Btn
 import io.github.lewin671.remoteagent.ui.BtnKind
+import io.github.lewin671.remoteagent.ui.Ic
+import io.github.lewin671.remoteagent.ui.IconText
+import io.github.lewin671.remoteagent.ui.Lucide
 import io.github.lewin671.remoteagent.ui.Radii
 import io.github.lewin671.remoteagent.ui.T
 import io.github.lewin671.remoteagent.ui.TermColors
@@ -72,12 +76,15 @@ import kotlin.math.max
 internal sealed interface Key {
     val label: String
 
-    data class Text(override val label: String, val seq: String) : Key
-    data class Arrow(override val label: String, val letter: Char) : Key
+    /** Drawn in place of [label], which then only names the key to a screen reader. */
+    val icon: ImageVector?
+
+    data class Text(override val label: String, val seq: String, override val icon: ImageVector? = null) : Key
+    data class Arrow(override val label: String, val letter: Char, override val icon: ImageVector) : Key
 }
 
 internal val keyRows: List<List<Key>> = listOf(
-    listOf(Key.Text("Esc", "\u001b"), Key.Arrow("←", 'D'), Key.Arrow("↑", 'A'), Key.Arrow("↓", 'B'), Key.Arrow("→", 'C'), Key.Text("↵", "\r")),
+    listOf(Key.Text("Esc", "\u001b"), Key.Arrow("左", 'D', Lucide.ArrowLeft), Key.Arrow("上", 'A', Lucide.ArrowUp), Key.Arrow("下", 'B', Lucide.ArrowDown), Key.Arrow("右", 'C', Lucide.ArrowRight), Key.Text("回车", "\r", Lucide.CornerDownLeft)),
     listOf(Key.Text("Tab", "\t"), Key.Text("Ctrl+C", "\u0003")),
 )
 
@@ -151,7 +158,8 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f),
             )
             if (state == RemoteTerminal.State.Live) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                Text(if (fitted) "还原" else if (resized) "适配" else "⤢ 适配我的屏幕", style = T.metaB, color = TermColors.link)
+                if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.metaB, color = TermColors.link)
+                else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.metaB)
             }
         }
         Row(
@@ -233,7 +241,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                         .border(1.dp, TermColors.line, Radii.SM).padding(12.dp),
                 ) {
                     when (val s = state) {
-                        RemoteTerminal.State.Connecting -> Text("◌ 连接终端…", style = T.sm, color = TermColors.dim)
+                        RemoteTerminal.State.Connecting -> IconText(Lucide.LoaderCircle, "连接终端…", TermColors.dim, T.sm)
                         is RemoteTerminal.State.Closed -> {
                             Text("终端连接断开了", style = T.bodyB, color = TermColors.fg)
                             Text(
@@ -275,21 +283,25 @@ private fun FontButton(label: String, enabled: Boolean, onClick: () -> Unit) {
 private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(TermColors.bar).padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
+            for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f)) { onKey(k) }
-            KeyButton("⌨ 键盘", true, Modifier.weight(1f), onKeyboard)
+            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
+            KeyButton("键盘", true, Modifier.weight(1f), Lucide.Keyboard, named = true, onClick = onKeyboard)
         }
     }
 }
 
 @Composable
-private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, icon: ImageVector? = null, named: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier.height(44.dp).clip(RoundedCornerShape(7.dp)).background(TermColors.key).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = T.sm, color = if (enabled) TermColors.fg else TermColors.tool, maxLines = 1)
+        val color = if (enabled) TermColors.fg else TermColors.tool
+        // An icon stands for the key by itself, or with [named] goes before its label.
+        if (icon == null) Text(label, style = T.sm, color = color, maxLines = 1)
+        else if (named) IconText(icon, label, color, T.sm)
+        else Ic(icon, 20.dp, color, contentDescription = label)
     }
 }

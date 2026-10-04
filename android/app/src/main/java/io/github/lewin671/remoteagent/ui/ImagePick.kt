@@ -42,11 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.Remote
 
 /**
- * 添加图片 in the ＋ menu: the system's photo picker, asked for as many as
+ * 添加图片 in the plus menu: the system's photo picker, asked for as many as
  * still fit. The picker's fallback may not honour the count, so the draft
  * takes only what fits and says how many were left out. When the machine
  * cannot take images it says why instead.
@@ -73,7 +72,7 @@ fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, b
     }
 }
 
-/** A one-line reason shown by the strip, e.g. why 「＋」 does nothing. */
+/** A one-line reason shown by the strip, e.g. why the plus does nothing. */
 object ImageNotices {
     val text = androidx.compose.runtime.mutableStateMapOf<String, String>()
     fun show(key: String, s: String) {
@@ -123,7 +122,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                     // 18 dp to see, 44 dp to tap.
                     Box(Modifier.align(Alignment.TopEnd).size(30.dp).clickable { draft.remove(img) }, contentAlignment = Alignment.TopEnd) {
                         Box(Modifier.padding(3.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                            Text("✕", color = Color.White, style = ts(11.sp, lineHeight = 1f))
+                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = "移除图片")
                         }
                     }
                 }
