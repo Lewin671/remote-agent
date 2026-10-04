@@ -470,32 +470,29 @@ export interface NewConfig {
   from?: SessionLike; // the session copied, if any
 }
 
-/** A project's latest session supplies its initial settings. Plan is a
+/** A project's latest session supplies its initial settings: the machine
+ * and the CLI. Each CLI's model, effort and mode come from the project's
+ * latest session on that CLI (agent: which CLI to answer for; the latest
+ * session's by default), the machine's defaults if it has none. Plan is a
  * passing state; an offline machine stays selected until the user picks
  * another for this start. */
-export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map<string, MachineLike>, cwd = p?.key ?? ""): NewConfig | undefined {
+export function inheritConfig(p: Project<SessionLike> | undefined, machines: Map<string, MachineLike>, cwd = p?.key ?? "", agent?: Agent): NewConfig | undefined {
   const latest = p?.sessions[0];
   if (!p || !latest) return undefined;
-  const agent = agentOf(latest);
+  const a = agent ?? agentOf(latest);
+  const from = p.sessions.find((s) => agentOf(s) === a);
   void machines;
-  const mode = modeOf(latest)?.mode ?? ApprovalMode.UNSPECIFIED;
+  const mode = (from && modeOf(from)?.mode) ?? ApprovalMode.UNSPECIFIED;
   const keep = mode === ApprovalMode.ASK || mode === ApprovalMode.AUTO || mode === ApprovalMode.FULL_ACCESS;
   return {
     machineId: latest.machineId,
     cwd,
-    agent,
-    model: latest.info?.model ?? "",
-    effort: latest.info?.effort ?? "",
+    agent: a,
+    model: from?.info?.model ?? "",
+    effort: from?.info?.effort ?? "",
     mode: keep ? mode : ApprovalMode.UNSPECIFIED,
-    from: latest,
+    from,
   };
-}
-
-/** The same project on another CLI uses that CLI's defaults for model
- * and mode; the draft stays in place. */
-export function switchAgent(cfg: NewConfig, agent: Agent): NewConfig {
-  if (agent === cfg.agent) return cfg;
-  return { ...cfg, agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
 }
 
 /** The new session's configuration on another machine: its CLI if the

@@ -48,7 +48,7 @@ export function ProjectPage({ remote, pkey, go, onBack, wide }: { remote: Remote
             已结束 {ended.length} ›
           </button>
         </div>
-        <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />
+        {!wide && <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />}
       </div>
     </div>
   );

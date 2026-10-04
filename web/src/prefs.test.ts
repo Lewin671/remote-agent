@@ -37,6 +37,8 @@ class FakeStore implements PrefsStore {
   }
 }
 
+const set = (agent: Agent, model: string, effort: string, mode: ApprovalMode) => ({ agent, model, effort, mode, standardContext: false });
+
 describe("project preferences", () => {
   it("pins in order, hides and restores without toggling", () => {
     let p = emptyPrefs();
@@ -80,23 +82,33 @@ describe("project preferences", () => {
   it("redoes project settings on conflict and preserves every stored field", async () => {
     const s = new FakeStore();
     s.other(op("pin", "/keep"));
-    s.other({ ...op("settings", "/other"), settings: { agent: Agent.CLAUDE, machineId: "m2", model: "sonnet", mode: ApprovalMode.ASK } });
+    s.other({ ...op("settings", "/other"), settings: { agent: Agent.CLAUDE, machineId: "m2", sets: [set(Agent.CLAUDE, "sonnet", "", ApprovalMode.ASK)] } });
     const seen = await s.get();
     s.beforePut = () => s.other(op("hide", "/hidden"));
-    const mine = { ...op("settings", "/mine"), settings: { agent: Agent.CODEX, machineId: "m1", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.FULL_ACCESS } };
+    const mine = { ...op("settings", "/mine"), settings: { agent: Agent.CODEX, machineId: "m1", sets: [set(Agent.CODEX, "gpt-6-astra", "medium", ApprovalMode.FULL_ACCESS)] } };
     const out = await commitOp(s, mine, seen);
     expect(s.puts).toBe(2);
     expect(paths(out.prefs)).toEqual({ pinned: ["/keep"], hidden: ["/hidden"] });
     expect(out.prefs.settings).toMatchObject([
-      { path: "/other", agent: Agent.CLAUDE, machineId: "m2", model: "sonnet" },
-      { path: "/mine", agent: Agent.CODEX, machineId: "m1", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.FULL_ACCESS },
+      { path: "/other", agent: Agent.CLAUDE, machineId: "m2", agents: [{ agent: Agent.CLAUDE, model: "sonnet" }] },
+      { path: "/mine", agent: Agent.CODEX, machineId: "m1", agents: [{ agent: Agent.CODEX, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.FULL_ACCESS }] },
     ]);
   });
 
-  it("keeps a stored project's other settings when one field changes", () => {
-    const before = applyOp(emptyPrefs(), { ...op("settings", "/p"), settings: { agent: Agent.CLAUDE, machineId: "m2", model: "sonnet", effort: "high", mode: ApprovalMode.ASK } });
-    const after = applyOp(before, { ...op("settings", "/p"), settings: { model: "opus" } });
-    expect(after.settings).toMatchObject([{ path: "/p", agent: Agent.CLAUDE, machineId: "m2", model: "opus", effort: "high", mode: ApprovalMode.ASK }]);
+  it("changes one CLI's set and leaves the rest of a stored project's settings", () => {
+    const before = applyOp(emptyPrefs(), { ...op("settings", "/p"), settings: { agent: Agent.CLAUDE, machineId: "m2", sets: [set(Agent.CLAUDE, "sonnet", "high", ApprovalMode.ASK), set(Agent.CODEX, "gpt-6-sol", "low", ApprovalMode.AUTO)] } });
+    const after = applyOp(before, { ...op("settings", "/p"), settings: { sets: [set(Agent.CLAUDE, "opus", "high", ApprovalMode.ASK)] } });
+    expect(after.settings).toHaveLength(1);
+    expect(after.settings[0]).toMatchObject({ path: "/p", agent: Agent.CLAUDE, machineId: "m2" });
+    expect(after.settings[0].agents).toHaveLength(2);
+    expect(after.settings[0].agents.find((a) => a.agent === Agent.CLAUDE)).toMatchObject({ model: "opus", effort: "high", mode: ApprovalMode.ASK });
+    expect(after.settings[0].agents.find((a) => a.agent === Agent.CODEX)).toMatchObject({ model: "gpt-6-sol", effort: "low", mode: ApprovalMode.AUTO });
+  });
+
+  it("moves the remembered CLI without touching any set", () => {
+    const before = applyOp(emptyPrefs(), { ...op("settings", "/p"), settings: { agent: Agent.CODEX, machineId: "m1", sets: [set(Agent.CODEX, "gpt-6-sol", "low", ApprovalMode.AUTO)] } });
+    const after = applyOp(before, { ...op("settings", "/p"), settings: { agent: Agent.CLAUDE } });
+    expect(after.settings[0]).toMatchObject({ agent: Agent.CLAUDE, machineId: "m1", agents: [{ agent: Agent.CODEX, model: "gpt-6-sol" }] });
   });
 
   it("does not write twice when a reply was lost but the write went in", async () => {

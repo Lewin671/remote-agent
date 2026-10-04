@@ -14,7 +14,6 @@ import {
   inheritConfig,
   machineAgents,
   newConfigIssue,
-  switchAgent,
   switchMachine,
   machineName,
   modeName,
@@ -104,35 +103,101 @@ function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig
   return { machineId: id, cwd: key, agent: machineAgents(remote.machines.get(id))[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
 }
 
-/** The configuration and the create call of a new session in project key. */
+/** The CLIs a new session can use on a machine, Codex first. */
+function agentsOf(m: MachineLike | undefined): Agent[] {
+  const have = machineAgents(m);
+  return [Agent.CODEX, Agent.CLAUDE].filter((a) => have.includes(a));
+}
+
+type AgentSet = { agent: Agent; model: string; effort: string; mode: ApprovalMode; standardContext: boolean };
+
+function setOf(c: NewConfig): AgentSet {
+  return { agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: c.agent === Agent.CLAUDE && !!c.standardContext };
+}
+
+/** The mode a start with cfg will run in: the one chosen, else the CLI's
+ * effective default the machine reports. */
+function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
+  const dm = defaultModeOf(m, cfg.agent);
+  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）";
+}
+
+/** What the user chose on this page and the stored settings do not say
+ * (yet): another machine, edited sets. once: the machine is for this
+ * start only and nothing of it is saved. */
+type Local = { key: string; machineId?: string; once: boolean; sets: Partial<Record<Agent, AgentSet>> };
+
+/** The configuration and the create call of a new session in project key.
+ * The project's settings name the machine and keep one set of model,
+ * effort and mode per CLI; which CLI a start uses is picked next to the
+ * box, the project remembering the last one used. */
 export function useNewSession(remote: Remote, key: string, go: Go) {
   // Recomputed on every render: which session is latest changes with any
   // session's activity, not only when sessions come or go.
   const p = projects(remote.sessions.values()).find((x) => x.key === key);
-  const inherited = inheritConfig(p, remote.machines, key);
-  const [selection, setSelection] = useState<{ key: string; config: NewConfig }>();
-  const [oneTimeKey, setOneTimeKey] = useState("");
-  const oneTime = oneTimeKey === key;
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
-  const override = selection?.key === key ? selection.config : saved ? { machineId: saved.machineId, cwd: key, agent: saved.agent, model: saved.model, effort: saved.effort, mode: saved.mode, standardContext: saved.standardContext } : undefined;
+  const [localState, setLocal] = useState<Local>();
+  const local = localState?.key === key ? localState : undefined;
+  // The CLI picked next to the box, for this draft.
+  const [pickedState, setPicked] = useState<{ key: string; agent: Agent }>();
+  const picked = pickedState?.key === key ? pickedState.agent : undefined;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
-  const [latched, setLatched] = useState<{ key: string; config: NewConfig }>();
-  const held = latched?.key === key ? latched.config : undefined;
-  const cfg = override ? { ...override, from: inherited?.from } : (held ?? inherited ?? freshConfig(remote, key, remote.draftMachines.get(key)));
-  const machine = remote.machines.get(cfg.machineId);
+  const [latched, setLatched] = useState<{ key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> }>();
+  const held = latched?.key === key ? latched : undefined;
+  const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
+  const first = inherit();
+  // Where it starts without a choice made on this page.
+  const baseMachine = saved?.machineId || held?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key)).machineId;
+  const machineId = local?.machineId ?? baseMachine;
+  const machine = remote.machines.get(machineId);
+  const agents = agentsOf(machine);
+  const remembered = saved?.agent ? (saved.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) : undefined;
+  const wanted = picked ?? remembered ?? held?.agent ?? first?.agent ?? agents[0];
+  // A CLI the machine lacks is not started: the one it has is, and the
+  // box says so. What the project remembers stays.
+  const agent = agents.includes(wanted) ? wanted : agents[0];
+  const missing = agent !== wanted && machine?.meta ? wanted : undefined;
+  /** What a session of CLI a starts with: the set chosen on this page,
+   * the stored one, else the project's latest session on that CLI. base:
+   * as the project has it, leaving out this page's choices. */
+  const configFor = (a: Agent, base = false): NewConfig => {
+    const at = { machineId: base ? baseMachine : machineId, cwd: key, agent: a };
+    const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
+    if (set) return { ...at, model: set.model, effort: set.effort, mode: set.mode, standardContext: set.standardContext };
+    // Another machine has its own models and defaults.
+    if (!base && local?.machineId) return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
+    const h = held ? held.by[a] : inherit(a);
+    return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: h?.mode ?? ApprovalMode.UNSPECIFIED, from: h?.from };
+  };
+  const cfg = configFor(agent);
   const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [configError, setConfigError] = useState("");
+  const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }) =>
+    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
+  // Settings not stored yet begin with where and on which CLI it starts now.
+  const whole = () => (saved ? {} : { machineId: baseMachine, agent });
+  /** Changes one CLI's set, or the machine: config is configFor of a CLI
+   * with the change. Another machine clears every CLI's set, its models
+   * and defaults being its own. once: only for this start, nothing saved. */
   const setCfg = (config: NewConfig, once = false) => {
-    setSelection({ key, config });
-    if (once) setOneTimeKey(key);
-    if (once || oneTime) return;
-    const op = { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: { machineId: config.machineId, agent: config.agent, model: config.model, effort: config.effort, mode: config.mode, standardContext: !!config.standardContext } };
-    void remote.changePrefs("settings", key, op).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
+    if (config.machineId !== machineId) {
+      const sets = { [Agent.CODEX]: setOf({ ...config, agent: Agent.CODEX }), [Agent.CLAUDE]: setOf({ ...config, agent: Agent.CLAUDE }) };
+      setLocal({ key, machineId: config.machineId, once, sets });
+      if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
+      return;
+    }
+    const set = setOf(config);
+    setLocal({ key, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
+    if (!local?.once) void save({ ...whole(), sets: [set] });
+  };
+  const setAgent = (a: Agent) => {
+    latch();
+    setPicked({ key, agent: a });
   };
   // One pending attempt per project: the wide home reuses this hook when
   // switching projects, and an unknown start in one project must never be
@@ -148,9 +213,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others; the page's own view of the settings may
   // change as the started session's record arrives.
+  const chose = !!saved || !!local || picked !== undefined;
   const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
-    const c = pending && !override ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent, standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext };
+    const c = pending && !chose ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent, standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext };
     // The images are part of what is started: other images, another start.
     return {
       machineId: c.machineId,
@@ -193,14 +259,20 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       if (!terminal) tray.clear();
       if (terminal) remote.termFirst.add(sid);
       remote.draftMachines.delete(key);
-      // The first session establishes the project's settings. Later starts
-      // leave a saved choice alone, including a one-time offline fallback.
-      if (!saved) {
-        const c = oneTime ? inherited ?? cfg : cfg;
-        void remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings", path: key, at: Date.now(), settings: { machineId: c.machineId, agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: !!c.standardContext } });
+      // The first session establishes the project's settings, and each
+      // CLI's first one its set; later starts only move the remembered
+      // CLI. A machine picked for one start is not what gets stored.
+      const used = payload.req.agent;
+      const asStored = configFor(used, true);
+      if (!saved) void save({ machineId: asStored.machineId, agent: used, sets: [setOf(local?.once ? asStored : cfg)] });
+      else {
+        const patch: { agent?: Agent; sets?: AgentSet[] } = {};
+        if (remembered !== used) patch.agent = used;
+        if (!saved.agents.some((x) => x.agent === used)) patch.sets = [setOf(local?.once ? asStored : cfg)];
+        if (patch.agent !== undefined || patch.sets) void save(patch);
       }
-      setSelection(undefined);
-      setOneTimeKey("");
+      setLocal(undefined);
+      setPicked(undefined);
       setLatched(undefined);
       go("s/" + sid);
       return true;
@@ -222,13 +294,13 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   };
   /** Holds the launch settings as they are now, once a draft begins. */
   const latch = () => {
-    if (!override && !held) setLatched({ key, config: cfg });
+    if (!saved && !held) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: inherit(Agent.CODEX), [Agent.CLAUDE]: inherit(Agent.CLAUDE) } });
   };
-  // The mode the start will run in: the one chosen, else the CLI's
-  // effective default the machine reports. Full access, or a default
-  // nobody knows, is confirmed first.
+  // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
-  const modeText = cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "审批：CLI 配置（未读到）";
+  const modeText = modeTextOf(cfg, machine);
+  const parts = describeParts(cfg, machine, info);
+  const rest = [modeText, machineName(machine), parts.model, contextText(parts.window)].filter(Boolean).join(" · ");
   return {
     remote,
     frozen: current.frozen,
@@ -238,14 +310,20 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     p,
     cfg,
     setCfg,
+    configFor,
+    agents,
+    setAgent,
+    missing,
     latch,
-    issue: newConfigIssue(cfg.agent, describeParts(cfg, machine, info).slug, cfg.mode || dm.mode),
-    parts: describeParts(cfg, machine, info),
+    issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode),
+    parts,
     tray,
     attachWhy: attachBlocked(remote, machine),
     machine,
     info,
-    line: [agentName(cfg.agent), modeText, machineName(machine), describeParts(cfg, machine, info).model, contextText(describeParts(cfg, machine, info).window)].filter(Boolean).join(" · "),
+    line: `${agentName(cfg.agent)} · ${rest}`,
+    // Next to the CLI switch, which already names the CLI.
+    lineRest: rest,
     modeText,
     create,
     busy,
@@ -257,8 +335,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
 
 export type NewSession = ReturnType<typeof useNewSession>;
 
-/** The first message starts a session. The project summary opens its
- * settings; the composer's ＋ only adds images. */
+/** The first message starts a session. Next to the box is the CLI it
+ * starts on, where the machine has more than one; the project summary
+ * opens its settings; the composer's ＋ only adds images. */
 export function NewBox({
   ns,
   name,
@@ -378,6 +457,11 @@ export function NewBox({
           {machineName(ns.machine)} {text ? "已离线，任务尚未开始。草稿和配置保留，不会自动换机器或 CLI" : "不在线"}
         </Banner>
       )}
+      {ns.missing !== undefined && !offline && (
+        <Banner action="换机器" onAction={() => setConfig("machine")}>
+          {machineName(ns.machine)} 没有 {agentName(ns.missing)}，这次用 {agentName(ns.cfg.agent)}
+        </Banner>
+      )}
       {ns.issue && (
         <Banner kind="warn" action="改模式" onAction={() => setConfig("mode")}>
           {ns.issue}
@@ -404,24 +488,41 @@ export function NewBox({
     </div>
   );
   const busyNote = status && <div className="small muted startnote">{status}</div>;
+  // The draft stays when the CLI is switched.
+  const cli = ns.agents.length > 1 && (
+    <div className="pick" role="group" aria-label="新会话使用的 CLI">
+      {ns.agents.map((a) => (
+        <button key={a} className={a === ns.cfg.agent ? "on" : ""} aria-pressed={a === ns.cfg.agent} disabled={ns.busy} onClick={() => ns.setAgent(a)}>
+          {agentName(a)}
+        </button>
+      ))}
+    </div>
+  );
   let body;
-  if (variant === "start")
+  if (variant === "box")
+    // A phone: the switch has its own row above the box and stays with it
+    // when the keyboard is up; the summary is under the project's title.
     body = (
       <>
-        <h3 className="wide-start-title">在 {lead} 里开始一个任务</h3>
         {error}
         {notes}
+        {cli && <div className="launch">{cli}</div>}
         {card}
-        <ConfigSummary line={ns.line} chip onClick={() => setConfig("main")} />
         {busyNote}
       </>
     );
   else
+    // Wide: the switch and the summary of the CLI picked, under the box.
     body = (
       <>
+        {variant === "start" && <h3 className="wide-start-title">在 {lead} 里开始一个任务</h3>}
         {error}
         {notes}
         {card}
+        <div className="launch">
+          {cli}
+          <ConfigSummary line={cli ? ns.lineRest : ns.line} chip onClick={() => setConfig("main")} />
+        </div>
         {busyNote}
       </>
     );
@@ -433,57 +534,23 @@ export function NewBox({
   );
 }
 
-/** The CLI for the new session: those the machine has; the draft stays. */
-export function CliSheet({ ns, onClose, onMachine }: { ns: NewSession; onClose: () => void; onMachine: () => void }) {
-  const { remote, cfg, machine } = ns;
-  const have = machineAgents(machine);
-  const all = [Agent.CODEX, Agent.CLAUDE];
-  // Another online machine of the project that has a CLI this one lacks.
-  const missing = all.filter((a) => !have.includes(a));
-  const elsewhere = missing.flatMap((a) =>
-    [...remote.machines.values()].filter((m) => m.online && m.id !== cfg.machineId && machineAgents(m).includes(a)).slice(0, 1).map((m) => ({ a, m })),
-  );
-  return (
-    <Sheet onClose={onClose}>
-      <h4>新会话使用的 CLI</h4>
-      <div className="list">
-        {have.map((a) => {
-          const v = machine?.meta?.agents.find((x) => x.agent === a);
-          return (
-            <button key={a} className="mi" onClick={() => (ns.setCfg(switchAgent(cfg, a)), onClose())}>
-              <div className="mt">
-                <b>{agentName(a)}</b>
-                <div className="md">
-                  {machineName(machine)} 上已安装{v?.version ? ` · ${v.version}` : ""}
-                </div>
-              </div>
-              {a === cfg.agent && <span className="ck">✓</span>}
-            </button>
-          );
-        })}
-      </div>
-      <div className="hint">切换后采用该 CLI 的默认模型和有效模式，草稿保留。{have.length === 1 ? `${machineName(machine)} 上只有 ${agentName(have[0])}。` : ""}</div>
-      {missing.map((a) => {
-        const other = elsewhere.find((x) => x.a === a)?.m;
-        return (
-          <Banner key={a} action={other ? "换机器" : undefined} onAction={onMachine}>
-            {machineName(machine)} 没有 {agentName(a)}
-            {other ? `，${machineName(other)} 上有` : ""}
-          </Banner>
-        );
-      })}
-    </Sheet>
-  );
-}
+type Pick = "" | "machine" | "model" | "mode";
 
-type Pick = "" | "machine" | "agent" | "model" | "mode";
-
-/** 这次的设置: machine, CLI, folder, model and mode for this session. */
+/** 项目设置: the machine, and each CLI's model and mode for new sessions.
+ * The tabs show one CLI's set at a time, opening on the CLI picked next
+ * to the box; looking at the other one picks nothing. */
 export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClose: () => void; start?: Pick }) {
   const [pick, setPick] = useState<Pick>(start);
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
-  const { remote, cfg, p, machine, info } = ns;
+  const { remote, p, machine } = ns;
+  const [tab, setTab] = useState(ns.cfg.agent);
+  const agent = ns.agents.includes(tab) ? tab : ns.cfg.agent;
+  const cfg = ns.configFor(agent);
+  // The box's CLI is already read; only the other tab asks the machine.
+  const other = useMachineInfo(remote, agent === ns.cfg.agent ? "" : cfg.machineId, agent);
+  const info = agent === ns.cfg.agent ? ns.info : other;
+  const parts = describeParts(cfg, machine, info);
   const set = (patch: Partial<NewConfig>) => ns.setCfg({ ...cfg, ...patch });
   const def = defaultsOf(info.settings, cfg.agent);
   useEffect(() => {
@@ -496,8 +563,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       ‹
     </button>
   );
-  // The CLI: those the machine has, with where to find the others.
-  if (pick === "agent") return <CliSheet ns={ns} onClose={back2} onMachine={() => setPick("machine")} />;
   let body;
   if (pick === "machine")
     body = (
@@ -520,7 +585,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               ) : (
                 m.id !== cfg.machineId && (
                   <div className="md">
-                    {machineAgents(m).includes(cfg.agent) ? `有 ${agentName(cfg.agent)}` : `只有 ${machineAgents(m).map(agentName).join("、")}`}；模型和模式会按这台机器重新选择
+                    {machineAgents(m).includes(ns.cfg.agent) ? `有 ${agentName(ns.cfg.agent)}` : `只有 ${agentsOf(m).map(agentName).join("、")}`}；模型和模式会按这台机器重新选择
                   </div>
                 )
               )}
@@ -600,8 +665,9 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": "项目设置", machine: "机器", agent: "CLI", model: "模型", mode: "审批" };
-  const modelLine = ns.parts.model;
+  const titles: Record<Pick, string> = { "": "项目设置", machine: "机器", model: "模型", mode: "审批" };
+  const modelLine = parts.model;
+  const many = ns.agents.length > 1;
   return (
     <Sheet onClose={onClose}>
       <div className="ns-head">
@@ -615,12 +681,6 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
         <>
           <div className="ps-id"><Avatar name={projectName(cfg.cwd)} size="sm" /><div className="ps-text"><b>{projectName(cfg.cwd)}</b><small>{shortPath(cfg.cwd)}</small></div></div>
           <div className="setrows">
-            <button className="sr" onClick={() => setPick("agent")}>
-              <span className="lbl">CLI</span>
-              <span className="v">
-                <em>{agentName(cfg.agent)}</em>
-              </span>
-            </button>
             <button className="sr" onClick={() => setPick("machine")}>
               <span className="lbl">机器</span>
               <span className="v">
@@ -628,6 +688,17 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
                 <em>{machineName(machine)}</em>
               </span>
             </button>
+          </div>
+          {many && (
+            <div className="seg cli-tabs" role="tablist" aria-label="按 CLI 的设置">
+              {ns.agents.map((a) => (
+                <button key={a} role="tab" aria-selected={a === agent} className={a === agent ? "on" : ""} onClick={() => setTab(a)}>
+                  {agentName(a)}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="setrows">
             <button className="sr" onClick={() => setPick("model")}>
               <span className="lbl">模型</span>
               <span className={"v" + (info.loading ? " muted" : "")}>
@@ -637,7 +708,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             {cfg.agent === Agent.CLAUDE && (
               <div className="sr">
                 <span className="lbl">上下文</span>
-                {ns.parts.fixedWindow ? (
+                {parts.fixedWindow ? (
                   <span className="fixed">标准 200k · 这个模型只有标准窗口</span>
                 ) : (
                   <div className="pick" role="group" aria-label="上下文窗口">
@@ -650,7 +721,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
             <button className="sr" onClick={() => setPick("mode")}>
               <span className="lbl">审批</span>
               <span className="v">
-                <em>{ns.modeText}</em>
+                <em>{modeTextOf(cfg, machine)}</em>
               </span>
             </button>
           </div>
@@ -659,7 +730,7 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
+          <div className="hint">{many ? "两个 CLI 各存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
           <div className="setrows">
             <button className="sr" onClick={() => void remote.changePrefs(ns.p && remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "unpin" : "pin", cfg.cwd)}>{remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "取消常用" : "设为常用"}</button>
             <button className="sr red" onClick={() => void remote.changePrefs("hide", cfg.cwd)}>从项目列表移除</button>

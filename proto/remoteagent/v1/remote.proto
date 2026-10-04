@@ -329,22 +329,34 @@ message ProjectPrefs {
   repeated ProjectSettings settings = 5;
 }
 
-// ProjectSettings are a project's settings for new sessions. Empty fields
-// fall back to the machine's defaults.
+// ProjectSettings are a project's settings for new sessions: the machine,
+// the CLI last used, and one set of settings per CLI (architecture §13).
 message ProjectSettings {
+  reserved 4, 5, 6, 8;
   string path = 1;
+  // The CLI the latest new session used: the next one starts with it
+  // selected.
   Agent agent = 2;
   // The machine's device ID.
   string machine_id = 3;
-  string model = 4;
-  string effort = 5;
-  // Never PLAN: a plan is a passing state, not a default.
-  ApprovalMode mode = 6;
   // Unix milliseconds of the last change.
   int64 updated_ms = 7;
+  // At most one entry per CLI. A CLI without one starts from the project's
+  // latest session on it, else from the machine's defaults.
+  repeated AgentSettings agents = 9;
+}
+
+// AgentSettings are what new sessions of one CLI start with in a project.
+// Empty fields fall back to the machine's defaults.
+message AgentSettings {
+  Agent agent = 1;
+  string model = 2;
+  string effort = 3;
+  // Never PLAN: a plan is a passing state, not a default.
+  ApprovalMode mode = 4;
   // Claude Code only: new sessions get the standard context window
   // instead of 1M.
-  bool standard_context = 8;
+  bool standard_context = 5;
 }
 
 message ProjectPref {

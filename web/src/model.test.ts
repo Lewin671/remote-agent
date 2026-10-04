@@ -20,7 +20,6 @@ import {
   modeLabel,
   inputFailure,
   newConfigIssue,
-  switchAgent,
   switchMachine,
   machineAgents,
   minutesLeft,
@@ -387,6 +386,17 @@ describe("new sessions follow the project", () => {
 
   it("has nothing to copy for a new project", () => {
     expect(inheritConfig(undefined, machines(true, true))).toBeUndefined();
+  });
+
+  it("takes each CLI's settings from the project's latest session on that CLI", () => {
+    const codex = sess({ model: "gpt-6-sol", effort: "high" }, { id: "a", updatedMs: 5n });
+    const claude = sess({ model: "sonnet", agent: Agent.CLAUDE }, { id: "b", machineId: "m2", updatedMs: 1n });
+    const p = projects([codex, claude])[0];
+    // The machine is the latest session's, whichever CLI is asked for.
+    expect(inheritConfig(p, machines(true, true), p.key, Agent.CLAUDE)).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "sonnet" });
+    expect(inheritConfig(p, machines(true, true), p.key, Agent.CODEX)).toMatchObject({ machineId: "m1", agent: Agent.CODEX, model: "gpt-6-sol", effort: "high" });
+    // A CLI the project never ran starts from the machine's defaults.
+    expect(inheritConfig(projects([codex])[0], machines(true, true), p.key, Agent.CLAUDE)).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
   });
 });
 
@@ -755,19 +765,8 @@ describe("approval records", () => {
   });
 });
 
-describe("switching a new session's CLI or machine (v2)", () => {
+describe("switching a new session's machine (v2)", () => {
   const base = { machineId: "m1", cwd: "/Users/me/Code/foo", agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO };
-
-  it("keeps where it starts and takes the new CLI's defaults", () => {
-    expect(switchAgent(base, Agent.CLAUDE)).toEqual({ ...base, agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
-    // The same CLI again changes nothing.
-    expect(switchAgent(base, Agent.CODEX)).toEqual(base);
-  });
-
-  it("never carries full access over to another CLI", () => {
-    // It was confirmed for Codex; Claude Code's start asks again, or uses its own default.
-    expect(switchAgent({ ...base, mode: ApprovalMode.FULL_ACCESS }, Agent.CLAUDE).mode).toBe(ApprovalMode.UNSPECIFIED);
-  });
 
   it("takes a CLI the new machine has, and its defaults", () => {
     const claudeOnly: MachineLike = { id: "m2", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, { agent: Agent.CLAUDE })] }) };

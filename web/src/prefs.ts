@@ -8,7 +8,7 @@
 
 import { compareProjects } from "./model";
 import { clone, create } from "@bufbuild/protobuf";
-import { ProjectPrefSchema, ProjectPrefsSchema, ProjectSettingsSchema, type ProjectPref, type ProjectPrefs, type ProjectSettings } from "./gen/remoteagent/v1/remote_pb";
+import { AgentSettingsSchema, ProjectPrefSchema, ProjectPrefsSchema, ProjectSettingsSchema, type AgentSettings, type ProjectPref, type ProjectPrefs } from "./gen/remoteagent/v1/remote_pb";
 
 export type PrefKind = "pin" | "unpin" | "hide" | "unhide" | "settings";
 
@@ -19,7 +19,9 @@ export interface PrefOp {
   kind: PrefKind;
   path: string;
   at: number; // ms
-  settings?: Omit<Partial<ProjectSettings>, "$typeName" | "path" | "updatedMs">;
+  // What changes in the project's settings; the rest stays as stored. Each
+  // set replaces the stored one of its CLI.
+  settings?: { machineId?: string; agent?: AgentSettings["agent"]; sets?: Omit<AgentSettings, "$typeName">[] };
 }
 
 export interface PrefsSnapshot {
@@ -62,7 +64,11 @@ export function applyOp(prefs: ProjectPrefs, op: PrefOp): ProjectPrefs {
     case "settings": {
       const previous = settings.find((s) => s.path === op.path);
       const changed = previous ? clone(ProjectSettingsSchema, previous) : create(ProjectSettingsSchema, { path: op.path });
-      Object.assign(changed, op.settings, { path: op.path, updatedMs: BigInt(op.at) });
+      const { machineId, agent, sets = [] } = op.settings ?? {};
+      if (machineId !== undefined) changed.machineId = machineId;
+      if (agent !== undefined) changed.agent = agent;
+      for (const set of sets) changed.agents = [...changed.agents.filter((a) => a.agent !== set.agent), create(AgentSettingsSchema, set)];
+      changed.updatedMs = BigInt(op.at);
       settings = settings.filter((s) => s.path !== op.path);
       settings.push(changed);
       break;

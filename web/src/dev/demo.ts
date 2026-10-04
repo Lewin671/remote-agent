@@ -631,7 +631,7 @@ export class DemoRemote extends Remote {
     out("s-run", "q-run", "顺便补一个测试", "sent");
     if (this.opts.has("draft")) this.drafts.set("s-run", "请检查这段很长的路径 /Users/me/Code/foo/internal/generated/remoteagent/v1/client/session/messages/pending.ts，并补充测试");
     if (this.opts.get("cancel") === "failed") this.cancels.set("q-multi", { state: "failed", error: "failed_precondition" });
-    this.stored.prefs = applyOp(this.stored.prefs, { id: "seed-settings", kind: "settings", path: "/Users/me/Code/foo", at: now, settings: { agent: Agent.CODEX, machineId: "mac", model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.ASK } });
+    this.stored.prefs = applyOp(this.stored.prefs, { id: "seed-settings", kind: "settings", path: "/Users/me/Code/foo", at: now, settings: { agent: Agent.CODEX, machineId: "mac", sets: [{ agent: Agent.CODEX, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.ASK, standardContext: false }] } });
     out("s-ask", "q-ask", "跑一下测试", "sent");
     out("s-popup", "q-popup", "看下这些脚本是做什么的", "sent");
     out("s-msg", "o-unconf", "把 lint 也跑一下", "sent");
