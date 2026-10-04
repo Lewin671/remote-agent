@@ -166,6 +166,13 @@ interface CipherCache {
     /** Takes a session off the cached list, which is the listing's first page; its events stay. */
     suspend fun unlistSession(id: String)
 
+    /**
+     * Notes whose a session outside the cached list is (one of a later page,
+     * or fetched by its ID), so that events kept for it go with its machine.
+     * A session already noted, listed or not, is left as it is.
+     */
+    suspend fun keepOwner(s: RemoteSession) {}
+
     /** An image's display copy as fetched: its sealed envelope, never decrypted bytes. */
     suspend fun image(key: String): ByteArray? = null
     suspend fun putImage(key: String, envelope: ByteArray) {}
@@ -720,7 +727,7 @@ class Remote(
                 val rs = res.sessionsList.firstOrNull { it.sessionId == id }
                 // A session of a machine removed meanwhile, or one the listing of
                 // machines no longer has, is as good as gone.
-                if (rs != null && !pushed(removedPushes, rp, rs.machineId) && (!loaded || machines.containsKey(rs.machineId))) putSession(rs, save = onFirstPage(rs))
+                if (rs != null && !pushed(removedPushes, rp, rs.machineId) && (!firstPage || machines.containsKey(rs.machineId))) putSession(rs, save = onFirstPage(rs))
                 sessions[id] != null
             } finally {
                 byId.remove(id)
@@ -790,6 +797,8 @@ class Remote(
             if (save && store) {
                 listed += rs.sessionId
                 cache?.putSession(rs)
+            } else if (!save) {
+                cache?.keepOwner(rs)
             }
         } catch (e: Exception) {
             report(e)

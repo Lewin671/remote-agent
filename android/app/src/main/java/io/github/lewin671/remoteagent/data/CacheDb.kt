@@ -22,7 +22,7 @@ import io.github.lewin671.remoteagent.proto.StoredEvent
 class MachineRow(val id: String, val data: ByteArray)
 
 @Entity(tableName = "sessions", primaryKeys = ["id"])
-class SessionRow(val id: String, val machineId: String, val data: ByteArray)
+class SessionRow(val id: String, val machineId: String, val data: ByteArray, val listed: Boolean = true)
 
 @Entity(tableName = "events", primaryKeys = ["sessionId", "seq"])
 class EventRow(val sessionId: String, val seq: Long, val data: ByteArray)
@@ -36,19 +36,23 @@ interface CacheDao {
     @Query("SELECT * FROM blobs WHERE name = :name") suspend fun blob(name: String): BlobRow?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(b: BlobRow)
     @Query("SELECT * FROM machines") suspend fun machines(): List<MachineRow>
-    @Query("SELECT * FROM sessions") suspend fun sessions(): List<SessionRow>
+    @Query("SELECT * FROM sessions WHERE listed = 1") suspend fun sessions(): List<SessionRow>
     @Query("SELECT * FROM events WHERE sessionId = :sid ORDER BY seq") suspend fun events(sid: String): List<EventRow>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(m: MachineRow)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(s: SessionRow)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun putIfAbsent(s: SessionRow)
+    @Query("UPDATE sessions SET listed = 0 WHERE id = :id") suspend fun unlist(id: String)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun put(e: List<EventRow>)
     @Query("DELETE FROM machines WHERE id = :id") suspend fun deleteMachine(id: String)
     @Query("DELETE FROM sessions WHERE id = :id") suspend fun deleteSession(id: String)
     @Query("DELETE FROM events WHERE sessionId = :sid") suspend fun deleteEvents(sid: String)
     @Query("SELECT id FROM sessions WHERE machineId = :mid") suspend fun sessionsOf(mid: String): List<String>
 
-    // The sessions table holds the listing's first page (architecture §8
-    // 「会话列表分页」); events are kept for any session that was opened, and
-    // go only with a session known not to exist any more.
+    // The listed rows of the sessions table are the listing's first page
+    // (architecture §8 「会话列表分页」). Events are kept for any session that
+    // was opened, and go only with a session known not to exist any more;
+    // a row that is not listed stays to say which machine those events are
+    // of, so that they go when the machine does.
     @Transaction
     suspend fun removeMachine(id: String) {
         for (sid in sessionsOf(id)) {
@@ -65,7 +69,7 @@ interface CacheDao {
     }
 }
 
-@Database(entities = [MachineRow::class, SessionRow::class, EventRow::class, BlobRow::class], version = 2)
+@Database(entities = [MachineRow::class, SessionRow::class, EventRow::class, BlobRow::class], version = 3)
 abstract class CacheDb : RoomDatabase() {
     abstract fun dao(): CacheDao
 
@@ -90,7 +94,8 @@ class RoomCache(private val dao: CacheDao, private val images: ImageEnvelopes? =
         dao.put(events.map { EventRow(sessionId, it.seq, it.toByteArray()) })
     override suspend fun removeMachine(id: String) = dao.removeMachine(id)
     override suspend fun removeSession(id: String) = dao.removeSession(id)
-    override suspend fun unlistSession(id: String) = dao.deleteSession(id)
+    override suspend fun unlistSession(id: String) = dao.unlist(id)
+    override suspend fun keepOwner(s: RemoteSession) = dao.putIfAbsent(SessionRow(s.sessionId, s.machineId, s.toByteArray(), listed = false))
     override suspend fun blob(name: String) = dao.blob(name)?.data
     override suspend fun putBlob(name: String, data: ByteArray) = dao.put(BlobRow(name, data))
 }

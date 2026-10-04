@@ -310,7 +310,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val cli = Drafts.peekAgent(key) ?: wantedAgent(state, key)
     val unread = project != null && state.moreSessions && project.ended > ended.size &&
         savedSettings(state, key)?.agentsList?.any { it.agent == cli } != true &&
-        sessions.none { cli == null || it.agent() == cli }
+        // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
+        sessions.none { s -> (cli == null || s.agent() == cli) && state.sessionsNext?.let { io.github.lewin671.remoteagent.core.afterPlace(s.listedEndedMs, s.id, it) } != true }
     FetchEarlier(state, page = unread)
     if (unread) Drafts.forgetEmpty(key)
     val entry = Drafts.newSession(key, projectConfig(state, key))

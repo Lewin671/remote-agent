@@ -180,7 +180,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // so that it is not started with a machine's defaults.
   const heldEnded = p?.sessions.filter(exited).length ?? 0;
   const unread =
-    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[agent] && !saved?.agents.some((x) => x.agent === agent) && !p.sessions.some((s) => agentOf(s) === agent);
+    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[agent] && !saved?.agents.some((x) => x.agent === agent) &&
+    // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
+    !p.sessions.some((s) => agentOf(s) === agent && !remote.pastPages(s));
   useEffect(() => {
     if (unread) void remote.loadMoreSessions();
   });
