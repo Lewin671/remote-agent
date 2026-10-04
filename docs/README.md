@@ -27,7 +27,7 @@
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
 | [android-notes.md](android-notes.md) | 实测 | Android 客户端依赖的库和系统的表现：connect-kotlin、Termux 终端组件、加密、FCM、模拟器、选图和图片 |
 | [browser-notes.md](browser-notes.md) | 实测 | 网页客户端在浏览器和扩展里遇到的问题，如 AdGuard 拦截 WebSocket |
-| [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
+| [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、图标、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 各部分的当前状态和缺口、下一步、待确认事项、已完成的里程碑 |
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
 | [design/client-v28.html](design/client-v28.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
