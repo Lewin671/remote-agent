@@ -12,7 +12,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 |---|---|---|---|
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor` | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集 | 真实 CLI，手动（[记录](acceptance-notes.md#3-claude-code)） | 没有 Claude Code 版的 `scripts/acceptance.sh` |
-| server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 连真实 CLI 和线上 server 的验收，包括已有数据库加列后 daemon 补齐结束时间 |
+| server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收 |
 | 网页 | 当前界面稿 [client-v29](design/client-v29.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；v9 以后的改动只过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；往上翻时分段读取；下方「Android 的小缺口」 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
