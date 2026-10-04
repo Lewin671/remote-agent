@@ -58,6 +58,14 @@ type kotlinVectors struct {
 			Ciphertext string `json:"ciphertext"`
 		} `json:"payload"`
 	} `json:"pairing"`
+	// An envelope Kotlin sealed packed (Header.compression).
+	Packed struct {
+		Key        string `json:"key"`
+		Header     string `json:"header"`
+		Nonce      string `json:"nonce"`
+		Ciphertext string `json:"ciphertext"`
+		Plaintext  string `json:"plaintext"`
+	} `json:"packed"`
 }
 
 func unhex(t *testing.T, s string) []byte {
@@ -104,6 +112,11 @@ func TestKotlinVectors(t *testing.T) {
 	}
 	if string(plain) != e.Plaintext {
 		t.Errorf("plaintext %q", plain)
+	}
+	pk := v.Packed
+	ph, packed, err := Open(unhex(t, pk.Key), &pb.Envelope{Header: unhex(t, pk.Header), Nonce: unhex(t, pk.Nonce), Ciphertext: unhex(t, pk.Ciphertext)})
+	if err != nil || string(packed) != pk.Plaintext || ph.Compression != pb.Compression_COMPRESSION_DEFLATE || len(pk.Ciphertext)/2 >= len(pk.Plaintext) {
+		t.Errorf("packed envelope: %v, compression %v", err, ph.GetCompression())
 	}
 	if h.Seq != e.Seq || e.Seq != 18446744073709551600 {
 		t.Errorf("seq %d, want %d", h.Seq, e.Seq)

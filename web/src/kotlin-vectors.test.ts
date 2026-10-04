@@ -5,7 +5,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { expect as want, it } from "vitest";
 import v from "../../internal/e2e/testdata/kotlin-vectors.json";
 import { accountKey, concat, deriveRaw, deviceID, expect, fromHex, hex, importRoot, importSessionKey, LOGIN_CONTEXT, open, REGISTER_CONTEXT, utf8 } from "./crypto";
-import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
+import { Compression, EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairCommit, pairTranscript } from "./pair";
 
@@ -28,6 +28,15 @@ it("opens a Kotlin envelope with a uint64 seq", async () => {
   want(header.seq).toBe(BigInt(e.seq));
   want(header.seq).toBe(18446744073709551600n);
   expect(header, { kind: PayloadKind.EVENT, machineId: "machine-k", sessionId: "session-k", seq: BigInt(e.seq), requestId: "req-k" });
+});
+
+it("opens a packed Kotlin envelope", async () => {
+  const e = v.packed;
+  const env = create(EnvelopeSchema, { header: fromHex(e.header), nonce: fromHex(e.nonce), ciphertext: fromHex(e.ciphertext) });
+  const { header, plaintext } = await open(await importSessionKey(fromHex(e.key)), env);
+  want(header.compression).toBe(Compression.DEFLATE);
+  want(new TextDecoder().decode(plaintext)).toBe(e.plaintext);
+  want(env.ciphertext.length).toBeLessThan(plaintext.length);
 });
 
 it("verifies Kotlin signatures", async () => {
