@@ -179,10 +179,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // is here or the project's are all here, and no session starts before,
   // so that it is not started with a machine's defaults.
   const heldEnded = p?.sessions.filter(exited).length ?? 0;
-  const unread =
-    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[agent] && !saved?.agents.some((x) => x.agent === agent) &&
+  /** Whether what CLI a would inherit is still to be fetched. */
+  const unreadFor = (a: Agent) =>
+    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[a] && !saved?.agents.some((x) => x.agent === a) &&
     // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
-    !p.sessions.some((s) => agentOf(s) === agent && !remote.pastPages(s));
+    !p.sessions.some((s) => agentOf(s) === a && !remote.pastPages(s));
+  const unread = unreadFor(agent);
   useEffect(() => {
     if (unread) void remote.loadMoreSessions();
   });
@@ -319,9 +321,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     current.abandon();
     setError("");
   };
+  /** What CLI a inherits, once it is known: one whose latest session may
+   * be on a page not fetched is left open, and read when it is used. */
+  const settled = (a: Agent) => (unreadFor(a) ? undefined : inherit(a));
   /** Holds the launch settings as they are now, once a draft begins. */
   const latch = () => {
-    if (!saved && !held && !unread) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: inherit(Agent.CODEX), [Agent.CLAUDE]: inherit(Agent.CLAUDE) } });
+    if (!saved && !held && !unread) setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: settled(Agent.CODEX), [Agent.CLAUDE]: settled(Agent.CLAUDE) } });
   };
   // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
