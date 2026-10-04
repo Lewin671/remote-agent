@@ -50,7 +50,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
             已结束 {ended.length} ›
           </button>
         </div>
-        <ConfigSummary line={ns.line} chip onClick={() => setSettingsOpen(true)} />
+        <ConfigSummary summary={ns.summary} chip onClick={() => setSettingsOpen(true)} />
       </div>
     </div>
   );
@@ -87,7 +87,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   return (
     <div className="page">
       {/* With the keyboard up the project's head folds into the bar. */}
-      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary line={ns.line} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
+      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置">⋯</button>} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
         {!typing && <div className="pad">{head}</div>}
         {lists}

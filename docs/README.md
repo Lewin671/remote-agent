@@ -30,7 +30,7 @@
 | [design-system.md](design-system.md) | 设计 | 界面的视觉与交互规范：信息层级、颜色、字号、圆角、符号、组件和文案，及审查清单 |
 | [plan.md](plan.md) | 计划 | 各部分的当前状态和缺口、下一步、待确认事项、已完成的里程碑 |
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
-| [design/client-v27.html](design/client-v27.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
+| [design/client-v28.html](design/client-v28.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
 
 根目录的 README 写简介、上手用的命令和链接，项目状态只链接 plan.md；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 

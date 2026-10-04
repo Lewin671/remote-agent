@@ -296,7 +296,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
         summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
     }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        val folded = selected?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), machineLabel(state, it.machineId)).joinToString(" · ") }
+        val folded = selected?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
         NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
         LazyColumn(Modifier.weight(1f)) {
             if (!compact) item {
@@ -402,21 +402,17 @@ private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Mod
     }
 }
 
+/** The machine as the summary names it: only where there is more than one to mean. */
+private fun summaryMachine(state: RemoteState, id: String): String = if (state.machines.size > 1) machineLabel(state, id) else ""
+
+/** Mode, machine and model; the effort and the context window are in the project's settings. */
 fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse? = null): String {
     val default = defaultModeOf(state.machines[c.machineId], c.agent)
     val mode = effectiveModeText(c.mode, default)
     val modelId = c.model.ifEmpty { models?.defaultModel.orEmpty() }
     val chosen = models?.let { io.github.lewin671.remoteagent.core.findModel(it.modelsList, modelId) { m -> m.slug } }
     return listOf(agentName(c.agent), mode,
-        machineLabel(state, c.machineId), chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" },
-        c.effort.ifEmpty { chosen?.defaultEffort.orEmpty() }, contextSummary(c, chosen?.contextWindow ?: 0)).filter { it.isNotEmpty() }.joinToString(" · ")
-}
-
-/** The context window new Claude Code sessions get, as the summary writes it: 1M unless the project asks for the standard one or the model has no larger one. */
-fun contextSummary(c: NewConfig, modelWindow: Long): String {
-    if (c.agent != Agent.AGENT_CLAUDE) return ""
-    val standard = c.standardContext || modelWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
-    return io.github.lewin671.remoteagent.core.contextText(if (standard) io.github.lewin671.remoteagent.core.STANDARD_WINDOW else modelWindow.takeIf { it > 0 } ?: 1_000_000L).orEmpty()
+        summaryMachine(state, c.machineId), chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" }).filter { it.isNotEmpty() }.joinToString(" · ")
 }
 
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =

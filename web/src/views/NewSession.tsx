@@ -8,7 +8,6 @@ import {
   agentName,
   ago,
   findModel,
-  contextText,
   STANDARD_WINDOW,
   modelLabel,
   inheritConfig,
@@ -82,13 +81,15 @@ export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: 
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
-  const modelText = slug ? `${modelLabel(info.models?.models, slug, cfg.agent)}${effort ? " · " + effort : ""}` : info.loading ? "读取设置…" : "默认模型";
+  const unset = info.loading ? "读取设置…" : "默认模型";
+  const label = slug ? modelLabel(info.models?.models, slug, cfg.agent) : unset;
+  const modelText = slug ? `${label}${effort ? " · " + effort : ""}` : unset;
   // Claude Code only: the window new sessions get, 1M unless the project
   // asks for the standard one or the model has no larger one.
   const max = model?.contextWindow ?? 0n;
   const fixedWindow = max > 0n && max <= STANDARD_WINDOW;
   const window = cfg.agent !== Agent.CLAUDE ? 0n : cfg.standardContext || fixedWindow ? STANDARD_WINDOW : max || 1_000_000n;
-  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, slug, window, fixedWindow, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
+  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, label, slug, window, fixedWindow, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
 }
 
 /** The configuration in one line: machine, CLI, model and effort, mode. */
@@ -300,7 +301,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const dm = defaultModeOf(machine, cfg.agent);
   const modeText = modeTextOf(cfg, machine);
   const parts = describeParts(cfg, machine, info);
-  const rest = [modeText, machineName(machine), parts.model, contextText(parts.window)].filter(Boolean).join(" · ");
+  // The machine is named only where there is more than one to mean.
+  const summary: Summary = { agent: agentName(cfg.agent), mode: modeText, machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label };
   return {
     remote,
     frozen: current.frozen,
@@ -321,9 +323,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     attachWhy: attachBlocked(remote, machine),
     machine,
     info,
-    line: `${agentName(cfg.agent)} · ${rest}`,
-    // Next to the CLI switch, which already names the CLI.
-    lineRest: rest,
+    summary,
     modeText,
     create,
     busy,
@@ -521,7 +521,7 @@ export function NewBox({
         {card}
         <div className="launch">
           {cli}
-          <ConfigSummary line={cli ? ns.lineRest : ns.line} chip onClick={() => setConfig("main")} />
+          <ConfigSummary summary={ns.summary} bare={!!cli} chip onClick={() => setConfig("main")} />
         </div>
         {busyNote}
       </>
@@ -928,15 +928,28 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
   return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} title={onPicked ? "选项目" : undefined} />;
 }
 
-/** The new-session settings in one line, opening the project's settings. Only 完全放行 is red. */
-export function ConfigSummary({ line, chip, onClick }: { line: string; chip?: boolean; onClick: () => void }) {
-  const [before, ...rest] = line.split("完全放行");
+/** What the summary of the new-session settings says. */
+export type Summary = { agent: string; mode: string; machine: string; model: string };
+
+/** The new-session settings in one line, opening the project's settings:
+ * the mode, the machine and the model; the effort and the window are in
+ * the settings. Only 完全放行 is red. bare: next to the CLI switch, which already names
+ * the CLI. The machine's name is what gives way when the line is long. */
+export function ConfigSummary({ summary, bare, chip, onClick }: { summary: Summary; bare?: boolean; chip?: boolean; onClick: () => void }) {
+  const { agent, mode, machine, model: rest } = summary;
+  const full = mode === modeName(ApprovalMode.FULL_ACCESS);
+  const sep = " · ";
+  const line = [!bare && agent, mode, machine, rest].filter(Boolean).join(sep);
   return (
     <button className={"project-summary" + (chip ? " chip" : "")} onClick={onClick} aria-label={`新会话设置：${line}`}>
       <span>
-        {before}
-        {rest.length > 0 && <span className="red">完全放行</span>}
-        {rest.join("完全放行")}
+        <span>
+          {!bare && agent + sep}
+          {full ? <span className="red">{mode}</span> : mode}
+          {(machine || rest) && sep}
+        </span>
+        {machine && <span className="machine">{machine}</span>}
+        {rest && <span>{(machine ? sep : "") + rest}</span>}
       </span>
     </button>
   );

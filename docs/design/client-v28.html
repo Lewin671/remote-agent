@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v27</title>
+<title>remote-agent 客户端设计稿 v28</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -308,14 +308,16 @@
   .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
   /* 新会话的设置摘要，按钮样式，点开项目设置；宽屏上放在 .launch 里，和 CLI 切换同一行 */
   .proj-cfg { display:inline-flex; align-items:center; gap:6px; max-width:100%; margin-top:6px; padding:0 10px; font-size:13px; color:var(--fg2); background:var(--chip); border-radius:var(--r-sm); text-decoration:none; min-height:32px; white-space:nowrap; overflow:hidden; }
-  .proj-cfg em { font-style:normal; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-  .proj-cfg .red { color:var(--red); flex:none; }
+  .proj-cfg em { font-style:normal; overflow:hidden; text-overflow:ellipsis; min-width:0; white-space:pre; flex:0 1 auto; }
+  /* 放不下时先省略机器名（.mach），其余部分最后才省略 */
+  .proj-cfg em.mach { flex-shrink:1000; min-width:3em; }
+  .proj-cfg .red { color:var(--red); }
   .proj-cfg::after { content:"›"; color:var(--faint); font-size:17px; flex:none; }
   /* 新建输入框旁的 CLI 切换，只装了一个 CLI 时不出现；宽屏上右边跟着所选 CLI 的设置摘要 */
   .launch { flex:none; display:flex; align-items:center; gap:8px; min-height:44px; margin:0 16px; min-width:0; }
   .launch .pick { margin-left:0; flex:none; }
   .launch .pick span { white-space:nowrap; }
-  .launch a.proj-cfg { flex:0 1 auto; min-width:0; margin:0 0 0 auto; }
+  .launch a.proj-cfg { flex:0 1 auto; min-width:0; margin:0 0 0 auto; min-height:36px; }
   .start .launch { margin:6px 0 0; }
   .wpage .launch { margin:-4px 0 0; }
   .wpage .compose-card { margin-left:0; margin-right:0; }
@@ -872,14 +874,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v27 · 2026-10-04 · 上一版 v26 在 git 历史里（<code>git log -- docs/design/client-v26.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v28 · 2026-10-04 · 上一版 v27 在 git 历史里（<code>git log -- docs/design/client-v27.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v26 的改动</h4><ul><li>主页和宽屏侧栏改成一条会话时间线：需要处理、进行中，然后是已结束的会话，按今天、昨天、近 7 天和月份分组，滚到底再加载更早的。不再有「常用项目」「其他项目」两组，宽屏侧栏也不再有项目树（<a href="#home">主页</a>、<a href="#wide">宽屏</a>）。</li><li>标题换成范围：某个项目，或「全部项目」。点它切换范围、建新项目、进项目管理。只有一个项目时范围就是它；范围记在这台设备上。</li><li>会话行第二行写状态词和预览；项目、CLI、机器只在当前范围里不止一种时才写成第三行。已结束的会话只占一行。所有列表里的会话行都按这个写法。</li><li>当前范围里的会话超过 8 个时，标题下出现筛选框，按标题筛选。</li><li>范围是某个项目时，新建按钮直接进这个项目的新建页，不再先选项目。宽屏没有单独的项目页：选中项目后，侧栏列出它的会话，主区域是它的新建输入框。手机的项目页不变。</li><li>常用项目只决定范围菜单和项目选择器里的顺序，不再是主页的一个分组；项目管理页不变。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v27 的改动</h4><ul><li>新会话的设置摘要只在账户里不止一台机器时写机器名。摘要只写审批模式、机器和模型，推理强度和上下文窗口不再写进摘要，在项目设置里看；只有一台机器时就是「模式 · 模型」（<a href="#new">新建会话</a>、<a href="#launch-states">宽屏的各种长度</a>）。</li><li>摘要一行放不下时先省略机器名，模式和模型保持完整；机器名至少留 3 个字。</li><li>宽屏上摘要和 CLI 切换同高（36），不再比它矮一截。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1007,7 +1009,7 @@
       <div class="body">
         <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
           <div class="av lg c1">f</div>
-          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div><a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div><a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
         </div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
@@ -1926,7 +1928,7 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">新建 · 项目默认完全放行 / 模式未知</div>
-    <a class="proj-cfg" href="#project-settings"><em>Codex ·</em> <span class="red">完全放行</span><em>· MacBook · GPT-6-Astra</em></a>
+    <a class="proj-cfg" href="#project-settings"><em>Codex · <span class="red">完全放行</span> · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a>
     <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
     <div class="st-c">项目设置为完全放行时直接新建，不再二次确认，设置摘要按钮里只把「完全放行」标红，输入框不加提示。沿用 CLI 配置且读不出模式时，摘要写「审批：CLI 配置（未读到）」，照常新建。</div>
   </div>
@@ -3803,7 +3805,7 @@ git status --short gen/</pre>
       <div class="start">
         <h3>在 <span class="proj-pick"><span class="av xs c1">f</span>foo<i>▾</i></span> 里开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
   </div>
@@ -3906,7 +3908,7 @@ git status --short gen/</pre>
       <div class="start">
         <h3>开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
   </div>
@@ -3936,12 +3938,15 @@ git status --short gen/</pre>
       <div class="start">
         <h3>开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
   </div>
 </div>
 <div class="cap" style="width:auto;text-align:left">点侧栏标题打开范围菜单，内容和手机的弹层一样；选中后菜单关闭，侧栏换成那个范围；主区域是新建时跟着换成这个项目，正在看会话或设置时不动。正在看的会话不在新范围里时，仍留在进行中的最上面高亮，直到切走</div>
+<h3 id="launch-states" style="font-size:15px;margin:32px 0 12px;color:var(--fg2)">新建输入框下的设置摘要 · 各种长度</h3>
+<div class="screens" style="gap:16px"><div class="st" style="width:640px;max-width:100%"><div class="st-h">只有一台机器</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · Opus</em></a></div><div class="st-c">账户里只有一台机器时不写机器名：新建不用选它，离线时由提示条说明。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">多台机器 · 名字长</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro-office-2024</em><em> · Opus</em></a></div><div class="st-c">放不下时只省略机器名，模型留在末尾。</div></div><div class="st" style="width:380px;max-width:100%"><div class="st-h">窗口很窄</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro</em><em> · claude-opus-5-5-preview-20261001</em></a></div><div class="st-c">机器名缩到 3 个字以后，才从末尾省略；完全放行始终在最前面。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">只装了一个 CLI · 模式未读到</div><div class="launch" style="margin:0"><a class="proj-cfg" href="#project-settings"><em>Codex · 审批：CLI 配置（未读到） · GPT-6-Astra</em></a></div><div class="st-c">没有 CLI 切换时摘要以 CLI 名开头，仍靠右。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">设置还在读取</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · 读取设置…</em></a></div><div class="st-c">内容短时摘要随内容收窄，靠右。</div></div></div>
+
 
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目管理</span></div>

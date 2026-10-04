@@ -780,8 +780,11 @@ input.field { margin: 0; }
 .side .sh .nb { width: 44px; height: 44px; min-height: 44px; padding: 0; background: none; display: flex; align-items: center; justify-content: center; }
 .project-summary { display: block; color: var(--muted); font-size: 13px; max-width: 100%; min-height: 32px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-summary .red { color: var(--red); }
+/* Too long for the line: the machine's name gives way first, down to a few letters; the rest only after it. */
+.project-summary > span { display: flex; min-width: 0; }
+.project-summary > span > span { flex: 0 1 auto; min-width: 0; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.project-summary > span > .machine { flex-shrink: 1000; min-width: 3em; }
 .project-summary.chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0 10px; background: var(--chip); color: var(--fg2); border-radius: var(--r-sm); }
-.project-summary.chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .project-summary.chip::after { content: "›"; color: var(--faint); font-size: 17px; flex: none; }
 @media (hover: hover) { .project-summary.chip:hover { background: var(--track); } }
 .phead > div:last-child { min-width: 0; }
@@ -798,7 +801,7 @@ input.field { margin: 0; }
 .launch { flex: none; display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; margin: 0 16px; }
 .launch .pick { margin-left: 0; }
 .launch .pick button { white-space: nowrap; }
-.launch .project-summary.chip { flex: 0 1 auto; min-width: 0; margin: 0 0 0 auto; }
+.launch .project-summary.chip { flex: 0 1 auto; min-width: 0; min-height: 36px; margin: 0 0 0 auto; }
 .start .launch, .wpage .launch { margin: -6px 0 0; }
 .start .compose-card, .wpage .compose-card { margin-left: 0; margin-right: 0; }
 .setrows + .cli-tabs { margin-top: 10px; }

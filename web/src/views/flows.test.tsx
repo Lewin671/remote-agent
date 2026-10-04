@@ -1190,6 +1190,22 @@ describe("switching a new session's CLI (v2)", () => {
     expect(row.querySelector(".pick .on")?.textContent).toBe("Codex");
     expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
   });
+
+  it("names the machine in the summary only when there is more than one", async () => {
+    const r = demo();
+    mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
+    const summary = () => host.querySelector(".launch .project-summary")!;
+    // The name is its own part, the one that gives way on a long line.
+    expect(summary().querySelector(".machine")?.textContent).toBe("MacBook");
+    act(() => {
+      for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
+      (r as unknown as { changed(): void }).changed();
+    });
+    expect(summary().querySelector(".machine")).toBeNull();
+    // Mode and model; the effort and the window are in the settings.
+    expect(summary().textContent).toMatch(/^询问 · gpt-6-astra$/i);
+    expect(summary().getAttribute("aria-label")).toBe(`新会话设置：${summary().textContent}`);
+  });
 });
 
 /** A CLI in the switch next to the new-session box. */

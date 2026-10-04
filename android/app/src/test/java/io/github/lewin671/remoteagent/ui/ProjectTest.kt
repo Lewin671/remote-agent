@@ -179,7 +179,7 @@ class ProjectTest {
             .build()
         val text = projectSummary(io.github.lewin671.remoteagent.core.RemoteState(),
             NewConfig("mac", "/work/app", model = "gpt-6-astra", mode = Mode.ASK), models)
-        org.junit.Assert.assertTrue(text.contains("GPT-6-Astra · medium"))
+        org.junit.Assert.assertTrue(text, text.endsWith("询问 · GPT-6-Astra"))
     }
     @Test
     fun aNewSessionCannotBeStartedInPlan() {
