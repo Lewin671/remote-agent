@@ -98,6 +98,20 @@ describe("matches the Go implementation", () => {
     await want(open(key, await sealed(Compression.DEFLATE, utf8("not deflate at all, surely")))).rejects.toThrow(OpenError);
   });
 
+  it("refuses a payload that unpacks past the limit", async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const key = await importSessionKey(raw);
+    // 65 MiB of zeros deflate to a few kilobytes.
+    const { deflateSync } = await import("fflate");
+    const bomb = deflateSync(new Uint8Array(65 << 20));
+    want(bomb.length).toBeLessThan(1 << 20);
+    const header = toBinary(HeaderSchema, create(HeaderSchema, { version: 1, kind: PayloadKind.EVENT, compression: Compression.DEFLATE }));
+    const nonce = new Uint8Array(12);
+    const k = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: header }, k, bomb as Uint8Array<ArrayBuffer>);
+    await want(open(key, create(EnvelopeSchema, { header, nonce, ciphertext: new Uint8Array(ct) }))).rejects.toThrow(OpenError);
+  });
+
   it("parses the secret", () => {
     const s = parseSecret(vectors.secret);
     want(hex(s.root)).toBe(vectors.root);

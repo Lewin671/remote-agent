@@ -3,6 +3,7 @@
 // serialized header is the additional data, and Ed25519 signatures.
 // internal/e2e/testdata/vectors.json keeps the two implementations in step.
 
+import { deflateSync, Inflate } from "fflate";
 import { create, fromBinary, toBinary, type DescMessage, type MessageShape } from "@bufbuild/protobuf";
 import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
 
@@ -171,6 +172,11 @@ export async function signEnvelope(device: CryptoKey, env: Envelope): Promise<En
 
 export class OpenError extends Error {}
 
+// Payloads are packed with fflate rather than the browser's own
+// CompressionStream: "deflate-raw" came to browsers later than the rest
+// of what this page needs, and a page that cannot unpack cannot read
+// anything a daemon sends.
+//
 // Packing limits, as in internal/e2e: a payload under PACK_MIN goes as it
 // is, and one that unpacks to more than MAX_UNPACKED is refused, so that
 // a small envelope cannot fill memory.
@@ -181,25 +187,19 @@ export const MAX_UNPACKED = 64 << 20;
  * payloads are read before the devices have compared protocol versions. */
 const packs = (kind: PayloadKind | undefined) => kind !== PayloadKind.SESSION_KEY && kind !== PayloadKind.IMAGE && kind !== PayloadKind.PAIRING;
 
-/** Runs bytes through a (de)compression stream, up to limit bytes out. */
-async function through(stream: CompressionStream | DecompressionStream, bytes: Uint8Array, limit: number): Promise<Uint8Array> {
-  const writer = stream.writable.getWriter();
-  // Errors surface on the reading side; unhandled here they would only be noise.
-  void writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => undefined);
-  void writer.close().catch(() => undefined);
-  const reader = stream.readable.getReader();
+/** Inflates raw DEFLATE, up to limit bytes out. The input goes in by
+ * slices, so that what a slice can expand to (at most 1032 times its
+ * size) is all that is held past the limit. */
+function unpack(packed: Uint8Array, limit: number): Uint8Array {
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > limit) {
-      void reader.cancel().catch(() => undefined);
-      throw new OpenError("payload is too large");
-    }
-    chunks.push(value);
-  }
+  const inflate = new Inflate((chunk) => {
+    size += chunk.length;
+    if (size > limit) throw new OpenError("payload is too large");
+    chunks.push(chunk);
+  });
+  const slice = 16 << 10;
+  for (let at = 0; at < packed.length || at === 0; at += slice) inflate.push(packed.subarray(at, at + slice), at + slice >= packed.length);
   return concat(...chunks);
 }
 
@@ -209,8 +209,8 @@ async function through(stream: CompressionStream | DecompressionStream, bytes: U
 export async function seal(key: CryptoKey, header: Omit<Partial<Header>, "$typeName">, plaintext: Uint8Array): Promise<Envelope> {
   let compression = Compression.NONE;
   if (packs(header.kind) && plaintext.length >= PACK_MIN) {
-    const packed = await through(new CompressionStream("deflate-raw"), plaintext, plaintext.length).catch(() => undefined);
-    if (packed && packed.length < plaintext.length) [plaintext, compression] = [packed, Compression.DEFLATE];
+    const packed = deflateSync(plaintext);
+    if (packed.length < plaintext.length) [plaintext, compression] = [packed, Compression.DEFLATE];
   }
   const h = toBinary(HeaderSchema, create(HeaderSchema, { version: VERSION, ...header, compression }));
   const nonce = crypto.getRandomValues(new Uint8Array(12));
@@ -246,7 +246,7 @@ export async function open(key: CryptoKey, env: Envelope | undefined): Promise<{
   if (header.compression === Compression.NONE) return { header, plaintext: new Uint8Array(pt) };
   if (header.compression !== Compression.DEFLATE) throw new OpenError("unknown compression");
   try {
-    return { header, plaintext: await through(new DecompressionStream("deflate-raw"), new Uint8Array(pt), MAX_UNPACKED) };
+    return { header, plaintext: unpack(new Uint8Array(pt), MAX_UNPACKED) };
   } catch {
     throw new OpenError("payload does not unpack");
   }

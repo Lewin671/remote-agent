@@ -292,6 +292,7 @@ export class Remote {
   private listing = 0; // counts first pages, so a late page of an older listing is not continued from
   private paging?: Promise<boolean>;
   private pageRetryAt = 0; // a page that failed is not asked for again at once
+  private relisting = 0; // first pages on their way
   private loadingAll = false;
   private asking = new Set<string>();
   private askRetryAt = new Map<string, number>();
@@ -761,9 +762,10 @@ export class Remote {
       const rp = new Map(this.removedPushes);
       const pushed = (now: Map<string, number>, then: Map<string, number>, id: string) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
       // From here on the cursor held belongs to the listing before: no
-      // page is to be asked for with it, nor taken, until this one is in.
+      // page is asked for with it, nor taken, until this one is in. It
+      // still says which of the sessions held lie past the pages fetched.
       const listing = ++this.listing;
-      this.nextSessions = undefined;
+      this.relisting++;
       const [ms, ss] = await Promise.all([this.api.listMachines({}), this.api.listRemoteSessions({ limit: SESSION_PAGE })]);
       if (listing !== this.listing) return;
       // Forget what the server no longer has, e.g. a machine another
@@ -811,6 +813,11 @@ export class Remote {
       this.listTimer = setTimeout(() => {
         if (!this.closed && this.conn === "online") void this.refresh();
       }, delay);
+    } finally {
+      // Pages may be asked for again; the views are told, since one that
+      // asked meanwhile was turned away.
+      this.relisting--;
+      this.changed();
     }
   }
 
@@ -821,7 +828,7 @@ export class Remote {
   loadMoreSessions(): Promise<boolean> {
     if (this.paging) return this.paging;
     const after = this.nextSessions;
-    if (!after || this.conn !== "online" || Date.now() < this.pageRetryAt) return Promise.resolve(false);
+    if (!after || this.relisting || this.conn !== "online" || Date.now() < this.pageRetryAt) return Promise.resolve(false);
     const listing = this.listing;
     this.loadingSessions = true;
     this.changed();
@@ -951,7 +958,6 @@ export class Remote {
       }
       if (view.machineId !== rs.machineId) throw new Error("会话记录的机器被改动");
       view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
-      if (rs.updatedMs >= view.updatedMs) view.endedMs = rs.endedMs;
       view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
       if (rs.meta) {
         const { header, msg } = await openMessage(
@@ -963,6 +969,9 @@ export class Remote {
         if (header.seq >= view.metaRev) {
           view.info = msg;
           view.metaRev = header.seq;
+          // The server stores when the session ended with the metadata,
+          // so its place in the listing goes with the revision taken.
+          view.endedMs = rs.endedMs;
         }
       }
     } catch (e) {
