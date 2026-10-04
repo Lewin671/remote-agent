@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v26</title>
+<title>remote-agent 客户端设计稿 v27</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -834,6 +834,36 @@
   .when-open { display:none; }
   details[open] > summary .when-closed { display:none; }
   details[open] > summary .when-open { display:inline; }
+  /* v27：范围标题、会话时间线、按标题筛选 */
+  .dn { display: inline-block; transform: rotate(90deg); color: var(--faint); font-style: normal; font-size: 17px; line-height: 1; flex: none; }
+  .scope { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 36px; padding: 0 6px; border-radius: var(--r-sm); font-size: 15px; }
+  .scope b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .scope.open { background: var(--chip); }
+  .av.all { background: var(--chip); color: var(--muted); font-weight: 600; }
+  .side { position: relative; }
+  .side .sh { padding: 8px 6px 4px 8px; gap: 4px; }
+  .side .sh .scope b { font-size: 15px; }
+  .side .sh .nb { margin-right: 0; flex: none; }
+  .large h3.scope { font-size: 22px; letter-spacing: -.3px; min-height: 44px; padding: 0; gap: 10px; }
+  .large h3.scope .av { width: 28px; height: 28px; border-radius: 8px; font-size: 15px; }
+  .find { height: 36px; border-radius: 18px; background: var(--chip); color: var(--muted); font-size: 15px; display: flex; align-items: center; gap: 6px; padding: 0 14px; margin: 4px 16px 2px; flex: none; }
+  .find.typed { color: var(--fg); }
+  .find kbd, .find .x { margin-left: auto; font: inherit; font-size: 12px; color: var(--faint); }
+  .side .find { height: 30px; border-radius: 15px; font-size: 13px; margin: 2px 12px 4px; padding: 0 12px; }
+  .sess .pv .stw { font-weight: 600; }
+  .sess .pv .stw.run { color: var(--blue); } .sess .pv .stw.wait { color: var(--orange-ink); } .sess .pv .stw.idle { color: var(--green-ink); }
+  .side .sess .pv { font-size: 12px; }
+  .old { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 35px; font-size: 15px; color: var(--fg2); }
+  .old span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .old span:last-child { margin-left: auto; flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .old.sel { background: var(--blue-soft); }
+  .side .old { min-height: 30px; padding: 0 14px 0 31px; font-size: 13px; }
+  .st .old, .wpage .old { padding-left: 19px; padding-right: 0; }
+  .tail { padding: 12px 16px 4px 35px; font-size: 12px; color: var(--muted); }
+  .side .tail { padding-left: 31px; }
+  .pop { position: absolute; left: 8px; top: 46px; width: 264px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 2px 12px 4px; z-index: 3; }
+  .plist .pi .ck { color: var(--blue); font-weight: 600; width: 16px; text-align: center; flex: none; }
+  .plist .pi.act { color: var(--blue); border: none; min-height: 44px; }
 </style>
 </head>
 <body>
@@ -842,28 +872,28 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v26 · 2026-10-04 · 上一版 v25 在 git 历史里（<code>git log -- docs/design/client-v25.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v27 · 2026-10-04 · 上一版 v26 在 git 历史里（<code>git log -- docs/design/client-v26.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v25 的改动</h4><ul><li>新建时直接选 CLI：输入框旁多一个 Codex / Claude Code 的切换，点一下就换，草稿保留。手机上在输入框上方，键盘弹出时也在；宽屏在输入框下方，和设置摘要同一行（<a href="#new">新建会话</a>）。</li><li>项目记住上次用的 CLI，下次新建默认还是它；两个 CLI 各存一套模型、审批和上下文，来回切换不会丢另一套。</li><li>项目设置去掉「CLI」一行和 CLI 选择弹层，改成机器一行加按 CLI 分的两套设置；设置摘要的位置和写法不变，写的是选中的那个 CLI。</li><li>这台机器只装了一个 CLI 时不显示切换；上次用的 CLI 在这台机器上没有时用提示条说明（<a href="#cli">Claude Code</a>）。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v26 的改动</h4><ul><li>主页和宽屏侧栏改成一条会话时间线：需要处理、进行中，然后是已结束的会话，按今天、昨天、近 7 天和月份分组，滚到底再加载更早的。不再有「常用项目」「其他项目」两组，宽屏侧栏也不再有项目树（<a href="#home">主页</a>、<a href="#wide">宽屏</a>）。</li><li>标题换成范围：某个项目，或「全部项目」。点它切换范围、建新项目、进项目管理。只有一个项目时范围就是它；范围记在这台设备上。</li><li>会话行第二行写状态词和预览；项目、CLI、机器只在当前范围里不止一种时才写成第三行。已结束的会话只占一行。所有列表里的会话行都按这个写法。</li><li>当前范围里的会话超过 8 个时，标题下出现筛选框，按标题筛选。</li><li>范围是某个项目时，新建按钮直接进这个项目的新建页，不再先选项目。宽屏没有单独的项目页：选中项目后，侧栏列出它的会话，主区域是它的新建输入框。手机的项目页不变。</li><li>常用项目只决定范围菜单和项目选择器里的顺序，不再是主页的一个分组；项目管理页不变。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
-<div class="note" style="margin-bottom:16px">网页、宽屏侧栏和 Android 统一排序：需要处理按审批、问题、计划、弹窗排列，同类型先处理等待最久的；进行中按创建时间从新到旧，离线不另移到末尾；已结束按结束时间从新到旧。后台输出和重连不改变会话间的顺序。常用项目仍按置顶顺序，其他项目仍按最近活动排序。相同时间的会话使用固定顺序。</div>
+<div class="note" style="margin-bottom:16px">主页是一条会话时间线，标题是它的范围：某个项目，或「全部项目」。只有一个项目时范围就是它，否则默认全部项目；选过以后记在这台设备上，记住的项目被移除或不存在时回到默认。网页、宽屏侧栏和 Android 统一排序：需要处理按审批、问题、计划、弹窗排列，同类型先处理等待最久的；进行中按创建时间从新到旧，离线不另移到末尾；已结束按结束时间从新到旧，分成今天、昨天、近 7 天，再往前按月份（不是今年的写出年份）。后台输出和重连不改变会话间的顺序，相同时间的会话使用固定顺序。会话行第二行是状态词和预览；项目只在全部项目里写，CLI 只在这个范围里用过不止一种时写，机器只在账户里不止一台电脑时写，都没有就不占第三行。需要处理不受范围限制：选了某个项目时，别的项目的待处理项仍列在这里，并写出项目名。已从列表移除的项目，它的会话只在需要处理和进行中里出现。</div>
 <div class="screens">
 
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
+        <div class="large"><h3 class="scope" role="button" aria-label="换范围"><div class="av sm all">全</div><b>全部项目</b><i class="dn">›</i></h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
 
         <div class="label">需要处理 <span>4</span></div>
         <div class="todo">
@@ -883,39 +913,92 @@
       </div>
       <div class="tabbar"><div class="on"><i>▦</i>会话<span class="n">4</span></div><div><i>⚙︎</i>设置</div></div>
     </div>
-    <div class="cap">主页：先处理再看进行中。命令可滚动看全文，审批仍直接在卡片上处理；提问、计划、弹窗点进会话</div>
+    <div class="cap">主页（全部项目）：先处理再看进行中。命令可滚动看全文，审批仍直接在卡片上处理；提问、计划、弹窗点进会话</div>
   </div>
 
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
-        <div class="large"><h3>会话</h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
+        <div class="large"><h3 class="scope" role="button" aria-label="换范围"><div class="av sm all">全</div><b>全部项目</b><i class="dn">›</i></h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
         <div class="label">进行中 <span>3</span></div>
-        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv">已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>billing · 11:25</b><span>11:25</span></div><div class="pv">还没发消息</div><div class="mc"><span class="stw idle">空闲</span> · Codex · billing · iMac</div></div></div>
-
-        <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="proj"><div class="av c1">f</div><div class="pt"><div><div class="pn">foo</div><div class="ps">~/Code/foo · 2 个进行中</div></div><span class="chev">›</span></div></div>
-        <div class="label">其他项目</div><div class="proj"><div class="av c2">b</div><div class="pt"><div><div class="pn">billing</div><div class="ps">~/Code/billing · 1 个进行中</div></div><span class="chev">›</span></div></div>
-        <div class="proj"><div class="av c3">b</div><div class="pt"><div><div class="pn">blog</div><div class="ps">~/Code/blog · 2 小时前</div></div><span class="chev">›</span></div></div>
-        <div class="proj"><div class="av c3">b</div><div class="pt"><div><div class="pn">blog</div><div class="ps">~/work/blog · 昨天</div></div><span class="chev">›</span></div></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">foo · Codex · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">foo · Claude Code · MacBook</div></div></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>billing · 11:25</b><span>11:25</span></div><div class="pv"><span class="stw idle">空闲</span> · 还没发消息</div><div class="mc">billing · Codex · iMac</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
+        <div class="old"><span>拆分 handler 包</span><span>foo · 7:10</span></div>
+        <div class="label">昨天</div>
+        <div class="old"><span>修复 RSS 日期格式</span><span>blog · 18:44</span></div>
+        <div class="old"><span>整理读书笔记目录</span><span>notes · 11:02</span></div>
       </div>
       <div class="tabbar"><div class="on"><i>▦</i>会话</div><div><i>⚙︎</i>设置</div></div>
     </div>
-    <div class="cap">没有待处理时，进行中在最上面，按创建时间从新到旧，运行、空闲和离线共用同一顺序。常用项目在前，其他按最近活动排序；路径区分同名项目，管理入口在标题右侧</div>
+    <div class="cap">全部项目，没有待处理时：进行中在最上面，按创建时间从新到旧，运行、空闲和离线共用同一顺序；下面是已结束的，按结束时间分组，一行一个，右边写项目和时间。这里有多个项目、两种 CLI、多台电脑，所以进行中的行有第三行</div>
   </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body">
+        <div class="large"><h3 class="scope" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
+        <div class="find"><span>⌕</span>按标题筛选</div>
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div></div></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>拆分 handler 包</span><span>7:10</span></div>
+        <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
+        <div class="label">昨天</div>
+        <div class="old"><span>补充错误码说明</span><span>18:44</span></div>
+        <div class="old"><span>排查偶发的 502</span><span>11:02</span></div>
+        <div class="label">近 7 天</div>
+        <div class="old"><span>介绍下这个项目</span><span>周二</span></div>
+        <div class="old"><span>清理废弃的 feature flag</span><span>周一</span></div>
+        <div class="label">9 月</div>
+        <div class="old"><span>升级到 Go 1.25</span><span>9月27日</span></div>
+        <div class="tail">共 71 个，滚到底加载更早的</div>
+      </div>
+      <div class="tabbar"><div class="on"><i>▦</i>会话</div><div><i>⚙︎</i>设置</div></div>
+    </div>
+    <div class="cap">只有一个项目，或选了一个项目：标题是项目名，行里不再写项目；只用一种 CLI、只有一台电脑时也不写它们，会话行只有两行。会话超过 8 个时标题下有筛选框。右上角的新建按钮直接进这个项目的新建页</div>
+  </div>
 
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body">
+        <div class="large"><h3 class="scope open" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
+      </div>
+      <div class="tabbar"><div class="on"><i>▦</i>会话</div><div><i>⚙︎</i>设置</div></div>
+      <div class="dim"></div>
+      <div class="sheet"><div class="grab"></div><div class="ns-head"><b>看哪个项目</b><span>取消</span></div><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck">✓</span></div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · 2 小时前</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 昨天</small></div><span class="ck"></span></div><div class="pi act">新项目…</div><div class="pi act">管理项目 ›</div></div></div>
+    </div>
+    <div class="cap">点标题换范围：第一行是全部项目（只有一个项目时没有这一行），然后是常用项目，再是其他项目按最近活动排序，每行写路径和进行中的数量，当前范围打勾；超过 8 个项目时顶部有搜索。「新项目…」选机器和目录，「管理项目」进项目管理</div>
+  </div>
 
-
-
+  <div>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="body">
+        <div class="large"><h3 class="scope" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></h3><div class="hit"><div class="newbtn" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></div></div></div>
+        <div class="find typed"><span>⌕</span>接口<span class="x">✕</span></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
+        <div class="label">9 月</div>
+        <div class="old"><span>接口返回值统一成驼峰</span><span>9月21日</span></div>
+        <div class="tail">3 个会话的标题里有「接口」</div>
+      </div>
+      <div class="tabbar"><div class="on"><i>▦</i>会话</div><div><i>⚙︎</i>设置</div></div>
+    </div>
+    <div class="cap">筛选：只按标题匹配，不分大小写，在本机完成，范围内的会话都参与。结果保持原来的分组和顺序，没有会话的分组不显示；没有结果时写「没有标题里有「…」的会话」。点 ✕ 清空</div>
+  </div>
 </div>
 
 <!-- ============================= -->
 <h2 id="new">新建会话</h2>
-<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送。用哪个 CLI 每次新建时在输入框旁选，项目记住上次用的；机器、模型和审批模式属于项目设置，模型和审批每个 CLI 各存一套，改了只影响之后新建的会话；输入框的「＋」只添加图片。主页右上角的新建按钮（方框加笔）先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
+<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送。用哪个 CLI 每次新建时在输入框旁选，项目记住上次用的；机器、模型和审批模式属于项目设置，模型和审批每个 CLI 各存一套，改了只影响之后新建的会话；输入框的「＋」只添加图片。主页的范围是某个项目时，右上角的新建按钮（方框加笔）直接进这个项目页；范围是全部项目时先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
 <div class="screens">
   <div>
     <div class="phone">
@@ -927,11 +1010,11 @@
           <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12 ›</a></div><a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · MacBook · GPT-6-Astra · medium</em></a></div>
         </div>
         <div class="label">进行中 <span>2</span></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv">请求执行 go test ./... -count=1</div><div class="mc"><span class="stw wait">等待审批</span> · Codex · VPS-dev</div></div></div>
-        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
         <div class="label">最近结束</div>
-        <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · Claude Code · MacBook</div></div></div>
-        <div class="sess ended"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · Codex · MacBook</div></div></div>
+        <div class="old"><span>补充接口文档</span><span>昨天</span></div>
+        <div class="old"><span>介绍下这个项目</span><span>9月27日</span></div>
       </div>
       <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="draft">描述任务…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
@@ -945,8 +1028,8 @@
       <div class="navbar"><span class="back">‹</span><span class="title"><b>foo</b><span>Claude Code · 自动 · MacBook</span></span><span class="more">⋯</span></div>
       <div class="body">
         <div class="label">进行中 <span>2</span></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · VPS-dev</div></div></div>
-        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span></div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">Codex · MacBook</div></div></div>
       </div>
       <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
@@ -988,7 +1071,7 @@
         </div>
       </div>
     </div>
-    <div class="cap">从主页新建：右上角的新建按钮先帮你选项目。选中后进入第 2 步，输入框已聚焦、键盘已弹出</div>
+    <div class="cap">从全部项目新建：右上角的新建按钮先帮你选项目，选中后进入第 2 步；主页范围已经是某个项目时跳过这一步，输入框已聚焦、键盘已弹出</div>
   </div>
 
   <div>
@@ -1689,9 +1772,9 @@ git status --short gen/</pre>
 
   <div class="st">
     <div class="st-h">主页 · 进行中很多</div>
-    <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>8:05</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · bar</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>发布秋季文章</b><span>昨天</span></div><div class="mc"><span class="stw idle">空闲</span> · Codex · blog</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>拆分订单服务</b><span>昨天</span></div><div class="mc"><span class="stw run">运行中</span> · Claude Code · shop</div></div></div>
+    <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">foo · Codex</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">foo · Claude Code</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>8:05</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">bar · Codex</div></div></div><div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>发布秋季文章</b><span>昨天</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">blog · Codex</div></div></div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>拆分订单服务</b><span>昨天</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">shop · Claude Code</div></div></div>
     <div class="todo-more" style="margin:4px 0 0">还有 7 个进行中 ›</div>
-    <div class="st-c">进行中最多列 5 个，其余点「还有 N 个」进完整列表，排序不变；其他项目最多列 5 个，其余从「全部项目 ›」进项目管理；常用项目全部显示</div>
+    <div class="st-c">进行中最多列 5 个，其余点「还有 N 个」就地展开，排序不变；已结束的先列 30 个，滚到底再加载 30 个</div>
   </div>
 
   <div class="st">
@@ -1856,6 +1939,15 @@ git status --short gen/</pre>
       <div class="btns"><div class="btn pri">开始第一个会话</div></div>
     </div>
     <div class="st-c">没有在线电脑时改写：在电脑上运行 <code>remote-agent daemon</code>；还没加电脑时给「添加设备」</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">主页 · 这个项目还没有会话</div>
+    <div style="text-align:center;padding:14px 0 4px">
+      <div style="font-weight:600">这个项目还没有会话</div>
+      <div class="muted small" style="margin:4px 0 0">点右上角的新建按钮开始一个</div>
+    </div>
+    <div class="st-c">范围是某个项目而它没有会话时（比如刚恢复的项目）。还没有任何项目时标题写「会话」，不能点</div>
   </div>
 
   <div class="st">
@@ -2141,7 +2233,7 @@ git status --short gen/</pre>
       <div class="navbar"><span class="back">‹</span><span class="title"><b>web</b><span>~/Code/web · MacBook</span></span><span class="more">⋯</span></div>
       <div class="body">
         <div class="label">会话</div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>首页改版</b><span>9:38</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>首页改版</b><span>9:38</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div></div></div>
       </div>
       <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="att-tray"><i class="pic port ui" style="width:56px"><span class="x">✕</span></i><i class="pic land web" style="width:56px"><span class="pct"><b style="width:62%"></b></span><span class="x">✕</span></i></div><div class="att-meta"><span class="orig on"><i></i>原图 · 共 9.8 MB</span><span>2 / 6</span></div><div class="draft typed">按截图把设置页重做一遍</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
@@ -2225,7 +2317,7 @@ git status --short gen/</pre>
 <b>修复登录超时</b>
 <span>刚刚</span>
 </div>
-<div class="mc">运行中 · Codex · MacBook</div>
+<div class="pv"><span class="stw run">运行中</span></div><div class="mc">Codex · MacBook</div>
 </div>
 </div>
 <div class="sess">
@@ -2236,7 +2328,7 @@ git status --short gen/</pre>
 <b>梳理登录流程</b>
 <span>8:12</span>
 </div>
-<div class="mc">空闲 · Claude Code · MacBook</div>
+<div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div>
 </div>
 </div>
 </div>
@@ -2251,7 +2343,7 @@ git status --short gen/</pre>
 <div class="navbar"><span class="back">‹</span><span class="title"><b><span class="tname">foo</span></b><span>Codex · 询问 · VPS-dev</span></span><span class="more">⋯</span></div>
 <div class="body pad">
 <div class="label">进行中</div>
-<div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>梳理登录流程</b><span>8:12</span></div><div class="mc">空闲 · Claude Code · MacBook</div></div></div>
+<div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>梳理登录流程</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div></div></div>
 </div>
 <div class="banner" style="margin:0 10px 2px">VPS-dev 没有 Claude Code，这次用 Codex<b>换机器</b></div>
 <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
@@ -2752,8 +2844,8 @@ git status --short gen/</pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="body">
         <div class="label">进行中 <span>2</span></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>14:06</span></div><div class="pv">原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc"><span class="stw idle">空闲</span> · 分叉 · Codex · foo · MacBook</div></div></div>
-        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>13:20</span></div><div class="pv">原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc"><span class="stw idle">空闲</span> · Codex · foo · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>14:06</span></div><div class="pv"><span class="stw idle">空闲</span> · 原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc">分叉 · foo · Codex · MacBook</div></div></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>登录接口偶尔超时</b><span>13:20</span></div><div class="pv"><span class="stw idle">空闲</span> · 原因是限流器在重试时没有释放令牌。我加了释放逻辑…</div><div class="mc">foo · Codex · MacBook</div></div></div>
       </div>
     </div>
     <div class="cap">会话列表：分叉出的会话是一个新会话，时间是分叉的时刻，排在原会话前面；元信息在状态后面多写「分叉」。标题一开始和原会话一样，想区分就重命名</div>
@@ -2988,7 +3080,7 @@ git status --short gen/</pre>
 </div>
 
 <h2 id="projects">项目管理</h2>
-<div class="note" style="margin:0 0 20px">主页项目标题右侧、宽屏侧栏项目标题右侧都提供「管理」。常用项目先显示，其他项目按最近活动排序；新建的项目选择器沿用相同分组。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
+<div class="note" style="margin:0 0 20px">主页和宽屏侧栏的范围菜单底部提供「管理项目」。常用项目先显示，其他项目按最近活动排序；范围菜单和新建的项目选择器沿用相同顺序。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
 <div class="screens">
 <div>
 <div class="phone">
@@ -3247,7 +3339,7 @@ git status --short gen/</pre>
 <div class="row1">
 <b>检查输入交互</b>
 </div>
-<div class="mc">运行中 · Claude Code · MacBook</div>
+<div class="pv"><span class="stw run">运行中</span></div><div class="mc">Claude Code · MacBook</div>
 </div>
 </div>
 </div>
@@ -3687,22 +3779,23 @@ git status --short gen/</pre>
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>主页</span></div>
   <div class="dg">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="sh"><span class="scope" role="button" aria-label="换范围"><div class="av sm all">全</div><b>全部项目</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="find"><span>⌕</span>按标题筛选<kbd>⌘K</kbd></div>
       <div class="scroll">
-        <div class="label">需要处理</div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · foo · VPS-dev</div></div></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>9:20</span></div><div class="mc"><span class="stw wait">等你回答</span> · Codex · bar · iMac</div></div></div>
-        <div class="label">进行中</div>
-        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
-        <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 个进行中</span></div>
-        <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c2">b</div>bar<span class="live">1 个进行中</span></div>
-        <div class="ph"><i class="arr">▾</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
-        <div class="sub-sess"><span>发布秋季文章</span><span>2 小时前</span></div>
-        <div class="sub-sess"><span>修复 RSS 日期格式</span><span>昨天</span></div>
-        <div class="sub-sess" style="color:var(--blue)"><span>全部 8 个</span><span></span></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c4">n</div>notes<span>昨天</span></div>
+        <div class="label">需要处理 <span>2</span></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">foo · Codex · VPS-dev</div></div></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>9:20</span></div><div class="pv"><span class="stw wait">等你回答</span> · 大版本也一起升吗？</div><div class="mc">billing · Codex · iMac</div></div></div>
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">foo · Codex · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">foo · Claude Code · MacBook</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
+        <div class="old"><span>拆分 handler 包</span><span>foo · 7:10</span></div>
+        <div class="label">昨天</div>
+        <div class="old"><span>修复 RSS 日期格式</span><span>blog · 18:44</span></div>
+        <div class="old"><span>整理读书笔记目录</span><span>notes · 11:02</span></div>
+        <div class="label">近 7 天</div>
+        <div class="old"><span>介绍下这个项目</span><span>foo · 周二</span></div>
       </div>
       <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
@@ -3715,23 +3808,32 @@ git status --short gen/</pre>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏主页：侧栏分需要处理、进行中和项目三段，点项目名进项目页、点箭头展开最近结束的；右上的新建图标回到这里。主区域只做一件事：新建任务。标题里的项目名就是项目选择，默认最近用的项目；输入框下一行左边切 CLI，默认是这个项目上次用的，右边是所选 CLI 的设置摘要（紧挨着切换，不再重复写 CLI 名），点开是项目设置。需要处理只在侧栏，点进会话在停靠区处理</div>
+<div class="cap" style="width:auto;text-align:left">宽屏主页（全部项目）：侧栏是一条时间线，需要处理、进行中，然后是已结束的按日期往下排，滚到底加载更早的；会话超过 8 个时有筛选框，⌘/Ctrl+K 聚焦。右上的新建图标回到这里。主区域只做一件事：新建任务。标题里的项目名是这个任务的项目选择，默认最近用的项目，选它不改变侧栏的范围；输入框下一行左边切 CLI，默认是这个项目上次用的，右边是所选 CLI 的设置摘要（紧挨着切换，不再重复写 CLI 名），点开是项目设置。需要处理只在侧栏，点进会话在停靠区处理</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>会话 · 并排</span></div>
   <div class="dg">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="sh"><span class="scope" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="find"><span>⌕</span>按标题筛选<kbd>⌘K</kbd></div>
       <div class="scroll">
-        <div class="label">需要处理</div>
-        <div class="sess wait sel"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="mc"><span class="stw wait">等待审批</span> · Codex · foo · VPS-dev</div></div></div>
-        <div class="label">进行中</div>
-        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
-        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="mc"><span class="stw idle">空闲</span> · Claude Code · foo · MacBook</div></div></div>
-        <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">3 个进行中</span></div>
-        <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
-        <div class="ph"><i class="arr">▸</i><div class="av sm c4">n</div>notes<span>昨天</span></div>
+        <div class="label">需要处理 <span>1</span></div>
+        <div class="sess wait sel"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">Claude Code · MacBook</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>拆分 handler 包</span><span>7:10</span></div>
+        <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
+        <div class="label">昨天</div>
+        <div class="old"><span>补充错误码说明</span><span>18:44</span></div>
+        <div class="old"><span>排查偶发的 502</span><span>11:02</span></div>
+        <div class="label">近 7 天</div>
+        <div class="old"><span>介绍下这个项目</span><span>周二</span></div>
+        <div class="old"><span>清理废弃的 feature flag</span><span>周一</span></div>
+        <div class="label">9 月</div>
+        <div class="old"><span>升级到 Go 1.25</span><span>9月27日</span></div>
+        <div class="tail">共 71 个，滚到底加载更早的</div>
       </div>
       <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
@@ -3774,56 +3876,110 @@ git status --short gen/</pre>
 <div class="cap" style="width:auto;text-align:left">宽屏会话：顶栏一行，左边是身份，右边是视图标签和 ⋯；模式、模型与上下文统一收进顶栏的 ⋯ 菜单。视图记在这台设备上，打开别的会话也是并排。并排时停靠区、队列和统一输入区只在聊天栏，终端栏保留原生输入；收窄时退出并排，草稿和阅读位置保留。主区域宽度不到 840 时不提供「并排」</div>
 
 <div class="desk" style="margin-top:32px">
-  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目页</span></div>
-  <div class="dg" style="height:460px">
+  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>主页 · 一个项目</span></div>
+  <div class="dg">
     <div class="side">
-      <div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="sh"><span class="scope" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="find"><span>⌕</span>按标题筛选<kbd>⌘K</kbd></div>
       <div class="scroll">
-        <div class="label">进行中</div>
-        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="mc"><span class="stw run">运行中</span> · Codex · foo · MacBook</div></div></div>
-        <div class="label">常用项目 <a href="#projects">管理 ›</a></div>
-        <div class="ph" style="background:var(--blue-soft)"><i class="arr">▸</i><div class="av sm c1">f</div>foo<span class="live">1 个进行中</span></div>
-        <div class="label">其他项目</div><div class="ph"><i class="arr">▸</i><div class="av sm c3">b</div>blog<span>2 小时前</span></div>
+        <div class="label">需要处理 <span>1</span></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">Claude Code · MacBook</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>拆分 handler 包</span><span>7:10</span></div>
+        <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
+        <div class="label">昨天</div>
+        <div class="old"><span>补充错误码说明</span><span>18:44</span></div>
+        <div class="old"><span>排查偶发的 502</span><span>11:02</span></div>
+        <div class="label">近 7 天</div>
+        <div class="old"><span>介绍下这个项目</span><span>周二</span></div>
+        <div class="old"><span>清理废弃的 feature flag</span><span>周一</span></div>
+        <div class="label">9 月</div>
+        <div class="old"><span>升级到 Go 1.25</span><span>9月27日</span></div>
+        <div class="tail">共 71 个，滚到底加载更早的</div>
       </div>
       <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
     </div>
     <div class="dm">
-      <div class="wpage">
-        <div style="display:flex;gap:14px;align-items:center">
-          <div class="av lg c1">f</div>
-          <div style="flex:1;min-width:0"><div style="font-size:22px;font-weight:700">foo</div><div class="muted small">~/Code/foo · MacBook · VPS-dev</div></div>
-        </div>
-        <div class="compose-card"><div class="draft">描述任务…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
+      <div class="start">
+        <h3>开始一个任务</h3>
+        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
         <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
-        <div class="label" style="padding-left:0;padding-right:0">进行中 <span>1</span></div>
-        <div class="sess" style="padding-left:0;padding-right:0"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv">正在执行 go test ./auth/...</div><div class="mc"><span class="stw run">运行中</span> · Codex · MacBook</div></div></div>
-        <div class="label" style="padding-left:0;padding-right:0">已结束 <span>12</span></div>
-        <div class="sess ended" style="padding-left:0;padding-right:0"><span class="dot off"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>昨天</span></div><div class="pv">已补充 12 个接口的说明</div><div class="mc">已结束 · Codex · MacBook</div></div></div>
-        <div class="sess ended" style="padding-left:0;padding-right:0"><span class="dot off"></span><div class="sm"><div class="row1"><b>介绍下这个项目</b><span>9月27日</span></div><div class="pv">没有按时间失效。模型列表缓存在前端页面的内存里…</div><div class="mc">已结束 · Codex · MacBook</div></div></div>
       </div>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">宽屏项目页：正文最宽 760，居中；顶部就是新会话输入框，下一行切 CLI、看这个 CLI 的设置；已结束的全部列出，往下滚动加载</div>
+<div class="cap" style="width:auto;text-align:left">只有一个项目，或选了一个项目：侧栏标题是项目名，整栏都是它的会话，行里不再写项目。主区域的标题不带项目选择，输入框下一行仍是 CLI 切换和这个项目的设置摘要。宽屏没有单独的项目页；项目已从列表移除时，输入框上方出现提示条和「恢复」，恢复前不能开始会话，草稿保留</div>
+
+<div class="desk" style="margin-top:32px">
+  <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>换范围</span></div>
+  <div class="dg" style="height:460px">
+    <div class="side">
+      <div class="sh"><span class="scope open" role="button" aria-label="换范围"><div class="av sm c1">f</div><b>foo</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+      <div class="find"><span>⌕</span>按标题筛选<kbd>⌘K</kbd></div>
+      <div class="scroll">
+        <div class="label">需要处理 <span>1</span></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="label">进行中 <span>2</span></div>
+        <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
+        <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">Claude Code · MacBook</div></div></div>
+        <div class="label">今天</div>
+        <div class="old"><span>拆分 handler 包</span><span>7:10</span></div>
+        <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
+      </div>
+      <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+      <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck">✓</span></div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · 2 小时前</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 昨天</small></div><span class="ck"></span></div><div class="pi act">新项目…</div><div class="pi act">管理项目 ›</div></div></div>
+    </div>
+    <div class="dm">
+      <div class="start">
+        <h3>开始一个任务</h3>
+        <div class="compose-card"><div class="draft">描述任务，⌘/Ctrl+Enter 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片">＋</span></span><span class="go44">↑</span></div></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · MacBook · GPT-6-Astra · medium</em></a></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cap" style="width:auto;text-align:left">点侧栏标题打开范围菜单，内容和手机的弹层一样；选中后菜单关闭，侧栏换成那个范围；主区域是新建时跟着换成这个项目，正在看会话或设置时不动。正在看的会话不在新范围里时，仍留在进行中的最上面高亮，直到切走</div>
 
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>项目管理</span></div>
 <div class="dg" style="height:520px">
-  <div class="side"><div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c3">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span><span class="dot idle"></span> 已连接</span></div></div>
+  <div class="side">
+    <div class="sh"><span class="scope" role="button" aria-label="换范围"><div class="av sm all">全</div><b>全部项目</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+    <div class="scroll">
+      <div class="label">进行中 <span>1</span></div>
+      <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 make test</div><div class="mc">remote-agent · Claude Code · VPS-dev</div></div></div>
+      <div class="label">今天</div>
+      <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
+    </div>
+    <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+  </div>
   <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><p class="muted small">常用和已移除项目跨客户端同步；移除只隐藏入口，保留会话、历史和提醒。</p><div class="label" style="padding-left:0">常用项目</div><table class="manage-table"><tbody><tr><td><b>remote-agent</b><span class="path">~/Code/ai-bot/remote-agent</span></td><td>取消常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/Code/blog</span></td><td>取消常用 · ⋯</td></tr></tbody></table><div class="label" style="padding-left:0">其他项目</div><table class="manage-table"><tbody><tr><td><b>billing</b><span class="path">~/Code/billing</span></td><td>设为常用 · ⋯</td></tr><tr><td><b>blog</b><span class="path">~/work/blog</span></td><td>设为常用 · ⋯</td></tr></tbody></table><div class="wide-project-tools"><span class="chip" style="color:var(--blue)">已移除 3 个 · 查看与恢复 ›</span></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，在主区域管理常用、移除与恢复；移除后仍能从进行中和通知进入原会话。</div>
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>设置</span></div>
 <div class="dg" style="height:560px">
-  <div class="side"><div class="sh"><b>会话</b><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div><div class="scroll"><div class="label">进行中</div><div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="mc">运行中 · Claude Code · VPS-dev</div></div></div><div class="label">常用项目 <a href="#projects">管理 ›</a></div><div class="ph"><div class="av sm c1">r</div>remote-agent</div><div class="ph"><div class="av sm c3">b</div>blog</div></div><div class="foot"><span>⚙ 设置</span><span><span class="dot idle"></span> 已连接</span></div></div>
+  <div class="side">
+    <div class="sh"><span class="scope" role="button" aria-label="换范围"><div class="av sm all">全</div><b>全部项目</b><i class="dn">›</i></span><span class="nb" role="button" aria-label="新会话"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M17.6 3.6a1.9 1.9 0 0 1 2.8 2.8L12 14.8l-3.6.8.8-3.6z"/></svg></span></div>
+    <div class="scroll">
+      <div class="label">进行中 <span>1</span></div>
+      <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>验证库存回滚</b></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 make test</div><div class="mc">remote-agent · Claude Code · VPS-dev</div></div></div>
+      <div class="label">今天</div>
+      <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
+    </div>
+    <div class="foot"><span>⚙︎ 设置</span><span><span class="dot idle"></span> 已连接</span></div>
+  </div>
   <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def">⌘</span><div class="machine-info"><div class="machine-name">MacBook<span class="machine-status"><span class="dot idle"></span>在线</span></div><div class="machine-quota">Codex · 7 天已用 34%</div></div><span class="machine-chevron">›</span></div><div class="row" style="color:var(--blue)">＋ 添加设备</div></div><div class="glabel">客户端</div><div class="grp"><div class="row">Chrome · 8a5f<span class="v">当前 ›</span></div><div class="row">Pixel 9<span class="v">已配对 ›</span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。</div>
 <div class="note">
   <h4>宽屏说明</h4>
   <ul>
-    <li>侧栏和主区域各自滚动；侧栏的「⚙︎ 设置」和连接状态固定在底部</li>
+    <li>侧栏和主区域各自滚动；侧栏的范围标题、筛选框固定在顶部，「⚙︎ 设置」和连接状态固定在底部</li>
+    <li>范围记在这台设备上，手机和宽屏共用同一个值；宽屏上打开某个项目（如从电脑详情的项目列表点进来）会把范围换成它</li>
     <li>正在看的会话即使状态变了（比如从等待审批变成运行中、已结束），也继续留在侧栏里高亮，直到切走</li>
     <li>窗口宽 900 以上用宽屏布局；主区域宽度不到 840（窗口约 1120）时只有聊天和终端两个视图，「并排」不出现；记住的是并排时临时显示聊天，拉宽后恢复</li>
   </ul>
