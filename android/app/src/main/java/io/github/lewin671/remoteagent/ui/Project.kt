@@ -301,11 +301,16 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
     // The page of project settings that is open ("" is the first), or null.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
-    // A project known only from its machines' summaries had sessions, but none is held:
-    // how it was last started is on a page not fetched yet. Pages are fetched until one of
-    // its sessions is here, and no session starts before, so that it is not started with a
-    // machine's defaults; the draft is seeded once they are known.
-    val unread = project != null && sessions.isEmpty() && project.ended > 0 && savedSettings(state, key) == null && state.moreSessions
+    // What a CLI starts with, where no set is stored for it, is how the project's latest
+    // session on it ran. Sessions come a page at a time: while the project has ended
+    // sessions not fetched and none of this CLI is held, that session may be among them.
+    // Pages are fetched until it is here or the project's are all here, and no session
+    // starts before, so that it is not started with a machine's defaults; a draft that
+    // holds nothing yet is seeded once they are known.
+    val cli = Drafts.peekAgent(key) ?: wantedAgent(state, key)
+    val unread = project != null && state.moreSessions && project.ended > ended.size &&
+        savedSettings(state, key)?.agentsList?.any { it.agent == cli } != true &&
+        sessions.none { cli == null || it.agent() == cli }
     FetchEarlier(state, page = unread)
     if (unread) Drafts.forgetEmpty(key)
     val entry = Drafts.newSession(key, projectConfig(state, key))

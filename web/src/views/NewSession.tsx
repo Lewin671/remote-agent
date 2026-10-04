@@ -6,6 +6,8 @@ import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 import {
   agentName,
+  agentOf,
+  exited,
   ago,
   findModel,
   STANDARD_WINDOW,
@@ -152,14 +154,6 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
-  // A project known only from its machines' summaries had sessions, but
-  // none is held: how it was last started is on a page not fetched yet.
-  // Pages are fetched until one of its sessions is here, and no session
-  // starts before, so that it is not started with a machine's defaults.
-  const unread = !!p && p.sessions.length === 0 && p.ended > 0 && !saved && remote.moreSessions;
-  useEffect(() => {
-    if (unread) void remote.loadMoreSessions();
-  });
   const [latched, setLatched] = useState<{ key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> }>();
   const held = latched?.key === key ? latched : undefined;
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
@@ -178,6 +172,18 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // box says so. What the project remembers stays.
   const agent = agents.includes(wanted) ? wanted : agents[0];
   const missing = agent !== wanted && machine?.meta ? wanted : undefined;
+  // What a CLI starts with, where no set is stored for it, is how the
+  // project's latest session on it ran. Sessions come a page at a time:
+  // while the project has ended sessions not fetched and none of this CLI
+  // is held, that session may be among them. Pages are fetched until it
+  // is here or the project's are all here, and no session starts before,
+  // so that it is not started with a machine's defaults.
+  const heldEnded = p?.sessions.filter(exited).length ?? 0;
+  const unread =
+    !!p && remote.moreSessions && p.ended > heldEnded && !local?.sets[agent] && !saved?.agents.some((x) => x.agent === agent) && !p.sessions.some((s) => agentOf(s) === agent);
+  useEffect(() => {
+    if (unread) void remote.loadMoreSessions();
+  });
   /** What a session of CLI a starts with: the set chosen on this page,
    * the stored one, else the project's latest session on that CLI. base:
    * as the project has it, leaving out this page's choices. */
@@ -187,7 +193,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     if (set) return { ...at, model: set.model, effort: set.effort, mode: set.mode, standardContext: set.standardContext };
     // Another machine has its own models and defaults.
     if (!base && local?.machineId) return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
-    const h = held ? held.by[a] : inherit(a);
+    // A draft begun before this CLI's sessions were fetched held nothing for it.
+    const h = held?.by[a] ?? inherit(a);
     return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: h?.mode ?? ApprovalMode.UNSPECIFIED, from: h?.from };
   };
   const cfg = configFor(agent);

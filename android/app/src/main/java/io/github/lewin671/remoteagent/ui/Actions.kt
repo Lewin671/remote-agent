@@ -96,9 +96,13 @@ object Drafts {
     /** The new-session draft of a project; [initial] only seeds one that does not exist yet. */
     fun newSession(project: String, initial: NewConfig?): NewSession = newSessions.getOrPut(project) { NewSession(initial) }
 
+    /** The CLI picked for a project's draft, if it has a draft and one was picked. */
+    fun peekAgent(project: String): io.github.lewin671.remoteagent.proto.Agent? = newSessions[project]?.agent?.value
+
     /** Drops a project's draft that holds nothing yet, so that it is seeded anew. */
     fun forgetEmpty(project: String) {
-        if (newSessions[project]?.text?.value.isNullOrEmpty()) newSessions.remove(project)
+        val draft = newSessions[project] ?: return
+        if (draft.text.value.isEmpty() && draft.agent.value == null) newSessions.remove(project)
     }
 
     fun clear() {
