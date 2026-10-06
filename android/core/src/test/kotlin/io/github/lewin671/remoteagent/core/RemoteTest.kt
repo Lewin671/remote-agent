@@ -325,6 +325,102 @@ class RemoteTest {
     }
 
     @Test
+    fun aStreamWithoutReadyIsReplacedEvenThoughTheUpgradeSucceeded() = runBlocking<Unit> {
+        val acct = joinWithRoot(root, server.url, http)
+        val hole = StreamBlackhole()
+        closers += hole
+        // Only the stream goes to the fixture; auth and list RPCs use the real server.
+        val routed = http.newBuilder().addInterceptor { chain ->
+            val request = chain.request()
+            val target = if (request.url.encodedPath == "/v1/stream") request else
+                request.newBuilder().url(server.url + request.url.encodedPath).build()
+            chain.proceed(target)
+        }.build()
+        val r = Remote(Account(hole.url, acct.root, acct.deviceSeed, acct.deviceId), routed, streamOpenMs = 300)
+        closers += AutoCloseable { r.close() }
+        r.start()
+        r.awaitState("missing Ready timeout") { it.conn == ConnState.OFFLINE && it.error.contains("超时") }
+        r.reconnectNow()
+        r.awaitState("replacement ready") { it.conn == ConnState.ONLINE }
+        assertEquals(2, hole.attempts.get())
+    }
+
+    @Test
+    fun repeatedNetworkCallbacksDuringLoginLeaveOnlyOneCurrentStream() = runBlocking<Unit> {
+        val acct = joinWithRoot(root, server.url, http)
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val challenges = java.util.concurrent.atomic.AtomicInteger()
+        val streams = java.util.concurrent.atomic.AtomicInteger()
+        val blocked = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/GetChallenge")) {
+                challenges.incrementAndGet(); entered.countDown()
+                while (!gate.await(10, TimeUnit.MILLISECONDS)) {
+                    if (chain.call().isCanceled()) throw java.io.IOException("cancelled")
+                }
+            }
+            if (chain.request().url.encodedPath == "/v1/stream") streams.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(acct, blocked)
+        closers += AutoCloseable { r.close(); gate.countDown() }
+        r.start()
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        repeat(4) { r.reconnectNow() }
+        delay(200)
+        gate.countDown()
+        r.awaitState("one online stream") { it.conn == ConnState.ONLINE && it.loaded }
+        delay(200)
+        assertEquals(1, streams.get())
+        assertTrue(challenges.get() >= 1)
+    }
+
+    @Test
+    fun aLoginThatDoesNotReturnTimesOutAndCanRecover() = runBlocking<Unit> {
+        val acct = joinWithRoot(root, server.url, http)
+        val blocked = java.util.concurrent.atomic.AtomicBoolean(true)
+        val attempts = java.util.concurrent.atomic.AtomicInteger()
+        val slow = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/GetChallenge")) {
+                attempts.incrementAndGet()
+                while (blocked.get()) {
+                    if (chain.call().isCanceled()) throw java.io.IOException("cancelled")
+                    Thread.sleep(10)
+                }
+            }
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(acct, slow, streamOpenMs = 300)
+        closers += AutoCloseable { blocked.set(false); r.close() }
+        r.start()
+        r.awaitState("login timeout") { it.conn == ConnState.OFFLINE }
+        assertFalse(r.state.value.removed)
+        blocked.set(false); r.reconnectNow()
+        r.awaitState("login recovery") { it.conn == ConnState.ONLINE }
+        assertTrue(attempts.get() >= 2)
+    }
+
+    @Test
+    fun networkChangeReplacesAnOnlineStreamAndCatchesUpExactlyOnce() = runBlocking<Unit> {
+        val acct = joinWithRoot(root, server.url, http)
+        val streams = java.util.concurrent.atomic.AtomicInteger()
+        val observed = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath == "/v1/stream") streams.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(acct, observed)
+        closers += AutoCloseable { r.close() }
+        r.start(); r.awaitEvents("s1", 3)
+        r.reconnectNow()
+        r.awaitState("network replacement") { it.conn == ConnState.CONNECTING }
+        daemon.upload("s1", agent("during replacement"))
+        val events = r.awaitEvents("s1", 4).events
+        assertEquals(listOf(1L, 2L, 3L, 4L), events.map { it.seq })
+        r.awaitState("online again") { it.conn == ConnState.ONLINE }
+        assertEquals(2, streams.get())
+    }
+
+    @Test
     fun reconnectsWithoutLosingOrRepeatingEvents() = runBlocking<Unit> {
         val cache = MemoryCache()
         val r = client(cache)

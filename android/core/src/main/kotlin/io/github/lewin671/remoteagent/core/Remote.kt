@@ -33,6 +33,8 @@ import io.github.lewin671.remoteagent.proto.TermHello
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ListModelsRequest
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -225,6 +227,7 @@ const val COMMAND_TTL_MS = 60_000L
 
 /** How often stream connections ping; the server pings at the same pace. */
 private const val STREAM_PING_SECONDS = 20L
+private const val STREAM_OPEN_MS = 15_000L
 
 /** The WebSocket close code the server refuses a hello with. */
 private const val POLICY_VIOLATION = 1008
@@ -241,6 +244,7 @@ class Remote(
     private val historyIdleMs: Long = 60_000,
     private val historyIdleCount: Int = 8,
     private val historyIdleBytes: Long = 16L * 1024 * 1024,
+    private val streamOpenMs: Long = STREAM_OPEN_MS,
 ) {
     private val keys = Keys.derive(account.root)
     private val device = SigningKey(account.deviceSeed)
@@ -280,6 +284,8 @@ class Remote(
     private var removed = false
     private val signingIn = Mutex()
     private var reconnect: Job? = null
+    private var connecting: Job? = null
+    private var opening: Job? = null
     // Bumped by stop: a connection attempt suspended in login when the app
     // went to the background must not open the stream afterwards.
     private var generation = 0
@@ -330,8 +336,9 @@ class Remote(
         scope.launch {
             if (running || removed) return@launch
             running = true
+            val gen = ++generation
             readCache()
-            connect()
+            if (running && gen == generation) beginConnect()
         }
     }
 
@@ -344,7 +351,11 @@ class Remote(
             reconnect = null
             listRetry?.cancel()
             listRetry = null
-            ws?.close(1000, null)
+            connecting?.cancel()
+            connecting = null
+            opening?.cancel()
+            opening = null
+            ws?.cancel()
             ws = null
             conn = ConnState.OFFLINE
             error = ""
@@ -361,10 +372,9 @@ class Remote(
     /** Reconnects now instead of waiting for the backoff, e.g. after the network came back. */
     fun reconnectNow() {
         scope.launch {
-            if (!running || conn == ConnState.ONLINE || ws != null) return@launch
-            reconnect?.cancel()
+            if (!running || removed) return@launch
             retry = 1000
-            connect()
+            beginConnect()
         }
     }
 
@@ -437,6 +447,21 @@ class Remote(
         publish()
     }
 
+    /** Replaces the whole attempt, including a login suspended before a socket exists. */
+    private fun beginConnect() {
+        if (!running || removed) return
+        generation++
+        reconnect?.cancel()
+        reconnect = null
+        connecting?.cancel()
+        opening?.cancel()
+        opening = null
+        val old = ws
+        ws = null
+        old?.cancel()
+        connecting = scope.launch { connect() }
+    }
+
     private suspend fun connect() {
         if (!running) return
         val gen = generation
@@ -447,9 +472,10 @@ class Remote(
             // each time the app comes back. One about to expire is not worth a
             // refused connection; the server refusing it closes the stream,
             // and the next try logs in.
-            if (token.isEmpty() || tokenExpires < clock() + 86_400_000) token = signIn()
+            if (token.isEmpty() || tokenExpires < clock() + 86_400_000) token = withTimeout(streamOpenMs) { signIn() }
         } catch (e: Exception) {
-            if (gen == generation) fail(e)
+            if (e is CancellationException && e !is TimeoutCancellationException) throw e
+            if (running && gen == generation) fail(e)
             return
         }
         if (!running || gen != generation) return
@@ -489,24 +515,43 @@ class Remote(
             },
         )
         ws = socket
-        scope.launch {
-            for (b in frames) {
-                if (ws !== socket) break
-                val f = try {
-                    ServerFrame.parseFrom(b)
-                } catch (e: Exception) {
-                    socket.cancel()
-                    break
-                }
-                onFrame(f)
-            }
-            frames.cancel()
-            if (ws === socket) {
+        opening = scope.launch {
+            delay(streamOpenMs)
+            if (ws === socket && gen == generation && conn != ConnState.ONLINE) {
                 ws = null
-                // The server refused the hello: the token is why. A stream the
-                // network dropped says nothing about it, and keeps the login.
-                if (refused.get()) token = ""
-                fail(Exception("与 server 的连接断开"))
+                generation++
+                socket.cancel()
+                frames.cancel()
+                fail(Exception("连接超时，正在重连"))
+            }
+        }
+        scope.launch {
+            try {
+                for (b in frames) {
+                    if (ws !== socket || gen != generation) break
+                    val f = ServerFrame.parseFrom(b)
+                    if (f.kindCase == ServerFrame.KindCase.READY) {
+                        opening?.cancel()
+                        opening = null
+                    }
+                    onFrame(f)
+                    if (ws !== socket || gen != generation) break
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                report(e)
+            } finally {
+                frames.cancel()
+                socket.cancel()
+                if (ws === socket) {
+                    ws = null
+                    generation++
+                    opening?.cancel()
+                    opening = null
+                    // Only an explicit refusal invalidates the token.
+                    if (refused.get()) token = ""
+                    fail(Exception("与 server 的连接断开"))
+                }
             }
         }
     }
@@ -520,19 +565,24 @@ class Remote(
         retry = minOf(retry * 2, 30_000)
         reconnect = scope.launch {
             delay(delayMs)
-            connect()
+            // Do not cancel this retry job from beginConnect while it runs.
+            reconnect = null
+            beginConnect()
         }
     }
 
     private suspend fun onFrame(f: ServerFrame) {
         when (f.kindCase) {
+            ServerFrame.KindCase.HEARTBEAT -> Unit
             ServerFrame.KindCase.READY -> {
+                val gen = generation
                 retry = 1000
                 conn = ConnState.ONLINE
                 error = ""
                 publish()
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
+                if (!running || gen != generation) return
                 val histories = buffers.keys + eventFlows.filterValues { it.subscriptionCount.value > 0 }.keys
                 for (sid in histories.toList()) scope.launch { loadEvents(sid); fetchEvents(sid) }
                 scope.launch { loadPrefs() }

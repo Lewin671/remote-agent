@@ -40,7 +40,7 @@ export function App() {
   useEffect(() => {
     if (!remote || !visible) return;
     remote.start();
-    const online = () => remote.reconnectNow();
+    const online = () => remote.reconnectNow(true);
     addEventListener("online", online);
     return () => {
       removeEventListener("online", online);

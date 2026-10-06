@@ -353,3 +353,17 @@ func TestDeviceDirectory(t *testing.T) {
 	}
 	_ = client2
 }
+
+func TestStreamSendsHeartbeatWithoutAccountActivity(t *testing.T) {
+	ts := newTestServer(t)
+	// Set before opening the stream: no concurrent reads of this config yet.
+	ts.srv.cfg.PingInterval = 25 * time.Millisecond
+	priv, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := ts.stream(t, ts.login(t, priv, id))
+	for range 3 {
+		stream.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil })
+	}
+}

@@ -103,9 +103,10 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	h.add(p)
 	defer h.remove(p)
 
+	// Ready must precede heartbeats, even if this goroutine is descheduled.
+	h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{ServerTimeMs: nowMs()}}})
 	go h.ping(ctx, conn, p)
 	go h.read(ctx, conn, p)
-	h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{ServerTimeMs: nowMs()}}})
 	for {
 		select {
 		case <-ctx.Done():
@@ -150,6 +151,9 @@ func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+			// Browsers cannot observe control-frame Ping/Pong. Send a visible
+			// heartbeat through the same bounded queue as the other frames.
+			h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
 			pctx, cancel := context.WithTimeout(ctx, h.s.cfg.PingInterval)
 			err := conn.Ping(pctx)
 			cancel()

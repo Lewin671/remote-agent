@@ -24,6 +24,7 @@ public  final class ServerFrame extends
   private java.lang.Object kind_;
   public enum KindCase {
     READY(1),
+    HEARTBEAT(10),
     EVENTS_APPENDED(2),
     SESSION_UPDATED(3),
     MACHINE_UPDATED(4),
@@ -48,6 +49,7 @@ public  final class ServerFrame extends
     public static KindCase forNumber(int value) {
       switch (value) {
         case 1: return READY;
+        case 10: return HEARTBEAT;
         case 2: return EVENTS_APPENDED;
         case 3: return SESSION_UPDATED;
         case 4: return MACHINE_UPDATED;
@@ -124,6 +126,78 @@ public  final class ServerFrame extends
    */
   private void clearReady() {
     if (kindCase_ == 1) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int HEARTBEAT_FIELD_NUMBER = 10;
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHeartbeat() {
+    return kindCase_ == 10;
+  }
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Heartbeat getHeartbeat() {
+    if (kindCase_ == 10) {
+       return (io.github.lewin671.remoteagent.proto.Heartbeat) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.Heartbeat.getDefaultInstance();
+  }
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 10;
+  }
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 10 &&
+        kind_ != io.github.lewin671.remoteagent.proto.Heartbeat.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.Heartbeat.newBuilder((io.github.lewin671.remoteagent.proto.Heartbeat) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 10;
+  }
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   */
+  private void clearHeartbeat() {
+    if (kindCase_ == 10) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -748,6 +822,78 @@ public  final class ServerFrame extends
 
     /**
      * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHeartbeat() {
+      return instance.hasHeartbeat();
+    }
+    /**
+     * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Heartbeat getHeartbeat() {
+      return instance.getHeartbeat();
+    }
+    /**
+     * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    public Builder setHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat value) {
+      copyOnWrite();
+      instance.setHeartbeat(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    public Builder setHeartbeat(
+        io.github.lewin671.remoteagent.proto.Heartbeat.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHeartbeat(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    public Builder mergeHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat value) {
+      copyOnWrite();
+      instance.mergeHeartbeat(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+     */
+    public Builder clearHeartbeat() {
+      copyOnWrite();
+      instance.clearHeartbeat();
+      return this;
+    }
+
+    /**
+     * <pre>
      * To clients.
      * </pre>
      *
@@ -1205,10 +1351,12 @@ public  final class ServerFrame extends
             io.github.lewin671.remoteagent.proto.AccountPrefsUpdated.class,
             io.github.lewin671.remoteagent.proto.DeviceUpdated.class,
             io.github.lewin671.remoteagent.proto.DeviceRemoved.class,
+            io.github.lewin671.remoteagent.proto.Heartbeat.class,
           };
           java.lang.String info =
-              "\u0000\t\u0001\u0000\u0001\t\t\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
-              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000";
+              "\u0000\n\u0001\u0000\u0001\n\n\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
+              "\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

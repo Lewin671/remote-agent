@@ -368,6 +368,8 @@ message PeerFrame {
 message ServerFrame {
   oneof kind {
     Ready ready = 1;
+    // Visible to browsers, which cannot observe WebSocket Ping/Pong.
+    Heartbeat heartbeat = 10;
     // To clients.
     EventsAppended events_appended = 2;
     SessionUpdated session_updated = 3;
@@ -380,6 +382,8 @@ message ServerFrame {
     ForwardCall forward_call = 5;
   }
 }
+
+message Heartbeat {}
 
 message Ready {
   int64 server_time_ms = 1;

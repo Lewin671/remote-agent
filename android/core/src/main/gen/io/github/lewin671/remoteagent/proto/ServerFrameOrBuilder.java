@@ -23,6 +23,25 @@ public interface ServerFrameOrBuilder extends
 
   /**
    * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   * @return Whether the heartbeat field is set.
+   */
+  boolean hasHeartbeat();
+  /**
+   * <pre>
+   * Visible to browsers, which cannot observe WebSocket Ping/Pong.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Heartbeat heartbeat = 10 [json_name = "heartbeat"];</code>
+   * @return The heartbeat.
+   */
+  io.github.lewin671.remoteagent.proto.Heartbeat getHeartbeat();
+
+  /**
+   * <pre>
    * To clients.
    * </pre>
    *

@@ -250,6 +250,8 @@ export async function joinWithRoot(rootRaw: Uint8Array<ArrayBuffer>, server: str
 
 /** How long the stream may take from dialing to the server's ready. */
 const OPEN_TIMEOUT_MS = 15_000;
+const STREAM_IDLE_MS = 60_000;
+const RPC_TIMEOUT_MS = 45_000;
 
 export class Remote {
   /** Development fixture hooks; the real client never enables these. */
@@ -397,7 +399,8 @@ export class Remote {
   private generation = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private openTimer?: ReturnType<typeof setTimeout>;
-  private terminals = new Set<WebSocket>();
+  private idleTimer?: ReturnType<typeof setTimeout>;
+  private terminals = new Map<WebSocket, (reason: string) => void>();
   private listeners = new Set<() => void>();
   private version = 0;
 
@@ -410,7 +413,7 @@ export class Remote {
       req.header.set("Authorization", "Bearer " + this.token);
       return next(req);
     };
-    this.api = createClient(ClientService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true, interceptors: [auth] }));
+    this.api = createClient(ClientService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true, defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth] }));
   }
 
   static async load(): Promise<Remote | undefined> {
@@ -499,7 +502,7 @@ export class Remote {
   // --- connection ---
 
   start() {
-    if (this.removed || (!this.closed && this.ws)) return;
+    if (this.removed || (!this.closed && (this.ws || (this.generation > 0 && this.conn === "connecting")))) return;
     this.closed = false;
     this.trimHistory();
     void this.connect();
@@ -513,9 +516,11 @@ export class Remote {
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
     clearTimeout(this.openTimer);
-    this.ws?.close();
+    clearTimeout(this.idleTimer);
+    const ws = this.ws;
     this.ws = undefined;
-    for (const terminal of this.terminals) terminal.close();
+    ws?.close();
+    for (const close of this.terminals.values()) close("终端连接已关闭");
     this.terminals.clear();
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
@@ -524,8 +529,18 @@ export class Remote {
 
   /** Connects now instead of waiting out the backoff, e.g. when the
    * network came back. */
-  reconnectNow() {
-    if (this.closed || this.removed || this.ws || this.retryTimer === undefined) return;
+  reconnectNow(networkChanged = false) {
+    if (this.closed || this.removed) return;
+    if (networkChanged) {
+      if (this.conn === "online") this.lostAt = Date.now();
+      this.generation++;
+      clearTimeout(this.openTimer);
+      clearTimeout(this.idleTimer);
+      const ws = this.ws;
+      this.ws = undefined;
+      ws?.close();
+      for (const close of this.terminals.values()) close("网络已变化，正在重连");
+    } else if (this.ws || this.retryTimer === undefined) return;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
     this.retry = 1000;
@@ -539,7 +554,7 @@ export class Remote {
   }
 
   private async signIn() {
-    const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true }));
+    const auth = createClient(AuthService, createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(this.account.server), useBinaryFormat: true, defaultTimeoutMs: OPEN_TIMEOUT_MS }));
     for (let again = true; ; again = false) {
       try {
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
@@ -592,13 +607,29 @@ export class Remote {
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
     this.ws = ws;
+    const drop = (e: unknown, code?: number) => {
+      if (this.ws !== ws) return;
+      this.ws = undefined;
+      this.generation++;
+      clearTimeout(this.openTimer);
+      clearTimeout(this.idleTimer);
+      if (code === 1008) this.token = "";
+      ws.close();
+      for (const close of this.terminals.values()) close("与 server 的连接断开");
+      this.fail(e);
+    };
+    const watch = () => {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = setTimeout(() => drop(new Error("连接超时，正在重连")), STREAM_IDLE_MS);
+    };
     // A browser gives up on a handshake whose packets are lost only after
     // minutes; the next attempt usually gets through much sooner.
     clearTimeout(this.openTimer);
     this.openTimer = setTimeout(() => {
-      if (this.ws === ws && this.conn !== "online") ws.close();
+      drop(new Error("连接超时，正在重连"));
     }, OPEN_TIMEOUT_MS);
     ws.onopen = () => {
+      if (this.ws !== ws || this.closed || generation !== this.generation) return;
       const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
       ws.send(toBinary(PeerFrameSchema, hello));
     };
@@ -608,12 +639,13 @@ export class Remote {
     let overflow = false;
     ws.onmessage = (m) => {
       if (this.closed || generation !== this.generation || overflow) return;
+      watch();
       const data = m.data as ArrayBuffer;
       queuedBytes += data.byteLength;
       queuedFrames++;
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
         overflow = true;
-        ws.close();
+        drop(new Error("推送积压，正在重连"));
         return;
       }
       processing = processing.then(async () => {
@@ -623,22 +655,14 @@ export class Remote {
           f = fromBinary(ServerFrameSchema, new Uint8Array(data));
         } catch {
           overflow = true;
-          ws.close();
+          drop(new Error("无效的推送帧"));
           return;
         }
         await this.onFrame(f.kind, generation);
-      }).catch((e) => { this.report(e); ws.close(); })
+      }).catch((e) => { this.report(e); drop(e); })
         .finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
     };
-    ws.onclose = (e) => {
-      if (this.ws !== ws) return;
-      this.ws = undefined;
-      clearTimeout(this.openTimer);
-      // The server refused the hello: the token is why. A handshake the
-      // network dropped says nothing about it, and keeps the login.
-      if (e?.code === 1008) this.token = "";
-      this.fail(new Error("与 server 的连接断开"));
-    };
+    ws.onclose = (e) => drop(new Error("与 server 的连接断开"), e?.code);
   }
 
   private fail(e: unknown) {
@@ -658,6 +682,8 @@ export class Remote {
   private async onFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"], generation = this.generation) {
     if (this.closed || generation !== this.generation) return;
     switch (kind.case) {
+      case "heartbeat":
+        break;
       case "ready":
         clearTimeout(this.openTimer);
         this.retry = 1000;
@@ -1314,27 +1340,42 @@ export class Remote {
 
   /** Joins a session's terminal stream. Frames are sealed with the session
    * key and numbered; each side refuses frames out of order. */
-  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void | Promise<void>, onClose: (reason: string) => void): Promise<TermConn> {
+  async openTerminal(sid: string, onFrame: (f: TerminalFrame) => void | Promise<void>, onClose: (reason: string) => void, signal?: AbortSignal): Promise<TermConn> {
     const s = this.sessions.get(sid);
     if (!s) throw new Error("未知会话");
+    if (signal?.aborted) throw new Error("终端连接已取消");
     const streamId = newRequestID();
     const ws = new WebSocket(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term");
     ws.binaryType = "arraybuffer";
-    this.terminals.add(ws);
     let closed = false;
-    const finish = (reason: string) => {
+    let openingTimer: ReturnType<typeof setTimeout> | undefined;
+    let rejectOpening: (e: Error) => void = () => {};
+    const abort = () => finish("终端连接已取消");
+    const finish = (reason: string, notify = true) => {
       if (closed) return;
       closed = true;
+      clearTimeout(openingTimer);
+      signal?.removeEventListener("abort", abort);
       this.terminals.delete(ws);
-      onClose(reason);
+      ws.close();
+      rejectOpening(new Error(reason));
+      if (notify) onClose(reason);
     };
+    this.terminals.set(ws, finish);
+    signal?.addEventListener("abort", abort, { once: true });
     await new Promise<void>((resolve, reject) => {
+      rejectOpening = reject;
+      openingTimer = setTimeout(() => finish("连接终端超时，请重新连接"), OPEN_TIMEOUT_MS);
       ws.onopen = () => {
-        ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
-        resolve();
+        if (closed) return;
+        clearTimeout(openingTimer);
+        try {
+          ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
+          resolve();
+        } catch (e) { finish(errorText(e)); }
       };
-      ws.onerror = () => { this.terminals.delete(ws); ws.close(); reject(new Error("连不上终端")); };
-      ws.onclose = () => { this.terminals.delete(ws); closed = true; reject(new Error("终端连接已关闭")); };
+      ws.onerror = () => finish("连不上终端");
+      ws.onclose = () => finish("终端连接已关闭");
     });
     let last = 0n;
     let queue = Promise.resolve();
@@ -1368,13 +1409,14 @@ export class Remote {
       });
     };
     ws.onclose = () => finish("终端连接断开");
+    if (closed) throw new Error("终端连接已关闭");
     try {
       await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
     } catch (e) {
-      this.terminals.delete(ws);
-      ws.close();
+      finish(errorText(e));
       throw e;
     }
+    if (closed) throw new Error("终端连接已关闭");
     let seq = 0n;
     let sending = Promise.resolve();
     return {
@@ -1388,14 +1430,10 @@ export class Remote {
             TerminalFrameSchema,
             create(TerminalFrameSchema, frame),
           );
-          ws.send(toBinary(EnvelopeSchema, env));
+          if (!closed && ws.readyState === WebSocket.OPEN) ws.send(toBinary(EnvelopeSchema, env));
         });
       },
-      close: () => {
-        closed = true;
-        this.terminals.delete(ws);
-        ws.close();
-      },
+      close: () => finish("终端连接已关闭", false),
     };
   }
 

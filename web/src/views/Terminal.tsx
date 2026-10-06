@@ -91,6 +91,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   useEffect(() => {
     if (!visible || !online) return;
     let alive = true;
+    const opening = new AbortController();
     setState("connecting");
     setReason("");
     setDetails(false);
@@ -141,6 +142,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           setState("closed");
           setReason((r) => r || why);
         },
+        opening.signal,
       )
       .then(
         (c) => {
@@ -155,6 +157,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       );
     return () => {
       alive = false;
+      opening.abort();
       conn.current?.close();
       conn.current = null;
     };

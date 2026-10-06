@@ -26,6 +26,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -940,4 +941,36 @@ func TestCommandOrigins(t *testing.T) {
 	if len(o) != 1 || o[0].Kind != pb.OriginKind_ORIGIN_KIND_CLIENT || o[0].DeviceId != e.client.DeviceID || o[0].RequestId == "" {
 		t.Fatalf("origins %v", o)
 	}
+}
+
+// A successful HTTP upgrade is not a ready relay connection. A peer that
+// never sends Ready must not hold the daemon's retry loop indefinitely.
+func TestRelayRetriesWhenStreamNeverBecomesReady(t *testing.T) {
+	var attempts atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.URL.Path != "/v1/stream" || attempts.Add(1) > 1 {
+				next.ServeHTTP(w, req)
+				return
+			}
+			ws, err := websocket.Accept(w, req, nil)
+			if err != nil {
+				return
+			}
+			defer ws.CloseNow()
+			// Read the hello, then stay silent while servicing control frames.
+			_, _, _ = ws.Read(req.Context())
+			_, _, _ = ws.Read(req.Context())
+		})
+	})
+	appendText(t, e.backend.add(t, "ready-retry"), "ready-retry", "caught up")
+	e.startRelay()
+	deadline := time.Now().Add(20 * time.Second)
+	for attempts.Load() < 2 {
+		if time.Now().After(deadline) {
+			t.Fatal("relay did not retry the missing Ready")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	e.session(t, "ready-retry", 1)
 }

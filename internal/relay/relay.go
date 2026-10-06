@@ -165,11 +165,13 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	defer ws.CloseNow()
 	ws.SetReadLimit(4 << 20)
 	c.ws = ws
+	readyCtx, readyCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer readyCancel()
 	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: token}}})
-	if err := ws.Write(ctx, websocket.MessageBinary, hello); err != nil {
+	if err := ws.Write(readyCtx, websocket.MessageBinary, hello); err != nil {
 		return err
 	}
-	if f, err := readFrame(ctx, ws); err != nil {
+	if f, err := readFrame(readyCtx, ws); err != nil {
 		return err
 	} else if f.GetReady() == nil {
 		return errors.New("server did not accept the stream")
