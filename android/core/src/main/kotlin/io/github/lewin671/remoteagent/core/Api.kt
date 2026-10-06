@@ -138,14 +138,30 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
 /** Short text for an error, without content. */
 fun errorText(e: Throwable): String = when (e) {
     is CommandException -> e.message ?: e.code
-    is ConnectException -> when (e.code) {
+    // A request that never reached the server carries the network failure
+    // as its cause, and that failure's own message as its text.
+    is ConnectException -> networkText(e.exception) ?: when (e.code) {
         Code.UNAVAILABLE -> "连不上服务器" + (e.message?.let { "：$it" } ?: "")
         Code.UNAUTHENTICATED -> "登录失效：" + (e.message ?: "")
         else -> e.message ?: e.code.codeName
     }
-    is java.net.UnknownHostException -> "找不到服务器"
+    else -> networkText(e) ?: e.message ?: e.javaClass.simpleName
+}
+
+/** The failure as the system worded it, for the details of a lost connection; without content. */
+fun detailText(e: Throwable): String {
+    val cause = (e as? ConnectException)?.exception ?: e
+    return listOfNotNull(cause.javaClass.simpleName.takeIf { cause.javaClass != Exception::class.java }, cause.message).joinToString(": ")
+}
+
+/** The server's address did not resolve: on a phone, the network is down whatever the status bar shows. */
+fun unresolvedHost(e: Throwable): Boolean = ((e as? ConnectException)?.exception ?: e) is java.net.UnknownHostException
+
+private fun networkText(e: Throwable?): String? = when (e) {
+    // No address for the server: on a phone, nearly always no network.
+    is java.net.UnknownHostException -> "找不到服务器，检查一下网络"
     is java.net.ConnectException -> "连不上服务器"
     is java.net.SocketTimeoutException -> "连接超时"
     is javax.net.ssl.SSLException -> "安全连接失败：" + (e.message ?: "")
-    else -> e.message ?: e.javaClass.simpleName
+    else -> null
 }

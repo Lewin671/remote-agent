@@ -42,6 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.Link
+import io.github.lewin671.remoteagent.core.shownStatus
+import io.github.lewin671.remoteagent.core.whenText
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
@@ -198,25 +201,59 @@ fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> 
     }
 }
 
-/** The server connection, under the navigation bar and apart from the session's state; nothing when online. */
+/**
+ * The way to the server, under the navigation bar and apart from the
+ * session's state; nothing when online. It names the nearest stretch that
+ * is down (client-v30 「断线」): this device's network, or the server, whose
+ * details open from the bar.
+ */
 @Composable
 fun ConnBanner(state: RemoteState) {
     val p = pal
-    if (state.conn == ConnState.ONLINE) return
-    val failed = state.conn != ConnState.CONNECTING && state.error.isNotEmpty() && !state.loaded
-    val text = when {
-        state.conn == ConnState.CONNECTING -> "连接中…"
-        failed -> "连不上服务器：${state.error}"
-        else -> "连接断了，正在重连 · 内容可能不是最新的"
+    if (state.link == Link.ONLINE) return
+    var details by remember { mutableStateOf(false) }
+    // Nothing kept from before to show: the bar says what the connection is needed for.
+    val failed = state.link == Link.NO_SERVER && !state.loaded && state.error.isNotEmpty()
+    val icon = when (state.link) {
+        Link.NO_NETWORK -> Lucide.WifiOff
+        Link.NO_SERVER -> if (failed) Lucide.X else Lucide.CloudOff
+        else -> Lucide.LoaderCircle
     }
-    Text(
-        text,
-        Modifier.fillMaxWidth().background(p.soft).padding(horizontal = 16.dp, vertical = 5.dp),
-        style = T.meta,
-        color = if (failed) p.red else p.muted,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-    )
+    val text = when (state.link) {
+        Link.NO_NETWORK -> "本机网络不通 · " + if (state.loaded) "显示的是上次的内容" else "联网后才能读取会话"
+        Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
+        else -> if (state.synced) "正在重连…" else "连接中…"
+    }
+    val color = if (failed) p.red else p.muted
+    Row(
+        Modifier.fillMaxWidth().background(p.soft)
+            .then(if (state.link == Link.NO_SERVER) Modifier.clickable { details = true } else Modifier)
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Mark(icon, color, 12.dp)
+        Spacer(Modifier.width(6.dp))
+        Text(text, Modifier.weight(1f), style = T.meta, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (state.link == Link.NO_SERVER) Text("详情", Modifier.padding(start = 8.dp), style = T.metaB, color = p.blue)
+    }
+    if (details && state.link == Link.NO_SERVER) ServerDetails(state) { details = false }
+}
+
+/** Why the server is out of reach: the judgement first, the failure in the system's words last. */
+@Composable
+private fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
+    val p = pal
+    val remote = LocalRemote.current
+    Sheet(onClose) {
+        SheetHead("连不上服务器")
+        Text("本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。", style = T.sm, color = p.fg2)
+        Text("服务器　${remote.account.server.substringAfter("://")}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 10.dp))
+        // Since start nothing was reached: when it was last is not known here.
+        if (state.synced) Text("断开于　${whenText(state.offlineSinceMs, now())}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
+        if (state.error.isNotEmpty()) Text("原因　${state.error}", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 2.dp))
+        if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error) Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
+        Btn("立即重试", { remote.reconnectNow(); onClose() }, Modifier.fillMaxWidth().padding(top = 14.dp))
+    }
 }
 
 @Composable
@@ -244,7 +281,7 @@ fun Bordered(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 
 fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines[s.machineId]
 
-fun statusIn(state: RemoteState, s: SessionView): Status = statusOf(s, state.machines[s.machineId])
+fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
 

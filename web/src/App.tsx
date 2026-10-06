@@ -40,10 +40,17 @@ export function App() {
   useEffect(() => {
     if (!remote || !visible) return;
     remote.start();
-    const online = () => remote.reconnectNow(true);
+    const online = () => {
+      remote.setNetwork(true);
+      remote.reconnectNow(true);
+    };
+    const offline = () => remote.setNetwork(false);
+    remote.setNetwork(navigator.onLine);
     addEventListener("online", online);
+    addEventListener("offline", offline);
     return () => {
       removeEventListener("online", online);
+      removeEventListener("offline", offline);
       remote.stop();
     };
   }, [remote, visible]);

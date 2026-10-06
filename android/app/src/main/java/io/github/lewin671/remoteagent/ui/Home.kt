@@ -60,6 +60,7 @@ import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.RowMeta
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.Status
+import io.github.lewin671.remoteagent.core.statusOf
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.cardMeta
@@ -439,7 +440,8 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
-    val st = statusIn(state, s)
+    // What it waits for stays true while the server is out of reach.
+    val st = statusOf(s, state.machines[s.machineId])
     val events by remote.events(s.id).collectAsState()
     val d = rememberDerived(events.events, s.agent())
     val a = d.approvals.values.firstOrNull()

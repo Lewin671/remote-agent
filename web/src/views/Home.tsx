@@ -24,6 +24,7 @@ import {
   projectKey,
   projectName,
   shortPath,
+  shownStateOf,
   stateOf,
   titleOf,
   when,
@@ -38,7 +39,7 @@ import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
-import { Check, ChevronDown, ChevronRight, LoaderCircle, Search, Settings, SquarePen, X } from "../icons";
+import { Check, ChevronDown, ChevronRight, CloudOff, LoaderCircle, Search, Settings, SquarePen, WifiOff, X } from "../icons";
 
 export type { Go };
 
@@ -130,7 +131,7 @@ function TodoCard({ remote, s, go, cols }: { remote: Remote; s: SessionView; go:
  * doing, then whatever its list does not share. */
 export function SessionRow({ remote, s, go, selected, cols = {}, last }: { remote: Remote; s: SessionView; go: Go; selected?: boolean; cols?: Cols; last?: boolean }) {
   const machine = remote.machines.get(s.machineId);
-  const st = stateOf(s, machine);
+  const st = shownStateOf(s, machine, remote.unlinked);
   // Waiting sessions preview what they wait for, which is in the events.
   const waiting = st.tone === "wait";
   useEffect(() => waiting ? remote.retainHistory(s.id) : undefined, [remote, s.id, waiting]);
@@ -464,9 +465,12 @@ function ListError({ remote }: { remote: Remote }) {
 }
 
 function HomeConn({ remote }: { remote: Remote }) {
-  if (remote.conn === "online") return null;
-  const failed = !remote.everOnline && remote.failures >= 2;
-  return <span className={"conn" + (failed ? " err" : "")}>{failed ? <><X /> 连不上服务器</> : <><LoaderCircle /> {remote.everOnline ? "连接断了，正在重连" : "连接中…"}</>}</span>;
+  const link = remote.link;
+  if (link === "online") return null;
+  if (link === "no-network") return <span className="conn"><WifiOff /> 本机网络不通</span>;
+  if (link === "waiting") return <span className="conn"><LoaderCircle /> {remote.everOnline ? "正在重连…" : "连接中…"}</span>;
+  const kept = remote.listed || remote.sessions.size > 0;
+  return <span className={"conn" + (kept ? "" : " err")}>{kept ? <CloudOff /> : <X />} 连不上服务器</span>;
 }
 
 export function Home({ remote, go }: { remote: Remote; go: Go }) {

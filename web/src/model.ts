@@ -152,7 +152,7 @@ export type Tone = "run" | "wait" | "idle" | "off";
 
 /** Session states from highest priority to lowest: lists, the navigation
  * bar and the bottom of a session all show only the highest one. */
-export type StateKind = "ended" | "offline" | "approval" | "question" | "plan" | "popup" | "starting" | "running" | "idle";
+export type StateKind = "ended" | "offline" | "unlinked" | "approval" | "question" | "plan" | "popup" | "starting" | "running" | "idle";
 
 export const statePriority: StateKind[] = ["ended", "offline", "approval", "question", "plan", "popup", "starting", "running", "idle"];
 
@@ -165,6 +165,7 @@ export interface State {
 const stateText: Record<StateKind, [Tone, string]> = {
   ended: ["off", "已结束"],
   offline: ["off", "电脑离线"],
+  unlinked: ["off", "未连接"],
   approval: ["wait", "等待审批"],
   question: ["wait", "等你回答"],
   plan: ["wait", "计划待批准"],
@@ -195,6 +196,16 @@ export function stateOf(s: SessionLike, machine?: MachineLike): State {
   else kind = "idle";
   const [tone, text] = stateText[kind];
   return { kind, tone, text };
+}
+
+/** The state to show for a session. Out of reach of the server, the last
+ * one heard is not shown as if it still held (client-v30 「断线」); that a
+ * session ended stays true. */
+export function shownStateOf(s: SessionLike, machine: MachineLike | undefined, unlinked: boolean): State {
+  const st = stateOf(s, machine);
+  if (!unlinked || st.kind === "ended") return st;
+  const [tone, text] = stateText.unlinked;
+  return { kind: "unlinked", tone, text };
 }
 
 /** Why a session cannot be forked now, or "" when it can: the CLIs fork a

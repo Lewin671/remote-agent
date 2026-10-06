@@ -53,6 +53,24 @@ it("retries a handshake without waiting for onclose and ignores late frames", as
   Socket.all[1].frame("ready"); await flush(); expect(r.conn).toBe("online");
 });
 
+it("names the stretch that is down: the server only after a moment, this device's network at once", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  r.start(); await flush();
+  expect(r.link).toBe("waiting");
+  Socket.all[0].frame("ready"); await flush(); expect(r.link).toBe("online");
+  // Just lost: it is being remade, no verdict yet.
+  Socket.all[0].onclose?.({ code: 1006 }); await flush();
+  expect(r.conn).toBe("offline"); expect(r.link).toBe("waiting");
+  await vi.advanceTimersByTimeAsync(r.linkGraceMs);
+  expect(r.link).toBe("no-server"); expect(r.unlinked).toBe(true);
+  // The browser's word needs no waiting, and a network back starts over.
+  r.setNetwork(false); expect(r.link).toBe("no-network");
+  r.setNetwork(true); expect(r.link).toBe("waiting");
+  r.reconnectNow(true); await flush();
+  Socket.all[Socket.all.length - 1].frame("ready"); await flush();
+  expect(r.link).toBe("online"); expect(r.unlinked).toBe(false);
+});
+
 it("replaces an apparently online socket when the network changes", async () => {
   const r = await probe(); vi.useFakeTimers();
   r.start(); await flush(); const old = Socket.all[0];

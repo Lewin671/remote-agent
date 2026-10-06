@@ -179,6 +179,8 @@ enum class Status(val text: String, val tone: Tone) {
     LOADING("读取中", Tone.OFF),
     EXITED("已结束", Tone.OFF),
     OFFLINE("电脑离线", Tone.OFF),
+    /** Only shown ([shownStatus]): the server is out of reach, so what the session is doing is not known. */
+    UNLINKED("未连接", Tone.OFF),
     APPROVAL("等待审批", Tone.WAIT),
     QUESTION("等你回答", Tone.WAIT),
     PLAN("计划待批准", Tone.WAIT),
@@ -189,6 +191,16 @@ enum class Status(val text: String, val tone: Tone) {
 }
 
 fun exited(s: SessionView): Boolean = s.info?.status == SessionStatus.SESSION_STATUS_EXITED
+
+/**
+ * The state to show for a session. Out of reach of the server, the last
+ * one heard is not shown as if it still held (client-v30 「断线」); that a
+ * session ended stays true.
+ */
+fun shownStatus(state: RemoteState, s: SessionView): Status {
+    val st = statusOf(s, state.machines[s.machineId])
+    return if (state.unlinked && st != Status.EXITED && st != Status.LOADING) Status.UNLINKED else st
+}
 
 fun statusOf(s: SessionView, machine: MachineView?): Status {
     val i = s.info ?: return Status.LOADING
@@ -265,6 +277,7 @@ fun forkBlocked(status: Status, running: Boolean, sent: Boolean): String? = when
     Status.RUNNING, Status.APPROVAL, Status.QUESTION -> "这一轮结束后可用"
     Status.PLAN, Status.POPUP -> "处理完等待事项后可用"
     Status.STARTING, Status.LOADING, Status.OFFLINE -> "启动完成后可用"
+    Status.UNLINKED -> "连上服务器后可用"
     Status.IDLE -> if (running) "这一轮结束后可用" else if (!sent) "发过消息后可用" else null
     Status.EXITED -> if (!sent) "发过消息后可用" else null
 }

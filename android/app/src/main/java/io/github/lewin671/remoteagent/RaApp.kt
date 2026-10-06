@@ -58,6 +58,8 @@ class RaApp : Application() {
     val accountError: StateFlow<String> = _accountError.asStateFlow()
     private var foreground = false
     private var loading = false
+    // The device has a default network, by the system's word.
+    @Volatile private var online = true
 
     override fun onCreate() {
         super.onCreate()
@@ -85,12 +87,22 @@ class RaApp : Application() {
                 _remote.value?.stop()
             }
         })
+        // Without a network at start no callback comes.
+        online = getSystemService(ConnectivityManager::class.java).activeNetwork != null
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
+                online = true
+                _remote.value?.setNetwork(true)
                 _remote.value?.reconnectNow()
                 scope.launch {
                     registerPush()
                 }
+            }
+
+            // Only when no other network takes over as the default.
+            override fun onLost(network: Network) {
+                online = false
+                _remote.value?.setNetwork(false)
             }
         })
     }
@@ -128,6 +140,7 @@ class RaApp : Application() {
         AccountMemory.use("${acct.server} ${acct.deviceId}")
         val r = Remote(acct, http, RoomCache(db.dao(), imageEnvelopes), log = { Log.i(TAG, it) })
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
+        r.setNetwork(online)
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {

@@ -16,6 +16,7 @@ import {
   Ellipsis as LEllipsis,
   Keyboard as LKeyboard,
   Laptop as LLaptop,
+  CloudOff as LCloudOff,
   LoaderCircle as LLoaderCircle,
   Maximize2 as LMaximize2,
   MessageSquare as LMessageSquare,
@@ -28,6 +29,7 @@ import {
   X as LX,
   type LucideIcon,
   type LucideProps,
+  WifiOff as LWifiOff,
 } from "lucide-react";
 
 /** An icon as tall as the text around it and in that text's color, hidden
@@ -64,6 +66,9 @@ export const Check = icon(LCheck);
 export const X = icon(LX);
 /** In progress; turns unless the system asks for less motion. */
 export const LoaderCircle = icon(LLoaderCircle, "ic spin");
+/** This device has no network; the server is out of reach. */
+export const WifiOff = icon(LWifiOff);
+export const CloudOff = icon(LCloudOff);
 /** Canceled. */
 export const Minus = icon(LMinus);
 /** Filters a list. */

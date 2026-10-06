@@ -63,9 +63,9 @@ class RemoteTest {
     private fun user(t: String) = Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText(t))
     private fun agent(t: String) = Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(t))
 
-    private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024, historyIdleMs: Long = 60_000, historyIdleCount: Int = 8): Remote {
+    private suspend fun client(cache: CipherCache? = null, frameQueue: Int = 1024, historyIdleMs: Long = 60_000, historyIdleCount: Int = 8, linkGraceMs: Long = 10_000): Remote {
         val acct = joinWithRoot(root, server.url, http)
-        val r = Remote(acct, http, cache, frameQueue = frameQueue, historyIdleMs = historyIdleMs, historyIdleCount = historyIdleCount)
+        val r = Remote(acct, http, cache, frameQueue = frameQueue, historyIdleMs = historyIdleMs, historyIdleCount = historyIdleCount, linkGraceMs = linkGraceMs)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -552,17 +552,51 @@ class RemoteTest {
     }
 
     @Test
+    fun aServerOutOfReachIsNamedOnlyAfterAMoment() = runBlocking<Unit> {
+        val r = client(linkGraceMs = 300)
+        r.start()
+        val on = r.awaitState("session") { it.link == Link.ONLINE && it.sessions["s1"]?.info != null }
+        assertFalse(on.unlinked)
+        val known = shownStatus(on, on.sessions["s1"]!!)
+        server.stop()
+        // Just lost: it is being remade, and what was known still shows.
+        val lost = r.awaitState("lost") { it.conn != ConnState.ONLINE }
+        assertEquals(Link.WAITING, lost.link)
+        assertEquals(known, shownStatus(lost, lost.sessions["s1"]!!))
+        val out = r.awaitState("out of reach") { it.link == Link.NO_SERVER }
+        assertEquals(Status.UNLINKED, shownStatus(out, out.sessions["s1"]!!))
+        server.start()
+        r.reconnectNow()
+        r.awaitState("back") { it.link == Link.ONLINE && !it.unlinked }
+    }
+
+    @Test
+    fun aDeviceWithoutANetworkSaysSoAtOnce() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online") { it.link == Link.ONLINE }
+        // The server is still there: the system's word alone ends the connection.
+        server.stop()
+        r.setNetwork(false)
+        val off = r.awaitState("no network") { it.link == Link.NO_NETWORK }
+        assertTrue(off.unlinked)
+        server.start()
+        r.setNetwork(true)
+        r.awaitState("back") { it.link == Link.ONLINE }
+    }
+
+    @Test
     fun aHistoryThatFailsToLoadSaysSoOnTheSession() = runBlocking<Unit> {
         val r = client()
         r.start()
         r.awaitState("session") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
         server.stop()
-        val ev = withTimeout(10_000) { r.events("s1").first { it.error != null } }
-        assertTrue(ev.error!!.startsWith("没能读取历史"))
+        val ev = withTimeout(10_000) { r.events("s1").first { it.fetchError != null } }
+        assertTrue(ev.fetchError!!.startsWith("没能读取历史"))
         // Back again, a retry loads it and clears the error.
         server.start()
         r.retryEvents("s1")
-        val ok = withTimeout(20_000) { r.events("s1").first { it.events.size == 3 && it.error == null } }
+        val ok = withTimeout(20_000) { r.events("s1").first { it.events.size == 3 && it.fetchError == null } }
         assertEquals(3, ok.events.size)
     }
 

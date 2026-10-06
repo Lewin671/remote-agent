@@ -99,6 +99,17 @@ object Lucide {
         circle(12, 12, 3),
     )
 
+    /** No network on this device, and a server out of reach. */
+    val WifiOff = lucide(
+        "wifi-off",
+        "M12 20h.01", "M8.5 16.429a5 5 0 0 1 7 0", "M5 12.859a10 10 0 0 1 5.17-2.69", "M19 12.859a10 10 0 0 0-2.007-1.523",
+        "M2 8.82a15 15 0 0 1 4.177-2.643", "M22 8.82a15 15 0 0 0-11.288-3.764", "m2 2 20 20",
+    )
+    val CloudOff = lucide(
+        "cloud-off",
+        "m2 2 20 20", "M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193", "M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07",
+    )
+
     /** A computer. */
     val Laptop = lucide(
         "laptop",

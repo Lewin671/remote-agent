@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v29</title>
+<title>remote-agent 客户端设计稿 v30</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -875,23 +875,23 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
 <div class="wrap">
 
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v29 · 2026-10-04 · 上一版 v28 在 git 历史里（<code>git log -- docs/design/client-v28.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v30 · 2026-10-06 · 上一版 v29 在 git 历史里（<code>git log -- docs/design/client-v29.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v28 的改动</h4><ul><li>图标全部换成 Lucide 的，不再用字体里的符号字符：返回、进入、展开和收起的箭头，更多，添加，新会话，发送和中断，完成、失败和进行中，筛选和清空，标签栏的会话和设置，设备列表里的电脑，终端按键栏的方向键、回车和键盘。每个含义用哪个图标见 <a href="../design-system.md#5-图标">design-system §5</a>。</li><li>状态点画成实心圆，不再是字符。</li><li>布局、文案和交互都没有变。说明文字里的「⋯」「＋」「↑」等字符指的是对应的图标。</li></ul>
+  <h4>相对 v29 的改动</h4><ul><li>新增<a href="#link">「断线」</a>一节：手机到电脑的路分成本机网络、服务器、电脑三段，只报离得最近的那一段，并且只在一处说。</li><li>导航栏下的提示条按原因换文案和图标：「本机网络不通」「正在重连…」「连不上服务器 · 正在重试」，后者带「详情」；不再有「连接断了，正在重连 · 内容可能不是最新的」。</li><li>连不上服务器期间，会话的状态点变灰、状态词写「未连接」，不再沿用断线前的「运行中」「电脑离线」；底部是输入框而不是「××× 不在线」状态卡。已结束的会话不变。</li><li>连不上服务器期间读取历史失败不出红条，连上后自动补齐；连着时失败的红条写中文原因，不写底层错误。</li><li>「××× 不在线」状态卡补上可能的原因。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1580,7 +1580,7 @@ git status --short gen/</pre>
 </span>
 <span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
 </div>
-<div class="connbar">连接断了，正在重连</div>
+<div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在重连…</div>
 <div class="body chat">
 <div class="me">
 <div>把登录接口的限流补齐，跑完测试</div>
@@ -1639,7 +1639,7 @@ git status --short gen/</pre>
       </div>
       <div class="endcard">
         <div class="h"><span class="dot off"></span>iMac 不在线</div>
-        <div class="d">2 小时前断开。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div>
+        <div class="d">2 小时前断开，可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div>
       </div>
     </div>
     <div class="cap">电脑离线：输入框换成状态卡，不能发消息</div>
@@ -1649,7 +1649,7 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span><span class="dot run"></span>运行中 · 自动</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
-      <div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 连接断了，正在重连 · 内容可能不是最新的</div>
+      <div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在重连…</div>
       <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
@@ -1657,7 +1657,7 @@ git status --short gen/</pre>
       </div>
       <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
-    <div class="cap">和服务器断线：导航栏下一条提示，和会话状态分开；发送和设置类操作暂停，写好的消息留在输入框里，连上后自己点发送</div>
+    <div class="cap">和服务器刚断开：导航栏下一条提示，和会话状态分开；发送和设置类操作暂停，写好的消息留在输入框里，连上后自己点发送。断开久了或本机没网时的写法见<a href="#link">「断线」</a></div>
   </div>
 
   <div>
@@ -1697,7 +1697,7 @@ git status --short gen/</pre>
 
 <div class="note">
   <h4>状态优先级</h4>
-  <p style="margin:0 0 8px">列表的圆点和状态词、导航栏第二行、会话底部的停靠区或状态卡，都只取优先级最高的一种。和服务器断线不在这张表里，它说明的是「数据可能不是最新」，单独显示。</p>
+  <p style="margin:0 0 8px">列表的圆点和状态词、导航栏第二行、会话底部的停靠区或状态卡，都只取优先级最高的一种。和服务器断线不在这张表里，单独显示在导航栏下；断开超过片刻后，没结束的会话一律显示灰点和「未连接」，见<a href="#link">「断线」</a>。</p>
   <table>
     <tr><th>优先级</th><th>状态</th><th>圆点</th><th>状态词</th><th>列表预览</th><th>会话底部</th></tr>
     <tr><td>1</td><td>已结束</td><td>灰</td><td>已结束</td><td>最后一条回复</td><td>状态卡「会话已结束」；电脑在线时带「恢复会话」，离线时写「MacBook 不在线，连上后才能恢复」</td></tr>
@@ -1735,6 +1735,91 @@ git status --short gen/</pre>
     <li>终端按键分两行，六个主键与三个辅助键均不小于 44×44，不把常用方向键藏进横向滚动</li>
     <li>手机上主要内容左右留 16，停靠区和状态卡左右留 12</li>
   </ul>
+</div>
+
+<!-- ============================= -->
+<h2 id="link">断线</h2>
+<div class="note" style="margin-bottom:16px">从这台设备到电脑的路分三段：<b>本机网络 → 服务器 → 电脑</b>。任何时候只报离得最近的那一段，并且只在一处说；更远的一段此刻无从得知，不再断言：没结束的会话状态点变灰、写「未连接」，不写「运行中」或「电脑离线」。三段都通、单独某次请求失败时，才在出错的地方出红条和「重试」。</div>
+<div class="screens">
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot off"></span>未连接 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="connbar"><svg class="ic" aria-hidden="true"><use href="#lu-wifi-off"/></svg> 本机网络不通 · 显示的是上次的内容</div>
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="dis">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+    </div><div class="cap">本机网络不通：只有导航栏下一句话。不转圈，不出红条，不提电脑。草稿可以继续写，发送暂停；网络回来自动连上并补齐记录</div></div>
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot run"></span>运行中 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在重连…</div>
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+    </div><div class="cap">刚断开（10 秒内）：可能只是切换网络或服务器重启。只转圈，会话状态保持原样，不下结论</div></div>
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot off"></span>未连接 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="connbar"><svg class="ic" aria-hidden="true"><use href="#lu-cloud-off"/></svg> 连不上服务器 · 正在重试<b>详情</b></div>
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="dis">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+    </div><div class="cap">连不上服务器：本机有网，过了 10 秒还没连上。仍在自动重试；原因在「详情」里</div></div>
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot off"></span>未连接 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="connbar"><svg class="ic" aria-hidden="true"><use href="#lu-cloud-off"/></svg> 连不上服务器 · 正在重试<b>详情</b></div>
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="dis">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44 off"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><h4>连不上服务器</h4>
+  <div class="small" style="color:var(--fg2)">本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。</div>
+  <div class="small muted" style="margin-top:10px;line-height:1.7">服务器　ra.example.com<br>断开于　26 分钟前<br>原因　连接超时</div>
+  <div class="small muted" style="margin-top:10px"><code style="overflow-wrap:anywhere">SocketTimeoutException: failed to connect to ra.example.com (port 443) after 10000ms</code></div>
+  <div class="btn" style="margin-top:14px;text-align:center">立即重试</div></div>
+    </div><div class="cap">详情（Android 是底部弹层）：判断在上，地址、断开时间和原因在中间，底层错误只在这里出现。网页就地展开成一句「连不上服务器：原因。也可能是这台设备的网络不通」，右边是「重试」</div></div>
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot off"></span>电脑离线 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="dis">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div></div>
+      <div class="endcard"><div class="h"><span class="dot off"></span>MacBook 不在线</div><div class="d">26 分钟前断开，可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div></div>
+    </div><div class="cap">电脑不在线：本机和服务器都通，所以没有提示条，这句话是服务器刚说的</div></div>
+  <div><div class="phone">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">断线重连的验收</span></b><span><span class="dot idle"></span>空闲 · <em class="risk">完全放行</em></span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      
+      <div class="pad" style="padding:6px 16px 4px;flex:none"><div class="seg"><div class="on">聊天</div><div class="">终端</div></div></div>
+      <div class="body chat"><div class="ai">已部署 <b>v0.25.0</b>：线上 server、网页和本机 daemon 版本一致，原有会话保留。</div>
+        <div class="ai">验收记录已 review 并推送。Android 真机安装和 Wi-Fi／蜂窝切换尚未验证。</div><div class="banner err">后面的记录没读到：服务器没有响应<b>重试</b></div></div>
+      <div class="compose-card"><div class="draft typed">顺便补一个测试</div><div class="controls"><span class="compose-menu" aria-disabled="true"><span class="cm-plus"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+    </div><div class="cap">都连着，某次读取失败：只有这时才出红条和「重试」，原因写成一句中文</div></div>
+</div>
+
+<div class="note">
+  <h4>怎么判断是哪一段</h4>
+  <table>
+    <tr><th>情况</th><th>判断</th><th>导航栏下</th><th>状态词</th><th>会话底部</th><th>恢复</th></tr>
+    <tr><td>本机网络不通</td><td>系统说这台设备没有网络；Android 上找不到服务器地址也算</td><td>本机网络不通 · 显示的是上次的内容</td><td>未连接</td><td>输入框，发送暂停</td><td>网络回来立即重连</td></tr>
+<tr><td>刚断开</td><td>有网，断开或开始连接不到 10 秒</td><td>转圈 正在重连…（这次打开后还没连上过写「连接中…」）</td><td>保持原样；还没连上过时写未连接</td><td>输入框，发送暂停</td><td>自动重试</td></tr>
+<tr><td>连不上服务器</td><td>有网，10 秒后仍没连上</td><td>连不上服务器 · 正在重试　详情</td><td>未连接</td><td>输入框，发送暂停</td><td>自动重试，详情里可以立即重试</td></tr>
+<tr><td>电脑不在线</td><td>连着服务器，服务器说这台电脑没连着</td><td>无</td><td>电脑离线</td><td>状态卡「××× 不在线」</td><td>电脑连上后自动更新</td></tr>
+<tr><td>某次请求失败</td><td>连着服务器，一次读取或指令失败</td><td>无</td><td>照常</td><td>就地红条和「重试」</td><td>下次连上时自动再读</td></tr>
+  </table>
+  <p style="margin:8px 0 0">连不上服务器的这段时间里读取历史失败不出红条：提示条已经说了，连上后会自动补齐。浏览器只知道「完全没网」，分不出「有网但不通」和「服务器停了」，所以网页的详情里写明两种可能。</p>
+</div>
+<div class="stgrid" style="margin-top:20px">
+<div class="st"><div class="st-h">没有可看的内容 · 本机网络不通</div><div class="connbar" style=""><svg class="ic" aria-hidden="true"><use href="#lu-wifi-off"/></svg> 本机网络不通 · 联网后才能读取会话</div><div class="st-c">首次打开或缓存为空：没有「上次的内容」，换成这一句。</div></div>
+<div class="st"><div class="st-h">没有可看的内容 · 连不上服务器</div><div class="connbar" style="color:var(--red)"><svg class="ic" aria-hidden="true"><use href="#lu-x"/></svg> 连不上服务器：证书无效<b>详情</b></div><div class="st-c">没有缓存可看时，连不上就是这一屏的全部，用红字并直接写原因。</div></div>
+<div class="st"><div class="st-h">找不到服务器地址</div><div class="connbar" style=""><svg class="ic" aria-hidden="true"><use href="#lu-wifi-off"/></svg> 本机网络不通 · 显示的是上次的内容</div><div class="st-c">信号满格但实际不通时系统仍说有网。域名解析失败算本机网络不通，不写成服务器故障（Android；浏览器看不到这个原因）。</div></div>
+<div class="st"><div class="st-h">主页</div><div class="connbar" style=""><svg class="ic" aria-hidden="true"><use href="#lu-cloud-off"/></svg> 连不上服务器 · 正在重试<b>详情</b></div><div style="padding:10px 0 0"><div style="display:flex;gap:8px;align-items:center"><span class="dot off"></span><b style="font-weight:600">对账脚本</b><span class="muted small" style="margin-left:auto">21:32</span></div><div class="small"><b class="muted" style="font-weight:600">未连接</b> <span class="muted">· 已导出到 out/2026-03.csv</span></div></div><div class="st-c">没结束的会话都是灰点和「未连接」。「需要处理」的卡片和标签栏的数字不变：等着的审批不会因为断线消失。</div></div>
+<div class="st"><div class="st-h">已结束的会话</div><div class="endcard"><div class="h"><span class="dot off"></span>会话已结束</div><div class="d">连上服务器后才能恢复。</div></div><div class="st-c">结束是不会变的事实，状态照常；只是不说电脑在不在线，也不给「恢复会话」。</div></div>
+<div class="st"><div class="st-h">电脑名很长</div><div class="endcard"><div class="h"><span class="dot off"></span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">workstation-MacBook-Pro-16-inch-2024-office</span>&nbsp;不在线</div><div class="d">3 天前断开，可能是合盖睡眠、断网，或 remote-agent 没在运行。</div></div><div class="st-c">电脑名省略，「不在线」始终留着。</div></div>
 </div>
 
 <!-- ============================= -->
@@ -1900,7 +1985,7 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">聊天 · 历史读取</div>
     <div class="skel" style="width:70%"></div><div class="skel" style="width:90%"></div><div class="skel" style="width:40%"></div>
-    <div class="banner err" style="margin-top:10px">后面的记录没读到<b>重试</b></div>
+    <div class="banner err" style="margin-top:10px">后面的记录没读到：服务器没有响应<b>重试</b></div>
     <div class="banner warn" style="margin-top:8px">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</div>
     <div class="st-c">会话不存在或已删除时，整页显示「找不到这个会话」和「返回」，不一直转圈</div>
   </div>
@@ -1962,9 +2047,11 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">和服务器的连接</div>
     <div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 连接中…</div>
-    <div class="connbar" style="margin-top:6px"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 连接断了，正在重连 · 内容可能不是最新的</div>
+    <div class="connbar" style="margin-top:6px"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在重连…</div>
+    <div class="connbar" style="margin-top:6px"><svg class="ic" aria-hidden="true"><use href="#lu-wifi-off"/></svg> 本机网络不通 · 显示的是上次的内容</div>
+    <div class="connbar" style="margin-top:6px"><svg class="ic" aria-hidden="true"><use href="#lu-cloud-off"/></svg> 连不上服务器 · 正在重试<b>详情</b></div>
     <div class="connbar" style="margin-top:6px;color:var(--red)"><svg class="ic" aria-hidden="true"><use href="#lu-x"/></svg> 连不上服务器：证书无效<b>详情</b></div>
-    <div class="st-c">主页显示在大标题旁，会话页显示在导航栏下；连上后消失</div>
+    <div class="st-c">主页显示在大标题旁，会话页显示在导航栏下；连上后消失。各条什么时候出现见<a href="#link">「断线」</a></div>
   </div>
 
   <div class="st">
@@ -2065,7 +2152,7 @@ git status --short gen/</pre>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">验证库存回滚</span></b><span>空闲 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
-      <div class="connbar">连接断了，正在重连</div>
+      <div class="connbar"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在重连…</div>
       <div class="body chat">
         <div class="tool"><span class="sp"><svg class="ic" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>go test ./...</code><span class="muted">等待同步</span></div>
         <div class="tool"><span class="sp"><svg class="ic" aria-hidden="true"><use href="#lu-loader-circle"/></svg></span><code>npm run dev</code><span class="muted">后台运行</span></div>

@@ -34,6 +34,7 @@ import {
   queuedIds,
   shortenPath,
   shortenPaths,
+  shownStateOf,
   stateOf,
   statePriority,
   tailPath,
@@ -83,6 +84,14 @@ describe("state priority", () => {
     expect(stateOf(sess({ status: SessionStatus.EXITED })).text).toBe("已结束");
     expect(stateOf(sess(), offline)).toEqual({ kind: "offline", tone: "off", text: "电脑离线" });
     expect(statePriority.slice(0, 2)).toEqual(["ended", "offline"]);
+  });
+
+  it("does not show the last state heard as if it held while the server is out of reach", () => {
+    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, true)).toEqual({ kind: "unlinked", tone: "off", text: "未连接" });
+    // Not the computer's fault either: that was heard before the connection went.
+    expect(shownStateOf(sess(), offline, true).text).toBe("未连接");
+    expect(shownStateOf(sess({ status: SessionStatus.EXITED }), online, true).kind).toBe("ended");
+    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, false).kind).toBe("running");
   });
 
   it("previews by state", () => {

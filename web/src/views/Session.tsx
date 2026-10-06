@@ -32,7 +32,7 @@ import {
   shortPath,
   shortenPath,
   shortenPaths,
-  stateOf,
+  shownStateOf,
   timeline,
   titleOf,
   type Derived,
@@ -99,7 +99,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const events = remote.events(sid);
   const d = useDerived(remote, sid);
   const machine = remote.machines.get(session.machineId);
-  const st = stateOf(session, machine);
+  const st = shownStateOf(session, machine, remote.unlinked);
   const agent = agentOf(session);
   const title = titleOf(session);
   const project = projectName(projectKey(session));
@@ -523,7 +523,9 @@ function ChatBody({
   </>);
   const footer = (<>
         {hist.broken && <Banner kind="warn">有一条记录读不出来，历史停在这里，后面的内容和状态可能不全</Banner>}
-        {hist.error && (
+        {/* Offline, the connection banner says the content may be stale and the
+            next connection fetches again: a failed fetch adds nothing. */}
+        {hist.error && remote.conn === "online" && (
           <Banner kind="err" action="重试" onAction={() => remote.retryEvents(sid)}>
             后面的记录没读到
           </Banner>
@@ -916,7 +918,7 @@ function EndCard({
           <Dot tone="off" />
           {mname} 不在线
         </div>
-        <div className="d">{lastSeen ? `${ago(lastSeen)}断开。` : ""}电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div>
+        <div className="d">{lastSeen ? `${ago(lastSeen)}断开，` : ""}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。</div>
       </div>
     );
   const resume = async () => {
@@ -962,7 +964,9 @@ function EndCard({
         <Dot tone="off" />
         会话已结束
       </div>
-      {machineOnline ? (
+      {remote.unlinked ? (
+        <div className="d">连上服务器后才能恢复。</div>
+      ) : machineOnline ? (
         <>
           <div className="d">
             {exitReason(session.info?.statusDetail ?? "")}恢复会在 {mname} 上用同样的设置重新打开它，聊天记录都在。

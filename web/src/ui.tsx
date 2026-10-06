@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { avatarClass, type Tone } from "./model";
 import type { Remote } from "./remote";
-import { ChevronDown, ChevronLeft, ChevronUp, LoaderCircle, X } from "./icons";
+import { ChevronDown, ChevronLeft, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
 
 export function useRemote(remote: Remote) {
   useSyncExternalStore(remote.subscribe, remote.snapshot);
@@ -158,20 +158,25 @@ export function Banner({ kind = "", children, action, onAction }: { kind?: "" | 
   );
 }
 
-/** The link to the server, apart from any session's state: shown only
- * while it is not up. */
+/** The way to the server, apart from any session's state: shown only
+ * while it is not up. It names the nearest stretch that is down
+ * (client-v30 「断线」): this device's network, or the server. */
 export function ConnBar({ remote, className = "connbar" }: { remote: Remote; className?: string }) {
   const [details, setDetails] = useState(false);
-  if (remote.conn === "online") return null;
-  // Failing again and again before ever connecting: say why.
-  if (!remote.everOnline && remote.failures >= 2 && remote.connError)
+  const link = remote.link;
+  if (link === "online") return null;
+  // Nothing kept from before to show: the bar says what the connection is for.
+  const kept = remote.listed || remote.sessions.size > 0;
+  if (link === "no-network") return <div className={className}><WifiOff /> 本机网络不通 · {kept ? "显示的是上次的内容" : "联网后才能读取会话"}</div>;
+  if (link === "no-server")
     return (
-      <div className={className + " err"}>
-        <span><X /> 连不上服务器{details ? "：" + remote.connError : ""}</span>
-        {!details && <button onClick={() => setDetails(true)}>详情</button>}
+      <div className={className + (kept ? "" : " err")}>
+        {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
+        <span>{kept ? <CloudOff /> : <X />} 连不上服务器{details ? `：${remote.connError || "没有回应"}。也可能是这台设备的网络不通，会一直自动重试` : " · 正在重试"}</span>
+        {details ? <button onClick={() => remote.reconnectNow(true)}>重试</button> : <button onClick={() => setDetails(true)}>详情</button>}
       </div>
     );
-  return <div className={className}><LoaderCircle /> {remote.everOnline ? "连接断了，正在重连 · 内容可能不是最新的" : "连接中…"}</div>;
+  return <div className={className}><LoaderCircle /> {remote.everOnline ? "正在重连…" : "连接中…"}</div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {

@@ -184,6 +184,10 @@ export interface TermConn {
 }
 
 export type ConnState = "connecting" | "online" | "offline";
+/** Which stretch of the way to the computer is down, the nearest one only
+ * (client-v30 「断线」): past it nothing is known. "waiting" is a connection
+ * being made or just lost, which mostly comes back by itself. */
+export type Link = "online" | "waiting" | "no-network" | "no-server";
 
 export const COMMAND_TTL_MS = 60_000;
 
@@ -269,6 +273,15 @@ export class Remote {
   removed = false;
   failures = 0;
   connError = "";
+  // The browser's word on whether this device has a network at all; it
+  // cannot tell a network that is up but leads nowhere.
+  network = typeof navigator === "undefined" || navigator.onLine !== false;
+  /** How long a lost connection is only being remade, before the server
+   * counts as out of reach. */
+  linkGraceMs = 10_000;
+  private waited = false;
+  private graceTimer?: ReturnType<typeof setTimeout>;
+  private begun = false;
   // When the link to the server last went down, while it is down: what is
   // shown as running may have changed since, so clocks stop there.
   lostAt?: number;
@@ -439,7 +452,43 @@ export class Remote {
     this.changed();
   }
 
+  get link(): Link {
+    if (this.conn === "online") return "online";
+    if (!this.network) return "no-network";
+    return this.waited ? "no-server" : "waiting";
+  }
+
+  /** Nothing here is known to still hold: the server is out of reach, or
+   * has not been reached yet. A connection lost a moment ago does not count. */
+  get unlinked(): boolean {
+    const link = this.link;
+    return link === "no-network" || link === "no-server" || (link === "waiting" && !this.listed);
+  }
+
+  /** Whether the device has a network at all. Losing it ends the
+   * connection at once instead of at the next missed heartbeat. */
+  setNetwork(available: boolean) {
+    if (this.network === available) return;
+    this.network = available;
+    clearTimeout(this.graceTimer);
+    this.graceTimer = undefined;
+    this.waited = false;
+    this.changed();
+    if (!available) this.reconnectNow(true);
+  }
+
   protected changed() {
+    if (this.conn === "online" || this.closed || !this.begun) {
+      clearTimeout(this.graceTimer);
+      this.graceTimer = undefined;
+      this.waited = false;
+    } else if (!this.waited && this.graceTimer === undefined) {
+      this.graceTimer = setTimeout(() => {
+        this.graceTimer = undefined;
+        this.waited = true;
+        this.changed();
+      }, this.linkGraceMs);
+    }
     this.version++;
     if (this.held) this.dirty = true;
     else for (const fn of this.listeners) fn();
@@ -504,6 +553,7 @@ export class Remote {
   start() {
     if (this.removed || (!this.closed && (this.ws || (this.generation > 0 && this.conn === "connecting")))) return;
     this.closed = false;
+    this.begun = true;
     this.trimHistory();
     void this.connect();
   }

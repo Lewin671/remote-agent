@@ -195,7 +195,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun BottomBar(remote: Remote, route: String?, nav: NavHostController) {
         val state by remote.state.collectAsState()
-        val waiting = state.sessions.values.count { statusIn(state, it).tone == Tone.WAIT }
+        val waiting = state.sessions.values.count { io.github.lewin671.remoteagent.core.statusOf(it, state.machines[it.machineId]).tone == Tone.WAIT }
         io.github.lewin671.remoteagent.ui.TabBar(route, waiting) { r ->
             if (r == "home") nav.navigate("home") { popUpTo("home") { inclusive = true } } else nav.navigate("settings") { popUpTo("home") }
         }

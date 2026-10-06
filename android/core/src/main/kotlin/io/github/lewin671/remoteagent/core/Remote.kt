@@ -70,6 +70,13 @@ import kotlin.random.Random
 
 enum class ConnState { CONNECTING, ONLINE, OFFLINE }
 
+/**
+ * Which stretch of the way to the computer is down, the nearest one only
+ * (client-v30 「断线」): past it nothing is known. WAITING is a connection
+ * being made or just lost, which mostly comes back by itself.
+ */
+enum class Link { ONLINE, WAITING, NO_NETWORK, NO_SERVER }
+
 data class MachineView(
     val id: String,
     val online: Boolean,
@@ -138,7 +145,18 @@ data class RemoteState(
      * pages there are is not known.
      */
     val sessionsListed: Boolean = true,
+    val link: Link = Link.WAITING,
+    /** The lists came from the server since start: what they say of the computers is not from the cache. */
+    val synced: Boolean = false,
+    /** The failure behind [error] in its own words, for the details. */
+    val errorDetail: String = "",
 ) {
+    /**
+     * Nothing here is known to still hold: the server is out of reach, or
+     * has not been reached yet. A connection lost a moment ago does not count.
+     */
+    val unlinked: Boolean get() = link == Link.NO_NETWORK || link == Link.NO_SERVER || (link == Link.WAITING && !synced)
+
     /** The server has, or may have, ended sessions that were not fetched yet. */
     val moreSessions: Boolean get() = !sessionsListed || sessionsNext != null
 }
@@ -160,6 +178,8 @@ data class SessionEvents(
     val loaded: Boolean = false,
     /** Set when an event does not open: history stops before it. */
     val error: String? = null,
+    /** Set when the last fetch failed; the next connection fetches again. */
+    val fetchError: String? = null,
 )
 
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
@@ -245,6 +265,8 @@ class Remote(
     private val historyIdleCount: Int = 8,
     private val historyIdleBytes: Long = 16L * 1024 * 1024,
     private val streamOpenMs: Long = STREAM_OPEN_MS,
+    /** How long a lost connection is only being remade, before the server counts as out of reach. */
+    private val linkGraceMs: Long = 10_000,
 ) {
     private val keys = Keys.derive(account.root)
     private val device = SigningKey(account.deviceSeed)
@@ -264,6 +286,14 @@ class Remote(
     private var error = ""
     private var loaded = false
     private var offlineSince = 0L
+    private var errorDetail = ""
+    // The device has a network, by the system's word; a server whose address
+    // does not resolve says the same of a network that only looks up.
+    private var network = true
+    private var unresolved = false
+    private var synced = false
+    private var grace: Job? = null
+    private var waited = false
     private var prefs: PrefsObject? = null
     private val devices = HashMap<String, DeviceView>()
 
@@ -359,7 +389,28 @@ class Remote(
             ws = null
             conn = ConnState.OFFLINE
             error = ""
+            errorDetail = ""
+            unresolved = false
             publish()
+        }
+    }
+
+    /**
+     * Whether the device has a network at all. Losing it ends the connection
+     * at once rather than at the next ping; getting one starts over.
+     */
+    fun setNetwork(available: Boolean) {
+        scope.launch {
+            if (network == available) return@launch
+            network = available
+            unresolved = false
+            grace?.cancel()
+            grace = null
+            waited = false
+            if (running && !removed) {
+                retry = 1000
+                beginConnect()
+            } else publish()
         }
     }
 
@@ -380,9 +431,28 @@ class Remote(
 
     private fun publish() {
         if (conn == ConnState.ONLINE) offlineSince = 0 else if (offlineSince == 0L) offlineSince = clock()
+        if (conn == ConnState.ONLINE || !running) {
+            grace?.cancel()
+            grace = null
+            waited = false
+        } else if (!waited && grace == null) {
+            grace = scope.launch {
+                delay(linkGraceMs)
+                grace = null
+                waited = true
+                publish()
+            }
+        }
+        val link = when {
+            conn == ConnState.ONLINE -> Link.ONLINE
+            !network || unresolved -> Link.NO_NETWORK
+            !waited -> Link.WAITING
+            else -> Link.NO_SERVER
+        }
         _state.value = RemoteState(
             machines.toMap(), sessions.toMap(), conn, error, loaded, offlineSince, prefs, devices.toMap(), removed,
             sessionsNext = next, loadingSessions = pageJob != null, sessionsError = pageError, sessionsListed = firstPage,
+            link = link, synced = synced, errorDetail = errorDetail,
         )
     }
 
@@ -485,6 +555,7 @@ class Remote(
         val frames = Channel<ByteArray>(frameQueue)
         val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
+        val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
         val socket = streamHttp.newWebSocket(
             Request.Builder().url(url).build(),
             object : WebSocketListener() {
@@ -510,6 +581,7 @@ class Remote(
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    broken.set(t)
                     frames.close()
                 }
             },
@@ -550,7 +622,7 @@ class Remote(
                     opening = null
                     // Only an explicit refusal invalidates the token.
                     if (refused.get()) token = ""
-                    fail(Exception("与 server 的连接断开"))
+                    fail(broken.get() ?: Exception("与 server 的连接断开"))
                 }
             }
         }
@@ -559,6 +631,8 @@ class Remote(
     private fun fail(e: Throwable) {
         conn = ConnState.OFFLINE
         error = errorText(e)
+        errorDetail = detailText(e)
+        unresolved = unresolvedHost(e)
         publish()
         if (!running) return
         val delayMs = retry + (Random.nextDouble() * retry * 0.25).toLong()
@@ -579,6 +653,8 @@ class Remote(
                 retry = 1000
                 conn = ConnState.ONLINE
                 error = ""
+                errorDetail = ""
+                unresolved = false
                 publish()
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
@@ -723,6 +799,7 @@ class Remote(
                 next = end
                 firstEnd = end
                 firstPage = true
+                synced = true
                 pageError = ""
                 listBackoff = LIST_RETRY_MS
                 loaded = true
@@ -1240,7 +1317,7 @@ class Remote(
 
     private fun publishEvents(sid: String, b: Buffer) {
         if (buffers[sid] !== b) return
-        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(b.events, b.loaded, b.error ?: b.fetchError)
+        eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(b.events, b.loaded, b.error, b.fetchError)
     }
 
     /** Asks for missing events again, e.g. after one failed to open. */

@@ -145,7 +145,7 @@ fun SessionScreen(sid: String) {
         if (tab == 1 && status != Status.EXITED) {
             TerminalPane(remote, sid, sessionRunning = status != Status.EXITED, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
-            ChatPane(state, s, status, events.events, d, events.loaded, events.error, Modifier.weight(1f), onTerminal = { tab = 1 })
+            ChatPane(state, s, status, events.events, d, events.loaded, events.error, events.fetchError, Modifier.weight(1f), onTerminal = { tab = 1 })
         }
     }
 }
@@ -261,6 +261,7 @@ private fun ChatPane(
     d: io.github.lewin671.remoteagent.core.Derived,
     loaded: Boolean,
     error: String?,
+    fetchError: String?,
     modifier: Modifier,
     onTerminal: () -> Unit,
 ) {
@@ -333,8 +334,11 @@ private fun ChatPane(
                         if (o != null) putBack(remote, s.id, o) else Outbox.draft(s.id).value = text
                     }
                 }
-                if (error != null) item {
-                    Banner("后面的记录没读到：$error", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), Tone2.ERROR, action = "重试", onAction = { remote.retryEvents(s.id) })
+                // Offline, the connection banner says the content may be stale and
+                // the next connection fetches again: a failed fetch adds nothing.
+                val shown = error ?: fetchError?.takeIf { state.conn == ConnState.ONLINE }
+                if (shown != null) item {
+                    Banner("后面的记录没读到：$shown", Modifier.padding(horizontal = 14.dp, vertical = 8.dp), Tone2.ERROR, action = "重试", onAction = { remote.retryEvents(s.id) })
                 }
                 val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
                 items(visiblePending.size, key = { "pending-${visiblePending[it].id}" }) { i ->
@@ -470,10 +474,11 @@ private fun Bottom(
         val act = rememberAction()
         EndCard("会话已结束", buildString {
             append(if (s.info?.statusDetail == "stopped") "会话是被手动结束的。" else "tmux 会话已经不在了。")
-            if (m?.online == true) append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
+            if (state.unlinked) append("连上服务器后才能恢复。")
+            else if (m?.online == true) append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
             else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
         }, dot = if (act.running) p.blueBg else p.gray, title2 = if (act.running) "正在恢复…" else null) {
-            if (m?.online == true && !act.running) Btn(
+            if (m?.online == true && !state.unlinked && !act.running) Btn(
                 if (act.error.isNotEmpty()) "再试一次" else "恢复会话",
                 { act.run({ remote.command(s.id, remote.cmd { resumeSession = ResumeSessionRequest.newBuilder().setSessionId(s.id).build() }) }) },
                 Modifier.fillMaxWidth(), if (act.error.isNotEmpty()) BtnKind.SECONDARY else BtnKind.PRIMARY, enabled = state.conn == ConnState.ONLINE,
@@ -486,7 +491,7 @@ private fun Bottom(
         val t = now()
         EndCard(
             "${machineLabel(state, s.machineId)} 不在线",
-            (if ((m?.lastSeenMs ?: 0) > 0) whenText(m!!.lastSeenMs, t) + "断开。" else "") + "电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
+            (if ((m?.lastSeenMs ?: 0) > 0) whenText(m!!.lastSeenMs, t) + "断开，" else "") + "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
         ) {}
         return
     }
