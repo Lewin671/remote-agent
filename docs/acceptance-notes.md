@@ -134,4 +134,15 @@ Go 测试覆盖绑定轮次、创建幂等、修订冲突、重启、dispatch �
 
 在修复前版本运行新增测试，确认缺少就绪期限、网页关闭回调缺失、静默断线、登录及历史请求挂起和终端握手挂起均能被检出；Android 的重复网络回调测试实际打开 5 条流，修复后为 1 条。
 
-通过 Go 全量测试及 relay/server race 测试、网页 428 项测试与构建、Android core 179 项、terminal 1 项、app 91 项测试及 debug APK 构建。未在真实手机切换 Wi-Fi/蜂窝网络、浏览器 TCP 黑洞或线上部署环境实测；这些故障由本地夹具模拟。发布和部署状态另行核实，不由这些测试推断。
+通过 Go 全量测试及 relay/server race 测试、网页 428 项测试与构建、Android core 179 项、terminal 1 项、app 91 项测试及 debug APK 构建。上述自动故障由本地夹具模拟；线上验收见下文，真实手机 Wi-Fi/蜂窝切换尚未验证。
+
+**线上端到端验收**（2026-10-06，v0.25.0，`ea7ba92`）：server 部署到 `vps.remote-agent.top` 的现有容器（API `ra.remote-agent.top`），正式网页部署到 Cloudflare Pages（`remote-agent.top`），本机 daemon 安装并重启。三端运行版本与源提交均核对一致；已有 tmux 会话重新挂接并继续运行。server 的旧镜像保留用于回退。
+
+本机 Chrome 已配对客户端 → 线上 server → 本机 daemon → 真实 Codex 0.159.2（GPT-6-Luna low），专用空目录会话：
+
+- 网页发送只要求回复标记的消息，收到 `RA-E2E-BASELINE-OK`。
+- UTC 13:21:18–13:22:38 暂停 relay 容器 80 秒：TCP 保持但无应用帧，未切断电脑 Wi-Fi。期间本地 CLI 发消息并产生 `RA-E2E-DURING-OUTAGE-OK`。网页显示重连中，daemon 的 ping 超时使旧流失效；恢复容器后 daemon 在 13:22:56 连回，网页无刷新补齐离线回复。
+- 网页再次发送，收到 `RA-E2E-AFTER-RECOVERY-OK`。另重启 relay，server 日志确认新终端流建立；从 Chrome 终端输入，收到 `RA-E2E-TERMINAL-OK`。
+- 截止最后一轮结束，本地 37 条事件序号连续、无重复；四个标记回复在本地记录与网页中均各一次。
+
+Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签名与正式 APK 不一致，保留应用数据并升级到同源码的 debug APK（versionCode 72）；没有卸载旧应用。模拟器窗口无法由当前 UI 工具控制，因此 Android 界面端到端、正式签名 APK 真机安装、真实手机 Wi-Fi/蜂窝切换均未验收，不能把此次 Chrome 结果当作这些项目通过。
