@@ -357,6 +357,10 @@ private const val LOOSE_OVER = 40
  * both clients space a list alike.
  */
 fun looseList(items: List<String>): Boolean {
+    // An estimate, not Unicode's table of widths: from the CJK blocks up, but
+    // for the half-width forms. One column either way moves only where a
+    // list is called long.
+    fun Char.isWide(): Boolean = code >= 0x2e80 && code !in 0xff61..0xffdc && code !in 0xffe8..0xffee
     for (item in items) {
         if ('\n' in item) return true
         val text = buildString { shownText(inlineSpans(item), this) }
@@ -364,7 +368,7 @@ fun looseList(items: List<String>): Boolean {
         for (c in text) {
             // The second half of a pair adds nothing: its first half counted the character.
             if (c.isLowSurrogate()) continue
-            width += if (c.code >= 0x2e80) 2 else 1
+            width += if (c.isWide()) 2 else 1
             if (width > LOOSE_OVER) return true
         }
     }

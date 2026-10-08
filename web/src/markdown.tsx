@@ -256,6 +256,11 @@ export function numericColumn(cells: string[]): boolean {
  * (CJK and the like) takes two. */
 const LOOSE_OVER = 40;
 
+/** Whether a character takes two columns. An estimate, not Unicode's table
+ * of widths: from the CJK blocks up, but for the half-width forms. One
+ * column either way moves only where a list is called long. */
+const wide = (c: number) => c >= 0x2e80 && !(c >= 0xff61 && c <= 0xffdc) && !(c >= 0xffe8 && c <= 0xffee);
+
 /** Whether a list's items need more room between them: once an item runs
  * over a line, items set as close as lines read as one paragraph. Judged by
  * what the items say, not by how they happen to wrap on this screen, so
@@ -269,7 +274,7 @@ export function looseList(items: string[]): boolean {
       const c = text.charCodeAt(i);
       // The second half of a pair adds nothing: its first half counted the character.
       if (c >= 0xdc00 && c <= 0xdfff) continue;
-      width += c >= 0x2e80 ? 2 : 1;
+      width += wide(c) ? 2 : 1;
       if (width > LOOSE_OVER) return true;
     }
   }
