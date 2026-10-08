@@ -2083,6 +2083,30 @@
     "[短](https://example.com/a/very/long/path/that/is/not/shown/at/all)"
    ],
    "want": false
+  },
+  {
+   "items": [
+    "中中中中中中中中中中中中中中中中中中中𠮷"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "中中中中中中中中中中中中中中中中中中中𠮷a"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂"
+   ],
+   "want": true
   }
  ]
 }

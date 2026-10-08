@@ -362,6 +362,8 @@ fun looseList(items: List<String>): Boolean {
         val text = buildString { shownText(inlineSpans(item), this) }
         var width = 0
         for (c in text) {
+            // The second half of a pair adds nothing: its first half counted the character.
+            if (c.isLowSurrogate()) continue
             width += if (c.code >= 0x2e80) 2 else 1
             if (width > LOOSE_OVER) return true
         }

@@ -266,7 +266,10 @@ export function looseList(items: string[]): boolean {
     const text = shownText(inlineSpans(item));
     let width = 0;
     for (let i = 0; i < text.length; i++) {
-      width += text.charCodeAt(i) >= 0x2e80 ? 2 : 1;
+      const c = text.charCodeAt(i);
+      // The second half of a pair adds nothing: its first half counted the character.
+      if (c >= 0xdc00 && c <= 0xdfff) continue;
+      width += c >= 0x2e80 ? 2 : 1;
       if (width > LOOSE_OVER) return true;
     }
   }
