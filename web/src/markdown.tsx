@@ -215,14 +215,29 @@ export const FOLD_SHOWN = 12;
 
 // Any indent: the CLIs nest code blocks in list items.
 const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/;
-const tableSep = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
-const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const heading = /^\s{0,3}(#{1,6})\s+(.*)$/;
 const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
 const listLine = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
 const quote = /^\s{0,3}>\s?(.*)$/;
 const taskMark = /^\[([ xX])\]\s+(.*)$/s;
 
 const indentOf = (l: string) => l.length - l.trimStart().length;
+
+/** A table's separator row: cells of dashes, with optional colons. Split
+ * by hand: one pattern over the whole line backtracks on long blank runs. */
+function tableSep(line: string): boolean {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+  return s.split("|").every((c) => /^:?-{3,}:?$/.test(c.trim()));
+}
+
+/** A heading's text, without the closing hashes some write after it. */
+function headingText(rest: string): string {
+  let end = rest.trimEnd().length;
+  while (end > 0 && rest[end - 1] === "#") end--;
+  return rest.slice(0, end).trimEnd();
+}
 
 /** Splits a table row into cells, at pipes outside `code` and not
  * escaped. */
@@ -320,7 +335,7 @@ export function mdBlocks(md: string, depth = 0): Block[] {
       i = j;
       continue;
     }
-    if (line.includes("|") && i + 1 < lines.length && tableSep.test(lines[i + 1]) && lines[i + 1].includes("-") && tableCells(line).length === tableCells(lines[i + 1]).length) {
+    if (line.includes("|") && i + 1 < lines.length && tableSep(lines[i + 1]) && tableCells(line).length === tableCells(lines[i + 1]).length) {
       const head = tableCells(line);
       const align = tableCells(lines[i + 1]).map((c) =>
         c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : undefined,
@@ -336,7 +351,7 @@ export function mdBlocks(md: string, depth = 0): Block[] {
     const h = heading.exec(line);
     if (h) {
       flush();
-      blocks.push({ kind: "heading", level: h[1].length, text: h[2] });
+      blocks.push({ kind: "heading", level: h[1].length, text: headingText(h[2]) });
       continue;
     }
     if (rule.test(line)) {

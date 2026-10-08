@@ -22,6 +22,16 @@ describe("safety", () => {
     expect(performance.now() - started).toBeLessThan(1500);
   }, 3000);
 
+  it("reads long hostile lines once", () => {
+    const started = performance.now();
+    mdBlocks("# " + "#".repeat(100_000) + "x");
+    mdBlocks("# " + "# ".repeat(50_000) + "x");
+    mdBlocks("a|b\n" + " ".repeat(100_000) + "x");
+    mdBlocks("a|b\n" + "| ".repeat(50_000) + "x");
+    mdBlocks("- " + " ".repeat(100_000) + "x");
+    expect(performance.now() - started).toBeLessThan(1000);
+  }, 3000);
+
   it("parses long lists without suffix copies or argument-stack overflow", () => {
     const separate = mdBlocks("- x\n\n".repeat(20_000));
     expect(separate[0].kind).toBe("list");
