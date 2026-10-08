@@ -112,6 +112,11 @@ kotlin {
     jvmToolchain(17)
 }
 
+// The Markdown cases both clients read by live outside this build.
+tasks.withType<Test>().configureEach {
+    inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -150,6 +155,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.serialization.json)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test)
     androidTestImplementation(libs.android.test.runner)
