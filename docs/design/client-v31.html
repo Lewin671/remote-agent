@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v30</title>
+<title>remote-agent 客户端设计稿 v31</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -146,16 +146,54 @@
   .me.warn small { color: var(--orange-ink); }
   .me.fail > div { background: var(--chip); color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--red); }
   .me.fail small { color: var(--red); }
-  .ai { margin: 8px 0; font-size: 15px; line-height: 1.55; }
-  .ai p { margin: 0 0 6px; }
-  .ai ul, .ai ol { margin: 4px 0 6px; padding-left: 20px; }
-  .ai li { margin: 2px 0; }
-  .ai code { background: var(--chip); padding: 1px 4px; border-radius: 4px; }
+  /* v31：回复正文按 design-system 第 7 节 */
+  .ai { margin: 12px 0; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+  .ai :where(p, ul, ol, pre, blockquote, hr) { margin: 0; }
+  .ai > :where(* + *), .ai blockquote > :where(* + *) { margin-top: 12px; }
+  .ai > :where(p + ul, p + ol) { margin-top: 8px; }
+  .ai > :where(.mdtable + *) { margin-top: 16px; }
+  .ai > :where(.mdh + *, .bh + *) { margin-top: 8px; }
+  .ai > :where(.mdh.h3, .mdh.h4, .bh) { margin-top: 16px; }
+  .ai > :where(.mdh.h1, .mdh.h2) { margin-top: 24px; }
+  .ai > :where(.mdh + .mdh, .mdh + .bh) { margin-top: 12px; }
+  .ai > :where(hr + *) { margin-top: 24px; }
+  .ai > :where(:first-child) { margin-top: 0; }
+  .ai .mdh { font-weight: 600; line-height: 1.35; }
+  .ai .mdh.h1, .ai .mdh.h2 { font-size: 17px; }
+  .ai .mdh.h4 { font-size: 13px; color: var(--muted); }
+  .ai b { font-weight: 600; }
+  .ai s { color: var(--muted); }
+  .ai code { font-size: 13px; background: var(--chip); padding: 1px 4px; border-radius: 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .ai .mdh.h1 code, .ai .mdh.h2 code { font-size: 15px; }
   .ai .ref { font: 13px ui-monospace, Menlo, monospace; color: var(--fg2); overflow-wrap: anywhere; }
-  .ai pre { background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; margin: 6px 0; overflow-x: auto; white-space: pre; }
-  .ai table { border-collapse: collapse; font-size: 13px; margin: 6px 0; display: block; overflow-x: auto; }
-  .ai th, .ai td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap; }
-  .ai th { background: var(--soft); }
+  .ai hr { display: none; }
+  .ai blockquote { padding-left: 12px; border-left: 2px solid var(--track); color: var(--fg2); }
+  .ai ul, .ai ol { padding-left: 20px; }
+  .ai ol.wide { padding-left: 28px; }
+  .ai ul ul { list-style: circle; }
+  .ai li + li, .ai li > :where(ul, ol) { margin-top: 4px; }
+  .ai li > :where(p, .cb, .mdtable, blockquote) { margin-top: 8px; }
+  .ai li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ai li.task { list-style: none; position: relative; }
+  .ai li.task > .ic { position: absolute; left: -20px; top: .3em; color: var(--muted); }
+  .ai li.task.done { color: var(--muted); }
+  .cb { position: relative; background: var(--soft); border-radius: var(--r-xs); }
+  .cb pre { padding: 8px 12px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--fg2); overflow-x: auto; white-space: pre; }
+  .cb .add { color: var(--green-ink); } .cb .del { color: var(--red); }
+  .cp { position: absolute; top: 0; right: 0; width: 44px; height: 34px; color: var(--muted); font-size: 16px; border-radius: 0 var(--r-xs) var(--r-xs) 0; background: linear-gradient(to right, transparent, var(--soft) 40%); }
+  .cp > .ic { position: absolute; top: 9px; right: 12px; }
+  .cbmore { display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--blue); }
+  .cbmore i { font-style: normal; font-size: 12px; font-weight: 400; color: var(--muted); }
+  .mdtable { overflow-x: auto; }
+  .ai > .mdtable { margin-inline: -14px; padding-inline: 14px; }
+  .mdtable.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+  .ai table { border-collapse: collapse; font-size: 13px; line-height: 1.45; width: max-content; }
+  .ai th, .ai td { text-align: left; vertical-align: top; padding: 8px 24px 8px 0; border-bottom: 1px solid var(--line); max-width: 240px; overflow-wrap: break-word; }
+  .ai th { font-size: 12px; font-weight: 400; color: var(--muted); padding-top: 0; white-space: nowrap; }
+  .ai tr > :last-child { padding-right: 0; }
+  .ai tbody tr:last-child td { border-bottom: 0; }
+  .ai .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .phone.reply { height: auto; } .phone.reply .body { overflow: visible; padding-bottom: 16px; }
   .scrollhint { font-size: 12px; color: var(--muted); text-align: right; margin-top: -4px; }
   .think { font-size: 13px; color: var(--muted); margin: 6px 0; }
   .tool { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 4px 0; }
@@ -875,23 +913,23 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lu-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="lu-square-open" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-square-check" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="lu-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="lu-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="lu-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="lu-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="lu-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="lu-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="lu-square-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol><symbol id="lu-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol><symbol id="lu-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol><symbol id="lu-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="lu-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="lu-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="lu-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="lu-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="lu-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="lu-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="lu-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol><symbol id="lu-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="lu-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="lu-corner-down-left" viewBox="0 0 24 24"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></symbol><symbol id="lu-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol><symbol id="lu-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol><symbol id="lu-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></symbol><symbol id="lu-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/><path d="M9 21H3v-6"/></symbol></svg>
 <div class="wrap">
 
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v30 · 2026-10-06 · 上一版 v29 在 git 历史里（<code>git log -- docs/design/client-v29.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v31 · 2026-10-08 · 上一版 v30 在 git 历史里（<code>git log -- docs/design/client-v30.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v29 的改动</h4><ul><li>新增<a href="#link">「断线」</a>一节：手机到电脑的路分成本机网络、服务器、电脑三段，只报离得最近的那一段，并且只在一处说。</li><li>导航栏下的提示条按原因换文案和图标：「本机网络不通」「正在重连…」「连不上服务器 · 正在重试」，后者带「详情」；不再有「连接断了，正在重连 · 内容可能不是最新的」。</li><li>连不上服务器期间，会话的状态点变灰、状态词写「未连接」，不再沿用断线前的「运行中」「电脑离线」；底部是输入框而不是「××× 不在线」状态卡。已结束的会话不变。</li><li>连不上服务器期间读取历史失败不出红条，连上后自动补齐；连着时失败的红条写中文原因，不写底层错误。</li><li>「××× 不在线」状态卡补上可能的原因。</li></ul>
+  <h4>相对 v30 的改动</h4><ul><li>新增<a href="#reply">「回复正文」</a>一节：回复里的 Markdown 按 <a href="../design-system.md#7-对话正文">design-system 第 7 节</a>重画，结构靠留白分出来。</li><li>块之间的间距分三档；标题分四级；表格只留行间横线、宽度随内容、数量列右对齐，放不下时右缘渐隐。</li><li>代码块不描边，右上角是复制图标；超过 16 行只显示前 12 行，就地「展开全文」；diff 的增删行上色。</li><li>任务列表画成勾选框，删除线、裸写的网址、下划线斜体不再按字面显示；回复里的分隔线只留空白，不画线。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1347,6 +1385,194 @@ git status --short gen/</pre>
       <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
     </div>
     <div class="cap">Android 适配后：可用 A− / A+ 调整字号，处理信任目录这类弹窗。方向键和确认在第一行，Tab、Ctrl+C 和键盘在第二行；各键点击区至少 44×44</div>
+  </div>
+</div>
+
+<h2 id="reply">回复正文</h2>
+<div class="note" style="margin-bottom:16px">回复里的 Markdown 怎么画。取值和理由在 <a href="../design-system.md#7-对话正文">design-system 第 7 节</a>，哪段文字算什么元素由两端共用的样例 <code>testdata/markdown/cases.json</code> 约束。三个画面是同一套规则下的日常、拥挤和边界内容；为了看全，这一节的手机没有限制高度。</div>
+<div class="screens">
+  <div>
+    <div class="phone reply">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span>空闲 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="body chat">
+  <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
+  <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>读取 auth/login.go</code></div>
+  <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>go test ./auth/...</code><span class="t">4.2s</span></div>
+  <div class="ai">
+    <p>找到原因了：每次登录都会新建一个到 Redis 的连接，高峰期连接数打满后请求排队，超过 <code>5s</code> 就超时。</p>
+    <p class="mdh h2">改了什么</p>
+    <ul>
+      <li><code>auth/login.go</code>：改为复用连接池，单次请求超时 <code>2s</code></li>
+      <li><code>auth/pool.go</code>：新增连接池，上限 <code>32</code>，空闲 <code>90s</code> 回收</li>
+      <li><code>auth/login_test.go</code>：补了并发登录的测试</li>
+    </ul>
+    <p class="mdh h2">关键改动</p>
+    <div class="cb"><pre>func (s *Service) Login(ctx context.Context, req *LoginRequest) (*Session, error) {
+    ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+    defer cancel()
+
+    conn, err := s.pool.Get(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("acquire redis conn: %w", err)
+    }
+    defer s.pool.Put(conn)
+    return s.verify(ctx, conn, req)
+}</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div>
+    <p class="mdh h2">验证</p>
+    <div class="mdtable"><table>
+      <thead><tr><th>场景</th><th class="num">改动前 P99</th><th class="num">改动后 P99</th></tr></thead>
+      <tbody>
+        <tr><td>50 并发</td><td class="num">180 ms</td><td class="num">42 ms</td></tr>
+        <tr><td>200 并发</td><td class="num">5.2 s</td><td class="num">61 ms</td></tr>
+        <tr><td>500 并发</td><td class="num">—</td><td class="num">118 ms</td></tr>
+      </tbody>
+    </table></div>
+    <p>测试全部通过。要再确认一遍的话运行：</p>
+    <div class="cb"><pre>go test ./... -count=1</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div>
+    <p>还有一处我没动：<span class="ref">auth/refresh.go</span> 也是每次新建连接，要一起改吗？</p>
+  </div>
+</div>
+    </div>
+    <div class="cap">日常：一段结论、两三个小节、一段代码、一张小表。标题前 24、标题后 8、块之间 12；数量列右对齐</div>
+  </div>
+  <div>
+    <div class="phone reply">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">拆分库存逻辑</span></b><span>空闲 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="body chat">
+  <div class="me"><div>评估一下把订单服务的库存逻辑拆成独立包的方案，列出涉及的文件和风险</div></div>
+  <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>读取 14 个文件</code></div>
+  <div class="ai">
+    <p class="mdh h1">库存逻辑拆分方案</p>
+    <p>结论：<b>可以拆，建议分三步做</b>，每一步都能单独上线和回滚。依据在下面，背景见<a href="https://example.com/design/inventory">设计文档</a>和 <span class="ref">docs/architecture.md</span>。</p>
+    <p class="mdh h2">1. 现状</p>
+    <p>库存扣减散落在 <code>orders/inventory.go</code>、<code>orders/checkout.go</code> 和 <code>internal/handler/order_handler.go</code> 三处，其中<em>回滚</em>逻辑有两份实现，行为<em>不一致</em>。</p>
+    <blockquote>
+      <p>注意：<code>checkout.go</code> 里的扣减没有走事务，并发下单时可能超卖。</p>
+      <p>这个问题和拆分无关，但拆的时候会一起修掉。</p>
+    </blockquote>
+    <p class="mdh h2">2. 步骤</p>
+    <ol>
+      <li><b>新建 <code>inventory</code> 包</b>，迁移扣减和回滚
+        <ul>
+          <li>对外只暴露 <code>Reserve</code>、<code>Commit</code>、<code>Release</code> 三个方法</li>
+          <li>旧实现保留，用开关 <code>INVENTORY_V2</code> 切换
+            <ul><li>默认关闭，灰度期间按租户打开</li></ul>
+          </li>
+        </ul>
+        <div class="cb"><pre>type Store interface {
+    Reserve(ctx context.Context, sku string, n int) (ReservationID, error)
+    Commit(ctx context.Context, id ReservationID) error
+    Release(ctx context.Context, id ReservationID) error
+}</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div>
+      </li>
+      <li><b>订单服务改为调用接口</b><br>涉及 5 个文件，改动集中在 <code>checkout.go</code>，其余只是换调用方式。</li>
+      <li><b>补集成测试</b>，覆盖并发扣减和超时回滚</li>
+    </ol>
+    <p class="mdh h3">涉及的文件</p>
+    <div class="mdtable more"><table>
+      <thead><tr><th>文件</th><th>改动</th><th class="num">行数</th><th>风险</th><th>测试</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>orders/inventory.go</code></td><td>迁出</td><td class="num">−312</td><td>低</td><td>已有</td><td>整个文件搬进新包，只改包名和导出的名字</td></tr>
+        <tr><td><code>orders/checkout.go</code></td><td>改写</td><td class="num">+84 −61</td><td>高</td><td>要补</td><td>扣减改成先预留再提交，失败路径多了一步释放；这里是唯一改变线上行为的地方</td></tr>
+        <tr><td><code>internal/handler/order_handler.go</code></td><td>改调用</td><td class="num">+6 −9</td><td>低</td><td>已有</td><td></td></tr>
+        <tr><td><code>inventory/store.go</code></td><td>新增</td><td class="num">+240</td><td>中</td><td>要补</td><td>接口和 Postgres 实现</td></tr>
+        <tr><td><code>inventory/store_test.go</code></td><td>新增</td><td class="num">+1,180</td><td>—</td><td>—</td><td>并发扣减、超时回滚、重复提交</td></tr>
+      </tbody>
+    </table></div>
+    <p class="mdh h3">待办</p>
+    <ul>
+      <li class="task done"><svg class="ic" aria-hidden="true"><use href="#lu-square-check"/></svg>读完三处现有实现</li>
+      <li class="task done"><svg class="ic" aria-hidden="true"><use href="#lu-square-check"/></svg>确认两份回滚实现的差异</li>
+      <li class="task"><svg class="ic" aria-hidden="true"><use href="#lu-square-open"/></svg>新建 <code>inventory</code> 包</li>
+      <li class="task"><svg class="ic" aria-hidden="true"><use href="#lu-square-open"/></svg>接入开关<s>并灰度 10%</s>（先全量关闭）</li>
+    </ul>
+    <p class="mdh h2">3. 风险</p>
+    <ul>
+      <li>预留和提交之间进程崩溃会留下悬挂的预留，需要一个定时清理，清理间隔要比下单超时长</li>
+      <li>排队注入的逻辑在 <span class="ref">~/Code/ai-bot/remote-agent.worktrees/experimental-playground/internal/daemon/inject.go</span>，和这次改动共用一把锁</li>
+      <li>回滚脚本只验证过 Postgres 15</li>
+    </ul>
+    <p>第二步的核心改动：</p>
+    <div class="cb"><pre>@@ -118,21 +118,29 @@ func (s *Service) Checkout(ctx context.Context, o *Order) error {
+     if err := s.validate(o); err != nil {
+         return err
+     }
+<span class="del">-    for _, it := range o.Items {</span>
+<span class="del">-        if err := s.db.Exec(ctx, "UPDATE stock SET n = n - $1 WHERE sku = $2 AND n >= $1", it.N, it.SKU); err != nil {</span>
+<span class="del">-            s.rollback(ctx, o)</span>
+<span class="del">-            return err</span>
+<span class="del">-        }</span>
+<span class="del">-    }</span>
+<span class="add">+    ids := make([]inventory.ReservationID, 0, len(o.Items))</span>
+<span class="add">+    for _, it := range o.Items {</span></pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span><div class="cbmore"><span>展开全文 <svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></span><i>共 31 行</i></div></div>
+    <hr>
+    <p class="mdh h4">备注</p>
+    <p>以上行数基于当前 main（<code>a5fe31a</code>）估算，实际以改完为准。</p>
+  </div>
+</div>
+    </div>
+    <div class="cap">拥挤：四级标题、三层列表、列表里的代码、六列的表格（右缘渐隐，可横向滚动）、任务列表、引用、折叠的 diff。分隔线只留空白</div>
+  </div>
+  <div>
+    <div class="phone reply">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span>空闲 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="body chat">
+  <div class="me"><div>跑完了吗</div></div>
+  <div class="ai"><p>跑完了，全部通过。</p></div>
+
+  <div class="me"><div>部署命令是什么</div></div>
+  <div class="ai"><div class="cb"><pre>scripts/release-task.sh patch "修复登录超时"</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div></div>
+
+  <div class="me"><div>两个 CLI 的区别</div></div>
+  <div class="ai">
+    <div class="mdtable"><table>
+      <thead><tr><th>CLI</th><th>审批</th></tr></thead>
+      <tbody><tr><td>Codex</td><td>弹窗</td></tr><tr><td>Claude Code</td><td>hook</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <div class="me"><div>总结一下</div></div>
+  <div class="ai">
+    <p class="mdh h2">总结</p>
+    <p class="mdh h3">只有一件事</p>
+    <ul><li>没有需要改的地方</li></ul>
+  </div>
+
+  <div class="me"><div>怎么发布</div></div>
+  <div class="ai">
+    <p class="bh"><b>发布步骤</b></p>
+    <ul>
+      <li>先跑测试，变量 snake_case_name 和 __init__ 里的下划线不是斜体</li>
+      <li>文档在 <a href="https://example.com/docs/remote-agent/release-and-deploy-guide?version=0.26.1">https://example.com/docs/remote-agent/release-and-deploy-guide?version=0.26.1</a> ✅</li>
+    </ul>
+    <div class="cb"><pre>scripts/release-task.sh patch "修复登录超时"</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div>
+    <p class="bh"><b>改到的文件</b></p>
+    <div class="cb"><pre>web/
+├── src/
+│   ├── markdown.tsx
+│   └── styles.css
+└── package.json</pre><span class="cp"><svg class="ic" aria-hidden="true"><use href="#lu-copy"/></svg></span></div>
+  </div>
+
+  <div class="me"><div>继续</div></div>
+  <div class="ai commentary"><p>先看一下连接池现在是怎么初始化的，再决定超时放在哪一层。</p></div>
+  <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>读取 auth/pool.go</code></div>
+  <div class="ai commentary"><p>初始化在 <code>NewService</code> 里，超时可以直接放在 <code>Login</code>。</p></div>
+  <div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>编辑 1 个文件  +4 −1</code></div>
+  <div class="ai">
+    <p>The fix is in <code>auth/login.go</code>. One caveat: the generated identifier <code>remoteagent_internal_daemon_inject_queue_steer_pending_messages_v2</code> is still referenced from the migration, so <b>do not rename it</b> until the old daemon is gone.</p>
+    <ol start="9" class="wide">
+      <li>第九步</li>
+      <li>第十步，序号变成两位数时文字起点不应该跳</li>
+      <li>第十一步</li>
+    </ol>
+  </div>
+</div>
+    </div>
+    <div class="cap">边界：只有一句话、只有一段代码、只有一张两列的表、标题连着标题、加粗的小标题、裸写的网址、目录树、两位数的序号、放不下的长标识符</div>
   </div>
 </div>
 
