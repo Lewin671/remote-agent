@@ -66,10 +66,10 @@ class MarkdownTableTest {
     @Test fun diffColorsAddedAndRemovedLinesButNotFileHeaders() {
         val add = androidx.compose.ui.graphics.Color.Green
         val del = androidx.compose.ui.graphics.Color.Red
-        val lines = listOf("--- a/x", "+++ b/x", "@@ -1 +1 @@", "-old", "+new", " same")
+        val lines = listOf("--- a/x", "+++ b/x", "@@ -1 +1 @@", "-old", "+new", " same", "---n;", "+++n;")
         val text = codeText(lines, diff = true, add, del)
         assertEquals(lines.joinToString("\n"), text.text)
-        assertEquals(listOf("-old" to del, "+new" to add), text.spanStyles.map { text.text.substring(it.start, it.end) to it.item.color })
+        assertEquals(listOf("-old" to del, "+new" to add, "---n;" to del, "+++n;" to add), text.spanStyles.map { text.text.substring(it.start, it.end) to it.item.color })
         assertTrue(codeText(lines, diff = false, add, del).spanStyles.isEmpty())
     }
 

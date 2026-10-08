@@ -330,6 +330,10 @@ private fun quantity(v: String): Boolean {
 }
 
 /** Whether a column holds quantities, and so reads better right-aligned: every cell that says something is a quantity, and at least one does. */
+/** Whether a diff's line names a file ("+++ b/x", "--- a/x"), not an added "++n;" or a removed "--n;". */
+private fun fileHeader(l: String, sign: Char): Boolean =
+    l.length >= 3 && l[0] == sign && l[1] == sign && l[2] == sign && (l.length == 3 || l[3].isSpace())
+
 /** What a cell says once its marks are gone: `**42 ms**` reads "42 ms". */
 private fun shownText(spans: List<Span>, out: StringBuilder) {
     for (s in spans) when (s) {
@@ -822,8 +826,8 @@ internal fun codeText(lines: List<String>, diff: Boolean, added: Color, removed:
         if (i > 0) append('\n')
         val color = when {
             !diff -> null
-            l.startsWith("+") && !l.startsWith("+++") -> added
-            l.startsWith("-") && !l.startsWith("---") -> removed
+            l.startsWith("+") && !fileHeader(l, '+') -> added
+            l.startsWith("-") && !fileHeader(l, '-') -> removed
             else -> null
         }
         if (color != null) withStyle(SpanStyle(color = color)) { append(l) } else append(l)

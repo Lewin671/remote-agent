@@ -227,7 +227,9 @@ describe("a reply's elements (design-system §7)", () => {
   });
 
   it("colors only a diff's added and removed lines", () => {
-    const out = html("```diff\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new\n same\n```");
+    const out = html("```diff\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new\n same\n---n;\n+++n;\n```");
+    expect(out).toContain('<span class="del">\n---n;</span>');
+    expect(out).toContain('<span class="add">\n+++n;</span>');
     expect(out).toContain('<span class="del">\n-old</span>');
     expect(out).toContain('<span class="add">\n+new</span>');
     expect(out).toContain("<span>--- a/x</span>");

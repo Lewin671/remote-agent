@@ -525,6 +525,13 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/** A diff line's class: added, removed or neither. "+++ b/x" and "--- a/x"
+ * name the files; "+++n;" is an added "++n;". */
+function diffLine(l: string): string | undefined {
+  if (/^(\+\+\+|---)(\s|$)/.test(l)) return undefined;
+  return l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : undefined;
+}
+
 function Code({ lang, text }: { lang: string; text: string }) {
   const lines = useMemo(() => text.split("\n"), [text]);
   const long = lines.length > FOLD_OVER;
@@ -539,7 +546,7 @@ function Code({ lang, text }: { lang: string; text: string }) {
         <span className="cbt">
           {diff
             ? shown.map((l, i) => (
-                <span key={i} className={l.startsWith("+") && !l.startsWith("+++") ? "add" : l.startsWith("-") && !l.startsWith("---") ? "del" : undefined}>
+                <span key={i} className={diffLine(l)}>
                   {i > 0 && "\n"}
                   {l}
                 </span>
