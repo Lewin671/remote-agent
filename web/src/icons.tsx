@@ -8,6 +8,8 @@ import {
   ArrowRight as LArrowRight,
   ArrowUp as LArrowUp,
   Check as LCheck,
+  Copy as LCopy,
+  SquareCheck as LSquareCheck,
   ChevronDown as LChevronDown,
   ChevronLeft as LChevronLeft,
   ChevronRight as LChevronRight,
@@ -60,6 +62,11 @@ export const ArrowUp = icon(LArrowUp);
 export const Square = icon(LSquare, "ic", { fill: "currentColor" });
 /** Down to the newest message; the terminal's ↓ key. */
 export const ArrowDown = icon(LArrowDown);
+/** Copies a code block. */
+export const Copy = icon(LCopy);
+/** A task in a reply's list: still to do, and done. */
+export const Box = icon(LSquare);
+export const BoxChecked = icon(LSquareCheck);
 /** Done; also the chosen one of several. */
 export const Check = icon(LCheck);
 /** Failed; also closes and clears. */

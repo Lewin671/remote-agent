@@ -1,8 +1,13 @@
 // Markdown as the CLIs write it, rendered as React elements. Text is
 // always text: nothing is inserted as HTML, and only http(s) links become
 // links. Other targets, mostly local file paths, show as monospace refs.
+//
+// The Android client parses the same way (ui/Markdown.kt): both run the
+// cases in testdata/markdown, and how each element looks is
+// docs/design-system.md §7.
 
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Box, BoxChecked, Check, ChevronDown, ChevronUp, Copy, X } from "./icons";
 
 /** Whether a link target may be opened: web pages only, so javascript:,
  * data: and file paths never become clickable. */
@@ -43,10 +48,45 @@ function inlineLinks(text: string): Map<number, { close: number; end: number; au
   return links;
 }
 
-/** Inline Markdown: `code`, **bold**, *italic*, [links](target) and
- * <https://autolinks>. */
-export function Rich({ text }: { text: string }) {
-  const parts: ReactNode[] = [];
+/** Inline Markdown as a tree, so that both clients can be held to the
+ * same reading of it. */
+export type Span =
+  | { t: "text"; v: string }
+  | { t: "code"; v: string }
+  | { t: "b" | "i" | "s"; c: Span[] }
+  | { t: "link"; v: string; href: string }
+  | { t: "ref"; v: string; target: string };
+
+// What a bare URL may not end in: the punctuation of the sentence around it.
+const urlTail = /[.,;:!?'"*_~]+$/;
+
+/** A bare URL without the sentence's punctuation after it; a closing
+ * bracket stays only when the URL opened one. */
+function bareUrl(raw: string): string {
+  let url = raw;
+  for (;;) {
+    const cut = url.replace(urlTail, "");
+    const last = cut[cut.length - 1];
+    const open = last === ")" ? "(" : last === "]" ? "[" : "";
+    const next = open && !cut.includes(open) ? cut.slice(0, -1) : cut;
+    if (next === url) return url;
+    url = next;
+  }
+}
+
+const inlineRe =
+  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[\x21-\x3b\x3d\x3f-\x7e]+)/gu;
+
+/** Inline Markdown: `code`, **bold**, *italic*, _italic_, ~~struck~~,
+ * [links](target), <https://autolinks> and bare https:// URLs. */
+export function inlineSpans(text: string): Span[] {
+  const out: Span[] = [];
+  const push = (v: string) => {
+    if (!v) return;
+    const last = out[out.length - 1];
+    if (last?.t === "text") last.v += v;
+    else out.push({ t: "text", v });
+  };
   const links = inlineLinks(text);
   const runs = [...text.matchAll(/`+/g)];
   const closers = new Map<number, number>();
@@ -56,43 +96,88 @@ export function Rich({ text }: { text: string }) {
     if (end !== undefined) closers.set(run.index, end);
     next.set(run[0].length, run.index);
   }
-  const re = /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(\[)|(<https?:\/\/)/g;
+  const re = new RegExp(inlineRe);
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     if (m.index < last) continue;
     const escapedTick = m[1] !== undefined && escapedAt(text, m.index);
-    if (m.index > last) parts.push(text.slice(last, escapedTick ? m.index - 1 : m.index));
-    const key = m.index;
+    if (m.index > last) push(text.slice(last, escapedTick ? m.index - 1 : m.index));
     if (m[1] !== undefined) {
       const end = escapedTick ? undefined : closers.get(m.index);
       if (end !== undefined) {
-        parts.push(<code key={key}>{text.slice(m.index + m[1].length, end)}</code>);
+        out.push({ t: "code", v: text.slice(m.index + m[1].length, end) });
         last = end + m[1].length;
         re.lastIndex = last;
         continue;
       }
-      parts.push(m[1]);
+      push(m[1]);
     }
     // Emphasis may wrap code and links, so its content is inline Markdown too.
-    else if (m[2] !== undefined) parts.push(<b key={key}><Rich text={m[2]} /></b>);
-    else if (m[3] !== undefined) parts.push(<em key={key}><Rich text={m[3]} /></em>);
-    else {
+    else if (m[2] !== undefined) out.push({ t: "b", c: inlineSpans(m[2]) });
+    else if (m[3] !== undefined) out.push({ t: "i", c: inlineSpans(m[3]) });
+    else if (m[4] !== undefined) out.push({ t: "i", c: inlineSpans(m[4]) });
+    else if (m[5] !== undefined) out.push({ t: "s", c: inlineSpans(m[5]) });
+    else if (m[8] !== undefined) {
+      const url = bareUrl(m[8]);
+      out.push({ t: "link", v: url, href: url });
+      last = m.index + url.length;
+      re.lastIndex = last;
+      continue;
+    } else {
       const link = links.get(m.index);
       if (link) {
         const label = text.slice(m.index + 1, link.close);
         const target = link.auto ? label : text.slice(link.close + 2, link.end);
-        parts.push(<Link key={key} text={label} target={target} />);
+        const href = safeHref(target);
+        out.push(href ? { t: "link", v: label, href } : { t: "ref", v: label, target });
         last = link.end + 1;
         re.lastIndex = last;
         continue;
       }
-      parts.push(m[0]);
+      push(m[0]);
     }
     last = m.index + m[0].length;
   }
-  if (last < text.length) parts.push(text.slice(last));
-  return <>{parts}</>;
+  if (last < text.length) push(text.slice(last));
+  return out;
+}
+
+function Spans({ spans }: { spans: Span[] }) {
+  return (
+    <>
+      {spans.map((s, i) => {
+        switch (s.t) {
+          case "text":
+            return s.v;
+          case "code":
+            return <code key={i}>{s.v}</code>;
+          case "b":
+            return <b key={i}><Spans spans={s.c} /></b>;
+          case "i":
+            return <em key={i}><Spans spans={s.c} /></em>;
+          case "s":
+            return <s key={i}><Spans spans={s.c} /></s>;
+          case "link":
+            return (
+              <a key={i} href={s.href} target="_blank" rel="noopener noreferrer nofollow">
+                {s.v}
+              </a>
+            );
+          case "ref":
+            return (
+              <span key={i} className="ref" title={s.target}>
+                {s.v}
+              </span>
+            );
+        }
+      })}
+    </>
+  );
+}
+
+export function Rich({ text }: { text: string }) {
+  return <Spans spans={inlineSpans(text)} />;
 }
 
 function tableCellClass(text: string): string {
@@ -100,28 +185,42 @@ function tableCellClass(text: string): string {
   return text.length > 0 && text.length <= 12 ? "mdcell nowrap" : "mdcell";
 }
 
-function Link({ text, target }: { text: string; target: string }) {
-  const href = safeHref(target);
-  if (href)
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer nofollow">
-        {text}
-      </a>
-    );
-  return (
-    <span className="ref" title={target}>
-      {text}
-    </span>
-  );
+// A whole cell that reads as a quantity: digits with a sign, a currency
+// mark or a short unit, or a few of them ("+84 −61", "5.2 s", "118 ms").
+const quantity = /^[+\-−~≈<>≤≥$¥€£]*\d[\d,.:]*\s?(?:%|‰|°|[A-Za-zµ]{1,5})?(?:\s+[+\-−/]?\s?\d[\d,.]*\s?(?:%|[A-Za-zµ]{1,5})?)*$/;
+const blankCell = /^(?:|-|–|—|N\/A|n\/a)$/;
+
+/** Whether a column holds quantities, and so reads better right-aligned:
+ * every cell that says something is a quantity, and at least one does. */
+export function numericColumn(cells: string[]): boolean {
+  let n = 0;
+  for (const c of cells) {
+    const v = c.trim();
+    if (blankCell.test(v)) continue;
+    if (!quantity.test(v)) return false;
+    n++;
+  }
+  return n > 0;
 }
 
+/** A paragraph that is one bold line, the way the CLIs often write a
+ * small heading: it gets a heading's space, not a paragraph's. */
+export function boldHeading(text: string): boolean {
+  return /^\*\*[^*\n]+\*\*[:：]?$/.test(text.trim());
+}
+
+/** Code longer than this is cut to FOLD_SHOWN lines until it is opened. */
+export const FOLD_OVER = 16;
+export const FOLD_SHOWN = 12;
+
 // Any indent: the CLIs nest code blocks in list items.
-const fence = /^\s*(`{3,}|~{3,})/;
+const fence = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/;
 const tableSep = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const rule = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
 const listLine = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
 const quote = /^\s{0,3}>\s?(.*)$/;
+const taskMark = /^\[([ xX])\]\s+(.*)$/s;
 
 const indentOf = (l: string) => l.length - l.trimStart().length;
 
@@ -167,12 +266,14 @@ export function tableCells(line: string): string[] {
 
 export interface ListItem {
   text: string;
+  /** A task list item: checked or not. */
+  task?: "done" | "todo";
   children: Block[];
 }
 
 export type Block =
   | { kind: "text"; text: string }
-  | { kind: "code"; text: string }
+  | { kind: "code"; lang: string; text: string }
   | { kind: "heading"; level: number; text: string }
   | { kind: "rule" }
   | { kind: "quote"; blocks: Block[] }
@@ -215,7 +316,7 @@ export function mdBlocks(md: string, depth = 0): Block[] {
       const dedent = (l: string) => l.slice(Math.min(indent, indentOf(l)));
       while (j < lines.length && !close.test(lines[j])) body.push(dedent(lines[j++]));
       flush();
-      blocks.push({ kind: "code", text: body.join("\n") });
+      blocks.push({ kind: "code", lang: f[2].toLowerCase(), text: body.join("\n") });
       i = j;
       continue;
     }
@@ -315,7 +416,12 @@ function parseList(lines: string[], base: number, depth: number): Block {
     kind: "list",
     ordered,
     start: ordered ? parseInt(first[2], 10) : 1,
-    items: items.map((it) => ({ text: it.text.join("\n"), children: it.rest.some((x) => x.trim()) ? mdBlocks(strip(it.rest), depth + 1) : [] })),
+    items: items.map((it) => {
+      const text = it.text.join("\n");
+      const task = taskMark.exec(text);
+      const children = it.rest.some((x) => x.trim()) ? mdBlocks(strip(it.rest), depth + 1) : [];
+      return task ? { text: task[2], task: task[1] === " " ? "todo" : "done", children } : { text, children };
+    }),
   };
 }
 
@@ -334,16 +440,119 @@ function Lines({ text }: { text: string }) {
   );
 }
 
+/** Copies a code block; the icon says for a moment how it went. */
+function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<"" | "ok" | "fail">("");
+  useEffect(() => {
+    if (!state) return;
+    const t = setTimeout(() => setState(""), 1500);
+    return () => clearTimeout(t);
+  }, [state]);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(
+      () => setState("ok"),
+      () => setState("fail"),
+    );
+  };
+  return (
+    <button className="cp" onClick={copy} aria-label={state === "ok" ? "已复制" : state === "fail" ? "复制失败" : "复制代码"}>
+      {state === "ok" ? <Check /> : state === "fail" ? <X /> : <Copy />}
+    </button>
+  );
+}
+
+function Code({ lang, text }: { lang: string; text: string }) {
+  const lines = useMemo(() => text.split("\n"), [text]);
+  const long = lines.length > FOLD_OVER;
+  const [open, setOpen] = useState(false);
+  const shown = long && !open ? lines.slice(0, FOLD_SHOWN) : lines;
+  // Only a diff is colored: added and removed lines mean something.
+  const diff = lang === "diff" || lang === "patch";
+  return (
+    <div className="cb">
+      <pre>
+        {diff
+          ? shown.map((l, i) => (
+              <span key={i} className={l.startsWith("+") && !l.startsWith("+++") ? "add" : l.startsWith("-") && !l.startsWith("---") ? "del" : undefined}>
+                {i > 0 && "\n"}
+                {l}
+              </span>
+            ))
+          : shown.join("\n")}
+      </pre>
+      <CopyButton text={text} />
+      {long && (
+        <button className="cbmore" onClick={() => setOpen(!open)} aria-expanded={open}>
+          <span>
+            {open ? "收起" : "展开全文"}
+            {open ? <ChevronUp /> : <ChevronDown />}
+          </span>
+          <i>共 {lines.length} 行</i>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A table that scrolls sideways when it is wider than the reply, its
+ * right edge fading out while there is more to scroll to. */
+function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mark = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    mark();
+    el.addEventListener("scroll", mark, { passive: true });
+    const ro = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(mark);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", mark);
+      ro?.disconnect();
+    };
+  }, []);
+  // The separator row's alignment wins; without one, quantities go right.
+  const num = useMemo(() => b.head.map((_, k) => b.align[k] === undefined && numericColumn(b.rows.map((r) => r[k] ?? ""))), [b]);
+  const cell = (k: number) => ({ className: num[k] ? "num" : undefined, style: b.align[k] ? { textAlign: b.align[k] } : undefined });
+  return (
+    <div ref={ref} className={more ? "mdtable more" : "mdtable"}>
+      <table className={b.head.length <= 3 ? "compact" : undefined}>
+        <thead>
+          <tr>
+            {b.head.map((c, k) => (
+              <th key={k} {...cell(k)}>
+                <div className={tableCellClass(c)}><Rich text={c} /></div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {b.rows.map((r, n) => (
+            <tr key={n}>
+              {b.head.map((_, k) => (
+                <td key={k} {...cell(k)}>
+                  <div className={tableCellClass(r[k] ?? "")}><Rich text={r[k] ?? ""} /></div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Blocks({ blocks }: { blocks: Block[] }) {
   return (
     <>
       {blocks.map((b, i) => {
         switch (b.kind) {
           case "code":
-            return <pre key={i}>{b.text}</pre>;
+            return <Code key={i} lang={b.lang} text={b.text} />;
           case "heading":
             return (
-              <p key={i} className="mdh">
+              <p key={i} className={"mdh h" + Math.min(b.level, 4)}>
                 <Rich text={b.text} />
               </p>
             );
@@ -357,13 +566,15 @@ function Blocks({ blocks }: { blocks: Block[] }) {
             );
           case "list": {
             const items = b.items.map((it, n) => (
-              <li key={n}>
+              <li key={n} className={it.task ? "task " + it.task : undefined}>
+                {it.task && (it.task === "done" ? <BoxChecked /> : <Box />)}
                 <Lines text={it.text} />
                 {it.children.length > 0 && <Blocks blocks={it.children} />}
               </li>
             ));
             return b.ordered ? (
-              <ol key={i} start={b.start}>
+              // Two-digit numbers need a wider gutter, or they hang out of the reply.
+              <ol key={i} start={b.start} className={b.start + b.items.length - 1 >= 10 ? "wide" : undefined}>
                 {items}
               </ol>
             ) : (
@@ -371,35 +582,10 @@ function Blocks({ blocks }: { blocks: Block[] }) {
             );
           }
           case "table":
-            return (
-              <div key={i} className="mdtable">
-                <table className={b.head.length <= 3 ? "compact" : undefined}>
-                  <thead>
-                    <tr>
-                      {b.head.map((c, k) => (
-                        <th key={k} style={{ textAlign: b.align[k] }}>
-                          <div className={tableCellClass(c)}><Rich text={c} /></div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {b.rows.map((r, n) => (
-                      <tr key={n}>
-                        {b.head.map((_, k) => (
-                          <td key={k} style={{ textAlign: b.align[k] }}>
-                            <div className={tableCellClass(r[k] ?? "")}><Rich text={r[k] ?? ""} /></div>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
+            return <Table key={i} b={b} />;
           default:
             return (
-              <p key={i}>
+              <p key={i} className={boldHeading(b.text) ? "bh" : undefined}>
                 <Lines text={b.text} />
               </p>
             );

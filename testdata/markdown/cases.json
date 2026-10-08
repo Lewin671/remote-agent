@@ -1,0 +1,1757 @@
+{
+ "blocks": [
+  {
+   "name": "paragraphs keep single line breaks",
+   "md": "第一行\n第二行\n\n第二段",
+   "want": [
+    {
+     "kind": "text",
+     "text": "第一行\n第二行"
+    },
+    {
+     "kind": "text",
+     "text": "第二段"
+    }
+   ]
+  },
+  {
+   "name": "crlf line endings",
+   "md": "a\r\nb\r\n\r\n- c\r\n- d",
+   "want": [
+    {
+     "kind": "text",
+     "text": "a\nb"
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "c",
+       "children": []
+      },
+      {
+       "text": "d",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "heading levels and trailing hashes",
+   "md": "# 一级\n## 二级 ##\n### 三级\n#### 四级\n###### 六级\n#不是标题\n####### 七个井号不是标题",
+   "want": [
+    {
+     "kind": "heading",
+     "level": 1,
+     "text": "一级"
+    },
+    {
+     "kind": "heading",
+     "level": 2,
+     "text": "二级"
+    },
+    {
+     "kind": "heading",
+     "level": 3,
+     "text": "三级"
+    },
+    {
+     "kind": "heading",
+     "level": 4,
+     "text": "四级"
+    },
+    {
+     "kind": "heading",
+     "level": 6,
+     "text": "六级"
+    },
+    {
+     "kind": "text",
+     "text": "#不是标题\n####### 七个井号不是标题"
+    }
+   ]
+  },
+  {
+   "name": "heading with inline marks",
+   "md": "## 改了 `auth/login.go` 和 **连接池**",
+   "want": [
+    {
+     "kind": "heading",
+     "level": 2,
+     "text": "改了 `auth/login.go` 和 **连接池**"
+    }
+   ]
+  },
+  {
+   "name": "rules",
+   "md": "---\n***\n- - -\n___\n--",
+   "want": [
+    {
+     "kind": "rule"
+    },
+    {
+     "kind": "rule"
+    },
+    {
+     "kind": "rule"
+    },
+    {
+     "kind": "rule"
+    },
+    {
+     "kind": "text",
+     "text": "--"
+    }
+   ]
+  },
+  {
+   "name": "fenced code with a language",
+   "md": "```go\nfunc main() {}\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "go",
+     "text": "func main() {}"
+    }
+   ]
+  },
+  {
+   "name": "fenced code language is the first word, lowercased",
+   "md": "```TS title=\"a.ts\"\nlet a\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "ts",
+     "text": "let a"
+    }
+   ]
+  },
+  {
+   "name": "fenced code with tildes and no language",
+   "md": "~~~\nx\n~~~",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "",
+     "text": "x"
+    }
+   ]
+  },
+  {
+   "name": "empty fenced code",
+   "md": "```\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "",
+     "text": ""
+    }
+   ]
+  },
+  {
+   "name": "a fence closes only with one at least as long",
+   "md": "````md\n```sh\nls\n```\n````\nafter",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "md",
+     "text": "```sh\nls\n```"
+    },
+    {
+     "kind": "text",
+     "text": "after"
+    }
+   ]
+  },
+  {
+   "name": "a backtick fence is not closed by tildes",
+   "md": "```\n~~~\nstill code\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "",
+     "text": "~~~\nstill code"
+    }
+   ]
+  },
+  {
+   "name": "unclosed fence runs to the end",
+   "md": "```sh\nopen",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "sh",
+     "text": "open"
+    }
+   ]
+  },
+  {
+   "name": "heading right before code",
+   "md": "## 运行\n```sh\ngo test ./...\n```",
+   "want": [
+    {
+     "kind": "heading",
+     "level": 2,
+     "text": "运行"
+    },
+    {
+     "kind": "code",
+     "lang": "sh",
+     "text": "go test ./..."
+    }
+   ]
+  },
+  {
+   "name": "two code blocks in a row",
+   "md": "```\na\n```\n```\nb\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "",
+     "text": "a"
+    },
+    {
+     "kind": "code",
+     "lang": "",
+     "text": "b"
+    }
+   ]
+  },
+  {
+   "name": "quote with blocks inside",
+   "md": "> 注意：\n> - 一\n> - 二\n>\n> ```sh\n> ls\n> ```",
+   "want": [
+    {
+     "kind": "quote",
+     "blocks": [
+      {
+       "kind": "text",
+       "text": "注意："
+      },
+      {
+       "kind": "list",
+       "ordered": false,
+       "start": 1,
+       "items": [
+        {
+         "text": "一",
+         "children": []
+        },
+        {
+         "text": "二",
+         "children": []
+        }
+       ]
+      },
+      {
+       "kind": "code",
+       "lang": "sh",
+       "text": "ls"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "nested quote",
+   "md": "> 外\n> > 内",
+   "want": [
+    {
+     "kind": "quote",
+     "blocks": [
+      {
+       "kind": "text",
+       "text": "外"
+      },
+      {
+       "kind": "quote",
+       "blocks": [
+        {
+         "kind": "text",
+         "text": "内"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "quote ends at the first plain line",
+   "md": "> 引用\n正文",
+   "want": [
+    {
+     "kind": "quote",
+     "blocks": [
+      {
+       "kind": "text",
+       "text": "引用"
+      }
+     ]
+    },
+    {
+     "kind": "text",
+     "text": "正文"
+    }
+   ]
+  },
+  {
+   "name": "bullets",
+   "md": "- a\n* b\n+ c",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": []
+      },
+      {
+       "text": "b",
+       "children": []
+      },
+      {
+       "text": "c",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ordered list keeps its start",
+   "md": "9. 九\n10. 十\n11. 十一",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": true,
+     "start": 9,
+     "items": [
+      {
+       "text": "九",
+       "children": []
+      },
+      {
+       "text": "十",
+       "children": []
+      },
+      {
+       "text": "十一",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ordered list with parentheses",
+   "md": "1) a\n2) b",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": true,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": []
+      },
+      {
+       "text": "b",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "list right after a paragraph",
+   "md": "原因：\n- 一\n- 二",
+   "want": [
+    {
+     "kind": "text",
+     "text": "原因："
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "一",
+       "children": []
+      },
+      {
+       "text": "二",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "continuation line joins its item",
+   "md": "- 连接没设超时\n  池子耗尽后挂住\n- 下一项",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "连接没设超时\n池子耗尽后挂住",
+       "children": []
+      },
+      {
+       "text": "下一项",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "lazy continuation line",
+   "md": "- 第一行\n接着写\n- 下一项",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "第一行\n接着写",
+       "children": []
+      },
+      {
+       "text": "下一项",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "nested by two spaces",
+   "md": "- a\n  - b\n    - c\n- d",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": [
+        {
+         "kind": "list",
+         "ordered": false,
+         "start": 1,
+         "items": [
+          {
+           "text": "b",
+           "children": [
+            {
+             "kind": "list",
+             "ordered": false,
+             "start": 1,
+             "items": [
+              {
+               "text": "c",
+               "children": []
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "text": "d",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bullets nested under numbers by three and four spaces",
+   "md": "1. 步骤\n   - 三格\n    - 四格\n2. 下一步",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": true,
+     "start": 1,
+     "items": [
+      {
+       "text": "步骤",
+       "children": [
+        {
+         "kind": "list",
+         "ordered": false,
+         "start": 1,
+         "items": [
+          {
+           "text": "三格",
+           "children": []
+          },
+          {
+           "text": "四格",
+           "children": []
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "text": "下一步",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bullets after numbers start a new list",
+   "md": "1. a\n2. b\n- c",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": true,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": []
+      },
+      {
+       "text": "b",
+       "children": []
+      }
+     ]
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "c",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "loose list",
+   "md": "- a\n\n- b\n\n- c",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": []
+      },
+      {
+       "text": "b",
+       "children": []
+      },
+      {
+       "text": "c",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "item with a second paragraph",
+   "md": "- 标题\n\n  说明文字\n- 下一项",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "标题",
+       "children": [
+        {
+         "kind": "text",
+         "text": "说明文字"
+        }
+       ]
+      },
+      {
+       "text": "下一项",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "code inside a list item",
+   "md": "- 运行：\n\n    ```sh\n    ls | wc -l\n    ```\n- 完成\n  - 子项",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "运行：",
+       "children": [
+        {
+         "kind": "code",
+         "lang": "sh",
+         "text": "ls | wc -l"
+        }
+       ]
+      },
+      {
+       "text": "完成",
+       "children": [
+        {
+         "kind": "list",
+         "ordered": false,
+         "start": 1,
+         "items": [
+          {
+           "text": "子项",
+           "children": []
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "code right under an item without a blank line",
+   "md": "1. 新建包\n   ```go\n   type Store interface {}\n   ```\n2. 接入",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": true,
+     "start": 1,
+     "items": [
+      {
+       "text": "新建包",
+       "children": [
+        {
+         "kind": "code",
+         "lang": "go",
+         "text": "type Store interface {}"
+        }
+       ]
+      },
+      {
+       "text": "接入",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "task list",
+   "md": "- [x] 读完实现\n- [X] 确认差异\n- [ ] 新建包\n- [] 不是任务\n- [x]紧贴也不是",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "读完实现",
+       "task": "done",
+       "children": []
+      },
+      {
+       "text": "确认差异",
+       "task": "done",
+       "children": []
+      },
+      {
+       "text": "新建包",
+       "task": "todo",
+       "children": []
+      },
+      {
+       "text": "[] 不是任务",
+       "children": []
+      },
+      {
+       "text": "[x]紧贴也不是",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "task item with children",
+   "md": "- [ ] 接入开关\n  - 默认关闭",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "接入开关",
+       "task": "todo",
+       "children": [
+        {
+         "kind": "list",
+         "ordered": false,
+         "start": 1,
+         "items": [
+          {
+           "text": "默认关闭",
+           "children": []
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "list ends at an unindented paragraph after a blank line",
+   "md": "- a\n\n正文",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "a",
+       "children": []
+      }
+     ]
+    },
+    {
+     "kind": "text",
+     "text": "正文"
+    }
+   ]
+  },
+  {
+   "name": "table",
+   "md": "| 场景 | 改动前 | 改动后 |\n| --- | --- | --- |\n| 50 并发 | 180 ms | 42 ms |\n| 200 并发 | 5.2 s | 61 ms |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "场景",
+      "改动前",
+      "改动后"
+     ],
+     "align": [
+      null,
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "50 并发",
+       "180 ms",
+       "42 ms"
+      ],
+      [
+       "200 并发",
+       "5.2 s",
+       "61 ms"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "table alignment",
+   "md": "口径 | EPS | PE | 备注\n:--- | :---: | ---: | ---\nGAAP | **74.33** | 14.5 | x",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "口径",
+      "EPS",
+      "PE",
+      "备注"
+     ],
+     "align": [
+      "left",
+      "center",
+      "right",
+      null
+     ],
+     "rows": [
+      [
+       "GAAP",
+       "**74.33**",
+       "14.5",
+       "x"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "table with short and empty rows",
+   "md": "| a | b | c |\n| --- | --- | --- |\n| 1 |\n| 1 | | 3 |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "a",
+      "b",
+      "c"
+     ],
+     "align": [
+      null,
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "1"
+      ],
+      [
+       "1",
+       "",
+       "3"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "table with code pipes and escaped pipes",
+   "md": "| 写法 | 说明 |\n| --- | --- |\n| `a|b` | 不拆 \\| 这里也不拆 |\n| ``x`|y`` | z |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "写法",
+      "说明"
+     ],
+     "align": [
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "`a|b`",
+       "不拆 | 这里也不拆"
+      ],
+      [
+       "``x`|y``",
+       "z"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mismatched separator is not a table",
+   "md": "| a | b |\n| --- |\n| 1 | 2 |",
+   "want": [
+    {
+     "kind": "text",
+     "text": "| a | b |\n| --- |\n| 1 | 2 |"
+    }
+   ]
+  },
+  {
+   "name": "table ends at a blank line",
+   "md": "| a | b |\n| --- | --- |\n| 1 | 2 |\n\n后文",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "a",
+      "b"
+     ],
+     "align": [
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "1",
+       "2"
+      ]
+     ]
+    },
+    {
+     "kind": "text",
+     "text": "后文"
+    }
+   ]
+  },
+  {
+   "name": "table inside a list item",
+   "md": "- 对比：\n\n  | a | b |\n  | --- | --- |\n  | 1 | 2 |",
+   "want": [
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "对比：",
+       "children": [
+        {
+         "kind": "table",
+         "head": [
+          "a",
+          "b"
+         ],
+         "align": [
+          null,
+          null
+         ],
+         "rows": [
+          [
+           "1",
+           "2"
+          ]
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "a bold line alone is still a paragraph",
+   "md": "**发布步骤**\n- 先跑测试",
+   "want": [
+    {
+     "kind": "text",
+     "text": "**发布步骤**"
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "先跑测试",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "html is text",
+   "md": "<details>\n<summary>x</summary>\n</details>\n\na<br>b",
+   "want": [
+    {
+     "kind": "text",
+     "text": "<details>\n<summary>x</summary>\n</details>"
+    },
+    {
+     "kind": "text",
+     "text": "a<br>b"
+    }
+   ]
+  },
+  {
+   "name": "a reply of everything",
+   "md": "找到原因了。\n\n## 改了什么\n- `auth/login.go`：复用连接池\n- `auth/pool.go`：新增\n\n## 验证\n| 场景 | P99 |\n| --- | ---: |\n| 50 并发 | 42 ms |\n\n```sh\ngo test ./... -count=1\n```\n---\n> 还有一处没动\n\n完。",
+   "want": [
+    {
+     "kind": "text",
+     "text": "找到原因了。"
+    },
+    {
+     "kind": "heading",
+     "level": 2,
+     "text": "改了什么"
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "`auth/login.go`：复用连接池",
+       "children": []
+      },
+      {
+       "text": "`auth/pool.go`：新增",
+       "children": []
+      }
+     ]
+    },
+    {
+     "kind": "heading",
+     "level": 2,
+     "text": "验证"
+    },
+    {
+     "kind": "table",
+     "head": [
+      "场景",
+      "P99"
+     ],
+     "align": [
+      null,
+      "right"
+     ],
+     "rows": [
+      [
+       "50 并发",
+       "42 ms"
+      ]
+     ]
+    },
+    {
+     "kind": "code",
+     "lang": "sh",
+     "text": "go test ./... -count=1"
+    },
+    {
+     "kind": "rule"
+    },
+    {
+     "kind": "quote",
+     "blocks": [
+      {
+       "kind": "text",
+       "text": "还有一处没动"
+      }
+     ]
+    },
+    {
+     "kind": "text",
+     "text": "完。"
+    }
+   ]
+  }
+ ],
+ "inline": [
+  {
+   "name": "plain text",
+   "md": "跑完了，全部通过。",
+   "want": [
+    {
+     "t": "text",
+     "v": "跑完了，全部通过。"
+    }
+   ]
+  },
+  {
+   "name": "code",
+   "md": "见 `a.go` 和 `b.go`",
+   "want": [
+    {
+     "t": "text",
+     "v": "见 "
+    },
+    {
+     "t": "code",
+     "v": "a.go"
+    },
+    {
+     "t": "text",
+     "v": " 和 "
+    },
+    {
+     "t": "code",
+     "v": "b.go"
+    }
+   ]
+  },
+  {
+   "name": "double backtick code keeps single ticks",
+   "md": "``x`|y`` 之后",
+   "want": [
+    {
+     "t": "code",
+     "v": "x`|y"
+    },
+    {
+     "t": "text",
+     "v": " 之后"
+    }
+   ]
+  },
+  {
+   "name": "escaped tick is a tick",
+   "md": "\\`not code\\`",
+   "want": [
+    {
+     "t": "text",
+     "v": "`not code`"
+    }
+   ]
+  },
+  {
+   "name": "unclosed tick stays",
+   "md": "unfinished `",
+   "want": [
+    {
+     "t": "text",
+     "v": "unfinished `"
+    }
+   ]
+  },
+  {
+   "name": "code hides marks",
+   "md": "`**` **bold**",
+   "want": [
+    {
+     "t": "code",
+     "v": "**"
+    },
+    {
+     "t": "text",
+     "v": " "
+    },
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "bold"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bold and italic",
+   "md": "**注意**，*斜体*，但 a*b*c 和 2 * 3 * 4 不是",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "注意"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "，"
+    },
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "斜体"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "，但 a*b*c 和 2 * 3 * 4 不是"
+    }
+   ]
+  },
+  {
+   "name": "bold wraps code and links",
+   "md": "**`termFirst`**：保持 **见 [文档](https://example.com/a)**",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "code",
+       "v": "termFirst"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "：保持 "
+    },
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "见 "
+      },
+      {
+       "t": "link",
+       "v": "文档",
+       "href": "https://example.com/a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "italic wraps code",
+   "md": "*见 `a.go`*",
+   "want": [
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "见 "
+      },
+      {
+       "t": "code",
+       "v": "a.go"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "underscore italic",
+   "md": "行为 _不一致_ 。",
+   "want": [
+    {
+     "t": "text",
+     "v": "行为 "
+    },
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "不一致"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": " 。"
+    }
+   ]
+  },
+  {
+   "name": "underscores inside words are not italic",
+   "md": "snake_case_name 和 __init__ 和 /tmp/_cache/x_y 和 a_b_c",
+   "want": [
+    {
+     "t": "text",
+     "v": "snake_case_name 和 __init__ 和 /tmp/_cache/x_y 和 a_b_c"
+    }
+   ]
+  },
+  {
+   "name": "underscore italic needs a boundary on both sides",
+   "md": "中文_x_中文 和 (_y_) 和 _z_w",
+   "want": [
+    {
+     "t": "text",
+     "v": "中文_x_中文 和 ("
+    },
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "y"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": ") 和 _z_w"
+    }
+   ]
+  },
+  {
+   "name": "strikethrough",
+   "md": "接入开关~~并灰度 10%~~（先全量关闭）",
+   "want": [
+    {
+     "t": "text",
+     "v": "接入开关"
+    },
+    {
+     "t": "s",
+     "c": [
+      {
+       "t": "text",
+       "v": "并灰度 10%"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "（先全量关闭）"
+    }
+   ]
+  },
+  {
+   "name": "a single tilde is text",
+   "md": "约 ~5 分钟，~/Code/x~",
+   "want": [
+    {
+     "t": "text",
+     "v": "约 ~5 分钟，~/Code/x~"
+    }
+   ]
+  },
+  {
+   "name": "link",
+   "md": "[docs](https://example.com/a?b=1)",
+   "want": [
+    {
+     "t": "link",
+     "v": "docs",
+     "href": "https://example.com/a?b=1"
+    }
+   ]
+  },
+  {
+   "name": "file reference",
+   "md": "问题在 [auth/login.go:58](/Users/me/foo/auth/login.go:58)",
+   "want": [
+    {
+     "t": "text",
+     "v": "问题在 "
+    },
+    {
+     "t": "ref",
+     "v": "auth/login.go:58",
+     "target": "/Users/me/foo/auth/login.go:58"
+    }
+   ]
+  },
+  {
+   "name": "unsafe link target is a reference",
+   "md": "[x](javascript:alert(1)) [y](data:text/html,x)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "javascript:alert(1"
+    },
+    {
+     "t": "text",
+     "v": ") "
+    },
+    {
+     "t": "ref",
+     "v": "y",
+     "target": "data:text/html,x"
+    }
+   ]
+  },
+  {
+   "name": "autolink",
+   "md": "<https://a.b/c> 和 <http://x.y>",
+   "want": [
+    {
+     "t": "link",
+     "v": "https://a.b/c",
+     "href": "https://a.b/c"
+    },
+    {
+     "t": "text",
+     "v": " 和 "
+    },
+    {
+     "t": "link",
+     "v": "http://x.y",
+     "href": "http://x.y"
+    }
+   ]
+  },
+  {
+   "name": "invalid openers stay text",
+   "md": "[unclosed] text [ok](https://a.b) <https://> [bad](with space)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[unclosed] text "
+    },
+    {
+     "t": "link",
+     "v": "ok",
+     "href": "https://a.b"
+    },
+    {
+     "t": "text",
+     "v": " <https://> [bad](with space)"
+    }
+   ]
+  },
+  {
+   "name": "bare url",
+   "md": "文档在 https://example.com/docs/guide?version=0.26.1 里",
+   "want": [
+    {
+     "t": "text",
+     "v": "文档在 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/docs/guide?version=0.26.1",
+     "href": "https://example.com/docs/guide?version=0.26.1"
+    },
+    {
+     "t": "text",
+     "v": " 里"
+    }
+   ]
+  },
+  {
+   "name": "bare url drops the sentence's punctuation",
+   "md": "见 https://example.com/a. 以及 https://example.com/b, 还有 https://example.com/c!",
+   "want": [
+    {
+     "t": "text",
+     "v": "见 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": ". 以及 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/b",
+     "href": "https://example.com/b"
+    },
+    {
+     "t": "text",
+     "v": ", 还有 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/c",
+     "href": "https://example.com/c"
+    },
+    {
+     "t": "text",
+     "v": "!"
+    }
+   ]
+  },
+  {
+   "name": "bare url stops at full-width punctuation",
+   "md": "见 https://example.com/a，然后（https://example.com/b）。",
+   "want": [
+    {
+     "t": "text",
+     "v": "见 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": "，然后（"
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/b",
+     "href": "https://example.com/b"
+    },
+    {
+     "t": "text",
+     "v": "）。"
+    }
+   ]
+  },
+  {
+   "name": "bare url in brackets",
+   "md": "(https://example.com/a) 和 https://en.wikipedia.org/wiki/Go_(game)",
+   "want": [
+    {
+     "t": "text",
+     "v": "("
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": ") 和 "
+    },
+    {
+     "t": "link",
+     "v": "https://en.wikipedia.org/wiki/Go_(game)",
+     "href": "https://en.wikipedia.org/wiki/Go_(game)"
+    }
+   ]
+  },
+  {
+   "name": "bare url keeps underscores and tildes inside",
+   "md": "https://example.com/a_b_c/~user/x_y",
+   "want": [
+    {
+     "t": "link",
+     "v": "https://example.com/a_b_c/~user/x_y",
+     "href": "https://example.com/a_b_c/~user/x_y"
+    }
+   ]
+  },
+  {
+   "name": "bare url inside emphasis",
+   "md": "**https://example.com/a** 和 *见 https://example.com/b*",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "link",
+       "v": "https://example.com/a",
+       "href": "https://example.com/a"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": " 和 "
+    },
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "见 "
+      },
+      {
+       "t": "link",
+       "v": "https://example.com/b",
+       "href": "https://example.com/b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "not a url inside a word",
+   "md": "xhttps://example.com 和 a/https://example.com",
+   "want": [
+    {
+     "t": "text",
+     "v": "xhttps://example.com 和 a/https://example.com"
+    }
+   ]
+  },
+  {
+   "name": "bare url in code is code",
+   "md": "`https://example.com`",
+   "want": [
+    {
+     "t": "code",
+     "v": "https://example.com"
+    }
+   ]
+  },
+  {
+   "name": "emoji and symbols",
+   "md": "✅ 通过 ❌ 失败 ⚠️ 注意 → 下一步",
+   "want": [
+    {
+     "t": "text",
+     "v": "✅ 通过 ❌ 失败 ⚠️ 注意 → 下一步"
+    }
+   ]
+  },
+  {
+   "name": "html is text",
+   "md": "<b onclick=\"x\">b</b> &nbsp; <br>",
+   "want": [
+    {
+     "t": "text",
+     "v": "<b onclick=\"x\">b</b> &nbsp; <br>"
+    }
+   ]
+  },
+  {
+   "name": "stray marks stay",
+   "md": "** 和 * 和 _ 和 ~~ 和 [ 和 ]( 都是字面",
+   "want": [
+    {
+     "t": "text",
+     "v": "** 和 * 和 _ 和 ~~ 和 [ 和 ]( 都是字面"
+    }
+   ]
+  }
+ ],
+ "numericColumn": [
+  {
+   "cells": [
+    "180 ms",
+    "5.2 s",
+    "42 ms"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "+84 −61",
+    "+6 −9",
+    "−312",
+    "+1,180"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "180 ms",
+    "超时"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "—",
+    "-",
+    "",
+    ""
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "12",
+    "—",
+    ""
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "99.5%",
+    "100%"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "$1,200",
+    "¥30",
+    "€5.5"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "v0.26.1",
+    "v0.26.0"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "3",
+    "三"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "2026-10-08"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "12:30",
+    "9:05"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "<5 ms",
+    "≥99%",
+    "~3 s"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "低",
+    "高"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "a5fe31a"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "1 / 3",
+    "2 / 3"
+   ],
+   "want": true
+  }
+ ],
+ "boldHeading": [
+  {
+   "md": "**发布步骤**",
+   "want": true
+  },
+  {
+   "md": "**注意：**",
+   "want": true
+  },
+  {
+   "md": "**步骤**：",
+   "want": true
+  },
+  {
+   "md": "  **缩进**  ",
+   "want": true
+  },
+  {
+   "md": "**a** 和 **b**",
+   "want": false
+  },
+  {
+   "md": "**加粗**后面有字",
+   "want": false
+  },
+  {
+   "md": "普通段落",
+   "want": false
+  },
+  {
+   "md": "**两行**\n第二行",
+   "want": false
+  },
+  {
+   "md": "****",
+   "want": false
+  }
+ ]
+}
