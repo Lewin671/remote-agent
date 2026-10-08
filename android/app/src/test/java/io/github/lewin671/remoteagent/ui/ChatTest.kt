@@ -41,34 +41,6 @@ class ChatTest {
         assertEquals(null, pendingStartPrompt(null, emptyList(), d, emptySet()))
     }
 
-    @Test
-    fun parsesMarkdownBlocks() {
-        val b = parseMarkdown(
-            """
-            # Title
-            Some `code` and **bold**.
-
-            - one
-              continued
-            1. first
-            ```go
-            func main() {}
-            ```
-            | a | b |
-            |---|---|
-            | 1 | 2 |
-            > quote
-            """.trimIndent(),
-        )
-        assertEquals(Block.Heading(1, "Title"), b[0])
-        assertEquals(Block.Para("Some `code` and **bold**."), b[1])
-        assertEquals(Block.Item(false, "•", 0, "one continued"), b[2])
-        assertEquals(Block.Item(true, "1.", 0, "first"), b[3])
-        assertEquals(Block.Code("go", "func main() {}"), b[4])
-        assertEquals(Block.Table(listOf("a", "b"), listOf(listOf("1", "2"))), b[5])
-        assertEquals(Block.Quote("quote"), b[6])
-    }
-
     private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
 
     @Test

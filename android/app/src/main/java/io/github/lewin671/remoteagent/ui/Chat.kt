@@ -522,7 +522,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             caption = item.from ?: if (item.local) "在终端里输入" else null,
             top = if (item.images.isNotEmpty()) ({ ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp)) }) else null,
         )
-        is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp))
+        is ChatItem.Agent -> Markdown(item.text, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), bleed = 14.dp)
         is ChatItem.Thought -> Expandable("思考过程", Modifier.padding(horizontal = 14.dp)) {
             Text(item.text, style = T.sm, color = p.muted, modifier = Modifier.padding(bottom = 6.dp))
         }

@@ -67,11 +67,11 @@ class MarkdownTableLayoutTest {
         ui.onNodeWithText("6.8 倍").assertIsDisplayed()
         screenshot("table-financial-light")
     }
-    @Test fun multilineCellsShareRowHeightAndDoNotOverlapTheNextRow() {
+    @Test fun multilineCellsStartAtTheTopOfTheirRowAndDoNotOverlapTheNextRow() {
         val long = "很长的内容不会被截断，".repeat(12)
         mount("| 说明 | 数值 |\n| --- | ---: |\n| $long | 7.1 倍 |\n| 下一行 | 14.3 倍 |", dark = true)
         val a = bounds(long); val b = bounds("7.1 倍")
-        assertEquals(a.center.y, b.center.y, 1f)
+        assertEquals(a.top, b.top, 1f)
         assertTrue(bounds("下一行").top >= a.bottom)
         sameColumn("数值", listOf("7.1 倍", "14.3 倍"))
         screenshot("table-multiline-dark")
@@ -104,5 +104,77 @@ class MarkdownTableLayoutTest {
         sameColumn("代码", listOf("a|b", "x"))
         sameColumn("数值", listOf("14.5", "7.1"))
         ui.onNodeWithText("第三行").assertIsDisplayed()
+    }
+    @Test fun aTableIsAsWideAsWhatItHoldsAndQuantitiesGoRight() {
+        mount("| 场景 | P99 |\n| --- | --- |\n| 50 并发 | 42 ms |\n| 200 并发 | 1,180 ms |")
+        val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
+        assertEquals(frame.left, bounds("场景").left, 1f)
+        assertTrue(bounds("P99").right < frame.right - frame.width / 3)
+        sameColumn("P99", listOf("42 ms", "1,180 ms"))
+        screenshot("table-narrow-light")
+    }
+    @Test fun quoteListAndCodeNestInsideEachOther() {
+        mount("> 注意：\n> - 一\n>   ```sh\n>   ls\n>   ```\n> - [x] 二\n\n1. 步骤\n\n   | a | b |\n   | --- | --- |\n   | 1 | 2 |")
+        for (text in listOf("注意：", "一", "ls", "二", "步骤", "a", "2")) ui.onNodeWithText(text, useUnmergedTree = true).assertIsDisplayed()
+        assertTrue(bounds("一").left > bounds("注意：").left)
+        // A code block under an item starts where the item's text does, below it.
+        assertEquals(bounds("一").left, bounds("ls").left, 1f)
+        assertTrue(bounds("ls").top >= bounds("一").bottom)
+        screenshot("nested-light")
+    }
+    private val reply = """
+        找到原因了：`auth/login.go` 每次都新建连接，**没有复用**连接池，~~也没设超时~~。
+        见 [auth/login.go:58](/Users/me/foo/auth/login.go:58) 和 https://example.com/docs。
+
+        ## 改了什么 `pool.go`
+        1. 复用连接池
+           - 默认 8 个连接
+           - 可配置
+        2. 加超时
+
+        **验证**
+
+        | 场景 | 改动前 | 改动后 |
+        | --- | --- | --- |
+        | 50 并发 | 180 ms | 42 ms |
+        | 200 并发 | 5.2 s | 61 ms |
+
+        ```diff
+        --- a/auth/login.go
+        +++ b/auth/login.go
+        -conn := dial()
+        +conn := pool.Get()
+        ```
+
+        > 注意：上线前先灰度。
+        > - [x] 单测
+        > - [ ] 压测
+
+        ---
+
+        #### 后续
+        9. 九
+        10. 十
+    """.trimIndent()
+    private fun everything(dark: Boolean) {
+        mount(reply, dark = dark)
+        for (text in listOf("验证", "改动后", "61 ms", "压测", "后续", "10.")) ui.onNodeWithText(text, useUnmergedTree = true).assertExists()
+        // Quantities are set to the right of their column.
+        assertEquals(bounds("改动后").right, bounds("42 ms").right, 1f)
+        screenshot(if (dark) "reply-dark" else "reply-light")
+    }
+    @Test fun aReplyOfEverythingDrawsInLight() = everything(dark = false)
+    @Test fun aReplyOfEverythingDrawsInDark() = everything(dark = true)
+    @Test fun longCodeOpensInPlaceAndCloses() {
+        val code = (1..20).joinToString("\n") { "line $it" }
+        mount("```\n$code\n```")
+        ui.onNodeWithText("共 20 行").assertIsDisplayed()
+        ui.onNodeWithText((1..12).joinToString("\n") { "line $it" }).assertIsDisplayed()
+        ui.onNodeWithText("展开全文").performClick()
+        ui.onNodeWithText(code).assertExists()
+        ui.onNodeWithText("收起").performClick()
+        ui.onNodeWithText("展开全文").assertExists()
+        ui.onNodeWithContentDescription("复制代码").performClick()
+        ui.onNodeWithContentDescription("已复制").assertExists()
     }
 }

@@ -154,7 +154,7 @@ object T {
     val h17 = ts(17.sp, FontWeight.SemiBold, 1.35f)
     val body = ts(15.sp)
     val bodyB = ts(15.sp, FontWeight.SemiBold)
-    val chat = ts(15.sp, lineHeight = 1.55f)
+    val chat = ts(15.sp, lineHeight = 1.6f)
     val sm = ts(13.sp)
     val smB = ts(13.sp, FontWeight.SemiBold)
     val meta = ts(12.sp)

@@ -324,7 +324,7 @@ fun PlanPage(sid: String) {
             Text(io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", style = T.body, color = pal.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Markdown(plan.text) }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Markdown(plan.text, bleed = 16.dp) }
         if (s.info?.planOpen == true) Column(Modifier.padding(horizontal = 14.dp).topLine(pal.line).padding(top = 8.dp, bottom = 16.dp)) { PlanButtons(s, full = true) { nav.back() } }
     }
 }
