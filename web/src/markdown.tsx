@@ -566,7 +566,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
             );
           case "list": {
             const items = b.items.map((it, n) => (
-              <li key={n} className={it.task ? "task " + it.task : undefined}>
+              <li key={n} className={it.task === "done" ? "task done" : it.task ? "task" : undefined}>
                 {it.task && (it.task === "done" ? <BoxChecked /> : <Box />)}
                 <Lines text={it.text} />
                 {it.children.length > 0 && <Blocks blocks={it.children} />}

@@ -194,7 +194,7 @@ describe("a reply's elements (design-system §7)", () => {
   it("draws task items as boxes, without the brackets", () => {
     const out = html("- [x] 做完\n- [ ] 没做\n- 普通");
     expect(out).toMatch(/<li class="task done"><svg[^>]*lucide-square-check/);
-    expect(out).toMatch(/<li class="task todo"><svg[^>]*lucide-square\b/);
+    expect(out).toMatch(/<li class="task"><svg[^>]*lucide-square\b/);
     expect(out).not.toContain("[x]");
     expect(out).toContain("<li><span>普通</span></li>");
   });
