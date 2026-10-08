@@ -1601,6 +1601,44 @@
      "v": "** 和 * 和 _ 和 ~~ 和 [ 和 ]( 都是字面"
     }
    ]
+  },
+  {
+   "name": "a scheme with nothing after it is text",
+   "md": "https://... 和 http://. 以及 https://)",
+   "want": [
+    {
+     "t": "text",
+     "v": "https://... 和 http://. 以及 https://)"
+    }
+   ]
+  },
+  {
+   "name": "bare url drops unopened closing brackets",
+   "md": "[见 https://example.com/a] (https://example.com/b))",
+   "want": [
+    {
+     "t": "text",
+     "v": "[见 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": "] ("
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/b",
+     "href": "https://example.com/b"
+    },
+    {
+     "t": "text",
+     "v": "))"
+    }
+   ]
   }
  ],
  "numericColumn": [

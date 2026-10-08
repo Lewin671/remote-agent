@@ -14,6 +14,14 @@ describe("safety", () => {
     expect(performance.now() - started).toBeLessThan(1500);
   }, 2000);
 
+  it("scans unclosed emphasis, strikes and URLs once", () => {
+    const started = performance.now();
+    for (const text of ["_a ".repeat(60_000), "~~a ".repeat(50_000), "*a ".repeat(60_000), "https://a.b/" + "(".repeat(100_000), "https://a.b/" + ")".repeat(100_000), "https://a.b ".repeat(20_000) + ".".repeat(50_000)]) {
+      renderToStaticMarkup(<Rich text={text} />);
+    }
+    expect(performance.now() - started).toBeLessThan(1500);
+  }, 3000);
+
   it("parses long lists without suffix copies or argument-stack overflow", () => {
     const separate = mdBlocks("- x\n\n".repeat(20_000));
     expect(separate[0].kind).toBe("list");
@@ -78,7 +86,7 @@ describe("blocks", () => {
     const list = b[0];
     if (list.kind !== "list") throw new Error();
     expect(list.items.map((i) => i.text)).toEqual(["运行：", "完成"]);
-    expect(list.items[0].children).toEqual([{ kind: "code", text: "ls | wc -l" }]);
+    expect(list.items[0].children).toEqual([{ kind: "code", lang: "sh", text: "ls | wc -l" }]);
     expect(list.items[1].children.map((c) => c.kind)).toEqual(["list"]);
   });
 
@@ -119,7 +127,7 @@ describe("blocks", () => {
   it("closes a fence only with one at least as long", () => {
     const md = ["````md", "```sh", "ls", "```", "````", "after"].join("\n");
     expect(mdBlocks(md)).toEqual([
-      { kind: "code", text: "```sh\nls\n```" },
+      { kind: "code", lang: "md", text: "```sh\nls\n```" },
       { kind: "text", text: "after" },
     ]);
   });
@@ -171,4 +179,63 @@ it("bounds nesting in attacker-controlled CLI Markdown", () => {
   const out = renderToStaticMarkup(<Markdown text={"> ".repeat(10_000) + "payload"} />);
   expect(out).toContain("payload");
   expect((out.match(/<blockquote>/g) ?? []).length).toBe(32);
+});
+
+describe("a reply's elements (design-system §7)", () => {
+  it("marks heading levels, and a lone bold line as a small heading", () => {
+    const out = html("# a\n\n### b\n\n###### c\n\n**小标题**\n\n**加粗**后面有字");
+    expect(out).toContain('<p class="mdh h1">');
+    expect(out).toContain('<p class="mdh h3">');
+    expect(out).toContain('<p class="mdh h4">');
+    expect(out).toContain('<p class="bh"><span><b>小标题</b></span></p>');
+    expect(out).toContain("<p><span><b>加粗</b>后面有字</span></p>");
+  });
+
+  it("draws task items as boxes, without the brackets", () => {
+    const out = html("- [x] 做完\n- [ ] 没做\n- 普通");
+    expect(out).toMatch(/<li class="task done"><svg[^>]*lucide-square-check/);
+    expect(out).toMatch(/<li class="task todo"><svg[^>]*lucide-square\b/);
+    expect(out).not.toContain("[x]");
+    expect(out).toContain("<li><span>普通</span></li>");
+  });
+
+  it("widens the gutter of a list whose numbers reach two digits", () => {
+    expect(html("9. a\n10. b")).toContain('<ol start="9" class="wide">');
+    expect(html("1. a\n2. b")).toContain('<ol start="1">');
+  });
+
+  it("gives code a copy button, and folds only long code", () => {
+    const short = html("```sh\n" + "x\n".repeat(16) + "```");
+    expect(short).toContain('aria-label="复制代码"');
+    expect(short).not.toContain("展开全文");
+    const long = html("```\n" + Array.from({ length: 17 }, (_, i) => "line" + i).join("\n") + "\n```");
+    expect(long).toContain("展开全文");
+    expect(long).toContain("共 17 行");
+    expect(long).toContain("line11");
+    expect(long).not.toContain("line12");
+  });
+
+  it("colors only a diff's added and removed lines", () => {
+    const out = html("```diff\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new\n same\n```");
+    expect(out).toContain('<span class="del">\n-old</span>');
+    expect(out).toContain('<span class="add">\n+new</span>');
+    expect(out).toContain("<span>--- a/x</span>");
+    expect(out).toContain("<span>\n+++ b/x</span>");
+    expect(html("```go\n+x\n```")).not.toContain("add");
+  });
+
+  it("right-aligns a column of quantities unless the table says otherwise", () => {
+    const out = html("| 场景 | P99 | 备注 |\n| --- | --- | --- |\n| 50 并发 | 42 ms | 快 |\n| 200 并发 | 5.2 s | — |");
+    expect(out).toContain('<th class="num"><div class="mdcell nowrap">P99</div></th>');
+    expect(out).toContain('<td class="num"><div class="mdcell nowrap">42 ms</div></td>');
+    expect(out).toContain('<td><div class="mdcell nowrap">快</div></td>');
+    const said = html("| a | b |\n| :--- | --- |\n| 1 | 2 |");
+    expect(said).toContain('<td style="text-align:left"><div class="mdcell nowrap">1</div></td>');
+    expect(said).toContain('<td class="num"><div class="mdcell nowrap">2</div></td>');
+  });
+
+  it("strikes text and links bare URLs", () => {
+    const out = renderToStaticMarkup(<Rich text={"~~旧~~ 见 https://example.com/a。"} />);
+    expect(out).toBe('<s>旧</s> 见 <a href="https://example.com/a" target="_blank" rel="noopener noreferrer nofollow">https://example.com/a</a>。');
+  });
 });

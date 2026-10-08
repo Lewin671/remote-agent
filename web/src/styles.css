@@ -208,7 +208,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .tcol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .chatwrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 
-.chat { padding: 6px 14px 10px; overflow-wrap: anywhere; }
+.chat { --chat-pad: 14px; padding: 6px var(--chat-pad) 10px; overflow-wrap: anywhere; }
 .me { display: flex; flex-direction: column; align-items: flex-end; margin: 8px 0; }
 .me > div { background: var(--soft); color: var(--fg); border-radius: 18px 18px 5px 18px; padding: 8px 12px; max-width: 80%; font-size: 15px; white-space: pre-wrap; }
 .me small { font-size: 12px; color: var(--muted); margin-top: 2px; text-align: right; }
@@ -217,26 +217,72 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .me.warn small { color: var(--orange-ink); }
 .me.fail > div { background: var(--chip); color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--red); }
 .me.fail small { color: var(--red); }
-.ai { margin: 8px 0; font-size: 15px; line-height: 1.55; }
+/* A reply's Markdown, as docs/design-system.md §7 draws it. */
+.ai { margin: 12px 0; font-size: 15px; line-height: 1.6; }
 .ai.commentary { color: var(--fg2); }
-.ai p { margin: 0 0 6px; }
-.ai p:last-child { margin-bottom: 0; }
-.ai .mdh { font-weight: var(--w6); margin-top: 10px; }
-.ai ul, .ai ol { margin: 4px 0 6px; padding-left: 20px; }
-.ai li { margin: 2px 0; }
-.ai li > p, .ai li > pre { margin: 4px 0; }
-.ai code { background: var(--chip); padding: 1px 4px; border-radius: 4px; }
+.ai :where(p, ul, ol, pre, blockquote, hr) { margin: 0; }
+/* Space between blocks: the later rule wins, so they run from the general
+   one to the particular, the reverse of the table in §7. */
+.ai > :where(* + *), .ai blockquote > :where(* + *) { margin-top: 12px; }
+.ai > :where(p + ul, p + ol) { margin-top: 8px; }
+.ai > :where(.mdtable + *) { margin-top: 16px; }
+.ai > :where(.mdh + *, .bh + *) { margin-top: 8px; }
+.ai > :where(.mdh.h3, .mdh.h4, .bh) { margin-top: 16px; }
+.ai > :where(.mdh.h1, .mdh.h2) { margin-top: 24px; }
+.ai > :where(.mdh + .mdh, .mdh + .bh) { margin-top: 12px; }
+.ai > :where(hr + *) { margin-top: 24px; }
+.ai > :where(:first-child) { margin-top: 0; }
+.ai .mdh { font-weight: var(--w6); line-height: 1.35; }
+.ai .mdh.h1, .ai .mdh.h2 { font-size: 17px; }
+.ai .mdh.h4 { font-size: 13px; color: var(--muted); }
+.ai b { font-weight: var(--w6); }
+.ai s { color: var(--muted); }
+.ai a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ai code { font-size: 13px; background: var(--chip); padding: 1px 4px; border-radius: 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ai .mdh.h1 code, .ai .mdh.h2 code { font-size: 15px; }
 .ai .ref { font: 13px var(--mono); color: var(--fg2); overflow-wrap: anywhere; }
-.ai pre { background: var(--soft); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 8px 10px; font: 12px/1.5 var(--mono); margin: 6px 0; overflow-x: auto; white-space: pre; }
-.ai .mdtable { overflow-x: auto; margin: 6px 0; -webkit-overflow-scrolling: touch; }
-.ai table { border-collapse: collapse; font-size: 13px; width: max-content; }
+/* The line is only drawn between turns; inside a reply it is space. */
+.ai hr { display: none; }
+.ai blockquote { padding-left: 12px; border-left: 2px solid var(--track); color: var(--fg2); }
+
+.ai ul, .ai ol { padding-left: 20px; }
+.ai ol.wide { padding-left: 28px; }
+.ai ul ul { list-style: circle; }
+.ai li + li, .ai li > :where(ul, ol) { margin-top: 4px; }
+.ai li > :where(p, .cb, .mdtable, blockquote) { margin-top: 8px; }
+.ai li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ai li.task { list-style: none; position: relative; }
+.ai li.task > .ic { position: absolute; left: -20px; top: .3em; color: var(--muted); }
+.ai li.task.done { color: var(--muted); }
+
+.cb { position: relative; background: var(--soft); border-radius: var(--r-xs); }
+.cb pre { padding: 8px 12px; font: 12px/1.5 var(--mono); color: var(--fg2); overflow-x: auto; white-space: pre; }
+.cb .add { color: var(--green-ink); }
+.cb .del { color: var(--red); }
+/* 44 to touch, though a one-line block is lower: the code under the icon
+   fades out over the block's own height only. */
+.cp { position: absolute; top: 0; right: 0; width: 44px; height: 44px; color: var(--muted); font-size: 16px; }
+.cp::before { content: ""; position: absolute; inset: 0 0 auto; height: 34px; border-radius: 0 var(--r-xs) var(--r-xs) 0; background: linear-gradient(to right, transparent, var(--soft) 40%); }
+.cp > .ic { position: absolute; top: 9px; right: 12px; }
+.cp:hover { color: var(--fg); }
+.cbmore { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; padding: 0 12px; font-size: 13px; font-weight: var(--w6); color: var(--blue); }
+.cbmore > span { display: flex; align-items: center; gap: 2px; }
+.cbmore i { font-style: normal; font-size: 12px; font-weight: 400; color: var(--muted); }
+
+/* A table as wide as what it says; one too wide scrolls, on a phone out to
+   the screen's edge, and fades at the right while there is more. */
+.mdtable { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ai > .mdtable { margin-inline: calc(-1 * var(--chat-pad, 0px)); padding-inline: var(--chat-pad, 0px); }
+.mdtable.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+.ai table { border-collapse: collapse; font-size: 13px; line-height: 1.45; width: max-content; }
 .ai table.compact { max-width: 100%; }
-.ai th, .ai td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; white-space: nowrap; vertical-align: middle; }
-.ai th { background: var(--soft); }
-.ai .mdcell { min-width: 34px; max-width: 226px; white-space: normal; overflow-wrap: break-word; }
+.ai th, .ai td { text-align: left; vertical-align: top; padding: 8px 24px 8px 0; border-bottom: 1px solid var(--line); }
+.ai th { font-size: 12px; font-weight: 400; color: var(--muted); padding-top: 0; white-space: nowrap; }
+.ai tr > :last-child { padding-right: 0; }
+.ai tbody tr:last-child td { border-bottom: 0; }
+.ai .mdcell { min-width: 34px; max-width: 240px; white-space: normal; overflow-wrap: break-word; }
 .ai .mdcell.nowrap { white-space: nowrap; max-width: none; }
-.ai blockquote { margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--fg2); }
-.ai hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+.ai .num { text-align: right; font-variant-numeric: tabular-nums; }
 .think { font-size: 13px; color: var(--muted); margin: 6px 0; }
 .think summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 4px; }
 .think summary::-webkit-details-marker { display: none; }
@@ -555,7 +601,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .dh .r1 .mr { color: var(--muted); font-size: 20px; width: 44px; height: 36px; text-align: center; flex: none; }
 /* The view tabs share the title row; the picked one underlines the header's rule. */
 .dh .r1 .seg { margin-left: auto; width: 200px; flex: none; align-self: stretch; border-bottom: 0; margin-bottom: -1px; }
-.desk .ccol .chat { padding: 8px 18px; }
+.desk .ccol .chat { --chat-pad: 18px; padding: 8px var(--chat-pad); }
 .desk .desk .endcard { margin-bottom: 12px; }
 .start { max-width: 560px; margin: 56px auto 24px; width: 100%; padding: 0 24px; }
 .start h3 { font-size: 22px; margin: 0 0 14px; letter-spacing: -.3px; }

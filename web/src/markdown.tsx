@@ -57,21 +57,18 @@ export type Span =
   | { t: "link"; v: string; href: string }
   | { t: "ref"; v: string; target: string };
 
-// What a bare URL may not end in: the punctuation of the sentence around it.
-const urlTail = /[.,;:!?'"*_~]+$/;
-
 /** A bare URL without the sentence's punctuation after it; a closing
- * bracket stays only when the URL opened one. */
+ * bracket stays only when the URL opened one. Empty when nothing but the
+ * scheme is left. */
 function bareUrl(raw: string): string {
-  let url = raw;
-  for (;;) {
-    const cut = url.replace(urlTail, "");
-    const last = cut[cut.length - 1];
-    const open = last === ")" ? "(" : last === "]" ? "[" : "";
-    const next = open && !cut.includes(open) ? cut.slice(0, -1) : cut;
-    if (next === url) return url;
-    url = next;
+  const paren = raw.includes("("), bracket = raw.includes("[");
+  let end = raw.length;
+  for (; end > 0; end--) {
+    const c = raw[end - 1];
+    if (!(".,;:!?'\"*_~".includes(c) || (c === ")" && !paren) || (c === "]" && !bracket))) break;
   }
+  const url = raw.slice(0, end);
+  return /^https?:\/\/$/i.test(url) ? "" : url;
 }
 
 const inlineRe =
@@ -120,10 +117,13 @@ export function inlineSpans(text: string): Span[] {
     else if (m[5] !== undefined) out.push({ t: "s", c: inlineSpans(m[5]) });
     else if (m[8] !== undefined) {
       const url = bareUrl(m[8]);
-      out.push({ t: "link", v: url, href: url });
-      last = m.index + url.length;
-      re.lastIndex = last;
-      continue;
+      if (url) {
+        out.push({ t: "link", v: url, href: url });
+        last = m.index + url.length;
+        re.lastIndex = last;
+        continue;
+      }
+      push(m[0]);
     } else {
       const link = links.get(m.index);
       if (link) {
