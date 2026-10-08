@@ -257,6 +257,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 
 .cb { position: relative; background: var(--soft); border-radius: var(--r-xs); }
 .cb pre { padding: 8px 12px; font: 12px/1.5 var(--mono); color: var(--fg2); overflow-x: auto; white-space: pre; }
+.cb .cbt { display: inline-block; padding-right: 32px; }
 .cb .add { color: var(--green-ink); }
 .cb .del { color: var(--red); }
 /* 44 to touch, though a one-line block is lower: the code under the icon

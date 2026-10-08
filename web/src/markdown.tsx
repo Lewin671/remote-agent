@@ -535,14 +535,17 @@ function Code({ lang, text }: { lang: string; text: string }) {
   return (
     <div className="cb">
       <pre>
-        {diff
-          ? shown.map((l, i) => (
-              <span key={i} className={l.startsWith("+") && !l.startsWith("+++") ? "add" : l.startsWith("-") && !l.startsWith("---") ? "del" : undefined}>
-                {i > 0 && "\n"}
-                {l}
-              </span>
-            ))
-          : shown.join("\n")}
+        {/* As wide as its longest line and the copy button: scrolled to the end, no code is left under the button. */}
+        <span className="cbt">
+          {diff
+            ? shown.map((l, i) => (
+                <span key={i} className={l.startsWith("+") && !l.startsWith("+++") ? "add" : l.startsWith("-") && !l.startsWith("---") ? "del" : undefined}>
+                  {i > 0 && "\n"}
+                  {l}
+                </span>
+              ))
+            : shown.join("\n")}
+        </span>
       </pre>
       <CopyButton text={text} />
       {long && (

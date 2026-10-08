@@ -179,6 +179,7 @@
   .ai li.task.done { color: var(--muted); }
   .cb { position: relative; background: var(--soft); border-radius: var(--r-xs); }
   .cb pre { padding: 8px 12px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--fg2); overflow-x: auto; white-space: pre; }
+  .cb pre::after { content: ""; display: inline-block; width: 32px; }
   .cb .add { color: var(--green-ink); } .cb .del { color: var(--red); }
   .cp { position: absolute; top: 0; right: 0; width: 44px; height: 34px; color: var(--muted); font-size: 16px; border-radius: 0 var(--r-xs) var(--r-xs) 0; background: linear-gradient(to right, transparent, var(--soft) 40%); }
   .cp > .ic { position: absolute; top: 9px; right: 12px; }

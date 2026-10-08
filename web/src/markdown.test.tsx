@@ -123,7 +123,7 @@ describe("blocks", () => {
     expect(out).toContain('<th style="text-align:center"><div class="mdcell nowrap">官方说明</div></th>');
     expect(out).toContain('<td style="text-align:center"><div class="mdcell">包括 <b>Codex CLI</b></div></td>');
     expect(out).toContain("<code>a|b</code> 不拆 | 这里也不拆");
-    expect(out).toContain("<pre>echo a | wc -l</pre>");
+    expect(out).toContain('<pre><span class="cbt">echo a | wc -l</span></pre>');
     expect(out).toContain("<blockquote>");
   });
 

@@ -847,7 +847,8 @@ private fun ReplyCode(b: Block.Code) {
         Column {
             Text(
                 shown, style = T.mono, color = p.fg2, softWrap = false,
-                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+                // Room at the end for the copy button: scrolled all the way, no code is left under it.
+                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 44.dp, top = 8.dp, bottom = 8.dp),
             )
             if (long) Row(
                 Modifier.fillMaxWidth().heightIn(min = 44.dp).tap { open = !open }.padding(horizontal = 12.dp),
