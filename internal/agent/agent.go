@@ -52,7 +52,8 @@ type Launcher interface {
 	Name() string
 	// Bin is the CLI's executable.
 	Bin() string
-	// Version is the installed CLI's version, read once; empty if unknown.
+	// Version is the installed CLI's version, read again when the
+	// executable changes; empty if unknown.
 	Version() string
 	// Tested reports whether the adapter was checked against version.
 	Tested(version string) bool

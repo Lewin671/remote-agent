@@ -453,7 +453,7 @@ remote-agent 依赖 Codex 的屏幕和 rollout，Codex 升级可能改变它们�
 - **容忍写法变化**：画面按样式属性和文字判断（第 6 节）；菜单按标题和选项文字定位；rollout 里认不出的条目保留为通用工具调用，不报错
 - **看得出来**：排队的消息发不出去时，daemon 在会话信息里给出原因（终端有草稿、有弹窗、认不出输入框）；认不出输入框超过 20 秒会记一条带 Codex 版本的警告，网页上提示可能是 Codex 升级改了界面
 - **查得出来**：`remote-agent doctor` 用独立的 daemon、状态目录和 tmux，在 `~/.remote-agent/doctor-work` 里以 GPT-6-Luna 低档位真的跑一个会话，逐项检查：认出输入框、区分本地草稿、注入并读回回复、切模型、切审批模式和计划模式、中断、终端快照。失败时附上画面分析的结果（不含内容）
-- **记录版本**：daemon 启动时读 `codex --version`，放进机器元数据；代码测试过的版本（`codex.TestedVersions`）和本机 doctor 通过的版本算「已验证」，否则启动日志和网页的机器详情里提示运行 doctor
+- **记录版本**：daemon 读 `codex --version` 放进机器元数据，可执行文件变了（CLI 升级）就重新读，不用重启 daemon；代码测试过的版本（`codex.TestedVersions`）和本机 doctor 通过的版本算「已验证」，否则启动日志和网页的机器详情里提示运行 doctor
 
 ## 15. Android 客户端
 

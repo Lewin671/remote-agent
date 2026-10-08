@@ -17,7 +17,6 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -43,8 +42,7 @@ type Adapter struct {
 	bin  string
 	home string // ~/.claude
 
-	versionOnce sync.Once
-	version     string
+	version agent.BinVersion
 }
 
 var (
@@ -61,22 +59,19 @@ func (a *Adapter) Name() string   { return "Claude Code" }
 func (a *Adapter) Bin() string    { return a.bin }
 
 // Version is the first word of `claude --version` ("2.1.284 (Claude
-// Code)"), read once.
+// Code)"), read again when the executable changes.
 func (a *Adapter) Version() string {
-	a.versionOnce.Do(func() {
-		if a.bin == "" {
-			return
-		}
+	return a.version.Get(a.bin, func() string {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		out, err := exec.CommandContext(ctx, a.bin, "--version").Output()
 		if err == nil {
 			if f := strings.Fields(string(out)); len(f) > 0 {
-				a.version = f[0]
+				return f[0]
 			}
 		}
+		return ""
 	})
-	return a.version
 }
 
 func (a *Adapter) Tested(v string) bool { return slices.Contains(TestedVersions, v) }
