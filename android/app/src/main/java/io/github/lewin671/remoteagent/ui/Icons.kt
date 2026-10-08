@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.dp
  * res/raw/isc_lucide.txt), one per meaning (docs/design-system.md §5);
  * nothing else draws an icon, and no font glyph stands in for one. The path
  * data is lucide-react's, so both clients draw the same shapes: a 24 grid,
- * a line of 2 with round caps and joins, nothing filled.
+ * a line of 2 with round caps and joins, nothing filled but the square that
+ * interrupts.
  */
 
 /** A Lucide icon from the paths of its SVG; [filled] also fills them. */
@@ -67,6 +68,13 @@ object Lucide {
 
     /** Interrupts the turn; the one filled icon. Lucide's rect of 18 at 3,3 with corners of 2. */
     val Square = lucide("square", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", filled = true)
+
+    /** Copies a code block of a reply. Lucide's rect of 14 at 8,8 with corners of 2. */
+    val Copy = lucide("copy", "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2")
+
+    /** A task of a reply's task list, open and done: Lucide's square, not filled, and square-check. */
+    val Box = lucide("square", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z")
+    val BoxChecked = lucide("square-check", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "m9 12 2 2 4-4")
 
     /** Down to the newest message; the terminal's down key. */
     val ArrowDown = lucide("arrow-down", "M12 5v14", "m19 12-7 7-7-7")
