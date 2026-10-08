@@ -1639,6 +1639,75 @@
      "v": "))"
     }
    ]
+  },
+  {
+   "name": "bare url keeps only the brackets it opened",
+   "md": "(https://en.wikipedia.org/wiki/Go_(game)) 和 [https://example.com/a[1]] 和 https://example.com/b))",
+   "want": [
+    {
+     "t": "text",
+     "v": "("
+    },
+    {
+     "t": "link",
+     "v": "https://en.wikipedia.org/wiki/Go_(game)",
+     "href": "https://en.wikipedia.org/wiki/Go_(game)"
+    },
+    {
+     "t": "text",
+     "v": ") 和 ["
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a[1]",
+     "href": "https://example.com/a[1]"
+    },
+    {
+     "t": "text",
+     "v": "] 和 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/b",
+     "href": "https://example.com/b"
+    },
+    {
+     "t": "text",
+     "v": "))"
+    }
+   ]
+  },
+  {
+   "name": "boundaries are ASCII word characters, not letters of any script",
+   "md": "见https://example.com/a 和 见*说明*。 和 a*b*。 和 x_https://example.com",
+   "want": [
+    {
+     "t": "text",
+     "v": "见"
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": " 和 见"
+    },
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "说明"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "。 和 a*b*。 和 x_https://example.com"
+    }
+   ]
   }
  ],
  "numericColumn": [
@@ -1750,6 +1819,68 @@
    "cells": [
     "1 / 3",
     "2 / 3"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "1 1 1 1 1 1 xyzabc"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "1 2 3"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "12 abcdef"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "12 abcde"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "5 %",
+    "3 °"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "１２"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "+ 5"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "1  /  3"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "3 kg 200 g"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "1.5x",
+    "2x"
    ],
    "want": true
   }

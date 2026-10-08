@@ -17,7 +17,10 @@ class MarkdownTableTest {
         assertEquals(listOf(Block.Heading(1, "a" + " ".repeat(n) + "b")), parseMarkdown("# a" + " ".repeat(n) + "b " + "#".repeat(n)))
         assertEquals(listOf(Block.Para("a | b\n" + " ".repeat(n) + "x")), parseMarkdown("a | b\n" + " ".repeat(n) + "x"))
         assertEquals(listOf(Block.ItemList(false, 1, listOf(Item("- ".repeat(n - 1) + "x", null, emptyList())))), parseMarkdown("- ".repeat(n) + "x"))
-        assertFalse(numericColumn(listOf("1 ".repeat(n) + "1")))
+        // Quantities are scanned once, however many a cell strings together.
+        assertTrue(numericColumn(listOf("1 ".repeat(n) + "1")))
+        assertFalse(numericColumn(listOf("1 ".repeat(n) + "xyzabc")))
+        assertFalse(numericColumn(listOf("1" + " ".repeat(n) + "x")))
         assertEquals(n - 1, tableCells("|".repeat(n)).size)
     }
 

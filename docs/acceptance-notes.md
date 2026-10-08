@@ -147,3 +147,9 @@ Go 测试覆盖绑定轮次、创建幂等、修订冲突、重启、dispatch �
 - 截止最后一轮结束，本地 37 条事件序号连续、无重复；四个标记回复在本地记录与网页中均各一次。
 
 Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签名与正式 APK 不一致，保留应用数据并升级到同源码的 debug APK（versionCode 72）；没有卸载旧应用。模拟器窗口无法由当前 UI 工具控制，因此 Android 界面端到端、正式签名 APK 真机安装、真实手机 Wi-Fi/蜂窝切换均未验收，不能把此次 Chrome 结果当作这些项目通过。
+
+**回复正文按 design-system 第 7 节重画**（2026-10-08，界面稿 v31）：两端改成同一种读法，由 `testdata/markdown/cases.json` 约束（块 43 条、行内 34 条、数量列 25 条、加粗小标题 9 条），网页的 `markdown.cases.test.ts` 和 Android 的 `MarkdownCasesTest` 逐条比对。
+
+- 网页：`pnpm test` 550 项通过，构建通过。本机 Chrome 里用真实的 `Markdown` 组件和样式表渲染日常、拥挤、边界三组内容，看过 390 宽亮色和暗色、760 宽亮色，点过「展开全文」和「收起」。
+- Android：`:app:testDebugUnitTest` 97 项通过；API 36 无窗口模拟器上 `MarkdownOnDeviceTest` 3 项（设备自己的正则读法和网页一致）和 `MarkdownTableLayoutTest` 10 项通过，看过亮色整页、嵌套和宽表格的截图。
+- 没覆盖：没有连真实 CLI 的会话逐屏对照；复制按钮没有在真机和网页的真实点击下验证剪贴板内容；200% 字号只有表格的仪器测试覆盖；Android 上行内代码的底色不占排版宽度，紧贴字母时会伸到相邻字符下面。

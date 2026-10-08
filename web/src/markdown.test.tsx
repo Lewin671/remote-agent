@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Markdown, mdBlocks, Rich, safeHref, tableCells } from "./markdown";
+import { Markdown, mdBlocks, numericColumn, Rich, safeHref, tableCells } from "./markdown";
 
 const html = (md: string) => renderToStaticMarkup(<Markdown text={md} />);
 
@@ -29,6 +29,7 @@ describe("safety", () => {
     mdBlocks("a|b\n" + " ".repeat(100_000) + "x");
     mdBlocks("a|b\n" + "| ".repeat(50_000) + "x");
     mdBlocks("- " + " ".repeat(100_000) + "x");
+    numericColumn(["1" + " 1".repeat(50_000) + " x", "1" + " ".repeat(100_000) + "x", "1" + "a ".repeat(50_000)]);
     expect(performance.now() - started).toBeLessThan(1000);
   }, 3000);
 

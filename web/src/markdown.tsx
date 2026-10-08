@@ -58,14 +58,23 @@ export type Span =
   | { t: "ref"; v: string; target: string };
 
 /** A bare URL without the sentence's punctuation after it; a closing
- * bracket stays only when the URL opened one. Empty when nothing but the
- * scheme is left. */
+ * bracket stays only while the URL has an opening one for it. Empty when
+ * nothing but the scheme is left. */
 function bareUrl(raw: string): string {
-  const paren = raw.includes("("), bracket = raw.includes("[");
+  // How many closing brackets have no opening one: those end the sentence.
+  let paren = 0, bracket = 0;
+  for (const c of raw) {
+    if (c === "(") paren--;
+    else if (c === ")") paren++;
+    else if (c === "[") bracket--;
+    else if (c === "]") bracket++;
+  }
   let end = raw.length;
   for (; end > 0; end--) {
     const c = raw[end - 1];
-    if (!(".,;:!?'\"*_~".includes(c) || (c === ")" && !paren) || (c === "]" && !bracket))) break;
+    if (c === ")" && paren > 0) paren--;
+    else if (c === "]" && bracket > 0) bracket--;
+    else if (!".,;:!?'\"*_~".includes(c)) break;
   }
   const url = raw.slice(0, end);
   return /^https?:\/\/$/i.test(url) ? "" : url;
@@ -185,10 +194,39 @@ function tableCellClass(text: string): string {
   return text.length > 0 && text.length <= 12 ? "mdcell nowrap" : "mdcell";
 }
 
-// A whole cell that reads as a quantity: digits with a sign, a currency
-// mark or a short unit, or a few of them ("+84 −61", "5.2 s", "118 ms").
-const quantity = /^[+\-−~≈<>≤≥$¥€£]*\d[\d,.:]*\s?(?:%|‰|°|[A-Za-zµ]{1,5})?(?:\s+[+\-−/]?\s?\d[\d,.]*\s?(?:%|[A-Za-zµ]{1,5})?)*$/;
 const blankCell = /^(?:|-|–|—|N\/A|n\/a)$/;
+const digit = (c: string | undefined) => c !== undefined && c >= "0" && c <= "9";
+const space = (c: string | undefined) => c !== undefined && /\s/.test(c);
+const unitLetter = (c: string | undefined) => c !== undefined && ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "µ");
+
+/** A whole cell that reads as a quantity: digits with a sign, a currency
+ * mark or a short unit, or a few of them ("+84 −61", "5.2 s", "118 ms",
+ * "1 / 3"). Scanned once from the left: a pattern for it backtracks. */
+function quantity(v: string): boolean {
+  const n = v.length;
+  let i = 0;
+  while (i < n && "+-−~≈<>≤≥$¥€£".includes(v[i])) i++;
+  for (;;) {
+    if (!digit(v[i])) return false;
+    i++;
+    while (i < n && (digit(v[i]) || ",.:".includes(v[i]))) i++;
+    // A unit: one optional space, then a mark or up to five letters.
+    const j = space(v[i]) ? i + 1 : i;
+    if (j < n && "%‰°".includes(v[j])) i = j + 1;
+    else {
+      let k = j;
+      while (unitLetter(v[k])) k++;
+      if (k > j && k - j <= 5) i = k;
+    }
+    if (i === n) return true;
+    if (!space(v[i])) return false;
+    while (space(v[i])) i++;
+    if (i < n && "+-−/".includes(v[i])) {
+      i++;
+      if (space(v[i])) i++;
+    }
+  }
+}
 
 /** Whether a column holds quantities, and so reads better right-aligned:
  * every cell that says something is a quantity, and at least one does. */
@@ -197,7 +235,7 @@ export function numericColumn(cells: string[]): boolean {
   for (const c of cells) {
     const v = c.trim();
     if (blankCell.test(v)) continue;
-    if (!quantity.test(v)) return false;
+    if (!quantity(v)) return false;
     n++;
   }
   return n > 0;

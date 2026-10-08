@@ -183,14 +183,23 @@ private fun inlineLinks(text: String): Map<Int, LinkEnd> {
     return links
 }
 
-/** A bare URL without the sentence's punctuation after it; a closing bracket stays only when the URL opened one. Empty when nothing but the scheme is left. */
+/** A bare URL without the sentence's punctuation after it; a closing bracket stays only while the URL has an opening one for it. Empty when nothing but the scheme is left. */
 private fun bareUrl(raw: String): String {
-    val paren = '(' in raw
-    val bracket = '[' in raw
+    // How many closing brackets have no opening one: those end the sentence.
+    var paren = 0
+    var bracket = 0
+    for (c in raw) when (c) {
+        '(' -> paren--
+        ')' -> paren++
+        '[' -> bracket--
+        ']' -> bracket++
+    }
     var end = raw.length
     while (end > 0) {
         val c = raw[end - 1]
-        if (!(c in ".,;:!?'\"*_~" || (c == ')' && !paren) || (c == ']' && !bracket))) break
+        if (c == ')' && paren > 0) paren--
+        else if (c == ']' && bracket > 0) bracket--
+        else if (c !in ".,;:!?'\"*_~") break
         end--
     }
     val url = raw.substring(0, end)
@@ -198,11 +207,13 @@ private fun bareUrl(raw: String): String {
 }
 
 // Groups: 1 a run of backticks, 2 bold, 3 *italic*, 4 _italic_, 5 struck,
-// 6 '[', 7 an autolink's opener, 8 a bare URL.
+// 6 '[', 7 an autolink's opener, 8 a bare URL. Word characters and digits
+// are spelled out: Android's Pattern reads \\w and \\d as any script's, and
+// the web client's are ASCII.
 private val inlineRe: Pattern = Pattern.compile(
-    "(`+)|\\*\\*([^*\\n]+)\\*\\*|(?<![\\w*])\\*([^*$WS][^*\\n]*?)\\*(?![\\w*])" +
+    "(`+)|\\*\\*([^*\\n]+)\\*\\*|(?<![A-Za-z0-9_*])\\*([^*$WS][^*\\n]*?)\\*(?![A-Za-z0-9_*])" +
         "|(?<![\\p{L}\\p{N}_])_([^_$WS][^_\\n]*?)_(?![\\p{L}\\p{N}_])|~~([^~\\n]+)~~|(\\[)|(<https?://)" +
-        "|(?<![\\w/])(https?://[\\x21-\\x3b\\x3d\\x3f-\\x7e]+)",
+        "|(?<![A-Za-z0-9_/])(https?://[\\x21-\\x3b\\x3d\\x3f-\\x7e]+)",
 )
 private val ticksRe = Regex("`+")
 
@@ -283,18 +294,40 @@ fun inlineSpans(text: String): List<Span> {
     return out
 }
 
-// A whole cell that reads as a quantity: digits with a sign, a currency
-// mark or a short unit, or a few of them ("+84 −61", "5.2 s", "118 ms").
-private val quantity = Regex(
-    "[+\\-−~≈<>≤≥\$¥€£]*\\d[\\d,.:]*[$WS]?(?:%|‰|°|[A-Za-zµ]{1,5})?" +
-        "(?:[$WS]+[+\\-−/]?[$WS]?\\d[\\d,.]*[$WS]?(?:%|[A-Za-zµ]{1,5})?)*",
-)
 private val blankCell = setOf("", "-", "–", "—", "N/A", "n/a")
+private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
+private fun Char.isUnitLetter(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this == 'µ'
 
-// The pattern above repeats a group, which java.util.regex matches by
-// recursing once per repetition. No quantity is this long, and a cell that
-// is cannot overflow the stack.
-private const val QUANTITY_MAX = 256
+/**
+ * A whole cell that reads as a quantity: digits with a sign, a currency
+ * mark or a short unit, or a few of them ("+84 −61", "5.2 s", "118 ms",
+ * "1 / 3"). Scanned once from the left: a pattern for it backtracks.
+ */
+private fun quantity(v: String): Boolean {
+    val n = v.length
+    var i = 0
+    while (i < n && v[i] in "+-−~≈<>≤≥\$¥€£") i++
+    while (true) {
+        if (i >= n || !v[i].isAsciiDigit()) return false
+        i++
+        while (i < n && (v[i].isAsciiDigit() || v[i] in ",.:")) i++
+        // A unit: one optional space, then a mark or up to five letters.
+        val j = if (i < n && v[i].isSpace()) i + 1 else i
+        if (j < n && v[j] in "%‰°") i = j + 1
+        else {
+            var k = j
+            while (k < n && v[k].isUnitLetter()) k++
+            if (k > j && k - j <= 5) i = k
+        }
+        if (i == n) return true
+        if (!v[i].isSpace()) return false
+        while (i < n && v[i].isSpace()) i++
+        if (i < n && v[i] in "+-−/") {
+            i++
+            if (i < n && v[i].isSpace()) i++
+        }
+    }
+}
 
 /** Whether a column holds quantities, and so reads better right-aligned: every cell that says something is a quantity, and at least one does. */
 fun numericColumn(cells: List<String>): Boolean {
@@ -302,7 +335,7 @@ fun numericColumn(cells: List<String>): Boolean {
     for (c in cells) {
         val v = c.trimSpace()
         if (v in blankCell) continue
-        if (v.length > QUANTITY_MAX || !quantity.matches(v)) return false
+        if (!quantity(v)) return false
         n++
     }
     return n > 0
@@ -319,7 +352,7 @@ const val FOLD_SHOWN = 12
 
 // Any indent: the CLIs nest code blocks in list items.
 private val fenceRe: Pattern = Pattern.compile("[$WS]*(`{3,}|~{3,})[$WS]*([^$WS`]*)")
-private val listRe: Pattern = Pattern.compile("([$WS]*)([-*+]|\\d{1,9}[.)])[$WS]+([^\\n\\r\\u2028\\u2029]*)")
+private val listRe: Pattern = Pattern.compile("([$WS]*)([-*+]|[0-9]{1,9}[.)])[$WS]+([^\\n\\r\\u2028\\u2029]*)")
 private val taskRe = Regex("\\[([ xX])\\][$WS]+(.*)", RegexOption.DOT_MATCHES_ALL)
 private val sepCell = Regex(":?-{3,}:?")
 
