@@ -1708,6 +1708,62 @@
      "v": "。 和 a*b*。 和 x_https://example.com"
     }
    ]
+  },
+  {
+   "name": "bare url keeps other scripts in its path and host",
+   "md": "见 https://example.com/文档/安装?q=中文 和 https://例子.测试/路径。",
+   "want": [
+    {
+     "t": "text",
+     "v": "见 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/文档/安装?q=中文",
+     "href": "https://example.com/文档/安装?q=中文"
+    },
+    {
+     "t": "text",
+     "v": " 和 "
+    },
+    {
+     "t": "link",
+     "v": "https://例子.测试/路径",
+     "href": "https://例子.测试/路径"
+    },
+    {
+     "t": "text",
+     "v": "。"
+    }
+   ]
+  },
+  {
+   "name": "bare url ends at the sentence's dashes and curly quotes",
+   "md": "“https://example.com/a”——见 https://example.com/b…",
+   "want": [
+    {
+     "t": "text",
+     "v": "“"
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/a",
+     "href": "https://example.com/a"
+    },
+    {
+     "t": "text",
+     "v": "”——见 "
+    },
+    {
+     "t": "link",
+     "v": "https://example.com/b",
+     "href": "https://example.com/b"
+    },
+    {
+     "t": "text",
+     "v": "…"
+    }
+   ]
   }
  ],
  "numericColumn": [
@@ -1881,6 +1937,35 @@
    "cells": [
     "1.5x",
     "2x"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "**42 ms**",
+    "`61`",
+    "*5.2 s*"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "**快**",
+    "42 ms"
+   ],
+   "want": false
+  },
+  {
+   "cells": [
+    "[42](https://example.com)",
+    "~~3~~"
+   ],
+   "want": true
+  },
+  {
+   "cells": [
+    "**—**",
+    "12"
    ],
    "want": true
   }

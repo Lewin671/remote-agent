@@ -213,7 +213,7 @@ private fun bareUrl(raw: String): String {
 private val inlineRe: Pattern = Pattern.compile(
     "(`+)|\\*\\*([^*\\n]+)\\*\\*|(?<![A-Za-z0-9_*])\\*([^*$WS][^*\\n]*?)\\*(?![A-Za-z0-9_*])" +
         "|(?<![\\p{L}\\p{N}_])_([^_$WS][^_\\n]*?)_(?![\\p{L}\\p{N}_])|~~([^~\\n]+)~~|(\\[)|(<https?://)" +
-        "|(?<![A-Za-z0-9_/])(https?://[\\x21-\\x3b\\x3d\\x3f-\\x7e]+)",
+        "|(?<![A-Za-z0-9_/])(https?://[^$WS<>\\u2010-\\u2027\\u3000-\\u303f\\uff00-\\uffef]+)",
 )
 private val ticksRe = Regex("`+")
 
@@ -330,10 +330,24 @@ private fun quantity(v: String): Boolean {
 }
 
 /** Whether a column holds quantities, and so reads better right-aligned: every cell that says something is a quantity, and at least one does. */
+/** What a cell says once its marks are gone: `**42 ms**` reads "42 ms". */
+private fun shownText(spans: List<Span>, out: StringBuilder) {
+    for (s in spans) when (s) {
+        is Span.Text -> out.append(s.v)
+        is Span.Code -> out.append(s.v)
+        is Span.Link -> out.append(s.v)
+        is Span.Ref -> out.append(s.v)
+        is Span.Bold -> shownText(s.c, out)
+        is Span.Italic -> shownText(s.c, out)
+        is Span.Strike -> shownText(s.c, out)
+    }
+}
+
 fun numericColumn(cells: List<String>): Boolean {
     var n = 0
     for (c in cells) {
-        val v = c.trimSpace()
+        // Cells are Markdown; what counts is the text they show.
+        val v = buildString { shownText(inlineSpans(c), this) }.trimSpace()
         if (v in blankCell) continue
         if (!quantity(v)) return false
         n++

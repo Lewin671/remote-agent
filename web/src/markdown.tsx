@@ -80,8 +80,11 @@ function bareUrl(raw: string): string {
   return /^https?:\/\/$/i.test(url) ? "" : url;
 }
 
+// A bare URL runs to the next blank, angle bracket or piece of the
+// sentence's own punctuation: a full-width mark, a dash or a curly quote.
+// Other scripts stay in it, as in https://example.com/文档/安装.
 const inlineRe =
-  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[\x21-\x3b\x3d\x3f-\x7e]+)/gu;
+  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)/gu;
 
 /** Inline Markdown: `code`, **bold**, *italic*, _italic_, ~~struck~~,
  * [links](target), <https://autolinks> and bare https:// URLs. */
@@ -228,12 +231,20 @@ function quantity(v: string): boolean {
   }
 }
 
+/** What a cell says once its marks are gone: `**42 ms**` reads "42 ms". */
+function shownText(spans: Span[]): string {
+  let out = "";
+  for (const s of spans) out += "c" in s ? shownText(s.c) : s.v;
+  return out;
+}
+
 /** Whether a column holds quantities, and so reads better right-aligned:
- * every cell that says something is a quantity, and at least one does. */
+ * every cell that says something is a quantity, and at least one does.
+ * Cells are Markdown; what counts is the text they show. */
 export function numericColumn(cells: string[]): boolean {
   let n = 0;
   for (const c of cells) {
-    const v = c.trim();
+    const v = shownText(inlineSpans(c)).trim();
     if (blankCell.test(v)) continue;
     if (!quantity(v)) return false;
     n++;
@@ -597,9 +608,14 @@ function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
 }
 
 function Blocks({ blocks }: { blocks: Block[] }) {
+  // A rule draws nothing but the space after it, so one that opens the
+  // reply is left out: nothing is above it to be set apart from.
+  let first = 0;
+  while (blocks[first]?.kind === "rule") first++;
   return (
     <>
       {blocks.map((b, i) => {
+        if (i < first) return null;
         switch (b.kind) {
           case "code":
             return <Code key={i} lang={b.lang} text={b.text} />;

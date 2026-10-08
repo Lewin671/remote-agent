@@ -34,5 +34,10 @@ class MarkdownOnDeviceTest {
             inlineSpans("(https://en.wikipedia.org/wiki/Go_(game))"),
         )
         assertEquals(listOf(Span.Text("见 "), link("https://example.com/a"), Span.Text("，然后")), inlineSpans("见 https://example.com/a，然后"))
+        assertEquals(
+            listOf(Span.Text("见 "), link("https://例子.测试/文档/安装"), Span.Text("。")),
+            inlineSpans("见 https://例子.测试/文档/安装。"),
+        )
+        assertEquals(listOf(Span.Text("“"), link("https://example.com/a"), Span.Text("”——完")), inlineSpans("“https://example.com/a”——完"))
     }
 }

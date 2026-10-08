@@ -245,6 +245,15 @@ describe("a reply's elements (design-system §7)", () => {
     expect(said).toContain('<td class="num"><div class="mdcell nowrap">2</div></td>');
   });
 
+  it("leaves out a rule that opens the reply, and keeps the others for their space", () => {
+    expect(html("---\n\n---\n说明\n\n---\n完")).toBe("<p><span>说明</span></p><hr/><p><span>完</span></p>");
+  });
+
+  it("right-aligns quantities whatever marks they wear", () => {
+    const out = html("| a | b |\n| --- | --- |\n| x | **42 ms** |\n| y | `61` |");
+    expect(out).toContain('<td class="num"><div class="mdcell nowrap"><b>42 ms</b></div></td>');
+  });
+
   it("strikes text and links bare URLs", () => {
     const out = renderToStaticMarkup(<Rich text={"~~旧~~ 见 https://example.com/a。"} />);
     expect(out).toBe('<s>旧</s> 见 <a href="https://example.com/a" target="_blank" rel="noopener noreferrer nofollow">https://example.com/a</a>。');
