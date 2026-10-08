@@ -85,7 +85,7 @@ describe("blocks", () => {
   it("renders lists as lists", () => {
     const out = html("原因：\n- 每次登录都新建连接\n- 连接没设超时\n  池子耗尽后挂住\n\n1. 改\n2. 测");
     expect(out).toBe(
-      "<p><span>原因：</span></p><ul><li><span>每次登录都新建连接</span></li><li><span>连接没设超时</span><span><br/>池子耗尽后挂住</span></li></ul>" +
+      "<p><span>原因：</span></p><ul class=\"loose\"><li><span>每次登录都新建连接</span></li><li><span>连接没设超时</span><span><br/>池子耗尽后挂住</span></li></ul>" +
         '<ol start="1"><li><span>改</span></li><li><span>测</span></li></ol>',
     );
   });
@@ -213,6 +213,12 @@ describe("a reply's elements (design-system §7)", () => {
   it("widens the gutter of a list whose numbers reach two digits", () => {
     expect(html("9. a\n10. b")).toContain('<ol start="9" class="wide">');
     expect(html("1. a\n2. b")).toContain('<ol start="1">');
+  });
+
+  it("sets a list's items further apart once one of them wraps", () => {
+    expect(html("- 短\n- 也短")).toContain("<ul><li>");
+    expect(html("- 短\n- 预留和提交之间进程崩溃会留下悬挂的预留，需要一个定时清理")).toContain('<ul class="loose">');
+    expect(html("9. a\n10. " + "x".repeat(41))).toContain('<ol start="9" class="wide loose">');
   });
 
   it("gives code a copy button, and folds only long code", () => {

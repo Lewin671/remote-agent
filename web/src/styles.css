@@ -249,6 +249,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .ai ol.wide { padding-left: 28px; }
 .ai ul ul { list-style: circle; }
 .ai li + li, .ai li > :where(ul, ol) { margin-top: 4px; }
+.ai .loose > li + li { margin-top: 8px; }
 .ai li > :where(p, .cb, .mdtable, blockquote) { margin-top: 8px; }
 .ai li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ai li.task { list-style: none; position: relative; }

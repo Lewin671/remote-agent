@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v31</title>
+<title>remote-agent 客户端设计稿 v32</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -172,6 +172,7 @@
   .ai ol.wide { padding-left: 28px; }
   .ai ul ul { list-style: circle; }
   .ai li + li, .ai li > :where(ul, ol) { margin-top: 4px; }
+  .ai .loose > li + li { margin-top: 8px; }
   .ai li > :where(p, .cb, .mdtable, blockquote) { margin-top: 8px; }
   .ai li::marker { color: var(--muted); font-variant-numeric: tabular-nums; }
   .ai li.task { list-style: none; position: relative; }
@@ -920,14 +921,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v31 · 2026-10-08 · 上一版 v30 在 git 历史里（<code>git log -- docs/design/client-v30.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v32 · 2026-10-08 · 上一版 v31 在 git 历史里（<code>git log -- docs/design/client-v31.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v30 的改动</h4><ul><li>新增<a href="#reply">「回复正文」</a>一节：回复里的 Markdown 按 <a href="../design-system.md#7-对话正文">design-system 第 7 节</a>重画，结构靠留白分出来。</li><li>块之间的间距分三档；标题分四级；表格只留行间横线、宽度随内容、数量列右对齐，放不下时右缘渐隐。</li><li>代码块不描边，右上角是复制图标；超过 16 行只显示前 12 行，就地「展开全文」；diff 的增删行上色。</li><li>任务列表画成勾选框，删除线、裸写的网址、下划线斜体不再按字面显示；回复里的分隔线只留空白，不画线。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v31 的改动</h4><ul><li><a href="#reply">「回复正文」</a>：列表里有一项会折行时，这个列表各项之间的间距从 4 改为 8；各项都只有一行的列表不变。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1403,7 +1404,7 @@ git status --short gen/</pre>
   <div class="ai">
     <p>找到原因了：每次登录都会新建一个到 Redis 的连接，高峰期连接数打满后请求排队，超过 <code>5s</code> 就超时。</p>
     <p class="mdh h2">改了什么</p>
-    <ul>
+    <ul class="loose">
       <li><code>auth/login.go</code>：改为复用连接池，单次请求超时 <code>2s</code></li>
       <li><code>auth/pool.go</code>：新增连接池，上限 <code>32</code>，空闲 <code>90s</code> 回收</li>
       <li><code>auth/login_test.go</code>：补了并发登录的测试</li>
@@ -1435,7 +1436,7 @@ git status --short gen/</pre>
   </div>
 </div>
     </div>
-    <div class="cap">日常：一段结论、两三个小节、一段代码、一张小表。标题前 24、标题后 8、块之间 12；数量列右对齐</div>
+    <div class="cap">日常：一段结论、两三个小节、一段代码、一张小表。标题前 24、标题后 8、块之间 12；列表项会折行，项之间 8；数量列右对齐</div>
   </div>
   <div>
     <div class="phone reply">
@@ -1454,7 +1455,7 @@ git status --short gen/</pre>
       <p>这个问题和拆分无关，但拆的时候会一起修掉。</p>
     </blockquote>
     <p class="mdh h2">2. 步骤</p>
-    <ol>
+    <ol class="loose">
       <li><b>新建 <code>inventory</code> 包</b>，迁移扣减和回滚
         <ul>
           <li>对外只暴露 <code>Reserve</code>、<code>Commit</code>、<code>Release</code> 三个方法</li>
@@ -1490,7 +1491,7 @@ git status --short gen/</pre>
       <li class="task"><svg class="ic" aria-hidden="true"><use href="#lu-square-open"/></svg>接入开关<s>并灰度 10%</s>（先全量关闭）</li>
     </ul>
     <p class="mdh h2">3. 风险</p>
-    <ul>
+    <ul class="loose">
       <li>预留和提交之间进程崩溃会留下悬挂的预留，需要一个定时清理，清理间隔要比下单超时长</li>
       <li>排队注入的逻辑在 <span class="ref">~/Code/ai-bot/remote-agent.worktrees/experimental-playground/internal/daemon/inject.go</span>，和这次改动共用一把锁</li>
       <li>回滚脚本只验证过 Postgres 15</li>
@@ -1545,7 +1546,7 @@ git status --short gen/</pre>
   <div class="me"><div>怎么发布</div></div>
   <div class="ai">
     <p class="bh"><b>发布步骤</b></p>
-    <ul>
+    <ul class="loose">
       <li>先跑测试，变量 snake_case_name 和 __init__ 里的下划线不是斜体</li>
       <li>文档在 <a href="https://example.com/docs/remote-agent/release-and-deploy-guide?version=0.26.1">https://example.com/docs/remote-agent/release-and-deploy-guide?version=0.26.1</a> ✅</li>
     </ul>

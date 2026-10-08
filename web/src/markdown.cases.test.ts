@@ -6,13 +6,14 @@
 
 import { describe, expect, it } from "vitest";
 import raw from "../../testdata/markdown/cases.json?raw";
-import { boldHeading, inlineSpans, mdBlocks, numericColumn } from "./markdown";
+import { boldHeading, inlineSpans, looseList, mdBlocks, numericColumn } from "./markdown";
 
 const cases = JSON.parse(raw) as {
   blocks: { name: string; md: string; want?: unknown }[];
   inline: { name: string; md: string; want?: unknown }[];
   numericColumn: { cells: string[]; want: boolean }[];
   boldHeading: { md: string; want: boolean }[];
+  looseList: { items: string[]; want: boolean }[];
 };
 
 // JSON has no undefined: a column without alignment is null there.
@@ -32,5 +33,6 @@ describe("shared Markdown cases", () => {
   for (const c of cases.blocks) it("blocks: " + c.name, () => expect(plain(mdBlocks(c.md))).toEqual(c.want));
   for (const c of cases.inline) it("inline: " + c.name, () => expect(plain(inlineSpans(c.md))).toEqual(c.want));
   for (const c of cases.numericColumn) it("numeric column: " + c.cells.join(" | "), () => expect(numericColumn(c.cells)).toBe(c.want));
+  for (const c of cases.looseList) it("loose list: " + c.items.join(" | ").slice(0, 40), () => expect(looseList(c.items)).toBe(c.want));
   for (const c of cases.boldHeading) it("bold heading: " + JSON.stringify(c.md), () => expect(boldHeading(c.md)).toBe(c.want));
 });

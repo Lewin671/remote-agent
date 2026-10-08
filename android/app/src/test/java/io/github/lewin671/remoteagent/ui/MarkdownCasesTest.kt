@@ -94,6 +94,12 @@ class MarkdownCasesTest {
         if (numericColumn(cells) == want) null else "$cells should be $want"
     }
 
+    @Test fun looseLists() = check("looseList") { c ->
+        val items = c.getValue("items").jsonArray.map { it.jsonPrimitive.content }
+        val want = c.getValue("want").jsonPrimitive.boolean
+        if (looseList(items) == want) null else "$items should be $want"
+    }
+
     @Test fun boldHeadings() = check("boldHeading") { c ->
         val want = c.getValue("want").jsonPrimitive.boolean
         if (boldHeading(c.str("md")) == want) null else "${c.getValue("md")} should be $want"

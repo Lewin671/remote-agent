@@ -347,6 +347,28 @@ private fun shownText(spans: List<Span>, out: StringBuilder) {
     }
 }
 
+/** Items longer than this many columns wrap on a phone: a wide character (CJK and the like) takes two. */
+private const val LOOSE_OVER = 40
+
+/**
+ * Whether a list's items need more room between them: once an item runs
+ * over a line, items set as close as lines read as one paragraph. Judged by
+ * what the items say, not by how they happen to wrap on this screen, so
+ * both clients space a list alike.
+ */
+fun looseList(items: List<String>): Boolean {
+    for (item in items) {
+        if ('\n' in item) return true
+        val text = buildString { shownText(inlineSpans(item), this) }
+        var width = 0
+        for (c in text) {
+            width += if (c.code >= 0x2e80) 2 else 1
+            if (width > LOOSE_OVER) return true
+        }
+    }
+    return false
+}
+
 fun numericColumn(cells: List<String>): Boolean {
     var n = 0
     for (c in cells) {
@@ -757,9 +779,10 @@ private fun Items(list: Block.ItemList, color: Color, level: Int) {
     // Two-digit numbers need a wider gutter, or they run into the text.
     val gutter = if (list.ordered && list.start + list.items.size - 1 >= 10) 28.dp else 20.dp
     val line = with(LocalDensity.current) { body.lineHeight.toDp() }
+    val between = remember(list) { if (looseList(list.items.map { it.text })) 8.dp else 4.dp }
     Column {
         list.items.forEachIndexed { n, item ->
-            if (n > 0) Spacer(Modifier.height(4.dp))
+            if (n > 0) Spacer(Modifier.height(between))
             // A finished task is muted with everything under it.
             val ink = if (item.task == Task.DONE) p.muted else color
             Row {

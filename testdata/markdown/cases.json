@@ -2007,5 +2007,82 @@
    "md": "****",
    "want": false
   }
+ ],
+ "looseList": [
+  {
+   "items": [
+    "三档间距节奏和 1.6 行高",
+    "表格只留横线"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "a",
+    "b",
+    "c"
+   ],
+   "want": false
+  },
+  {
+   "items": [],
+   "want": false
+  },
+  {
+   "items": [
+    "短",
+    "预留和提交之间进程崩溃会留下悬挂的预留，需要一个定时清理"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "第一行\n接着写"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "中中中中中中中中中中中中中中中中中中中中"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "中中中中中中中中中中中中中中中中中中中中a"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "**中中中中中中中中中中中中中中中中中中中中**",
+    "`yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy`"
+   ],
+   "want": false
+  },
+  {
+   "items": [
+    "[很长的链接文字很长的链接文字很长的链接文字](https://example.com/a/very/long/path)"
+   ],
+   "want": true
+  },
+  {
+   "items": [
+    "[短](https://example.com/a/very/long/path/that/is/not/shown/at/all)"
+   ],
+   "want": false
+  }
  ]
 }

@@ -252,6 +252,27 @@ export function numericColumn(cells: string[]): boolean {
   return n > 0;
 }
 
+/** Items longer than this many columns wrap on a phone: a wide character
+ * (CJK and the like) takes two. */
+const LOOSE_OVER = 40;
+
+/** Whether a list's items need more room between them: once an item runs
+ * over a line, items set as close as lines read as one paragraph. Judged by
+ * what the items say, not by how they happen to wrap on this screen, so
+ * both clients space a list alike. */
+export function looseList(items: string[]): boolean {
+  for (const item of items) {
+    if (item.includes("\n")) return true;
+    const text = shownText(inlineSpans(item));
+    let width = 0;
+    for (let i = 0; i < text.length; i++) {
+      width += text.charCodeAt(i) >= 0x2e80 ? 2 : 1;
+      if (width > LOOSE_OVER) return true;
+    }
+  }
+  return false;
+}
+
 /** A paragraph that is one bold line, the way the CLIs often write a
  * small heading: it gets a heading's space, not a paragraph's. */
 export function boldHeading(text: string): boolean {
@@ -651,13 +672,18 @@ function Blocks({ blocks }: { blocks: Block[] }) {
                 {it.children.length > 0 && <Blocks blocks={it.children} />}
               </li>
             ));
+            const loose = looseList(b.items.map((it) => it.text));
+            // Two-digit numbers need a wider gutter, or they hang out of the reply.
+            const wide = b.ordered && b.start + b.items.length - 1 >= 10;
+            const cls = [wide && "wide", loose && "loose"].filter(Boolean).join(" ") || undefined;
             return b.ordered ? (
-              // Two-digit numbers need a wider gutter, or they hang out of the reply.
-              <ol key={i} start={b.start} className={b.start + b.items.length - 1 >= 10 ? "wide" : undefined}>
+              <ol key={i} start={b.start} className={cls}>
                 {items}
               </ol>
             ) : (
-              <ul key={i}>{items}</ul>
+              <ul key={i} className={cls}>
+                {items}
+              </ul>
             );
           }
           case "table":
