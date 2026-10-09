@@ -51,4 +51,36 @@ import Testing
         nav.backToRoot()
         #expect(nav.path.isEmpty)
     }
+
+    // MARK: This client's name
+
+    @Test func theClientsNameIsAskedOnlyOnAFirstLevelPage() {
+        func wanted(asked: Bool = false, demo: Bool = false, online: Bool = true, name: String? = "", pushed: Int = 0) -> Bool {
+            ClientNameAsk.wanted(asked: asked, demo: demo, online: online, name: name, pushed: pushed)
+        }
+        #expect(wanted())
+        // Never over a pushed page: a session being read, the connection check, a page opened by a route.
+        let nav = Navigator()
+        nav.open(.session(id: "s"))
+        #expect(!wanted(pushed: nav.path.count))
+        nav.open(.connectionCheck)
+        #expect(!wanted(pushed: nav.path.count))
+        // Back on 会话 or 设置 it is asked after all.
+        nav.open(.settings)
+        #expect(wanted(pushed: nav.path.count))
+        // Once only, with a name already there never, and not before the device list has this client.
+        #expect(!wanted(asked: true))
+        #expect(!wanted(name: "我的手机"))
+        #expect(!wanted(name: nil))
+        #expect(!wanted(online: false))
+        #expect(!wanted(demo: true))
+    }
+
+    @Test func whetherTheNameWasAskedIsKeptPerClientAndGoesWithTheAccount() {
+        let d = UserDefaults(suiteName: "client-name-\(UUID().uuidString)")!
+        d.set(true, forKey: ClientNameAsk.key("c1"))
+        #expect(d.bool(forKey: ClientNameAsk.key("c1")) && !d.bool(forKey: ClientNameAsk.key("c2")))
+        AccountDefaults.clear(d)
+        #expect(!d.bool(forKey: ClientNameAsk.key("c1")))
+    }
 }

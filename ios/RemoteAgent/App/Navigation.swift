@@ -232,6 +232,7 @@ struct MainView: View {
                 .navigationDestination(for: Route.self) { $0.destination }
         }
         .tint(Theme.blue)
+        .modifier(ClientNamePrompt(context: context, nav: nav))
         .environment(nav)
         .environment(context)
     }
@@ -266,31 +267,49 @@ private struct FirstLevel: View {
         // The bar stays at the bottom when a dialog over the page brings the keyboard up.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
-        .modifier(ClientNamePrompt())
     }
 }
 
-/// Asks once for this client's name, after joining and when it has none
-/// yet, on the first-level pages rather than over a session being read
-/// (MainActivity.kt). 跳过 counts as asked.
+/// When this client's name is asked for (MainActivity.kt): once, after
+/// joining and when it has none yet, and only while a first-level page is
+/// what is on screen, never over a session being read or any other page
+/// pushed over them. A page opened directly by a route counts as pushed:
+/// the question waits until the user is back on 会话 or 设置.
+enum ClientNameAsk {
+    /// `asked`: it was answered or skipped before. `name`: this client's
+    /// name as the device list has it, nil while this client is not listed.
+    static func wanted(asked: Bool, demo: Bool, online: Bool, name: String?, pushed: Int) -> Bool {
+        guard !asked, !demo, online, let name else { return false }
+        return name.isEmpty && pushed == 0
+    }
+
+    static func key(_ deviceId: String) -> String { AccountDefaults.key("client-name-asked." + deviceId) }
+}
+
+/// The question itself, over the whole stack: it is drawn above everything,
+/// so it is the stack, not a page of it, that decides when. 跳过 counts as asked.
 private struct ClientNamePrompt: ViewModifier {
     @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
+    let context: AccountContext
+    let nav: Navigator
     @State private var asked = false
     private let defaults = UserDefaults.standard
 
-    private var key: String { AccountDefaults.key("client-name-asked." + context.me) }
+    private var key: String { ClientNameAsk.key(context.me) }
+
+    private func skip() {
+        defaults.set(true, forKey: key)
+        asked = true
+    }
 
     func body(content: Content) -> some View {
-        let me = model.state.devices[context.me]
-        let wanted = !asked && !model.isDemo && !defaults.bool(forKey: key) && model.state.conn == .online
-            && me != nil && (me?.meta?.name ?? "").isEmpty
+        let wanted = ClientNameAsk.wanted(
+            asked: asked || defaults.bool(forKey: key), demo: model.isDemo, online: model.state.conn == .online,
+            name: model.state.devices[context.me].map { $0.meta?.name ?? "" }, pushed: nav.path.count)
         content.inputAlert(
             isPresented: Binding(get: { wanted }, set: { shown in
-                if !shown {
-                    defaults.set(true, forKey: key)
-                    asked = true
-                }
+                // Going to another page takes the question away without answering it: it is asked again on the way back.
+                if !shown && nav.path.isEmpty { skip() }
             }),
             title: "给这个客户端起个名字", initial: String(UIDevice.current.name.prefix(40)), placeholder: "如：我的手机",
             confirm: "保存", dismiss: "跳过", text: "其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改"
@@ -301,10 +320,8 @@ private struct ClientNamePrompt: ViewModifier {
             let id = context.me
             Task { try? await remote.renameDevice(id, name: name) }
         }
-        .debugSignal("name.skip") {
-            defaults.set(true, forKey: key)
-            asked = true
-        }
+        // On the stack, which is there whatever page is on top: the signal works on a pushed page too.
+        .debugSignal("name.skip", skip)
     }
 }
 
