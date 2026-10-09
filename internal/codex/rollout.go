@@ -220,6 +220,7 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 			Context int64 `json:"model_context_window"`
 		} `json:"info"`
 		RateLimits *struct {
+			LimitID   string     `json:"limit_id"`
 			Primary   *rateLimit `json:"primary"`
 			Secondary *rateLimit `json:"secondary"`
 			PlanType  string     `json:"plan_type"`
@@ -240,7 +241,10 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 		LastTotalTokens:       m.Info.Last.TotalTokens,
 		ContextWindow:         m.Info.Context,
 	}
-	if r := m.RateLimits; r != nil {
+	// A rollout also carries other limits (base_model_inference, shown as
+	// gpt-reserve) with their own windows; only "codex" is the account's
+	// usage. Older versions name no limit.
+	if r := m.RateLimits; r != nil && (r.LimitID == "" || r.LimitID == "codex") {
 		u.PrimaryLimit, u.SecondaryLimit, u.PlanType = r.Primary.pb(), r.Secondary.pb(), r.PlanType
 	}
 	return one("", &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: u}}), nil

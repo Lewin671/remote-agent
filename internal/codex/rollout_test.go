@@ -154,3 +154,29 @@ func TestParseToolStarted(t *testing.T) {
 		t.Fatalf("%v", evs)
 	}
 }
+
+// Only the "codex" limit is the account's usage: a rollout also reports
+// base_model_inference, with a window of its own.
+func TestTokenCountLimitID(t *testing.T) {
+	const info = `"info":{"total_token_usage":{"total_tokens":1},"last_token_usage":{"total_tokens":1},"model_context_window":10}`
+	for _, c := range []struct {
+		limits string
+		want   bool
+	}{
+		{`{"limit_id":"codex","primary":{"used_percent":21,"window_minutes":10080,"resets_at":1791949426},"plan_type":"prolite"}`, true},
+		{`{"primary":{"used_percent":21,"window_minutes":10080,"resets_at":1791949426},"plan_type":"prolite"}`, true},
+		{`{"limit_id":"base_model_inference","limit_name":"gpt-reserve","primary":{"used_percent":0,"window_minutes":10080,"resets_at":1792140878},"plan_type":"prolite"}`, false},
+	} {
+		evs, err := tokenCount([]byte(`{` + info + `,"rate_limits":` + c.limits + `}`))
+		if err != nil || len(evs) != 1 {
+			t.Fatalf("%s: %v %v", c.limits, evs, err)
+		}
+		u := evs[0].GetTokenUsage()
+		if got := u.PrimaryLimit != nil; got != c.want {
+			t.Errorf("%s: primary limit kept = %v, want %v", c.limits, got, c.want)
+		}
+		if u.TotalTokens != 1 {
+			t.Errorf("%s: token usage lost", c.limits)
+		}
+	}
+}
