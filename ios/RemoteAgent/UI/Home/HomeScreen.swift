@@ -169,7 +169,7 @@ private struct HomeTimeline: View {
     @ViewBuilder private func emptyView(_ empty: HomeEmpty) -> some View {
         switch empty {
         case .loading:
-            HomeSkeleton()
+            Skeleton()
         case .scope:
             emptyNote("这个项目还没有会话", "点右上角的新建按钮开始一个")
         case .account(.noMachines):
@@ -185,14 +185,7 @@ private struct HomeTimeline: View {
     }
 
     private func emptyNote(_ title: String, _ text: String, action: String? = nil, onAction: @escaping () -> Void = {}) -> some View {
-        VStack(spacing: 0) {
-            Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-            if !text.isEmpty { Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 4) }
-            if let action { Btn(action, kind: .primary, action: onAction).padding(.top, 14) }
-        }
-        .frame(maxWidth: 420)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, Theme.Space.page).padding(.vertical, 24)
+        EmptyState(title, text: text, action: action, onAction: action == nil ? nil : onAction).padding(.vertical, 24)
     }
 }
 

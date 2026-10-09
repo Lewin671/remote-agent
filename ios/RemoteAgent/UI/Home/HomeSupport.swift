@@ -114,20 +114,3 @@ struct EarlierTail: View {
         }
     }
 }
-
-/// Grey bars where a list will be once it is read.
-struct HomeSkeleton: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach([0.7, 0.9, 0.5], id: \.self) { width in
-                GeometryReader { box in
-                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Theme.chip).frame(width: box.size.width * width)
-                }
-                .frame(height: 12)
-            }
-        }
-        .padding(.horizontal, 16).padding(.vertical, 14)
-        .accessibilityElement()
-        .accessibilityLabel("读取中")
-    }
-}

@@ -139,9 +139,7 @@ struct ManageProjectsScreen: View {
     private func actions(_ state: RemoteState, _ pr: Project, blocked: String?) -> [SheetAction] {
         let pinned = isPinned(state, key: pr.key)
         return [
-            SheetAction(pinned ? "取消常用" : "设为常用", enabled: blocked == nil, note: blocked ?? "") {
-                context.prefsChanges.run(context.remote, pinned ? .unpin(path: pr.key) : .pin(path: pr.key))
-            },
+            SheetAction(pinned ? "取消常用" : "设为常用", enabled: blocked == nil, note: blocked ?? "") { pin(pr.key, !pinned) },
             SheetAction("移除项目…", danger: true, enabled: blocked == nil) { askToRemove(pr.key) },
         ]
     }

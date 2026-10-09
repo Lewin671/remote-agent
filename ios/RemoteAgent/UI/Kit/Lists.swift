@@ -428,8 +428,9 @@ struct PageNote: View {
 }
 
 /// A page that has nothing to show yet and says what to do about it: a
-/// title, a sentence, and at most one main action with a text action under
-/// it (the layout of 「这台设备已被移出账户」 in the mockup).
+/// title, a sentence (left out when there is nothing to say), and at most
+/// one main action with a text action under it (the layout of
+/// 「这台设备已被移出账户」 in the mockup).
 struct EmptyState: View {
     private let title: String
     private let text: String
@@ -455,8 +456,8 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-            Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 8).padding(.bottom, 20)
-            if let action, let onAction { Btn(action, kind: .primary, action: onAction) }
+            if !text.isEmpty { Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 8) }
+            if let action, let onAction { Btn(action, kind: .primary, action: onAction).padding(.top, 20) }
             if let note { Text(note).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 10).padding(.bottom, 4) }
             if let link, let onLink { TextAction(link, alignment: .center, action: onLink) }
         }
@@ -467,15 +468,43 @@ struct EmptyState: View {
 }
 
 /// A row that says something is being read: the turning circle and 读取中….
+/// `inset` is what it keeps from the sides: the page's margin on a page,
+/// nothing in a sheet, which has its own, 30 under a group's label.
 struct LoadingRow: View {
     private let text: String
+    private let inset: CGFloat
 
-    init(_ text: String = "读取中…") { self.text = text }
+    init(_ text: String = "读取中…", inset: CGFloat = Theme.Space.page) {
+        self.text = text
+        self.inset = inset
+    }
 
     var body: some View {
         IconText(Lucide.loaderCircle, text)
-            .padding(.horizontal, Theme.Space.page).padding(.vertical, 12)
+            .padding(.horizontal, inset).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Grey bars where a list or a chat will be once it is read, `inset` from the sides.
+struct Skeleton: View {
+    private let inset: CGFloat
+
+    init(inset: CGFloat = Theme.Space.page) { self.inset = inset }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach([0.7, 0.9, 0.5], id: \.self) { share in
+                GeometryReader { box in
+                    RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous).fill(Theme.chip)
+                        .frame(width: box.size.width * share)
+                }
+                .frame(height: 12)
+            }
+        }
+        .padding(.horizontal, inset).padding(.vertical, 14)
+        .accessibilityElement()
+        .accessibilityLabel("读取中")
     }
 }
 

@@ -345,7 +345,7 @@ struct ChatPane: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     Color.clear.frame(height: 6)
-                    if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) { ChatSkeleton() }
+                    if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) { Skeleton(inset: chatMargin) }
                     if let start = chat.startPrompt {
                         ChatBubble(start.text, caption: start.caption, captionColor: start.warning ? Theme.orangeInk : Theme.muted)
                     }

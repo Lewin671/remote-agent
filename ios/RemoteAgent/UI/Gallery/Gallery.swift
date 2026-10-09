@@ -498,11 +498,18 @@ private struct StatesPage: View {
         SectionLabel("读取中")
         LoadingRow()
         LoadingRow("正在读取更早的会话…")
+        // In a sheet, and under a group's label.
+        LoadingRow("读取 MacBook 的设置…", inset: 0).padding(.horizontal, 24)
+        LoadingRow(inset: 30)
+        Skeleton()
+        Skeleton(inset: 12)
         SectionLabel("失败")
         ErrorRow("没能读取会话：连不上服务器") {}
         ErrorRow("这段记录打不开，历史到这里为止")
         SectionLabel("空")
         PageNote("这个项目还没有会话")
+        EmptyState("还没有会话", text: "")
+        EmptyState("还没有会话", text: "MacBook 在线，可以直接开始", action: "开始第一个会话", onAction: {})
         Rectangle().fill(Theme.line).frame(height: 1).padding(.vertical, 8)
         EmptyState(
             "这台设备已被移出账户",

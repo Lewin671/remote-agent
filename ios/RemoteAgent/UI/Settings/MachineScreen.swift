@@ -51,7 +51,7 @@ struct MachineScreen: View {
             if let m {
                 Ticking { now in details(m, state: state, now: now) }
             } else {
-                PageNote("这台设备已经移除了")
+                PageNote("这台电脑已经移除了")
             }
         }
         .navBar(
@@ -222,7 +222,7 @@ struct MachineScreen: View {
                     }
                 }
             }
-            if settings.saving { LoadingRow("正在保存…").padding(.horizontal, 14).padding(.bottom, 4) }
+            if settings.saving { LoadingRow("正在保存…", inset: 30).padding(.bottom, 4) }
             if !settings.saveError.isEmpty {
                 if settings.saveUnknown {
                     GroupBanner(settings.saveError, tone: .warn, action: "重新读取") { Task { await settings.read() } }
@@ -239,7 +239,7 @@ struct MachineScreen: View {
             GroupBanner("没能读取设置：\(settings.readError)", tone: .error, action: "重试") { Task { await settings.read() } }
         } else {
             GroupLabel("新项目默认设置")
-            LoadingRow().padding(.horizontal, 14).padding(.bottom, 4)
+            LoadingRow(inset: 30).padding(.bottom, 4)
         }
     }
 
@@ -364,7 +364,7 @@ private struct DefaultModelSheet: View {
                     ChoiceGrid(m.efforts, selected: current.model == m.slug ? current.effort : nil) { onPick(m.slug, $0) }
                 }
             } else {
-                LoadingRow().padding(.horizontal, -Theme.Space.page)
+                LoadingRow(inset: 0)
             }
         }
         .task(id: attempt) {

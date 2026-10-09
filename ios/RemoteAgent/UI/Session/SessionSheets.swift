@@ -130,7 +130,7 @@ struct SessionModelSheet: View {
         } else if let models {
             list(models.models)
         } else {
-            Text("读取中…").type(T.sm, Theme.muted).padding(.vertical, 12)
+            LoadingRow(inset: 0)
         }
         Hint(running ? "只在空闲时能切换；这一轮结束后再选" : "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
         if act.running { Hint("正在切换…") }

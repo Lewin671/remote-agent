@@ -133,7 +133,7 @@ struct ProjectDirPicker: View {
             .opacity(loading ? 0.45 : 1)
             .disabled(loading)
         } else {
-            LoadingRow().padding(.horizontal, -Theme.Space.page)
+            LoadingRow(inset: 0)
         }
     }
 

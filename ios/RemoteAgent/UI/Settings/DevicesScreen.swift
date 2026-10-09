@@ -68,38 +68,17 @@ struct DevicesScreen: View {
             GroupNote(state.loaded ? "还没有电脑" : "读取中…")
         } else {
             GroupCard {
-                for m in machines {
-                    let status = machineStatus(m, state: state, now: now)
-                    GRow(machineLabel(state, id: m.id), value: status?.text, chevron: true) { nav.open(.machine(id: m.id)) }
-                        .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
-                        .contextMenu {
-                            Button("账户额度") { nav.open(.quota(machine: m.id)) }
-                            Button("连接检测") { nav.open(.connectionCheck) }
-                        }
-                }
+                for m in machines { MachineRow(machine: m, state: state, now: now) }
             }
         }
-
         GroupLabel("客户端 · 操作会话")
-        if clients.isEmpty {
-            // The list comes with the connection; before that not even this client is in it.
-            GroupCard {
-                GRow(clientName(nil, id: me), value: "当前客户端") { nav.open(.client(id: me)) }
-            }
-        } else {
-            GroupCard {
-                for c in clients {
-                    let mine = c.id == me
-                    GRow(
-                        clientName(c, id: c.id), sub: clientDetail(c), value: mine ? "当前客户端" : clientUsed(c, now: now),
-                        chevron: !mine
-                    ) { nav.open(.client(id: c.id)) }
-                        .contextMenu {
-                            Button("重命名") { renaming = c }.disabled(!online)
-                            Button("拷贝设备 ID") { UIPasteboard.general.string = c.id }
-                            if !mine { Button("移除这个客户端…", role: .destructive) { removing = c }.disabled(!online) }
-                        }
-                }
+        GroupCard {
+            // Before the list is read this client is still here.
+            if clients.isEmpty { ClientRow(client: nil, id: me, me: me, now: now) }
+            for c in clients {
+                ClientRow(
+                    client: c, id: c.id, me: me, now: now, onRename: online ? { renaming = c } : nil,
+                    onRemove: online ? { removing = c } : nil)
             }
         }
         if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }

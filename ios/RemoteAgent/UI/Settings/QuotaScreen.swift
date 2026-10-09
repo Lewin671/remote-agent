@@ -19,18 +19,18 @@ struct QuotaScreen: View {
             if let m {
                 Ticking { now in groups(m, state: state, now: now) }
             } else {
-                PageNote("这台机器已经移除了")
+                PageNote("这台电脑已经移除了")
             }
         }
         .navBar(
             "账户额度",
-            subtitle: m.map { _ in machineLabel(state, id: machine) + (status.map { " · " + ($0.online ? "在线" : "离线") } ?? "") })
+            subtitle: m.map { _ in machineLabel(state, id: machine) + (status.map { " · " + ($0.online ? "在线" : "不在线") } ?? "") })
     }
 
     @ViewBuilder private func groups(_ m: MachineView, state: RemoteState, now: Int64) -> some View {
         let groups = quotaGroups(asKnown(m, state: state), now: now)
         // Not connected, the connection bar says so and the numbers are what was last heard.
-        if !state.unlinked && !m.online { GroupNote("机器离线，显示上次记录", color: Theme.orangeInk) }
+        if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: Theme.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
             GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
             // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.

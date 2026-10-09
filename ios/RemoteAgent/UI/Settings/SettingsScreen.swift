@@ -23,8 +23,10 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     LargeTitle("设置")
                     ConnectionBar()
-                    Ticking { now in computers(state, now: now) }
-                    clients(state)
+                    Ticking { now in
+                        computers(state, now: now)
+                        clients(state, now: now)
+                    }
                     GroupLabel("本客户端的通知")
                     NotificationsNote()
                     GroupLabel("本机存储")
@@ -40,7 +42,8 @@ struct SettingsScreen: View {
                             .valueLead { Dot(state.conn == .online ? Theme.green : Theme.gray) }
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
-                        GRow("退出并删除本机密钥", danger: true) { leaving = true }
+                        // It asks first, as every row that ends in an ellipsis does (design-system §8).
+                        GRow("退出并删除本机密钥…", danger: true) { leaving = true }
                     }
                     Color.clear.frame(height: 24)
                 }
@@ -66,38 +69,23 @@ struct SettingsScreen: View {
     @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
         GroupLabel("电脑", action: "全部设备") { nav.open(.devices) }
         GroupCard {
-            for m in sortedMachines(state) {
-                let status = machineStatus(m, state: state, now: now)
-                GRow(machineLabel(state, id: m.id), sub: machineQuotaSummary(asKnown(m, state: state), now: now), value: status?.text, chevron: true) {
-                    nav.open(.machine(id: m.id))
-                }
-                .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
-                .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
-                .contextMenu {
-                    Button("账户额度") { nav.open(.quota(machine: m.id)) }
-                    Button("连接检测") { nav.open(.connectionCheck) }
-                }
-            }
+            for m in sortedMachines(state) { MachineRow(machine: m, state: state, now: now) }
             GRow("添加设备", action: true, icon: Lucide.plus) { nav.open(.addDevice) }
         }
     }
 
-    @ViewBuilder private func clients(_ state: RemoteState) -> some View {
+    /// This client and the first few others, drawn and ordered as 设备 lists them.
+    @ViewBuilder private func clients(_ state: RemoteState, now: Int64) -> some View {
         let me = context.me
-        // A few of the others, the oldest first as on Android; all of them are a tap away.
-        let others = state.devices.values.filter { $0.kind == .client && $0.id != me }
-            .sorted { $0.createdMs == $1.createdMs ? $0.id < $1.id : $0.createdMs < $1.createdMs }.prefix(3)
+        let others = sortClients(state.devices.values.filter { $0.kind == .client }, me: me).filter { $0.id != me }.prefix(3)
         GroupLabel("客户端")
         GroupCard {
-            GRow(clientName(state.devices[me], id: me), value: "当前", chevron: true) { nav.open(.client(id: me)) }
-            for c in others {
-                GRow(clientName(c, id: c.id), value: "已配对", chevron: true) { nav.open(.client(id: c.id)) }
-            }
+            ClientRow(client: state.devices[me], id: me, me: me, now: now)
+            for c in others { ClientRow(client: c, id: c.id, me: me, now: now) }
             GRow("全部客户端", chevron: true, action: true) { nav.open(.devices) }
         }
     }
 
-    /// 主题 and its three values. Beside each other, or the values under the name when large text leaves no room for both.
     @ViewBuilder private var themeRow: some View {
         let modes: [(ThemeMode, String)] = [(.system, "自动"), (.light, "亮色"), (.dark, "暗色")]
         let selected = Binding<Int>(

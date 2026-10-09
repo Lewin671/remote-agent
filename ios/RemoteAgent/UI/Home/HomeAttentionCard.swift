@@ -50,7 +50,8 @@ struct HomeAttentionCard: View {
                 nav.open(.session(id: session.id))
             } label: {
                 VStack(alignment: .leading, spacing: 0) {
-                    head(t)
+                    // The deadline is metadata until its last minute (design-system §1), as in the session's dock.
+                    head(t, last: status == .approval && approval.flatMap { ApprovalDeadline($0, now: now) }?.last == true)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(t.title).type(T.bodyB, Theme.fg).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -90,12 +91,12 @@ struct HomeAttentionCard: View {
     }
 
     /// 「● 请求执行」 at the left, the deadline or the time at the right; one under the other when the text is large.
-    @ViewBuilder private func head(_ t: AttentionCardText) -> some View {
+    @ViewBuilder private func head(_ t: AttentionCardText, last: Bool) -> some View {
         let kind = HStack(spacing: 5) {
             Dot(Theme.orangeInk)
             Text(t.kind).type(T.metaB, Theme.orangeInk).lineLimit(1)
         }
-        let right = Text(t.right).type(T.meta, Theme.muted)
+        let right = Text(t.right).type(T.meta, last ? Theme.orangeInk : Theme.muted)
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 0) {
                 kind

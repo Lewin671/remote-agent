@@ -58,7 +58,10 @@ struct ApprovalScreen: View {
                     }
                 }
             }
-            .navBar("审批详情", subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") })
+            .navBar(
+                "审批详情", subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") },
+                // Orange in its last minute, as on the dock and the home page's card.
+                subtitleColor: a.flatMap { ApprovalDeadline($0, now: now) }?.last == true ? Theme.orangeInk : nil)
         }
         .followSession(session, chat: chat, finder: finder)
     }

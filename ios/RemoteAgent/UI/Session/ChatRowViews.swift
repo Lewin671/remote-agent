@@ -632,19 +632,3 @@ private func firstLine(_ s: String) -> String { s.jvmLines()[0] }
 func planPreview(_ text: String, lines: Int) -> String {
     text.jvmLines().map { plain($0) }.filter { !$0.jvmIsBlank }.prefix(lines).joined(separator: "\n")
 }
-
-/// Grey bars while the history loads.
-struct ChatSkeleton: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach([0.7, 0.9, 0.5], id: \.self) { w in
-                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Theme.chip).frame(height: 12)
-                    .containerRelativeFrame(.horizontal, alignment: .leading) { width, _ in max(0, width - 2 * chatMargin) * w }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, chatMargin).padding(.vertical, 15)
-        .accessibilityElement()
-        .accessibilityLabel("读取中")
-    }
-}

@@ -5,6 +5,7 @@
 import RACore
 import RAProto
 import SwiftUI
+import UIKit
 
 /// A settings page: the grey surface with its readable column, the
 /// connection bar at the top, and the groups under it, scrolling. `refresh`
@@ -143,6 +144,59 @@ func sortedMachines(_ state: RemoteState) -> [MachineView] {
 }
 
 /// What removing a device does, said before it is done (architecture §13 「移除设备」).
+/// A computer's row, the same wherever computers are listed (设置 and
+/// 设备): its badge, its name, its quota in short under it, and at the
+/// right whether it is online or when it last was. A long press offers its
+/// quota and the connection check.
+struct MachineRow: View {
+    let machine: MachineView
+    let state: RemoteState
+    let now: Int64
+    @Environment(Navigator.self) private var nav
+
+    var body: some View {
+        let id = machine.id
+        let status = machineStatus(machine, state: state, now: now)
+        GRow(
+            machineLabel(state, id: id), sub: machineQuotaSummary(asKnown(machine, state: state), now: now), value: status?.text,
+            chevron: true
+        ) { nav.open(.machine(id: id)) }
+            .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
+            .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
+            .contextMenu {
+                Button("账户额度") { nav.open(.quota(machine: id)) }
+                Button("连接检测") { nav.open(.connectionCheck) }
+            }
+    }
+}
+
+/// A client's row, the same wherever clients are listed (设置 and 设备): its
+/// name, what it runs on under it, and at the right 当前客户端 or when it
+/// was last used. A long press copies its ID, and renames or removes it
+/// where the list offers that.
+struct ClientRow: View {
+    let client: DeviceView?
+    let id: String
+    let me: String
+    let now: Int64
+    var onRename: (() -> Void)?
+    var onRemove: (() -> Void)?
+    @Environment(Navigator.self) private var nav
+
+    var body: some View {
+        let mine = id == me
+        GRow(
+            clientName(client, id: id), sub: client.map { clientDetail($0) }, value: mine ? "当前客户端" : clientUsed(client, now: now),
+            chevron: true
+        ) { nav.open(.client(id: id)) }
+            .contextMenu {
+                if let onRename { Button("重命名", action: onRename) }
+                Button("复制设备 ID") { UIPasteboard.general.string = id }
+                if let onRemove, !mine { Button("移除这个客户端…", role: .destructive, action: onRemove) }
+            }
+    }
+}
+
 enum RemovalText {
     static let machineNote = "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
     static let machineConfirm = "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"

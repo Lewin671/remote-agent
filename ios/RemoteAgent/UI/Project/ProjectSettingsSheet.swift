@@ -258,7 +258,7 @@ struct ProjectSettingsSheet: View {
         } else if !modelsError.isEmpty {
             Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(modelsError)", tone: .warn)
         } else {
-            IconText(Lucide.loaderCircle, "读取 \(machineLabel(state, id: c.machineId)) 的设置…").padding(.vertical, 12)
+            LoadingRow("读取 \(machineLabel(state, id: c.machineId)) 的设置…", inset: 0)
         }
     }
 
