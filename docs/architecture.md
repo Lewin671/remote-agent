@@ -20,13 +20,13 @@
 | 端 | 形态 | 部署 |
 |---|---|---|
 | `remote-agent` | Go 单二进制：daemon、本地 CLI（`remote-agent codex` 等）和 hook 入口都在里面 | 每台电脑一个 |
-| `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
+| `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.example.cn`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 
-当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
+当前的 VPS 在中国大陆，Caddy 直接装在主机上（占用 80/443），server 用容器部署：服务器上的 `compose.override.yaml` 把端口只发布到本机回环（`127.0.0.1:8081`），Caddyfile 里加一个站点块反代过去；`deploy/compose.yaml` 本身仍按「Caddy 在容器里、共用 docker 网络 `proxy`」来写，部署脚本不会覆盖那份 override。域名用已备案的 `example.cn` 的子域名，未备案的域名解析到大陆主机会被拦。这台主机连不上 Google（2026-10-09 实测 `fcm.googleapis.com` 和 `oauth2.googleapis.com` 超时），所以 FCM 没有启用，经由 Google 推送服务的 Web Push（Chrome）也发不出去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
-网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），自定义域名 `remote-agent.top` 由阿里云 DNS 用 CNAME 指过去。用的是经典的 Pages 而不是 Workers 静态资源：Workers 绑定自定义域名要求域名托管在 Cloudflare，Pages 则支持外部 DNS 用 CNAME 接入。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
+网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），自定义域名 `app.example.cn` 由阿里云 DNS 用 CNAME 指过去；它和 server 在同一个注册域名下，原因见 [browser-notes.md](browser-notes.md)。用的是经典的 Pages 而不是 Workers 静态资源：Workers 绑定自定义域名要求域名托管在 Cloudflare，Pages 则支持外部 DNS 用 CNAME 接入。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
 
 网页代码**不由 VPS 提供**：如果 VPS 被攻破后能替换网页的 JS，端到端加密就会被绕过。放在另一个平台上，攻击者必须同时攻破两处才行。Cloudflare 账号因此也成了关键资产，必须开启两步验证。
 
@@ -414,7 +414,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 - **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送
 - **内容**：只有通用文案（「有会话在等你处理」），外加用于跳转的会话 ID，符合 scope 第 4 节「推送不含具体内容」。同一会话同一类别 15 秒内只推一次
 - **客户端**：service worker 收到推送时，如果应用正开着并在前台，就不再弹通知；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
-- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
+- **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 在 `RA_DEPLOY_FCM=1` 时把本机的 `~/.config/remote-agent/fcm-service-account.json` 复制到 server 的数据目录并设好，默认不复制（当前部署连不上 Google，见第 1 节）；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
 - **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
 - **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见 [android-client.md](android-client.md)
 

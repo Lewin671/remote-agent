@@ -3,13 +3,13 @@
 #
 # Usage: scripts/deploy.sh [server|web|all]   (default: all)
 #
-# RA_DEPLOY_HOST is the server's ssh host (default root@ra.remote-agent.top);
+# RA_DEPLOY_HOST is the server's ssh host (default root@vps.example.cn);
 # VITE_DEFAULT_SERVER is the server the web client offers by default.
 # Deploy the server first: the web client may rely on what it adds.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-HOST=${RA_DEPLOY_HOST:-root@ra.remote-agent.top}
+HOST=${RA_DEPLOY_HOST:-root@vps.example.cn}
 what=${1:-all}
 
 case $what in
