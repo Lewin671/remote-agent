@@ -591,8 +591,14 @@ class RemoteTest {
         r.start()
         r.awaitState("session") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
         server.stop()
-        val ev = withTimeout(10_000) { r.events("s1").first { it.fetchError != null } }
-        assertTrue(ev.fetchError!!.startsWith("没能读取历史"))
+        // Which comes first is a race the client does not decide: the read failing, which is
+        // said on the session, or the stream dropping, after which a failed read is not said
+        // apart (architecture 「断线时显示什么」) and the next connection reads again.
+        val events = r.events("s1")
+        withTimeout(20_000) {
+            kotlinx.coroutines.flow.combine(events, r.state) { ev, st -> ev.fetchError != null || st.conn != ConnState.ONLINE }.first { it }
+        }
+        events.first().fetchError?.let { assertTrue(it.startsWith("没能读取历史")) }
         // Back again, a retry loads it and clears the error.
         server.start()
         r.retryEvents("s1")
