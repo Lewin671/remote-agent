@@ -233,6 +233,10 @@ struct MainView: View {
         }
         .tint(Theme.blue)
         .modifier(ClientNamePrompt(context: context, nav: nav))
+        // Goes where a tap would, for a script: to the route written to `debug.route` (debug builds).
+        .debugSignal("app.open") {
+            if let route = Route(path: UserDefaults.standard.string(forKey: "debug.route") ?? "") { nav.open(route) }
+        }
         .environment(nav)
         .environment(context)
     }
