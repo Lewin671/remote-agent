@@ -38,6 +38,15 @@ class KeysTest {
     }
 
     @Test
+    fun fittingToTheSizeItAlreadyHasNeedsNoNewSnapshot() {
+        val f = FitTracker()
+        f.onSnapshot(42 to 30)
+        f.request(42 to 30)
+        assertTrue(f.onSnapshot(80 to 30))
+        assertFalse(f.fitted)
+    }
+
+    @Test
     fun releasingIsNotAChangeFromElsewhere() {
         val f = FitTracker()
         f.onSnapshot(120 to 40)

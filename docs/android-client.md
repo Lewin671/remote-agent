@@ -56,11 +56,11 @@ Android 不执行终端输出里的 OSC 52 剪贴板写入，避免恶意文件�
 
 Android 终端的字体依次是 JetBrains Mono、Sarasa Fixed SC 的符号子集（JetBrains Mono 没有的 `⏵`、`⎿`、`✻` 和盲文点阵等，约 290 KB）、系统字体（中文由它提供）。自带的回退链用 Android 10 起的 `Typeface.CustomFallbackBuilder`；Android 8–9 只有 JetBrains Mono 加系统字体，系统缺的符号仍显示不出。JetBrains Mono 的格宽是 0.6em，中文字形比两格窄：渲染器把比格子窄的字形按原宽居中画，不再横向拉伸；框线、色块和 Powerline 分隔符仍拉满格子以保持相连。实测见 [android-notes §2](android-notes.md#2-termux-终端组件)。字号默认 14dp，可在 10–22dp 间调整，保存在本机。适配和绘制使用同一字体在实际像素字号下测出的格宽、取整行高及顶部基线偏移；Termux 的字符宽度规则不变，比格子宽的字形仍然压缩进格子，避免破坏框线和光标对齐。
 
-尺寸和积压的规则同 [architecture §11](architecture.md#11-终端视图)：默认不改 tmux 窗口，键盘弹出、旋转屏幕都不改远端尺寸，只有「适配屏幕」及已适配时主动调整字号才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
+尺寸和积压的规则同 [architecture §11](architecture.md#11-终端视图)：进入终端时自动适配一次，之后键盘弹出、旋转屏幕都不改远端尺寸，只有手动「适配」「还原」及已适配时主动调整字号才改；输出跟不上就断开重拿快照，不能丢字节接着显示。
 
 ## 更新
 
-App 是侧载的，没有应用商店替它更新，所以自己做：发现新版本、下载、交给系统安装。清单和 APK 从哪里来见 [architecture · 产品版本与发布](architecture.md#产品版本与发布)，界面见 [client-v36 · App 更新](design/client-v36.html#update)。
+App 是侧载的，没有应用商店替它更新，所以自己做：发现新版本、下载、交给系统安装。清单和 APK 从哪里来见 [architecture · 产品版本与发布](architecture.md#产品版本与发布)，界面见 [client-v37 · App 更新](design/client-v37.html#update)。
 
 - **什么时候看**：回到前台时，距上次超过 6 小时才看；设置里可以手动看。自动看失败不提示，手动看失败才写原因。只比较 versionCode，和系统判断能不能覆盖安装用的是同一个数
 - **不自动下载**：看到新版本只提示，点了才下载。发版很频繁，每版都在后台下 6 MiB 不值得，而且装不装本来就要人确认

@@ -937,14 +937,23 @@ export class DemoRemote extends Remote {
     await sleep(400);
     let open = true;
     const popup = this.sessions.get(sid)?.info?.status === SessionStatus.BLOCKED;
-    setTimeout(() => {
+    const own = { cols: popup ? 42 : 120, rows: popup ? 30 : 40 };
+    const snapshot = (size: { cols: number; rows: number }) => {
       if (!open) return;
       const data = new TextEncoder().encode(popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? ""));
-      onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "snapshot", value: { $typeName: "remoteagent.v1.TerminalSnapshot", data, cols: popup ? 42 : 120, rows: popup ? 30 : 40 } } });
+      onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "snapshot", value: { $typeName: "remoteagent.v1.TerminalSnapshot", data, ...size } } });
+    };
+    setTimeout(() => {
+      snapshot(own);
       if (this.opts.get("term") === "closed") setTimeout(() => open && onClose("stream closed: output backlog"), 800);
     }, 200);
     return {
-      send: () => undefined,
+      // Like the daemon: a resize is answered with a snapshot at the new size.
+      send: (f) => {
+        if (f.kind?.case !== "resize") return;
+        const r = f.kind.value;
+        setTimeout(() => snapshot(r.fit ? { cols: r.cols ?? 0, rows: r.rows ?? 0 } : own), 150);
+      },
       close: () => {
         open = false;
       },

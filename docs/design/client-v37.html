@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v36</title>
+<title>remote-agent 客户端设计稿 v37</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v36 · 2026-10-10 · 上一版 v35 在 git 历史里（<code>git log -- docs/design/client-v35.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v37 · 2026-10-09 · 上一版 v36 在 git 历史里（<code>git log -- docs/design/client-v36.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v35 的改动</h4><ul><li><a href="#update">App 更新</a>：补上交给系统安装这一步的三种情况：还没允许 remote-agent 安装应用（先带去系统设置，回来后继续）、系统的安装确认被取消、系统没装上。下载完只在弹层还开着时自动打开安装确认，否则留着等点「安装」。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v36 的改动</h4><ul><li>终端：进入终端时自动适配这块屏幕，不用再点「适配」；点过「还原」的终端不再自动适配。手机、宽屏并排和 Android 相同。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1366,7 +1366,7 @@ git status --short gen/</pre>
   gpt-6-astra medium · 11% context used · ~/Code/foo</div>
       <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
     </div>
-    <div class="cap">终端默认按电脑上的尺寸缩小显示；「适配我的屏幕」会同时改变电脑上的终端尺寸，适配后工具栏显示「还原」</div>
+    <div class="cap">点「还原」之后：按电脑上的尺寸缩小显示，可再点「适配我的屏幕」。进入终端时自动适配，会同时改变电脑上的终端尺寸，工具栏显示「还原」</div>
   </div>
 
   <div>
@@ -1388,7 +1388,7 @@ git status --short gen/</pre>
   enter continue · esc quit<span class="cur"> </span></div>
       <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
     </div>
-    <div class="cap">Android 适配后：可用 A− / A+ 调整字号，处理信任目录这类弹窗。方向键和确认在第一行，Tab、Ctrl+C 和键盘在第二行；各键点击区至少 44×44</div>
+    <div class="cap">Android 进入终端自动适配后：可用 A− / A+ 调整字号，处理信任目录这类弹窗。方向键和确认在第一行，Tab、Ctrl+C 和键盘在第二行；各键点击区至少 44×44</div>
   </div>
 </div>
 
@@ -4089,7 +4089,7 @@ git status --short gen/</pre>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         </div>
         <div class="tcol">
-          <div class="ttool">电脑上 120×40<b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配</b></div>
+          <div class="ttool">已适配这块屏幕 · 96×40<b>还原</b></div>
           <div class="term" style="font-size:11px"><span class="d">• Edited</span> 5 files (+84 -61)
 <span class="d">• Ran</span> mkdir -p internal/handler
 

@@ -32,7 +32,7 @@ const keys2: [ReactNode, string, string][] = [
 ];
 
 /** The session's terminal, streamed live. Typing goes to the session like
- * the local keyboard. The tmux window keeps its size unless fitted. */
+ * the local keyboard. Opening it fits the tmux window to this screen. */
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.conn === "online";
@@ -53,8 +53,14 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   // means the computer or another client changed it, and "fitted" is no
   // longer true.
   const fittedTo = useRef<{ cols: number; rows: number } | "pending">(undefined);
+  // After "还原" the next size change is this screen's own doing.
+  const releasing = useRef(false);
   const [changed, setChanged] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Each connection fits once on its own, unless "还原" was chosen here.
+  const [linked, setLinked] = useState(false);
+  const autoFitted = useRef(false);
+  const released = useRef(false);
 
   // Scale the font so the whole width of the tmux window fits.
   const scale = () => {
@@ -62,7 +68,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const el = box.current;
     if (!t || !el) return;
     const width = el.clientWidth - 12;
-    const fs = Math.max(5, Math.min(fitted ? 12 : 14, Math.floor((10 * width) / (size.current.cols * charRatio())) / 10));
+    const fs = Math.max(5, Math.min(fittedTo.current ? 12 : 14, Math.floor((10 * width) / (size.current.cols * charRatio())) / 10));
     if (t.options.fontSize !== fs) t.options.fontSize = fs;
   };
 
@@ -78,11 +84,24 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     term.current = t;
     t.open(host.current!);
     const typed = t.onData((d) => conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
-    const onResize = () => scale();
-    addEventListener("resize", onResize);
+    // A fitted window follows the width of its pane: the browser window, or
+    // the switch between the terminal alone and side by side. Height is left
+    // alone, so a phone's keyboard never resizes the remote window.
+    let width = box.current!.clientWidth;
+    let refit: ReturnType<typeof setTimeout> | undefined;
+    const sized = new ResizeObserver(() => {
+      scale();
+      const now = box.current?.clientWidth ?? width;
+      if (now === width) return;
+      width = now;
+      clearTimeout(refit);
+      refit = setTimeout(() => fittedTo.current && fitNow.current(), 200);
+    });
+    sized.observe(box.current!);
     return () => {
       typed.dispose();
-      removeEventListener("resize", onResize);
+      sized.disconnect();
+      clearTimeout(refit);
       t.dispose();
       term.current = null;
     };
@@ -98,6 +117,9 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     setFitted(false);
     fittedTo.current = undefined;
     dimsSeen.current = false;
+    releasing.current = false;
+    autoFitted.current = false;
+    setLinked(false);
     remote
       .openTerminal(
         session.id,
@@ -111,7 +133,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               const was = size.current;
               const target = fittedTo.current;
               if (target === "pending") fittedTo.current = next;
-              else if (dimsSeen.current && (next.cols !== was.cols || next.rows !== was.rows)) {
+              else if (!dimsSeen.current || (next.cols === was.cols && next.rows === was.rows)) {
+                // The first snapshot, or the same size again: nothing changed.
+              } else if (releasing.current) releasing.current = false;
+              else {
                 // Resized elsewhere: whatever this screen fitted no longer holds.
                 fittedTo.current = undefined;
                 setFitted(false);
@@ -146,8 +171,9 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       )
       .then(
         (c) => {
-          if (alive) conn.current = c;
-          else c.close();
+          if (!alive) return c.close();
+          conn.current = c;
+          setLinked(true);
         },
         (e) => {
           if (!alive) return;
@@ -165,24 +191,41 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
 
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
 
-  const toggleFit = () => {
+  const fit = () => {
     const el = box.current;
     if (!el) return;
-    setChanged(false);
-    if (fitted) {
-      conn.current?.send({ kind: { case: "resize", value: { fit: false } } });
-      fittedTo.current = undefined;
-      setFitted(false);
-      return;
-    }
     // At a readable size, how much fits here.
     const fs = 12;
     const cols = Math.floor((el.clientWidth - 12) / (fs * charRatio()));
     const rows = Math.floor((el.clientHeight - 12) / (fs * 1.2));
-    fittedTo.current = "pending";
+    if (cols < 20 || rows < 5) return;
+    setChanged(false);
+    // A window already this size sends no new snapshot to confirm it.
+    const same = cols === size.current.cols && rows === size.current.rows;
+    if (same && fittedTo.current) return;
+    fittedTo.current = same ? { cols, rows } : "pending";
+    releasing.current = false;
     conn.current?.send({ kind: { case: "resize", value: { cols, rows, fit: true } } });
     setFitted(true);
   };
+  const fitNow = useRef(fit);
+  fitNow.current = fit;
+
+  const toggleFit = () => {
+    released.current = fitted;
+    if (!fitted) return fit();
+    setChanged(false);
+    conn.current?.send({ kind: { case: "resize", value: { fit: false } } });
+    fittedTo.current = undefined;
+    releasing.current = true;
+    setFitted(false);
+  };
+
+  useEffect(() => {
+    if (state !== "live" || !linked || autoFitted.current) return;
+    autoFitted.current = true;
+    if (!released.current) fit();
+  }, [state, linked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const live = state === "live";
   return (

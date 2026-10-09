@@ -28,7 +28,7 @@ import java.io.ByteArrayOutputStream
  * A session's terminal: a Termux emulator fed by the remote byte stream
  * (architecture §11, §15). The emulator keeps the tmux window's size; the
  * keyboard, rotation and the view's own size never change it. Only "fit"
- * resizes the tmux window. When output arrives faster than it is shown the
+ * resizes the tmux window, and each connection fits once on its own. When output arrives faster than it is shown the
  * stream is dropped and reopened for a fresh snapshot rather than skipping
  * bytes.
  */
@@ -65,6 +65,10 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     private var conn: TermConn? = null
     private var job: Job? = null
     private var generation = 0
+
+    /** This connection has yet to fit on its own; never again once "还原" was chosen here. */
+    private var autoFit = false
+    private var released = false
     private var frames = TerminalFrames(MAX_BACKLOG)
 
     val session = TerminalSession(2000, SessionClient(), object : TerminalSession.Sink {
@@ -97,6 +101,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         _state.value = State.Connecting
         fit.reset()
         _fitted.value = false
+        autoFit = !released
         job = scope.launch {
             try {
                 val c = remote.openTerminal(sessionId, object : TermListener {
@@ -108,7 +113,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                         enqueue(TerminalFrame.newBuilder().setClosed(reason).build())
                     }
                 })
-                if (gen == generation) conn = c else c.close()
+                if (gen == generation) { conn = c; fitOnOpen() } else c.close()
             } catch (e: Exception) {
                 if (gen == generation) _state.value = State.Closed(errorText(e))
             }
@@ -140,6 +145,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 if (fit.onSnapshot(s.cols to s.rows)) _resizedElsewhere.value = true
                 _fitted.value = fit.fitted
                 _state.value = State.Live
+                fitOnOpen()
             }
             TerminalFrame.KindCase.OUTPUT -> {
                 val b = f.output.toByteArray()
@@ -163,23 +169,31 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         if (_fitted.value) {
             c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setFit(false)).build())
             fit.release()
+            released = true
         } else {
+            released = false
             fitToScreen()
         }
         _resizedElsewhere.value = false
         _fitted.value = fit.fitted
     }
 
+    /** The first snapshot and the connection arrive in either order; fit once both are here. */
+    private fun fitOnOpen() {
+        if (autoFit && fitToScreen()) autoFit = false
+    }
+
     /** Explicit user font changes may refit an already fitted window. */
-    fun fitToScreen() {
-        if (_state.value != State.Live) return
-        val c = conn ?: return
+    fun fitToScreen(): Boolean {
+        if (_state.value != State.Live) return false
+        val c = conn ?: return false
         val (cols, rows) = fitSize
-        if (cols < 10 || rows < 5) return
+        if (cols < 20 || rows < 5) return false
         c.send(TerminalFrame.newBuilder().setResize(TerminalResize.newBuilder().setCols(cols).setRows(rows).setFit(true)).build())
         fit.request(cols to rows)
         _resizedElsewhere.value = false
         _fitted.value = fit.fitted
+        return true
     }
 
     fun close() {
@@ -282,7 +296,8 @@ class FitTracker {
 
     fun request(size: Pair<Int, Int>) {
         requested = size
-        confirmed = false
+        // A window already this size sends no new snapshot to confirm it.
+        confirmed = size == last
         releasing = false
     }
 

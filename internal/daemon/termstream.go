@@ -17,7 +17,8 @@ import (
 
 // TermStream is a live view of a session's terminal: a tmux control-mode
 // client whose pane output is passed on, plus input and resizing. It never
-// changes the window size unless asked to fit a client's screen.
+// changes the window size unless asked to fit a client's screen, which
+// clients ask for when they open it.
 type TermStream struct {
 	d      *Daemon
 	name   string // tmux session

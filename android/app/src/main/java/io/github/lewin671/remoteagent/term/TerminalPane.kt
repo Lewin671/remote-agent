@@ -96,8 +96,9 @@ internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
 
 /**
  * The live terminal of a session with its toolbar and key bar. The font is
- * scaled so the whole tmux window fits; the keyboard and rotation never
- * resize the remote window. Font changes refit only an already fitted window.
+ * scaled so the whole tmux window fits. Opening it fits the remote window to
+ * this screen; the keyboard and rotation never resize it. Font changes refit
+ * only an already fitted window.
  */
 @Composable
 fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier) {
