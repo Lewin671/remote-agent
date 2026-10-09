@@ -139,19 +139,28 @@ public struct DeviceView: Equatable, Sendable, Identifiable {
     }
 }
 
-/// A session's events, contiguous from seq 1.
+/// A session's events, contiguous from seq 1. Each snapshot shares the
+/// pages of the one before it (`PagedList`), so a long history is not copied
+/// for every event that arrives, and `events.extends(previous.events)` tells
+/// cheaply that it only grew.
 public struct SessionEvents: Sendable {
-    public var events: [PBEvent] = []
+    public var events: PagedList<PBEvent> = []
     public var loaded = false
     /// Set when an event does not open: history stops before it.
     public var error: String?
     /// Set when the last fetch failed; the next connection fetches again.
     public var fetchError: String?
 
-    public init(events: [PBEvent] = [], loaded: Bool = false, error: String? = nil, fetchError: String? = nil) {
+    public init(
+        events: PagedList<PBEvent> = [], loaded: Bool = false, error: String? = nil, fetchError: String? = nil
+    ) {
         self.events = events
         self.loaded = loaded
         self.error = error
         self.fetchError = fetchError
+    }
+
+    public init(events: [PBEvent], loaded: Bool = false, error: String? = nil, fetchError: String? = nil) {
+        self.init(events: PagedList(events), loaded: loaded, error: error, fetchError: fetchError)
     }
 }

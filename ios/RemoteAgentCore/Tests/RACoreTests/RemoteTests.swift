@@ -1,0 +1,946 @@
+import Foundation
+import RAProto
+import Testing
+
+@testable import RACore
+
+/// The tests that run against the real Go server. One at a time: each starts
+/// a server of its own and several wait on real time.
+@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
+struct ServerTests {}
+
+/// A server, a fake daemon with one machine, and what a test opened and must close.
+final class World: @unchecked Sendable {
+    let server: TestServer
+    let http = HTTP()
+    let root = randomBytes(32)
+    let daemon: FakeDaemon
+    private let lock = NSLock()
+    private var closers: [@Sendable () -> Void] = []
+
+    private init() async throws {
+        server = try await TestServer()
+        do {
+            daemon = try await FakeDaemon.create(root: root, server: server.url, http: http, setupToken: server.setupToken)
+        } catch {
+            server.close()
+            throw error
+        }
+    }
+
+    /// Runs a test in a fresh world, set up by `setUp`, and takes everything down afterwards.
+    static func run(setUp: (World) async throws -> Void, _ body: (World) async throws -> Void) async throws {
+        let w = try await World()
+        do {
+            try await setUp(w)
+            try await body(w)
+        } catch {
+            await w.close()
+            throw error
+        }
+        await w.close()
+    }
+
+    func onClose(_ f: @escaping @Sendable () -> Void) { lock.withLock { closers.append(f) } }
+
+    private func close() async {
+        for f in lock.withLock({ closers }) { f() }
+        await daemon.disconnect()
+        server.close()
+    }
+
+    /// A new client device of the account.
+    func join() async throws -> Account { try await joinWithRoot(root: root, server: server.url, http: http) }
+
+    func remote(
+        _ account: Account, http: HTTP? = nil, cache: (any CipherCache)? = nil, frameQueue: Int = 1024,
+        historyIdleMs: Int64 = 60_000, historyIdleCount: Int = 8, streamOpenMs: Int64 = 15_000, linkGraceMs: Int64 = 10_000
+    ) throws -> Remote {
+        let r = try Remote(
+            account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue, historyIdleMs: historyIdleMs,
+            historyIdleCount: historyIdleCount, streamOpenMs: streamOpenMs, linkGraceMs: linkGraceMs)
+        onClose { r.close() }
+        return r
+    }
+
+    func client(
+        cache: (any CipherCache)? = nil, http: HTTP? = nil, frameQueue: Int = 1024, historyIdleMs: Int64 = 60_000,
+        historyIdleCount: Int = 8, linkGraceMs: Int64 = 10_000
+    ) async throws -> Remote {
+        try remote(
+            try await join(), http: http, cache: cache, frameQueue: frameQueue, historyIdleMs: historyIdleMs,
+            historyIdleCount: historyIdleCount, linkGraceMs: linkGraceMs)
+    }
+}
+
+func session(_ cwd: String, _ title: String, status: PBSessionStatus = .idle) -> PBSession {
+    var s = PBSession()
+    s.cwd = cwd
+    s.title = title
+    s.status = status
+    return s
+}
+
+func user(_ t: String) -> PBEvent {
+    var e = PBEvent()
+    e.userMessage.text = t
+    return e
+}
+
+func agent(_ t: String) -> PBEvent {
+    var e = PBEvent()
+    e.agentMessage.text = t
+    return e
+}
+
+private func interrupt(_ sid: String = "s1") -> PBCommand {
+    var c = PBCommand()
+    c.interrupt.sessionID = sid
+    return c
+}
+
+/// What a test's listener heard from a terminal.
+private final class Frames: TermListener, Sendable {
+    let frames = Mailbox<PBTerminalFrame>()
+    let closes = Mailbox<String>()
+    func onFrame(_ frame: PBTerminalFrame) { frames.put(frame) }
+    func onClose(_ reason: String) { closes.put(reason) }
+}
+
+extension ServerTests {
+    /// The sync engine against the real Go server and a fake daemon.
+    @Suite struct RemoteTests {
+        private func world(_ body: (World) async throws -> Void) async throws {
+            try await World.run(setUp: { w in
+                try await w.daemon.putMachine("fake-mac.local")
+                try await w.daemon.putSession("s1", session("/Users/me/Code/foo", "修复登录超时"))
+                try await w.daemon.upload("s1", user("你好"), agent("你好，有什么要做的？"), agent("第三条"))
+                try await w.daemon.connect()
+            }, body)
+        }
+
+        @Test func aRemovedClientLearnsItAndStopsConnecting() async throws {
+            try await world { w in
+                let r = try await w.client()
+                let other = try await w.client()
+                r.start()
+                other.start()
+                _ = try await r.awaitState("online") { $0.conn == .online }
+                _ = try await other.awaitState("online") { $0.conn == .online }
+                try await other.removeDevice(r.account.deviceId)
+                let st = try await r.awaitState("removed") { $0.removed }
+                #expect(st.conn == .offline)
+                // It stays put rather than reconnecting, also when asked to start.
+                r.start()
+                await sleepMs(1500)
+                #expect(r.current.removed)
+                #expect(r.current.conn == .offline)
+                // Asked to try again, it is turned away again.
+                r.retryLogin()
+                _ = try await r.awaitState("trying") { !$0.removed }
+                _ = try await r.awaitState("removed again") { $0.removed }
+            }
+        }
+
+        @Test func activeHistorySurvivesExpiryAndTheSameFlowReloadsAfterReclamation() async throws {
+            try await world { w in
+                let r = try await w.client(cache: MemoryCache(), historyIdleMs: 100)
+                r.start()
+                let feed = r.events("s1")  // Followed before the session list exists.
+                let follower = Task { for await _ in feed.updates() {} }
+                _ = try await feed.await("3 events") { $0.events.count == 3 }
+                let old = feed.value.events
+                await sleepMs(350)
+                #expect(feed.value.events.count == 3)
+                follower.cancel()
+                await follower.value
+                try await eventually("the idle history to be reclaimed", ms: 5_000) { feed.value.events.isEmpty }
+                let restored = try await feed.await("the history again", ms: 5_000) { $0.events.count == 3 }
+                #expect(restored.seqs == [1, 2, 3])
+                // The snapshot handed out before did not change under its holder.
+                #expect(old.count == 3)
+                #expect(r.events("s1") === feed)
+            }
+        }
+
+        @Test func idleBudgetDoesNotReclaimAnActiveConsumer() async throws {
+            try await world { w in
+                try await w.daemon.putSession("s2", session("/tmp", "two"))
+                try await w.daemon.upload("s2", agent("two"))
+                try await w.daemon.putSession("s3", session("/tmp", "three"))
+                try await w.daemon.upload("s3", agent("three"))
+                let r = try await w.client(cache: MemoryCache(), historyIdleCount: 1)
+                r.start()
+                let active = r.events("s1")
+                let follower = Task { for await _ in active.updates() {} }
+                defer { follower.cancel() }
+                _ = try await active.await("3 events") { $0.events.count == 3 }
+                let second = r.events("s2")
+                _ = try await second.await("s2") { $0.events.count == 1 }
+                let third = r.events("s3")
+                _ = try await third.await("s3") { $0.events.count == 1 }
+                try await eventually("s2 to be reclaimed", ms: 5_000) { second.value.events.isEmpty }
+                #expect(active.value.events.count == 3)
+            }
+        }
+
+        @Test func aReclaimedLoadingFlowCanReloadWithoutWaitingForItsOldCacheRead() async throws {
+            try await world { w in
+                let base = MemoryCache()
+                let source = try await w.client(cache: base)
+                source.start()
+                _ = try await source.awaitEvents("s1", 3)
+                source.stop()
+                let gate = Signal()
+                let blocked = Signal()
+                let calls = Counter()
+                let cache = HookedCache(base)
+                cache.hookEvents { sid in
+                    if calls.increment() == 2 {
+                        blocked.set()
+                        await gate.wait()
+                        return Array(await base.events(sessionId: sid).prefix(1))
+                    }
+                    return await base.events(sessionId: sid)
+                }
+                let r = try await w.client(cache: cache, historyIdleMs: 100)
+                r.start()
+                _ = try await r.awaitState("cached session") { $0.sessions["s1"] != nil }
+                let feed = r.events("s1")
+                var follower = Task { for await _ in feed.updates() {} }
+                defer {
+                    gate.set()
+                    follower.cancel()
+                }
+                // The eager events(sid) call completes normally. Later loads are
+                // triggered solely by following this same feed.
+                _ = try await feed.await("3 events", ms: 5_000) { $0.events.count == 3 }
+                follower.cancel()
+                await follower.value
+                try await eventually("reclaimed", ms: 5_000) { feed.value.events.isEmpty }
+                follower = Task { for await _ in feed.updates() {} }
+                #expect(await blocked.wait(5_000))
+                follower.cancel()
+                await follower.value
+                await sleepMs(350)  // Reclaim the unobserved, still-suspended buffer.
+                follower = Task { for await _ in feed.updates() {} }
+                _ = try await feed.await("3 events again", ms: 5_000) { $0.events.count == 3 }
+                #expect(calls.value >= 3)
+                gate.set()
+                await sleepMs(150)
+                #expect(feed.value.seqs == [1, 2, 3])
+            }
+        }
+
+        @Test func syncsListsEventsAndPushes() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let st = try await r.awaitState("session meta") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                let machine = try #require(st.machines[w.daemon.id])
+                #expect(machine.meta?.hostname == "fake-mac.local")
+                #expect(machine.online)
+                let s = try #require(st.sessions["s1"])
+                #expect(s.info?.title == "修复登录超时")
+                #expect(s.info?.cwd == "/Users/me/Code/foo")
+                #expect(s.machineId == w.daemon.id)
+
+                let ev = try await r.awaitEvents("s1", 3)
+                #expect(ev.seqs == [1, 2, 3])
+                #expect(ev.events[0].userMessage.text == "你好")
+                // A pushed event arrives in order, once.
+                try await w.daemon.upload("s1", agent("第四条"))
+                let ev4 = try await r.awaitEvents("s1", 4)
+                #expect(ev4.seqs == [1, 2, 3, 4])
+                // The longer history continues the shorter one: its pages are shared.
+                #expect(ev4.events.extends(ev.events))
+                // A newer meta revision replaces the older one.
+                try await w.daemon.putSession("s1", session("/Users/me/Code/foo", "新的标题"))
+                _ = try await r.awaitState("new title") { $0.sessions["s1"]?.info?.title == "新的标题" }
+            }
+        }
+
+        @Test func forwardsCommandsAndReportsOffline() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("online machine") {
+                    $0.conn == .online && $0.machines[id]?.online == true && $0.sessions["s1"]?.info != nil
+                }
+                var send = PBCommand()
+                send.send.sessionID = "s1"
+                send.send.text = "跑一下测试"
+                send.send.requestID = "q1"
+                let res = try await r.command("s1", send)
+                #expect(res.send.queuePosition == 1)
+                let (h, cmd) = try #require(await w.daemon.commands.poll(5_000))
+                #expect(h.sessionID == "s1")
+                #expect(cmd.send.text == "跑一下测试")
+                #expect(cmd.protocolVersion == protocolVersion)
+                #expect(h.sender == r.account.deviceId)
+                #expect(h.deadlineMs > Int64(Date().timeIntervalSince1970 * 1000))
+
+                // The daemon's own error comes back as it is.
+                var compact = PBCommand()
+                compact.compact.sessionID = "s1"
+                do {
+                    try await r.command("s1", compact)
+                    Issue.record("expected an error")
+                } catch let e as CommandError {
+                    #expect(e.code == "unimplemented")
+                    #expect(e.fromDaemon)
+                }
+
+                await w.daemon.disconnect()
+                _ = try await r.awaitState("offline machine") { $0.machines[id]?.online == false }
+                do {
+                    try await r.command("s1", interrupt())
+                    Issue.record("expected unavailable")
+                } catch let e as CommandError {
+                    #expect(e.code == CommandError.unavailable)
+                }
+            }
+        }
+
+        private func refused(_ w: World, protocol version: UInt32) async throws -> CommandError {
+            let r = try await w.client()
+            r.start()
+            let id = w.daemon.id
+            _ = try await r.awaitState("online machine") {
+                $0.conn == .online && $0.machines[id]?.online == true && $0.sessions["s1"]?.info != nil
+            }
+            try await w.daemon.putMachine("fake-mac.local", protocol: version)
+            _ = try await r.awaitState("machine protocol") { $0.machines[id]?.meta?.protocolVersion == version }
+            do {
+                try await r.command("s1", interrupt())
+            } catch let e as CommandError {
+                // Nothing was sent.
+                #expect(await w.daemon.commands.poll(300) == nil)
+                #expect(!e.fromDaemon)
+                return e
+            }
+            throw TestFailure("expected a version error")
+        }
+
+        @Test func sendsNothingToAMachineOfAnOlderProtocol() async throws {
+            try await world { w in
+                let e = try await refused(w, protocol: protocolVersion - 1)
+                #expect(e.code == "failed_precondition")
+                #expect(e.message == "fake-mac 上的 remote-agent 版本较旧，请在电脑上更新后再试")
+            }
+        }
+
+        @Test func sendsNothingToAMachineOfANewerProtocol() async throws {
+            try await world { w in
+                let e = try await refused(w, protocol: protocolVersion + 1)
+                #expect(e.code == "failed_precondition")
+                #expect(e.message == "这个 App 版本较旧，请更新后再试")
+            }
+        }
+
+        @Test func streamsTheTerminal() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"] != nil && $0.machines[id]?.online == true
+                }
+                let heard = Frames()
+                let conn = try await r.openTerminal("s1", listener: heard)
+                let snap = try #require(await heard.frames.poll(5_000))
+                #expect(snap.snapshot.cols == 120)
+                #expect(try #require(await heard.frames.poll(5_000)).output == Data(" world".utf8))
+                var a = PBTerminalFrame()
+                a.input = Data("中文\r".utf8)
+                var b = PBTerminalFrame()
+                b.input = Data("\u{1b}[A".utf8)
+                conn.send(a)
+                conn.send(b)
+                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("中文\r".utf8))
+                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("\u{1b}[A".utf8))
+                conn.close()
+                // Closed by this side: the listener is not told.
+                #expect(await heard.closes.poll(300) == nil)
+            }
+        }
+
+        @Test func aTerminalFrameOutOfOrderEndsTheStream() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("session") {
+                    $0.conn == .online && $0.sessions["s1"] != nil && $0.machines[id]?.online == true
+                }
+                await w.daemon.setReplayTerminal(true)
+                let heard = Frames()
+                _ = try await r.openTerminal("s1", listener: heard)
+                #expect(try #require(await heard.frames.poll(5_000)).snapshot.cols == 120)
+                #expect(try #require(await heard.frames.poll(5_000)).output == Data(" world".utf8))
+                // The same number again: refused, and the stream is over, said once.
+                #expect(await heard.closes.poll(5_000) == "终端帧顺序不对")
+                #expect(await heard.frames.poll(300) == nil)
+                #expect(await heard.closes.poll(300) == nil)
+            }
+        }
+
+        @Test func aTerminalThatCannotBeReachedSaysSo() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"] != nil }
+                let heard = Frames()
+                // No such session: nothing is opened.
+                await #expect(throws: CommandError.self) { try await r.openTerminal("nope", listener: heard) }
+                w.server.stop()
+                do {
+                    _ = try await r.openTerminal("s1", listener: heard)
+                    Issue.record("expected the terminal not to open")
+                } catch {
+                    #expect(errorText(error) == "连不上终端")
+                }
+                #expect(await heard.closes.poll(300) == nil)
+            }
+        }
+
+        /// The server answers this client's pings, so a quiet stream stays up.
+        @Test func aQuietSocketThatIsAnsweredStaysOpen() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let api = try Api(server: w.server.url, http: w.http)
+                var hello = PBPeerFrame()
+                hello.hello.token = try await login(api: api, account: acct)
+                let socket = Socket(http: w.http, url: api.socketURL("/v1/stream"), hello: try hello.serializedData(), pingMs: 100, sleep: realSleep)
+                #expect(await socket.opened())
+                let first = try PBServerFrame(serializedBytes: try await socket.receive())
+                guard case .ready? = first.kind else {
+                    Issue.record("expected Ready first")
+                    return
+                }
+                // Ten pings later it is still there: each was answered before the next.
+                let ended = Signal()
+                Task {
+                    // Read on, as the engine does: URLSession only notices an answer while something is being read.
+                    while (try? await socket.receive()) != nil {}
+                    _ = await socket.ended()
+                    ended.set()
+                }
+                await sleepMs(1_000)
+                #expect(!ended.isSet)
+                socket.close()
+                #expect(await ended.wait(5_000))
+            }
+        }
+
+        @Test func pairsANewDevice() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("online") { $0.conn == .online }
+                let initiation = try await Initiation.start(remote: r)
+                let link = try #require(PairLink.parse(initiation.link.url(web: "https://app.example.com")))
+                #expect(link.code == initiation.code)
+                let joinerEmoji = Mailbox<[String]>()
+                let http = w.http
+                async let joining = joinByPairing(link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false })
+                let (emoji, kind) = try await initiation.joined()
+                try await initiation.approve()
+                let acct = try await joining
+                #expect(kind == .client)
+                #expect(emoji.count == 4)
+                #expect(joinerEmoji.all == [emoji])
+                #expect(acct.root == w.root)
+                #expect(acct.server == w.server.url)
+                // The device that joined is the account's: it logs in and lists like any other.
+                let joined = try w.remote(acct)
+                joined.start()
+                _ = try await joined.awaitState("the new device's lists") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+            }
+        }
+
+        @Test func comingBackReusesTheLogin() async throws {
+            try await world { w in
+                let logins = Counter()
+                let counting = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: counting)
+                r.start()
+                _ = try await r.awaitState("online") { $0.conn == .online }
+                #expect(logins.value == 1)
+                // The app went to the background and came back: no second login.
+                r.stop()
+                _ = try await r.awaitState("offline") { $0.conn == .offline }
+                r.start()
+                _ = try await r.awaitState("online again") { $0.conn == .online }
+                #expect(logins.value == 1)
+            }
+        }
+
+        @Test func aStreamWithoutReadyIsReplacedEvenThoughTheUpgradeSucceeded() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let hole = try StreamBlackhole()
+                w.onClose { hole.close() }
+                // Only the stream goes to the fixture; auth and list RPCs use the real server.
+                let real = w.server.url
+                let routed = Intercept.http(for: hole.url) { $0.moved(to: real) }
+                let r = try w.remote(
+                    Account(server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    http: routed, streamOpenMs: 300)
+                r.start()
+                _ = try await r.awaitState("missing Ready timeout") { $0.conn == .offline && $0.error.contains("超时") }
+                r.reconnectNow()
+                _ = try await r.awaitState("replacement ready") { $0.conn == .online }
+                #expect(hole.attempts.value == 2)
+            }
+        }
+
+        /// How many logins a client makes when its first stream is closed with `code` and the next one works.
+        private func loginsWhenTheFirstStreamIsClosed(_ w: World, with code: Int) async throws -> Int {
+            let acct = try await w.join()
+            let hole = try StreamBlackhole(firstClose: code)
+            w.onClose { hole.close() }
+            let logins = Counter()
+            let real = w.server.url
+            let routed = Intercept.http(for: hole.url) { request in
+                if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
+                return request.moved(to: real)
+            }
+            let r = try w.remote(
+                Account(server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId), http: routed)
+            r.start()
+            let lost = try await r.awaitState("the closed stream") { $0.conn == .offline }
+            #expect(lost.error == "与 server 的连接断开")
+            r.reconnectNow()
+            _ = try await r.awaitState("the next stream") { $0.conn == .online }
+            #expect(hole.attempts.value == 2)
+            return logins.value
+        }
+
+        @Test func aHelloRefusedWith1008DropsTheTokenAndLogsInAgain() async throws {
+            try await world { w in
+                let logins = try await loginsWhenTheFirstStreamIsClosed(w, with: policyViolation)
+                #expect(logins == 2)
+            }
+        }
+
+        @Test func aStreamClosedForAnotherReasonKeepsTheToken() async throws {
+            try await world { w in
+                let logins = try await loginsWhenTheFirstStreamIsClosed(w, with: 1011)
+                #expect(logins == 1)
+            }
+        }
+
+        @Test func aStreamThatOverflowsIsReplacedAndNothingIsLost() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let proxy = try CountingProxy(to: w.server.port)
+                w.onClose { proxy.close() }
+                // Every batch takes a while to put away, so pushes pile up behind it.
+                let cache = HookedCache()
+                cache.hookPutEvents { sid, events in
+                    await sleepMs(60)
+                    await cache.inner.putEvents(sessionId: sid, events: events)
+                }
+                let r = try w.remote(
+                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    cache: cache, frameQueue: 1)
+                r.start()
+                _ = try await r.awaitEvents("s1", 3)
+                for i in 0..<30 { try await w.daemon.upload("s1", agent("快速的第 \(i) 条")) }
+                let ev = try await r.awaitEvents("s1", 33, ms: 40_000)
+                #expect(ev.seqs == Array(1...33))
+                // The queue did overflow: the stream was dropped and made again, and history filled the gap.
+                #expect(proxy.streams.value >= 2)
+                try await eventually("every event to be cached") { await cache.inner.events(sessionId: "s1").count == 33 }
+            }
+        }
+
+        @Test func repeatedNetworkCallbacksDuringLoginLeaveOnlyOneCurrentStream() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let proxy = try CountingProxy(to: w.server.port)
+                let gate = Signal()
+                let entered = Signal()
+                let challenges = Counter()
+                w.onClose {
+                    gate.set()
+                    proxy.close()
+                }
+                let blocked = Intercept.http(for: proxy.url) { request in
+                    if request.url?.path.hasSuffix("/GetChallenge") == true {
+                        challenges.increment()
+                        entered.set()
+                        while !gate.isSet { try await Task.sleep(nanoseconds: 10_000_000) }
+                    }
+                    return request
+                }
+                let r = try w.remote(
+                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId),
+                    http: blocked)
+                r.start()
+                #expect(await entered.wait(5_000))
+                for _ in 0..<4 { r.reconnectNow() }
+                await sleepMs(200)
+                gate.set()
+                _ = try await r.awaitState("one online stream") { $0.conn == .online && $0.loaded }
+                await sleepMs(200)
+                #expect(proxy.streams.value == 1)
+                #expect(challenges.value >= 1)
+            }
+        }
+
+        @Test func aLoginThatDoesNotReturnTimesOutAndCanRecover() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let unblocked = Signal()
+                let attempts = Counter()
+                w.onClose { unblocked.set() }
+                let slow = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/GetChallenge") == true {
+                        attempts.increment()
+                        while !unblocked.isSet { try await Task.sleep(nanoseconds: 10_000_000) }
+                    }
+                    return request
+                }
+                let r = try w.remote(acct, http: slow, streamOpenMs: 300)
+                r.start()
+                let off = try await r.awaitState("login timeout") { $0.conn == .offline }
+                #expect(off.error == "连接超时")
+                #expect(!r.current.removed)
+                unblocked.set()
+                r.reconnectNow()
+                _ = try await r.awaitState("login recovery") { $0.conn == .online }
+                #expect(attempts.value >= 2)
+            }
+        }
+
+        @Test func networkChangeReplacesAnOnlineStreamAndCatchesUpExactlyOnce() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let proxy = try CountingProxy(to: w.server.port)
+                w.onClose { proxy.close() }
+                let r = try w.remote(
+                    Account(server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed, deviceId: acct.deviceId))
+                r.start()
+                _ = try await r.awaitEvents("s1", 3)
+                r.reconnectNow()
+                _ = try await r.awaitState("network replacement") { $0.conn == .connecting }
+                try await w.daemon.upload("s1", agent("during replacement"))
+                let events = try await r.awaitEvents("s1", 4)
+                #expect(events.seqs == [1, 2, 3, 4])
+                _ = try await r.awaitState("online again") { $0.conn == .online }
+                #expect(proxy.streams.value == 2)
+            }
+        }
+
+        @Test func reconnectsWithoutLosingOrRepeatingEvents() async throws {
+            try await world { w in
+                let cache = MemoryCache()
+                let r = try await w.client(cache: cache)
+                r.start()
+                _ = try await r.awaitEvents("s1", 3)
+                w.server.stop()
+                _ = try await r.awaitState("offline") { $0.conn != .online }
+                try await w.server.start()
+                try await w.daemon.login()
+                try await w.daemon.connect()
+                try await w.daemon.upload("s1", agent("断线期间"), agent("又一条"))
+                _ = try await r.awaitState("online", ms: 40_000) { $0.conn == .online }
+                let ev = try await r.awaitEvents("s1", 5)
+                #expect(ev.seqs == [1, 2, 3, 4, 5])
+
+                // A new run shows the cached history before it is online.
+                r.stop()
+                w.server.stop()
+                let again = try w.remote(r.account, cache: cache)
+                again.start()
+                _ = try await again.awaitState("cached session") { $0.sessions["s1"]?.info != nil }
+                let cached = try await again.awaitEvents("s1", 5)
+                #expect(cached.events.count == 5)
+                #expect(again.current.machines[w.daemon.id]?.online == false)
+            }
+        }
+
+        @Test func aSlowCacheWriteDoesNotRollBackNewerMetadata() async throws {
+            try await world { w in
+                let gate = Signal()
+                let blocked = Signal()
+                let cache = HookedCache()
+                cache.hookPutEvents { _, _ in
+                    blocked.set()
+                    await gate.wait()
+                }
+                w.onClose { gate.set() }
+                let r = try await w.client(cache: cache)
+                r.start()
+                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                // Loading the history writes it to the cache, which hangs here.
+                _ = r.events("s1")
+                #expect(await blocked.wait(10_000))
+                // Meanwhile newer metadata arrives through the stream.
+                try await w.daemon.putSession("s1", session("/Users/me/Code/foo", "新的标题"))
+                _ = try await r.awaitState("new title") { $0.sessions["s1"]?.info?.title == "新的标题" }
+                gate.set()
+                _ = try await r.awaitEvents("s1", 3)
+                await sleepMs(200)
+                #expect(r.current.sessions["s1"]?.info?.title == "新的标题")
+            }
+        }
+
+        @Test func aFrozenAttemptResendsTheSameRequest() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                let a = Attempt()
+                let first = try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) }
+                try await r.forward(first)
+                // Pretend the answer was lost: the retry carries the same request ID and deadline.
+                a.settle(CommandError(CommandError.unknownOutcome, "lost"))
+                try await r.forward(try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) })
+                let (h1, _) = try #require(await w.daemon.commands.poll(5_000))
+                let (h2, _) = try #require(await w.daemon.commands.poll(5_000))
+                #expect(h1.requestID == h2.requestID)
+                #expect(h1.deadlineMs == h2.deadlineMs)
+            }
+        }
+
+        @Test func anUnknownOutcomeStaysUnknownWhenTheMachineThenGoesOffline() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let daemon = w.daemon
+                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[daemon.id]?.online == true }
+                // The daemon takes the command and drops off before answering: it may
+                // have run. The retry then finds the machine offline, which says
+                // nothing about the first try.
+                await daemon.setAnswer { _, c in
+                    await daemon.disconnect()
+                    return FakeDaemon.defaultResult(c)
+                }
+                do {
+                    try await r.forward(try r.prepare(machineId: daemon.id, sessionId: "s1", interrupt()))
+                    Issue.record("expected an error")
+                } catch let e as CommandError {
+                    #expect(e.code == CommandError.unknownOutcome)
+                }
+            }
+        }
+
+        @Test func aFailedLoginWhileRetryingAnUnknownCommandKeepsItUnknown() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("online") { $0.conn == .online }
+                let p = try r.prepare(machineId: w.daemon.id, sessionId: "s1", interrupt())
+                // The login is refused from here on: the retry is told to log in
+                // again, and that fails. The command it retries may have run.
+                try await r.removeDevice(r.account.deviceId)
+                do {
+                    try await r.forward(p, retryOfUnknown: true)
+                    Issue.record("expected an error")
+                } catch let e as CommandError {
+                    #expect(e.code == CommandError.unknownOutcome)
+                }
+            }
+        }
+
+        @Test func aResultThatDoesNotOpenLeavesTheOutcomeUnknown() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                await w.daemon.setGarbleResults(true)
+                let a = Attempt()
+                let first = try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) }
+                var shown: Error?
+                do {
+                    try await r.forward(first)
+                } catch {
+                    shown = a.settle(error)
+                }
+                // The daemon did get it; its answer could not be read. Retry the same.
+                #expect((shown as? CommandError)?.unknown == true)
+                #expect(a.frozen)
+                #expect(try a.next { try r.prepare(machineId: id, sessionId: "s1", interrupt()) } === first)
+            }
+        }
+
+        @Test func aServerOutOfReachIsNamedOnlyAfterAMoment() async throws {
+            try await world { w in
+                let r = try await w.client(linkGraceMs: 300)
+                r.start()
+                let on = try await r.awaitState("session") { $0.link == .online && $0.sessions["s1"]?.info != nil }
+                #expect(!on.unlinked)
+                w.server.stop()
+                // Just lost: it is being remade, and what was known still shows.
+                let lost = try await r.awaitState("lost") { $0.conn != .online }
+                #expect(lost.link == .waiting)
+                #expect(!lost.unlinked)
+                #expect(lost.offlineSinceMs > 0)
+                let out = try await r.awaitState("out of reach") { $0.link == .noServer }
+                #expect(out.unlinked)
+                try await w.server.start()
+                r.reconnectNow()
+                _ = try await r.awaitState("back") { $0.link == .online && !$0.unlinked }
+            }
+        }
+
+        @Test func aDeviceWithoutANetworkSaysSoAtOnce() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("online") { $0.link == .online }
+                // The server is still there: the system's word alone ends the connection.
+                w.server.stop()
+                r.setNetwork(false)
+                let off = try await r.awaitState("no network") { $0.link == .noNetwork }
+                #expect(off.unlinked)
+                try await w.server.start()
+                r.setNetwork(true)
+                _ = try await r.awaitState("back", ms: 20_000) { $0.link == .online }
+            }
+        }
+
+        @Test func aHistoryThatFailsToLoadSaysSoOnTheSession() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                w.server.stop()
+                // Which comes first is a race the client does not decide: the read failing, which is
+                // said on the session, or the stream dropping, after which a failed read is not said
+                // apart (architecture 「断线时显示什么」) and the next connection reads again.
+                let events = r.events("s1")
+                try await eventually("the read to fail or the stream to drop", ms: 20_000) {
+                    events.value.fetchError != nil || r.current.conn != .online
+                }
+                if let said = events.value.fetchError { #expect(said.hasPrefix("没能读取历史")) }
+                // Back again, a retry loads it and clears the error.
+                try await w.server.start()
+                r.retryEvents("s1")
+                let ok = try await events.await("the history", ms: 20_000) { $0.events.count == 3 && $0.fetchError == nil }
+                #expect(ok.events.count == 3)
+            }
+        }
+
+        @Test func stoppingDuringLoginLeavesTheStreamClosed() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                r.stop()
+                await sleepMs(3000)
+                #expect(r.current.conn != .online)
+            }
+        }
+
+        @Test func aReaderThatFallsBehindCatchesUpFromHistory() async throws {
+            try await world { w in
+                let r = try await w.client(frameQueue: 1)
+                r.start()
+                _ = try await r.awaitEvents("s1", 3)
+                for i in 0..<40 { try await w.daemon.upload("s1", agent("快速的第 \(i) 条")) }
+                let ev = try await r.awaitEvents("s1", 43, ms: 40_000)
+                #expect(ev.seqs == Array(1...43))
+            }
+        }
+
+        @Test func fetchesAnImageAndCachesOnlyItsEnvelope() async throws {
+            try await world { w in
+                let cache = MemoryCache()
+                let r = try await w.client(cache: cache)
+                r.start()
+                _ = try await r.awaitState("session") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                let png = Data([0x89, 0x50, 0x4E, 0x47, 13, 10, 26, 10, 1, 2, 3])
+                var payload = PBImagePayload()
+                payload.format = .png
+                payload.width = 1
+                payload.height = 1
+                payload.data = png
+                try await w.daemon.putImage("s1", "00000000000000000000000000000001", payload)
+                let got = try await r.image("s1", imageId: "00000000000000000000000000000001")
+                guard case .loaded(let loaded) = got else {
+                    Issue.record("expected the image, got \(got)")
+                    return
+                }
+                #expect(loaded.data == png)
+                // What the cache holds is the sealed envelope, not the picture.
+                let stored = try #require(cache.images["s1/00000000000000000000000000000001"])
+                #expect(stored.range(of: png) == nil)
+                // The second time it comes from the cache, and is opened and checked again.
+                #expect(try await r.image("s1", imageId: "00000000000000000000000000000001") == got)
+                #expect(try await r.image("s1", imageId: "ffffffffffffffffffffffffffffffff") == .missing)
+                // A format that does not match its bytes is refused.
+                var wrong = PBImagePayload()
+                wrong.format = .jpeg
+                wrong.data = png
+                try await w.daemon.putImage("s1", "00000000000000000000000000000002", wrong)
+                guard case .corrupt = try await r.image("s1", imageId: "00000000000000000000000000000002") else {
+                    Issue.record("expected a corrupt image")
+                    return
+                }
+            }
+        }
+
+        @Test func twoClientsChangingProjectsKeepBothChanges() async throws {
+            try await world { w in
+                let a = try await w.client()
+                let b = try await w.client()
+                a.start()
+                b.start()
+                _ = try await a.awaitState("a prefs") { $0.conn == .online && $0.prefs != nil }
+                _ = try await b.awaitState("b prefs") { $0.conn == .online && $0.prefs != nil }
+                try await a.changePrefs(.pin(path: "/Users/me/Code/foo"))
+                // b has not seen a's write yet when it writes: the server refuses, b redoes its change on a's.
+                try await b.changePrefs(.hide(path: "/Users/me/Code/billing"))
+                let sa = try await a.awaitState("a sees both") { $0.prefs?.hidden.contains("/Users/me/Code/billing") == true }
+                #expect(sa.prefs?.pinned == ["/Users/me/Code/foo"])
+                #expect(sa.prefs?.revision == 2)
+            }
+        }
+
+        @Test func aClientsNameReachesTheOtherClients() async throws {
+            try await world { w in
+                let a = try await w.client()
+                let b = try await w.client()
+                a.start()
+                b.start()
+                let id = a.account.deviceId
+                _ = try await a.awaitState("a devices") { $0.conn == .online && $0.devices[id] != nil }
+                _ = try await b.awaitState("b sees a") { $0.devices[id] != nil }
+                try await a.describeSelf(platform: "ios", description: "iOS 26 · iPhone")
+                try await a.renameDevice(id, name: "我的手机")
+                let sb = try await b.awaitState("b sees the name") { $0.devices[id]?.meta?.name == "我的手机" }
+                // Naming it kept what it said of itself.
+                #expect(sb.devices[id]?.meta?.platform == "ios")
+                #expect(sb.devices[id]?.kind == .client)
+            }
+        }
+
+        @Test func measuresTheWayToTheServerAndToAComputer() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                let id = w.daemon.id
+                _ = try await r.awaitState("online machine") { $0.conn == .online && $0.machines[id]?.online == true }
+                #expect(try await r.pingServer() >= 0)
+                // The fake daemon has no settings: its refusal is still an answer that made the round trip.
+                do {
+                    _ = try await r.pingMachine(id)
+                    Issue.record("the fake daemon answers settings with an error")
+                } catch let e as CommandError {
+                    #expect(e.fromDaemon)
+                }
+                w.server.stop()
+                await #expect(throws: (any Error).self) { try await r.pingServer(timeoutMs: 2_000) }
+            }
+        }
+    }
+}
