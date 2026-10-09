@@ -32,7 +32,6 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   });
   const cols = colsOf(remote, p?.sessions ?? [], false);
   const [scrolled, setScrolled] = useState(false);
-  const [typing, setTyping] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(() => remote.demoFlag("project-settings"));
   const endedRef = useRef<HTMLDivElement>(null);
   const [focus] = useState(() => remote.focusProject === pkey);
@@ -93,13 +92,13 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   );
   return (
     <div className="page">
-      {/* With the keyboard up the project's head folds into the bar. */}
-      <NavBar onBack={onBack} title={scrolled || typing ? name : undefined} sub={scrolled || typing ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置"><Ellipsis /></button>} />
+      {/* Scrolled away, the project's head folds into the bar; the keyboard moves nothing. */}
+      <NavBar onBack={onBack} title={scrolled ? name : undefined} sub={scrolled ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置"><Ellipsis /></button>} />
       <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
-        {!typing && <div className="pad">{head}</div>}
+        <div className="pad">{head}</div>
         {lists}
       </div>
-      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} onFocus={setTyping} />}
+      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} />}
       {settingsOpen && <ConfigSheet ns={ns} onClose={() => setSettingsOpen(false)} />}
     </div>
   );

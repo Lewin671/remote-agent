@@ -396,7 +396,6 @@ export function NewBox({
   variant = "box",
   lead,
   onDraft,
-  onFocus,
 }: {
   ns: NewSession;
   name: string;
@@ -404,8 +403,6 @@ export function NewBox({
   variant?: "box" | "prompt" | "start";
   lead?: ReactNode;
   onDraft?: () => void;
-  // Whether the user is typing in it: a phone makes room for the keyboard.
-  onFocus?: (typing: boolean) => void;
 }) {
   const [text, setText] = useState("");
   const [config, setConfig] = useState<"" | "main" | Pick>("");
@@ -484,8 +481,6 @@ export function NewBox({
           void submit();
         }
       }}
-      onFocus={() => onFocus?.(true)}
-      onBlur={() => onFocus?.(false)}
       aria-label="新会话的第一句话"
     />
   );

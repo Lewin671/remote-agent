@@ -372,7 +372,7 @@ private fun EmptyAccount(state: RemoteState) {
  * under a row starts where its text does.
  */
 @Composable
-fun SessionRow(state: RemoteState, s: SessionView, t: Long, meta: RowMeta = RowMeta(), last: Boolean = false, preview: Boolean = true, selected: Boolean = false) {
+fun SessionRow(state: RemoteState, s: SessionView, t: Long, meta: RowMeta = RowMeta(), last: Boolean = false, selected: Boolean = false) {
     if (exited(s)) return EndedRow(s, t, project = meta.project, selected = selected)
     val p = pal
     val nav = LocalNav.current
@@ -387,7 +387,7 @@ fun SessionRow(state: RemoteState, s: SessionView, t: Long, meta: RowMeta = RowM
                 Text(titleOf(s), style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(whenText(s.updatedMs, t), style = T.meta, color = p.muted, maxLines = 1)
             }
-            val pv = if (preview) previewOf(s, st) else ""
+            val pv = previewOf(s, st)
             Text(
                 buildAnnotatedString {
                     pushStyle(SpanStyle(color = p.toneInk(st.tone), fontWeight = platformWeight(FontWeight.SemiBold)))

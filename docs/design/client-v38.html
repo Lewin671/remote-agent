@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v37</title>
+<title>remote-agent 客户端设计稿 v38</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v37 · 2026-10-09 · 上一版 v36 在 git 历史里（<code>git log -- docs/design/client-v36.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v38 · 2026-10-09 · 上一版 v37 在 git 历史里（<code>git log -- docs/design/client-v37.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v36 的改动</h4><ul><li>终端：进入终端时自动适配这块屏幕，不用再点「适配」；点过「还原」的终端不再自动适配。手机、宽屏并排和 Android 相同。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v37 的改动</h4><ul><li>项目页：键盘弹出时画面不变，只是列表变矮；项目标题和设置摘要在滚出屏幕后才收进导航栏，不再跟着键盘折叠，会话行也不再去掉预览、「最近结束」不再隐藏。手机和 Android 相同。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1080,17 +1080,21 @@
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>foo</b><span>Claude Code · 自动 · MacBook</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="body">
+        <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
+          <div class="av lg c1">f</div>
+          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div><a class="proj-cfg" href="#project-settings"><em>Claude Code · 自动 · </em><em class="mach">MacBook</em></a></div>
+        </div>
         <div class="label">进行中 <span>2</span></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span></div><div class="mc">Codex · VPS-dev</div></div></div>
-        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">Codex · MacBook</div></div></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
+        <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
       </div>
       <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
       <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 Agent，点一下切换：设置摘要换成 Claude Code 在这个项目里的那一套，草稿保留。键盘弹出时项目标题和设置摘要收进导航栏，切换仍贴在输入框上方；空消息不发送</div>
+    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 Agent，点一下切换：设置摘要换成 Claude Code 在这个项目里的那一套，草稿保留。键盘弹出时画面不动，只是列表变矮，切换仍贴在输入框上方；项目标题和设置摘要滚出屏幕后收进导航栏；空消息不发送</div>
   </div>
 
   <div>

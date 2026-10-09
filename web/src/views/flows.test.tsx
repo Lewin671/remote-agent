@@ -1901,13 +1901,18 @@ describe("the client-v7 conversation", () => {
     expect(host.querySelector(".actsheet")!.textContent).toContain("模型：");
   });
 
-  it("starts sessions only with a first message, and folds the project head while typing", async () => {
+  it("starts sessions only with a first message, and keeps the project head in place while typing", async () => {
     const r = demo();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(host.textContent).not.toContain("只打开终端");
     expect(host.querySelector(".phead")).toBeTruthy();
     await act(async () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.focus());
-    expect(host.querySelector(".phead")).toBeNull();
+    expect(host.querySelector(".phead")).toBeTruthy();
+    expect(host.querySelector(".navbar .title")?.textContent ?? "").not.toContain("foo");
+    // Scrolled away, the head folds into the bar.
+    const body = host.querySelector<HTMLElement>(".body")!;
+    body.scrollTop = 200;
+    await act(async () => void body.dispatchEvent(new Event("scroll", { bubbles: true })));
     expect(host.querySelector(".navbar .title")!.textContent).toContain("foo");
   });
 });

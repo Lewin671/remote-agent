@@ -3,8 +3,6 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -36,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -54,6 +53,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -341,7 +341,8 @@ fun startedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): Stri
 
 /**
  * A project: its sessions, and at the bottom the message box that starts a
- * new one. With the keyboard up the header folds into the navigation bar.
+ * new one. The header folds into the navigation bar once it is scrolled away;
+ * the keyboard only shortens the list, so nothing jumps as it comes and goes.
  */
 @Composable
 fun ProjectScreen(key: String, focus: Boolean) {
@@ -365,9 +366,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
     // way what is shown must not reach past the pages fetched: a session kept from before a
     // reconnect, or fetched by its ID, has others before it that are fetched first.
     FetchEarlier(state, page = io.github.lewin671.remoteagent.core.needsEndedPage(state, ended, if (showEnded) ended.size else 3, endedTotal))
-    val ime = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    var typing by remember { mutableStateOf(false) }
-    val compact = ime && typing
+    val list = rememberLazyListState()
+    val compact by remember { derivedStateOf { list.firstVisibleItemIndex > 0 } }
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
     // The page of project settings that is open ("" is the first), or null.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
@@ -386,8 +386,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
         val folded = selected?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
         NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
-        LazyColumn(Modifier.weight(1f)) {
-            if (!compact) item {
+        LazyColumn(Modifier.weight(1f), state = list) {
+            item {
                 Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Avatar(key, 52)
                     Column(Modifier.weight(1f)) {
@@ -413,11 +413,11 @@ fun ProjectScreen(key: String, focus: Boolean) {
             if (hidden) item { HiddenBanner(state, key) }
             if (active.isNotEmpty()) {
                 item { Label("进行中", active.size) }
-                items(active, key = { it.id }) { s -> SessionRow(state, s, t, meta, last = s == active.last(), preview = !compact) }
+                items(active, key = { it.id }) { s -> SessionRow(state, s, t, meta, last = s == active.last()) }
             }
             val recent = if (showEnded) ended else ended.take(3)
             val earlier = state.moreSessions && ended.size < endedTotal
-            if ((recent.isNotEmpty() || (showEnded && earlier)) && !compact) {
+            if (recent.isNotEmpty() || (showEnded && earlier)) {
                 item { Label(if (showEnded) "已结束" else "最近结束", if (showEnded) endedTotal else null) }
                 items(recent, key = { it.id }) { s -> EndedRow(s, t) }
                 // Composed when the end of the list is reached: that is when the next page is fetched.
@@ -430,7 +430,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
         }
         // A hidden project stays reachable from its sessions and
         // notifications; starting a new session there restores it first.
-        if (!hidden) NewSessionBox(state, start?.config, projectName(key), focus, onFocus = { typing = it }, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
+        if (!hidden) NewSessionBox(state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
     }
     val open = settingsOpen
     if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->
@@ -567,7 +567,7 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
  * is written stays, and takes the settings once they are known.
  */
 @Composable
-fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onFocus: (Boolean) -> Unit = {}, onMachine: () -> Unit = {}, settled: Boolean = true) {
+fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onMachine: () -> Unit = {}, settled: Boolean = true) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -679,7 +679,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         canSend = c != null && settled && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
         onSend = ::start,
         onPlus = pick, plusEnabled = blocked == null,
-        sendLabel = "开始", focusRequester = fr, onFocus = onFocus,
+        sendLabel = "开始", focusRequester = fr,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )
 }
