@@ -42,7 +42,9 @@ Go 构建要求至少 1.26.9，发布流水线用 `govulncheck` 检查代码可�
 
 正式 APK 缺少固定签名或 Firebase 客户端配置就停止发布，不退回 debug 签名。GitHub Secrets 的 `ANDROID_SIGNING` 保存签名 keystore 与签名参数，`ANDROID_GOOGLE_SERVICES` 保存客户端配置；FCM 服务账户和账户加密密钥不进入构建流水线。签名密钥必须另有本地备份。手动 `Build development APK` 生成独立 `.dev` 应用，与正式版数据分开，使用固定签名以便后续覆盖升级，推送关闭，产物保留 3 天。
 
-**App 从哪里更新**：源码仓库和它的 Release 是私有的，App 拿不到。所以最新一版发布成功后，流水线把 APK 和一份清单 `latest.properties`（版本、versionCode、协议版本、APK 文件名、SHA-256、大小、发布说明）镜像到公开仓库 `Lewin671/remote-agent-releases`，App 从它的原始文件地址读清单、下载 APK（[android-client · 更新](android-client.md#更新)）。公开的只有 APK、清单和一页 README，源码、daemon、server 和网页的产物都不放。那个仓库始终只有一个提交，每次发布整个替换：它不是历史，按版本留着的 APK 在私有仓库的 Release 里，这样它不会每版长大一个 APK。推送用只对那个仓库有写权限的部署密钥（GitHub Secrets 的 `RELEASES_DEPLOY_KEY`），不用个人令牌，也就不会过期。镜像这一步不依赖本次是否刚发布：它失败后重跑同一个 tag，私有 Release 已经在了不会重发，但会取回已发布的那个 APK 补上镜像。只镜像标为最新的那一版，重跑旧 tag 不会让旧版本盖掉新版本。清单里的发布说明就是 tag 的说明，是公开的，只写变化和升级要求，不写部署信息。放在自己的服务器或 Cloudflare Pages 上也可以，没有选：前者不想让中继兼做下载站，后者每次发版要重新部署网页。
+**App 从哪里更新**：源码仓库和它的 Release 是私有的，App 拿不到。所以最新一版发布成功后，流水线把 APK 和一份清单 `latest.properties`（版本、versionCode、协议版本、APK 文件名、SHA-256、大小、发布说明）发布成公开仓库 `Lewin671/remote-agent-releases` 的一个 Release，App 读最新 Release 的清单、按版本号下载 APK（[android-client · 更新](android-client.md#更新)）。公开的只有 APK、清单和发布说明，源码、daemon、server 和网页的产物都不放；那个仓库的主分支只有一页 README 和下面说的工作流，APK 不进 git。
+
+一个仓库的工作流不能在另一个仓库建 Release：自带的令牌只管自己，能跨仓库的个人令牌要手工创建、会过期。所以分两步：这边用只对公开仓库有写权限的部署密钥（GitHub Secrets 的 `RELEASES_DEPLOY_KEY`，不会过期），把 APK、清单和发布说明推到那边的 `incoming` 分支；那边自己的工作流（源文件在 `deploy/releases-repo/`，改了要手动推过去）核对校验值后建 Release，再删掉这个分支。这边随后等公开的下载地址上出现校验值一致的清单，5 分钟内等不到就算失败。这一步不依赖本次是否刚发布：它失败后重跑同一个 tag，私有 Release 已经在了不会重发，但会取回已发布的那个 APK 再交一次。只交标为最新的那一版，重跑旧 tag 不会让旧版本成为最新。清单里的发布说明就是 tag 的说明，是公开的，只写变化和升级要求，不写部署信息。放在自己的服务器或 Cloudflare Pages 上也可以，没有选：前者不想让中继兼做下载站，后者每次发版要重新部署网页。
 
 Release 不自动部署 VPS/Cloudflare、不升级本机 daemon，各端分别部署；App 的更新也要在手机上点一下，再由系统确认安装。当前部署脚本仍从本地工作目录构建，并嵌入版本和源提交；它不是从 Release 晋级产物的入口。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
 

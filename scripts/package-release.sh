@@ -1,7 +1,7 @@
 #!/bin/sh
 # Called only after checks pass, from a clean tagged checkout.
 # Release distributes only the installable APK and its checksum; the
-# manifest is what the app reads from the public mirror to update itself.
+# manifest is what the app reads from the public releases to update itself.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"

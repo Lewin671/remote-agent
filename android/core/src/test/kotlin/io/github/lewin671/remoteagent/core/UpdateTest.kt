@@ -32,6 +32,20 @@ class UpdateTest {
         notes=项目列表统一。\n协议版本不变。
     """.trimIndent()
 
+    @Test
+    fun asksForTheLatestManifestAndForTheApkUnderItsOwnTag() = runBlocking {
+        val asked = mutableListOf<String>()
+        val http = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+            asked += chain.request().url.encodedPath
+            val body = if (chain.request().url.pathSegments.last() == RELEASE_MANIFEST) manifest().toByteArray() else apk
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                .body(body.toResponseBody("application/octet-stream".toMediaType())).build()
+        }).build()
+        val updates = Updates(http, "https://releases.test/r/")
+        updates.download(updates.latest(), dir())
+        assertEquals(listOf("/r/latest/download/latest.properties", "/r/download/v0.29.0/remote-agent-v0.29.0.apk"), asked)
+    }
+
     /** A client whose every request is answered from [files], by the last path segment. */
     private fun http(files: Map<String, ByteArray>): OkHttpClient = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
         val body = files[chain.request().url.pathSegments.last()]
@@ -66,6 +80,9 @@ class UpdateTest {
         // A name that could leave the folder, a checksum that is not one, a field left out.
         assertThrows(IOException::class.java) { parseRelease(manifest(name = "../remote-agent-v0.29.0.apk")) }
         assertThrows(IOException::class.java) { parseRelease(manifest(sha = "abc")) }
+        // The file name is the version's and nothing else: both go into the address it is fetched from.
+        assertThrows(IOException::class.java) { parseRelease(manifest(name = "remote-agent-v0.29.9.apk")) }
+        assertThrows(IOException::class.java) { parseRelease(manifest().replace("version=0.29.0", "version=0.29.0/../x")) }
         assertThrows(IOException::class.java) { parseRelease(manifest().lines().filterNot { it.startsWith("size=") }.joinToString("\n")) }
         assertThrows(IOException::class.java) { parseRelease("<html>not found</html>") }
     }

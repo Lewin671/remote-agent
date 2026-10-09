@@ -1,7 +1,7 @@
 // The app updating itself: what the published release says, and fetching
-// its APK. The source repository is private, so releases are mirrored as
-// one manifest and one APK in a public repository that holds nothing else
-// (architecture §1 「产品版本与发布」).
+// its APK. The source repository is private, so each release is also
+// published, as a manifest and the APK, in a public repository that holds
+// nothing else (architecture §1 「产品版本与发布」).
 package io.github.lewin671.remoteagent.core
 
 import java.io.File
@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/** Where the manifest and the APK it names are published. */
-const val RELEASES_URL = "https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/"
+/** The public repository's releases: the latest one's manifest, and each release's APK under its tag. */
+const val RELEASES_URL = "https://github.com/Lewin671/remote-agent-releases/releases/"
 const val RELEASE_MANIFEST = "latest.properties"
 
 /** The latest published release, as its manifest says. */
@@ -33,7 +33,7 @@ data class Release(
     val notes: String,
 )
 
-private val APK_NAME = Regex("""remote-agent-v\d+\.\d+\.\d+\.apk""")
+private val VERSION = Regex("""\d+\.\d+\.\d+""")
 private val SHA256 = Regex("[0-9a-f]{64}")
 /** No APK of this app is near this size; a manifest that says so is not one of ours. */
 private const val MAX_APK_BYTES = 200L * 1024 * 1024
@@ -55,18 +55,24 @@ fun parseRelease(text: String): Release {
         size = field("size").toLongOrNull() ?: throw IOException("发布信息的 size 不是数字"),
         notes = p.getProperty("notes").orEmpty().trim(),
     )
-    if (!APK_NAME.matches(release.apk) || !SHA256.matches(release.sha256) || release.versionCode <= 0 || release.size !in 1..MAX_APK_BYTES)
-        throw IOException("发布信息格式不对")
+    // The version and the file name become part of the address the APK is fetched from: one shape only.
+    if (!VERSION.matches(release.version) || release.apk != "remote-agent-v${release.version}.apk" ||
+        !SHA256.matches(release.sha256) || release.versionCode <= 0 || release.size !in 1..MAX_APK_BYTES
+    ) throw IOException("发布信息格式不对")
     return release
 }
 
 /** Whether [release] is newer than the installed build. Only the version code decides, as it does for the system. */
 fun isNewer(release: Release, installedCode: Long): Boolean = release.versionCode > installedCode
 
-class Updates(private val http: OkHttpClient, private val base: String = RELEASES_URL) {
+class Updates(http: OkHttpClient, private val base: String = RELEASES_URL) {
+    // A release's files are served from another host by redirect, which the client for the
+    // relay refuses; never down to plain HTTP.
+    private val http = http.newBuilder().followRedirects(true).followSslRedirects(false).build()
+
     /** The latest published release. */
     suspend fun latest(): Release = withContext(Dispatchers.IO) {
-        http.newCall(Request.Builder().url(base + RELEASE_MANIFEST).header("Cache-Control", "no-cache").build()).execute().use { res ->
+        http.newCall(Request.Builder().url(base + "latest/download/" + RELEASE_MANIFEST).header("Cache-Control", "no-cache").build()).execute().use { res ->
             if (!res.isSuccessful) throw IOException("读取发布信息失败（${res.code}）")
             parseRelease(res.body?.string().orEmpty())
         }
@@ -83,7 +89,8 @@ class Updates(private val http: OkHttpClient, private val base: String = RELEASE
         into.mkdirs()
         val part = File(into, release.apk + ".part")
         try {
-            http.newCall(Request.Builder().url(base + release.apk).build()).execute().use { res ->
+            // Under its own tag, not "latest": the file the manifest described stays there when a newer release comes.
+            http.newCall(Request.Builder().url(base + "download/v${release.version}/" + release.apk).build()).execute().use { res ->
                 if (!res.isSuccessful) throw IOException("下载失败（${res.code}）")
                 val body = res.body ?: throw IOException("下载失败")
                 part.outputStream().use { out ->

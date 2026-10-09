@@ -240,12 +240,12 @@ jobs:
           PYTHON
           )
           gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
-      # The app updates itself from a public mirror that holds the latest APK
-      # only: this repository and its releases stay private. Publishing above
-      # cannot be undone, so this step does not depend on it having run now:
-      # a rerun of a tag that is already published mirrors the APK that was
-      # published, which is how a failure here is repaired.
-      - name: Mirror the latest APK for the app to update from
+      # The app updates itself from the releases of a public repository that
+      # holds the APK only: this repository and its releases stay private.
+      # Publishing above cannot be undone, so this step does not depend on it
+      # having run now: a rerun of a tag that is already published hands over
+      # the APK that was published, which is how a failure here is repaired.
+      - name: Publish the latest APK where the app updates from
         env:
           RELEASES_DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
         run: |
@@ -254,7 +254,7 @@ jobs:
           latest_tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
           [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           if [ "$latest_tag" != "$RELEASE_TAG" ]; then
-            echo "$RELEASE_TAG is not the latest release; the mirror stays as it is"
+            echo "$RELEASE_TAG is not the latest release; the public repository stays as it is"
             exit 0
           fi
           if [ ! -f "dist/remote-agent-$RELEASE_TAG.apk" ]; then

@@ -1,16 +1,24 @@
 #!/bin/sh
-# Mirrors a packaged release to the public repository the app updates
-# itself from. The source repository is private; that one holds only the
-# latest APK, its manifest and a README, as a single commit that each
-# release replaces, so it never grows by an APK per release.
+# Publishes a packaged release in the public repository the app updates
+# itself from. The source repository is private; that one holds releases
+# of the APK and nothing else.
+#
+# This repository's workflow cannot create a release in another one, and a
+# personal token that could would have to be made by hand and may expire.
+# So the APK and its manifest are pushed, with a deploy key, to a branch
+# named `incoming` there, and that repository's own workflow
+# (deploy/releases-repo/) turns the branch into a release and deletes it.
+# This script then waits until the release's manifest can be downloaded.
 #
 # Usage: scripts/publish-apk.sh TAG      (after scripts/package-release.sh TAG)
 # RELEASES_DEPLOY_KEY is the private half of that repository's deploy key;
-# RELEASES_REPO overrides where it is pushed.
+# RELEASES_REPO overrides where it is pushed, RELEASES_URL where the
+# release is then looked for (empty: do not wait).
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 tag=${1:?usage: publish-apk.sh TAG}
 repo=${RELEASES_REPO:-git@github.com:Lewin671/remote-agent-releases.git}
+url=${RELEASES_URL-https://github.com/Lewin671/remote-agent-releases/releases}
 apk="$ROOT/dist/remote-agent-$tag.apk"
 manifest="$ROOT/dist/latest.properties"
 [ -f "$apk" ] && [ -f "$manifest" ] || {
@@ -30,18 +38,27 @@ if [ -n "${RELEASES_DEPLOY_KEY:-}" ]; then
 fi
 mkdir "$work/repo"
 cp "$apk" "$manifest" "$work/repo/"
-sha=$(sed -n 's/^sha256=//p' "$manifest")
-{
-	printf '# remote-agent\n\n'
-	printf 'remote-agent 的 Android 安装包。这里只放最新一版，App 也从这里检查和下载更新。\n\n'
-	printf -- '- 版本：%s\n' "${tag#v}"
-	printf -- '- 下载：[remote-agent-%s.apk](remote-agent-%s.apk)\n' "$tag" "$tag"
-	printf -- '- SHA-256：`%s`\n' "$sha"
-} >"$work/repo/README.md"
+# The tag's message, as the release's notes.
+git -C "$ROOT" tag --list "$tag" --format='%(contents)' >"$work/repo/notes.md"
 cd "$work/repo"
-git init -q -b main
+git init -q -b incoming
 git add -A
 git -c user.name="remote-agent release" -c user.email="release@users.noreply.github.com" commit -q -m "remote-agent ${tag#v}"
-# One commit replaces the last: nothing here is history worth keeping.
-git push -q --force "$repo" HEAD:main
-echo "Published $tag to $repo"
+# The branch is only a hand-over: whatever an earlier run left there is replaced.
+git push -q --force "$repo" HEAD:incoming
+echo "Handed $tag to $repo"
+
+[ -n "$url" ] || exit 0
+want=$(sed -n 's/^sha256=//p' "$manifest")
+i=0
+while [ "$i" -lt 60 ]; do
+	got=$(curl -fsSL --max-time 20 "$url/download/$tag/latest.properties" 2>/dev/null | sed -n 's/^sha256=//p' || true)
+	if [ "$got" = "$want" ]; then
+		echo "Published $tag at $url/tag/$tag"
+		exit 0
+	fi
+	i=$((i + 1))
+	sleep 5
+done
+echo "The release $tag did not appear at $url within 5 minutes; see the Publish workflow of that repository" >&2
+exit 1

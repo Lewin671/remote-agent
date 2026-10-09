@@ -1,0 +1,44 @@
+# Turns what the release workflow of the (private) source repository pushed
+# to the `incoming` branch into a release of this repository: the APK and
+# its manifest as assets, the notes from the manifest. The branch is
+# deleted afterwards; nothing of a release stays in git.
+name: Publish
+
+on:
+  push:
+    branches: [incoming]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: incoming
+      - name: Publish the release
+        run: |
+          set -eu
+          version=$(sed -n 's/^version=//p' latest.properties)
+          apk=$(sed -n 's/^apk=//p' latest.properties)
+          printf '%s' "$version" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+'
+          [ "$apk" = "remote-agent-v$version.apk" ]
+          echo "$(sed -n 's/^sha256=//p' latest.properties)  $apk" | sha256sum --check
+          tag="v$version"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "$apk" latest.properties --clobber
+          else
+            gh release create "$tag" "$apk" latest.properties --target main --title "$tag" --notes-file notes.md --latest
+          fi
+      - name: Remove the incoming branch
+        if: always()
+        run: git push origin --delete incoming

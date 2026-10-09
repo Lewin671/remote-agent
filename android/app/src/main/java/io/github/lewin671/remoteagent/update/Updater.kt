@@ -128,11 +128,7 @@ object Updater {
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 installWhenReady = false
-                // The mirror holds the latest release only: one published since this was found has
-                // replaced it, and trying the same file again would fail for ever.
-                val latest = runCatching { Updates(app.http).latest() }.getOrNull()
-                _state.value = if (latest != null && latest != release && isNewer(latest, installedCode(app))) UpdateState.Available(latest)
-                else UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
+                _state.value = UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
             }
         }
     }
@@ -141,7 +137,7 @@ object Updater {
      * Why [file] must not go to the installer, or null when it is this app's update. The
      * system checks the signature only of a package that replaces an installed one: a
      * package of another name would be installed as a new app, whoever signed it. So
-     * whoever could change the mirror must not get that far: the package has to carry
+     * whoever could change the public releases must not get that far: the package has to carry
      * this app's name, which leaves the signature to the system, and the version the
      * manifest promised.
      */
