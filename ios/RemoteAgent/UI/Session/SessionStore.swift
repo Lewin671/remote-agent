@@ -43,12 +43,27 @@ final class SessionStore {
         case failed(String)
     }
 
-    /// A decision on an approval sent from here, kept while its outcome is unknown.
+    /// A decision on an approval made from this client, wherever the approval
+    /// is drawn: a card of the home page, the session's dock, the approval's
+    /// own page. They all read this one, so a decision made in one place is
+    /// locked, in flight or left unknown in the others too.
+    @MainActor
+    @Observable
     final class Resolve {
-        let attempt = Attempt()
-        var allow = false
-        var message = ""
-        var always = false
+        @ObservationIgnored let attempt = Attempt()
+        fileprivate(set) var allow = false
+        fileprivate(set) var message = ""
+        fileprivate(set) var always = false
+        /// A decision was made from here in this run: the two buttons stay away from then on.
+        fileprivate(set) var decided = false
+        /// It is on its way to the computer.
+        fileprivate(set) var running = false
+        /// Why the last try did not arrive; empty while one is running and once one did.
+        fileprivate(set) var error = ""
+        /// The outcome is unknown: only the same sealed command is sent again (`Attempt`).
+        fileprivate(set) var frozen = false
+        /// The unknown decision expired and is not sent again.
+        fileprivate(set) var expired = false
     }
 
     /// An answer to one question of several, kept while its outcome is unknown.
@@ -207,11 +222,11 @@ final class SessionStore {
     // MARK: Approvals
 
     @ObservationIgnored private var resolves: [String: Resolve] = [:]
-    /// Bumped when an attempt changes, for the views that read one.
+    /// Bumped when an answer's attempt changes, for the views that read one.
     private var attempts = 0
 
+    /// The decision on an approval as this client knows it; one object per approval for as long as the account is in use.
     func resolve(_ approvalId: String) -> Resolve {
-        _ = attempts
         if let r = resolves[approvalId] { return r }
         let r = Resolve()
         resolves[approvalId] = r
@@ -219,14 +234,22 @@ final class SessionStore {
     }
 
     /// Sends a decision, or the earlier one while its outcome is unknown;
-    /// returns the decision that went. Throws what to show.
+    /// returns the decision that went. Throws what to show, which `resolve`
+    /// keeps too for the places that draw the approval.
     @discardableResult
     func resolveApproval(
         _ commands: any SessionCommands, machineId: String, sid: String, approvalId: String, allow: Bool, message: String,
         always: Bool = false
     ) async throws -> Bool {
         let r = resolve(approvalId)
-        defer { attempts += 1 }
+        r.decided = true
+        r.running = true
+        r.error = ""
+        defer {
+            r.frozen = r.attempt.frozen
+            r.expired = r.attempt.expired
+            r.running = false
+        }
         do {
             let retry = r.attempt.frozen
             let prepared = try r.attempt.next {
@@ -247,8 +270,38 @@ final class SessionStore {
             r.attempt.settle()
             return r.allow
         } catch {
-            throw r.attempt.settle(error) ?? error
+            let shown = r.attempt.settle(error) ?? error
+            r.error = errorText(shown)
+            throw shown
         }
+    }
+
+    /// A tap on 允许 or 不允许, from any place that draws the approval. One
+    /// try at a time: while a decision is on its way a second tap, here or
+    /// on another screen, adds nothing. The task's value is the decision the
+    /// computer took, or nil when it did not arrive.
+    @discardableResult
+    func decide(
+        _ commands: any SessionCommands, machineId: String, sid: String, approvalId: String, allow: Bool, message: String = "",
+        always: Bool = false
+    ) -> Task<Bool?, Never> {
+        let r = resolve(approvalId)
+        guard !r.running else { return Task { nil } }
+        // Locked from the tap, not from when the task gets to run.
+        r.decided = true
+        r.running = true
+        return Task {
+            try? await resolveApproval(
+                commands, machineId: machineId, sid: sid, approvalId: approvalId, allow: allow, message: message, always: always)
+        }
+    }
+
+    /// The decision that did not arrive, again as it was made.
+    @discardableResult
+    func retryDecision(_ commands: any SessionCommands, machineId: String, sid: String, approvalId: String) -> Task<Bool?, Never> {
+        let r = resolve(approvalId)
+        return decide(
+            commands, machineId: machineId, sid: sid, approvalId: approvalId, allow: r.allow, message: r.message, always: r.always)
     }
 
     // MARK: Questions

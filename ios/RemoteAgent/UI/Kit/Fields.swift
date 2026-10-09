@@ -3,17 +3,21 @@
 import SwiftUI
 import UIKit
 
-/// The surface of an input field: soft, radius 10.
+/// The surface of an input field: soft, radius 10. `background` replaces it, as `card` for a field on a grey card.
 struct FieldBox<Content: View>: View {
+    private let background: Color?
     private let content: Content
 
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
+    init(background: Color? = nil, @ViewBuilder content: () -> Content) {
+        self.background = background
+        self.content = content()
+    }
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+            .background(background ?? Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
     }
 }
 
@@ -29,6 +33,7 @@ struct InputField: View {
     private let placeholder: String
     private let look: Look
     private let lines: ClosedRange<Int>
+    private let background: Color?
     private let keyboard: UIKeyboardType
     private let contentType: UITextContentType?
     private let submitLabel: SubmitLabel
@@ -38,7 +43,7 @@ struct InputField: View {
 
     init(
         _ label: String? = nil, text: Binding<String>, placeholder: String = "", look: Look = .text,
-        lines: ClosedRange<Int> = 1...1, keyboard: UIKeyboardType = .default, contentType: UITextContentType? = nil,
+        lines: ClosedRange<Int> = 1...1, background: Color? = nil, keyboard: UIKeyboardType = .default, contentType: UITextContentType? = nil,
         submitLabel: SubmitLabel = .done, focusOnAppear: Bool = false, onSubmit: (() -> Void)? = nil
     ) {
         self.label = label
@@ -46,6 +51,7 @@ struct InputField: View {
         self.placeholder = placeholder
         self.look = look
         self.lines = lines
+        self.background = background
         self.keyboard = keyboard
         self.contentType = contentType
         self.submitLabel = submitLabel
@@ -59,7 +65,7 @@ struct InputField: View {
         case .mono: T.mono13
         case .code: T.code22
         }
-        FieldBox {
+        FieldBox(background: background) {
             VStack(alignment: .leading, spacing: 2) {
                 if let label { Text(label).type(T.meta, Theme.muted) }
                 TextField(

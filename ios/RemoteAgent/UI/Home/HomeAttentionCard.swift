@@ -2,79 +2,14 @@
 // ui/Home.kt): a session that waits for the user. An approval is decided
 // right on the card; questions, plans and popups open the session.
 //
-// The buttons follow Android's ApprovalButtons (ui/Dock.kt): a tap locks
-// both until the computer confirms, a definite failure offers the same
-// decision again, and one whose outcome is unknown is only ever sent again
-// as it was (`Attempt`, architecture §10).
+// The buttons are the session's own (`ApprovalButtons`, as on Android), and
+// what was decided is kept in one place for the account
+// (`SessionStore.Resolve`): a decision made on a card is known on the
+// session's page, and the other way round.
 import Observation
 import RACore
 import RAProto
 import SwiftUI
-
-/// One approval's decision as it was sent from the home page, for this run.
-@MainActor
-@Observable
-final class HomeApprovalDecision {
-    @ObservationIgnored private let attempt = Attempt()
-    private(set) var allow = false
-    @ObservationIgnored private var message = ""
-    @ObservationIgnored private var always = false
-    /// A decision was made here; the buttons stay away from then on.
-    private(set) var decided = false
-    private(set) var running = false
-    private(set) var error = ""
-    /// The decision's outcome is unknown, and it expired.
-    private(set) var frozen = false
-    private(set) var expired = false
-    /// What is typed as the reason for 不允许, kept while the card is not on screen.
-    var reason = ""
-
-    /// Sends `allow`, or the earlier decision while its outcome is unknown.
-    func resolve(_ remote: Remote, session: SessionView, approvalId: String, allow: Bool, message: String = "", always: Bool = false) {
-        guard !running else { return }
-        decided = true
-        running = true
-        error = ""
-        let retry = attempt.frozen
-        Task {
-            do {
-                let prepared = try attempt.next {
-                    self.allow = allow
-                    self.message = message
-                    self.always = always
-                    return try remote.prepare(
-                        machineId: session.machineId, sessionId: session.id,
-                        resolveApprovalCommand(sessionId: session.id, approvalId: approvalId, allow: allow, message: message, always: always))
-                }
-                try await remote.forward(prepared, retryOfUnknown: retry)
-                attempt.settle()
-            } catch {
-                self.error = errorText(attempt.settle(error) ?? error)
-            }
-            frozen = attempt.frozen
-            expired = attempt.expired
-            running = false
-        }
-    }
-
-    /// The same decision again, after it did not arrive.
-    func retry(_ remote: Remote, session: SessionView, approvalId: String) {
-        resolve(remote, session: session, approvalId: approvalId, allow: allow, message: message, always: always)
-    }
-}
-
-/// The decisions made from the home page, by approval, until the account changes.
-@MainActor
-final class HomeApprovals {
-    private var byApproval: [String: HomeApprovalDecision] = [:]
-
-    func of(_ approvalId: String) -> HomeApprovalDecision {
-        if let d = byApproval[approvalId] { return d }
-        let d = HomeApprovalDecision()
-        byApproval[approvalId] = d
-        return d
-    }
-}
 
 /// A waiting session's events reduced to what waits in it, kept up while its card is on screen.
 @MainActor
@@ -141,7 +76,7 @@ struct HomeAttentionCard: View {
                 if !approval.command.isEmpty {
                     Code(approvalDisplay(approval.command), maxLines: 3, background: Theme.card, border: true).padding(.vertical, 8)
                 }
-                HomeApprovalButtons(state: state, session: session, approval: approval)
+                ApprovalButtons(session: session, approval: approval, onCard: true)
                     .padding(.top, approval.command.isEmpty ? 8 : 0)
             }
         }
@@ -171,83 +106,6 @@ struct HomeAttentionCard: View {
                 kind
                 Spacer(minLength: 0)
                 right.lineLimit(1)
-            }
-        }
-    }
-}
-
-/// 不允许 / 允许 on a card, and a reason with 不允许.
-private struct HomeApprovalButtons: View {
-    let state: RemoteState
-    let session: SessionView
-    let approval: PBApprovalRequested
-    @Environment(AccountContext.self) private var context
-    @State private var reasonOpen = false
-    @FocusState private var reasonFocused: Bool
-
-    var body: some View {
-        let decision = context.memory.value { HomeApprovals() }.of(approval.approvalID)
-        let remote = context.remote
-        let id = approval.approvalID
-        VStack(alignment: .leading, spacing: 0) {
-            if decision.running || decision.frozen || decision.decided {
-                if decision.running || (decision.error.isEmpty && !decision.frozen) {
-                    IconText(
-                        decision.running ? Lucide.loaderCircle : Lucide.check, decision.running ? "正在送到电脑…" : "已提交，等待电脑确认",
-                        style: T.meta)
-                }
-            } else if reasonOpen {
-                TextField(
-                    "", text: Bindable(decision).reason, prompt: Text("拒绝理由（可选）").foregroundStyle(Theme.muted), axis: .vertical
-                )
-                .lineLimit(1...4)
-                .type(T.body, Theme.fg)
-                .focused($reasonFocused)
-                .tint(Theme.blue)
-                .accessibilityLabel("拒绝理由（可选）")
-                .padding(.horizontal, 14).padding(.vertical, 11)
-                .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
-                .padding(.bottom, 8)
-                .onAppear { reasonFocused = true }
-                Btns {
-                    Btn("取消", background: Theme.card) { reasonOpen = false }
-                    Btn("不允许", kind: .negative, background: Theme.card) {
-                        Haptics.confirm()
-                        decision.resolve(
-                            remote, session: session, approvalId: id, allow: false,
-                            message: decision.reason.trimmingCharacters(in: .whitespacesAndNewlines))
-                    }
-                }
-            } else {
-                Btns {
-                    Btn("不允许", kind: .negative, background: Theme.card) { reasonOpen = true }
-                    Btn("允许", kind: .primary) {
-                        Haptics.confirm()
-                        decision.resolve(remote, session: session, approvalId: id, allow: true)
-                    }
-                }
-                if capabilities(state.machines[session.machineId])?.approvalAlways == true {
-                    TextAction("允许，这类请求以后不再问", alignment: .center) {
-                        Haptics.confirm()
-                        decision.resolve(remote, session: session, approvalId: id, allow: true, always: true)
-                    }
-                    .frame(maxWidth: .infinity)
-                    // Its 44 pt to the finger reach into the card's own padding.
-                    .padding(.bottom, -8)
-                }
-            }
-            if !decision.running && decision.frozen {
-                Banner(
-                    decision.expired
-                        ? "不确定「\(decision.allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-                        : "没送到电脑：\(decision.error.isEmpty ? "结果未知" : decision.error)",
-                    tone: .error, action: decision.expired ? nil : "重试",
-                    onAction: { decision.retry(remote, session: session, approvalId: id) }
-                )
-                .padding(.top, 8)
-            } else if !decision.running && !decision.error.isEmpty {
-                Banner("没送到电脑：\(decision.error)", tone: .error, action: "重试", onAction: { decision.retry(remote, session: session, approvalId: id) })
-                .padding(.top, 8)
             }
         }
     }

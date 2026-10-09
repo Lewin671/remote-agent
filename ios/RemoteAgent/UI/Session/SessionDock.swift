@@ -269,9 +269,14 @@ struct ApprovalDock: View {
     }
 }
 
-/// 不允许 / 允许, and a reason for refusing. A tap locks both until the
-/// computer confirms; an unknown outcome only offers to send the same
-/// decision again. `onCard`: on a grey card, where the buttons are white.
+/// 不允许 / 允许, and a reason for refusing, wherever an approval is drawn:
+/// the session's dock, the approval's page and the home page's card
+/// (Android's one `ApprovalButtons`). A tap locks both until the computer
+/// confirms; an unknown outcome only offers to send the same decision
+/// again. What was decided, and how far it got, is the account's
+/// (`SessionStore.Resolve`), not this view's: a decision made on one screen
+/// is locked on the others. `onCard`: on a grey card, where the buttons and
+/// the reason's field are white.
 struct ApprovalButtons: View {
     let session: SessionView
     let approval: PBApprovalRequested
@@ -279,79 +284,73 @@ struct ApprovalButtons: View {
     var onCard = false
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
-    @State private var which: Bool?
     @State private var reasonOpen = false
     @State private var started = false
 
     private func resolve(_ allow: Bool, message: String = "", always: Bool = false) {
-        which = allow
         if allow { SessionHaptics.decide() } else { Haptics.destructive() }
-        let (store, remote, s, id) = (context.sessionStore, context.remote, session, approval.approvalID)
-        act.run({
-            _ = try await store.resolveApproval(
-                remote, machineId: s.machineId, sid: s.id, approvalId: id, allow: allow, message: message, always: always)
-        }, onDone: {
-            // The computer has it: now it may be said to have gone through.
-            if allow { Haptics.confirm() }
-        })
+        let sent = context.sessionStore.decide(
+            context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
+            message: message, always: always)
+        // The computer has it: now it may be said to have gone through.
+        Task { if await sent.value == true { Haptics.confirm() } }
+    }
+
+    private func retry() {
+        context.sessionStore.retryDecision(
+            context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID)
     }
 
     var body: some View {
         let store = context.sessionStore
         let id = approval.approvalID
         let r = store.resolve(id)
-        let stuck = r.attempt.frozen
-        // A decision left unknown by an earlier visit is the one this card is locked on.
-        let chosen = which ?? (stuck ? r.allow : nil)
         let always = capabilities(model.state.machines[session.machineId])?.approvalAlways == true
+        let surface: Color? = onCard ? Theme.card : nil
         VStack(alignment: .leading, spacing: 0) {
-            if act.running || stuck || chosen != nil {
-                if act.running || (act.error.isEmpty && !stuck) {
-                    Text(act.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
+            if r.running || r.frozen || r.decided {
+                if r.running || (r.error.isEmpty && !r.frozen) {
+                    Text(r.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
                         .frame(minHeight: 28)
                         .accessibilityAddTraits(.updatesFrequently)
                 }
             } else if reasonOpen || (startReason && !started) {
                 InputField(
                     text: Binding(get: { store.reason(id) }, set: { store.setReason(id, $0) }), placeholder: "拒绝理由（可选）",
-                    lines: 1...4, focusOnAppear: !startReason
+                    lines: 1...4, background: surface, focusOnAppear: !startReason
                 )
                 .padding(.bottom, 8)
                 Btns {
-                    Btn("取消", background: onCard ? Theme.card : nil) {
+                    Btn("取消", background: surface) {
                         reasonOpen = false
                         started = true
                     }
-                    Btn("不允许", kind: .negative, background: onCard ? Theme.card : nil) {
+                    Btn("不允许", kind: .negative, background: surface) {
                         resolve(false, message: store.reason(id).jvmTrim())
                     }
                 }
             } else {
                 Btns {
-                    Btn("不允许", kind: .negative, background: onCard ? Theme.card : nil) { reasonOpen = true }
+                    Btn("不允许", kind: .negative, background: surface) { reasonOpen = true }
                     Btn("允许", kind: .primary) { resolve(true) }
                 }
                 if always {
                     TextAction("允许，这类请求以后不再问", alignment: .center) { resolve(true, always: true) }
                         .frame(maxWidth: .infinity)
+                        // On a card its 44 pt to the finger reach into the card's own padding.
+                        .padding(.bottom, onCard ? -8 : 0)
                 }
             }
-            if !act.running && stuck {
-                let what = r.allow ? "允许" : "拒绝"
+            if !r.running && r.frozen {
                 Banner(
-                    r.attempt.expired
-                        ? "不确定「\(what)」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-                        : "没送到电脑：\(act.error.isEmpty ? "结果未知" : act.error)",
-                    tone: .error, action: r.attempt.expired ? nil : "重试",
-                    onAction: { resolve(r.allow, message: r.message, always: r.always) }
+                    r.expired
+                        ? "不确定「\(r.allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
+                        : "没送到电脑：\(r.error.isEmpty ? "结果未知" : r.error)",
+                    tone: .error, action: r.expired ? nil : "重试", onAction: retry
                 )
                 .padding(.top, 8)
-            } else if !act.error.isEmpty {
-                Banner("没送到电脑：\(act.error)", tone: .error, action: "重试") {
-                    resolve(r.allow, message: r.message, always: r.always)
-                }
-                .padding(.top, 8)
+            } else if !r.running && !r.error.isEmpty {
+                Banner("没送到电脑：\(r.error)", tone: .error, action: "重试", onAction: retry).padding(.top, 8)
             }
         }
         .debugSignal("session.allow") { resolve(true) }

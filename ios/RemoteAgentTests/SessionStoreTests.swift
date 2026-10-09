@@ -202,6 +202,59 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(computer.forwarded.count == 2)
     }
 
+    // One store for every place an approval is drawn: what the home page's card decides is what the session's page reads.
+
+    @Test func aDecisionMadeInOnePlaceIsLockedInEveryOther() async {
+        let card = store.resolve("A")
+        #expect(!card.decided && !card.running)
+        let sent = store.decide(computer, machineId: "m", sid: "s", approvalId: "A", allow: true)
+        // The session's page asks for the same approval and gets the same decision, not one of its own.
+        let page = store.resolve("A")
+        #expect(page === card)
+        #expect(page.running && page.decided)
+        // A tap on the other screen meanwhile adds nothing.
+        let second = store.decide(computer, machineId: "m", sid: "s", approvalId: "A", allow: false, message: "不行")
+        #expect(await second.value == nil)
+        #expect(await sent.value == true)
+        #expect(!page.running && page.decided && page.allow && page.error.isEmpty && !page.frozen)
+        #expect(computer.sent.count == 1 && computer.forwarded.count == 1)
+        // Another approval starts clean.
+        #expect(!store.resolve("B").decided)
+    }
+
+    @Test func aDecisionLeftUnknownOnOneScreenIsOnlySentAgainAsItWasFromAnother() async {
+        computer.answer(unknown)
+        #expect(await store.decide(computer, machineId: "m", sid: "s", approvalId: "A", allow: false, message: "先别删").value == nil)
+        // What the other screen reads: unknown, which decision it was, and why.
+        let r = store.resolve("A")
+        #expect(r.frozen && !r.expired && !r.allow && r.decided && !r.running)
+        #expect(r.error == errorText(unknown))
+        // Its 重试 sends the same sealed command, marked as a retry; no other decision is sealed.
+        #expect(await store.retryDecision(computer, machineId: "m", sid: "s", approvalId: "A").value == false)
+        #expect(computer.forwarded.map(\.id) == ["r1", "r1"] && computer.forwarded.map(\.retry) == [false, true])
+        #expect(computer.sent.count == 1 && computer.sent[0].resolveApproval.message == "先别删")
+        #expect(!r.frozen && r.error.isEmpty && r.decided)
+    }
+
+    @Test func aDecisionThatDefinitelyFailedKeepsItsReasonAndIsOfferedAgain() async {
+        computer.answer(offline)
+        #expect(await store.decide(computer, machineId: "m", sid: "s", approvalId: "A", allow: true, always: true).value == nil)
+        let r = store.resolve("A")
+        #expect(r.decided && !r.frozen && r.error == errorText(offline))
+        #expect(await store.retryDecision(computer, machineId: "m", sid: "s", approvalId: "A").value == true)
+        // A definite failure is sealed anew, with the same decision.
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2"])
+        #expect(computer.sent[1].resolveApproval.allow && computer.sent[1].resolveApproval.always)
+    }
+
+    @Test func anExpiredUnknownDecisionSaysSoWhereverItIsRead() async {
+        computer.answer(unknown, CommandError(CommandError.expired, "这条指令已过期，没有发出"))
+        _ = await store.decide(computer, machineId: "m", sid: "s", approvalId: "A", allow: true).value
+        _ = await store.retryDecision(computer, machineId: "m", sid: "s", approvalId: "A").value
+        let r = store.resolve("A")
+        #expect(r.frozen && r.expired && r.allow)
+    }
+
     @Test func aNetworkFailureAfterAnUnknownOutcomeLeavesItUnknown() async {
         computer.answer(unknown, CommandError("network", "网络不通，指令没有发出"))
         _ = try? await store.resolveApproval(computer, machineId: "m", sid: "s", approvalId: "A", allow: true, message: "")
