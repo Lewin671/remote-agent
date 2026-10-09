@@ -462,7 +462,21 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .plist .pi b { font-size: 15px; display: block; }
 .plist .pi small { font-size: 12px; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plist .pi.add { color: var(--blue); font-weight: var(--w6); border: none; gap: 8px; }
-.plist .pi.add small { display: inline; font-weight: 400; }
+.plist .pi.add { gap: 12px; }
+.plist .pi.add > .ic { width: 28px; flex: none; }
+.plist .pi.act { padding-left: 40px; }
+.plist .fl { margin: 14px 0 2px; }
+.plist > .hint { padding: 12px 0; }
+/* A project with ⋯: the name is one button, ⋯ another. */
+.plist .pi.split { gap: 0; }
+.plist .pi.split.busy { opacity: .6; }
+.plist .pi .pm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 52px; text-align: left; }
+.plist .pi .pm > div:not(.av) { flex: 1; min-width: 0; }
+.plist .pi .dots { width: 44px; height: 44px; margin-right: -12px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 20px; }
+.plist .pi .dots:disabled { opacity: .45; }
+.manage > .banner { margin-bottom: 8px; }
+.sheet .hint + .setrows { margin-top: 12px; }
+.manage > .hint { margin-top: 12px; }
 .recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0 0 10px; align-items: center; scrollbar-width: none; }
 .recent small { font-size: 12px; color: var(--muted); flex: none; }
 .recent button { font-size: 13px; background: var(--chip); border-radius: 14px; padding: 4px 10px; color: var(--fg2); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; min-height: 32px; }
@@ -695,36 +709,18 @@ details[open] > summary .exp { transform: rotate(180deg); }
 .hint.top { margin: -4px 0 8px; }
 
 /* The new-session card: CLI picked on the card, configuration in two lines. */
-.wide-project-tools { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-.wide-project-tools .chip { min-height: 44px; }
-.wide-project-tools .link { min-height: 44px; }
 .startnote { padding: 2px 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .startnote .link { font-weight: 400; min-height: 44px; }
 
 /* Project management. */
 .pin { font-size: 12px; color: var(--blue); margin-left: 5px; font-weight: var(--w5); }
 .label .link { font-size: 13px; min-height: 32px; margin: -6px 0; }
-.manage-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
-.manage-row .pt { flex: 1; min-width: 0; text-align: left; min-height: 44px; }
-.manage-row .pn { font-weight: var(--w6); font-size: 15px; }
-.manage-row .ps { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.manage-row .dots { min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 15px; }
-.manage-row .dots > .ic { font-size: 20px; }
-.manage-row .dots:disabled { opacity: .45; }
-.manage-row.busy { opacity: .6; }
 .row.client { padding-top: 8px; padding-bottom: 8px; text-align: left; }
 .row.client .client-info { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
 .row.client small { font-size: 13px; color: var(--muted); margin-top: 2px; }
 .row.client small:empty { display: none; }
 .row.client .v { flex: none; }
-.manage-hint { font-size: 13px; color: var(--muted); margin: 8px 16px 12px; }
-.wpage .manage-hint { margin-left: 0; margin-right: 0; }
 .wpage .pad { padding: 0; }
-.manage-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.manage-table td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.manage-table td:last-child { text-align: right; white-space: nowrap; color: var(--muted); }
-.manage-table td .link { font-size: 13px; font-weight: 400; min-height: 44px; padding: 0 4px; }
-.manage-table .path { display: block; color: var(--muted); font-size: 12px; }
 .wtitle { margin: 0; font-size: 22px; }
 .chip.linkchip { color: var(--blue); }
 .removed-note { padding: 4px 16px 8px; }

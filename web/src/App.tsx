@@ -4,7 +4,7 @@ import { Remote } from "./remote";
 import { NavBar, useRemote } from "./ui";
 import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
-import { ManagePage, RemovedPage } from "./views/Projects";
+import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import { ClientPage, DevicesPage, MachinePage, NameClientPrompt, QuotaPage, RemovedScreen, Settings } from "./views/Settings";
 import { MessageSquare, Settings as SettingsIcon } from "./icons";
@@ -125,7 +125,7 @@ function Main({ remote }: { remote: Remote }) {
       );
   // A wide window has no project page: the sidebar lists the project and the main area starts a session in it.
   else if (kind === "p") page = wide ? <WideHome key={arg} remote={remote} go={go} project={arg} /> : <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} />;
-  else if (kind === "projects") page = rest[0] === "removed" ? <RemovedPage remote={remote} onBack={back} wide={wide} /> : <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
+  else if (kind === "projects") page = <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
   else if (kind === "settings") page = <Settings remote={remote} go={go} />;
   else if (kind === "devices") page = <DevicesPage remote={remote} go={go} onBack={back} />;
   else if (kind === "q") page = <QuotaPage remote={remote} id={arg} go={go} onBack={back} />;

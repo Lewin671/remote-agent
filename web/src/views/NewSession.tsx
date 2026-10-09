@@ -25,19 +25,19 @@ import {
   shortPath,
   type MachineLike,
   type NewConfig,
-  type Project,
 } from "../model";
 import { Attempt } from "../attempt";
 import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
-import { errorText, type MachineView, type Remote, type SessionView } from "../remote";
+import { errorText, type MachineView, type Remote } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
 import { Avatar, Banner, Dot, Sheet } from "../ui";
-import { groupProjects, isHidden } from "../prefs";
+import { isHidden } from "../prefs";
+import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
-import { ArrowUp, Check, ChevronLeft, ChevronRight, Plus } from "../icons";
+import { ArrowUp, Check, ChevronLeft, ChevronRight } from "../icons";
 
 export type Go = (route: string) => void;
 
@@ -318,7 +318,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先恢复" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     current.abandon();
@@ -351,6 +351,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const summary: Summary = { agent: agentName(cfg.agent), mode: modeText, machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label };
   return {
     remote,
+    go,
     frozen: current.frozen,
     expired: current.expired,
     abandon,
@@ -592,6 +593,7 @@ type Pick = "" | "machine" | "model" | "mode";
  * to the box; looking at the other one picks nothing. */
 export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClose: () => void; start?: Pick }) {
   const [pick, setPick] = useState<Pick>(start);
+  const [removing, setRemoving] = useState(false);
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
   const { remote, p, machine } = ns;
@@ -802,9 +804,20 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
           )}
           <div className="hint">{many ? "两个 CLI 各存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
           <div className="setrows">
-            <button className="sr" onClick={() => void remote.changePrefs(ns.p && remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "unpin" : "pin", cfg.cwd)}>{remote.projectPrefs().pinned.some((x) => x.path === cfg.cwd) ? "取消常用" : "设为常用"}</button>
-            <button className="sr red" onClick={() => void remote.changePrefs("hide", cfg.cwd)}>从项目列表移除</button>
+            <button className="sr" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>{pinAction(remote, cfg.cwd).label}</button>
+            <button className="sr red" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>移除项目…</button>
           </div>
+          {removing && (
+            <RemoveProjectAlert
+              remote={remote}
+              path={cfg.cwd}
+              onCancel={() => setRemoving(false)}
+              onDone={() => {
+                onClose();
+                ns.go("");
+              }}
+            />
+          )}
         </>
       )}
     </Sheet>
@@ -893,28 +906,6 @@ export function DirBrowser({
 
 /** From the home page's ＋: pick a project first, or a new one. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会话 · 选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
-  const [query, setQuery] = useState("");
-  // Grouped as the lists are; removed projects are left out.
-  const g = groupProjects(projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings), remote.projectPrefs());
-  const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
-  const row = (p: Project<SessionView>) => (
-    <button key={p.key} className="pi" onClick={() => onPick(p.key)}>
-      <Avatar name={p.name} size="sm" />
-      <div>
-        <b>{p.name}</b>
-        <small>
-          {shortPath(p.key)} ·{" "}
-          {p.machines
-            .map((id) => {
-              const m = remote.machines.get(id);
-              return machineName(m) + (m && !m.online ? "（不在线）" : "");
-            })
-            .join("、")}
-        </small>
-      </div>
-      <ChevronRight className="chev" />
-    </button>
-  );
   return (
     <Sheet onClose={onClose}>
       <div className="ns-head">
@@ -923,16 +914,7 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会�
           取消
         </button>
       </div>
-      {g.pinned.length + g.others.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
-      <div className="plist">
-        {g.pinned.some(match) && <div className="fl">常用项目</div>}
-        {g.pinned.filter(match).map(row)}
-        {g.pinned.length > 0 && g.others.length > 0 && <div className="fl">其他项目</div>}
-        {g.others.filter(match).map(row)}
-        <button className="pi add" onClick={onNew}>
-          <Plus /> 新项目…<small>选机器和目录</small>
-        </button>
-      </div>
+      <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
 }
@@ -992,11 +974,7 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
         onBack={pick ? () => setStep("project") : undefined}
         onClose={onClose}
         onDone={(machineId, path) => {
-          remote.draftMachines.set(path, machineId);
-          // Stored with the machine chosen, so the project is listed before
-          // its first session, here and on the account's other clients.
-          if (!listed.some((p) => p.key === path) && !remote.projectPrefs().settings.some((s) => s.path === path))
-            void remote.changePrefs("settings", path, { id: crypto.randomUUID(), kind: "settings", path, at: Date.now(), settings: { machineId } });
+          addProject(remote, machineId, path);
           open(path);
         }}
       />

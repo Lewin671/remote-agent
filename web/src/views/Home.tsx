@@ -13,7 +13,6 @@ import {
   dayGroup,
   endedMs,
   endedTime,
-  ago,
   askTitle,
   derive,
   exited,
@@ -28,7 +27,6 @@ import {
   stateOf,
   titleOf,
   when,
-  type Project,
 } from "../model";
 import { isHidden } from "../prefs";
 import type { Remote, SessionView } from "../remote";
@@ -38,7 +36,7 @@ import { deadlineOf, useDerived } from "./actions";
 import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
-import { PrefsBanner, RemovedNotice, useProjectGroups } from "./Projects";
+import { PrefsBanner, ProjectItem, ProjectList, RemovedNotice, useProjectGroups } from "./Projects";
 import { Check, ChevronDown, ChevronRight, CloudOff, LoaderCircle, Search, Settings, SquarePen, WifiOff, X } from "../icons";
 
 export type { Go };
@@ -342,7 +340,7 @@ function ScopeTitle({ remote, go, wide, onPicked }: { remote: Remote; go: Go; wi
         <ScopeMenu
           remote={remote}
           scope={scope}
-          projects={[...groups.pinned, ...groups.others]}
+          count={groups.pinned.length + groups.others.length}
           wide={wide}
           onClose={() => setOpen("")}
           onPick={(key) => {
@@ -365,37 +363,30 @@ function ScopeTitle({ remote, go, wide, onPicked }: { remote: Remote; go: Go; wi
 /** The scopes to pick from: all projects when there is more than one,
  * then the projects in the order of the lists, each with its path and
  * how many sessions are live. A sheet on a phone, a menu on a wide page. */
-function ScopeMenu({ remote, scope, projects, wide, onClose, onPick, onNew, onManage }: { remote: Remote; scope: string; projects: Project<SessionView>[]; wide?: boolean; onClose: () => void; onPick: (key: string) => void; onNew: () => void; onManage: () => void }) {
-  const [query, setQuery] = useState("");
-  const liveOf = (list: SessionView[]) => {
-    const n = list.filter((s) => !exited(s)).length;
-    return n ? `${n} 个进行中` : "";
-  };
-  const row = (key: string, name: string, sub: string, lead: React.ReactNode) => (
-    <button key={key} className="pi" role="menuitemradio" aria-checked={key === scope} onClick={() => onPick(key)}>
-      {lead}
-      <div>
-        <b>{name}</b>
-        <small>{sub}</small>
-      </div>
-      <span className="ck">{key === scope && <Check />}</span>
-    </button>
-  );
-  const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
+function ScopeMenu({ remote, scope, count, wide, onClose, onPick, onNew, onManage }: { remote: Remote; scope: string; count: number; wide?: boolean; onClose: () => void; onPick: (key: string) => void; onNew: () => void; onManage: () => void }) {
+  const live = [...remote.sessions.values()].filter((s) => !exited(s)).length;
   const body = (
-    <>
-      {projects.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
-      <div className="plist" role="menu">
-        {projects.length > 1 && !query && row(ALL, "全部项目", liveOf([...remote.sessions.values()]) || `${projects.length} 个项目`, <div className="av sm all">全</div>)}
-        {projects.filter(match).map((p) => row(p.key, p.name, `${shortPath(p.key)} · ${liveOf(p.sessions) || ago(p.updatedMs)}`, <Avatar name={p.name} size="sm" />))}
-        <button className="pi act" onClick={onNew}>
-          新项目…
-        </button>
-        <button className="pi act" onClick={onManage}>
-          管理项目<ChevronRight />
-        </button>
-      </div>
-    </>
+    <ProjectList
+      remote={remote}
+      onNew={onNew}
+      first={
+        count > 1 && (
+          <button className="pi" role="menuitemradio" aria-checked={scope === ALL} onClick={() => onPick(ALL)}>
+            <div className="av sm all">全</div>
+            <div>
+              <b>全部项目</b>
+              <small>{live ? `${live} 个进行中` : `${count} 个项目`}</small>
+            </div>
+            <span className="ck">{scope === ALL && <Check />}</span>
+          </button>
+        )
+      }
+      item={(p) => <ProjectItem key={p.key} remote={remote} p={p} checked={p.key === scope} onClick={() => onPick(p.key)} end={<span className="ck">{p.key === scope && <Check />}</span>} />}
+    >
+      <button className="pi act" onClick={onManage}>
+        管理项目<ChevronRight />
+      </button>
+    </ProjectList>
   );
   if (!wide)
     return (

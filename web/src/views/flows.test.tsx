@@ -833,7 +833,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   // What a reload starts from: the account's settings, not this page's memory.
   r.draftMachines.clear();
   remount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
-  const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent?.startsWith("~/Code ·"));
+  const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent === "~/Code");
   expect(row?.querySelector("b")?.textContent).toBe("Code");
   remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
   expect(host.textContent).toContain("这个项目还没有会话");
@@ -1273,20 +1273,24 @@ const cliSwitch = (name: string) => [...host.querySelectorAll<HTMLButtonElement>
 describe("project management (v2)", () => {
   const names = (sel: string) => [...host.querySelectorAll(sel)].map((e) => e.firstChild?.textContent ?? "");
 
-  it("removes a project from the list, keeps its waiting sessions, and undoes", async () => {
+  it("removes a project only after asking, and keeps its waiting sessions", async () => {
     const r = demo();
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
-    await click(button("从项目列表移除"));
-    await vi.waitFor(() => expect(host.querySelector(".toast")?.textContent).toContain("已移除 shop"), { timeout: 3000 });
-    expect(names(".manage-row .pn")).not.toContain("shop");
-    expect(host.textContent).toContain("shop 的会话和历史仍然保留");
-    await click(button("撤销"));
-    await vi.waitFor(() => expect(names(".manage-row .pn")).toContain("shop"), { timeout: 3000 });
-    // Removed again, Home leaves it out of the projects, but its plan
-    // still waits for the user.
-    await r.changePrefs("hide", "/Users/me/Code/shop");
+    await click(button("移除项目…"));
+    // Nothing is removed until the dialog is confirmed.
+    expect(host.querySelector(".alert")?.textContent).toContain("移除 shop？");
+    await click(button("取消"));
+    expect(names(".plist .pi b")).toContain("shop");
+    await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
+    await click(button("移除项目…"));
+    await click(button("移除"));
+    await vi.waitFor(() => expect(names(".plist .pi b")).not.toContain("shop"), { timeout: 3000 });
+    // No undo and no list of removed projects: adding the folder again is the way back.
+    expect(host.textContent).not.toContain("撤销");
+    expect(host.textContent).not.toContain("已移除");
+    // Home leaves it out of the projects, but its plan still waits for the user.
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
     await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
     expect(names(".plist .pi b")).not.toContain("shop");
@@ -1294,21 +1298,67 @@ describe("project management (v2)", () => {
     expect(todoList(r).map((x) => x.id)).toContain("s-plan");
   });
 
-  it("keeps a removed project out of the new-session picker and asks to restore it first", async () => {
+  it("lists a removed project again when its folder is added as a new project", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    const shop = "/Users/me/Code/shop";
+    await r.changePrefs("hide", shop);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    expect(names(".plist .pi b")).not.toContain("shop");
+    await click(button(/新项目…/));
+    for (const dir of ["Code", "shop"]) {
+      await vi.waitFor(() => expect(button(dir, document)).toBeTruthy());
+      await click(button(dir, document));
+    }
+    await vi.waitFor(() => expect(button("用 shop 这个目录", document)).toBeTruthy());
+    await click(button("用 shop 这个目录", document));
+    await vi.waitFor(() => expect(names(".plist .pi b")).toContain("shop"), { timeout: 3000 });
+    expect(r.projectPrefs().hidden.map((h) => h.path)).not.toContain(shop);
+  });
+
+  it("lists projects the same way in the scope menu, the picker and 项目管理", async () => {
+    const r = demo();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    const { ProjectPicker } = await import("./NewSession");
+    const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== "全部项目" && !/^\d+ 个进行中$/.test(t ?? ""));
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    const managed = seen();
+    expect(managed.slice(0, 3)).toEqual(["常用", "foo", "~/Code/foo · 6 个进行中"]);
+    expect(managed[managed.length - 1]).toBe(" 新项目…");
+    act(() => root!.render(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />));
+    expect(seen()).toEqual(managed);
+    act(() => root!.render(<Home remote={r} go={() => undefined} />));
+    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    expect(seen()).toEqual(managed);
+  });
+
+  it("keeps a removed project out of the new-session picker and asks to add it again first", async () => {
     const r = demo();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await r.changePrefs("hide", "/Users/me/Code/shop");
     const { ProjectPicker } = await import("./NewSession");
     mount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
     expect(host.textContent).not.toContain("~/Code/shop");
-    expect(host.textContent).toContain("常用项目");
     act(() => root!.render(<ProjectPage remote={r} pkey="/Users/me/Code/shop" go={() => undefined} onBack={() => undefined} />));
     expect(host.textContent).toContain("这个项目已从列表移除");
     expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeNull();
     // Its sessions are all still there.
     expect(host.textContent).toContain("拆分订单服务");
-    await click(button("恢复"));
+    await click(button("重新添加"));
     await vi.waitFor(() => expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeTruthy(), { timeout: 3000 });
+  });
+
+  it("asks before removing from the project's settings too, then leaves the project", async () => {
+    const r = DemoRemote.create(new URLSearchParams("project-settings=1"));
+    r.start();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    const went: string[] = [];
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={(to) => went.push(to)} onBack={() => undefined} />);
+    await click(button("移除项目…"));
+    expect(host.querySelector(".alert")?.textContent).toContain("移除 foo？");
+    await click(button("移除"));
+    await vi.waitFor(() => expect(r.projectPrefs().hidden.map((h) => h.path)).toContain("/Users/me/Code/foo"), { timeout: 3000 });
+    await vi.waitFor(() => expect(went).toEqual([""]));
   });
 
   it("shows a failed save as not done, and retries the same operation", async () => {
@@ -1319,21 +1369,23 @@ describe("project management (v2)", () => {
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     await click(button("设为常用"));
     await vi.waitFor(() => expect(host.textContent).toContain("没能保存，列表保持原样"), { timeout: 5000 });
-    expect(host.querySelector(".label")?.textContent).not.toContain("2");
+    expect(names(".plist .pi b")[0]).toBe("foo");
+    expect(host.querySelectorAll(".plist .fl").length).toBe(2);
     const id = r.prefs.failed!.op.id;
     await click(button("重试"));
     await vi.waitFor(() => expect(r.prefs.pending.size).toBe(1));
     await vi.waitFor(() => expect(r.prefs.failed?.op.id).toBe(id), { timeout: 5000 });
   }, 15_000);
 
-  it("pauses changes while disconnected and says the list is cached", async () => {
+  it("pauses changes while disconnected and says when they can be made", async () => {
     const r = DemoRemote.create(new URLSearchParams("conn=reconnecting"));
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
-    expect(host.textContent).toContain("当前显示缓存 · 连上后才能管理");
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
-    expect(button("设为常用")).toBeUndefined();
+    expect(button(/设为常用/)!.disabled).toBe(true);
+    expect(button(/设为常用/)!.textContent).toContain("连上服务器后才能修改");
+    expect(button("移除项目…")!.disabled).toBe(true);
   });
 });
 
@@ -1675,7 +1727,7 @@ it("loads a picture opened offline once the connection is back (review B11)", as
   await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
 });
 
-it("asks to restore a project removed while its draft is on the wide home (review B12)", async () => {
+it("asks to add a project again when it is removed while its draft is on the wide home (review B12)", async () => {
   const r = demo();
   r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
@@ -1692,7 +1744,7 @@ it("asks to restore a project removed while its draft is on the wide home (revie
   expect(host.textContent).toContain("这个项目已从列表移除");
   expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
   expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
-  await click(button("恢复"));
+  await click(button("重新添加"));
   await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
 });
 
