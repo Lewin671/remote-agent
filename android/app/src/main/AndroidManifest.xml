@@ -44,7 +44,7 @@
         <receiver
             android:name=".push.ApprovalReceiver"
             android:exported="false" />
-        <!-- Images the user shares and a downloaded update go through here, from the cache only. -->
+        <!-- Images the user shares and a downloaded update go through here, each from its own folder only. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

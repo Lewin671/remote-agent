@@ -2,5 +2,5 @@
 <!-- Only the folders of images the user chose to share and of a downloaded update. -->
 <paths>
     <cache-path name="shared" path="shared/" />
-    <cache-path name="updates" path="updates/" />
+    <files-path name="updates" path="updates/" />
 </paths>

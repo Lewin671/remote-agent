@@ -7,6 +7,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -55,14 +58,63 @@ fun UpdateNotice(modifier: Modifier = Modifier, onOpen: () -> Unit) {
     Banner("有新版本 ${release.version}", modifier, action = "更新", onAction = onOpen)
 }
 
+/** How handing the download to the system went, when there is something to say about it. */
+enum class InstallNote(val text: String, val error: Boolean = false) {
+    PERMISSION("先在系统设置里允许 remote-agent 安装应用，回来后继续。"),
+    CANCELLED("安装没有完成，可以再装一次。"),
+    FAILED("系统没能安装这个包。", error = true),
+    NO_INSTALLER("打不开系统的安装器。", error = true),
+}
+
 /** 版本: the installed version, and the newer release when there is one, with what changed and the one step to take next. */
 @Composable
 fun UpdateSheet(onClose: () -> Unit) {
     val app = RaApp.instance
+    val context = androidx.compose.ui.platform.LocalContext.current
     val p = pal
     val state by Updater.state.collectAsState()
     val scope = rememberCoroutineScope()
     val release = state.release
+    var note by remember { mutableStateOf<InstallNote?>(null) }
+    val installer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+        // On success the app is replaced and this never runs; anything else leaves the download ready to try again.
+        note = when (r.resultCode) {
+            android.app.Activity.RESULT_OK -> null
+            android.app.Activity.RESULT_CANCELED -> InstallNote.CANCELLED
+            else -> InstallNote.FAILED
+        }
+    }
+    fun open(file: java.io.File) {
+        note = null
+        try {
+            installer.launch(Updater.installIntent(context, file))
+        } catch (e: Exception) {
+            note = InstallNote.NO_INSTALLER
+        }
+    }
+    val permission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
+        // Back from the system's settings: go on if it was allowed there.
+        val s = Updater.state.value
+        if (s is UpdateState.Ready && Updater.canInstall(context)) open(s.file) else note = InstallNote.PERMISSION
+    }
+    fun install(file: java.io.File) {
+        if (Updater.canInstall(context)) return open(file)
+        note = InstallNote.PERMISSION
+        try {
+            permission.launch(Updater.permissionIntent(context))
+        } catch (e: android.content.ActivityNotFoundException) {
+            // Some vendor builds have no page per app; their security settings lead there.
+            runCatching { permission.launch(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)) }
+        }
+    }
+    // The download asked for from here is in: on to the installer, while this sheet is in front.
+    androidx.compose.runtime.LaunchedEffect(state) {
+        val s = state
+        if (s is UpdateState.Ready && Updater.installWhenReady) {
+            Updater.installWhenReady = false
+            install(s.file)
+        }
+    }
     Sheet(onClose) {
         if (release == null) {
             SheetHead("版本", "完成", onClose)
@@ -84,9 +136,10 @@ fun UpdateSheet(onClose: () -> Unit) {
         ReleaseNotes(release, app.versionName)
         val step = updateStep(state) ?: return@Sheet
         if (step.error.isNotEmpty()) Text("没能下载：${step.error}", style = T.sm, color = p.red, modifier = Modifier.padding(top = 10.dp))
-        Btn(step.label, {
+        note?.takeIf { state is UpdateState.Ready }?.let { Text(it.text, style = T.sm, color = if (it.error) p.red else p.orangeInk, modifier = Modifier.padding(top = 10.dp)) }
+        Btn(if (note == InstallNote.PERMISSION && state is UpdateState.Ready) "去允许" else step.label, {
             val s = Updater.state.value
-            if (s is UpdateState.Ready) Updater.install(app, s.file) else Updater.download(app)
+            if (s is UpdateState.Ready) install(s.file) else Updater.download(app)
         }, Modifier.fillMaxWidth().padding(top = 14.dp), BtnKind.PRIMARY, enabled = step.enabled)
         Hint("下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。")
     }

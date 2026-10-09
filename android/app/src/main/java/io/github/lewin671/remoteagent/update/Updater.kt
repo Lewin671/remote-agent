@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.update
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -16,7 +17,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Where downloaded APKs wait for the system's installer; see res/xml/file_paths.xml. */
+/**
+ * Where a downloaded APK waits for the system's installer, under the app's files (res/xml/file_paths.xml):
+ * the cache may be cleared by the system while the installer still reads from it.
+ */
 const val UPDATES_DIR = "updates"
 
 /** What is known of a newer release, and how far getting it is. */
@@ -51,6 +55,10 @@ val UpdateState.release: Release?
  * downloading starts only when the user asks, and installing is the
  * system's dialog. Android installs the file only if it carries this
  * app's signature, whatever was downloaded.
+ *
+ * The installer is opened by the screen that is in front, never from
+ * here: an activity started from the background is dropped by Android 10
+ * and later, and a download can end after the app was left.
  */
 object Updater {
     private const val CHECK_EVERY_MS = 6 * 3600_000L
@@ -59,6 +67,9 @@ object Updater {
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Unknown)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
     private var checkedAt = 0L
+
+    /** The user asked to install what is being downloaded: the screen in front opens the installer once it is here. */
+    @Volatile var installWhenReady = false
     private var job: Job? = null
 
     /** Shows a state as if it had been reached, for rendering it in tests. */
@@ -86,7 +97,7 @@ object Updater {
                 if (!isNewer(latest, installedCode(app))) {
                     _state.value = UpdateState.Latest(checkedAt)
                     // What an earlier update left behind.
-                    File(app.cacheDir, UPDATES_DIR).deleteRecursively()
+                    File(app.filesDir, UPDATES_DIR).deleteRecursively()
                 } else if (before.release != latest) _state.value = UpdateState.Available(latest)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -95,31 +106,51 @@ object Updater {
         }
     }
 
-    /** Downloads the release found, then hands it to the system's installer. */
+    /** Downloads the release found; the screen that asked then opens the installer on it. */
     fun download(app: RaApp) {
         val release = _state.value.release ?: return
         if (job?.isActive == true) return
+        installWhenReady = true
         _state.value = UpdateState.Downloading(release, 0)
         job = app.scope.launch {
             try {
-                val file = Updates(app.http).download(release, File(app.cacheDir, UPDATES_DIR)) { done ->
+                val file = Updates(app.http).download(release, File(app.filesDir, UPDATES_DIR)) { done ->
                     _state.value = UpdateState.Downloading(release, done)
                 }
                 _state.value = UpdateState.Ready(release, file)
-                install(app, file)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                installWhenReady = false
                 _state.value = UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
             }
         }
     }
 
-    /** Opens the system's installer on a downloaded APK; the user confirms there. */
-    fun install(context: Context, file: File) {
+    /**
+     * Whether Android lets this app hand packages to the installer: the user allows it per
+     * app, under 安装未知应用. Asked before the installer is opened, because not every
+     * vendor's installer offers the way to that setting itself.
+     */
+    fun canInstall(context: Context): Boolean = context.packageManager.canRequestPackageInstalls()
+
+    /** The system page where the user allows this app to install packages. */
+    fun permissionIntent(context: Context): Intent =
+        Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}"))
+
+    /**
+     * The system's installer on a downloaded APK, to start for its result from an activity
+     * in front. The file goes as a content URI the installer alone may read: the form that
+     * vendor installers (MIUI among them) accept where a PackageInstaller session is
+     * aborted without a word. The user confirms there.
+     */
+    @Suppress("DEPRECATION") // ACTION_INSTALL_PACKAGE returns a result; ACTION_VIEW does not.
+    fun installIntent(context: Context, file: File): Intent {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        return Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            clipData = ClipData.newRawUri("remote-agent", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        }
     }
 }
