@@ -1,12 +1,22 @@
-// The iOS client's entry. For now it only says which build this is: the
-// screens, and what they are built from, come next.
+// The iOS client's entry. This is the shell the screens are added to: the
+// root shows whether this device has joined an account, and the window is
+// covered whenever the app is not the one in use.
 import SwiftUI
 
 @main
 struct RemoteAgentApp: App {
+    @State private var settings = SettingsStore()
+    private let vault = Vault()
+
+    init() {
+        PrivacyShield.shared.install()
+    }
+
     var body: some Scene {
         WindowGroup {
-            Text("remote-agent \(AppInfo.versionLine)")
+            RootView(vault: vault)
+                .environment(settings)
+                .preferredColorScheme(settings.settings.theme.colorScheme)
         }
     }
 }
