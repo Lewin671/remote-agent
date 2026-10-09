@@ -46,8 +46,11 @@ struct NewSessionBox: View {
         let draft = context.newSessionDrafts.of(key, initial: initial, settled: settled)
         let config = draft.config.value
         let agents = config.map { machineAgents(state.machines[$0.machineId]) } ?? []
+        // The first message may be images alone: they make a draft as text does.
+        let images = ProjectImageContext(state: state, key: key, config: config, remote: context.remote)
+        let drafting = draft.drafting || ProjectImages.hasImages(images)
         let notices = newSessionNotices(
-            state, config: config, name: name, pick: draft.agent, drafting: draft.drafting, settled: settled, start: draft.progress)
+            state, config: config, name: name, pick: draft.agent, drafting: drafting, settled: settled, start: draft.progress)
         VStack(spacing: 0) {
             if !notices.isEmpty {
                 VStack(spacing: 6) {
@@ -67,17 +70,23 @@ struct NewSessionBox: View {
             }
             NewSessionInput(
                 text: Bindable(draft).text,
-                canSend: canStartSession(state, config: config, drafting: draft.drafting, settled: settled, running: draft.running),
+                // Every image must be on the machine first: never a start with some of them.
+                canSend: canStartSession(state, config: config, drafting: drafting, settled: settled, running: draft.running)
+                    && ProjectImages.ready(images),
+                plusEnabled: ProjectImages.available(images),
                 focused: $focused,
-                onPlus: { ProjectImages.pick(project: key, machine: config?.machineId) },
-                onSend: { start(draft) })
+                onPlus: { ProjectImages.pick(images) },
+                onSend: { start(draft) }
+            ) {
+                ProjectImages.Strip(context: images)
+            }
         }
         .readableColumn()
         .background(Theme.card)
         // What the next session inherits may be a session not fetched yet.
         .fetchEarlier(state, page: !settled)
         // The draft follows the project until something is written or chosen.
-        .onChange(of: Follow(initial: initial, drafting: draft.drafting, settled: settled), initial: true) { _, now in
+        .onChange(of: Follow(initial: initial, drafting: drafting, settled: settled), initial: true) { _, now in
             draft.config.follow(now.initial, drafting: now.drafting, settled: now.settled)
         }
         .onChange(of: focused) { _, on in onFocus(on) }
@@ -114,7 +123,10 @@ struct NewSessionBox: View {
     private func start(_ draft: NewSessionDraft) {
         guard settled, let cfg = draft.config.value else { return }
         let machine = initial?.machineId
-        draft.start(context.remote, cfg) { sid, used, prompt in
+        let images = ProjectImageContext(state: state, key: key, config: cfg, remote: context.remote)
+        draft.start(
+            context.remote, cfg, images: ProjectImages.draft(images), onImagesUsed: { ProjectImages.used(images, $0) }
+        ) { sid, used, prompt in
             // What the project stores of this start is read off the lists as they are now.
             let state = model.state
             let project = projectConfig(state, key: key, pick: used.agent, machine: machine) ?? used
@@ -177,21 +189,36 @@ struct NewSessionBox: View {
 }
 
 /// The pill: ＋, the text from one line to six, and ↑.
-private struct NewSessionInput: View {
+private struct NewSessionInput<Top: View>: View {
     @Binding var text: String
     let canSend: Bool
+    /// Whether ＋ can add images now; when not it is dimmed, and a tap says why.
+    let plusEnabled: Bool
     var focused: FocusState<Bool>.Binding
     let onPlus: () -> Void
     let onSend: () -> Void
+    /// The attached images, over the text inside the pill.
+    @ViewBuilder var top: Top
     /// The send button's circle; its arrow grows a little with the text, the circle does not.
     private let circle: CGFloat = 32
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        VStack(spacing: 0) {
+            top
+            row
+        }
+        .padding(3)
+        .background(Theme.card, in: shape)
+        .overlay { shape.strokeBorder(Theme.line, lineWidth: 1) }
+        .padding(.init(top: 4, leading: 10, bottom: 8, trailing: 10))
+    }
+
+    private var row: some View {
         HStack(alignment: .bottom, spacing: 0) {
             Button(action: onPlus) { Ic(Lucide.plus, size: 22, color: Theme.muted).hitTarget() }
                 .buttonStyle(PressStyle())
-                .opacity(ProjectImages.available ? 1 : 0.4)
+                .opacity(plusEnabled ? 1 : 0.4)
                 // The two buttons keep a size a thumb knows; the words between them are what grows.
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .accessibilityLabel("添加图片")
@@ -221,10 +248,6 @@ private struct NewSessionInput: View {
             .accessibilityLabel("开始")
             .accessibilityIdentifier("new-session-start")
         }
-        .padding(3)
-        .background(Theme.card, in: shape)
-        .overlay { shape.strokeBorder(Theme.line, lineWidth: 1) }
-        .padding(.init(top: 4, leading: 10, bottom: 8, trailing: 10))
     }
 }
 

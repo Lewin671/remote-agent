@@ -23,6 +23,8 @@ final class NewSessionDraft {
     @ObservationIgnored private let attempt = Attempt()
     /// The first message of the start that was last sent.
     private(set) var prompt = ""
+    /// The images the prepared request names, kept for a retry of the same request.
+    @ObservationIgnored private var taken: [PendingImage] = []
     private(set) var running = false
     private(set) var error = ""
     private(set) var frozen = false
@@ -38,10 +40,16 @@ final class NewSessionDraft {
         NewSessionProgress(running: running, error: error, frozen: frozen, expired: expired, prompt: prompt)
     }
 
-    /// Starts a session with what is written. `onStarted` gets the new
-    /// session's ID and the configuration it started with; a refusal, or no
-    /// answer, leaves the text as it is.
-    func start(_ remote: Remote, _ cfg: NewConfig, onStarted: @escaping @MainActor (_ sid: String, _ used: NewConfig, _ prompt: String) -> Void) {
+    /// Starts a session with what is written, and with the images of
+    /// `images` that are on the machine. `onStarted` gets the new session's
+    /// ID and the configuration it started with, `onImagesUsed` the images
+    /// that went with it; a refusal, or no answer, leaves the text and the
+    /// images as they are.
+    func start(
+        _ remote: Remote, _ cfg: NewConfig, images: ImageDraft? = nil,
+        onImagesUsed: @escaping @MainActor ([PendingImage]) -> Void = { _ in },
+        onStarted: @escaping @MainActor (_ sid: String, _ used: NewConfig, _ prompt: String) -> Void
+    ) {
         guard !running else { return }
         let typed = promptText(text)
         // Other content is a new start; the unknown one is given up.
@@ -54,9 +62,12 @@ final class NewSessionDraft {
             do {
                 let prepared = try attempt.next {
                     prompt = typed
+                    // The images this request carries; any picked after it stay in the draft.
+                    taken = images?.images.filter { $0.readyFor(cfg.machineId) } ?? []
                     return try remote.prepare(
                         machineId: cfg.machineId, sessionId: "",
-                        createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified))
+                        createSessionCommand(
+                            cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: taken.compactMap(\.imageId)))
                 }
                 let result = try await remote.forward(prepared, retryOfUnknown: retry)
                 attempt.settle()
@@ -64,6 +75,9 @@ final class NewSessionDraft {
                 // Only a session that started takes the draft.
                 if let sid = startedSession(result) {
                     if promptText(text) == prompt { text = "" }
+                    let used = taken
+                    taken = []
+                    if !used.isEmpty { onImagesUsed(used) }
                     onStarted(sid, cfg, prompt)
                 }
             } catch {
@@ -75,6 +89,7 @@ final class NewSessionDraft {
     /// Gives up on a start whose outcome is unknown: the next ↑ is a new one.
     func abandon() {
         attempt.abandon()
+        taken = []
         finish("")
     }
 
