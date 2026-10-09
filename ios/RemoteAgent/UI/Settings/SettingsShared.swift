@@ -1,0 +1,202 @@
+// What the settings pages share: the grey page they are all drawn on, the
+// grey explanation under a group, the words for sizes and for a computer's
+// state, and the sample values the pages show with `-demo`, where nothing
+// answers a command.
+import RACore
+import RAProto
+import SwiftUI
+
+/// A settings page: the grey surface with its readable column, the
+/// connection bar at the top, and the groups under it, scrolling. `refresh`
+/// is what pulling down does.
+struct SettingsPage<Content: View>: View {
+    private let refresh: (@MainActor @Sendable () async -> Void)?
+    private let content: Content
+
+    init(refresh: (@MainActor @Sendable () async -> Void)? = nil, @ViewBuilder content: () -> Content) {
+        self.refresh = refresh
+        self.content = content()
+    }
+
+    var body: some View {
+        Page(gray: true) {
+            let list = ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ConnectionBar()
+                    content
+                    Color.clear.frame(height: 24)
+                }
+                .padding(.top, 8)
+            }
+            if let refresh {
+                list.refreshable { await refresh() }.startAtEndForScreenshots()
+            } else {
+                list.startAtEndForScreenshots()
+            }
+        }
+    }
+}
+
+/// The grey explanation under a group (design-system §1, level three): 13
+/// muted, in line with the group's label. Orange or red only when it warns
+/// of something the rows above cannot say.
+struct GroupNote: View {
+    private let text: String
+    private let color: Color
+
+    init(_ text: String, color: Color = Theme.muted) {
+        self.text = text
+        self.color = color
+    }
+
+    var body: some View {
+        Text(text).type(T.sm, color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 30).padding(.bottom, 12)
+    }
+}
+
+/// A notice between groups, at the cards' margin.
+struct GroupBanner: View {
+    private let text: String
+    private let tone: BannerTone
+    private let action: String?
+    private let onAction: (() -> Void)?
+
+    init(_ text: String, tone: BannerTone = .plain, action: String? = nil, onAction: (() -> Void)? = nil) {
+        self.text = text
+        self.tone = tone
+        self.action = action
+        self.onAction = onAction
+    }
+
+    var body: some View {
+        Banner(text, tone: tone, action: action, onAction: onAction)
+            .padding(.horizontal, 16).padding(.bottom, 12)
+    }
+}
+
+extension String {
+    /// This text, or `other` when there is none.
+    func or(_ other: @autoclosure () -> String) -> String { isEmpty ? other() : self }
+}
+
+/// Bytes of images as the storage rows write them (Android's `imageBytes`):
+/// one decimal, and anything under a tenth of a MiB said as such rather
+/// than as 0.0.
+func imageBytes(_ n: Int64) -> String {
+    if n >= 1 && n < 104_858 { return "不到 0.1 MiB" }
+    if n >= 1 << 30 { return String(format: "%.1f GiB", Double(n) / 1_073_741_824) }
+    return String(format: "%.1f MiB", Double(n) / 1_048_576)
+}
+
+/// A limit in whole units: 256 MiB, 1 GiB.
+func wholeBytes(_ n: Int64) -> String {
+    n >= 1 << 30 && n % (1 << 30) == 0 ? "\(n >> 30) GiB" : "\(n >> 20) MiB"
+}
+
+/// What a computer's row says of it at the right: 在线, or when it was last
+/// seen. Nothing while this client is not connected to the server: what the
+/// cache says of the computers is not known to still hold (architecture §9
+/// 「断线时显示什么」), and the connection bar already says why.
+func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (text: String, online: Bool)? {
+    if state.unlinked { return nil }
+    if m.online { return ("在线", true) }
+    return (whenText(m.lastSeenMs, now: now).or("不在线"), false)
+}
+
+/// The computer as far as it is known from here: while this client is not
+/// connected its last word of being online is not repeated, so what is
+/// derived from it (quota numbers above all) reads as a last record
+/// (architecture §9 「为什么不沿用旧状态」).
+func asKnown(_ m: MachineView, state: RemoteState) -> MachineView {
+    guard state.unlinked, m.online else { return m }
+    var known = m
+    known.online = false
+    return known
+}
+
+/// A computer's quota in one short line under its name: the first CLI's
+/// last window that has a number (Android's SettingsScreen).
+func machineQuotaSummary(_ m: MachineView, now: Int64) -> String? {
+    guard let g = quotaGroups(m, now: now).first, let row = g.rows.last(where: { $0.percent != nil }) else { return nil }
+    return "\(agentName(g.agent)) · \(row.label)\(row.used)"
+}
+
+/// The operating system as people call it.
+func osName(_ os: String) -> String {
+    switch os.lowercased() {
+    case "darwin": "macOS"
+    case "linux": "Linux"
+    case "windows": "Windows"
+    case "": "未知"
+    default: os
+    }
+}
+
+/// Computers in the order every list of them uses: by name.
+func sortedMachines(_ state: RemoteState) -> [MachineView] {
+    state.machines.values.sorted {
+        let (a, b) = (machineLabel(state, id: $0.id), machineLabel(state, id: $1.id))
+        return a == b ? $0.id < $1.id : a.localizedStandardCompare(b) == .orderedAscending
+    }
+}
+
+/// What removing a device does, said before it is done (architecture §13 「移除设备」).
+enum RemovalText {
+    static let machineNote = "移除会删除这台机器在服务器上的会话记录，并断开连接；它需要重新加入账户才能连接。"
+    static let machineConfirm = "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。"
+    static let clientNote = "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。持有账户密钥的设备仍可重新加入。"
+    static let clientConfirm = "它的登录和推送订阅会被清除，电脑上的会话和历史不受影响。它持有账户密钥时仍可重新加入。"
+}
+
+extension View {
+    /// `-settingsEnd` (debug builds) opens a settings page scrolled to its end, to look at what is below the fold.
+    @ViewBuilder func startAtEndForScreenshots() -> some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-settingsEnd") { defaultScrollAnchor(.bottom) } else { self }
+        #else
+        self
+        #endif
+    }
+}
+
+#if DEBUG
+/// With `-demo` nothing answers a command, so the pages that ask a computer
+/// or the server show fixed answers instead, and `-settingsState <name>`
+/// picks which: a page's loading, failed and unknown-outcome states can be
+/// looked at without a computer that misbehaves on cue.
+///
+///   machine/<id>      loading, failed, saveFailed, saveUnknown, mismatch
+///   connection        checking, serverDown, machineDown
+///   image-storage     empty, clearing
+///   licenses          <a licence's id>: opened on its text
+///   client/<id>, devices   renaming, removing: with the dialog up
+enum SettingsDemo {
+    static let state: String? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-settingsState"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
+
+    static var daemonSettings: PBDaemonSettings {
+        .with {
+            $0.approvalTimeoutSeconds = 600
+            $0.defaultModel = "gpt-6-astra"
+            $0.defaultEffort = "medium"
+            $0.defaultMode = .ask
+            $0.claude = .with { $0.model = "claude-opus-5-5-preview-20261001-extended" }
+            $0.imageUploadQuotaBytes = 1 << 30
+        }
+    }
+
+    static var imageStorage: PBImageStorageUsage {
+        .with {
+            $0.uploadBytes = 187 << 20
+            $0.reclaimableBytes = 96 << 20
+            $0.reservedBytes = 3 << 20
+            $0.cacheBytes = 41 << 20
+        }
+    }
+}
+#endif
