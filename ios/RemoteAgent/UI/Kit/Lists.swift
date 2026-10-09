@@ -21,8 +21,9 @@ struct SectionLabel: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(text).type(T.smB, Theme.muted).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            if let count { Text("\(count)").type(T.sm, Theme.muted) }
-            if let action, onAction != nil { ArrowText(action, style: T.smB) }
+            // A long label wraps beside them; the count and the link are never squeezed to a character a line.
+            if let count { Text("\(count)").type(T.sm, Theme.muted).lineLimit(1).fixedSize() }
+            if let action, onAction != nil { ArrowText(action, style: T.smB).lineLimit(1).fixedSize() }
         }
         .padding(.init(top: 14, leading: 16, bottom: 6, trailing: 16))
         // The link's 44 pt target is drawn over the padding, so the row keeps the mockup's height.
@@ -51,7 +52,7 @@ struct GroupLabel: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(text).type(T.sm, Theme.muted).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            if let action, onAction != nil { ArrowText(action, style: T.sm) }
+            if let action, onAction != nil { ArrowText(action, style: T.sm).lineLimit(1).fixedSize() }
         }
         .padding(.init(top: 4, leading: 30, bottom: 6, trailing: 30))
         .overlay(alignment: .trailing) {
@@ -93,7 +94,55 @@ struct GroupCard: View {
     }
 }
 
+/// Shares a row's width between its text and its value. Both on one line
+/// when they fit. When they do not, the text takes the room: the value keeps
+/// what the text leaves, and at least `valueShare` of the row, wrapping or
+/// cut inside that. An `HStack` cannot say this: it hands a flexible value
+/// its full share before it knows the text needs more, which set a long
+/// computer name three lines deep beside a two-character 在线.
+private struct RowSplit: Layout {
+    var spacing: CGFloat = 10
+    var valueShare: CGFloat = 0.4
+
+    /// The widths of the text (the first subview) and the value (the second) in `width`.
+    private func widths(_ subviews: Subviews, in width: CGFloat?) -> (text: CGFloat, value: CGFloat) {
+        let text = subviews[0].sizeThatFits(.unspecified).width
+        let value = subviews[1].sizeThatFits(.unspecified).width
+        guard let width, width.isFinite else { return (text, value) }
+        let room = max(0, width - spacing)
+        if text + value <= room { return (text, value) }
+        let kept = min(value, max(room * valueShare, room - text))
+        return (room - kept, kept)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return subviews.first?.sizeThatFits(proposal) ?? .zero }
+        let w = widths(subviews, in: proposal.width)
+        let text = subviews[0].sizeThatFits(ProposedViewSize(width: w.text, height: nil))
+        let value = subviews[1].sizeThatFits(ProposedViewSize(width: w.value, height: nil))
+        let natural = w.text + spacing + w.value
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? natural
+        return CGSize(width: width, height: max(text.height, value.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else {
+            subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+            return
+        }
+        let w = widths(subviews, in: bounds.width)
+        subviews[0].place(
+            at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: ProposedViewSize(width: w.text, height: nil))
+        subviews[1].place(
+            at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: ProposedViewSize(width: w.value, height: nil))
+    }
+}
+
 /// A row in a group: 15, with a value at the right.
+///
+/// The text has the row's room first: a long one runs to two lines beside
+/// a short value before either is cut, and a long value (a version, a
+/// path) keeps at least two fifths of the row.
 ///
 /// A row that goes somewhere has a `chevron`, after its value, or at its end
 /// without one; one that does something is blue (`action`) or red
@@ -102,6 +151,7 @@ struct GroupCard: View {
 /// to the right, instead of squeezing it (design-system §6).
 struct GRow: View {
     private let text: String
+    private let sub: String?
     private let value: String?
     private let chevron: Bool
     private let isAction: Bool
@@ -111,14 +161,17 @@ struct GRow: View {
     private let icon: LucideIcon?
     private let onTap: (() -> Void)?
     private var lead: AnyView?
+    private var valueLead: AnyView?
     private var trailing: AnyView?
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// `sub` is a second line under the text, 13 muted: what a client runs on, a computer's quota in short.
     init(
-        _ text: String, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
+        _ text: String, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
         enabled: Bool = true, valueColor: Color? = nil, icon: LucideIcon? = nil, onTap: (() -> Void)? = nil
     ) {
         self.text = text
+        self.sub = sub
         self.value = value
         self.chevron = chevron
         isAction = action
@@ -136,6 +189,13 @@ struct GRow: View {
         return row
     }
 
+    /// What stands right before the value and moves with it: a status dot, the turning circle of a value being read.
+    func valueLead<V: View>(@ViewBuilder _ view: () -> V) -> GRow {
+        var row = self
+        row.valueLead = AnyView(view())
+        return row
+    }
+
     /// What stands at the row's end, after its value: a segmented pill, a check.
     func trailing<V: View>(@ViewBuilder _ view: () -> V) -> GRow {
         var row = self
@@ -146,10 +206,15 @@ struct GRow: View {
     private var ink: Color { danger ? Theme.red : isAction ? Theme.blue : enabled ? Theme.fg : Theme.muted }
 
     private var title: some View {
-        HStack(spacing: 0) {
-            if let icon { Ic(icon, style: T.body, color: ink).padding(.trailing, 6) }
-            Text(text).type(T.body, ink)
-            if chevron && isAction { Arrow(ink, style: T.body).padding(.leading, 4) }
+        // At accessibility sizes nothing is cut: the row grows instead (design-system §6).
+        let lines: Int? = typeSize.isAccessibilitySize ? nil : 2
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 0) {
+                if let icon { Ic(icon, style: T.body, color: ink).padding(.trailing, 6) }
+                Text(text).type(T.body, ink).lineLimit(lines)
+                if chevron && isAction { Arrow(ink, style: T.body).padding(.leading, 4) }
+            }
+            if let sub, !sub.isEmpty { Text(sub).type(T.sm, Theme.muted).lineLimit(lines) }
         }
     }
 
@@ -158,12 +223,12 @@ struct GRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 10) {
                     lead
-                    title
-                    Spacer(minLength: 0)
+                    title.frame(maxWidth: .infinity, alignment: .leading)
                     trailing
                 }
                 HStack(spacing: 4) {
                     Spacer(minLength: 0)
+                    valueLead.padding(.trailing, 1)
                     Text(value ?? "").type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing)
                     if chevron { Arrow(Theme.muted) }
                 }
@@ -172,14 +237,18 @@ struct GRow: View {
         } else {
             HStack(spacing: 10) {
                 lead
-                title.padding(.vertical, 11)
-                Spacer(minLength: 0)
                 if let value {
-                    HStack(spacing: 4) {
-                        Text(value).type(T.sm, valueColor ?? Theme.muted)
-                            .multilineTextAlignment(.trailing).lineLimit(2).frame(maxWidth: 200, alignment: .trailing)
-                        if chevron { Arrow(Theme.muted) }
+                    RowSplit {
+                        title.padding(.vertical, 11)
+                        HStack(spacing: 4) {
+                            valueLead.padding(.trailing, 1)
+                            Text(value).type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing).lineLimit(2)
+                            if chevron { Arrow(Theme.muted) }
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    title.padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 trailing
                 if chevron && value == nil && !isAction { Arrow(Theme.muted) }
@@ -263,10 +332,30 @@ struct ListItem: View {
         let ink = !enabled ? Theme.muted : danger ? Theme.red : Theme.fg
         let row = HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    if let icon { Ic(icon, style: T.body, color: ink) }
-                    Text(title).type(desc != nil ? T.bodyB : T.body, ink)
-                    if let small { Text(small).type(T.meta, Theme.muted) }
+                let name = Text(title).type(desc != nil ? T.bodyB : T.body, ink)
+                if let small {
+                    // Beside the title when both fit on a line, else under it: a
+                    // long model name does not squeeze its note to a column.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            if let icon { Ic(icon, style: T.body, color: ink) }
+                            name.lineLimit(1)
+                            Text(small).type(T.meta, Theme.muted).lineLimit(1)
+                        }
+                        .fixedSize()
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                if let icon { Ic(icon, style: T.body, color: ink) }
+                                name
+                            }
+                            Text(small).type(T.meta, Theme.muted)
+                        }
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if let icon { Ic(icon, style: T.body, color: ink) }
+                        name
+                    }
                 }
                 if let desc { Text(desc).type(T.meta.with(lineHeight: 1.45), Theme.muted) }
             }

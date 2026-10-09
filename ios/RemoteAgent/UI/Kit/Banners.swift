@@ -34,7 +34,7 @@ struct Banner: View {
             Text(text).type(T.sm, ink).padding(.vertical, 9).frame(maxWidth: .infinity, alignment: .leading)
             if let action, let onAction {
                 Button(action: onAction) {
-                    Text(action).type(T.smB, Theme.blue).lineLimit(1).padding(.horizontal, 8).hitTarget()
+                    Text(action).type(T.smB, Theme.blue).lineLimit(1).fixedSize().padding(.horizontal, 8).hitTarget()
                 }
                 .buttonStyle(PressStyle())
             }
@@ -78,7 +78,7 @@ struct ConnBanner: View {
             let bar = HStack(spacing: 6) {
                 Mark(icon, color: color)
                 Text(text).type(T.meta, color).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-                if details != nil { Text("详情").type(T.metaB, Theme.blue).padding(.leading, 2) }
+                if details != nil { Text("详情").type(T.metaB, Theme.blue).lineLimit(1).fixedSize().padding(.leading, 2) }
             }
             .padding(.horizontal, Theme.Space.page).padding(.vertical, 5)
             // The bar is a thin line of text; one that opens the details is as tall as anything else to tap.

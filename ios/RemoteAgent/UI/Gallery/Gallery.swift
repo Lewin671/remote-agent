@@ -323,8 +323,9 @@ private struct ListsPage: View {
         LargeTitle("设置")
         GroupLabel("电脑", action: "管理") {}
         GroupCard {
-            GRow("MacBook", value: "在线", chevron: true, valueColor: Theme.greenInk, onTap: {})
+            GRow("MacBook", sub: "Codex · 5 小时已用 62%", value: "在线", chevron: true, onTap: {})
                 .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
+                .valueLead { Dot(Theme.green) }
             GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
                 .lead { IconBadge(Lucide.laptop, color: Theme.gray) }
             GRow("添加设备", action: true, icon: Lucide.plus, onTap: {})
@@ -347,6 +348,18 @@ private struct ListsPage: View {
         }
         .contextMenu {
             Button(role: .destructive) {} label: { Label { Text("退出账户") } icon: { Lucide.x.image() } }
+        }
+        // What the mockup's short examples never show: the text has the room first, the value at least two fifths.
+        GroupLabel("长文字：一个很长的分组标题，看右边的操作会不会被挤成一列", action: "全部设备") {}
+        GroupCard {
+            GRow("ip-10-0-12-231.ap-southeast-1.compute.internal", value: "在线", chevron: true, onTap: {})
+                .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
+            GRow("一个名字特别长的客户端，用来看一行放不下的时候怎么办", sub: "App · iOS 26.0 · iPhone", value: "当前")
+            GRow("我的手机", sub: "App · Android 16 · Pixel 9", value: "40 分钟前使用", chevron: true, onTap: {})
+            GRow("服务器", value: "relay.a-very-long-subdomain.example-company.internal:8443")
+            GRow("alex-macbook-pro-16-inch-2026-office", value: "10月8日 周四 14:10 使用", chevron: true, onTap: {})
+            GRow("没有值的长标题，后面只有一个箭头，看它在哪里换行、在哪里省略", chevron: true, onTap: {})
+            GRow("清理这台手机上所有已经不再需要的查看缓存和预览", action: true, onTap: {})
         }
     }
 }
@@ -391,7 +404,8 @@ private struct ChoicesPage: View {
             ListItem("询问", desc: "需要审批时由你确认，超时拒绝", checked: true, onTap: {})
             ListItem("自动", desc: "由 Codex 自己判断，拿不准的在对话里问你", onTap: {})
             ListItem("完全放行", desc: "本会话启动时未启用；需要时新建会话选择", enabled: false)
-            ListItem("gpt-6-astra", small: "最高 xhigh", last: true, icon: Lucide.check, onTap: {})
+            ListItem("gpt-6-astra", small: "最高 xhigh", icon: Lucide.check, onTap: {})
+            ListItem("claude-opus-5-5-preview-20261001-extended", checked: true, small: "1M 上下文 · 无推理强度", last: true, onTap: {})
         }
         .padding(.horizontal, 16)
         SectionLabel("标签栏")
