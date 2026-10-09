@@ -10,6 +10,8 @@ let package = Package(
     products: [
         .library(name: "RACore", targets: ["RACore"]),
         .library(name: "RAProto", targets: ["RAProto"]),
+        .library(name: "RAMarkdown", targets: ["RAMarkdown"]),
+        .library(name: "RAMarkdownUI", targets: ["RAMarkdownUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", exact: "1.38.1"),
@@ -34,5 +36,9 @@ let package = Package(
             ]
         ),
         .testTarget(name: "RACoreTests", dependencies: ["RACore"]),
+        // The reply's Markdown: a parser held to testdata/markdown, and the SwiftUI that draws it.
+        .target(name: "RAMarkdown"),
+        .target(name: "RAMarkdownUI", dependencies: ["RAMarkdown"]),
+        .testTarget(name: "RAMarkdownTests", dependencies: ["RAMarkdown"]),
     ]
 )
