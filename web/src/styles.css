@@ -760,7 +760,8 @@ input.field { margin: 0; }
 .gen-card .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 4px; }
 .gen-card .meta .link { font-size: 12px; min-height: 32px; }
 .gen-prompt { font-size: 13px; color: var(--fg2); background: var(--soft); border-radius: var(--r-sm); padding: 8px 10px; white-space: pre-wrap; }
-.desk .pic:not(.lg) { height: 140px; }
+/* Wide: a sent message's own previews grow with the session's pictures (Pic sets its size itself); the tray's stay 56. */
+.desk .pic.local { width: 105px; height: 140px; }
 @keyframes ringspin { to { transform: rotate(360deg); } }
 .ring.spin, .vimg .ring { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(0,0,0,.45); border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; animation: ringspin 1s linear infinite; }
 .vimg .ring::after { display: none; }
