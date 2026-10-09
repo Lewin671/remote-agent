@@ -430,7 +430,11 @@ struct ChatPane: View {
             session: { nav.open(.session(id: $0)) },
             putBack: { requestId, text in
                 // A message the session ended before writing: its text goes back into the box.
-                if let o = store.find(sid, requestId: requestId) { store.putBack(sid, o) } else { store.appendToDraft(sid, text) }
+                if let o = store.find(sid, requestId: requestId) {
+                    SessionImages.putBack(o, session: sid, state: model.state, remote: context.remote, store: store)
+                } else {
+                    store.appendToDraft(sid, text)
+                }
             },
             select: { selecting = SelectedText(text: $0) }))
         .kitSheet(item: $selecting, size: .mediumOrLarge) { picked in
@@ -615,6 +619,7 @@ private struct OutgoingBubble: View {
     let input: PBInputStatus?
     let failure: String?
     let onTerminal: () -> Void
+    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
 
     private func act(_ action: OutgoingAction) {
@@ -624,7 +629,7 @@ private struct OutgoingBubble: View {
         case .remove:
             store.remove(session.id, message)
             message.images.forEach { $0.release() }
-        case .putBack: store.putBack(session.id, message)
+        case .putBack: SessionImages.putBack(message, session: session.id, state: model.state, remote: context.remote, store: store)
         case .terminal: onTerminal()
         }
     }

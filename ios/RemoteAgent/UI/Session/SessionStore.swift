@@ -112,6 +112,12 @@ final class SessionStore {
         return deliver(commands, sid: sid, o)
     }
 
+    /// Takes in a message made elsewhere, as one with images is: kept on disk first, or left by an earlier run
+    /// (`ImageCenter`). It is not sent by this; `deliver` does that.
+    func add(_ sid: String, _ o: Outgoing) {
+        outbox[sid, default: []].append(o)
+    }
+
     /// Sends, or sends again, a message under its own request ID.
     @discardableResult
     func deliver(_ commands: any SessionCommands, sid: String, _ o: Outgoing) -> Task<Void, Never> {

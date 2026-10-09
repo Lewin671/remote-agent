@@ -1,0 +1,260 @@
+import Foundation
+import RACore
+import RAProto
+import Testing
+
+@testable import RemoteAgent
+
+/// Messages with images, from the box to the CLI: Android's SendImagesTest and the image half of `Outbox`.
+@MainActor
+@Suite struct SessionImagesTests {
+    private let remote = try! Remote(
+        account: Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"),
+        http: AppModel.http)
+    private let files = VolatileFiles()
+    private let store = SessionStore()
+    private let computer = FakeCommands()
+    private let sid = "s1"
+
+    private func center() -> ImageCenter {
+        ImageCenter.install(remote: remote, files: files)
+        return ImageCenter.of(remote)
+    }
+
+    /// An image as it stands in a draft once it is on the computer.
+    private func ready(_ id: String) -> PendingImage {
+        let img = PendingImage(id: id, uri: "picked:\(id)")
+        img.processed = Processed(bytes: Data([0x89]) + Data("PNG\r\n\u{1A}\n".utf8) + Data(id.utf8), format: .png, width: 4, height: 3)
+        img.state = .ready
+        img.machineId = "mac"
+        img.imageId = "on-mac-\(id)"
+        return img
+    }
+
+    private func send(_ c: ImageCenter, _ text: String, keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil) async -> Result<Void, Error>? {
+        await withCheckedContinuation { done in
+            let taken = c.send(sid: sid, machineId: "mac", store: store, text: text, mode: .steer, commands: computer, keep: keep) {
+                done.resume(returning: $0)
+            }
+            if !taken { done.resume(returning: nil) }
+        }
+    }
+
+    /// Waits for what runs after `done`, on other tasks.
+    private func eventually(_ what: String, _ ok: @MainActor () -> Bool) async {
+        for _ in 0..<500 where !ok() { try? await Task.sleep(nanoseconds: 2_000_000) }
+        #expect(ok(), "\(what)")
+    }
+
+    @Test func aDraftWithoutImagesIsNotThisCodesToSend() async {
+        let c = center()
+        #expect(await send(c, "只有文字") == nil)
+        #expect(store.outgoing(sid).isEmpty && computer.sent.isEmpty)
+    }
+
+    @Test func aMessageWhoseImagesCouldNotBeKeptIsNotSent() async {
+        struct DiskFull: Error {}
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a")])
+        let kept = await send(c, "看图") { _, _, _ in throw DiskFull() }
+        guard case .failure(let error)? = kept else {
+            Issue.record("keeping the images should have failed")
+            return
+        }
+        #expect(error is DiskFull)
+        // Nothing went out, nothing waits here as if it had, and the draft is as it was.
+        #expect(store.outgoing(sid).isEmpty && computer.sent.isEmpty)
+        #expect(draft.images.map(\.id) == ["a"])
+    }
+
+    @Test func aMessageGoesWithItsImagesOnceTheyAreKept() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a"), ready("b")])
+        let kept = await send(c, "这两个页面底部的按钮都点不到")
+        guard case .success? = kept else {
+            Issue.record("the images should have been kept")
+            return
+        }
+        // Out of the box, into the message, and sealed for a run that may end before the CLI has it.
+        #expect(draft.images.isEmpty)
+        let o = try #require(store.outgoing(sid).first)
+        #expect(o.imageIds == ["on-mac-a", "on-mac-b"] && o.images.map(\.id) == ["a", "b"])
+        #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
+        await eventually("the message is delivered") { o.state == .sent }
+        let sent = try #require(computer.sent.first?.send)
+        #expect(sent.imageIds == ["on-mac-a", "on-mac-b"] && sent.requestID == o.requestId && sent.text == "这两个页面底部的按钮都点不到")
+    }
+
+    @Test func itIsLetGoOfOnceTheCliHasRecordedIt() async throws {
+        let c = center()
+        c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("delivered") { o.state == .sent }
+        func input(_ seq: UInt64, _ status: PBInputStatus) -> PBEvent {
+            .with {
+                $0.seq = seq
+                $0.inputState = .with {
+                    $0.requestID = o.requestId
+                    $0.status = status
+                }
+            }
+        }
+        // Queued is not yet recorded: the images stay.
+        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued)]])
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(store.find(sid, requestId: o.requestId) != nil && o.images[0].processed != nil)
+        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued), input(2, .submitted)]])
+        await eventually("settled") { store.find(sid, requestId: o.requestId) == nil }
+        #expect(o.images[0].processed == nil)
+        await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
+    }
+
+    @Test func aMessageNotSubmittedGoesBackIntoTheBoxWithItsImages() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a"), ready("b")])
+        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("failed") { o.state == .failed }
+        store.setDraft(sid, "已经在写的")
+
+        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(store.outgoing(sid).isEmpty)
+        #expect(store.draft(sid) == "已经在写的\n看图")
+        // The images are in the box again and go to the computer again; nothing of them was dropped.
+        #expect(draft.images.map(\.id) == ["a", "b"])
+        #expect(draft.images.allSatisfy { $0.state == .failed(error: "需要重新传到电脑") && $0.processed != nil })
+        await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
+    }
+
+    @Test func imagesThatDoNotFitNextToTheOnesInTheBoxStayWithTheirMessage() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append((1...4).map { ready("m\($0)") })
+        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
+        _ = await send(c, "四张")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("failed") { o.state == .failed }
+        draft.append((1...3).map { ready("n\($0)") })
+
+        #expect(!SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        // Nothing moved: the message is still there to retry or to put back later.
+        #expect(store.find(sid, requestId: o.requestId) != nil && store.draft(sid).isEmpty)
+        #expect(draft.images.count == 3)
+        #expect(draft.notice == "输入框里已有 3 张图，放回这 4 张会超过 6 张。先移除一些再放回")
+        #expect(try OutgoingRecords(files: files).load(sid: sid).count == 1)
+    }
+
+    @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() async {
+        _ = center()
+        await store.send(computer, sid: sid, text: "只有文字").value
+        let o = store.outgoing(sid)[0]
+        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(store.draft(sid) == "只有文字" && store.outgoing(sid).isEmpty)
+    }
+
+    @Test func aRunThatEndedLeavesItsMessagesToTheNext() async throws {
+        let first = center()
+        first.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
+        _ = await send(first, "看图")
+        let sent = try #require(store.outgoing(sid).first)
+
+        // The process was reclaimed: a new store, a new center, the same sealed files.
+        let later = SessionStore()
+        let c = center()
+        c.restoreOutgoing(sid, store: later)
+        let o = try #require(later.outgoing(sid).first)
+        #expect(o.requestId == sent.requestId && o.text == "看图" && o.imageIds == ["on-mac-a"])
+        #expect(o.state == .unknown && o.error == "App 重启过，不确定这条有没有送到")
+        // Asked again, it is not doubled.
+        c.restoreOutgoing(sid, store: later)
+        #expect(later.outgoing(sid).count == 1)
+    }
+
+    @Test func aMessageTheUserRemovedDoesNotComeBack() async throws {
+        let c = center()
+        c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
+        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("failed") { o.state == .failed }
+        // 移除此提示 in the chat.
+        store.remove(sid, o)
+        await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
+        #expect(o.images[0].processed == nil)
+    }
+
+    @Test func theButtonsFollowTheDraft() {
+        let c = center()
+        let context = SessionImageContext(sessionId: sid, machineId: "mac", remote: remote, store: store, blocked: nil, limit: 6)
+        #expect(!SessionImages.hasImages(context) && SessionImages.ready(context))
+        let waiting = PendingImage(id: "w", uri: nil)
+        c.draft(ImageCenter.sessionKey(sid)).append([ready("a"), waiting])
+        // Never a message with some of its images.
+        #expect(SessionImages.hasImages(context) && !SessionImages.ready(context))
+        c.remove(ImageCenter.sessionKey(sid), waiting)
+        #expect(SessionImages.ready(context))
+        // On another computer they are not there.
+        let other = SessionImageContext(sessionId: sid, machineId: "vps", remote: remote, store: store, blocked: nil, limit: 6)
+        #expect(!SessionImages.ready(other))
+    }
+
+    @Test func plusSaysWhyItAddsNothing() {
+        let c = center()
+        let key = ImageCenter.sessionKey(sid)
+        c.plus(key, blocked: "MacBook 离线，连上后才能添加图片", max: 6)
+        #expect(c.notices[key] == "MacBook 离线，连上后才能添加图片" && c.picking[key] == nil)
+        c.draft(key).append((1...6).map { ready("i\($0)") })
+        c.plus(key, blocked: nil, max: 6)
+        #expect(c.notices[key] == "一条消息最多 6 张" && c.picking[key] == nil)
+        c.clearNotice(key, was: "别的话")
+        #expect(c.notices[key] != nil)
+        c.clearNotice(key, was: "一条消息最多 6 张")
+        #expect(c.notices[key] == nil)
+    }
+
+    @Test func pickedFilesArePreparedAndTheExtraOnesAreLeftOut() async throws {
+        let c = center()
+        let key = ImageCenter.sessionKey(sid)
+        // Not pictures: what matters here is how many go in, and what is said of the rest and of each.
+        c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, max: 6)
+        let draft = c.draft(key)
+        #expect(draft.images.count == 6)
+        #expect(draft.notice == "一条消息最多 6 张，多选的 2 张没有加入")
+        await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: "解不出这张图片") } }
+    }
+
+    @Test func theSealedStoreKeepsADraftWithoutItsPixelsInTheClear() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ra-images-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pending = PendingStore(
+            directory: root, vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"),
+            defaults: UserDefaults(suiteName: "ra-images-\(UUID().uuidString)")!)
+        defer { try? pending.clearAll() }
+        let image = ready("a")
+        let draft = ImageDraft(key: "session:s1", files: pending, saves: nil)
+        draft.append([image])
+        // The draft comes back from the files alone, in a process that has nothing else.
+        let again = ImageDraft(key: "session:s1", files: pending, saves: nil)
+        try again.restore()
+        #expect(again.images.map(\.id) == ["a"] && again.images[0].processed == image.processed)
+        // Nothing on disk reads as the picture, or names the session.
+        let stored = try FileManager.default.subpathsOfDirectory(atPath: root.path).map { root.appending(path: $0) }
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true }
+        var seen = 0
+        for url in stored {
+            seen += 1
+            let bytes = try Data(contentsOf: url)
+            #expect(bytes.range(of: Data("PNG".utf8)) == nil)
+            #expect(!url.path.contains("session:s1") && !url.path.contains("s1/"))
+        }
+        #expect(seen >= 3)
+        // Logging out leaves none of it.
+        try pending.clearAll()
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+    }
+}

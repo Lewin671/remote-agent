@@ -3,23 +3,23 @@
 // them (architecture §17, docs/session-images.md; Android's ui/ImagePick.kt,
 // ui/ImageProcess.kt, ui/ImageDrafts.kt and `Outbox.sendWithImages`).
 //
-// NOT IMPLEMENTED HERE. Everything the message box needs of that feature
-// goes through this one file, so it can be filled in without touching the
-// screens. What is already there and stays as it is:
+// Everything the message box needs of that feature goes through this one
+// file. What is behind it:
 //
+//   - `ImageCenter` (UI/Images) holds the account's drafts and the messages
+//     on their way, and drives preparing and uploading (`ImageUploads` and
+//     `prepareImage` in the package);
+//   - `ImageStrip` draws a draft and hosts the picker;
 //   - the chat draws the previews events carry (ChatImages.swift) and opens
-//     `Route.image` on a tap;
-//   - the package has the draft and the kept messages (`ImageDraft`,
-//     `PendingImage`, `Outgoing`, `OutgoingRecords`, `uploadImage`), and the
-//     app has the sealed store (`PendingStore`);
-//   - `SessionStore.deliver` already sends an `Outgoing`'s `imageIds`.
+//     `Route.image` on a tap; `SessionStore.deliver` sends an `Outgoing`'s
+//     `imageIds`.
 //
-// What to fill in, and what calls it:
+// What it gives the box:
 //
-//   1. `plusTapped`      the ＋ of the message box was tapped: show the picker
-//                        and add what was picked to the session's draft.
+//   1. `plusTapped`      the ＋ of the message box was tapped: shows the picker
+//                        and adds what was picked to the session's draft.
 //   2. `DraftStrip`      the strip over the text, inside the box, with the
-//                        attached images and their upload states. Empty now.
+//                        attached images and their upload states.
 //   3. `hasImages`,      whether the draft holds images, and whether every
 //      `ready`           one of them is on the computer: the send button
 //                        follows them (never a message with some of them).
@@ -51,36 +51,71 @@ struct SessionImageContext {
 
 @MainActor
 enum SessionImages {
+    private static func center(_ context: SessionImageContext) -> ImageCenter { ImageCenter.of(context.remote) }
+    private static func draft(_ context: SessionImageContext) -> ImageDraft {
+        center(context).draft(ImageCenter.sessionKey(context.sessionId))
+    }
+
     /// 1. The ＋ was tapped. It is only enabled while `context.blocked` is nil.
-    static func plusTapped(_ context: SessionImageContext) {}
+    static func plusTapped(_ context: SessionImageContext) {
+        center(context).plus(ImageCenter.sessionKey(context.sessionId), blocked: context.blocked, max: context.limit)
+    }
 
     /// 3. The session's draft holds images.
-    static func hasImages(_ context: SessionImageContext) -> Bool { false }
+    static func hasImages(_ context: SessionImageContext) -> Bool { !draft(context).images.isEmpty }
 
     /// 3. Every image of the draft is on the computer.
-    static func ready(_ context: SessionImageContext) -> Bool { true }
+    static func ready(_ context: SessionImageContext) -> Bool {
+        let d = draft(context)
+        return d.images.isEmpty || d.ready(machineId: context.machineId)
+    }
 
     /// 4. Sends `text` with the draft's images, or returns false when the draft has none.
     static func send(
         _ context: SessionImageContext, text: String, mode: PBSendMode, done: @escaping @MainActor (Result<Void, Error>) -> Void
     ) -> Bool {
-        false
+        center(context).send(sid: context.sessionId, machineId: context.machineId, store: context.store, text: text, mode: mode, done: done)
     }
 
-    /// 6. Puts a message's images back into the draft; false when they do not fit.
-    static func putBack(_ context: SessionImageContext, _ message: Outgoing) -> Bool { true }
+    /// 6. Puts a message's images back into the draft; false when they do not fit, and then nothing moved.
+    static func putBack(_ context: SessionImageContext, _ message: Outgoing) -> Bool {
+        center(context).putBack(sid: context.sessionId, max: context.limit, message)
+    }
+
+    /// 6. A message that was not submitted goes back into its session's box, text and images, for the user to
+    /// send again as a new message. When its images do not fit next to the ones already there nothing moves,
+    /// and the strip says why.
+    @discardableResult
+    static func putBack(_ message: Outgoing, session: String, state: RemoteState, remote: Remote, store: SessionStore) -> Bool {
+        let max = imageLimit(for: state.sessions[session].flatMap { state.machines[$0.machineId] })
+        guard ImageCenter.of(remote).putBack(sid: session, max: max, message) else { return false }
+        store.putBack(session, message)
+        return true
+    }
 
     /// 2. The attached images, over the text inside the message box.
     struct DraftStrip: View {
         let context: SessionImageContext
 
-        var body: some View { EmptyView() }
+        var body: some View {
+            let center = ImageCenter.of(context.remote)
+            ImageStrip(
+                center: center, key: ImageCenter.sessionKey(context.sessionId), machineId: context.machineId, blocked: context.blocked,
+                max: context.limit
+            )
+            // Messages with images an earlier run left on their way come back with the session's page.
+            .task(id: context.sessionId) { center.restoreOutgoing(context.sessionId, store: context.store) }
+            .sessionImageDebug(context)
+        }
     }
 
     /// 5. The thumbnails of a message's images while it is on its way.
     struct OutgoingThumbs: View {
         let message: Outgoing
+        @Environment(AccountContext.self) private var context
 
-        var body: some View { EmptyView() }
+        var body: some View {
+            OutgoingImageThumbs(center: ImageCenter.of(context.remote), message: message)
+        }
     }
 }

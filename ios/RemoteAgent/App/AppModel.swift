@@ -146,6 +146,12 @@ final class AppModel {
     /// The server turned this device away (architecture §13 「移除设备」): only the notice is shown.
     var removed: Bool { stage == .ready && state.removed }
 
+    /// The account's cache of ciphertext, where viewed images are kept as sealed envelopes; nil while none is
+    /// open (no account, sample data, or a cache that did not open).
+    var imageCache: CipherStore? { cache }
+    /// Where images waiting to be sent are kept, sealed.
+    var pendingImages: PendingStore { parts.storage.pending }
+
     // MARK: Private state
 
     @ObservationIgnored private let parts: Parts
@@ -277,6 +283,7 @@ final class AppModel {
         described = nil
         state = made.remote.state.value
         context = AccountContext(account: account, remote: made.remote)
+        ImageCenter.install(remote: made.remote, files: parts.storage.pending)
         stage = .ready
         made.engine.setNetwork(path.available)
         follow(made.engine.state, gen: generation)
@@ -366,6 +373,8 @@ final class AppModel {
         closeTerminals()
         engine?.close()
         engine = nil
+        // Drafts, thumbnails and viewed images held in memory go with the account.
+        if let remote { ImageCenter.remove(remote) }
         context = nil
         state = RemoteState()
         described = nil
@@ -431,6 +440,7 @@ final class AppModel {
         let gen = generation
         state = initial
         context = AccountContext(account: account, remote: remote)
+        ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
         stage = .ready
         Task {
             await load()
