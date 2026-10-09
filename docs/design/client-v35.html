@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v34</title>
+<title>remote-agent 客户端设计稿 v35</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,17 +927,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v34 · 2026-10-10 · 上一版 v33 在 git 历史里（<code>git log -- docs/design/client-v33.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v35 · 2026-10-10 · 上一版 v34 在 git 历史里（<code>git log -- docs/design/client-v34.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v33 的改动</h4><ul><li><a href="#projects">项目列表</a>：范围菜单、新建时的选项目和项目管理用同一种项目行、同一种分组（「常用」「其他」）和同一个「＋ 新项目…」；项目行第二行统一写路径加进行中的数量，没有进行中而电脑都不在线时写「电脑不在线」。宽屏的项目管理不再用表格。</li><li><a href="#projects">项目管理</a>：页面里可以直接加新项目；移除先确认，确认后就是移除，没有撤销、没有「已移除的项目」页面和「恢复」；以后要用，再把这个目录加成新项目。项目设置里的移除走同一个确认。</li><li><a href="#conncheck">连接检测</a>（新）：设置里和宽屏侧栏底部的连接状态可以点开，分段显示本机网络、到服务器、经服务器到每台电脑的往返延时。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v34 的改动</h4><ul><li><a href="#update">App 更新</a>（新，只有 Android）：App 自己发现新版本，在主页标题下出一行「有新版本」，设置 › 账户的「版本」一行也写出来；点开是一个弹层，写这一版改了什么，一个按钮下载并交给系统安装。网页部署后自己就是新的，没有这些。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -2076,6 +2076,93 @@ git status --short gen/</pre>
 <div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--red)">没有回应</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)">未检测</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
 </div>
 <div class="cap">服务器没有回应：原因用红字写在这一行，后面的电脑不测，写「未检测」</div>
+</div>
+</div>
+<h2 id="update">App 更新</h2>
+<div class="note" style="margin:0 0 20px">只有 Android：网页部署后自己就是新的。App 回到前台时看一眼有没有新版本，最多几小时一次，看不到（没网、发布地址连不上）就什么都不说。有新版本时在两处说：主页标题下的一行提示，和设置 › 账户的「版本」一行；两处点开是同一个弹层。弹层只有一个主按钮，它就是下一步：下载并安装、正在下载、安装（已下载但系统的确认框被关掉时）、重新下载。下载完自动打开系统的安装确认，安装本身由系统完成。「以后再说」之后主页不再提这一版，设置里那一行还在；再有更新的版本时主页重新提示。开发版（另一个包名）不检查更新，「版本」一行不能点。</div>
+<div class="screens">
+<div>
+<div class="phone">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body">
+<div class="large"><h3 class="scope"><div class="av sm all">全</div><b>全部项目</b><i class="dn"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></h3></div>
+<div class="pad" style="padding-top:0;padding-bottom:0"><div class="banner">有新版本 0.29.0<b>更新</b></div></div>
+<div class="label">进行中 <span>2</span></div>
+<div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span class="tm">刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">foo · Codex</div></div></div>
+<div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span class="tm">8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明</div><div class="mc">foo · Claude Code</div></div></div>
+</div>
+</div>
+<div class="cap">主页：标题下一行「有新版本 0.29.0」，右边「更新」。断线提示条在它上面；只在有没推迟过的新版本时出现</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray">
+<div class="large"><h3>设置</h3></div>
+<div class="glabel">账户</div>
+<div class="grp">
+<div class="row">服务器<span class="v">ra.remote-agent.top</span></div>
+<div class="row">连接检测<span class="v"><span class="dot idle"></span> 已连接<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+<div class="row">版本<span class="v" style="color:var(--blue)">可更新到 0.29.0<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+<div class="row">开源许可<span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+<div class="row" style="color:var(--red)">退出并删除本机密钥</div>
+</div>
+</div>
+</div>
+<div class="cap">设置 › 账户：「版本」一行写「可更新到 0.29.0」，蓝字；没有新版本时写当前版本号。点开是右边的弹层</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">有新版本：标题是新版本号，下面是当前版本和这一版的说明（发版时写的「变化与升级要求」）。主按钮写出大小</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="opacity:.4">正在下载 2.0 MiB / 5.7 MiB</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">下载中：按钮写进度，按禁用显示；关掉弹层下载继续，「版本」一行写「正在下载 0.29.0」</div>
+</div>
+</div>
+<div class="screens" style="margin-top:24px">
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">已下载：系统的安装确认被关掉后回来，按钮是「安装」，不用再下载。「版本」一行写「0.29.0 已下载」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">没能下载：连接超时</div><div class="btns" style="margin-top:14px"><div class="btn pri">重新下载</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">下载失败，或下载的文件和发布信息对不上：原因用红字写在按钮上面，按钮是「重新下载」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">会话列表改成分页读取。</div><div class="banner" style="margin-top:10px;color:var(--orange-ink)">这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">这一版换了协议版本：橙字提示装好后电脑上的 remote-agent 也要升级，不然连不上。仍然可以装</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>版本</b><span>完成</span></div><div style="font-size:15px">remote-agent 0.29.0</div><div class="muted small" style="margin-top:6px">已是最新版本</div><div class="btns" style="margin-top:14px"><div class="btn">检查更新</div></div></div>
+</div>
+<div class="cap">没有新版本时点「版本」：写当前版本和「已是最新版本」，「检查更新」再看一次；正在看时写「正在检查更新…」</div>
+</div>
+</div>
+<div class="screens" style="margin-top:24px">
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>版本</b><span>完成</span></div><div style="font-size:15px">remote-agent 0.28.0</div><div class="small" style="color:var(--red);margin-top:6px">没能检查更新：连不上发布地址</div><div class="btns" style="margin-top:14px"><div class="btn">检查更新</div></div></div>
+</div>
+<div class="cap">手动检查没成功：红字写原因。自动检查失败不出这一行</div>
 </div>
 </div>
 <h2 id="states">状态集</h2>
