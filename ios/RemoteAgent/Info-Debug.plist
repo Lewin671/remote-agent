@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist for debug builds: the same, and plain HTTP to local addresses,
+  for a relay run on the developer's machine. Release builds keep App
+  Transport Security whole.
+-->
+<plist version="1.0">
+<dict>
+	<key>RASourceCommit</key>
+	<string>unknown</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
