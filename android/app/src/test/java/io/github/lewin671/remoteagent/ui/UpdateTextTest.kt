@@ -21,6 +21,16 @@ class UpdateTextTest {
     }
 
     @Test
+    fun onlyThisAppsPackageOfThePromisedVersionGoesToTheInstaller() {
+        val id = "io.github.lewin671.remoteagent"
+        assertNull(io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 82, release))
+        // Another app's package would be installed next to this one, unsigned by us.
+        assertEquals("下载的安装包不是 remote-agent", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, "$id.evil", 82, release))
+        assertEquals("下载的安装包不是 remote-agent", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, null, 82, release))
+        assertEquals("下载的安装包和发布信息不一致", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 81, release))
+    }
+
+    @Test
     fun theButtonIsTheNextStep() {
         assertEquals(UpdateStep("下载并安装（5.7 MiB）", true), updateStep(UpdateState.Available(release)))
         assertEquals(UpdateStep("正在下载 2.0 MiB / 5.7 MiB", false), updateStep(UpdateState.Downloading(release, 2_097_152)))

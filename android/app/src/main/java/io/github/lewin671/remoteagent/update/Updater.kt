@@ -11,11 +11,13 @@ import io.github.lewin671.remoteagent.core.Updates
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.isNewer
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Where a downloaded APK waits for the system's installer, under the app's files (res/xml/file_paths.xml):
@@ -117,13 +119,42 @@ object Updater {
                 val file = Updates(app.http).download(release, File(app.filesDir, UPDATES_DIR)) { done ->
                     _state.value = UpdateState.Downloading(release, done)
                 }
+                val refused = withContext(Dispatchers.IO) { notThisApp(app, file, release) }
+                if (refused != null) {
+                    file.delete()
+                    throw java.io.IOException(refused)
+                }
                 _state.value = UpdateState.Ready(release, file)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 installWhenReady = false
-                _state.value = UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
+                // The mirror holds the latest release only: one published since this was found has
+                // replaced it, and trying the same file again would fail for ever.
+                val latest = runCatching { Updates(app.http).latest() }.getOrNull()
+                _state.value = if (latest != null && latest != release && isNewer(latest, installedCode(app))) UpdateState.Available(latest)
+                else UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
             }
         }
+    }
+
+    /**
+     * Why [file] must not go to the installer, or null when it is this app's update. The
+     * system checks the signature only of a package that replaces an installed one: a
+     * package of another name would be installed as a new app, whoever signed it. So
+     * whoever could change the mirror must not get that far: the package has to carry
+     * this app's name, which leaves the signature to the system, and the version the
+     * manifest promised.
+     */
+    fun notThisApp(app: RaApp, file: File, release: Release): String? {
+        val theirs = app.packageManager.getPackageArchiveInfo(file.path, 0) ?: return "下载的文件不是安装包"
+        return packageMismatch(app.packageName, theirs.packageName, PackageInfoCompat.getLongVersionCode(theirs), release)
+    }
+
+    /** [notThisApp] on what was read from the package. */
+    fun packageMismatch(installedName: String, name: String?, versionCode: Long, release: Release): String? = when {
+        name != installedName -> "下载的安装包不是 remote-agent"
+        versionCode != release.versionCode -> "下载的安装包和发布信息不一致"
+        else -> null
     }
 
     /**

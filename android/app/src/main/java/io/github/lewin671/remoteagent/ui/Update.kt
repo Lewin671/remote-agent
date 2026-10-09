@@ -10,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
@@ -73,7 +72,6 @@ fun UpdateSheet(onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val p = pal
     val state by Updater.state.collectAsState()
-    val scope = rememberCoroutineScope()
     val release = state.release
     var note by remember { mutableStateOf<InstallNote?>(null) }
     val installer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
@@ -129,8 +127,9 @@ fun UpdateSheet(onClose: () -> Unit) {
             return@Sheet
         }
         SheetHead("新版本 ${release.version}", "以后再说", {
-            // Put off: the home page stops mentioning this release; 设置 still shows it.
-            scope.launch { app.prefs.update { it.copy(skippedUpdate = release.versionCode) } }
+            // Put off: the home page stops mentioning this release; 设置 still shows it. Saved in
+            // the app's scope: this sheet's own ends with it, before the write may be through.
+            app.scope.launch { app.prefs.update { it.copy(skippedUpdate = release.versionCode) } }
             onClose()
         })
         ReleaseNotes(release, app.versionName)
