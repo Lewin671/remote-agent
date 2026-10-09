@@ -84,11 +84,15 @@ struct ImageViewerScreen: View {
         }
         .sessionSamples(session)
         .debugSignal("viewer.close") { nav.back() }
-        .debugSignal("viewer.next") { if let page, page + 1 < all.count { self.page = page + 1 } }
+        // A signal's handler is the one of the first frame: it only counts, and the frame of now acts.
+        .debugSignal("viewer.next") { pokes.next += 1 }
         .debugSignal("viewer.zoom") { pokes.zoom += 1 }
         .debugSignal("viewer.retry") { pokes.retry += 1 }
-        .debugSignal("viewer.save") { if let shown { save(shown, loader) } }
-        .debugSignal("viewer.share") { if let shown { sharing = ImageLeaving.picture(shown.ref, loader: loader) } }
+        .debugSignal("viewer.save") { pokes.save += 1 }
+        .debugSignal("viewer.share") { pokes.share += 1 }
+        .onChange(of: pokes.next) { if let page, page + 1 < all.count { self.page = page + 1 } }
+        .onChange(of: pokes.save) { if let shown { save(shown, loader) } }
+        .onChange(of: pokes.share) { if let shown { sharing = ImageLeaving.picture(shown.ref, loader: loader) } }
     }
 
     private var bar: some View {

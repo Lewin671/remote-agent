@@ -154,6 +154,9 @@ struct ViewerPage: View {
 final class ViewerPokes {
     var zoom = 0
     var retry = 0
+    var next = 0
+    var save = 0
+    var share = 0
 }
 
 /// The previews the events carry, decoded once for the viewer's pages.

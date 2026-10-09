@@ -128,7 +128,12 @@ final class ImageCenter {
                 #endif
                 return remote.uploadChannel(machineId: machine)
             },
-            readable: { [weak self] uri in self?.sources[uri] != nil })
+            readable: { [weak self] uri in
+                #if DEBUG
+                if self?.frozen == true { return true }
+                #endif
+                return self?.sources[uri] != nil
+            })
         uploads.onPrepared = { [weak self] img in self?.makeThumb(img) }
     }
 

@@ -60,7 +60,7 @@ enum ImageDebug {
     }
 
     private static func sample(_ n: Int, _ state: PendingImage.State, note: String = "", megabytes: Int = 0) -> PendingImage {
-        let img = PendingImage(id: "sample-\(n)", uri: nil)
+        let img = PendingImage(id: "sample-\(n)", uri: "sample:\(n)")
         var bytes = picture(CGFloat(n) * 0.14 + 0.05, w: n % 2 == 0 ? 240 : 160, h: n % 2 == 0 ? 180 : 260)
         // Padding after the picture: only so that the strip has megabytes to write.
         if megabytes > 0 { bytes.append(Data(count: megabytes * 1024 * 1024)) }
