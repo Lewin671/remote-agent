@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v35</title>
+<title>remote-agent 客户端设计稿 v36</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v35 · 2026-10-10 · 上一版 v34 在 git 历史里（<code>git log -- docs/design/client-v34.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v36 · 2026-10-10 · 上一版 v35 在 git 历史里（<code>git log -- docs/design/client-v35.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v34 的改动</h4><ul><li><a href="#update">App 更新</a>（新，只有 Android）：App 自己发现新版本，在主页标题下出一行「有新版本」，设置 › 账户的「版本」一行也写出来；点开是一个弹层，写这一版改了什么，一个按钮下载并交给系统安装。网页部署后自己就是新的，没有这些。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v35 的改动</h4><ul><li><a href="#update">App 更新</a>：补上交给系统安装这一步的三种情况：还没允许 remote-agent 安装应用（先带去系统设置，回来后继续）、系统的安装确认被取消、系统没装上。下载完只在弹层还开着时自动打开安装确认，否则留着等点「安装」。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -2079,7 +2079,7 @@ git status --short gen/</pre>
 </div>
 </div>
 <h2 id="update">App 更新</h2>
-<div class="note" style="margin:0 0 20px">只有 Android：网页部署后自己就是新的。App 回到前台时看一眼有没有新版本，最多几小时一次，看不到（没网、发布地址连不上）就什么都不说。有新版本时在两处说：主页标题下的一行提示，和设置 › 账户的「版本」一行；两处点开是同一个弹层。弹层只有一个主按钮，它就是下一步：下载并安装、正在下载、安装（已下载但系统的确认框被关掉时）、重新下载。下载完自动打开系统的安装确认，安装本身由系统完成。「以后再说」之后主页不再提这一版，设置里那一行还在；再有更新的版本时主页重新提示。开发版（另一个包名）不检查更新，「版本」一行不能点。</div>
+<div class="note" style="margin:0 0 20px">只有 Android：网页部署后自己就是新的。App 回到前台时看一眼有没有新版本，最多几小时一次，看不到（没网、发布地址连不上）就什么都不说。有新版本时在两处说：主页标题下的一行提示，和设置 › 账户的「版本」一行；两处点开是同一个弹层。弹层只有一个主按钮，它就是下一步：下载并安装、正在下载、安装（已下载但系统的确认框被关掉时）、重新下载。下载完，弹层还开着就接着打开系统的安装确认，已经关掉或切到别的应用就留着，回来点「安装」；安装本身由系统完成，装之前先看系统是否允许 remote-agent 安装应用。「以后再说」之后主页不再提这一版，设置里那一行还在；再有更新的版本时主页重新提示。开发版（另一个包名）不检查更新，「版本」一行不能点。</div>
 <div class="screens">
 <div>
 <div class="phone">
@@ -2133,6 +2133,27 @@ git status --short gen/</pre>
 <div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
 </div>
 <div class="cap">已下载：系统的安装确认被关掉后回来，按钮是「安装」，不用再下载。「版本」一行写「0.29.0 已下载」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">先在系统设置里允许 remote-agent 安装应用，回来后继续。</div><div class="btns" style="margin-top:14px"><div class="btn pri">去允许</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">还没允许 remote-agent 安装应用：点「安装」先打开系统的「安装未知应用」那一页，允许后回来自动接着装；没允许就停在这里，按钮是「去允许」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">安装没有完成，可以再装一次。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">系统的安装确认被取消：安装包还在，按钮仍是「安装」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">系统没能安装这个包。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+</div>
+<div class="cap">系统没装上（比如空间不够）：红字，可以再试；打不开系统的安装器时写「打不开系统的安装器。」</div>
 </div>
 <div>
 <div class="phone gray">
