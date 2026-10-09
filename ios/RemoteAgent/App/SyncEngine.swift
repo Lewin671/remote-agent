@@ -102,19 +102,24 @@ struct AccountStorage: Sendable {
 /// and nothing else, so a Keychain that refuses is not an error here.
 final class LoginKeeper: @unchecked Sendable {
     private let vault: Vault
+    /// Whose logins these are: one kept for another server or device is none.
+    private let server: String
+    private let deviceId: String
     private let queue = DispatchQueue(label: "ra.login")
     /// Only touched on `queue`.
     private var closed = false
     private let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "login")
 
-    init(vault: Vault) {
+    init(vault: Vault, server: String, deviceId: String) {
         self.vault = vault
+        self.server = server
+        self.deviceId = deviceId
     }
 
     /// The login kept by the last run, if any. Blocks: call it off the main actor.
     func load() -> SavedLogin? {
         queue.sync {
-            guard !closed, let kept = try? vault.loginToken() else { return nil }
+            guard !closed, let kept = try? vault.loginToken(server: server, deviceId: deviceId) else { return nil }
             return SavedLogin(token: kept.token, expiresMs: Int64(kept.expiresAt.timeIntervalSince1970 * 1000))
         }
     }
@@ -125,7 +130,9 @@ final class LoginKeeper: @unchecked Sendable {
             guard !closed else { return }
             // Never the token: only that one was kept or dropped.
             if let login {
-                let kept = LoginToken(token: login.token, expiresAt: Date(timeIntervalSince1970: Double(login.expiresMs) / 1000))
+                let kept = LoginToken(
+                    token: login.token, expiresAt: Date(timeIntervalSince1970: Double(login.expiresMs) / 1000), server: server,
+                    deviceId: deviceId)
                 let ok = (try? vault.saveLoginToken(kept)) != nil
                 log.info("login \(ok ? "kept" : "not kept: the Keychain refused", privacy: .public)")
             } else {

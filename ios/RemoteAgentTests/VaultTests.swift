@@ -1,4 +1,5 @@
 import Foundation
+import RACore
 import Security
 import Testing
 
@@ -26,7 +27,7 @@ import Testing
         #expect(try !vault.hasAccount())
         #expect(try vault.load() == nil)
         #expect(try vault.notifyKey() == nil)
-        #expect(try vault.loginToken() == nil)
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
     }
 
     @Test func theAccountComesBackAsItWasSaved() throws {
@@ -51,7 +52,8 @@ import Testing
     @Test func itemsAreForThisDeviceOnlyWhileUnlockedAndDoNotSync() throws {
         defer { try? vault.clear() }
         try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(LoginToken(token: "t", expiresAt: Date(timeIntervalSince1970: 1_800_000_000)))
+        try vault.saveLoginToken(LoginToken(
+            token: "t", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId))
         for item in [Vault.Item.account, .notifyKey, .loginToken] {
             let a = try #require(attributes(item))
             #expect(a[kSecAttrAccessible as String] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
@@ -65,12 +67,12 @@ import Testing
 
     @Test func theLoginTokenIsKeptAndDeletedOnItsOwn() throws {
         defer { try? vault.clear() }
-        let token = LoginToken(token: "bearer-abc", expiresAt: Date(timeIntervalSince1970: 1_800_000_000))
+        let token = LoginToken(token: "bearer-abc", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId)
         try vault.save(account, notifyKey: notify)
         try vault.saveLoginToken(token)
-        #expect(try vault.loginToken() == token)
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
         try vault.deleteLoginToken()
-        #expect(try vault.loginToken() == nil)
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
         #expect(try vault.load() == account)
         // Deleting what is not there is not an error.
         try vault.deleteLoginToken()
@@ -80,14 +82,14 @@ import Testing
         let other = Vault(service: vault.service + ".other")
         defer { try? other.clear() }
         try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(LoginToken(token: "t", expiresAt: .now))
+        try vault.saveLoginToken(LoginToken(token: "t", expiresAt: .now, server: account.server, deviceId: account.deviceId))
         try vault.write(.pendingKey, Data(repeating: 3, count: 32))
         try other.save(account, notifyKey: notify)
         try vault.clear()
         #expect(try !vault.hasAccount())
         #expect(try vault.load() == nil)
         #expect(try vault.notifyKey() == nil)
-        #expect(try vault.loginToken() == nil)
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
         #expect(try vault.read(.pendingKey) == nil)
         #expect(try other.load() == account)
         // Clearing an empty vault is not an error.
@@ -100,11 +102,57 @@ import Testing
         #expect(try vault.hasAccount())
         #expect(throws: VaultError.unreadable) { try vault.load() }
         try vault.write(.loginToken, Data([1, 2, 3]))
-        #expect(throws: VaultError.unreadable) { try vault.loginToken() }
+        #expect(throws: VaultError.unreadable) { try vault.loginToken(server: account.server, deviceId: account.deviceId) }
+    }
+
+    // MARK: Whose login it is
+
+    @Test func aLoginKeptForOneAccountIsNeverGivenToAnother() throws {
+        defer { try? vault.clear() }
+        let token = LoginToken(
+            token: "bearer-abc", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId)
+        try vault.saveLoginToken(token)
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
+        // Another device of the same server, the same device ID on another server, and neither: none of them gets it.
+        #expect(try vault.loginToken(server: account.server, deviceId: "another-device") == nil)
+        #expect(try vault.loginToken(server: "https://other.example.com", deviceId: account.deviceId) == nil)
+        #expect(try vault.loginToken(server: "https://other.example.com", deviceId: "another-device") == nil)
+        // Close is not the same: the server is compared as it is written, and no device ID matches nothing.
+        #expect(try vault.loginToken(server: account.server + "/", deviceId: account.deviceId) == nil)
+        #expect(try vault.loginToken(server: account.server, deviceId: "") == nil)
+        // It is still kept for its own.
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
+    }
+
+    @Test func aLoginThatDoesNotSayWhoseItIsIsNone() throws {
+        defer { try? vault.clear() }
+        let plist: [String: Any] = ["token": "bearer-abc", "expiresAt": Date(timeIntervalSince1970: 1_800_000_000)]
+        try vault.write(.loginToken, PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0))
+        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
+    }
+
+    @Test func theKeeperOnlyHandsOverItsOwnAccountsLogin() {
+        defer { try? vault.clear() }
+        let mine = LoginKeeper(vault: vault, server: account.server, deviceId: account.deviceId)
+        mine.keep(SavedLogin(token: "bearer-mine", expiresMs: 1_800_000_000_000))
+        // `load` runs after what was asked before it.
+        #expect(mine.load()?.token == "bearer-mine")
+        // The account on this device changed without the vault being cleared between: the old login is not the new one's.
+        let other = LoginKeeper(vault: vault, server: account.server, deviceId: "another-device")
+        #expect(other.load() == nil)
+        // Its own replaces the one kept, which is then nobody else's either.
+        other.keep(SavedLogin(token: "bearer-other", expiresMs: 1_800_000_000_000))
+        #expect(other.load()?.token == "bearer-other")
+        #expect(mine.load() == nil)
+        // A keeper that was closed neither reads nor writes.
+        other.close()
+        other.keep(nil)
+        #expect(other.load() == nil)
+        #expect(LoginKeeper(vault: vault, server: account.server, deviceId: "another-device").load()?.token == "bearer-other")
     }
 
     @Test func descriptionsLeaveTheKeysOut() {
-        let token = LoginToken(token: "bearer-secret-value", expiresAt: Date(timeIntervalSince1970: 0))
+        let token = LoginToken(token: "bearer-secret-value", expiresAt: Date(timeIntervalSince1970: 0), server: account.server, deviceId: account.deviceId)
         var dumped = ""
         dump(account, to: &dumped)
         dump(token, to: &dumped)

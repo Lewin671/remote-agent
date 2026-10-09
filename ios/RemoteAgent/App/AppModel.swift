@@ -254,7 +254,7 @@ final class AppModel {
         let open = parts.openCache
         // Opening the database touches the disk. Without it the app still
         // works, from the server alone.
-        let keeper = LoginKeeper(vault: parts.storage.vault)
+        let keeper = LoginKeeper(vault: parts.storage.vault, server: account.server, deviceId: account.deviceId)
         let (store, kept) = await Task.detached { (try? open(root, account), keeper.load()) }.value
         guard gen == generation else {
             try? store?.close()
