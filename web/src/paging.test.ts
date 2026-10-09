@@ -168,6 +168,22 @@ it("knows a project from its machine when none of its sessions are held", () => 
   expect(by["/new"].ended).toBe(1);
 });
 
+it("lists a project added but not started in yet, from its settings", () => {
+  const held = [{ id: "a", machineId: "m1", updatedMs: 9000n, info: create(SessionSchema, { cwd: "/p", status: SessionStatus.EXITED, createdAt: timestampFromMs(100) }) }];
+  const settings = [
+    { path: "/added", machineId: "m1", updatedMs: 5000n },
+    // One with sessions is as its sessions say.
+    { path: "/p", machineId: "m1", updatedMs: 7000n },
+    // The machine chosen for it is no longer the account's.
+    { path: "/gone", machineId: "m9", updatedMs: 8000n },
+  ];
+  const list = projects(held, [{ id: "m1", online: true, lastSeenMs: 0n }], settings);
+  expect(list.map((p) => p.key)).toEqual(["/added", "/p"]);
+  expect(list[0]).toMatchObject({ name: "added", ended: 0, hasLive: false, latestCreatedMs: 5000, updatedMs: 5000, machines: ["m1"] });
+  expect(list[0].sessions).toHaveLength(0);
+  expect(list[1]).toMatchObject({ latestCreatedMs: 100, machines: ["m1"] });
+});
+
 it("fetches what comes before a session held past the pages", async () => {
   const { r, server } = await setup();
   for (let i = 1; i <= 120; i++) server.set(ended(i), { machineId: "m1", endedMs: 1000 + i });

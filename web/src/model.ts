@@ -84,12 +84,16 @@ export function projectName(key: string): string {
 
 export const compareProjects = (a: Pick<Project, "key" | "hasLive" | "latestCreatedMs">, b: Pick<Project, "key" | "hasLive" | "latestCreatedMs">) => Number(b.hasLive) - Number(a.hasLive) || b.latestCreatedMs - a.latestCreatedMs || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
-/** The account's projects: those of the sessions held, and those the
- * machines report (MachineMeta.projects). Sessions are listed a page at a
- * time, so a project whose sessions all ended long ago is known only from
- * its machine; whether a project has live sessions is still read from the
- * sessions, which are all held while they live. */
-export function projects<S extends SessionLike>(sessions: Iterable<S>, machines: Iterable<MachineLike> = []): Project<S>[] {
+/** The account's projects: those of the sessions held, those the
+ * machines report (MachineMeta.projects), and those added that have no
+ * session yet. Sessions are listed a page at a time, so a project whose
+ * sessions all ended long ago is known only from its machine; whether a
+ * project has live sessions is still read from the sessions, which are
+ * all held while they live. A project added with 新项目… is known only
+ * from its settings (ProjectPrefs.settings) until its first session: it
+ * is listed while the machine chosen for it is one of the account's, as
+ * created when it was added. */
+export function projects<S extends SessionLike>(sessions: Iterable<S>, machines: Iterable<MachineLike> = [], settings: Iterable<{ path: string; machineId: string; updatedMs: bigint }> = []): Project<S>[] {
   const byKey = new Map<string, Project<S>>();
   const project = (key: string) => {
     let p = byKey.get(key);
@@ -122,7 +126,9 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
     for (const s of p.sessions) if (exited(s)) held.set(s.machineId, (held.get(s.machineId) ?? 0) + 1);
     for (const [machineId, n] of held) count(p.key, machineId, n);
   }
+  const machineIds = new Set<string>();
   for (const m of machines) {
+    machineIds.add(m.id);
     for (const x of m.meta?.projects ?? []) {
       const p = project(x.path);
       count(x.path, m.id, x.ended);
@@ -130,6 +136,12 @@ export function projects<S extends SessionLike>(sessions: Iterable<S>, machines:
       p.updatedMs = Math.max(p.updatedMs, Number(x.latestCreatedMs), Number(x.latestEndedMs));
       if (!p.machines.includes(m.id)) p.machines.push(m.id);
     }
+  }
+  for (const s of settings) {
+    if (!s.path || byKey.has(s.path) || !machineIds.has(s.machineId)) continue;
+    const p = project(s.path);
+    p.machines.push(s.machineId);
+    p.latestCreatedMs = p.updatedMs = Number(s.updatedMs);
   }
   for (const p of byKey.values()) p.ended = [...(counted.get(p.key)?.values() ?? [])].reduce((a, b) => a + b, 0);
   return [...byKey.values()].sort(compareProjects);

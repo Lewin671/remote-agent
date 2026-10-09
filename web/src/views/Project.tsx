@@ -88,7 +88,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
           {shownEnded > ended.length ? "正在加载更早的会话…" : <>全部 {totalEnded} 个已结束的会话<ChevronRight /></>}
         </button>
       )}
-      {!p && !hidden && <p className="empty">项目在第一个会话开始后才会出现在列表里。</p>}
+      {live.length === 0 && totalEnded === 0 && !hidden && <p className="empty">这个项目还没有会话。</p>}
     </>
   );
   return (

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v32</title>
+<title>remote-agent 客户端设计稿 v33</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -921,14 +921,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v32 · 2026-10-08 · 上一版 v31 在 git 历史里（<code>git log -- docs/design/client-v31.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v33 · 2026-10-09 · 上一版 v32 在 git 历史里（<code>git log -- docs/design/client-v32.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v31 的改动</h4><ul><li><a href="#reply">「回复正文」</a>：列表里有一项会折行时，这个列表各项之间的间距从 4 改为 8；各项都只有一行的列表不变。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v32 的改动</h4><ul><li><a href="#project-config-mode">「新项目」</a>：选好目录后项目就出现在项目列表里，不用等第一个会话开始；还没有会话的项目页写「这个项目还没有会话。」。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
@@ -1186,7 +1186,7 @@
         <div class="btns" style="margin-top:10px"><div class="btn pri">用 ai-bot 这个目录</div></div>
       </div>
     </div>
-    <div class="cap">新项目：先选机器（离线的置灰），再浏览目录；选好后进入这个项目的输入框，项目设置从这台机器的新项目默认设置开始。项目在第一个会话开始后才出现在列表里</div>
+    <div class="cap">新项目：先选机器（离线的置灰），再浏览目录；选好后进入这个项目的输入框，项目设置从这台机器的新项目默认设置开始。选好目录后项目就出现在项目列表里，在第一个会话开始前排在所有会话已结束的项目里、按添加时间算；项目页这时写「这个项目还没有会话。」</div>
   </div>
 </div>
 

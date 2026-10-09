@@ -487,6 +487,32 @@ class SessionPagingTest {
     )
 
     @Test
+    fun aProjectAddedButNotStartedInYetIsListedFromItsSettings() {
+        fun settings(path: String, machine: String, at: Long) = io.github.lewin671.remoteagent.proto.ProjectSettings.newBuilder().setPath(path).setMachineId(machine).setUpdatedMs(at).build()
+        val st = RemoteState(
+            machines = mapOf("m1" to machine("m1", "mac", summary("/code/old", 9, created = 1_000_000, endedAt = 2_000_000))),
+            sessions = listOf(view("a", "m1", "/code/foo", 4_000_000, exited = true)).associateBy { it.id },
+            prefs = PrefsObject(1, io.github.lewin671.remoteagent.proto.ProjectPrefs.newBuilder().setSchema(1).addAllSettings(listOf(
+                settings("/code/added", "m1", 5_000_000),
+                // Those with sessions are as their sessions and summaries say.
+                settings("/code/foo", "m1", 7_000_000),
+                settings("/code/old", "m1", 7_000_000),
+                // The machine chosen for it is no longer the account's.
+                settings("/code/gone", "m9", 8_000_000),
+            )).build()),
+        )
+        assertEquals(listOf("/code/added", "/code/foo", "/code/old"), projects(st).map { it.key })
+        val added = projects(st).first()
+        assertEquals(listOf("m1"), added.machineIds)
+        assertEquals(5_000_000L, added.latestCreatedMs)
+        assertEquals(0, added.ended)
+        assertFalse(added.hasLive)
+        assertTrue(added.sessions.isEmpty())
+        assertEquals(4_000_000L, projects(st)[1].latestCreatedMs)
+        assertEquals(listOf("/code/added", "/code/foo", "/code/old"), listedProjects(st).map { it.key })
+    }
+
+    @Test
     fun projectsAreTheSummariesTogetherWithTheSessionsHeld() {
         val st = RemoteState(
             machines = mapOf(

@@ -19,7 +19,7 @@ import { Dock, PlanPage, QuestionPage } from "./Dock";
 import { Home, Sidebar, todoList, WideHome } from "./Home";
 import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
-import { useNewSession } from "./NewSession";
+import { NewFlow, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { ManagePage } from "./Projects";
 import { SessionPage } from "./Session";
@@ -809,6 +809,46 @@ it("names a new project's default model as Codex does, even when /model hides it
   await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
   await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
+});
+
+it("keeps a project added with 新项目… in the lists before its first session", async () => {
+  const r = demo();
+  const opened: string[] = [];
+  const remount = (node: React.ReactNode) => {
+    act(() => root?.unmount());
+    host.remove();
+    mount(node);
+  };
+  mount(<NewFlow remote={r} go={(to) => opened.push(to)} start="new" onClose={() => undefined} />);
+  await vi.waitFor(() => expect(button("Code", document)).toBeTruthy());
+  await click(button("Code", document));
+  await vi.waitFor(() => expect(button("用 Code 这个目录", document)).toBeTruthy());
+  await click(button("用 Code 这个目录", document));
+  const added = "/Users/me/Code";
+  expect(opened).toEqual(["p/" + encodeURIComponent(added)]);
+  // The machine the sheet had selected.
+  const machine = r.draftMachines.get(added);
+  expect(machine).toBeTruthy();
+  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === added)?.machineId).toBe(machine));
+  // What a reload starts from: the account's settings, not this page's memory.
+  r.draftMachines.clear();
+  remount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
+  const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent?.startsWith("~/Code ·"));
+  expect(row?.querySelector("b")?.textContent).toBe("Code");
+  remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
+  expect(host.textContent).toContain("这个项目还没有会话");
+  // Choosing a folder that is a project already leaves its settings as they are.
+  const foo = "/Users/me/Code/foo";
+  const before = r.projectPrefs().settings.find((s) => s.path === foo);
+  remount(<NewFlow remote={r} go={() => undefined} start="new" onClose={() => undefined} />);
+  await vi.waitFor(() => expect(button("Code", document)).toBeTruthy());
+  await click(button("Code", document));
+  await vi.waitFor(() => expect(button("foo", document)).toBeTruthy());
+  await click(button("foo", document));
+  await vi.waitFor(() => expect(button("用 foo 这个目录", document)).toBeTruthy());
+  await click(button("用 foo 这个目录", document));
+  await act(async () => { await new Promise((done) => setTimeout(done, 50)); });
+  expect(r.projectPrefs().settings.find((s) => s.path === foo)).toEqual(before);
 });
 
 it("shows the effective approval mode in project settings while keeping the default choice", async () => {

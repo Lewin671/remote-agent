@@ -75,7 +75,10 @@ private class ProjectSums {
  * page at a time, so a project whose sessions all ended long ago is known
  * from the summaries alone. Whether one has a session that has not ended is
  * read off the sessions, which are all held; the latest creation is the
- * later of the two; its machines are those of both.
+ * later of the two; its machines are those of both. A project added with
+ * 新项目… is known from its settings alone until its first session: it is
+ * listed while the machine chosen for it is one of the account's, as created
+ * when it was added.
  */
 fun projects(state: RemoteState): List<Project> {
     val byKey = LinkedHashMap<String, MutableList<SessionView>>()
@@ -91,17 +94,21 @@ fun projects(state: RemoteState): List<Project> {
         sum.latestEndedMs = maxOf(sum.latestEndedMs, p.latestEndedMs)
         if (machineId !in sum.machineIds) sum.machineIds += machineId
     }
-    return (byKey.keys + sums.keys).distinct().map { key ->
+    val added = state.prefs?.prefs?.settingsList.orEmpty()
+        .filter { it.path.isNotEmpty() && it.path !in byKey && it.path !in sums && it.machineId in state.machines }
+        .associateBy { it.path }
+    return (byKey.keys + sums.keys + added.keys).distinct().map { key ->
         val sorted = byKey[key].orEmpty().sortedWith(compareByDescending<SessionView> { it.updatedMs }.thenBy { it.id })
         val sum = sums[key]
-        val machineIds = (sorted.map { it.machineId } + sum?.machineIds.orEmpty()).distinct()
+        val own = added[key]
+        val machineIds = (sorted.map { it.machineId } + sum?.machineIds.orEmpty() + listOfNotNull(own?.machineId)).distinct()
         Project(
             key = key,
             name = projectName(key),
             sessions = sorted,
-            updatedMs = maxOf(sorted.maxOfOrNull { it.updatedMs } ?: 0, sum?.latestCreatedMs ?: 0, sum?.latestEndedMs ?: 0),
+            updatedMs = maxOf(sorted.maxOfOrNull { it.updatedMs } ?: 0, sum?.latestCreatedMs ?: 0, sum?.latestEndedMs ?: 0, own?.updatedMs ?: 0),
             hasLive = sorted.any { !exited(it) },
-            latestCreatedMs = maxOf(sorted.maxOfOrNull { createdMs(it) } ?: 0, sum?.latestCreatedMs ?: 0),
+            latestCreatedMs = maxOf(sorted.maxOfOrNull { createdMs(it) } ?: 0, sum?.latestCreatedMs ?: 0, own?.updatedMs ?: 0),
             paths = sorted.mapNotNull { it.info?.cwd?.takeIf { c -> c.isNotEmpty() } }.distinct().ifEmpty { listOf(key).filter { it.isNotEmpty() } },
             machines = machineIds.map { machineName(state.machines[it], it) }.distinct(),
             machineIds = machineIds,
@@ -112,7 +119,7 @@ fun projects(state: RemoteState): List<Project> {
     }.sortedWith(compareByDescending<Project> { it.hasLive }.thenByDescending { it.latestCreatedMs }.thenBy { it.key })
 }
 
-/** One project of [projects], or null when neither a summary nor a session held here names it. */
+/** One project of [projects], or null when no summary, session held here or stored settings name it. */
 fun project(state: RemoteState, key: String): Project? = projects(state).firstOrNull { it.key == key }
 
 /** The projects a machine has sessions in: by its summary and by the sessions held here, in that order. */

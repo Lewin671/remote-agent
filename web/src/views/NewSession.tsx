@@ -143,7 +143,7 @@ type Local = { key: string; machineId?: string; once: boolean; sets: Partial<Rec
 export function useNewSession(remote: Remote, key: string, go: Go) {
   // Recomputed on every render: which session is latest changes with any
   // session's activity, not only when sessions come or go.
-  const p = projects(remote.sessions.values(), remote.machines.values()).find((x) => x.key === key);
+  const p = projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings).find((x) => x.key === key);
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
   const [localState, setLocal] = useState<Local>();
   const local = localState?.key === key ? localState : undefined;
@@ -895,7 +895,7 @@ export function DirBrowser({
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会话 · 选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   const [query, setQuery] = useState("");
   // Grouped as the lists are; removed projects are left out.
-  const g = groupProjects(projects(remote.sessions.values(), remote.machines.values()), remote.projectPrefs());
+  const g = groupProjects(projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings), remote.projectPrefs());
   const match = (p: Project<SessionView>) => (p.name + " " + p.key).toLocaleLowerCase().includes(query.toLocaleLowerCase());
   const row = (p: Project<SessionView>) => (
     <button key={p.key} className="pi" onClick={() => onPick(p.key)}>
@@ -976,7 +976,9 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose }: { remote: R
 /** The ＋ flow: pick a project, or make a new one; then its page with the
  * box focused. */
 export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remote; go: Go; onClose: () => void; onPicked?: (key: string) => void; start?: "new" }) {
-  const [step, setStep] = useState<"project" | "new">(remote.sessions.size && !start ? "project" : "new");
+  const listed = projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings);
+  const pick = listed.length > 0 && !start;
+  const [step, setStep] = useState<"project" | "new">(pick ? "project" : "new");
   const open = (key: string) => {
     onClose();
     if (onPicked) return onPicked(key);
@@ -987,10 +989,14 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
     return (
       <NewProjectSheet
         remote={remote}
-        onBack={remote.sessions.size && !start ? () => setStep("project") : undefined}
+        onBack={pick ? () => setStep("project") : undefined}
         onClose={onClose}
         onDone={(machineId, path) => {
           remote.draftMachines.set(path, machineId);
+          // Stored with the machine chosen, so the project is listed before
+          // its first session, here and on the account's other clients.
+          if (!listed.some((p) => p.key === path) && !remote.projectPrefs().settings.some((s) => s.path === path))
+            void remote.changePrefs("settings", path, { id: crypto.randomUUID(), kind: "settings", path, at: Date.now(), settings: { machineId } });
           open(path);
         }}
       />

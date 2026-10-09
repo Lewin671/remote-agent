@@ -995,7 +995,7 @@ fun PickProjectScreen() {
 
 /**
  * Choose a machine (offline ones greyed), then browse to a folder; [onChosen]
- * with the folder. A project appears in the lists once its first session starts.
+ * with the folder.
  */
 @Composable
 fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> Unit) {
@@ -1075,7 +1075,11 @@ fun NewProjectScreen() {
     }
 }
 
-/** A folder chosen for a new project: its box, focused, with that machine's defaults. */
+/**
+ * A folder chosen for a new project: its box, focused, with that machine's defaults. The
+ * project is stored with the machine chosen, so it is listed before its first session,
+ * here and on the account's other clients.
+ */
 @Composable
 fun NewProjectAtScreen(machine: String, path: String) {
     val remote = LocalRemote.current
@@ -1083,6 +1087,10 @@ fun NewProjectAtScreen(machine: String, path: String) {
     val state by remote.state.collectAsState()
     val p = pal
     // The folder may be a project that has sessions already: what it starts with is settled the same way.
+    LaunchedEffect(machine, path) {
+        if (io.github.lewin671.remoteagent.core.project(state, path) == null && savedSettings(state, path) == null)
+            runCatching { remote.changePrefs(PrefsOp.SetSettings(path, machine)) }
+    }
     val seed = projectStart(state, path, machine = machine)
     val entry = Drafts.newSession(path, seed?.config, seed?.settled != false)
     val start = projectStart(state, path, entry.agent.value, machine)
@@ -1096,7 +1104,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
         NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
         SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
-        Text("项目在第一个会话开始后才出现在列表里。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
+        Text("这个项目还没有会话。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
         NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
     }
     val open = settingsOpen
