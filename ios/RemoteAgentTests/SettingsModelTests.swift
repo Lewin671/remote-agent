@@ -371,36 +371,42 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
     private let account = Account(
         server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
 
-    /// The directory `CipherStore` keeps the account's viewed images in.
-    private var images: URL {
-        root.appending(path: "cache").appending(path: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
-            .appending(path: "images", directoryHint: .isDirectory)
+    private func cache() throws -> CipherStore {
+        try CipherStore.open(root: root.appending(path: "cache"), account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
     }
 
-    private func files() -> LocalImageFiles {
-        let pending = PendingStore(
+    private func pending() -> PendingStore {
+        PendingStore(
             directory: root.appending(path: "pending"), vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"),
             defaults: UserDefaults(suiteName: "ra-settings-\(UUID().uuidString)")!)
-        return .standard(account: account, cacheRoot: root.appending(path: "cache"), pending: pending)
     }
 
-    @Test func nothingStoredIsZeroNotAnError() async {
-        let model = ImageStorageModel(files: files())
+    @Test func nothingStoredIsZeroNotAnError() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try cache()
+        let model = ImageStorageModel(files: .stores(cache: store, pending: pending()))
         await model.load()
         #expect(model.pending == 0 && model.cache == 0 && model.error.isEmpty)
+        try store.close()
     }
 
-    @Test func itCountsTheStoresFilesWhereTheStoreKeepsThem() async throws {
+    @Test func withoutAnOpenCacheThereIsNothingToCountOrClear() async {
+        let model = ImageStorageModel(files: .stores(cache: nil, pending: pending()))
+        await model.load()
+        #expect(model.pending == 0 && model.cache == 0)
+        await model.clear()
+        #expect(model.error.isEmpty && !model.clearing)
+    }
+
+    @Test func itCountsAndClearsThroughTheStoreItself() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
-        // Through the store itself, so that the page and the store agree on the place.
-        let store = try CipherStore.open(root: root.appending(path: "cache"), account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))
+        let store = try cache()
         await store.putImage(key: "s1/a", envelope: Data(count: 3000))
         await store.putImage(key: "s1/b", envelope: Data(count: 2000))
         #expect(store.imageBytes == 5000)
-        let model = ImageStorageModel(files: files())
+        let model = ImageStorageModel(files: .stores(cache: store, pending: pending()))
         await model.load()
         #expect(model.cache == 5000)
-        #expect(FileManager.default.fileExists(atPath: images.path))
 
         await model.clear()
         #expect(model.cache == 0 && !model.clearing && model.error.isEmpty)
@@ -414,12 +420,12 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
 
     @Test func clearingKeepsTheImagesWaitingToBeSent() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
-        try FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
-        try Data(count: 4096).write(to: images.appending(path: "one"))
-        let waiting = root.appending(path: "pending/draft")
-        try FileManager.default.createDirectory(at: waiting, withIntermediateDirectories: true)
-        try Data(count: 1234).write(to: waiting.appending(path: "image"))
-        let model = ImageStorageModel(files: files())
+        let store = try cache()
+        await store.putImage(key: "s1/one", envelope: Data(count: 4096))
+        let waiting = pending()
+        defer { try? waiting.clearAll() }
+        try waiting.put(folder: "session:s1", name: "image", data: Data(count: 1234))
+        let model = ImageStorageModel(files: .stores(cache: store, pending: waiting))
         await model.load()
         #expect(model.cache == 4096)
         let pendingBefore = try #require(model.pending)
@@ -427,7 +433,8 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         await model.clear()
         #expect(model.cache == 0)
         #expect(model.pending == pendingBefore)
-        #expect(FileManager.default.fileExists(atPath: waiting.appending(path: "image").path))
+        #expect(waiting.get(folder: "session:s1", name: "image")?.count == 1234)
+        try store.close()
     }
 
     @Test func aClearThatFailsSaysSoAndReadsAgain() async {

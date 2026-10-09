@@ -55,7 +55,7 @@ struct SettingsScreen: View {
         }
         // Read each time the page comes back: an image may have been viewed or sent meanwhile.
         .task {
-            let made = images ?? ImageStorageModel(files: model.isDemo ? .demoFiles : .standard(account: context.account))
+            let made = images ?? ImageStorageModel(files: model.isDemo ? .demoFiles : .stores(cache: model.imageCache, pending: model.pendingImages))
             images = made
             await made.load()
         }

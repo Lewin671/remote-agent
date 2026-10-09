@@ -7,7 +7,6 @@ import SwiftUI
 /// against its own limit. Clearing the cache keeps the images waiting.
 struct ImageStorageScreen: View {
     @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
     @State private var storage: ImageStorageModel?
     @State private var confirming = false
 
@@ -53,7 +52,7 @@ struct ImageStorageScreen: View {
         #if DEBUG
         if model.isDemo { return .demo(SettingsDemo.state) }
         #endif
-        return .standard(account: context.account)
+        return .stores(cache: model.imageCache, pending: model.pendingImages)
     }
 }
 
@@ -67,33 +66,16 @@ struct LocalImageFiles: Sendable {
     var cacheUsed: @Sendable () -> Int64
     var clearCache: @Sendable () throws -> Void
 
-    /// The account's own stores, by where `CipherStore` and `PendingStore`
-    /// keep their files. The cache holds one sealed envelope per file, each
-    /// written whole, so counting and removing files beside the open store
-    /// is safe: an image removed while it is being read is fetched again.
-    static func standard(account: Account, cacheRoot: URL = CipherStore.defaultRoot, pending: PendingStore = PendingStore()) -> LocalImageFiles {
-        let images = cacheRoot
-            .appending(path: CipherStore.accountKey(server: account.server, deviceId: account.deviceId), directoryHint: .isDirectory)
-            .appending(path: "images", directoryHint: .isDirectory)
-        return LocalImageFiles(
+    /// The account's own stores, asked themselves: the cache of sealed
+    /// envelopes the sync engine fills, and the sealed store of images
+    /// waiting to be sent. Without an open cache (it did not open, and the
+    /// app goes on from the server alone) there is nothing kept to count
+    /// or to clear.
+    static func stores(cache: CipherStore?, pending: PendingStore) -> LocalImageFiles {
+        LocalImageFiles(
             pendingUsed: { pending.used },
-            cacheUsed: { regularFiles(in: images).reduce(0) { $0 + $1.size } },
-            clearCache: {
-                var failure: Error?
-                for file in regularFiles(in: images) {
-                    do { try FileManager.default.removeItem(at: file.url) } catch { failure = error }
-                }
-                if let failure { throw failure }
-            })
-    }
-
-    private static func regularFiles(in directory: URL) -> [(url: URL, size: Int64)] {
-        let keys: Set<URLResourceKey> = [.fileSizeKey, .isRegularFileKey]
-        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys))) ?? []
-        return files.compactMap { url in
-            guard let v = try? url.resourceValues(forKeys: keys), v.isRegularFile == true else { return nil }
-            return (url, Int64(v.fileSize ?? 0))
-        }
+            cacheUsed: { cache?.imageBytes ?? 0 },
+            clearCache: { cache?.clearImages() })
     }
 
     #if DEBUG
