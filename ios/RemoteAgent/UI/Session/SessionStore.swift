@@ -160,8 +160,8 @@ final class SessionStore {
 
     func appendToDraft(_ sid: String, _ text: String) {
         let current = draft(sid)
-        let kept = SessionText.trimEnd(current)
-        setDraft(sid, SessionText.isBlank(current) ? text : kept + "\n" + text)
+        let kept = current.jvmTrimEnd()
+        setDraft(sid, current.jvmIsBlank ? text : kept + "\n" + text)
     }
 
     /// Lets go of the messages the CLI has recorded: the chat shows them from the session's events from then on.
@@ -309,23 +309,4 @@ extension SessionStore {
 extension AccountContext {
     /// The session screens' memory for this account.
     var sessionStore: SessionStore { memory.value(SessionStore.self) { SessionStore() } }
-}
-
-/// Text handled as Android's Kotlin handles it, where the two differ from Swift's defaults.
-enum SessionText {
-    static func trim(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-    static func trimEnd(_ s: String) -> String {
-        var end = s.endIndex
-        while end > s.startIndex, s[s.index(before: end)].isWhitespace { end = s.index(before: end) }
-        return String(s[..<end])
-    }
-
-    static func isBlank(_ s: String) -> Bool { s.allSatisfy(\.isWhitespace) }
-
-    static func lines(_ s: String) -> [String] {
-        s.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map(String.init)
-    }
-
-    static func firstLine(_ s: String) -> String { lines(s).first ?? "" }
 }

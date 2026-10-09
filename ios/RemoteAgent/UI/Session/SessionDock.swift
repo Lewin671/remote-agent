@@ -247,7 +247,7 @@ struct ApprovalDock: View {
             }
             let text = approvalBody(a)
             if !text.isEmpty {
-                let cut = SessionText.lines(text).count > 4 || text.count > 200
+                let cut = text.jvmLines().count > 4 || text.count > 200
                 Code(text, maxLines: 4)
                     .overlay(alignment: .bottomTrailing) {
                         if cut {
@@ -324,7 +324,7 @@ struct ApprovalButtons: View {
                         started = true
                     }
                     Btn("不允许", kind: .negative, background: onCard ? Theme.card : nil) {
-                        resolve(false, message: SessionText.trim(store.reason(id)))
+                        resolve(false, message: store.reason(id).jvmTrim())
                     }
                 }
             } else {
@@ -355,7 +355,7 @@ struct ApprovalButtons: View {
             }
         }
         .debugSignal("session.allow") { resolve(true) }
-        .debugSignal("session.deny") { resolve(false, message: SessionText.trim(SessionDebug.text)) }
+        .debugSignal("session.deny") { resolve(false, message: SessionDebug.text.jvmTrim()) }
     }
 }
 

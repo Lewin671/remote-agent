@@ -151,7 +151,7 @@ func composerPlaceholder(_ d: Derived) -> String {
 
 /// Whether what is in the box can be sent now.
 func composerCanSend(text: String, online: Bool, keeping: Bool, hasImages: Bool, imagesReady: Bool, refused: Bool) -> Bool {
-    !keeping && online && !refused && (!SessionText.isBlank(text) || hasImages) && (!hasImages || imagesReady)
+    !keeping && online && !refused && (!text.jvmIsBlank || hasImages) && (!hasImages || imagesReady)
 }
 
 /// Text starting with a slash is sent to the model as it is: the CLIs' slash commands are not run from here.

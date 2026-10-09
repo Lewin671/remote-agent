@@ -237,6 +237,21 @@ import Testing
         #expect(avatarIndex("a") == 1)
     }
 
+    /// What the app's screens trim, test for blankness and split by, as Kotlin does on Android.
+    @Test func trimmingBlanknessAndLinesAreTheJvms() {
+        #expect("  \t改一下 \n".jvmTrim() == "改一下")
+        #expect("  改一下 \n\n".jvmTrimEnd() == "  改一下")
+        // A non-breaking space is whitespace to Kotlin; a zero-width space is not.
+        #expect("\u{a0}好\u{a0}".jvmTrim() == "好")
+        #expect("\u{200b}好".jvmTrim() == "\u{200b}好")
+        #expect("".jvmIsBlank && " \n\t\u{a0}".jvmIsBlank && !" a ".jvmIsBlank && !"\u{200b}".jvmIsBlank)
+        #expect("".jvmTrim().isEmpty && "   ".jvmTrimEnd().isEmpty)
+        // lines(): \r\n, \n and \r end a line, nothing else does, and there is always a first line.
+        #expect("a\r\nb\nc\rd".jvmLines() == ["a", "b", "c", "d"])
+        #expect("".jvmLines() == [""] && "a\n".jvmLines() == ["a", ""])
+        #expect("a\u{2028}b\u{85}c".jvmLines() == ["a\u{2028}b\u{85}c"])
+    }
+
     @Test func contextWindowsAreWrittenShort() {
         #expect(contextText(tokens: 0) == nil)
         #expect(contextText(tokens: 200_000) == "200k 上下文")

@@ -76,7 +76,7 @@ struct ChatRowView: View, Equatable {
         switch row.item {
         case .user(let m):
             ChatBubble(
-                SessionText.isBlank(m.text) && !m.images.isEmpty ? nil : m.text,
+                m.text.jvmIsBlank && !m.images.isEmpty ? nil : m.text,
                 caption: m.from ?? (m.local ? "在终端里输入" : nil)
             ) {
                 if !m.images.isEmpty {
@@ -444,7 +444,7 @@ private struct DoneToolRow: View {
         let meta = parts.isEmpty ? (call.durationMs >= 1000 ? "\(call.durationMs / 1000)s" : "") : parts.joined(separator: " · ")
         ChatToolLine(
             ok ? Lucide.check : Lucide.x, color: ok ? Theme.muted : Theme.red,
-            title: SessionText.firstLine(toolTitle(call, cwd: env.cwd, home: env.home)), meta: meta,
+            title: firstLine(toolTitle(call, cwd: env.cwd, home: env.home)), meta: meta,
             metaColor: !ok || !decisionOk ? Theme.red : Theme.muted)
     }
 }
@@ -461,7 +461,7 @@ private struct BackgroundToolRow: View {
         let generic = (call.title.isEmpty || raw(call.title)) && raw(call.itemType)
         ChatToolLine(
             Lucide.loaderCircle, color: Theme.blue,
-            title: generic ? "后台运行" : SessionText.firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
+            title: generic ? "后台运行" : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
             meta: generic ? "" : "后台运行")
     }
 }
@@ -475,7 +475,7 @@ private struct RunningToolRow: View {
 
     var body: some View {
         let tool = item.tool
-        let title = SessionText.firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
+        let title = firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
         if item.unfinished && env.noResult.contains(tool.seq) {
             // The turn completed without this tool's result: say only that.
             ChatToolLine(Lucide.loaderCircle, color: Theme.faint, title: title, meta: "等待同步")
@@ -530,7 +530,7 @@ private struct ToolGroupRow: View {
             if isOpen {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
-                        Text(SessionText.firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
+                        Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
                             .type(T.mono, Theme.fg2).lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         // Each call's images stay under it when the group is open.
@@ -595,7 +595,7 @@ private struct PlanCard: View {
 
     var body: some View {
         let isOpen = open.isOpen(key)
-        let lines = SessionText.lines(text)
+        let lines = text.jvmLines()
         VStack(alignment: .leading, spacing: 0) {
             Text("计划").type(T.smB, Theme.fg2).accessibilityAddTraits(.isHeader)
             Group {
@@ -624,9 +624,12 @@ private struct PlanCard: View {
     }
 }
 
+/// The first line of a tool's title: a command of several lines is a row of one.
+private func firstLine(_ s: String) -> String { s.jvmLines()[0] }
+
 /// A plan's first lines as plain text, for where it is shown cut short.
 func planPreview(_ text: String, lines: Int) -> String {
-    SessionText.lines(text).map { plain($0) }.filter { !SessionText.isBlank($0) }.prefix(lines).joined(separator: "\n")
+    text.jvmLines().map { plain($0) }.filter { !$0.jvmIsBlank }.prefix(lines).joined(separator: "\n")
 }
 
 /// Grey bars while the history loads.

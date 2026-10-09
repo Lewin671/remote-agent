@@ -85,7 +85,7 @@ extension String {
     }
 
     /// Kotlin's trim().
-    func jvmTrim() -> String {
+    public func jvmTrim() -> String {
         let s = unicodeScalars
         guard let first = s.firstIndex(where: { !isJvmWhitespace($0) }) else { return "" }
         let last = s.lastIndex(where: { !isJvmWhitespace($0) })!
@@ -100,14 +100,14 @@ extension String {
     }
 
     /// Kotlin's trimEnd().
-    func jvmTrimEnd() -> String {
+    public func jvmTrimEnd() -> String {
         let s = unicodeScalars
         guard let last = s.lastIndex(where: { !isJvmWhitespace($0) }) else { return "" }
         return String(s[...last])
     }
 
     /// Kotlin's isBlank().
-    var jvmIsBlank: Bool { unicodeScalars.allSatisfy(isJvmWhitespace) }
+    public var jvmIsBlank: Bool { unicodeScalars.allSatisfy(isJvmWhitespace) }
 
     /// Kotlin's trim(char) for one ASCII character.
     func trimming(ascii c: UInt8) -> String {
@@ -172,7 +172,7 @@ extension String {
     }
 
     /// Kotlin's lines(): split at \r\n, \n and \r.
-    func jvmLines() -> [String] {
+    public func jvmLines() -> [String] {
         var out = [String]()
         var cur = [UInt8]()
         var it = utf8.makeIterator()

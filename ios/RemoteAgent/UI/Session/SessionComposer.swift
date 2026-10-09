@@ -148,7 +148,7 @@ struct SessionComposer: View {
     private func send(_ mode: PBSendMode) {
         let store = context.sessionStore
         let sid = session.id
-        let message = SessionText.trim(store.draft(sid))
+        let message = store.draft(sid).jvmTrim()
         let images = images
         let attached = SessionImages.hasImages(images)
         if message.isEmpty && !attached { return }
@@ -159,7 +159,7 @@ struct SessionComposer: View {
             keeping = false
             switch kept {
             case .success:
-                if SessionText.trim(store.draft(sid)) == message { store.setDraft(sid, "") }
+                if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
             case .failure(let error):
                 notice = "没能保存待发的图，这条没有发出：\(errorText(error))"
             }
@@ -206,7 +206,7 @@ struct SessionComposer: View {
                         }
                     } : nil,
                 canInterrupt: online && !interrupt.running,
-                hasDraft: !SessionText.isBlank(text) || attached,
+                hasDraft: !text.jvmIsBlank || attached,
                 focus: focus,
                 sendHint: online ? "" : "连上服务器后才能发送"
             ) {
