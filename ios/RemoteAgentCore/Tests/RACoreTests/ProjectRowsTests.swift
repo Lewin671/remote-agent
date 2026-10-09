@@ -136,7 +136,7 @@ import Testing
     // MARK: The new-session box
 
     private func notices(
-        _ st: RemoteState, _ c: NewConfig?, drafting: Bool = false, settled: Bool = true, pick: PBAgent? = nil, start: StartProgress = StartProgress()
+        _ st: RemoteState, _ c: NewConfig?, drafting: Bool = false, settled: Bool = true, pick: PBAgent? = nil, start: NewSessionProgress = NewSessionProgress()
     ) -> [NewSessionNotice] {
         newSessionNotices(st, config: c, name: "foo", pick: pick, drafting: drafting, settled: settled, start: start)
     }
@@ -199,11 +199,11 @@ import Testing
     @Test func aStartSaysHowItStands() {
         let st = state([session("a", "/p/foo")])
         let c = NewConfig(machineId: "mac", cwd: "/p/foo")
-        #expect(notices(st, c, start: StartProgress(running: true)) == [.starting("正在 MacBook 上启动…")])
-        #expect(notices(st, c, start: StartProgress(error: "目录不存在")) == [.failed("启动失败：目录不存在")])
-        let unknown = notices(st, c, start: StartProgress(error: "结果未知", frozen: true, prompt: "say hi"))
+        #expect(notices(st, c, start: NewSessionProgress(running: true)) == [.starting("正在 MacBook 上启动…")])
+        #expect(notices(st, c, start: NewSessionProgress(error: "目录不存在")) == [.failed("启动失败：目录不存在")])
+        let unknown = notices(st, c, start: NewSessionProgress(error: "结果未知", frozen: true, prompt: "say hi"))
         #expect(unknown == [.unknown("上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次")])
-        let expired = notices(st, c, start: StartProgress(frozen: true, expired: true, prompt: "say hi"))
+        let expired = notices(st, c, start: NewSessionProgress(frozen: true, expired: true, prompt: "say hi"))
         #expect(expired == [.unknown("不确定「say hi」有没有启动，它已过期，不会再重发。请先看看进行中的会话")])
         #expect(notices(st, c, settled: false) == [.reading("正在读取这个项目上次的设置…", retry: false)])
         var failed = st
@@ -226,7 +226,7 @@ import Testing
 
     @Test func nothingIsStoredUntilSomethingChanged() {
         let st = state([session("a", "/p/foo")])
-        var d = SettingsDraft(cwd: "/p/foo", machine: "mac", agent: .codex)
+        var d = ProjectSettingsDraft(cwd: "/p/foo", machine: "mac", agent: .codex)
         #expect(d.op() == nil && !d.moved && d.agents(st) == [.codex, .claude])
         var c = d.config(st)
         c.mode = .full
@@ -239,7 +239,7 @@ import Testing
 
     @Test func anotherMachineStartsEveryCliOver() {
         let st = state([session("a", "/p/foo")])
-        var d = SettingsDraft(cwd: "/p/foo", machine: "mac", agent: .claude)
+        var d = ProjectSettingsDraft(cwd: "/p/foo", machine: "mac", agent: .claude)
         var c = d.config(st)
         c.model = "sonnet"
         d.edit(c)
@@ -298,6 +298,6 @@ import Testing
         var st = state([session("a", "/p/foo"), session("b", "/p/foo", machine: "vps")])
         #expect(machineRows(st, cwd: "/p/foo", agent: .claude).map(\.note) == [nil, "没有 Claude Code"])
         st.machines["vps"]?.online = false
-        #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == MachineRow(id: "vps", name: "VPS-dev", online: false, note: "不在线，现在不能新建"))
+        #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == ProjectMachineRow(id: "vps", name: "VPS-dev", online: false, note: "不在线，现在不能新建"))
     }
 }

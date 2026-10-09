@@ -158,7 +158,7 @@ public func foldedSummary(_ state: RemoteState, _ c: NewConfig) -> String {
 // --- the new-session box ---
 
 /// Another machine offered while the project's own is offline.
-public struct MachineChoice: Equatable, Sendable, Identifiable {
+public struct OfflineMachineChoice: Equatable, Sendable, Identifiable {
     public var id: String
     /// 「改用 VPS-dev」.
     public var title: String
@@ -180,7 +180,7 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
     /// What the next session inherits is not read yet; `retry` when a tap fetches again.
     case reading(String, retry: Bool)
     /// The machine went offline under a draft: the machines to choose from for this start, or that there is none.
-    case offlineChoice(title: String, text: String, choices: [MachineChoice], none: String?)
+    case offlineChoice(title: String, text: String, choices: [OfflineMachineChoice], none: String?)
     /// The machine is offline and nothing is written yet.
     case offline(String)
     /// The machine runs another protocol version: which side to update.
@@ -208,7 +208,7 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
 }
 
 /// How a start stands, for the notices.
-public struct StartProgress: Equatable, Sendable {
+public struct NewSessionProgress: Equatable, Sendable {
     public var running: Bool
     public var error: String
     /// The last start's outcome is unknown (`Attempt.frozen`), and expired (`Attempt.expired`).
@@ -227,13 +227,13 @@ public struct StartProgress: Equatable, Sendable {
 }
 
 /// The machines a draft can move to while its own is offline (Android's OfflineChoice): the others the project used that are online.
-public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [MachineChoice] {
+public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMachineChoice] {
     projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.machines[$0]?.online == true }.map { id in
         let agents = machineAgents(state.machines[id])
         let note = agents.contains(c.agent)
             ? "有 \(agentName(c.agent))；模型和强度会按这台机器重新选择"
             : "只有 \(agents.map(agentName).joined(separator: "、"))；会改用 \(agentName(agents[0]))，模型和模式按这台机器重新选择"
-        return MachineChoice(
+        return OfflineMachineChoice(
             id: id, title: "改用 \(machineLabel(state, id: id))", note: note, config: switchMachine(c, machineId: id, agents: agents))
     }
 }
@@ -244,7 +244,7 @@ public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [MachineChoi
 /// of the machine: every computer reads as offline then, and the connection
 /// bar has said why (architecture §9 「断线时显示什么」).
 public func newSessionNotices(
-    _ state: RemoteState, config c: NewConfig?, name: String, pick: PBAgent?, drafting: Bool, settled: Bool, start: StartProgress
+    _ state: RemoteState, config c: NewConfig?, name: String, pick: PBAgent?, drafting: Bool, settled: Bool, start: NewSessionProgress
 ) -> [NewSessionNotice] {
     var out = [NewSessionNotice]()
     // Why nothing can start yet; a page that failed says so, with the tap that tries again.
@@ -320,7 +320,7 @@ public func promptText(_ text: String) -> String { text.jvmTrim() }
 /// The edits of an open 项目设置 sheet (Android's NewSettingsSheet): the
 /// machine, shared by the CLIs, and each CLI's own set as far as it was
 /// changed here; the others stay as stored. Nothing is written until 完成.
-public struct SettingsDraft: Equatable, Sendable {
+public struct ProjectSettingsDraft: Equatable, Sendable {
     public let cwd: String
     /// The machine the sheet opened on.
     public let from: String
@@ -421,7 +421,7 @@ public func effortChoices(_ c: NewConfig, models: PBListModelsResponse, settings
 }
 
 /// One choice of 审批模式.
-public struct ModeChoice: Equatable, Sendable, Identifiable {
+public struct ApprovalModeChoice: Equatable, Sendable, Identifiable {
     /// Nil is 默认: the CLI's own configuration.
     public var mode: Mode?
     public var title: String
@@ -440,19 +440,19 @@ public struct ModeChoice: Equatable, Sendable, Identifiable {
     }
 }
 
-public func modeChoices(_ c: NewConfig) -> [ModeChoice] {
+public func modeChoices(_ c: NewConfig) -> [ApprovalModeChoice] {
     let name = agentName(c.agent)
-    return [ModeChoice(mode: nil, title: "默认", desc: "跟随 \(name) 自己的配置", enabled: true, checked: c.mode == nil)]
+    return [ApprovalModeChoice(mode: nil, title: "默认", desc: "跟随 \(name) 自己的配置", enabled: true, checked: c.mode == nil)]
         + newSessionModes.map { m in
             let off = m == .auto && noAutoModel(c.agent, model: c.model)
-            return ModeChoice(
+            return ApprovalModeChoice(
                 mode: m, title: m.text, desc: off ? "当前 Haiku 模型不支持" : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
                 enabled: !off, checked: c.mode == m)
         }
 }
 
 /// One machine of 项目设置 › 机器.
-public struct MachineRow: Equatable, Sendable, Identifiable {
+public struct ProjectMachineRow: Equatable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var online: Bool
@@ -468,11 +468,11 @@ public struct MachineRow: Equatable, Sendable, Identifiable {
 }
 
 /// The machines the project used. `agent` is the CLI selected next to the message box: 换机器 comes here to find it.
-public func machineRows(_ state: RemoteState, cwd: String, agent: PBAgent) -> [MachineRow] {
+public func machineRows(_ state: RemoteState, cwd: String, agent: PBAgent) -> [ProjectMachineRow] {
     projectMachines(state, key: cwd).map { id in
         let online = state.machines[id]?.online == true
         let has = machineAgents(state.machines[id]).contains(agent)
-        return MachineRow(
+        return ProjectMachineRow(
             id: id, name: machineLabel(state, id: id), online: online,
             note: !online ? "不在线，现在不能新建" : !has ? "没有 \(agentName(agent))" : nil)
     }
