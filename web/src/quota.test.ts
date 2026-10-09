@@ -40,7 +40,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
       ["5 小时", "已用 62%", "4 小时 29 分后重置 · 今天 14:10", ""],
       ["7 天", "已用 34%", "10 小时 29 分后重置 · 今天 20:10", ""],
     ]);
-    expect(v.seen).toBe(`最近收到 ${new Date(at(9, 40)).getHours()}:40`);
+    expect(v.seen).toBe("最近收到 9:40");
   });
 
   it("marks a missing usage 未获取, never 0%, and a missing reset time by leaving it out", () => {
@@ -73,7 +73,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     expect(claude).toMatchObject({ kind: "waiting", head: "暂未获取额度" });
     expect(codex).toMatchObject({ kind: "failed", error: "没能读取 Codex 额度：rollout unreadable", title: "Codex · 上次记录" });
     expect(codex.rows[0]).toMatchObject({ used: "上次已用 28%", tone: "stale", reset: "3 小时 29 分后重置 · 今天 13:10" });
-    expect(codex.seen).toBe(`最近成功收到 ${new Date(at(9, 20)).getHours()}:20`);
+    expect(codex.seen).toBe("最近成功收到 9:20");
     const [unsup] = quotaViews([q({ agent: Agent.CLAUDE, state: QuotaState.UNSUPPORTED, detail: "托管设置固定了状态栏" })], [Agent.CLAUDE], now, true);
     expect(unsup).toMatchObject({ kind: "unsupported", head: "暂不支持读取额度", detail: "托管设置固定了状态栏" });
     // A CLI the daemon has no entry for is not supported by it.

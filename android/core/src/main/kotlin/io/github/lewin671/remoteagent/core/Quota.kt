@@ -47,9 +47,12 @@ private fun nameLabel(w: QuotaWindow): String = when {
     else -> w.name
 }
 
-private fun clockText(ms: Long, now: Long, zone: ZoneId): String {
-    val t = Instant.ofEpochMilli(ms).atZone(zone)
-    val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+private val beijing: ZoneId = ZoneId.of("Asia/Shanghai")
+
+/** When a reading arrived, in Beijing like the reset times beside it. */
+private fun clockText(ms: Long, now: Long): String {
+    val t = Instant.ofEpochMilli(ms).atZone(beijing)
+    val today = Instant.ofEpochMilli(now).atZone(beijing).toLocalDate()
     val hm = "${t.hour}:${"%02d".format(t.minute)}"
     return when (t.toLocalDate()) {
         today -> hm
@@ -57,8 +60,6 @@ private fun clockText(ms: Long, now: Long, zone: ZoneId): String {
         else -> if (t.toLocalDate().isAfter(today)) "${weekdays[t.dayOfWeek.value - 1]} $hm" else "${t.monthValue}月${t.dayOfMonth}日 $hm"
     }
 }
-
-private val beijing: ZoneId = ZoneId.of("Asia/Shanghai")
 
 /**
  * 3 小时 39 分后重置 · 今天 13:20: how long is left, rounded down, then the
@@ -95,7 +96,7 @@ fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean): QuotaRow {
  * Each installed CLI's quota on [m], one group per account the daemon could
  * tell apart. A CLI without an entry is not supported there.
  */
-fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()): List<QuotaGroup> {
+fun quotaGroups(m: MachineView, now: Long): List<QuotaGroup> {
     val meta = m.meta
     val out = mutableListOf<QuotaGroup>()
     for (agent in machineAgents(m)) {
@@ -104,7 +105,7 @@ fun quotaGroups(m: MachineView, now: Long, zone: ZoneId = ZoneId.systemDefault()
             out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
             continue
         }
-        for (q in entries) out += group(agent, q, entries.size > 1, m.online, now, zone)
+        for (q in entries) out += group(agent, q, entries.size > 1, m.online, now)
     }
     return out
 }
@@ -130,7 +131,7 @@ private fun completeWindows(agent: Agent, windows: List<QuotaWindow>): List<Quot
     return expected.mapNotNull { byName[it] } + windows.filter { it.name !in expected }
 }
 
-private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean, now: Long, zone: ZoneId): QuotaGroup {
+private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean, now: Long): QuotaGroup {
     val status = when (q.state) {
         QuotaState.QUOTA_STATE_OK -> QuotaStatus.OK
         QuotaState.QUOTA_STATE_FAILED -> QuotaStatus.FAILED
@@ -146,7 +147,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
     }
     val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${planName(q.plan)}" else "") + which
     val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord) }
-    val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now, zone) else ""
+    val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now) else ""
     return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
 }
 

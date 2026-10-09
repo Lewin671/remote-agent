@@ -506,7 +506,7 @@ fun QuotaScreen(id: String) {
                 // Used up or close to it; nothing switches CLI or model by itself.
                 io.github.lewin671.remoteagent.core.quotaBanner(g).takeIf { it.isNotEmpty() }?.let { Text("$it，不会自动切换 CLI 或模型", style = T.sm, color = p.orangeInk, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp)) }
             }
-            Text("重置时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text("时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。", style = T.sm, color = p.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
     }
 }

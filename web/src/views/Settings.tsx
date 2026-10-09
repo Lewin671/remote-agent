@@ -216,7 +216,7 @@ export function QuotaPage({ remote, id, onBack }: { remote: Remote; id: string; 
             )}
           </div>
         ))}
-        <div className="manage-hint">重置时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
+        <div className="manage-hint">时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>
   );

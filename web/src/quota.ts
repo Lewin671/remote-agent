@@ -28,15 +28,18 @@ function untilReset(ms: number): string {
   return `${Math.floor(m / (24 * 60))} 天 ${Math.floor((m % (24 * 60)) / 60)} 小时后重置`;
 }
 
+// Shanghai is UTC+8 without DST: read the result with the getUTC* methods.
+const beijing = (t: number) => new Date(t + 8 * 60 * 60 * 1000);
+const dayOf = (d: Date) => d.toISOString().slice(0, 10);
+const clock = (d: Date) => `${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+
 /** How long until the reset, then its day and time. The instant is shown
  * in Beijing regardless of the device timezone; the page says so once. */
 function resetTime(ms: number, now: number): string {
-  // Shanghai is UTC+8 without DST for current quota windows.
-  const beijing = (t: number) => new Date(t + 8 * 60 * 60 * 1000);
   const d = beijing(ms);
   const today = beijing(now);
-  const day = d.toISOString().slice(0, 10) === today.toISOString().slice(0, 10) ? "今天" : `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${days[d.getUTCDay()]}`;
-  return `${untilReset(ms - now)} · ${day} ${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  const day = dayOf(d) === dayOf(today) ? "今天" : `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${days[d.getUTCDay()]}`;
+  return `${untilReset(ms - now)} · ${day} ${clock(d)}`;
 }
 
 export function windowLabel(minutes: number): string {
@@ -96,17 +99,12 @@ export function planName(plan: string): string {
   return known[plan.toLowerCase()] ?? plan.replace(/^claude_/i, "").split(/[_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 }
 
-function hm(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
+/** When a reading arrived, in Beijing like the reset times beside it. */
 function when(ms: number, now: number): string {
-  const d = new Date(ms);
-  const today = new Date(now).toDateString();
-  if (d.toDateString() === today) return hm(ms);
-  if (d.toDateString() === new Date(now - 86_400_000).toDateString()) return `昨天 ${hm(ms)}`;
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${hm(ms)}`;
+  const d = beijing(ms);
+  if (dayOf(d) === dayOf(beijing(now))) return clock(d);
+  if (dayOf(d) === dayOf(beijing(now - 86_400_000))) return `昨天 ${clock(d)}`;
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${clock(d)}`;
 }
 
 function windowRow(w: QuotaWindow, label: string, now: number, stale: boolean): QuotaRow & { key: string } {
