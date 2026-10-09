@@ -88,7 +88,8 @@ struct ChatRowView: View, Equatable {
             .accessibilityLabel(m.text.isEmpty ? "图片" : m.text)
             .accessibilityValue(m.from ?? (m.local ? "在终端里输入" : "你发的消息"))
         case .agent(let m):
-            MarkdownView(blocks: row.blocks, bleed: chatMargin)
+            // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
+            MarkdownView(blocks: row.blocks, bleed: chatMargin, selectable: false)
                 .padding(.horizontal, chatMargin).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .messageMenu(m.text, actions: actions)

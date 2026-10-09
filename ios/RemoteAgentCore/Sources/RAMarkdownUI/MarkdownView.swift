@@ -7,12 +7,18 @@
 import RAMarkdown
 import SwiftUI
 
-/// An agent's reply as Markdown. Text can be selected, and only http(s)
-/// links can be opened.
+/// An agent's reply as Markdown. Only http(s) links can be opened.
+///
+/// `selectable` lets a long press on a piece of text offer the system's
+/// copy of that piece. A caller that gives the reply a long-press menu of
+/// its own turns it off: the two answer the same gesture, and the text's
+/// wins wherever there is text, so the caller's menu would only come up
+/// over the gaps.
 public struct MarkdownView: View {
     private let blocks: [MarkdownBlock]
     private let tone: MarkdownTone
     private let bleed: CGFloat
+    private let selectable: Bool
 
     @Environment(\.markdownTheme) private var custom
     @Environment(\.colorScheme) private var scheme
@@ -23,16 +29,17 @@ public struct MarkdownView: View {
     /// Parses `text` each time the view is made: linear in the text, but a
     /// caller that redraws for other reasons does better to keep
     /// `Markdown.parse`'s result and pass it to `init(blocks:)`.
-    public init(_ text: String, tone: MarkdownTone = .primary, bleed: CGFloat = 0) {
-        self.init(blocks: Markdown.parse(text), tone: tone, bleed: bleed)
+    public init(_ text: String, tone: MarkdownTone = .primary, bleed: CGFloat = 0, selectable: Bool = true) {
+        self.init(blocks: Markdown.parse(text), tone: tone, bleed: bleed, selectable: selectable)
     }
 
     /// `bleed` is the padding the caller keeps at the reply's sides: a table
     /// too wide for the reply scrolls across it, to the edge of the screen.
-    public init(blocks: [MarkdownBlock], tone: MarkdownTone = .primary, bleed: CGFloat = 0) {
+    public init(blocks: [MarkdownBlock], tone: MarkdownTone = .primary, bleed: CGFloat = 0, selectable: Bool = true) {
         self.blocks = blocks
         self.tone = tone
         self.bleed = bleed
+        self.selectable = selectable
     }
 
     public var body: some View {
@@ -45,7 +52,16 @@ public struct MarkdownView: View {
                 outer(url)
                 return .handled
             })
-            .textSelection(.enabled)
+            .modifier(Selection(on: selectable))
+    }
+}
+
+/// `textSelection` takes a type, not a value, so the choice is a branch; it is made once per reply and never changes.
+private struct Selection: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on { content.textSelection(.enabled) } else { content.textSelection(.disabled) }
     }
 }
 
