@@ -862,6 +862,19 @@ export class DemoRemote extends Remote {
     return ok();
   }
 
+  // 连接检测: ?demo&ping=slow|fail
+  override async pingServer(): Promise<number> {
+    await sleep(300);
+    if (this.opts.get("ping") === "fail") throw new Error("没有回应");
+    return this.opts.get("ping") === "slow" ? 840 + Math.round(Math.random() * 60) : 70 + Math.round(Math.random() * 30);
+  }
+
+  override async pingMachine(machineId: string): Promise<number> {
+    await sleep(machineId === "vps" ? 1800 : 600);
+    if (machineId === "vps") return 2140;
+    return 150 + Math.round(Math.random() * 60);
+  }
+
   override async machineCommand(machineId: string, kind: CommandKind): Promise<CommandResult> {
     await sleep(500);
     const cmd = create(CommandSchema, { kind }).kind;

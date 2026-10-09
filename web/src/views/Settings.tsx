@@ -12,10 +12,14 @@ import { clientDetail, clientName, clientUsed, dayText, defaultClientName, lastU
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { Check, ChevronRight, Laptop, Plus } from "../icons";
 
+import { ConnCheck, connWord } from "./ConnCheck";
+
 export function Settings({ remote, go }: { remote: Remote; go: (r: string) => void }) {
   useRemote(remote);
   useNow(30_000); // for the machines' quota lines
   const [leaving, setLeaving] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const conn = connWord(remote);
   const machines = [...remote.machines.values()].sort((a, b) => machineName(a).localeCompare(machineName(b)));
   const push = usePush(remote);
   const me = remote.account.deviceId;
@@ -107,11 +111,20 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
         <div className="row">
           服务器<span className="v">{new URL(remote.account.server).host}</span>
         </div>
+        <button className="row" onClick={() => setChecking(true)}>
+          连接检测
+          <span className="v">
+            <Dot tone={conn.tone} />
+            {conn.text}
+            <ChevronRight />
+          </span>
+        </button>
         <button className="row danger" onClick={() => setLeaving(true)}>
           退出并删除本机密钥
         </button>
       </div>
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+      {checking && <ConnCheck remote={remote} onClose={() => setChecking(false)} />}
     </div>
   );
 }

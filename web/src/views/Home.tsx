@@ -36,6 +36,7 @@ import { deadlineOf, useDerived } from "./actions";
 import { approvalDisplay } from "../approval-display";
 import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
+import { ConnCheck, connWord } from "./ConnCheck";
 import { PrefsBanner, ProjectItem, ProjectList, RemovedNotice, useProjectGroups } from "./Projects";
 import { Check, ChevronDown, ChevronRight, CloudOff, LoaderCircle, Search, Settings, SquarePen, WifiOff, X } from "../icons";
 
@@ -511,7 +512,8 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
 export function Sidebar({ remote, go, selected, project }: { remote: Remote; go: Go; selected?: string; project?: string }) {
   useRemote(remote);
   const { scope } = useScope(remote);
-  const conn = remote.conn === "online" ? ["idle", "已连接"] : remote.everOnline ? ["wait", "重连中"] : ["off", remote.failures >= 2 ? "连不上" : "连接中"];
+  const conn = connWord(remote);
+  const [checking, setChecking] = useState(false);
   return (
     <aside className="side">
       <div className="sh">
@@ -540,10 +542,11 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
       </div>
       <div className="foot">
         <button onClick={() => go("settings")}><Settings /> 设置</button>
-        <span>
-          <Dot tone={conn[0] as "idle"} /> {conn[1]}
-        </span>
+        <button className="link-conn" onClick={() => setChecking(true)} aria-label={`${conn.text}，连接检测`} title="连接检测">
+          <Dot tone={conn.tone} /> {conn.text}
+        </button>
       </div>
+      {checking && <ConnCheck remote={remote} onClose={() => setChecking(false)} />}
     </aside>
   );
 }

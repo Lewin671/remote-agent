@@ -597,6 +597,40 @@ export class Remote {
     void this.connect();
   }
 
+  /** How long one round trip to the server takes now, in ms: a request
+   * that does nothing there (连接检测). Rejects when no answer comes. */
+  async pingServer(timeoutMs = 8000): Promise<number> {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), timeoutMs);
+    const started = performance.now();
+    try {
+      const res = await relayFetch(apiBase(this.account.server) + "/healthz", { cache: "no-store", signal: stop.signal });
+      await res.arrayBuffer();
+      if (!res.ok) throw new Error(`服务器返回 ${res.status}`);
+      return Math.round(performance.now() - started);
+    } catch (e) {
+      throw stop.signal.aborted ? new Error("没有回应") : e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** How long one round trip to a computer takes, through the server and
+   * back: a sealed command that only reads its settings. */
+  async pingMachine(machineId: string, timeoutMs = 15_000): Promise<number> {
+    const started = performance.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.machineCommand(machineId, { case: "getSettings", value: {} }),
+        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("没有回应")), timeoutMs))),
+      ]);
+      return Math.round(performance.now() - started);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /** One login at a time: the server keeps few challenges per device, and
    * a denial has to mean what it says. */
   private login(): Promise<void> {

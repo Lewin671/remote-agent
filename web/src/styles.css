@@ -475,6 +475,12 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .plist .pi .dots { width: 44px; height: 44px; margin-right: -12px; display: flex; align-items: center; justify-content: center; color: var(--blue); flex: none; font-size: 20px; }
 .plist .pi .dots:disabled { opacity: .45; }
 .manage > .banner { margin-bottom: 8px; }
+.conn-check .sr { gap: 12px; }
+.conn-check .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-check .who small { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.conn-check .v { flex: none; font-variant-numeric: tabular-nums; }
+.conn-check .v.red { color: var(--red); white-space: normal; text-align: right; flex: 0 1 auto; }
+.conn-again { margin-top: 12px; }
 .sheet .hint + .setrows { margin-top: 12px; }
 .manage > .hint { margin-top: 12px; }
 .recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0 0 10px; align-items: center; scrollbar-width: none; }
@@ -606,7 +612,7 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 @media (hover: hover) { .side .ph:hover:not(.sel), .sub-sess:hover { background: var(--hover); } }
 .side .foot { border-top: 1px solid var(--line); padding: 0 14px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; flex: none; min-height: 44px; }
 .side .foot button { min-height: 44px; }
-.side .foot span { display: inline-flex; align-items: center; gap: 6px; }
+.side .foot .link-conn { display: inline-flex; align-items: center; gap: 6px; }
 .dm { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .dm > .body { flex: 1; }
 .dm .navbar .back:empty { display: none; }
