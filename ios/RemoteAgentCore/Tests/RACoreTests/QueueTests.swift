@@ -63,6 +63,10 @@ import Testing
         #expect(clientName(pixel, id: pixel.id) == "我的手机")
         #expect(defaultClientName(pixel, id: pixel.id) == "Android · 8a5f")
         #expect(clientDetail(pixel) == "App · Android 16 · Pixel 9")
+        let iphone = device(created: pixel.createdMs, meta("", "ios", "iOS 27.0 · iPhone"))
+        #expect(defaultClientName(iphone, id: iphone.id) == "iOS · 8a5f")
+        #expect(clientDetail(iphone) == "App · iOS 27.0 · iPhone")
+        #expect(clientName(device(created: pixel.createdMs, meta("", "ios", "")), id: iphone.id) == "iOS · 8a5f")
         #expect(clientDetail(nil) == "种类未知")
         func used(_ seen: Int64) -> String { clientUsed(device(created: browser.createdMs, seen: seen, chrome), now: now, zone: zone) }
         #expect(used(now - 30_000) == "刚刚使用")

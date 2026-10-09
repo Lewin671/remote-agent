@@ -174,65 +174,6 @@ public func forkedSession(_ r: PBCommandResult?) -> String? {
     return f.session.id
 }
 
-/// How a session that is not held here is being looked up by its ID.
-public enum SessionLookup: Equatable, Sendable {
-    /// Asked for, with no answer that settles it yet.
-    case reading
-    /// The server has no such session, and kept saying so.
-    case missing
-    /// The server could not be asked; it is asked again after a while.
-    case failed(reason: String)
-}
-
-/// A session the server does not have is asked for this many times, `sessionAbsentWaitMs` apart, before it counts as missing.
-public let sessionAbsentTries = 5
-public let sessionAbsentWaitMs: Int64 = 2_500
-
-/// Looks a session up by its ID until it is held (`fetch` returns true) or
-/// known to be missing (architecture §8 「按 ID 取」). A session just started
-/// is acknowledged by its daemon before the daemon has uploaded it, so the
-/// server not having it only counts once it said so for ten seconds. The
-/// server not answering is no answer: it is asked again, after three seconds
-/// and then twice as long each time up to half a minute, and `report` says
-/// why meanwhile, in the words `describe` gives the failure. Cancellation
-/// ends it by throwing. It runs where it is called from, so `report` may
-/// touch the caller's state.
-public func lookUpSession(
-    isolation: isolated (any Actor)? = #isolation,
-    fetch: () async throws -> Bool,
-    wait: (Int64) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64(max(0, $0)) * 1_000_000) },
-    describe: (any Error) -> String,
-    report: (SessionLookup) -> Void
-) async throws {
-    var absent = 0
-    var pause: Int64 = 3_000
-    while true {
-        do {
-            if try await fetch() { return }
-            absent += 1
-            if absent >= sessionAbsentTries { return report(.missing) }
-            report(.reading)
-            pause = 3_000
-            try await wait(sessionAbsentWaitMs)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            report(.failed(reason: describe(error)))
-            try await wait(pause)
-            pause = min(pause * 2, 30_000)
-        }
-    }
-}
-
-/// What a page about a session says instead of its content while the session is not held; nil while it is only being read.
-public func lookupNote(_ l: SessionLookup?) -> String? {
-    switch l {
-    case .missing: return "找不到这个会话"
-    case .failed(let reason): return "没能读取这个会话：\(reason)"
-    default: return nil
-    }
-}
-
 private let plainPlaceholder = Rx("\\[Image #\(Jre.digit)+\\]\(Jre.space)*")
 private let plainFence = Rx("```[a-zA-Z0-9]*")
 private let plainCode = Rx("`([^`]*)`")
@@ -406,6 +347,7 @@ public func platformLabel(_ meta: PBDeviceMeta?) -> String {
     if let unit = first.utf16.first, !isJvmDigit(unit) { return first }
     switch meta?.platform {
     case "android": return "Android"
+    case "ios": return "iOS"
     case "web": return "浏览器"
     default: return "客户端"
     }
@@ -423,7 +365,7 @@ public func defaultClientName(_ d: DeviceView?, id: String) -> String { "\(platf
 public func clientDetail(_ d: DeviceView?) -> String {
     let kind: String
     switch d?.meta?.platform {
-    case "android": kind = "App"
+    case "android", "ios": kind = "App"
     case "web": kind = "浏览器"
     default: kind = ""
     }

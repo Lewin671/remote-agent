@@ -82,21 +82,6 @@ extension Remote {
         return (ContinuousClock.now - started).milliseconds
     }
 
-    /// The text for a machine this app cannot work with, nil when their
-    /// protocol versions agree or the machine's is not known. The same words
-    /// as Android's `protocolMismatch`.
-    private static func versionRefusal(_ m: MachineView?) -> String? {
-        guard let m, let meta = m.meta else { return nil }
-        if meta.protocolVersion < protocolVersion {
-            var name = meta.hostname
-            if name.hasSuffix(".local") { name.removeLast(6) }
-            if name.isEmpty { name = String(m.id.prefix(8)) }
-            return "\(name) 上的 remote-agent 版本较旧，请在电脑上更新后再试"
-        }
-        if meta.protocolVersion > protocolVersion { return "这个 App 版本较旧，请更新后再试" }
-        return nil
-    }
-
     /// Forwards a prepared command and returns the opened result. Transport
     /// failures are retried with the same request ID, which the daemon runs at
     /// most once; when the outcome stays unknown the error says so.
@@ -104,7 +89,7 @@ extension Remote {
     public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws -> PBCommandResult {
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
-        if let refusal = Remote.versionRefusal(state.value.machines[p.machineId]) {
+        if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
             throw CommandError("failed_precondition", refusal)
         }
         // A command whose outcome is unknown is sent even when expired: the
@@ -221,17 +206,6 @@ extension Remote {
 
     // --- images ---
 
-    /// The format of encoded image bytes, by their signature; nil for anything else.
-    private static func imageFormat(_ b: Data) -> PBImageFormat? {
-        let d = [UInt8](b.prefix(12))
-        func ascii(_ from: Int, _ text: String) -> Bool { d.count >= from + text.utf8.count && Array(d[from..<from + text.utf8.count]) == Array(text.utf8) }
-        if d.count >= 8 && d[0] == 0x89 && ascii(1, "PNG") { return .png }
-        if d.count >= 3 && d[0] == 0xFF && d[1] == 0xD8 && d[2] == 0xFF { return .jpeg }
-        if d.count >= 12 && ascii(0, "RIFF") && ascii(8, "WEBP") { return .webp }
-        if ascii(0, "GIF87a") || ascii(0, "GIF89a") { return .gif }
-        return nil
-    }
-
     /// An image's display copy, from the cache of envelopes or the server.
     /// Only the envelope is cached; it is opened and checked in memory each
     /// time: bound to this machine, session and image, and data that starts
@@ -262,7 +236,7 @@ extension Remote {
         } catch let e as OpenError {
             return .corrupt(why: e.description)
         }
-        if Remote.imageFormat(payload.data) != payload.format { return .corrupt(why: "图片内容和格式对不上") }
+        if detectFormat(payload.data) != payload.format { return .corrupt(why: "图片内容和格式对不上") }
         if let env, let bytes: Data = try? env.serializedData() { await cache?.putImage(key: cacheKey, envelope: bytes) }
         return .loaded(payload)
     }
