@@ -13,12 +13,12 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor` | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集 | 真实 CLI，手动（[记录](acceptance-notes.md#3-claude-code)） | 没有 Claude Code 版的 `scripts/acceptance.sh` |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收 |
-| 网页 | 当前界面稿 [client-v33](design/client-v33.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
+| 网页 | 当前界面稿 [client-v34](design/client-v34.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；v9 以后的改动只过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；往上翻时分段读取；下方「Android 的小缺口」 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
 
-代码按界面稿 [client-v33](design/client-v33.html) 实现。它相对 v32 让新项目在选好目录后就出现在项目列表里（[architecture · 会话列表分页](architecture.md#会话列表分页)的「项目从哪来」）；网页和 Android 都已实现，只过了自动测试。之前各版留下的缺口见上表和「下一步」。
+代码按界面稿 [client-v34](design/client-v34.html) 实现。它相对 v33 把三处项目列表统一成一种、移除改成确认后不可撤销（[architecture · 项目列表偏好](architecture.md#项目列表偏好)），并加了连接检测（[architecture · 断线时显示什么](architecture.md#断线时显示什么)）；网页和 Android 都已实现，验证到哪见 [acceptance-notes](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。
 
 ## 下一步
 
@@ -28,7 +28,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 2. **Codex 0.159.2 的命令结果**。按新格式解析退出码或失败，再把 0.159.2 列为已验证版本。验收标准：失败的命令在客户端显示 ✕ 和退出码，`remote-agent doctor` 通过
 3. **定时任务的客户端**。客户端通过 `MachineCapabilities.scheduled_tasks` 判断支持情况，复用 Schedule 机器指令查询和管理任务；先定变更订阅和离线快照，再出界面稿，然后做全局任务页和会话内入口。设计见 [architecture §18](architecture.md#18-定时任务)
 4. **历史分段读取**。现在事件层从序号 1 读全量，长会话第一次打开慢（瓶颈是下载量，见 [architecture §10](architecture.md#10-报文同步和指令) 的「后台和内存」）；网页再次打开已经靠本地密文缓存只取增量。剩下的是第一次打开：先取最新一段显示，更早的在后台补，需要让状态推导不依赖从序号 1 开始的完整历史。网页和 Android 都要做
-5. **v8 以后的界面改动补验收**。两端逐屏对照 client-v33（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
+5. **v8 以后的界面改动补验收**。两端逐屏对照 client-v34（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
 
 **Android 的小缺口**（没排期，碰到相关改动时一起做）：
 
@@ -56,6 +56,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - Android 的会话和项目页在平板与横屏上仍是手机布局，要不要做网页那样的侧栏加主区域未定
 - 客户端切换 fast 模式是否要做（优先级低）
 - 运行中的会话要不要也能分叉（比如主任务跑着，另开一支问别的）。现在只允许空闲和已结束的会话（[architecture §13](architecture.md#13-daemon-设置与远程新建会话)）；要做得先实测两个 CLI 怎么处理停在一轮中间的记录，再定复制来的历史在哪里收尾
+- 连接检测里「较慢」的界线（服务器 500 ms、电脑 1500 ms）是初始取值，用一段时间后按实际延时再定
 - 会话图片的保存期限（30 天）和配额（1 GiB）、预览长边 320px、显示版 2048px、加密后整个信封不超过 1 MiB 都是初始取值（[session-images.md](session-images.md)），要用实际截图和一段时间的用量看清晰度、流量和空间再定
 - server 的过期图片仍保留状态行，SQLite 空间用于后续复用；是否需要定期压缩数据库及历史元数据期限未定
 - 图片过期后要不要支持从电脑重新取（daemon 从 rollout 或 transcript 里重新编码上传）；需要机器在线，也要一个新的指令

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v33</title>
+<title>remote-agent 客户端设计稿 v34</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -345,6 +345,12 @@
   .plist .pi small { font-size: 12px; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .plist .pi .chev { color: var(--faint); font-size: 18px; }
   .plist .pi.add { color: var(--blue); font-weight: 600; border: none; }
+  .plist .pi.add > .ic { width: 28px; flex: none; }
+  .plist .pi.act { padding-left: 40px; }
+  .plist .fl { margin: 14px 0 2px; }
+  .plist .pi .dots { color: var(--blue); font-size: 20px; width: 32px; text-align: right; flex: none; }
+  .conn-check .sr > span:first-child small { display: block; font-size: 12px; color: var(--muted); }
+  .conn-check .sr .v::after { content: none; }
   .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
   /* 新会话的设置摘要，按钮样式，点开项目设置；宽屏上放在 .launch 里，和 CLI 切换同一行 */
   .proj-cfg { display:inline-flex; align-items:center; gap:6px; max-width:100%; margin-top:6px; padding:0 10px; font-size:13px; color:var(--fg2); background:var(--chip); border-radius:var(--r-sm); text-decoration:none; min-height:32px; white-space:nowrap; overflow:hidden; }
@@ -921,17 +927,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v33 · 2026-10-09 · 上一版 v32 在 git 历史里（<code>git log -- docs/design/client-v32.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v34 · 2026-10-10 · 上一版 v33 在 git 历史里（<code>git log -- docs/design/client-v33.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v32 的改动</h4><ul><li><a href="#project-config-mode">「新项目」</a>：选好目录后项目就出现在项目列表里，不用等第一个会话开始；还没有会话的项目页写「这个项目还没有会话。」。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v33 的改动</h4><ul><li><a href="#projects">项目列表</a>：范围菜单、新建时的选项目和项目管理用同一种项目行、同一种分组（「常用」「其他」）和同一个「＋ 新项目…」；项目行第二行统一写路径加进行中的数量，没有进行中而电脑都不在线时写「电脑不在线」。宽屏的项目管理不再用表格。</li><li><a href="#projects">项目管理</a>：页面里可以直接加新项目；移除先确认，确认后就是移除，没有撤销、没有「已移除的项目」页面和「恢复」；以后要用，再把这个目录加成新项目。项目设置里的移除走同一个确认。</li><li><a href="#conncheck">连接检测</a>（新）：设置里和宽屏侧栏底部的连接状态可以点开，分段显示本机网络、到服务器、经服务器到每台电脑的往返延时。</li><li>其余画面不变。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1021,9 +1027,9 @@
       </div>
       <div class="tabbar"><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg></i>会话</div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg></i>设置</div></div>
       <div class="dim"></div>
-      <div class="sheet"><div class="grab"></div><div class="ns-head"><b>看哪个项目</b><span>取消</span></div><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · 2 小时前</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 昨天</small></div><span class="ck"></span></div><div class="pi act">新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="sheet"><div class="grab"></div><div class="ns-head"><b>看哪个项目</b><span>取消</span></div><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
     </div>
-    <div class="cap">点标题换范围：第一行是全部项目（只有一个项目时没有这一行），然后是常用项目，再是其他项目按最近活动排序，每行写路径和进行中的数量，当前范围打勾；超过 8 个项目时顶部有搜索。「新项目…」选机器和目录，「管理项目」进项目管理</div>
+    <div class="cap">点标题换范围：第一行是全部项目（只有一个项目时没有这一行），然后是和别处一样的项目列表（见<a href="#projects">项目管理</a>），当前范围打勾；超过 8 个项目时顶部有搜索。「新项目…」选机器和目录，「管理项目」进项目管理</div>
   </div>
 
   <div>
@@ -1112,11 +1118,7 @@
         <div class="grab"></div>
         <div class="ns-head"><b>新会话 · 选项目</b><span>取消</span></div>
         <div class="plist">
-          <div class="fl">常用项目</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · MacBook、VPS-dev</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-          <div class="fl">其他项目</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · iMac（不在线）</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-          <div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · MacBook</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-          <div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/work/blog · VPS-dev</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-          <div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…<small style="font-weight:400">选机器和目录</small></div>
+          <div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div>
         </div>
       </div>
     </div>
@@ -2051,6 +2053,31 @@ git status --short gen/</pre>
 </div>
 
 <!-- ============================= -->
+<h2 id="conncheck">连接检测</h2>
+<div class="note" style="margin:0 0 20px">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户里的「连接检测」一行（行尾写当前的连接状态），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。按离本机由近到远列出：本机网络、服务器、每台电脑；延时是一次往返的时间，服务器一行取三次里居中的一次。服务器 500 ms 以上、电脑 1500 ms 以上用橙点并写「较慢」。</div>
+<div class="screens">
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><span class="dot idle"></span><em>86 ms</em></span></div><div class="sr"><span>MacBook</span><span class="v"><span class="dot idle"></span><em>132 ms</em></span></div><div class="sr"><span>VPS-dev</span><span class="v"><span class="dot wait"></span><em>2140 ms · 较慢</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+</div>
+<div class="cap">测完：每一段一行。不在线的电脑不测，写「不在线」</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 检测中…</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+</div>
+<div class="cap">打开时和「再测一次」后：先测服务器，再同时测各台在线的电脑；测的时候按钮按禁用显示</div>
+</div>
+<div>
+<div class="phone gray">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>连接检测</b><span>完成</span></div><div class="setrows conn-check"><div class="sr"><span>本机网络</span><span class="v"><span class="dot idle"></span><em>正常</em></span></div><div class="sr"><span>服务器<small>ra.remote-agent.top</small></span><span class="v"><em style="color:var(--red)">没有回应</em></span></div><div class="sr"><span>MacBook</span><span class="v"><em style="color:var(--muted)">未检测</em></span></div><div class="sr"><span>Mac mini</span><span class="v"><span class="dot off"></span><em style="color:var(--muted)">不在线</em></span></div></div><div class="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="btns" style="margin-top:12px"><div class="btn">再测一次</div></div></div>
+</div>
+<div class="cap">服务器没有回应：原因用红字写在这一行，后面的电脑不测，写「未检测」</div>
+</div>
+</div>
 <h2 id="states">状态集</h2>
 <div class="stgrid">
 
@@ -2102,7 +2129,7 @@ git status --short gen/</pre>
   <div class="st">
     <div class="st-h">选项目 · 项目很多</div>
     <div class="field" style="margin:0 0 8px"><svg class="ic" aria-hidden="true"><use href="#lu-search"/></svg> 搜索项目名或路径</div>
-    <div class="plist"><div class="fl">常用项目</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · MacBook、VPS-dev</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他项目 · 23</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · iMac（不在线）</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div>
+    <div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="chev"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div>
     <div class="st-c">项目超过 8 个时顶部出现搜索，按项目名和路径匹配。匹配在本机完成，路径不离开客户端</div>
   </div>
 
@@ -2269,7 +2296,7 @@ git status --short gen/</pre>
       <div style="font-weight:600">这个项目还没有会话</div>
       <div class="muted small" style="margin:4px 0 0">点右上角的新建按钮开始一个</div>
     </div>
-    <div class="st-c">范围是某个项目而它没有会话时（比如刚恢复的项目）。还没有任何项目时标题写「会话」，不能点</div>
+    <div class="st-c">范围是某个项目而它没有会话时（比如刚加的项目）。还没有任何项目时标题写「会话」，不能点</div>
   </div>
 
   <div class="st">
@@ -3404,277 +3431,49 @@ git status --short gen/</pre>
 </div>
 
 <h2 id="projects">项目管理</h2>
-<div class="note" style="margin:0 0 20px">主页和宽屏侧栏的范围菜单底部提供「管理项目」。常用项目先显示，其他项目按最近活动排序；范围菜单和新建的项目选择器沿用相同顺序。在这里点项目名，主页的范围换成它并回到主页。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
+<div class="note" style="margin:0 0 20px">项目在三个地方列出：主页和宽屏侧栏的范围菜单、新建会话时的选项目、项目管理。三处是同一个列表：先「常用」后「其他」（只有一组时不写分组标题），其他按进行中优先、再按最近新建排序；每行是项目头像、名字，第二行写路径和进行中的数量，没有进行中而它的电脑都不在线时写「电脑不在线」；超过 8 个项目时顶部有搜索；最后一行是「＋ 新项目…」。不同的只有行尾：范围菜单是当前范围的勾，选项目是 ›，项目管理是 ⋯。对一个项目能做的事只有两件，设为常用（或取消）和移除，在项目管理的 ⋯ 和项目设置里是同样的两项。项目仍按绝对路径识别，不引入重命名、合并、移动目录或批量删历史。</div>
 <div class="screens">
 <div>
 <div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div>
 </div>
-<div class="navbar">
-<span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
-<span class="title">
-<b>
-<span class="tname">项目管理</span>
-</b>
-<span>
-</span>
-</span>
-<span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="body">
-<div class="manage-hint">只管理项目入口，不移动或删除电脑上的目录。</div>
-<div class="label">常用 <span>2</span>
-</div>
-<div class="manage-row">
-<div class="av sm c1">r</div>
-<div class="pt">
-<div class="pn">remote-agent
-</div>
-<div class="ps">~/Code/ai-bot/remote-agent</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="manage-row">
-<div class="av sm c3">b</div>
-<div class="pt">
-<div class="pn">blog
-</div>
-<div class="ps">~/Code/blog</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="label">其他项目 <span>2</span>
-</div>
-<div class="manage-row">
-<div class="av sm c2">b</div>
-<div class="pt">
-<div class="pn">billing</div>
-<div class="ps">~/Code/billing</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="manage-row">
-<div class="av sm c3">b</div>
-<div class="pt">
-<div class="pn">blog</div>
-<div class="ps">~/work/blog</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="label">
-<span>已移除 3 个项目</span>
-<a href="#projects">查看<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a>
-</div>
-<div class="manage-hint">常用和已移除项目在账户内同步。断线时可查看缓存，修改暂停；不会影响会话和提醒。</div>
-</div>
-</div>
-<div class="cap">项目管理：常用单独一组，固定顺序；其他按最近活动排序，同名项目保留路径</div>
+<div class="cap">项目管理：从范围菜单底部的「管理项目」进来。点项目名，主页的范围换成它并回到主页；⋯ 管理这个项目；「＋ 新项目…」选机器和目录，选好后留在这一页，项目出现在「其他」里</div>
 </div>
 <div>
 <div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="actsheet"><div class="grp2"><div class="info"><b>billing</b><br><span class="mono">~/Code/billing</span></div><div class="ai2">设为常用</div><div class="ai2 red">移除项目…</div></div><div class="grp2"><div class="ai2" style="font-weight:600">取消</div></div></div>
 </div>
-<div class="navbar">
-<span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
-<span class="title">
-<b>
-<span class="tname">项目管理</span>
-</b>
-<span>
-</span>
-</span>
-<span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="body">
-</div>
-<div class="dim">
-</div>
-<div class="actsheet">
-<div class="grp2">
-<div class="info">
-<b>billing</b>
-<br>
-<span class="mono">~/Code/billing</span>
-</div>
-<div class="ai2">设为常用</div>
-<div class="ai2 red">从项目列表移除</div>
-</div>
-<div class="grp2">
-<div class="ai2">取消</div>
-</div>
-</div>
-</div>
-<div class="cap">项目 ⋯ 菜单：常用项目显示取消常用；移除可撤销，不用危险的“删除项目”文案</div>
+<div class="cap">⋯ 菜单：常用项目这里是「取消常用」。断线时两项都按禁用显示，第一项下面写「连上服务器后才能修改」</div>
 </div>
 <div>
 <div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">项目管理</span></b><span></span></span><span class="more"></span></div>
+<div class="body pad"><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div><div class="dim"></div><div class="alert"><h5>移除 billing？</h5><p>只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。</p><div class="btns"><div class="btn">取消</div><div class="btn danger">移除</div></div></div>
 </div>
-<div class="navbar">
-<span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
-<span class="title">
-<b>
-<span class="tname">项目管理</span>
-</b>
-<span>
-</span>
-</span>
-<span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="body">
-<div class="label">常用 <span>2</span>
-</div>
-<div class="manage-row">
-<div class="av sm c1">r</div>
-<div class="pt">
-<div class="pn">remote-agent
-</div>
-<div class="ps">~/Code/ai-bot/remote-agent</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="manage-row">
-<div class="av sm c3">b</div>
-<div class="pt">
-<div class="pn">blog
-</div>
-<div class="ps">~/Code/blog</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="label">其他项目</div>
-<div class="manage-row">
-<div class="av sm c3">b</div>
-<div class="pt">
-<div class="pn">blog</div>
-<div class="ps">~/work/blog</div>
-</div>
-<span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="manage-hint">billing 的会话和历史仍然保留。有新的待处理项时，主页仍会显示。</div>
-</div>
-<div class="toast">已移除 billing<b>撤销</b>
-</div>
-</div>
-<div class="cap">移除反馈：退出项目列表即可，保留会话和提醒；短暂撤销之外还有永久恢复入口</div>
+<div class="cap">移除先确认，确认后就是移除：没有撤销，也没有「已移除的项目」页面。它的会话和历史都还在，进行中的会话和待处理的卡片照常出现在「全部项目」里；以后要用，用「新项目」再选这个目录，它回到列表里</div>
 </div>
 <div>
 <div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
-<span class="title">
-<b>
-<span class="tname">已移除的项目</span>
-</b>
-<span>
-</span>
-</span>
-<span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
-<div class="body">
-<div class="manage-hint">恢复只让项目重新出现在列表里，不会启动或恢复会话。</div>
-<div class="manage-row">
-<div class="av sm c2">b</div>
-<div class="pt">
-<div class="pn">billing</div>
-<div class="ps">~/Code/billing</div>
-</div>
-<span class="dots">恢复</span>
-</div>
-<div class="manage-row">
-<div class="av sm c4">d</div>
-<div class="pt">
-<div class="pn">demo</div>
-<div class="ps">~/Code/demo</div>
-</div>
-<span class="dots">恢复</span>
-</div>
-<div class="manage-row">
-<div class="av sm c5">e</div>
-<div class="pt">
-<div class="pn">experiments</div>
-<div class="ps">~/work/experiments</div>
-</div>
-<span class="dots">恢复</span>
-</div>
-<div class="manage-hint">已移除的项目不出现在项目列表和新建选择器中；进行中会话、待处理卡片和通知入口仍然可访问。</div>
-</div>
-</div>
-<div class="cap">恢复：回到其他项目分组，可再次设为常用；已移除列表为空时显示“没有已移除的项目”</div>
-</div>
-<div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
-</div>
-<div class="navbar">
-<span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span>
-<span class="title">
-<b>
-<span class="tname">remote-agent</span>
-</b>
-<span>~/Code/ai-bot/remote-agent</span>
-</span>
-<span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
-</div>
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">remote-agent</span></b><span>~/Code/ai-bot/remote-agent</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
 <div class="body pad">
-<div class="banner">这个项目已从列表移除<b>恢复</b></div>
+<div class="banner">这个项目已从列表移除<b>重新添加</b></div>
 <div class="label">进行中</div>
-<div class="sess">
-<span class="dot run">
-</span>
-<div class="sm">
-<div class="row1">
-<b>检查输入交互</b>
-</div>
-<div class="pv"><span class="stw run">运行中</span></div><div class="mc">Claude Code · MacBook</div>
+<div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>检查输入交互</b></div><div class="pv"><span class="stw run">运行中</span></div><div class="mc">Claude Code · MacBook</div></div></div>
 </div>
 </div>
-</div>
-</div>
-<div class="cap">从通知或已有会话进入隐藏项目：仍可查看和操作，不自动恢复；新建前先恢复项目入口</div>
+<div class="cap">从已有会话或通知进到已移除项目的页面：仍可查看和操作它的会话，不能新建；「重新添加」把它放回列表</div>
 </div>
 </div>
 <div class="stgrid" style="margin-top:24px">
-  <div class="st"><div class="st-h">项目偏好 · 保存中</div><div class="banner"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在同步常用项目…</div><div class="st-c">当前行操作暂停，server 确认后更新列表；其他端读取相同的账户偏好。</div></div>
-  <div class="st"><div class="st-h">项目偏好 · 失败 / 离线</div><div class="banner err">没能保存，列表保持原样<b>重试</b></div><div class="banner" style="margin-top:8px">当前显示缓存 · 连上后才能管理</div><div class="st-c">不把未保存的移除显示成已经成功，不影响正在运行的会话。</div></div>
-  <div class="st"><div class="st-h">项目偏好 · 其他端更改</div><div class="banner">项目列表已在另一客户端更新</div><div class="st-c">保留当前正在看的会话和输入草稿；管理页按最新结果显示，不跳回主页。</div></div>
+  <div class="st"><div class="st-h">项目列表 · 保存中</div><div class="banner"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg> 正在同步项目列表…</div><div class="st-c">这一行的 ⋯ 换成转圈，server 确认后更新列表；其他端读取相同的账户偏好。</div></div>
+  <div class="st"><div class="st-h">项目列表 · 失败</div><div class="banner err">没能保存，列表保持原样<b>重试</b></div><div class="st-c">不把没保存的移除显示成已经成功，不影响正在运行的会话。断线不另出提示条：导航栏下的连接提示条已经说了，⋯ 菜单里的两项按禁用显示。</div></div>
+  <div class="st"><div class="st-h">项目列表 · 其他端更改</div><div class="banner">项目列表已在另一客户端更新</div><div class="st-c">保留当前正在看的会话和输入草稿；管理页按最新结果显示，不跳回主页。</div></div>
 </div>
 <h2 id="devices">多机器与多客户端</h2>
 <div class="note" style="margin:0 0 20px">每个会话固定属于一台电脑和一种 CLI，手机、多个浏览器和本地终端操作同一会话。每个客户端显示自己的连接状态；模型、模式、上下文、队列和处理结果同步，项目偏好跨端同步；草稿、视图、阅读位置各端独立。没有会话独占或编辑锁，也不提供无依据的在线查看人数。</div>
@@ -3975,6 +3774,7 @@ git status --short gen/</pre>
         <div class="glabel">账户</div>
         <div class="grp">
           <div class="row">服务器<span class="v">ra.remote-agent.top</span></div>
+          <div class="row">连接检测<span class="v"><span class="dot idle"></span> 已连接<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row" style="color:var(--red)">退出并删除本机密钥</div>
         </div>
       </div>
@@ -4235,7 +4035,7 @@ git status --short gen/</pre>
     </div>
   </div>
 </div>
-<div class="cap" style="width:auto;text-align:left">只有一个项目，或选了一个项目：侧栏标题是项目名，整栏都是它的会话，行里不再写项目。主区域的标题不带项目选择，输入框下一行仍是 CLI 切换和这个项目的设置摘要。宽屏没有单独的项目页；项目已从列表移除时，输入框上方出现提示条和「恢复」，恢复前不能开始会话，草稿保留</div>
+<div class="cap" style="width:auto;text-align:left">只有一个项目，或选了一个项目：侧栏标题是项目名，整栏都是它的会话，行里不再写项目。主区域的标题不带项目选择，输入框下一行仍是 CLI 切换和这个项目的设置摘要。宽屏没有单独的项目页；项目已从列表移除时，输入框上方出现提示条和「重新添加」，加回来之前不能开始会话，草稿保留</div>
 
 <div class="desk" style="margin-top:32px">
   <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>换范围</span></div>
@@ -4254,7 +4054,7 @@ git status --short gen/</pre>
         <div class="old"><span>给登录接口加限流</span><span>6:42</span></div>
       </div>
       <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
-      <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · 2 小时前</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 昨天</small></div><span class="ck"></span></div><div class="pi act">新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
+      <div class="pop"><div class="plist"><div class="pi"><div class="av sm all">全</div><div><b>全部项目</b><small>4 个进行中</small></div><span class="ck"></span></div><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="ck"></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="ck"></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div><div class="pi act">管理项目<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></div></div></div>
     </div>
     <div class="dm">
       <div class="start">
@@ -4283,9 +4083,9 @@ git status --short gen/</pre>
     </div>
     <div class="foot"><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg> 设置</span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><p class="muted small">常用和已移除项目跨客户端同步；移除只隐藏入口，保留会话、历史和提醒。</p><div class="label" style="padding-left:0">常用项目</div><table class="manage-table"><tbody><tr><td><b>remote-agent</b><span class="path">~/Code/ai-bot/remote-agent</span></td><td>取消常用 · <svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></td></tr><tr><td><b>blog</b><span class="path">~/Code/blog</span></td><td>取消常用 · <svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></td></tr></tbody></table><div class="label" style="padding-left:0">其他项目</div><table class="manage-table"><tbody><tr><td><b>billing</b><span class="path">~/Code/billing</span></td><td>设为常用 · <svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></td></tr><tr><td><b>blog</b><span class="path">~/work/blog</span></td><td>设为常用 · <svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></td></tr></tbody></table><div class="wide-project-tools"><span class="chip" style="color:var(--blue)">已移除 3 个 · 查看与恢复<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div></div>
+  <div class="dm"><div class="wpage"><h3 style="margin:0;font-size:22px">项目管理</h3><div class="plist"><div class="fl">常用</div><div class="pi"><div class="av sm c1">f</div><div><b>foo</b><small>~/Code/foo · 3 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="fl">其他</div><div class="pi"><div class="av sm c2">b</div><div><b>billing</b><small>~/Code/billing · 1 个进行中</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi"><div class="av sm c4">n</div><div><b>notes</b><small>~/notes · 电脑不在线</small></div><span class="dots"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="pi add"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 新项目…</div></div><div class="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div></div></div>
 </div></div>
-<div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，在主区域管理常用、移除与恢复；移除后仍能从进行中和通知进入原会话。</div>
+<div class="cap" style="width:auto;text-align:left">宽屏项目管理：沿用侧栏，主区域里是和手机同一个项目列表，⋯ 打开同样的两项；移除后仍能从进行中和通知进入原会话。侧栏底部的连接状态可以点，打开<a href="#conncheck">连接检测</a>。</div>
 <div class="desk" style="margin-top:32px">
 <div class="win"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>设置</span></div>
 <div class="dg" style="height:560px">
