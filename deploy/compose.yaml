@@ -11,6 +11,10 @@ services:
     volumes:
       - ./data:/data
     mem_limit: 128m
+    pids_limit: 128
+    read_only: true # the binary writes only to /data
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
