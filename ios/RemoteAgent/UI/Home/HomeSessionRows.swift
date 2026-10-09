@@ -33,7 +33,7 @@ struct HomeSessionRow: View {
             HomeEndedRow(session: session, now: now, project: meta.project)
         } else {
             let t = sessionRowText(state, session, meta: meta, now: now, preview: preview)
-            let tone = homeTone(t.status.tone)
+            let tone = StatusTone(t.status.tone)
             Button {
                 nav.open(.session(id: session.id))
             } label: {

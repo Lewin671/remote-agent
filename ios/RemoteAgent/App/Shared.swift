@@ -58,13 +58,41 @@ func hostOf(_ server: String) -> String {
     server.range(of: "://").map { String(server[$0.upperBound...]) } ?? server
 }
 
+private struct Tick: ViewModifier {
+    @Binding var now: Int64
+    let seconds: TimeInterval
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        // Nothing ticks in the background (architecture §10 「后台和内存」); coming back starts with the time it is then.
+        content.task(id: model.foreground) {
+            guard model.foreground else { return }
+            while !Task.isCancelled {
+                now = nowMs()
+                try? await Task.sleep(for: .seconds(seconds))
+            }
+        }
+    }
+}
+
+extension View {
+    /// Keeps `now` at the current time in milliseconds, renewed every
+    /// `seconds` while the app is in front (Android's `now()`). The view
+    /// stays what it was when the app comes back: a list keeps where it was
+    /// scrolled to, a field what was typed.
+    func ticking(_ now: Binding<Int64>, every seconds: TimeInterval = 30) -> some View {
+        modifier(Tick(now: now, seconds: seconds))
+    }
+}
+
 /// The current time in milliseconds, handed to `content` again every
-/// `seconds` while the app is in front; in the background nothing ticks
-/// (architecture §10 「后台和内存」). Android's `now()`.
+/// `seconds` while the app is in front; for where only a part of a page
+/// needs the time. `content` is drawn again with the new time, never built
+/// anew: what it holds (scroll position, focus, its own state) stays.
 struct Ticking<Content: View>: View {
     private let seconds: TimeInterval
     private let content: (Int64) -> Content
-    @Environment(AppModel.self) private var model
+    @State private var now = nowMs()
 
     init(every seconds: TimeInterval = 30, @ViewBuilder content: @escaping (_ now: Int64) -> Content) {
         self.seconds = seconds
@@ -72,11 +100,19 @@ struct Ticking<Content: View>: View {
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: seconds)) { time in
-            content(Int64(time.date.timeIntervalSince1970 * 1000))
+        content(now).ticking($now, every: seconds)
+    }
+}
+
+extension StatusTone {
+    /// A status's tone as the kit colours it.
+    init(_ tone: Tone) {
+        switch tone {
+        case .run: self = .run
+        case .wait: self = .wait
+        case .idle: self = .idle
+        case .off: self = .off
         }
-        // A paused timeline keeps what it last drew.
-        .id(model.foreground)
     }
 }
 

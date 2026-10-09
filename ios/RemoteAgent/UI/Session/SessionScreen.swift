@@ -68,56 +68,10 @@ struct SessionAbsent: View {
     }
 }
 
-/// The middle of a session's navigation bar. As the kit's `NavTitle`, with
-/// a second line whose mode can be red.
-private struct SessionNavTitle: View {
-    let title: String
-    let subtitle: SessionSubtitle
-    let tone: StatusTone
-    let dark: Bool
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Always one line; a title that does not fit is cut (design-system §6).
-            Text(title).type(T.bodyB, dark ? Theme.Term.fg : Theme.fg).lineLimit(1)
-            HStack(spacing: 5) {
-                Dot(Theme.dot(tone))
-                Text(line).type(T.meta, dark ? Theme.Term.dim : Theme.muted).lineLimit(1)
-            }
-        }
-        // The bar has one line's room at the largest sizes; the page below says the rest.
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(subtitle.text)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    /// The state, then the mode, which is red when it is full access.
-    private var line: AttributedString {
-        var line = AttributedString(subtitle.mode.isEmpty ? subtitle.status : subtitle.status + " · ")
-        var mode = AttributedString(subtitle.mode)
-        if subtitle.danger { mode.foregroundColor = Theme.red }
-        line.append(mode)
-        return line
-    }
-}
-
 private enum SessionSheet: String, Identifiable {
     case mode, model
 
     var id: String { rawValue }
-}
-
-extension StatusTone {
-    init(_ tone: Tone) {
-        switch tone {
-        case .run: self = .run
-        case .wait: self = .wait
-        case .idle: self = .idle
-        case .off: self = .off
-        }
-    }
 }
 
 /// The view last picked on this device; every session opens in it.
@@ -194,6 +148,7 @@ private struct SessionPage: View {
         let percent = live ? contextPercent(s) : nil
         let high = (percent ?? 0) > 80
         let refusal = protocolMismatch(state.machines[s.machineId])
+        let subtitle = sessionSubtitle(status: status, mode: mode)
         VStack(spacing: 0) {
             ConnectionBar()
             if let refusal {
@@ -214,27 +169,12 @@ private struct SessionPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background((term ? Theme.Term.bg : Theme.card).ignoresSafeArea())
         .tint(Theme.blue)
-        .navigationTitle(titleOf(s))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                SessionNavTitle(
-                    title: titleOf(s), subtitle: sessionSubtitle(status: status, mode: mode), tone: StatusTone(status.tone), dark: term)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    menu = true
-                } label: {
-                    Ic(Lucide.ellipsis, size: 22, color: Theme.blue)
-                        .overlay(alignment: .topTrailing) {
-                            // Something in the menu wants a look: a context that is nearly full.
-                            if high { Circle().fill(Theme.orange).frame(width: 5, height: 5).offset(x: 3, y: -1) }
-                        }
-                }
-                .accessibilityLabel("更多")
-                .accessibilityValue(high ? "有需要注意的项" : "")
-            }
-        }
+        // The second line is the state and the mode, which is red only when it is full access.
+        .navBar(
+            titleOf(s), subtitle: subtitle.danger || subtitle.mode.isEmpty ? subtitle.status : "\(subtitle.status) · \(subtitle.mode)",
+            danger: subtitle.danger ? subtitle.mode : nil, dot: Theme.dot(StatusTone(status.tone)), dark: term,
+            // Something in the menu wants a look: a context that is nearly full.
+            moreDot: high, onMore: { menu = true })
         .toolbarBackground(term ? Theme.Term.bg : Theme.card, for: .navigationBar)
         .toolbarBackground(term ? .visible : .automatic, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)

@@ -7,12 +7,15 @@
 //   -gallery            opens the list of pages
 //   -gallery <page>     opens one page (a GalleryPage's raw value)
 //   -galleryEnd         starts a page scrolled to its end
+//
+// Signal (see App/Launch.swift): gallery.save presses 保存 of the dialog on
+// the page `saving`, whose save always fails after a moment.
 #if DEBUG
 import RACore
 import SwiftUI
 
 enum GalleryPage: String, CaseIterable, Identifiable {
-    case tokens, icons, buttons, notices, lists, choices, fields, states, nav, sheet, dialog, input, menu, cover
+    case tokens, icons, buttons, notices, lists, choices, fields, states, nav, sheet, dialog, input, saving, menu, cover
 
     var id: String { rawValue }
 
@@ -30,6 +33,7 @@ enum GalleryPage: String, CaseIterable, Identifiable {
         case .sheet: "底部弹层"
         case .dialog: "确认对话框"
         case .input: "输入对话框"
+        case .saving: "输入对话框 · 保存失败"
         case .menu: "更多菜单"
         case .cover: "隐私遮罩"
         }
@@ -106,6 +110,7 @@ struct GalleryPageView: View {
         case .sheet: SheetPage()
         case .dialog: DialogPage()
         case .input: InputPage()
+        case .saving: SavingPage()
         case .menu: MenuPage()
         case .cover: PrivacyCover().toolbar(.hidden, for: .navigationBar)
         }
@@ -211,6 +216,8 @@ private struct IconsPage: View {
             Avatar("/Users/me/Code/keduly")
             Avatar("/Users/me/notes")
             Avatar.all()
+            Avatar("/Users/me/Code/foo", size: 28)
+            Avatar.all(size: 28)
             Avatar("/Users/me/Code/foo", size: 22)
             Avatar("/Users/me/Code/foo", size: 16)
             IconBadge(Lucide.laptop, color: Theme.blueBg)
@@ -349,6 +356,12 @@ private struct ListsPage: View {
         .contextMenu {
             Button(role: .destructive) {} label: { Label { Text("退出账户") } icon: { Lucide.x.image() } }
         }
+        // Rows handed over together: a `ForEach` and an array each give a row per element, with the lines between.
+        GroupLabel("成组给出的行")
+        GroupCard {
+            ForEach(["Codex", "Claude Code"], id: \.self) { GRow($0, value: "已安装") }
+            ["~/Code/foo", "~/Code/remote-agent"].map { GRow($0, chevron: true, onTap: {}) }
+        }
         // What the mockup's short examples never show: the text has the room first, the value at least two fifths.
         GroupLabel("长文字：一个很长的分组标题，看右边的操作会不会被挤成一列", action: "全部设备") {}
         GroupCard {
@@ -424,6 +437,10 @@ private struct FieldsPage: View {
     @State private var reason = "先别动 main 分支，在 feature 分支上改"
     @State private var filter = ""
     @State private var filled = "relay"
+    @State private var message = ""
+    @State private var long = "把 relay 的重连逻辑改成指数退避，上限 30 秒；\n顺便补上断线期间事件不丢的集成测试"
+    @FocusState private var typing: Bool
+    @FocusState private var typingLong: Bool
 
     var body: some View {
         LargeTitle("加入账户")
@@ -437,9 +454,35 @@ private struct FieldsPage: View {
             InputField(text: $reason, placeholder: "告诉它为什么不允许（可不填）", lines: 1...4)
         }
         .padding(.horizontal, 16)
+        // A field on a grey card takes the surface above it.
+        VStack(spacing: 8) {
+            InputField(text: $reason, placeholder: "拒绝理由（可选）", lines: 1...4, background: Theme.card)
+            Btns {
+                Btn("取消", background: Theme.card) {}
+                Btn("不允许", kind: .negative, background: Theme.card) {}
+            }
+        }
+        .padding(12)
+        .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .padding(.horizontal, 12).padding(.top, 10)
         SectionLabel("筛选框")
         FilterBox(text: $filter)
         FilterBox(text: $filled)
+        // In a sheet, which has its own margin, it keeps none.
+        FilterBox(text: $filter, placeholder: "搜索项目", inset: 0).padding(.horizontal, 24)
+        SectionLabel("消息输入框")
+        ComposerPill(text: $message, placeholder: "描述任务…", label: "描述任务…", plus: .dimmed, focus: $typing, onPlus: {}) {
+            Button {} label: { ComposerCircle.send(enabled: false) }.buttonStyle(PressStyle()).disabled(true)
+        }
+        ComposerPill(text: $long, placeholder: "发消息…", label: "消息", focus: $typingLong, onPlus: {}) {
+            Button {} label: { ComposerCircle.send(enabled: true) }.buttonStyle(PressStyle())
+        }
+        ComposerPill(text: $message, placeholder: "插入这一轮…", label: "消息", plus: .off, focus: $typing, onPlus: {}) {
+            Button {} label: {
+                ComposerCircle(Theme.chip, enabled: true) { Ic(Lucide.square, size: 14, color: Theme.red) }
+            }
+            .buttonStyle(PressStyle())
+        }
         SectionLabel("说明")
         VStack(alignment: .leading, spacing: 0) {
             FieldLabel("模型")
@@ -495,8 +538,9 @@ private struct NavPage: View {
                 Spacer()
             }
         }
+        // The second line's last part in red: a session on full access.
         .navBar(
-            "修复 relay 重连后丢事件的问题，并补上集成测试", agent: "Claude Code", subtitle: "等待审批 · 询问",
+            "修复 relay 重连后丢事件的问题，并补上集成测试", agent: "Claude Code", subtitle: "等待审批", danger: "完全放行",
             dot: Theme.dot(.wait), moreDot: true, onMore: {})
     }
 }
@@ -552,6 +596,25 @@ private struct InputPage: View {
         .inputAlert(
             isPresented: $shown, title: "重命名会话", initial: "修复 relay 重连", placeholder: "会话标题", confirm: "保存",
             text: "留空保存会恢复自动标题") { _ in }
+    }
+}
+
+/// The input dialog whose text is saved elsewhere: it stays, locked, while it saves, and says why when that fails.
+private struct SavingPage: View {
+    @State private var shown = true
+
+    var body: some View {
+        Page {
+            Btn("重命名…", fill: false) { shown = true }.padding(24)
+        }
+        .navBar(GalleryPage.saving.title)
+        .inputAlert(
+            isPresented: $shown, title: "重命名会话", initial: "修复 relay 重连", placeholder: "标题", text: "留空保存会恢复自动标题",
+            lines: 1...1, debugSignal: "gallery.save", debugText: { "修复 relay 重连后丢事件的问题" }
+        ) { _ in
+            try await Task.sleep(for: .milliseconds(600))
+            throw CommandError(CommandError.unavailable, "MacBook 不在线，指令没有发出")
+        }
     }
 }
 

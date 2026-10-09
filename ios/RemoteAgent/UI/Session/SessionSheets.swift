@@ -177,119 +177,30 @@ struct SessionModelSheet: View {
 
 // MARK: Renaming
 
-/// Presents `overlay` over the whole window on a scrim, without the
-/// system's slide from the bottom: the look of the kit's dialogs, for the
-/// one dialog here that must stay open while it saves.
-private struct DialogCover<Overlay: View>: ViewModifier {
+/// 重命名会话: the title on one line with the keyboard up, in the kit's
+/// input dialog. Saving it empty goes back to the automatic title. The new
+/// title comes back in the session's metadata; a failure keeps the dialog
+/// and what was typed.
+private struct SessionRename: ViewModifier {
     @Binding var isPresented: Bool
-    @ViewBuilder let overlay: () -> Overlay
-    /// The cover itself, put up and taken down without the system's animation.
-    @State private var covered = false
+    let session: SessionView
+    @Environment(AccountContext.self) private var context
 
     func body(content: Content) -> some View {
-        content
-            .fullScreenCover(isPresented: $covered) {
-                DialogStage(overlay: overlay).presentationBackground(.clear)
-            }
-            .onChange(of: isPresented, initial: true) { _, shown in
-                guard shown != covered else { return }
-                var now = Transaction()
-                now.disablesAnimations = true
-                withTransaction(now) { covered = shown }
-            }
-    }
-}
-
-private struct DialogStage<Overlay: View>: View {
-    @ViewBuilder let overlay: () -> Overlay
-    @State private var shown = false
-
-    var body: some View {
-        ZStack {
-            Theme.scrim.ignoresSafeArea().accessibilityHidden(true)
-            overlay()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .opacity(shown ? 1 : 0)
-        .accessibilityAddTraits(.isModal)
-        .tint(Theme.blue)
-        .onAppear { withAnimation(.easeOut(duration: 0.18)) { shown = true } }
-    }
-}
-
-/// 重命名会话: the title on one line with the keyboard up. Saving it empty
-/// goes back to the automatic title. The new title comes back in the
-/// session's metadata; a failure keeps the dialog and what was typed.
-struct SessionRenameDialog: View {
-    let session: SessionView
-    let onClose: () -> Void
-    @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
-    @State private var value: String
-    private let initial: String
-    @FocusState private var focused: Bool
-
-    init(session: SessionView, onClose: @escaping () -> Void) {
-        self.session = session
-        self.onClose = onClose
-        initial = renameInitial(session)
-        _value = State(initialValue: initial)
-    }
-
-    private func save() {
-        if act.running { return }
-        // The same title again is a cancel.
-        guard let title = renameTitle(typed: value, initial: initial) else { return onClose() }
+        let initial = renameInitial(session)
         let (remote, sid) = (context.remote, session.id)
-        act.run({
+        content.inputAlert(
+            isPresented: $isPresented, title: "重命名会话", initial: initial, placeholder: "标题", text: "留空保存会恢复自动标题",
+            limit: .max, lines: 1...1, filter: titleInput, debugSignal: "session.rename.save", debugText: { SessionDebug.text }
+        ) { typed in
+            // The same title again is a cancel.
+            guard let title = renameTitle(typed: typed, initial: initial) else { return }
             var cmd = PBCommand()
             cmd.renameSession = .with {
                 $0.sessionID = sid
                 $0.title = title
             }
             try await remote.command(sid, cmd)
-        }, onDone: {
-            Haptics.confirm()
-            onClose()
-        })
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text("重命名会话").type(T.h17, Theme.fg).multilineTextAlignment(.center).padding(.bottom, 12)
-                .accessibilityAddTraits(.isHeader)
-            FieldBox {
-                TextField("", text: $value)
-                    .type(T.body, Theme.fg)
-                    .tint(Theme.blue)
-                    .submitLabel(.done)
-                    .onSubmit(save)
-                    .focused($focused)
-                    .onChange(of: value) { _, typed in
-                        let kept = titleInput(typed)
-                        if kept != typed { value = kept }
-                    }
-                    .accessibilityLabel("标题")
-            }
-            .padding(.bottom, 8)
-            Text(act.error.isEmpty ? "留空保存会恢复自动标题" : "没能保存：\(act.error)")
-                .type(T.sm, act.error.isEmpty ? Theme.muted : Theme.red).multilineTextAlignment(.center).padding(.bottom, 14)
-            Btns {
-                Btn("取消", enabled: !act.running, action: onClose)
-                Btn(act.running ? "保存中…" : "保存", kind: .primary, enabled: !act.running, action: save)
-            }
-        }
-        .padding(.init(top: 18, leading: 16, bottom: 12, trailing: 16))
-        .frame(maxWidth: 320)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
-        .compositingGroup()
-        .shadow(color: .black.opacity(0.2), radius: 15, y: 10)
-        .padding(.horizontal, 30)
-        // The keyboard comes up with the dialog: there is nothing else to do in it.
-        .task { focused = true }
-        .debugSignal("session.rename.save") {
-            value = titleInput(SessionDebug.text)
-            save()
         }
     }
 }
@@ -297,8 +208,6 @@ struct SessionRenameDialog: View {
 extension View {
     /// 重命名会话 over this view.
     func sessionRename(isPresented: Binding<Bool>, session: SessionView) -> some View {
-        modifier(DialogCover(isPresented: isPresented) {
-            SessionRenameDialog(session: session) { isPresented.wrappedValue = false }
-        })
+        modifier(SessionRename(isPresented: isPresented, session: session))
     }
 }

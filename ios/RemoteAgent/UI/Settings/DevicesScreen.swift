@@ -10,7 +10,6 @@ struct DevicesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @State private var save = ActionRunner()
     @State private var remove = ActionRunner()
     /// The client a held row's menu is renaming or removing.
     @State private var renaming: DeviceView?
@@ -36,11 +35,11 @@ struct DevicesScreen: View {
         .inputAlert(
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
             title: "客户端名称", initial: renaming?.meta?.name ?? "",
-            placeholder: renaming.map { defaultClientName($0, id: $0.id) } ?? "", confirm: "保存", text: "留空就用默认名称"
+            placeholder: renaming.map { defaultClientName($0, id: $0.id) } ?? "", text: "留空就用默认名称"
         ) { [renaming] name in
+            // The dialog stays until the name is stored, and says so when it is not.
             guard let id = renaming?.id else { return }
-            let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            save.run { try await remote.renameDevice(id, name: name) }
+            try await remote.renameDevice(id, name: name.jvmTrim())
         }
         .confirm(
             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
@@ -103,7 +102,6 @@ struct DevicesScreen: View {
                 }
             }
         }
-        if !save.error.isEmpty { GroupBanner("没能保存名称：\(save.error)", tone: .error) }
         if !remove.error.isEmpty { GroupBanner(remove.error, tone: .error) }
         GroupNote("右边是上次使用的时间。很久没用的客户端可以点进去移除，名称也在里面改。")
 

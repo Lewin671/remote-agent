@@ -64,10 +64,18 @@ struct GroupLabel: View {
     }
 }
 
-/// Collects the rows of a `GroupCard` one by one, so that a line can be drawn between each two.
+/// Collects the rows of a `GroupCard` one by one, so that a line can be
+/// drawn between each two. Rows may be written out, come from an `if` or a
+/// `for`, or be handed over together: an array of views, or a `ForEach`,
+/// whose every element is then a row of its own.
 @resultBuilder
 enum RowsBuilder {
     static func buildExpression<V: View>(_ row: V) -> [AnyView] { [AnyView(row)] }
+    static func buildExpression<V: View>(_ rows: [V]) -> [AnyView] { rows.map { AnyView($0) } }
+    static func buildExpression(_ rows: [AnyView]) -> [AnyView] { rows }
+    static func buildExpression<Data: RandomAccessCollection, ID: Hashable, Row: View>(_ each: ForEach<Data, ID, Row>) -> [AnyView] {
+        each.data.map { AnyView(each.content($0)) }
+    }
     static func buildBlock(_ rows: [AnyView]...) -> [AnyView] { rows.flatMap { $0 } }
     static func buildOptional(_ rows: [AnyView]?) -> [AnyView] { rows ?? [] }
     static func buildEither(first rows: [AnyView]) -> [AnyView] { rows }

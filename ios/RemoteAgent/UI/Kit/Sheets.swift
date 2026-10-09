@@ -37,6 +37,8 @@ private struct SheetBody<Content: View>: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
+        // Whatever page it is over, a sheet's own surface is the card.
+        .environment(\.onSoft, false)
         .presentationDetents(detents)
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(Theme.Radius.lg)

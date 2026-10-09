@@ -163,7 +163,7 @@ struct ProjectList<First: View, Row: View>: View {
         let l = projectListing(state, search: search)
         if l.searchable {
             // The kit's pill brings the page's side margin, which the list already has.
-            FilterBox(text: $search, placeholder: "搜索项目").padding(.horizontal, -Theme.Space.page).padding(.bottom, 4)
+            FilterBox(text: $search, placeholder: "搜索项目", inset: 0).padding(.bottom, 4)
         }
         if !l.searching { first }
         if l.titled { FieldLabel("常用") }

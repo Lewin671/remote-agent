@@ -94,14 +94,18 @@ struct InputField: View {
     }
 }
 
-/// The filter of a list: a pill on `chip`, the search icon at the left, and an x to clear it once it has text.
+/// The filter of a list: a pill on `chip`, the search icon at the left, and
+/// an x to clear it once it has text. `inset` is what it keeps from the
+/// sides: the page's margin on a page, nothing inside a sheet, which has its own.
 struct FilterBox: View {
     @Binding private var text: String
     private let placeholder: String
+    private let inset: CGFloat
 
-    init(text: Binding<String>, placeholder: String = "按标题筛选") {
+    init(text: Binding<String>, placeholder: String = "按标题筛选", inset: CGFloat = Theme.Space.page) {
         _text = text
         self.placeholder = placeholder
+        self.inset = inset
     }
 
     var body: some View {
@@ -122,6 +126,6 @@ struct FilterBox: View {
             if !text.isEmpty { IconButton(Lucide.x, label: "清空筛选", size: 16, color: Theme.faint) { text = "" } }
         }
         .frame(minHeight: Theme.minHit)
-        .padding(.horizontal, Theme.Space.page)
+        .padding(.horizontal, inset)
     }
 }

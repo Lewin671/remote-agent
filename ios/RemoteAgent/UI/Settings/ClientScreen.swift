@@ -37,10 +37,10 @@ struct ClientScreen: View {
         .navBar(clientName(d, id: id), subtitle: id == me ? "当前客户端" : "已配对的客户端")
         .inputAlert(
             isPresented: $editing, title: "客户端名称", initial: d?.meta?.name ?? "",
-            placeholder: defaultClientName(d, id: id), confirm: "保存", text: "留空就用默认名称"
+            placeholder: defaultClientName(d, id: id), text: "留空就用默认名称"
         ) { name in
-            let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            save.run { try await remote.renameDevice(id, name: name) }
+            // The dialog stays until the name is stored, and says so when it is not.
+            try await remote.renameDevice(id, name: name.jvmTrim())
         }
         .confirm(
             isPresented: $confirming, title: "移除 \(clientName(d, id: id))？", text: RemovalText.clientConfirm,

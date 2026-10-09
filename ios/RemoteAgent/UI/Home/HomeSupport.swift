@@ -42,16 +42,6 @@ extension AccountContext {
     var homeScopes: HomeScopes { memory.value { HomeScopes() } }
 }
 
-/// A status's tone as the kit colours it.
-func homeTone(_ tone: Tone) -> StatusTone {
-    switch tone {
-    case .run: .run
-    case .wait: .wait
-    case .idle: .idle
-    case .off: .off
-    }
-}
-
 private struct FetchEarlier: ViewModifier {
     let state: RemoteState
     let page: Bool
@@ -139,32 +129,5 @@ struct HomeSkeleton: View {
         .padding(.horizontal, 16).padding(.vertical, 14)
         .accessibilityElement()
         .accessibilityLabel("读取中")
-    }
-}
-
-private struct Tick: ViewModifier {
-    @Binding var now: Int64
-    let seconds: Double
-    @Environment(AppModel.self) private var model
-
-    func body(content: Content) -> some View {
-        // Nothing ticks in the background (architecture §10 「后台和内存」); coming back starts with the time it is then.
-        content.task(id: model.foreground) {
-            guard model.foreground else { return }
-            while !Task.isCancelled {
-                now = nowMs()
-                try? await Task.sleep(for: .seconds(seconds))
-            }
-        }
-    }
-}
-
-extension View {
-    /// Keeps `now` at the current time in milliseconds, renewed every
-    /// `seconds` while the app is in front. Unlike `Ticking` it leaves the
-    /// view in place when the app comes back, so a list keeps where it was
-    /// scrolled to.
-    func ticking(_ now: Binding<Int64>, every seconds: Double = 30) -> some View {
-        modifier(Tick(now: now, seconds: seconds))
     }
 }

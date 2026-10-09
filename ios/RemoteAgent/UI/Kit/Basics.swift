@@ -174,7 +174,7 @@ func avatarIndex(_ key: String) -> Int {
     return Int(h % 4)
 }
 
-/// A project's letter on a gradient picked by its name: 40 on lists, 22 in sheets, 52 on the project page, 16 in chips.
+/// A project's letter on a gradient picked by its name: 40 on lists, 28 in the home page's scope title, 22 in sheets, 52 on the project page, 16 in chips.
 struct Avatar: View {
     private let letter: String
     private let gradient: LinearGradient
@@ -199,7 +199,7 @@ struct Avatar: View {
 
     var body: some View {
         let (radius, font): (CGFloat, CGFloat) =
-            size >= 52 ? (15, 22) : size >= 36 ? (11, 17) : size >= 22 ? (6, 12) : (4, 9)
+            size >= 52 ? (15, 22) : size >= 36 ? (11, 17) : size >= 28 ? (8, 15) : size >= 22 ? (6, 12) : (4, 9)
         // A badge of a fixed size: its letter does not grow with the text around it.
         Text(letter)
             .font(.system(size: font, weight: .bold))
