@@ -43,7 +43,9 @@ git -C "$ROOT" tag --list "$tag" --format='%(contents)' >"$work/repo/notes.md"
 cd "$work/repo"
 git init -q -b incoming
 git add -A
-git -c user.name="remote-agent release" -c user.email="release@users.noreply.github.com" commit -q -m "remote-agent ${tag#v}"
+# The Actions bot's own address: a made-up one may be some stranger's account, and
+# GitHub then shows the commit as theirs.
+git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "remote-agent ${tag#v}"
 # The branch is only a hand-over: whatever an earlier run left there is replaced.
 git push -q --force "$repo" HEAD:incoming
 echo "Handed $tag to $repo"
