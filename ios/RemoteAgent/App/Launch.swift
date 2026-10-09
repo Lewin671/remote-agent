@@ -21,6 +21,10 @@
 //   -resetAccount                    forget the account on this device first
 //   -route <route>                   open on a destination once the account is in use
 //
+// The window (here)
+//   -landscape                       the window on its side, which a script cannot do to a simulator (an iPhone's;
+//                                    an iPad's window does not take the request)
+//
 // Joining and adding a device (here)
 //   -joinStep <step>                 the join flow in a fixed state: form, filled, error, cancelled,
 //                                    working, emoji, registering, secret, secretError, scan, scanDenied, scanMissing
@@ -100,6 +104,7 @@ import RACore
 import SwiftUI
 
 #if DEBUG
+import UIKit
 import notify
 
 @MainActor
@@ -159,6 +164,14 @@ enum LaunchDriver {
             }
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }
+    }
+
+    /// Turns the window on its side when `-landscape` asks for it.
+    static func orient() {
+        guard args.contains("-landscape") else { return }
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+        }
     }
 
     /// What the stage asks of the launch arguments: an account that is not
@@ -276,6 +289,7 @@ enum LaunchDriver {
     static let isTesting = false
     static let startRoute: Route? = nil
     static func prepare(_ model: AppModel) {}
+    static func orient() {}
     static func stageChanged(_ model: AppModel) async {}
     static func drive(_ join: JoinModel) {}
     static func preview(_ model: AddDeviceModel) -> Bool { false }

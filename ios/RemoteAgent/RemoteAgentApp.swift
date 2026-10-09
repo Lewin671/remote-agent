@@ -23,6 +23,7 @@ struct RemoteAgentApp: App {
                 .environment(model)
                 .environment(settings)
                 .preferredColorScheme(settings.settings.theme.colorScheme)
+                .task { LaunchDriver.orient() }
                 // The stream is kept only while the app is in front (architecture §10 「后台和内存」).
                 .onChange(of: phase, initial: true) { _, new in
                     // Hosting the tests, the app stays as it starts: no Keychain, no connection.

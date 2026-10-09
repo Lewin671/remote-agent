@@ -184,7 +184,8 @@ private struct ActionMenu<Info: View>: View {
             .disabled(busy)
         }
         .frame(maxWidth: 480)
-        .padding(.horizontal, 8).padding(.bottom, 8)
+        // The top too: a menu taller than a phone on its side scrolls, and does not start at the screen's edge.
+        .padding(8)
         ViewThatFits(in: .vertical) {
             menu
             ScrollView { menu }.scrollBounceBehavior(.basedOnSize)

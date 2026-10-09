@@ -35,6 +35,7 @@ struct PendingDock<Content: View, Actions: View>: View {
     /// The room for an open item's body and actions; it grows with the text size.
     @ScaledMetric(relativeTo: .footnote) private var limit: CGFloat = 240
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.verticalSizeClass) private var vertical
 
     init(
         _ item: DockItem, agent: String, more: Int, startOpen: Bool = false, onOpen: @escaping () -> Void,
@@ -86,7 +87,9 @@ struct PendingDock<Content: View, Actions: View>: View {
                     .scrollBounceBehavior(.basedOnSize)
                     // As tall as what it holds, up to the limit: past it the body scrolls and the actions stay.
                     // At the largest text sizes the limit stops growing: the chat keeps some of the screen.
-                    .frame(height: min(max(bodyHeight, 1), min(limit, 380)))
+                    // On a phone on its side there is little height: the body keeps a few lines and scrolls, so
+                    // that the actions and the message box under them stay on the screen.
+                    .frame(height: min(max(bodyHeight, 1), vertical == .compact ? 96 : min(limit, 380)))
                     VStack(alignment: .leading, spacing: 0) { actions }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 4).padding(.bottom, 10)
