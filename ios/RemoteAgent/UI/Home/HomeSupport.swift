@@ -1,0 +1,170 @@
+// What the home page and the project pages share besides their rows: the
+// scope this device remembers, fetching earlier pages of the session
+// listing while a list wants them, and the line that says how that goes.
+// Counterparts of Android's `HomeScopes` (ui/Home.kt) and `FetchEarlier`,
+// `EarlierTail` (ui/Common.kt).
+import Observation
+import RACore
+import SwiftUI
+
+/// The home page's scope as this device remembers it (architecture §8
+/// 「主页的范围」): kept with the device's own settings and not in the
+/// account's preferences, because different devices often look at
+/// different projects. Nil until the user chose one; what the page then
+/// uses is `resolveScope`'s answer.
+@MainActor
+@Observable
+final class HomeScopes {
+    /// Under the account's prefix, so it is forgotten with the account: the scope names one of its project paths.
+    static let key = AccountDefaults.key("home-scope")
+
+    private(set) var remembered: HomeScope?
+    @ObservationIgnored private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        remembered = decodeScope(defaults.string(forKey: Self.key))
+    }
+
+    func choose(_ scope: HomeScope) {
+        remembered = scope
+        defaults.set(encodeScope(scope), forKey: Self.key)
+    }
+
+    #if DEBUG
+    /// A scope to look at with sample data, without storing it over the one the real account left.
+    func show(_ scope: HomeScope) { remembered = scope }
+    #endif
+}
+
+extension AccountContext {
+    /// The scope the home page was left on, for the pages that read or change it.
+    var homeScopes: HomeScopes { memory.value { HomeScopes() } }
+}
+
+/// A status's tone as the kit colours it.
+func homeTone(_ tone: Tone) -> StatusTone {
+    switch tone {
+    case .run: .run
+    case .wait: .wait
+    case .idle: .idle
+    case .off: .off
+    }
+}
+
+private struct FetchEarlier: ViewModifier {
+    let state: RemoteState
+    let page: Bool
+    let all: Bool
+    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context
+
+    private struct Key: Hashable {
+        var page: Bool
+        var all: Bool
+        var ready: Bool
+        var nextMs: Int64?
+        var nextId: String?
+    }
+
+    func body(content: Content) -> some View {
+        // It waits for the connection, and after a failed page for a retry.
+        let ready = state.moreSessions && state.conn == .online && state.sessionsError.isEmpty
+        let key = Key(page: page, all: all, ready: ready, nextMs: state.sessionsNext?.endedMs, nextId: state.sessionsNext?.sessionId)
+        content.task(id: key) {
+            // Sample data has no server behind it, and asking would replace it with what the engine holds: nothing.
+            guard ready, !model.isDemo else { return }
+            // RemoteState.sessionsError says why a page failed; the line at the end offers the retry.
+            if all {
+                try? await context.remote.loadAllSessions()
+            } else if page {
+                _ = try? await context.remote.loadMoreSessions()
+            }
+        }
+    }
+}
+
+extension View {
+    /// Fetches earlier pages of the session listing while this view is shown
+    /// and wants them (architecture §8 「会话列表分页」): the next one for
+    /// `page`, every page left for `all` (filtering by title).
+    func fetchEarlier(_ state: RemoteState, page: Bool, all: Bool = false) -> some View {
+        modifier(FetchEarlier(state: state, page: page, all: all))
+    }
+}
+
+/// The line that ends a list whose earlier sessions are wanted and not all fetched; after a failure a tap tries again.
+struct EarlierTail: View {
+    let text: String
+    let retry: Bool
+    @Environment(AccountContext.self) private var context
+
+    init(_ text: String, retry: Bool) {
+        self.text = text
+        self.retry = retry
+    }
+
+    /// The line for the listing as it stands now.
+    init(_ state: RemoteState) {
+        self.init(earlierTail(state), retry: state.conn == .online && !state.sessionsError.isEmpty)
+    }
+
+    var body: some View {
+        let line = Text(text).type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+        if retry {
+            Button {
+                let remote = context.remote
+                Task { _ = try? await remote.loadMoreSessions() }
+            } label: {
+                line.hitTarget(alignment: .leading)
+            }
+            .buttonStyle(PressStyle())
+        } else {
+            line
+        }
+    }
+}
+
+/// Grey bars where a list will be once it is read.
+struct HomeSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach([0.7, 0.9, 0.5], id: \.self) { width in
+                GeometryReader { box in
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Theme.chip).frame(width: box.size.width * width)
+                }
+                .frame(height: 12)
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .accessibilityElement()
+        .accessibilityLabel("读取中")
+    }
+}
+
+private struct Tick: ViewModifier {
+    @Binding var now: Int64
+    let seconds: Double
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        // Nothing ticks in the background (architecture §10 「后台和内存」); coming back starts with the time it is then.
+        content.task(id: model.foreground) {
+            guard model.foreground else { return }
+            while !Task.isCancelled {
+                now = nowMs()
+                try? await Task.sleep(for: .seconds(seconds))
+            }
+        }
+    }
+}
+
+extension View {
+    /// Keeps `now` at the current time in milliseconds, renewed every
+    /// `seconds` while the app is in front. Unlike `Ticking` it leaves the
+    /// view in place when the app comes back, so a list keeps where it was
+    /// scrolled to.
+    func ticking(_ now: Binding<Int64>, every seconds: Double = 30) -> some View {
+        modifier(Tick(now: now, seconds: seconds))
+    }
+}

@@ -1,16 +1,15 @@
 import SwiftUI
 
-/// The first session of a new project in the folder just chosen (Android's NewProjectAtScreen).
-///
-/// A placeholder: the screen itself is not written yet. Whoever writes it
-/// replaces this file's body and keeps the initialiser, which
-/// `Route.destination` calls.
+/// A folder chosen for a new project: its message box, focused, with that
+/// machine's defaults (Android's NewProjectAtScreen in ui/Project.kt). The
+/// project is stored with the machine chosen, so it is listed before its
+/// first session, here and on the account's other clients; a folder that
+/// is a project already keeps its own settings and shows its sessions.
 struct NewProjectAtScreen: View {
     let machine: String
     let path: String
 
     var body: some View {
-        ScreenPlaceholder("新项目", detail: [machine, path])
-            .navBar("新项目")
+        ProjectPageView(key: path, machine: machine, focus: true)
     }
 }
