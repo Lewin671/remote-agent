@@ -135,6 +135,7 @@ private struct SessionPage: View {
     @State private var menu = false
     @State private var sheet: SessionSheet?
     @State private var rename = false
+    @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
     @State private var act = ActionRunner()
     @State private var fork = ActionRunner()
@@ -252,6 +253,19 @@ private struct SessionPage: View {
             case .model: SessionModelSheet(session: s, running: running) { sheet = nil }
             }
         }
+        // 项目设置 opens here, over the session, as on Android: on the session's own CLI, whose set this page is about.
+        .kitSheet(item: $projectSettings) { _ in
+            let key = projectKey(s)
+            if let initial = projectConfig(state, key: key) {
+                ProjectSettingsSheet(
+                    cwd: key, machine: initial.machineId, agent: s.agent,
+                    onDone: { op in
+                        if let op { context.prefsChanges.run(context.remote, .setSettings(op)) }
+                        projectSettings = nil
+                    },
+                    onClose: { projectSettings = nil })
+            }
+        }
         .sessionRename(isPresented: $rename, session: s)
         .confirm(
             isPresented: $confirmStop, title: "结束这个会话？",
@@ -269,10 +283,12 @@ private struct SessionPage: View {
         .debugSignal("session.mode") { sheet = .mode }
         .debugSignal("session.model") { sheet = .model }
         .debugSignal("session.rename") { rename = true }
+        .debugSignal("session.project") { projectSettings = ProjectSettingsRequest() }
         .debugSignal("session.close") {
             menu = false
             sheet = nil
             rename = false
+            projectSettings = nil
         }
         .task {
             switch SessionDebug.shown {
@@ -280,6 +296,7 @@ private struct SessionPage: View {
             case "mode", "confirmFull": sheet = .mode
             case "model": sheet = .model
             case "rename": rename = true
+            case "project": projectSettings = ProjectSettingsRequest()
             case "stop": confirmStop = true
             default: break
             }
@@ -310,8 +327,9 @@ private struct SessionPage: View {
                 list.append(SheetAction("上下文：\(percent)%", warn: percent > 80, enabled: !forking) { afterMenu { sheet = .model } })
             }
         }
-        // The project's page is where its settings for new sessions are.
-        list.append(SheetAction("项目设置", enabled: !forking) { afterMenu { nav.open(.project(key: projectKey(s))) } })
+        list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
+            afterMenu { projectSettings = ProjectSettingsRequest() }
+        })
         if reachable {
             list.append(SheetAction("重命名", enabled: !forking) { afterMenu { rename = true } })
             // A fork starts at once, in the menu: its row shows the progress, and a failure under it.

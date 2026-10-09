@@ -12,8 +12,8 @@
 //                                              sample-wait, sample-many, sample-ask, sample-ended)
 //   -sessionPerf          print what each pass over the events cost, and the frames while session.stream plays
 //   -sessionShow <what>   open a session with something showing: menu, mode, confirmFull,
-//                         model, rename, stop, dock (the docked item open), reason (the
-//                         reason box of an approval)
+//                         model, rename, project (项目设置), stop, dock (the docked item
+//                         open), reason (the reason box of an approval)
 //
 // Signals (see App/Launch.swift): session.stream plays a turn into the
 // session on screen, a reply and tool calls arriving as they would;
@@ -28,8 +28,8 @@
 // session.send, session.queue and session.interrupt press the box's button;
 // session.allow and session.deny answer the docked approval (deny with that
 // text as its reason); session.cancel and session.resume act on the last
-// waiting message; session.menu, session.mode, session.model and
-// session.rename open what the ⋯ menu opens, session.mode.pick chooses the
+// waiting message; session.menu, session.mode, session.model, session.rename
+// and session.project open what the ⋯ menu opens, session.mode.pick chooses the
 // mode named by the text (ask, auto, plan, full) and session.rename.save
 // saves the text as the title.
 import Foundation
