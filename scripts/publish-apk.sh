@@ -8,6 +8,8 @@
 # So the APK and its manifest are pushed, with a deploy key, to a branch
 # named `incoming` there, and that repository's own workflow
 # (deploy/releases-repo/) turns the branch into a release and deletes it.
+# The branch is one commit on top of that repository's main: GitHub runs a
+# workflow for a push only if the pushed commit contains its file.
 # This script then waits until the release's manifest can be downloaded.
 #
 # Usage: scripts/publish-apk.sh TAG      (after scripts/package-release.sh TAG)
@@ -36,12 +38,16 @@ if [ -n "${RELEASES_DEPLOY_KEY:-}" ]; then
 	(umask 077 && printf '%s\n' "$RELEASES_DEPLOY_KEY" >"$work/key")
 	export GIT_SSH_COMMAND="ssh -i $work/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 fi
-mkdir "$work/repo"
+git clone -q --depth 1 --branch main "$repo" "$work/repo"
 cp "$apk" "$manifest" "$work/repo/"
 # The tag's message, as the release's notes.
 git -C "$ROOT" tag --list "$tag" --format='%(contents)' >"$work/repo/notes.md"
 cd "$work/repo"
-git init -q -b incoming
+[ -f .github/workflows/publish.yml ] || {
+	echo "$repo has no Publish workflow on main; push deploy/releases-repo/ there first" >&2
+	exit 1
+}
+git checkout -q -b incoming
 git add -A
 # The Actions bot's own address: a made-up one may be some stranger's account, and
 # GitHub then shows the commit as theirs.
