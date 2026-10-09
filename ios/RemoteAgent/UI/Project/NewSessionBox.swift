@@ -7,9 +7,9 @@
 // machine is replaced only by the user's choice for this start. What is
 // said above the box is `newSessionNotices`.
 //
-// The input has the layout of a session's message box (design-system §6
-// 输入框): a pill that starts at one line and grows to six, ＋ at the left,
-// the round send button at the right.
+// The input is the pill of a session's message box (the kit's
+// `ComposerPill`, design-system §6 输入框): it starts at one line and grows
+// to six, ＋ at the left, the round send button at the right.
 import RACore
 import RAProto
 import SwiftUI
@@ -68,17 +68,20 @@ struct NewSessionBox: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Space.page)
             }
-            NewSessionInput(
-                text: Bindable(draft).text,
-                // Every image must be on the machine first: never a start with some of them.
-                canSend: canStartSession(state, config: config, drafting: drafting, settled: settled, running: draft.running)
-                    && ProjectImages.ready(images),
-                plusEnabled: ProjectImages.available(images),
-                focused: $focused,
+            // Every image must be on the machine first: never a start with some of them.
+            let canSend = canStartSession(state, config: config, drafting: drafting, settled: settled, running: draft.running)
+                && ProjectImages.ready(images)
+            ComposerPill(
+                text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
+                plus: ProjectImages.available(images) ? .on : .dimmed, focus: $focused,
                 onPlus: { ProjectImages.pick(images) },
-                onSend: { start(draft) }
+                top: { ProjectImages.Strip(context: images) }
             ) {
-                ProjectImages.Strip(context: images)
+                Button { start(draft) } label: { ComposerCircle.send(enabled: canSend) }
+                    .buttonStyle(PressStyle())
+                    .disabled(!canSend)
+                    .accessibilityLabel("开始")
+                    .accessibilityIdentifier("new-session-start")
             }
         }
         .readableColumn()
@@ -185,69 +188,6 @@ struct NewSessionBox: View {
             Banner(text, tone: .error, action: "重试", onAction: { start(draft) })
         case .unknown(let text):
             Banner(text, tone: .warn, action: "放弃", onAction: { draft.abandon() })
-        }
-    }
-}
-
-/// The pill: ＋, the text from one line to six, and ↑.
-private struct NewSessionInput<Top: View>: View {
-    @Binding var text: String
-    let canSend: Bool
-    /// Whether ＋ can add images now; when not it is dimmed, and a tap says why.
-    let plusEnabled: Bool
-    var focused: FocusState<Bool>.Binding
-    let onPlus: () -> Void
-    let onSend: () -> Void
-    /// The attached images, over the text inside the pill.
-    @ViewBuilder var top: Top
-    /// The send button's circle; its arrow grows a little with the text, the circle does not.
-    private let circle: CGFloat = 32
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
-        VStack(spacing: 0) {
-            top
-            row
-        }
-        .padding(3)
-        .background(Theme.card, in: shape)
-        .overlay { shape.strokeBorder(Theme.line, lineWidth: 1) }
-        .padding(.init(top: 4, leading: 10, bottom: 8, trailing: 10))
-    }
-
-    private var row: some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            Button(action: onPlus) { Ic(Lucide.plus, size: 22, color: Theme.muted).hitTarget() }
-                .buttonStyle(PressStyle())
-                .opacity(plusEnabled ? 1 : 0.4)
-                // The two buttons keep a size a thumb knows; the words between them are what grows.
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                .accessibilityLabel("添加图片")
-            TextField("", text: $text, prompt: Text("描述任务…").foregroundStyle(Theme.muted), axis: .vertical)
-                .lineLimit(1...6)
-                .type(T.body, Theme.fg)
-                .focused(focused)
-                .tint(Theme.blue)
-                .accessibilityLabel("描述任务…")
-                .accessibilityIdentifier("new-session-text")
-                .padding(.horizontal, 4).padding(.vertical, 10)
-                .frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading)
-                // The whole of the pill between the buttons is the field to the finger.
-                .contentShape(Rectangle())
-                .onTapGesture { focused.wrappedValue = true }
-            Button(action: onSend) {
-                Ic(Lucide.arrowUp, size: 20, color: Theme.onSolid)
-                    .frame(width: circle, height: circle)
-                    .background(Theme.blueBg, in: Circle())
-                    // Nothing to send looks as any button that is not enabled does (design-system §6).
-                    .opacity(canSend ? 1 : 0.4)
-                    .hitTarget()
-            }
-            .buttonStyle(PressStyle())
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .disabled(!canSend)
-            .accessibilityLabel("开始")
-            .accessibilityIdentifier("new-session-start")
         }
     }
 }

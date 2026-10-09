@@ -33,25 +33,12 @@ struct SessionComposeBox<Top: View>: View {
     var sendHint = ""
     @ViewBuilder var top: Top
 
-    private func circle<Icon: View>(_ fill: Color, enabled: Bool, @ViewBuilder icon: () -> Icon) -> some View {
-        icon()
-            // The circle is a fixed 32 pt: what is drawn in it does not outgrow it.
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .frame(width: 32, height: 32)
-            .background(fill, in: Circle())
-            .opacity(enabled ? 1 : 0.4)
-            .frame(width: Theme.minHit, height: Theme.minHit)
-            .contentShape(Rectangle())
-    }
-
-    private var sendCircle: some View {
-        circle(Theme.blueBg, enabled: canSend) { Ic(Lucide.arrowUp, size: 20, color: Theme.onSolid) }
-    }
+    private var sendCircle: some View { ComposerCircle.send(enabled: canSend) }
 
     @ViewBuilder private var button: some View {
         if !hasDraft, let onInterrupt {
             Button(action: onInterrupt) {
-                circle(Theme.chip, enabled: canInterrupt) { Ic(Lucide.square, size: 14, color: Theme.red) }
+                ComposerCircle(Theme.chip, enabled: canInterrupt) { Ic(Lucide.square, size: 14, color: Theme.red) }
             }
             .buttonStyle(PressStyle())
             .disabled(!canInterrupt)
@@ -86,35 +73,9 @@ struct SessionComposeBox<Top: View>: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
-        VStack(spacing: 0) {
-            top
-            HStack(alignment: .bottom, spacing: 0) {
-                Button(action: onPlus) {
-                    Ic(Lucide.plus, size: 22, color: Theme.muted).hitTarget()
-                }
-                .buttonStyle(PressStyle())
-                .disabled(!plusEnabled)
-                .opacity(plusEnabled ? 1 : 0.4)
-                .accessibilityLabel("添加图片")
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Theme.muted), axis: .vertical)
-                    .lineLimit(1...6)
-                    .type(T.body, Theme.fg)
-                    .tint(Theme.blue)
-                    .focused(focus)
-                    .padding(.horizontal, 4).padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, minHeight: Theme.minHit)
-                    // The whole of the box is the field to the finger, not just the line of text.
-                    .contentShape(Rectangle())
-                    .onTapGesture { focus.wrappedValue = true }
-                    .accessibilityLabel("消息")
-                button
-            }
-        }
-        .padding(3)
-        .background(Theme.card, in: shape)
-        .overlay { shape.strokeBorder(Theme.line, lineWidth: 1) }
-        .padding(.init(top: 4, leading: 10, bottom: 8, trailing: 10))
+        ComposerPill(
+            text: $text, placeholder: placeholder, label: "消息", plus: plusEnabled ? .on : .off, focus: focus, onPlus: onPlus,
+            top: { top }, trailing: { button })
         // A keyboard attached to an iPad or a Mac sends with ⌘↩; Return alone is a new line, as on the screen keyboard.
         .background {
             Button("发送", action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
