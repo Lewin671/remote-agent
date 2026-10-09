@@ -1,0 +1,29 @@
+# Generates the iOS client's protocol code from ../proto:
+#   cd ios && buf generate
+# The Go, web and Android code have their own templates (../buf.gen.yaml,
+# ../web/buf.gen.yaml, ../android/buf.gen.yaml); this one only writes into
+# RemoteAgentCore/Sources/RAProto.
+version: v2
+clean: true
+inputs:
+  - directory: ../proto
+managed:
+  enabled: true
+  override:
+    # Generated types are PBEnvelope, PBEvent and so on, which keeps them
+    # apart from Foundation's and the core's own names.
+    - file_option: swift_prefix
+      value: PB
+plugins:
+  - remote: buf.build/apple/swift:v1.31.0
+    out: RemoteAgentCore/Sources/RAProto
+    opt:
+      - Visibility=Public
+      - FileNaming=PathToUnderscores
+  - remote: buf.build/connectrpc/swift:v1.2.1
+    out: RemoteAgentCore/Sources/RAProto
+    opt:
+      - Visibility=Public
+      - FileNaming=PathToUnderscores
+      - GenerateAsyncMethods=true
+      - GenerateCallbackMethods=false
