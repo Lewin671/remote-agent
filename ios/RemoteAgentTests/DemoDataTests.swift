@@ -58,6 +58,30 @@ import Testing
     }
 
     @Test(arguments: DemoSet.allCases)
+    func everyComputerOfASetListsModelsForBothCLIs(set: DemoSet) {
+        for id in Demo.state(set, now: now).machines.keys {
+            for agent in [PBAgent.codex, .claude] {
+                let list = Demo.models.first { $0.machineId == id && $0.agent == agent }?.models
+                #expect(list?.models.isEmpty == false, "\(id) \(agent)")
+                #expect(list?.models.contains { $0.slug == list?.defaultModel } == true)
+            }
+        }
+        // Claude Code's have what its settings choose between: efforts, and a window larger than the standard one.
+        let claude = Demo.models.first { $0.agent == .claude }?.models.models ?? []
+        #expect(claude.contains { !$0.efforts.isEmpty && $0.contextWindow > 200_000 } && claude.contains { $0.efforts.isEmpty })
+    }
+
+    @Test func theMadeUpHomeIsListedFolderByFolder() {
+        let home = Demo.directory("")
+        #expect(home.path == Demo.home && home.home == Demo.home && home.parent == "/Users" && home.dirs.contains("Code"))
+        let code = Demo.directory(Demo.home + "/Code")
+        #expect(code.parent == Demo.home && code.dirs.contains("foo"))
+        // A folder with nothing in it, and the root, which has nothing above it.
+        #expect(Demo.directory(Demo.foo).dirs.isEmpty && Demo.directory(Demo.foo).parent == Demo.home + "/Code")
+        #expect(Demo.directory("/").parent.isEmpty && Demo.directory("/Users").parent == "/")
+    }
+
+    @Test(arguments: DemoSet.allCases)
     func aRemoteShowsASetWithoutAServer(set: DemoSet) async {
         let remote = Demo.remote()
         let state = Demo.state(set, now: now)

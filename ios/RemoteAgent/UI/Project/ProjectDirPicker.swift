@@ -52,7 +52,7 @@ struct ProjectDirPicker: View {
 
     private var source: DirectorySource {
         #if DEBUG
-        if model.isDemo { return ProjectDemo.directories }
+        if model.isDemo { return Demo.directories }
         #endif
         return .remote(context.remote)
     }

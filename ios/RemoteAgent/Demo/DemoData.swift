@@ -52,17 +52,72 @@ enum Demo {
         }
     }
 
+    /// What each computer lists for each CLI: Codex's models and Claude
+    /// Code's, with efforts and context windows, one of them with a long
+    /// slug and no display name. For every computer of every set.
     static let models: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
-        let codex = PBListModelsResponse.with {
-            $0.defaultModel = "gpt-6-astra"
-            $0.models = [.with {
-                $0.slug = "gpt-6-astra"
-                $0.displayName = "GPT-6-Astra"
-                $0.defaultEffort = "medium"
-            }]
+        func model(_ slug: String, _ name: String, efforts: [String] = [], window: Int64 = 0) -> PBModelInfo {
+            .with {
+                $0.slug = slug
+                $0.displayName = name
+                $0.efforts = efforts
+                $0.defaultEffort = efforts.isEmpty ? "" : "medium"
+                $0.contextWindow = window
+            }
         }
-        return ["mac", "vps", "imac"].map { (machineId: $0, agent: PBAgent.codex, models: codex) }
+        let efforts = ["low", "medium", "high", "xhigh", "max", "ultra"]
+        let codex = PBListModelsResponse.with {
+            $0.defaultModel = "gpt-6.1-sol"
+            $0.models = [
+                model("gpt-6.1-sol", "GPT-6.1-Sol", efforts: efforts), model("gpt-6-astra", "GPT-6-Astra", efforts: efforts),
+                model("gpt-6-sol", "GPT-6-Sol", efforts: efforts), model("gpt-6-luna", "GPT-6-Luna", efforts: efforts),
+                model("gpt-5.6-sol", "GPT-5.6-Sol", efforts: efforts), model("gpt-5.6-terra", "GPT-5.6-Terra", efforts: efforts),
+                model("gpt-5.6-luna", "GPT-5.6-Luna", efforts: efforts), model("gpt-5.5", "GPT-5.5", efforts: efforts),
+                model("a-model-with-a-very-long-slug-and-no-display-name-2026-10-09-preview", ""),
+            ]
+        }
+        let claude = PBListModelsResponse.with {
+            $0.defaultModel = "sonnet"
+            $0.models = [
+                model("opus", "Opus", efforts: ["low", "medium", "high"], window: 1_000_000),
+                model("sonnet", "Sonnet", efforts: ["low", "medium", "high"], window: 1_000_000),
+                model("haiku", "Haiku", window: 200_000),
+            ]
+        }
+        let machines = ["mac", "vps", "imac", "studio", "ci", "nas"]
+        return machines.map { (machineId: $0, agent: PBAgent.codex, models: codex) }
+            + machines.map { (machineId: $0, agent: PBAgent.claude, models: claude) }
     }()
+
+    /// A made-up home folder for 新项目 · 选目录: what each folder holds, by path.
+    static let folders: [String: [String]] = [
+        home: ["Code", "Documents", "Downloads", "work"],
+        home + "/Code": [
+            "ai-bot", "a-very-long-project-name-that-keeps-going-and-going", "bar", "billing", "blog", "demo", "design-system", "foo",
+            "infra", "mobile", "remote-agent", "shop", "数据平台",
+        ],
+        home + "/Code/ai-bot": ["remote-agent", "happy", "notes-sync"],
+        home + "/work": ["blog"],
+    ]
+
+    /// A folder of the made-up home as a computer would list it; an empty path is the home folder.
+    static func directory(_ path: String) -> PBListDirectoriesResponse {
+        let at = path.isEmpty ? home : path
+        let above = at.split(separator: "/").dropLast().map { "/" + $0 }.joined()
+        return .with {
+            $0.path = at
+            $0.home = home
+            $0.parent = at == "/" ? "" : above.isEmpty ? "/" : above
+            $0.dirs = folders[at] ?? []
+        }
+    }
+
+    /// The made-up home, listed after a moment as a computer would; `-dirError` makes the listing fail.
+    @MainActor static let directories = DirectorySource { _, path in
+        try await Task.sleep(for: .milliseconds(120))
+        if HomeLaunch.flag("-dirError") { throw CommandError("not_found", "目录不存在") }
+        return directory(path)
+    }
 
     // MARK: Builders
 

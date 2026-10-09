@@ -3,24 +3,98 @@
 // build `LaunchDriver` and `debugSignal` do nothing and none of the
 // arguments is read.
 //
+// This is the one list of them all. An argument or a signal added anywhere
+// in the app is added here; the file named with each group says more.
+//
+// Sample data (here, Demo/DemoData.swift)
 //   -demo [everyday|crowded|empty]   sample data, no server, nothing stored
 //   -demoRoute <route>               with -demo: open on a destination (`Route.path`, e.g. devices, session/run)
 //   -demoRemoved                     with -demo: the 已被移出账户 notice
 //   -demoLink <waiting|noNetwork|noServer>   with -demo: a connection that is down
-//   -joinStep <step>                 the join flow in a fixed state: form, filled, error, cancelled,
-//                                    working, emoji, registering, secret, secretError, scan, scanDenied, scanMissing
-//   -addDeviceStep <step>            with -demo -demoRoute add-device: waiting, compare, compareMachine,
-//                                    sending, done, failed, uncertain
+//   -demoTweak <a,b,…>               with -demo: changes to the sample account: mismatch, fullAccess, loading,
+//                                    noneOnline, firstRun, listFailed, added, machineOffline (UI/Home/HomeLaunch.swift)
 //
+// A real account (here)
 //   -joinSecret <ra1…>               join with an account secret (an account already on the device is
 //                                    kept when it is the same one, and replaced otherwise)
 //   -joinServer <url> -joinCode <8 digits>   join with a pairing code
 //   -resetAccount                    forget the account on this device first
 //   -route <route>                   open on a destination once the account is in use
 //
+// Joining and adding a device (here)
+//   -joinStep <step>                 the join flow in a fixed state: form, filled, error, cancelled,
+//                                    working, emoji, registering, secret, secretError, scan, scanDenied, scanMissing
+//   -addDeviceStep <step>            with -demo -demoRoute add-device: waiting, starting, compare, compareMachine,
+//                                    sending, done, failed, uncertain
+//
+// Home and projects, with -demo (UI/Home/HomeLaunch.swift)
+//   -homeScope <all|path>            the scope the home page opens on
+//   -homeScopeTarget <all|path>      the scope the signal home.scope chooses
+//   -homeSheet <scope|browse|pick|pickBrowse>   看哪个项目, 新会话 · 选项目, or either on 新项目 · 选目录
+//   -homeFilter <text>               something typed in the title filter
+//   -homeExpand                      需要处理 and 进行中 opened in full
+//   -projectSheet <main|machine|model|context|mode>   项目设置 on a page
+//   -projectDraft <text>             something written in the new-session box
+//   -projectStart <running|failed|unknown|expired>   how a start stands
+//   -projectEnded                    a project's 已结束 opened
+//   -projectsMenu <path> / -projectsRemove <path> / -projectsAdd / -projectsElsewhere
+//                                    项目管理's menu, dialog, sheet, notice
+//   -projectsTarget <path>           the project the signals projects.* act on
+//   -prefsSaving <path> / -prefsFailed <path>   a change to a project's preferences on its way, or failed
+//   -dirPath <path> / -dirError      the folder 新项目 · 选目录 opens on, or a listing that fails
+//   -settingsEdit <a,b,…>            what the signal settings.apply chooses in 项目设置: full, auto, ask, standard,
+//                                    effort=<e>, model=<slug>
+//
+// Sessions (UI/Session/SessionSamples.swift)
+//   -demo -demoRoute session/<id>    the sample sessions: sample-rows, sample-queue, sample-send, sample-start,
+//                                    sample-claude, sample-old, sample-long, sample-wait, sample-many, sample-ask,
+//                                    sample-ended; and the sets' own (run, ask, …)
+//   -sessionShow <what>              a session with something showing: menu, mode, confirmFull, model, rename,
+//                                    project, stop, dock, reason
+//   -sessionPerf                     print what each pass over the events cost, and the frames while session.stream plays
+//   defaults write <bundle> debug.sessionText <text>   the text the signals that type use
+//
+// Settings, with -demo (UI/Settings/SettingsShared.swift)
+//   -settingsState <name>            a page's fixed state. machine/<id>: loading, failed, saveFailed, saveUnknown,
+//                                    mismatch; connection: checking, serverDown, machineDown; image-storage: empty,
+//                                    clearing; licenses: <a licence's id>; client/<id>, devices: renaming, removing
+//   -settingsEnd                     a settings page scrolled to its end
+//
+// The component gallery (UI/Gallery/Gallery.swift)
+//   -gallery [page]                  the list of pages, or one (tokens, icons, buttons, notices, lists, choices,
+//                                    fields, states, nav, sheet, dialog, input, saving, menu, cover)
+//   -galleryEnd                      a page scrolled to its end
+//
 // Signals, sent with `xcrun simctl spawn <udid> notifyutil -p
-// io.github.lewin671.remoteagent.debug.<name>`: join.cancel, pair.approve,
-// pair.reject, removed.retry, name.skip, app.logout.
+// io.github.lewin671.remoteagent.debug.<name>`. Each does what a tap on
+// the control it names would, through the same code, and only while its
+// screen is showing:
+//
+//   app.logout          退出账户, from anywhere
+//   name.skip           跳过 of 给这个客户端起个名字, from any page
+//   join.cancel, pair.approve, pair.reject      the join flow and 添加设备
+//   removed.retry       再试一次 on the 已被移出账户 notice
+//   home.scope          chooses the scope -homeScopeTarget names
+//   project.start, project.agent                ↑ of the new-session box; the other CLI
+//   settings.apply      chooses what -settingsEdit names in 项目设置 and saves
+//   projects.pin, projects.remove, projects.remove.confirm   项目管理, on the project -projectsTarget names
+//   dir.first, dir.up, dir.choose               选目录: into the first folder, up, 选这个目录
+//   session.draft, session.send, session.queue, session.interrupt   the message box (draft types debug.sessionText)
+//   session.allow, session.deny                 the docked approval (deny with debug.sessionText as its reason)
+//   session.cancel, session.resume              the last waiting message
+//   session.menu, session.mode, session.model, session.rename, session.project, session.close
+//                       what the ⋯ menu opens; close takes them all down
+//   session.mode.pick   chooses the mode debug.sessionText names (ask, auto, plan, full)
+//   session.rename.save saves debug.sessionText as the title
+//   session.top, session.back, session.end      the chat: to its start, away from its end, back to it
+//   session.focus, session.blur                 the keyboard up and down
+//   session.stream, session.resolve             sample data: a turn plays into the session; its first approval
+//                       is answered as by another client
+//   client.rename, client.reset, client.remove  a client's page: a fixed new name, 恢复默认名称, 移除
+//   machine.timeout, machine.remove             a computer's page: the next approval timeout, 移除
+//   check.again         再测一次 of 连接检测
+//   images.clear        清理 of 图片存储
+//   gallery.save        保存 of the gallery's `saving` dialog
 import Foundation
 import RACore
 import SwiftUI
