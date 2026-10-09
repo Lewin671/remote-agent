@@ -126,19 +126,6 @@ final class NewSessionDrafts {
     }
 }
 
-/// The first message of each session started from this device in this run,
-/// for the session's page: until the CLI is ready the message is shown
-/// there as a pending bubble (Android's `Outbox.rememberPrompt`).
-@MainActor
-final class StartedPrompts {
-    private var bySession: [String: String] = [:]
-
-    func remember(_ sid: String, _ prompt: String) { bySession[sid] = prompt }
-
-    func prompt(_ sid: String) -> String? { bySession[sid] }
-}
-
 extension AccountContext {
     var newSessionDrafts: NewSessionDrafts { memory.value { NewSessionDrafts() } }
-    var startedPrompts: StartedPrompts { memory.value { StartedPrompts() } }
 }

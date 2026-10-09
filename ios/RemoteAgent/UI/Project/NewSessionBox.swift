@@ -135,7 +135,8 @@ struct NewSessionBox: View {
             }
             // The project remembers this CLI now; the next draft starts from it.
             draft.agent = nil
-            context.startedPrompts.remember(sid, prompt)
+            // The session's page shows the first message as a pending bubble until the history has it.
+            context.sessionStore.rememberPrompt(sid, prompt)
             Haptics.confirm()
             focused = false
             nav.open(.session(id: sid))

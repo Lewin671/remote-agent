@@ -45,8 +45,9 @@ import Testing
         let again = context.newSessionDrafts.of(Demo.foo, initial: NewConfig(machineId: "vps", cwd: Demo.foo), settled: true)
         #expect(again === draft && again.config.value == seed && again.text == "给登录接口加限流")
         #expect(context.newSessionDrafts.of("/other", initial: nil, settled: true) !== draft)
-        context.startedPrompts.remember("s1", "say hi")
-        #expect(context.startedPrompts.prompt("s1") == "say hi" && context.startedPrompts.prompt("s2") == nil)
+        // The first message of a session started here is kept where the session's page reads it.
+        context.sessionStore.rememberPrompt("s1", "say hi")
+        #expect(context.sessionStore.prompt("s1") == "say hi" && context.sessionStore.prompt("s2") == nil)
     }
 
     @Test func aChangeThatDoesNotArriveLeavesTheListWithARetry() async {
