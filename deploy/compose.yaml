@@ -1,7 +1,5 @@
-# remote-agent-server behind Caddy. With Caddy in a container, it reaches the
-# server over the shared network and no host port is published. With Caddy on
-# the host, add a compose.override.yaml on the server that publishes the port
-# on loopback; deploy.sh leaves that file alone.
+# remote-agent-server behind an existing Caddy container. The server is not
+# published on a host port; Caddy reaches it over the shared network.
 services:
   remote-agent-server:
     build: .

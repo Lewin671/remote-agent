@@ -1,5 +1,5 @@
 #!/bin/sh
-# Deploys remote-agent-server to a host where Caddy terminates HTTPS.
+# Deploys remote-agent-server to a host that already runs Caddy in docker.
 #
 # Usage: deploy/deploy.sh <ssh-host> [dir]
 #
@@ -7,9 +7,9 @@
 # `remote-agent account init` asks for. The Caddy site block is not added
 # automatically; see docs/architecture.md.
 #
-# Android pushes: with RA_DEPLOY_FCM=1, ~/.config/remote-agent/fcm-service-account.json
-# (a Firebase service account key) is copied to <dir>/data and the server
-# sends FCM. It is off by default: the current host cannot reach Google.
+# Android pushes: if ~/.config/remote-agent/fcm-service-account.json exists
+# (a Firebase service account key), it is copied to <dir>/data and the
+# server sends FCM; without it FCM stays off.
 set -eu
 HOST=$1
 DIR=${2:-/opt/remote-agent}
@@ -21,7 +21,7 @@ scp -q "$ROOT/deploy/Dockerfile" "$ROOT/deploy/compose.yaml" "$ROOT/deploy/remot
 rm -f "$ROOT/deploy/remote-agent-server"
 ssh "$HOST" "cd $DIR && if [ ! -f .env ]; then umask 077; printf 'RA_SETUP_TOKEN=%s\nALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173\n' \$(head -c 24 /dev/urandom | base64 | tr '+/' '-_') > .env; echo 'created .env with a new setup token'; fi"
 FCM=$HOME/.config/remote-agent/fcm-service-account.json
-if [ "${RA_DEPLOY_FCM:-0}" = 1 ] && [ -f "$FCM" ]; then
+if [ -f "$FCM" ]; then
 	scp -q "$FCM" "$HOST:$DIR/data/fcm-service-account.json"
 	ssh "$HOST" "chown 65534:65534 $DIR/data/fcm-service-account.json && chmod 600 $DIR/data/fcm-service-account.json && cd $DIR && { grep -q '^RA_FCM_SERVICE_ACCOUNT=' .env 2>/dev/null || echo 'RA_FCM_SERVICE_ACCOUNT=/data/fcm-service-account.json' >> .env; }"
 fi
