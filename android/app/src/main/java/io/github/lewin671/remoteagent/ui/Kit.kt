@@ -283,7 +283,8 @@ fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: 
         BtnKind.DANGER -> p.redBg to Color.White
     }
     Box(
-        modifier.heightIn(min = 44.dp).clip(Radii.SM).background(bg ?: back).alpha(if (enabled) 1f else .45f)
+        // The whole button dims when it is not enabled (design-system §6), its surface with its text.
+        modifier.heightIn(min = 44.dp).alpha(if (enabled) 1f else .45f).clip(Radii.SM).background(bg ?: back)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {
