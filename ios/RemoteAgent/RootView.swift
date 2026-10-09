@@ -1,22 +1,17 @@
+import RACore
 import SwiftUI
 
-/// What the Keychain says of this device's account.
-private enum AccountState: Equatable {
-    case checking
-    case none
-    case joined
-    /// The Keychain could not be asked; the system's reason.
-    case failed(String)
-}
-
-/// The root of the window: a placeholder until the screens exist. It says
-/// whether this device has joined an account, which only the Keychain knows.
+/// The root of the window: which of the app's few whole-screen states is
+/// showing. It follows `AppModel.stage`, as MainActivity.kt follows RaApp:
+/// nothing until the account has been read, the reason when it could not
+/// be, the join flow without one, and with one the app itself, or only the
+/// notice once the server has turned this device away.
 struct RootView: View {
-    let vault: Vault
-    @State private var state = AccountState.checking
+    @Environment(AppModel.self) private var model
 
     var body: some View {
-        content.task { await check() }
+        content
+            .task(id: model.stage) { await LaunchDriver.stageChanged(model) }
     }
 
     @ViewBuilder private var content: some View {
@@ -31,55 +26,27 @@ struct RootView: View {
         #endif
     }
 
-    private var main: some View {
-        Page {
-            switch state {
-            case .checking:
-                Color.clear
-            case .none:
-                NoAccountView()
-            case .joined:
-                // The screens proper are not part of the shell.
-                PageNote("已加入账户").frame(maxHeight: .infinity)
-            case .failed(let why):
+    @ViewBuilder private var main: some View {
+        switch model.stage {
+        case .loading:
+            Page { Color.clear }
+        case .failed(let why):
+            Page {
                 VStack(spacing: 0) {
                     Spacer()
-                    ErrorRow(why) { Task { await check() } }
+                    ErrorRow(why) { model.loadAccount() }
                     Spacer()
                 }
             }
+        case .join:
+            JoinScreen()
+        case .ready:
+            if model.removed {
+                RemovedScreen()
+            } else if let context = model.context {
+                // A new account is a new stack: nothing of the one before stays on it.
+                MainView(context: context, start: LaunchDriver.startRoute).id(ObjectIdentifier(context))
+            }
         }
     }
-
-    private func check() async {
-        let vault = vault
-        // The Keychain call blocks; it is made off the main actor.
-        let result = await Task.detached { Result { try vault.hasAccount() } }.value
-        switch result {
-        case .success(let has): state = has ? .joined : .none
-        case .failure(let error): state = .failed(error.localizedDescription)
-        }
-    }
-}
-
-/// Shown while this device has not joined an account: what to do, and which build this is.
-struct NoAccountView: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 24)
-            AppMark.view(size: 44, color: Theme.blueBg).padding(.bottom, 20)
-            EmptyState(
-                "未加入账户",
-                text: "在已加入的设备上打开「设置 › 添加设备」，扫二维码，或把 8 位配对码填在这台设备上。")
-            Spacer(minLength: 24)
-            Text("remote-agent \(AppInfo.versionLine)").type(T.meta, Theme.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Space.page).padding(.bottom, 12)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-#Preview("未加入账户") {
-    Page { NoAccountView() }
 }
