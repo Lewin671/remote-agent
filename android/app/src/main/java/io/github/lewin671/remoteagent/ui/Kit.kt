@@ -421,7 +421,8 @@ fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = n
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = "返回") }
         Text(title, style = T.h17, color = p.fg, modifier = Modifier.weight(1f))
-        if (action != null) Box(Modifier.size(44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.body, color = p.blue) }
+        // As wide as its words: 完成 and 取消 fit in 44 dp, 以后再说 does not.
+        if (action != null) Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.body, color = p.blue, maxLines = 1) }
     }
 }
 

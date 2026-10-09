@@ -53,6 +53,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.update.Updater
 import io.github.lewin671.remoteagent.core.Initiation
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairException
@@ -131,6 +132,8 @@ fun SettingsScreen() {
     val scope = rememberCoroutineScope()
     var logout by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
+    var updating by remember { mutableStateOf(false) }
+    val update by Updater.state.collectAsState()
     var storage by remember { mutableStateOf(false) }
     var licenses by remember { mutableStateOf(false) }
     val t = now()
@@ -201,7 +204,12 @@ fun SettingsScreen() {
         Group(rows = listOf(
             { GRow("服务器", remote.account.server.removePrefix("https://")) },
             { GRow("连接检测", connWord(state), onClick = { checking = true }, chevron = true) },
-            { GRow("版本", app.versionName.let { v -> val c = app.buildCommit.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }) },
+            {
+                val version = app.versionName.let { v -> val c = app.buildCommit.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }
+                // A development copy does not update itself: its row only says what it is.
+                if (!Updater.enabled(app)) GRow("版本", version)
+                else GRow("版本", updateWord(update) ?: version, onClick = { updating = true }, chevron = true, valueColor = if (updateWord(update) != null) p.blue else null)
+            },
             { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
             { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
         ))
@@ -209,6 +217,7 @@ fun SettingsScreen() {
     }
     }
     if (checking) ConnCheckSheet(state) { checking = false }
+    if (updating) UpdateSheet { updating = false }
     if (logout) Confirm(
         "退出并删除本机密钥？", "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。", "退出", danger = true,
         onDismiss = { logout = false },

@@ -22,6 +22,8 @@ data class Settings(
     val showContent: Boolean = false,
     /** Web client address used in pairing QR codes; empty means derived from the server. */
     val webOrigin: String = "",
+    /** The version code of a release the user put off: the home page stops mentioning it. */
+    val skippedUpdate: Long = 0,
 )
 
 /** Preferences; none of them are secret or content. */
@@ -31,6 +33,7 @@ class Prefs(private val context: Context) {
     private val turnEnded = booleanPreferencesKey("notify_turn_ended")
     private val content = booleanPreferencesKey("notify_show_content")
     private val web = stringPreferencesKey("web_origin")
+    private val skipped = androidx.datastore.preferences.core.longPreferencesKey("skipped_update")
 
     val settings: Flow<Settings> = context.store.data.map { p ->
         Settings(
@@ -39,6 +42,7 @@ class Prefs(private val context: Context) {
             notifyTurnEnded = p[turnEnded] ?: false,
             showContent = p[content] ?: false,
             webOrigin = p[web] ?: "",
+            skippedUpdate = p[skipped] ?: 0,
         )
     }
 
@@ -50,6 +54,7 @@ class Prefs(private val context: Context) {
                 notifyTurnEnded = p[turnEnded] ?: false,
                 showContent = p[content] ?: false,
                 webOrigin = p[web] ?: "",
+            skippedUpdate = p[skipped] ?: 0,
             )
             val n = f(cur)
             p[theme] = n.theme.name
@@ -57,6 +62,7 @@ class Prefs(private val context: Context) {
             p[turnEnded] = n.notifyTurnEnded
             p[content] = n.showContent
             p[web] = n.webOrigin
+            p[skipped] = n.skippedUpdate
         }
     }
 

@@ -149,6 +149,8 @@ fun HomeScreen() {
     val wantPage = !filtering && needsEndedPage(state, tl.ended, shownEnded, tl.endedTotal)
     FetchEarlier(state, page = wantPage, all = wantAll)
 
+    var updating by remember { mutableStateOf(false) }
+    if (updating) UpdateSheet { updating = false }
     LazyColumn(Modifier.fillMaxSize().background(p.card)) {
         item {
             ScopeTitle(
@@ -157,6 +159,7 @@ fun HomeScreen() {
                 onNew = { if (scope is HomeScope.Of) nav.projectNew(scope.key) else pick = true },
             )
             if (state.conn != ConnState.ONLINE) ConnBanner(state)
+            UpdateNotice(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) { updating = true }
             if (tl.total > FILTER_OVER || query.isNotEmpty()) FilterBox(query) { query = it }
         }
         if (!state.loaded && state.sessions.isEmpty()) {

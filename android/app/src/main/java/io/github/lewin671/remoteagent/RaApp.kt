@@ -75,6 +75,7 @@ class RaApp : Application() {
             override fun onStart(owner: LifecycleOwner) {
                 foreground = true
                 loadAccount()
+                io.github.lewin671.remoteagent.update.Updater.check(this@RaApp)
                 _remote.value?.let { r ->
                     r.start()
                     Push.register(this@RaApp, r)

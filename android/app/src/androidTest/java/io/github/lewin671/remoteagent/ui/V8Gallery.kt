@@ -436,8 +436,35 @@ class V8Gallery {
     @Test fun connCheck() {
         shoot("30-conn-check", accountState(), then = {
             ui.onNodeWithText("连接检测").performScrollTo().performClick()
+            // Until the check is over: 再测一次 is enabled again.
+            ui.waitUntil(20_000) { ui.onAllNodesWithText("检测中…").fetchSemanticsNodes().isEmpty() }
         }) { Column(Modifier.weight(1f)) { SettingsScreen() } }
     }
+
+    private val newer = io.github.lewin671.remoteagent.core.Release(
+        "0.29.0", 82, io.github.lewin671.remoteagent.core.PROTOCOL_VERSION, "remote-agent-v0.29.0.apk", "0".repeat(64), 5_976_883,
+        "项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。",
+    )
+
+    private fun update(name: String, state: io.github.lewin671.remoteagent.update.UpdateState, home: Boolean = false) {
+        io.github.lewin671.remoteagent.update.Updater.showForTest(state)
+        try {
+            if (home) shoot(name, homeState(false)) { HomeScreen() }
+            else shoot(name, accountState()) { UpdateSheet {} }
+        } finally {
+            io.github.lewin671.remoteagent.update.Updater.showForTest(io.github.lewin671.remoteagent.update.UpdateState.Unknown)
+        }
+    }
+
+    @Test fun updateHome() = update("40-update-home", io.github.lewin671.remoteagent.update.UpdateState.Available(newer), home = true)
+
+    @Test fun updateAvailable() = update("40-update-available", io.github.lewin671.remoteagent.update.UpdateState.Available(newer))
+
+    @Test fun updateDownloading() = update("40-update-downloading", io.github.lewin671.remoteagent.update.UpdateState.Downloading(newer, 2_097_152))
+
+    @Test fun updateFailed() = update("40-update-failed", io.github.lewin671.remoteagent.update.UpdateState.DownloadFailed(newer.copy(protocol = 99), "连接超时"))
+
+    @Test fun updateLatest() = update("40-update-latest", io.github.lewin671.remoteagent.update.UpdateState.Latest(0))
 
     @Test fun pair() {
         shoot("36-join", RemoteState()) { JoinScreen(io.github.lewin671.remoteagent.RaApp.instance) }
