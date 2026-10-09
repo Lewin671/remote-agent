@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
@@ -414,6 +415,28 @@ class V8Gallery {
             .addPinned(ProjectPref.newBuilder().setPath(foo)).addHidden(ProjectPref.newBuilder().setPath("$home/Code/demo")).build()),
             sessions = homeState(false).sessions + mapOf(session("demo", "mac", "$home/Code/demo", "演示", SessionStatus.SESSION_STATUS_EXITED)))
         shoot("35-manage", st) { ManageProjectsScreen() }
+    }
+
+    @Test fun scopeSheet() {
+        shoot("02-scope", homeState(true), then = { ui.onNodeWithTag("scope-title").performClick() }) { HomeScreen() }
+    }
+
+    @Test fun manageMenu() {
+        val st = homeState(true).copy(prefs = PrefsObject(1, ProjectPrefs.newBuilder().setSchema(1).addPinned(ProjectPref.newBuilder().setPath(foo)).build()))
+        shoot("35-manage-menu", st, then = { ui.onNodeWithContentDescription("管理 billing").performClick() }) { ManageProjectsScreen() }
+    }
+
+    @Test fun manageRemove() {
+        shoot("35-manage-remove", homeState(true), then = {
+            ui.onNodeWithContentDescription("管理 billing").performClick()
+            ui.onNodeWithText("移除项目…").performClick()
+        }) { ManageProjectsScreen() }
+    }
+
+    @Test fun connCheck() {
+        shoot("30-conn-check", accountState(), then = {
+            ui.onNodeWithText("连接检测").performScrollTo().performClick()
+        }) { Column(Modifier.weight(1f)) { SettingsScreen() } }
     }
 
     @Test fun pair() {

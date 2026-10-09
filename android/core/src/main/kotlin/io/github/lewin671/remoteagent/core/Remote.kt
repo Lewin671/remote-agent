@@ -1361,6 +1361,36 @@ class Remote(
     suspend fun machineCommand(machineId: String, cmd: Command): CommandResult = forward(prepare(machineId, "", cmd))
 
     /**
+     * How long one round trip to the server takes now, in ms: a request that does nothing
+     * there (连接检测). Throws when no answer comes in [timeoutMs].
+     */
+    suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
+        val call = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+            .newCall(okhttp3.Request.Builder().url(api.server.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build())
+        val started = System.nanoTime()
+        try {
+            call.execute().use { res ->
+                res.body?.bytes()
+                if (!res.isSuccessful) throw java.io.IOException("服务器返回 ${res.code}")
+            }
+        } catch (e: java.io.InterruptedIOException) {
+            throw java.io.IOException("没有回应", e)
+        }
+        (System.nanoTime() - started) / 1_000_000
+    }
+
+    /** How long one round trip to a computer takes, through the server and back: a sealed command that only reads its settings. */
+    suspend fun pingMachine(machineId: String, timeoutMs: Long = 15_000): Long {
+        val started = System.nanoTime()
+        try {
+            withTimeout(timeoutMs) { machineCommand(machineId, Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()) }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            throw java.io.IOException("没有回应", e)
+        }
+        return (System.nanoTime() - started) / 1_000_000
+    }
+
+    /**
      * Forwards a prepared command and returns the opened result. Transport
      * failures are retried with the same request ID, which the daemon runs at
      * most once; when the outcome stays unknown the error says so.

@@ -515,7 +515,7 @@ fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse?
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
     chosen?.text ?: if (!default.known) "审批：CLI 配置（未读到）" else default.mode?.text ?: "CLI 自己的模式"
 
-/** 这个项目已从列表移除 · 恢复: a notice, not a button in the way. */
+/** 这个项目已从列表移除 · 重新添加: a notice, not a button in the way. */
 @Composable
 private fun HiddenBanner(state: RemoteState, key: String) {
     val remote = LocalRemote.current
@@ -523,8 +523,8 @@ private fun HiddenBanner(state: RemoteState, key: String) {
     val blocked = prefsBlocked(state)
     Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Banner(
-            if (change == PrefsChanges.State.Saving) "正在恢复到项目列表…" else "这个项目已从列表移除",
-            action = if (blocked == null && change != PrefsChanges.State.Saving) "恢复" else null,
+            if (change == PrefsChanges.State.Saving) "正在添加到项目列表…" else "这个项目已从列表移除",
+            action = if (blocked == null && change != PrefsChanges.State.Saving) "重新添加" else null,
             onAction = { PrefsChanges.run(remote, PrefsOp.Unhide(key)) },
         )
         if (blocked != null) Hint(blocked, color = pal.orangeInk)
@@ -765,6 +765,8 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
 fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
+    val nav = LocalNav.current
+    var removing by remember { mutableStateOf(false) }
     var machine by remember { mutableStateOf(machineId) }
     var tab by remember { mutableStateOf(agent) }
     // The sets changed here, by CLI; the others stay as stored.
@@ -859,7 +861,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) "取消常用" else "设为常用", {
                     PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) PrefsOp.Unpin(cwd) else PrefsOp.Pin(cwd))
                 }, enabled = blockedPrefs == null)
-                TextAction("从项目列表移除", { PrefsChanges.run(remote, PrefsOp.Hide(cwd)); onClose() }, enabled = blockedPrefs == null, color = p.red)
+                TextAction("移除项目…", { removing = true }, enabled = blockedPrefs == null, color = p.red)
+                if (removing) RemoveProjectConfirm(cwd, onDismiss = { removing = false }) { onClose(); nav.home() }
             }
             "machine" -> {
                 SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
@@ -927,37 +930,12 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     }
 }
 
-/** The list of 新会话 · 选项目: 常用 first, then the others, and 新项目…. */
+/** The list of 新会话 · 选项目: the projects as every list shows them, each leading to its new-session box. */
 @Composable
 fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> Unit) {
     val p = pal
-    val groups = io.github.lewin671.remoteagent.core.projectGroups(state)
-    var search by remember { mutableStateOf("") }
-    val all = groups.pinned + groups.others
-    if (all.size > 8) OutlinedTextField(search, { search = it }, label = { Text("搜索项目") }, singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-    val match: (io.github.lewin671.remoteagent.core.Project) -> Boolean = { search.isBlank() || it.name.contains(search, true) || it.key.contains(search, true) }
-    @Composable
-    fun row(pr: io.github.lewin671.remoteagent.core.Project) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line).clickable { onPick(pr.key) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Avatar(pr.key, 22)
-            Column(Modifier.weight(1f)) {
-                Text(pr.name, style = T.bodyB, color = p.fg)
-                val ms = pr.machineIds.joinToString("、") { id ->
-                    machineLabel(state, id) + if (state.machines[id]?.online == true) "" else "（不在线）"
-                }
-                Text(shortPath(pr.key) + if (ms.isNotEmpty()) " · $ms" else "", style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Arrow(p.faint, ts(18.sp))
-        }
-    }
-    if (groups.pinned.any(match)) FieldLabel("常用项目")
-    groups.pinned.filter(match).forEach { row(it) }
-    if (groups.others.any(match)) FieldLabel(if (groups.pinned.isNotEmpty()) "其他项目" else "项目")
-    groups.others.filter(match).forEach { row(it) }
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onNew), verticalAlignment = Alignment.CenterVertically) {
-        IconText(Lucide.Plus, "新项目…", p.blue, T.bodyB)
-        Text("  选机器和目录", style = T.meta, color = p.muted)
+    ProjectList(state, onNew = onNew) { pr ->
+        ProjectRow(state, pr, onClick = { onPick(pr.key) }) { Arrow(p.faint, ts(18.sp)) }
     }
 }
 
@@ -1088,8 +1066,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
     val p = pal
     // The folder may be a project that has sessions already: what it starts with is settled the same way.
     LaunchedEffect(machine, path) {
-        if (io.github.lewin671.remoteagent.core.project(state, path) == null && savedSettings(state, path) == null)
-            runCatching { remote.changePrefs(PrefsOp.SetSettings(path, machine)) }
+        addProject(remote, state, machine, path)
     }
     val seed = projectStart(state, path, machine = machine)
     val entry = Drafts.newSession(path, seed?.config, seed?.settled != false)

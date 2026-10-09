@@ -301,12 +301,12 @@ class TimelineTest {
             session("3", "/Users/me/Code/billing", created = now - 50), session("4", "/Users/me/Code/blog", ended = now - 2 * 3600_000),
             session("5", "/Users/me/gone", ended = now - 1000), pinned = listOf("/Users/me/Code/blog"), hidden = listOf("/Users/me/gone"),
         )
-        val rows = scopeRows(st, HomeScope.Of("/Users/me/Code/foo"), now, zone = zone)
+        val rows = scopeRows(st, HomeScope.Of("/Users/me/Code/foo"))
         assertEquals(listOf("全部项目", "blog", "billing", "foo"), rows.map { it.name })
-        assertEquals(listOf("3 个进行中", "~/Code/blog · 7:41", "~/Code/billing · 1 个进行中", "~/Code/foo · 2 个进行中"), rows.map { it.detail })
+        assertEquals(listOf("3 个进行中", "~/Code/blog", "~/Code/billing · 1 个进行中", "~/Code/foo · 2 个进行中"), rows.map { it.detail })
         assertEquals(listOf(false, false, false, true), rows.map { it.current })
-        assertEquals(listOf("billing"), scopeRows(st, HomeScope.All, now, "BILL", zone).map { it.name })
+        assertEquals(listOf("billing"), scopeRows(st, HomeScope.All, "BILL").map { it.name })
         // One project: nothing to choose 全部项目 over.
-        assertEquals(listOf("foo"), scopeRows(state(session("1", "/Users/me/Code/foo")), HomeScope.Of("/Users/me/Code/foo"), now, zone = zone).map { it.name })
+        assertEquals(listOf("foo"), scopeRows(state(session("1", "/Users/me/Code/foo")), HomeScope.Of("/Users/me/Code/foo")).map { it.name })
     }
 }

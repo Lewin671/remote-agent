@@ -69,7 +69,6 @@ import io.github.lewin671.remoteagent.ui.RaTheme
 import io.github.lewin671.remoteagent.ui.SessionScreen
 import io.github.lewin671.remoteagent.ui.SettingsScreen
 import io.github.lewin671.remoteagent.ui.ManageProjectsScreen
-import io.github.lewin671.remoteagent.ui.HiddenProjectsScreen
 import io.github.lewin671.remoteagent.ui.OpenTerminal
 import io.github.lewin671.remoteagent.ui.pal
 import io.github.lewin671.remoteagent.ui.statusIn
@@ -185,7 +184,6 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
                     composable("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
-                    composable("projects/hidden") { HiddenProjectsScreen() }
                 }
                 if (tabs) BottomBar(remote, route, nav)
             }
@@ -220,7 +218,6 @@ class MainActivity : ComponentActivity() {
         question = { sid, qid -> nav.navigate("question/$sid/${routeArg(qid)}") },
         image = { sid, seq, i -> nav.navigate("image/$sid/$seq/$i") },
         client = { nav.navigate("client/$it") },
-        hiddenProjects = { nav.navigate("projects/hidden") },
         newProjectAt = { machine, path -> nav.navigate("newproject/$machine/${routeArg(path)}") },
         sessionTerminal = { sid ->
             OpenTerminal.requested[sid] = true

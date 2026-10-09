@@ -258,10 +258,14 @@ fun filterTail(count: Int, query: String): String =
 /** A row of 看哪个项目. */
 data class ScopeRow(val scope: HomeScope, val name: String, val detail: String, val current: Boolean)
 
-/** What a project's row says under its name: the path, then how many sessions run there or when it was last active. */
-fun projectDetail(pr: Project, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+/**
+ * What a project's row says under its name, the same wherever projects are listed (client-v34):
+ * the path, then how many sessions run there, or that none of its computers is online.
+ */
+fun projectDetail(state: RemoteState, pr: Project): String {
     val live = pr.sessions.count { !exited(it) }
-    return listOf(shortPath(pr.key), if (live > 0) "$live 个进行中" else whenText(pr.updatedMs, now, zone)).filter { it.isNotEmpty() }.joinToString(" · ")
+    val offline = pr.machineIds.isNotEmpty() && pr.machineIds.none { state.machines[it]?.online == true }
+    return shortPath(pr.key) + if (live > 0) " · $live 个进行中" else if (offline) " · 电脑不在线" else ""
 }
 
 /**
@@ -269,7 +273,7 @@ fun projectDetail(pr: Project, now: Long, zone: ZoneId = ZoneId.systemDefault())
  * between, then the pinned projects, then the others in the lists' order.
  * [search] keeps the projects whose name or path has it.
  */
-fun scopeRows(state: RemoteState, current: HomeScope, now: Long, search: String = "", zone: ZoneId = ZoneId.systemDefault()): List<ScopeRow> {
+fun scopeRows(state: RemoteState, current: HomeScope, search: String = ""): List<ScopeRow> {
     val listed = listedProjects(state)
     val q = search.trim()
     return buildList {
@@ -279,7 +283,7 @@ fun scopeRows(state: RemoteState, current: HomeScope, now: Long, search: String 
         }
         for (pr in listed) {
             if (q.isNotEmpty() && !pr.name.contains(q, ignoreCase = true) && !pr.key.contains(q, ignoreCase = true)) continue
-            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(pr, now, zone), current == HomeScope.Of(pr.key)))
+            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(state, pr), current == HomeScope.Of(pr.key)))
         }
     }
 }

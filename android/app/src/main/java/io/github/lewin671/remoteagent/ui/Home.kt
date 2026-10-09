@@ -274,25 +274,29 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, t: Long, onPick: (H
             return@Sheet
         }
         SheetHead("看哪个项目", "取消", onClose)
-        if (listedProjects(state).size > FILTER_OVER) OutlinedTextField(search, { search = it }, label = { Text("搜索项目") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-        for (row in scopeRows(state, scope, t, search)) {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line).clickable(role = Role.Button) { onPick(row.scope); onClose() }.padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ScopeAvatar(row.scope, 22)
-                Column(Modifier.weight(1f)) {
-                    Text(row.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(row.detail, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Box(Modifier.size(16.dp).semantics { if (row.current) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
-                    if (row.current) Mark(Lucide.Check, p.blue, 16.dp)
+        @Composable
+        fun check(on: Boolean) = Box(Modifier.size(16.dp).semantics { if (on) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
+            if (on) Mark(Lucide.Check, p.blue, 16.dp)
+        }
+        ProjectList(state, onNew = { browsing = true }, first = {
+            // 全部项目, when there is more than one project to choose between.
+            scopeRows(state, scope).firstOrNull { it.scope == HomeScope.All }?.let { all ->
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line).clickable(role = Role.Button) { onPick(all.scope); onClose() }.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ScopeAvatar(all.scope, 22)
+                    Column(Modifier.weight(1f)) {
+                        Text(all.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(all.detail, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    check(all.current)
                 }
             }
+        }) { pr ->
+            ProjectRow(state, pr, onClick = { onPick(HomeScope.Of(pr.key)); onClose() }) { check(scope == HomeScope.Of(pr.key)) }
         }
-        TextAction("新项目…", { browsing = true }, Modifier.fillMaxWidth(), style = T.body)
-        TextAction("管理项目", { onClose(); nav.manageProjects() }, Modifier.fillMaxWidth(), style = T.body, arrow = true)
+        TextAction("管理项目", { onClose(); nav.manageProjects() }, Modifier.fillMaxWidth().padding(start = 34.dp), style = T.body, arrow = true)
     }
 }
 

@@ -141,7 +141,6 @@ class Nav(
     /** The image viewer at an event's image. */
     val image: (sid: String, seq: Long, index: Int) -> Unit = { _, _, _ -> },
     val client: (String) -> Unit = {},
-    val hiddenProjects: () -> Unit = {},
     /** A folder chosen for a new project, to start its first session in. */
     val newProjectAt: (machine: String, path: String) -> Unit = { _, _ -> },
 )

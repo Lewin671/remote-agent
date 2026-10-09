@@ -130,6 +130,7 @@ fun SettingsScreen() {
     val p = pal
     val scope = rememberCoroutineScope()
     var logout by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
     var storage by remember { mutableStateOf(false) }
     var licenses by remember { mutableStateOf(false) }
     val t = now()
@@ -199,6 +200,7 @@ fun SettingsScreen() {
         GLabel("账户")
         Group(rows = listOf(
             { GRow("服务器", remote.account.server.removePrefix("https://")) },
+            { GRow("连接检测", connWord(state), onClick = { checking = true }, chevron = true) },
             { GRow("版本", app.versionName.let { v -> val c = app.buildCommit.take(7); if (c.isEmpty() || c in v) v else "$v · $c" }) },
             { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
             { GRow("退出并删除本机密钥", onClick = { logout = true }, danger = true) },
@@ -206,6 +208,7 @@ fun SettingsScreen() {
         Spacer(Modifier.height(24.dp))
     }
     }
+    if (checking) ConnCheckSheet(state) { checking = false }
     if (logout) Confirm(
         "退出并删除本机密钥？", "这台设备会退出账户，重新使用时需要配对加入。电脑上的会话继续运行，其他设备不受影响。", "退出", danger = true,
         onDismiss = { logout = false },
