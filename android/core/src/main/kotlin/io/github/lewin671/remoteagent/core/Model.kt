@@ -978,6 +978,7 @@ fun platformLabel(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): Strin
     if (first.isNotEmpty() && !first[0].isDigit()) return first
     return when (meta?.platform) {
         "android" -> "Android"
+        "ios" -> "iOS"
         "web" -> "浏览器"
         else -> "客户端"
     }
@@ -994,7 +995,7 @@ fun defaultClientName(d: DeviceView?, id: String): String = "${platformLabel(d?.
 /** What a client is, under its name in the list: an app or a browser, and what it says it runs on. */
 fun clientDetail(d: DeviceView?): String {
     val kind = when (d?.meta?.platform) {
-        "android" -> "App"
+        "android", "ios" -> "App"
         "web" -> "浏览器"
         else -> ""
     }

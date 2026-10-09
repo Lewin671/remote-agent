@@ -36,6 +36,8 @@ describe("device names", () => {
     const at = (...d: [number, number, number, number?, number?]) => BigInt(new Date(...d).getTime());
     expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }) })).toBe("浏览器 · Chrome on macOS");
     expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "android", description: "Android 16 · Pixel 9" }) })).toBe("App · Android 16 · Pixel 9");
+    expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "ios", description: "iOS 27.0 · iPhone" }) })).toBe("App · iOS 27.0 · iPhone");
+    expect(platformLabel(create(DeviceMetaSchema, { platform: "ios" }))).toBe("iOS");
     expect(clientDetail(undefined)).toBe("种类未知");
     expect(clientUsed({ lastSeenMs: BigInt(now - 30_000), createdMs: at(2026, 8, 1) }, now)).toBe("刚刚使用");
     expect(clientUsed({ lastSeenMs: BigInt(now - 5 * 60_000) }, now)).toBe("5 分钟前使用");

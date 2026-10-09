@@ -29,6 +29,7 @@ export function platformLabel(meta?: Pick<DeviceMeta, "platform" | "description"
   const first = meta?.description.trim().split(/\s+/)[0] ?? "";
   if (first && !/^\d/.test(first)) return first;
   if (meta?.platform === "android") return "Android";
+  if (meta?.platform === "ios") return "iOS";
   if (meta?.platform === "web") return "浏览器";
   return "客户端";
 }
@@ -48,7 +49,7 @@ export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined
 /** What a client is, under its name in the list: an app or a browser, and
  * what it says it runs on. */
 export function clientDetail(d: Partial<Pick<DeviceInfo, "meta">> | undefined): string {
-  const kind = d?.meta?.platform === "android" ? "App" : d?.meta?.platform === "web" ? "浏览器" : "";
+  const kind = d?.meta?.platform === "android" || d?.meta?.platform === "ios" ? "App" : d?.meta?.platform === "web" ? "浏览器" : "";
   return [kind, d?.meta?.description.trim()].filter(Boolean).join(" · ") || "种类未知";
 }
 
