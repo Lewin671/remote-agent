@@ -48,20 +48,19 @@ enum TerminalDebug {
         switch value("-termState") ?? "live" {
         case "connecting": terminal.show(.connecting)
         case "closed", "offline", "ended":
-            screen(terminal)
-            terminal.show(.closed("终端连接断开：NSURLErrorDomain -1005"))
+            screen(terminal, then: .closed("终端连接断开：NSURLErrorDomain -1005"))
         default: screen(terminal)
         }
         return true
     }
 
-    private static func screen(_ terminal: RemoteTerminal) {
+    private static func screen(_ terminal: RemoteTerminal, then state: RemoteTerminal.State? = nil) {
         let room = terminal.host.capacity
         if room.cols == 0 {
             // Not laid out yet: the sample is as large as the area.
             Task {
                 try? await Task.sleep(for: .milliseconds(50))
-                screen(terminal)
+                screen(terminal, then: state)
             }
             return
         }
@@ -72,6 +71,7 @@ enum TerminalDebug {
             fitted = false
         }
         terminal.show(cols: size.cols, rows: size.rows, data: Data(text(size).utf8), fitted: fitted)
+        if let state { terminal.show(state) }
     }
 
     /// A screen as Codex draws one: colours, a box, Chinese, wide and combined characters.

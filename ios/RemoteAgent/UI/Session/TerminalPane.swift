@@ -40,7 +40,8 @@ struct TerminalPane: View {
             fontRow
             TerminalScreen(terminal: terminal)
                 .overlay(alignment: .top) {
-                    if state != .live { notice(state) }
+                    // At the largest text sizes, or under the keyboard, the notice can be taller than the area.
+                    if state != .live { ScrollView { notice(state) }.scrollBounceBehavior(.basedOnSize) }
                 }
             TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: { terminal.host.toggleKeyboard() })
         }
@@ -102,7 +103,7 @@ struct TerminalPane: View {
                             IconText(Lucide.maximize2, "适配我的屏幕", color: Theme.Term.link, style: T.metaB)
                         }
                     }
-                    .lineLimit(1).fixedSize()
+                    .lineLimit(1).minimumScaleFactor(0.7)
                     .padding(.horizontal, 8)
                     .frame(minWidth: Theme.minHit, minHeight: Theme.minHit)
                     .contentShape(Rectangle())
@@ -115,6 +116,8 @@ struct TerminalPane: View {
         .frame(minHeight: Theme.minHit)
         .background(Theme.Term.bar)
         .bottomLine(Theme.Term.rule)
+        // The two bars keep the screen its room: their words stop growing at the first of the largest sizes.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private var fontRow: some View {
