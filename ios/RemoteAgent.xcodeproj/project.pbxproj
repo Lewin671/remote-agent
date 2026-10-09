@@ -11,6 +11,8 @@
 		A20000000000000000000031 /* RAProto in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000041 /* RAProto */; };
 		A20000000000000000000032 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000042 /* GRDB */; };
 		A20000000000000000000033 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000043 /* SwiftTerm */; };
+		A20000000000000000000034 /* RAMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000047 /* RAMarkdown */; };
+		A20000000000000000000035 /* RAMarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000048 /* RAMarkdownUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +66,8 @@
 				A20000000000000000000031 /* RAProto in Frameworks */,
 				A20000000000000000000032 /* GRDB in Frameworks */,
 				A20000000000000000000033 /* SwiftTerm in Frameworks */,
+				A20000000000000000000034 /* RAMarkdown in Frameworks */,
+				A20000000000000000000035 /* RAMarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +124,8 @@
 				A20000000000000000000041 /* RAProto */,
 				A20000000000000000000042 /* GRDB */,
 				A20000000000000000000043 /* SwiftTerm */,
+				A20000000000000000000047 /* RAMarkdown */,
+				A20000000000000000000048 /* RAMarkdownUI */,
 			);
 			productName = RemoteAgent;
 			productReference = A20000000000000000000002 /* RemoteAgent.app */;
@@ -442,6 +448,14 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000046 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
+		};
+		A20000000000000000000047 /* RAMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RAMarkdown;
+		};
+		A20000000000000000000048 /* RAMarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RAMarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
