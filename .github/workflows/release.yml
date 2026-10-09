@@ -240,3 +240,11 @@ jobs:
           PYTHON
           )
           gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
+          echo "latest=$latest" >> "$GITHUB_ENV"
+      # The app updates itself from a public mirror that holds the latest APK
+      # only: this repository and its releases stay private.
+      - name: Mirror the latest APK for the app to update from
+        if: steps.plan.outputs.skip != 'true' && env.latest == 'true'
+        env:
+          RELEASES_DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
+        run: scripts/publish-apk.sh "$RELEASE_TAG"

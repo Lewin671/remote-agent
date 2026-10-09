@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Prepare a task-completion release, or validate a tag in CI. No scheduled releases."""
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -94,6 +95,31 @@ def notes(tag):
     print(git("log", "--format=- %s (%h)", rev))
 
 
+def protocol_version():
+    return int(re.search(r"^const Version = (\d+)$", (ROOT / "internal/protocol/protocol.go").read_text(), re.M).group(1))
+
+
+def property_value(text):
+    return text.strip().replace("\\", "\\\\").replace("\r", "").replace("\n", "\\n")
+
+
+def manifest(tag, apk):
+    """What the app reads to find a newer release: key=value lines, read on Android as java.util.Properties."""
+    metadata = validate(tag)
+    data = Path(apk).read_bytes()
+    fields = {
+        "version": metadata["version"],
+        "versionCode": metadata["androidVersionCode"],
+        "protocol": protocol_version(),
+        "apk": f"remote-agent-{tag}.apk",
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size": len(data),
+        # The tag's message is written for users: what changed and what upgrading needs.
+        "notes": git("tag", "--list", tag, "--format=%(contents)"),
+    }
+    return "".join(f"{k}={property_value(str(v))}\n" for k, v in fields.items())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -101,9 +127,14 @@ def main():
     p.add_argument("kind", choices=["patch", "minor", "major"])
     for command in ("validate", "notes"):
         sub.add_parser(command).add_argument("tag")
+    p = sub.add_parser("manifest")
+    p.add_argument("tag")
+    p.add_argument("apk")
     args = parser.parse_args()
     if args.command == "notes":
         notes(args.tag)
+    elif args.command == "manifest":
+        print(manifest(args.tag, args.apk), end="")
     else:
         print(json.dumps(prepare(args.kind) if args.command == "prepare" else validate(args.tag)))
 

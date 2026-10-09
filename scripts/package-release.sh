@@ -1,6 +1,7 @@
 #!/bin/sh
 # Called only after checks pass, from a clean tagged checkout.
-# Release distributes only the installable APK and its checksum.
+# Release distributes only the installable APK and its checksum; the
+# manifest is what the app reads from the public mirror to update itself.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -15,3 +16,4 @@ p = Path('dist')
 apk = p / f'remote-agent-{sys.argv[1]}.apk'
 (p / 'SHA256SUMS').write_text(f'{hashlib.sha256(apk.read_bytes()).hexdigest()}  {apk.name}\n')
 PY
+python3 scripts/release.py manifest "$1" "dist/remote-agent-$1.apk" > dist/latest.properties
