@@ -55,7 +55,7 @@ jobs:
         working-directory: web
         env:
           RA_OFFICIAL_RELEASE: 'true'
-          VITE_DEFAULT_SERVER: https://ra.remote-agent.top
+          VITE_DEFAULT_SERVER: https://ra.example.cn
         run: |
           pnpm install --frozen-lockfile
           pnpm test
