@@ -105,6 +105,8 @@ fun UpdateSheet(onClose: () -> Unit) {
             runCatching { permission.launch(android.content.Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)) }
         }
     }
+    // Closing the sheet takes the request back: the package waits for a tap on 安装.
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Updater.installWhenReady = false } }
     // The download asked for from here is in: on to the installer, while this sheet is in front.
     androidx.compose.runtime.LaunchedEffect(state) {
         val s = state
