@@ -39,6 +39,25 @@ public final class PreparedCommand: Sendable {
     }
 }
 
+/// A login as the server gave it, for the app to keep between launches
+/// (architecture §10 「WebSocket」: both ends keep the last token and open the
+/// stream with it). It is a bearer credential: the app stores it with the
+/// account's keys, and it describes itself without the token.
+public struct SavedLogin: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public let token: String
+    /// When the server stops taking it, in milliseconds since 1970.
+    public let expiresMs: Int64
+
+    public init(token: String, expiresMs: Int64) {
+        self.token = token
+        self.expiresMs = expiresMs
+    }
+
+    public var description: String { "SavedLogin(expiresMs=\(expiresMs))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["expiresMs": expiresMs]) }
+}
+
 /// A step that took longer than it was given.
 struct TimedOut: Error {}
 
@@ -108,6 +127,8 @@ public actor Remote {
 
     var token = ""
     var tokenExpires: Int64 = 0
+    /// Hears of every login the server gives and of the one in use being refused (`keepLogin`).
+    var onLogin: (@Sendable (SavedLogin?) -> Void)?
     var ws: Socket?
     var retry: Int64 = 1000
     var running = false
@@ -156,6 +177,7 @@ public actor Remote {
     /// calls them without awaiting, and they take effect in the order called.
     enum Op: Sendable {
         case start, stop, close, reconnectNow, clearRemoved
+        case keepLogin(SavedLogin?, @Sendable (SavedLogin?) -> Void)
         case setNetwork(Bool)
         case touch(String), followers(String), retryEvents(String)
     }
@@ -277,6 +299,19 @@ public actor Remote {
         ops.yield(.start)
     }
 
+    /// Hands over the login kept from the last run, and where to keep the
+    /// next one. Called before `start`, it saves a cold start the two login
+    /// calls: the stream is opened with the kept token, and only the server
+    /// refusing it (close code 1008) drops it and logs in again.
+    ///
+    /// `onChange` gets every login the server gives from then on, and nil
+    /// when the one in use stops being any good: the server refused it, or
+    /// no longer knows this device. It is called on the actor, in the order
+    /// things happened, and must not block for long.
+    public nonisolated func keepLogin(_ saved: SavedLogin?, onChange: @escaping @Sendable (SavedLogin?) -> Void) {
+        ops.yield(.keepLogin(saved, onChange))
+    }
+
     /// One posted call. Nothing here awaits: what does is started and left to
     /// interleave, so the calls keep their order.
     private func perform(_ op: Op) {
@@ -296,6 +331,7 @@ public actor Remote {
         case .close:
             halt()
             closed = true
+            onLogin = nil
             historySweep?.cancel()
             historySweep = nil
             ops.finish()
@@ -319,6 +355,13 @@ public actor Remote {
         case .clearRemoved:
             removed = false
             publish()
+        case .keepLogin(let saved, let onChange):
+            onLogin = onChange
+            // A login made meanwhile is newer than what was kept.
+            if token.isEmpty, let saved, !saved.token.isEmpty {
+                token = saved.token
+                tokenExpires = saved.expiresMs
+            }
         case .touch(let sid):
             touch(sid)
         case .followers(let sid):
@@ -433,6 +476,8 @@ public actor Remote {
             do {
                 return signedIn(try await loginResponse(api: api, account: account))
             } catch let e as ConnectError where e.code == .permissionDenied {
+                // The server does not know this device: its token is no login either.
+                dropToken()
                 removed = true
                 running = false
                 generation += 1
@@ -449,7 +494,16 @@ public actor Remote {
 
     private func signedIn(_ res: PBLoginResponse) -> String {
         tokenExpires = res.expiresMs
+        // A Remote closed while the login was on its way keeps nothing: the account may be gone from this device.
+        if !closed { onLogin?(SavedLogin(token: res.token, expiresMs: res.expiresMs)) }
         return res.token
+    }
+
+    /// Forgets the token in use, here and wherever the app keeps it.
+    private func dropToken() {
+        token = ""
+        tokenExpires = 0
+        if !closed { onLogin?(nil) }
     }
 
     private func readCache() async {
@@ -564,7 +618,7 @@ public actor Remote {
         opening?.task.cancel()
         opening = nil
         // Only an explicit refusal invalidates the token.
-        if end.closeCode == policyViolation { token = "" }
+        if end.closeCode == policyViolation { dropToken() }
         fail(end.error ?? UserError("与 server 的连接断开"))
     }
 

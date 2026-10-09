@@ -480,6 +480,111 @@ extension ServerTests {
             }
         }
 
+        /// A client whose logins are counted, and the logins it was told to keep, in order.
+        private func counted(_ w: World, _ account: Account) throws -> (Remote, Counter, Mailbox<SavedLogin?>) {
+            let logins = Counter()
+            let counting = Intercept.http(for: w.server.url) { request in
+                if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
+                return request
+            }
+            return (try w.remote(account, http: counting), logins, Mailbox<SavedLogin?>())
+        }
+
+        @Test func aLoginKeptFromTheLastRunOpensTheStreamWithoutLoggingIn() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let (first, logins, kept) = try counted(w, acct)
+                first.keepLogin(nil) { kept.put($0) }
+                first.start()
+                _ = try await first.awaitState("online") { $0.conn == .online }
+                let saved = try #require(await kept.poll(2000) ?? nil)
+                #expect(!saved.token.isEmpty && saved.expiresMs > Int64(Date().timeIntervalSince1970 * 1000) + 86_400_000)
+                #expect(logins.value == 1)
+                first.close()
+
+                // The app was started again: the same device, the login it kept.
+                let (second, again, keptAgain) = try counted(w, acct)
+                second.keepLogin(saved) { keptAgain.put($0) }
+                second.start()
+                let id = acct.deviceId
+                _ = try await second.awaitState("online with the kept login") {
+                    $0.conn == .online && $0.sessions["s1"]?.info != nil && $0.devices[id] != nil
+                }
+                #expect(again.value == 0)
+                // Commands and lists go out under it too.
+                try await second.renameDevice(acct.deviceId, name: "kept")
+                #expect(again.value == 0)
+                #expect(keptAgain.all.isEmpty)
+            }
+        }
+
+        @Test func aKeptLoginTheServerRefusesIsDroppedAndReplaced() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let (r, logins, kept) = try counted(w, acct)
+                // A token the server never gave, as one it revoked or lost with its data: it lasts long by its own word.
+                let stale = SavedLogin(token: "not-a-token-of-this-server", expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 30 * 86_400_000)
+                r.keepLogin(stale) { kept.put($0) }
+                r.start()
+                // Refused with 1008: dropped first, then a login of the device's own.
+                let dropped = await kept.poll(5000)
+                #expect(dropped == .some(nil))
+                r.reconnectNow()
+                let fresh = try #require(await kept.poll(5000) ?? nil)
+                #expect(fresh.token != stale.token)
+                _ = try await r.awaitState("online after logging in") { $0.conn == .online }
+                #expect(logins.value == 1)
+            }
+        }
+
+        @Test func aKeptLoginAboutToRunOutIsNotUsed() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let (first, _, kept) = try counted(w, acct)
+                first.keepLogin(nil) { kept.put($0) }
+                first.start()
+                _ = try await first.awaitState("online") { $0.conn == .online }
+                let saved = try #require(await kept.poll(2000) ?? nil)
+                first.close()
+
+                let (second, logins, keptAgain) = try counted(w, acct)
+                let soon = SavedLogin(token: saved.token, expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 3_600_000)
+                second.keepLogin(soon) { keptAgain.put($0) }
+                second.start()
+                _ = try await second.awaitState("online") { $0.conn == .online }
+                #expect(logins.value == 1)
+                let renewed = try #require(await keptAgain.poll(2000) ?? nil)
+                #expect(renewed.expiresMs > soon.expiresMs)
+            }
+        }
+
+        @Test func aDeviceTheServerNoLongerKnowsKeepsNoLogin() async throws {
+            try await world { w in
+                let acct = try await w.join()
+                let (r, _, kept) = try counted(w, acct)
+                r.keepLogin(nil) { kept.put($0) }
+                r.start()
+                _ = try await r.awaitState("online") { $0.conn == .online }
+                #expect(await kept.poll(2000) != nil)
+                // Another client removes it; its stream is closed and its login refused from then on.
+                let other = try await w.client()
+                other.start()
+                _ = try await other.awaitState("online") { $0.conn == .online }
+                try await other.removeDevice(acct.deviceId)
+                _ = try await r.awaitState("removed", ms: 20_000) { $0.removed }
+                #expect(kept.all.last == .some(nil))
+            }
+        }
+
+        @Test func aKeptLoginDescribesItselfWithoutTheToken() {
+            let login = SavedLogin(token: "bearer-secret-value", expiresMs: 1_800_000_000_000)
+            var dumped = ""
+            dump(login, to: &dumped)
+            for text in ["\(login)", String(describing: login), String(reflecting: login), dumped] {
+                #expect(!text.contains("bearer-secret-value"))
+            }
+        }
+
         @Test func aStreamWithoutReadyIsReplacedEvenThoughTheUpgradeSucceeded() async throws {
             try await world { w in
                 let acct = try await w.join()

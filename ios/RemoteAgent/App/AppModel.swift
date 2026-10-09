@@ -151,6 +151,8 @@ final class AppModel {
     @ObservationIgnored private let parts: Parts
     @ObservationIgnored private var engine: (any SyncEngine)?
     @ObservationIgnored private var cache: CipherStore?
+    /// Where the engine's login is kept between launches; closed before the account is erased.
+    @ObservationIgnored private var logins: LoginKeeper?
     @ObservationIgnored private var follower: Task<Void, Never>?
     @ObservationIgnored private var loading = false
     /// Bumped whenever the account in use changes: a step that awaited meanwhile finds its work unwanted.
@@ -246,7 +248,8 @@ final class AppModel {
         let open = parts.openCache
         // Opening the database touches the disk. Without it the app still
         // works, from the server alone.
-        let store = await Task.detached { try? open(root, account) }.value
+        let keeper = LoginKeeper(vault: parts.storage.vault)
+        let (store, kept) = await Task.detached { (try? open(root, account), keeper.load()) }.value
         guard gen == generation else {
             try? store?.close()
             return
@@ -260,6 +263,10 @@ final class AppModel {
             stage = .failed(errorText(error))
             return
         }
+        // Before the engine starts: the stream is opened with the login the last run kept.
+        log.info("login from the last run: \(kept == nil ? "none" : "found", privacy: .public)")
+        made.remote.keepLogin(kept) { keeper.keep($0) }
+        logins = keeper
         adopt(account: account, made: made, store: store)
         if foreground { made.engine.start() }
     }
@@ -364,6 +371,8 @@ final class AppModel {
         described = nil
         let store = cache
         cache = nil
+        let keeper = logins
+        logins = nil
         if isDemo {
             // Sample data: nothing was stored, and the real account is not this one's to erase.
             stage = .join
@@ -374,8 +383,9 @@ final class AppModel {
         let storage = parts.storage
         let result = await Task.detached {
             Result {
-                // SQLite must let go of its files before they are removed.
+                // SQLite must let go of its files before they are removed, and no login may be kept after the keys are gone.
                 try? store?.close()
+                keeper?.close()
                 try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
             }
         }.value

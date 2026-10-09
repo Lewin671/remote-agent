@@ -5,6 +5,7 @@
 import Foundation
 import Network
 import RACore
+import os
 
 /// The part of `Remote` the lifecycle drives. `Remote` is the only real one;
 /// tests wrap a `Remote` that is never started and count the calls.
@@ -88,6 +89,56 @@ struct AccountStorage: Sendable {
     static func standard() -> AccountStorage {
         let vault = Vault()
         return AccountStorage(vault: vault, cacheRoot: CipherStore.defaultRoot, pending: PendingStore(vault: vault))
+    }
+}
+
+/// Keeps the server's login for the account between launches (architecture
+/// §10 「WebSocket」): the engine is handed the one kept, and tells of each
+/// new one and of the one in use being refused. It is in the Keychain with
+/// the account's keys, and goes with them on logout.
+///
+/// The Keychain blocks, so everything runs on a queue of its own, in the
+/// order asked for. Not keeping a login costs a login at the next launch
+/// and nothing else, so a Keychain that refuses is not an error here.
+final class LoginKeeper: @unchecked Sendable {
+    private let vault: Vault
+    private let queue = DispatchQueue(label: "ra.login")
+    /// Only touched on `queue`.
+    private var closed = false
+    private let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "login")
+
+    init(vault: Vault) {
+        self.vault = vault
+    }
+
+    /// The login kept by the last run, if any. Blocks: call it off the main actor.
+    func load() -> SavedLogin? {
+        queue.sync {
+            guard !closed, let kept = try? vault.loginToken() else { return nil }
+            return SavedLogin(token: kept.token, expiresMs: Int64(kept.expiresAt.timeIntervalSince1970 * 1000))
+        }
+    }
+
+    /// Keeps a new login, or forgets the one kept when the server refused it.
+    func keep(_ login: SavedLogin?) {
+        queue.async { [self] in
+            guard !closed else { return }
+            // Never the token: only that one was kept or dropped.
+            if let login {
+                let kept = LoginToken(token: login.token, expiresAt: Date(timeIntervalSince1970: Double(login.expiresMs) / 1000))
+                let ok = (try? vault.saveLoginToken(kept)) != nil
+                log.info("login \(ok ? "kept" : "not kept: the Keychain refused", privacy: .public)")
+            } else {
+                try? vault.deleteLoginToken()
+                log.info("login dropped")
+            }
+        }
+    }
+
+    /// Ends it: once this returns nothing more is written, so that erasing
+    /// the account cannot be followed by a login that was on its way. Blocks.
+    func close() {
+        queue.sync { closed = true }
     }
 }
 
