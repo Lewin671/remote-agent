@@ -374,6 +374,30 @@ final class FakeInitiation: PairingInitiation, @unchecked Sendable {
         await eventually("failed") { m2.phase == .failed(lost, uncertain: true) }
     }
 
+    @Test func aKeyOfferedAndNotConfirmedIsWithdrawnOnLeaving() async {
+        // The server took the allowing and its answer was lost: the new device could still fetch the key.
+        let (m, p) = await comparing()
+        m.approve()
+        await eventually("approving") { p.waitingForApprove }
+        p.approved(.failure(URLError(.networkConnectionLost)))
+        await eventually("failed") { if case .failed = m.phase { true } else { false } }
+        #expect(p.cancelled == 0)
+        m.leave()
+        await eventually("cancelled") { p.cancelled == 1 }
+    }
+
+    @Test func aKeyOfferedAndNotConfirmedIsWithdrawnByAskingForAnotherCode() async {
+        let (m, p) = await comparing()
+        m.approve()
+        await eventually("approving") { p.waitingForApprove }
+        p.approved(.failure(PairError("新设备没有来取账户密钥，它可能没有加入成功。请在新设备上确认，必要时重新配对。")))
+        await eventually("failed") { if case .failed = m.phase { true } else { false } }
+        m.start()
+        await eventually("cancelled") { p.cancelled == 1 }
+        await eventually("again") { made.list.count == 2 && made.list[1].waitingForJoin }
+        #expect(made.list[1].cancelled == 0)
+    }
+
     @Test func aCodeThatExpiresCanBeReplaced() async {
         let m = model()
         m.start()

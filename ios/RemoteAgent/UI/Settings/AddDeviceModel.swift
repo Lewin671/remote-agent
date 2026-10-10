@@ -86,7 +86,8 @@ final class AddDeviceModel {
                 phase = .done
             } catch {
                 guard run == self.run else { return }
-                self.pairing = nil
+                // The pairing is kept: the server may hold the key for the
+                // device that asked, and leaving or 换一个 has to withdraw it.
                 // The pairing's own words say what is known. Anything else
                 // broke after the key was offered: the new device has to be looked at.
                 if let known = error as? PairError {
@@ -104,6 +105,8 @@ final class AddDeviceModel {
         withdraw()
     }
 
+    /// Cancels the pairing on the server unless it is done, also one whose
+    /// allowing failed: the key may be there for the taking until it expires.
     private func withdraw() {
         guard let pairing else { return }
         self.pairing = nil
