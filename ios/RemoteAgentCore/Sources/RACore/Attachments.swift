@@ -507,15 +507,21 @@ public struct OutgoingRecords: Sendable {
     /// Keeps a message; it may run off the main thread.
     public func save(sid: String, _ o: OutgoingRecord, original: Bool) throws {
         let f = folder(sid, o.requestId)
-        try saveImages(files, folder: f, images: o.images, original: original)
-        try saveOrder(files, folder: f, ids: o.images.map(\.id), original: original)
-        try files.put(folder: f, name: "text", data: utf8(o.text))
-        try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
-        try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
-        let line = "\(sid)\t\(o.requestId)"
-        try Self.indexLock.withLock {
-            let idx = try index()
-            if !idx.contains(line) { try writeIndex(idx + [line]) }
+        do {
+            try saveImages(files, folder: f, images: o.images, original: original)
+            try saveOrder(files, folder: f, ids: o.images.map(\.id), original: original)
+            try files.put(folder: f, name: "text", data: utf8(o.text))
+            try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
+            try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
+            let line = "\(sid)\t\(o.requestId)"
+            try Self.indexLock.withLock {
+                let idx = try index()
+                if !idx.contains(line) { try writeIndex(idx + [line]) }
+            }
+        } catch {
+            // Not in the index: nothing would find what was written, and it would take up room unseen.
+            try? files.clearFolder(f)
+            throw error
         }
     }
 

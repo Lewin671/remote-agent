@@ -197,6 +197,22 @@ private final class FailureCount: @unchecked Sendable {
         #expect(files.keys.isEmpty)
     }
 
+    @Test func aMessageThatCouldNotBeKeptWholeLeavesNothingBehind() throws {
+        let files = MemoryFiles()
+        let o = Outgoing(requestId: "r1", text: "看这两张", imageIds: ["img-a", "img-b"], images: [img("a"), img("b")])
+        // Room for the first image and half of the second, as near the store's limit.
+        files.room = 3
+        #expect(throws: MemoryFiles.Full.self) { try OutgoingRecords(files: files).save(sid: "s", o.record, original: false) }
+        #expect(files.keys.isEmpty)
+        // Everything but the index went in: the same.
+        files.room = 8
+        #expect(throws: MemoryFiles.Full.self) { try OutgoingRecords(files: files).save(sid: "s", o.record, original: false) }
+        #expect(files.keys.isEmpty)
+        files.room = nil
+        try OutgoingRecords(files: files).save(sid: "s", o.record, original: false)
+        #expect(try OutgoingRecords(files: files).load(sid: "s").map(\.requestId) == ["r1"])
+    }
+
     @Test func whatWaitsForImagesToBeKeptHearsOnceTheyAreOnDiskOrGone() throws {
         let files = MemoryFiles()
         let d = draft("session:s", files)

@@ -206,6 +206,23 @@ class AttachmentsTest {
     }
 
     @Test
+    fun aMessageThatCouldNotBeKeptWholeLeavesNothingBehind() {
+        val files = MemoryFiles()
+        val o = Outgoing("r1", "看这两张", listOf("img-a", "img-b"), listOf(img("a"), img("b")))
+        // Room for the first image and half of the second, as near the store's limit.
+        files.room = 3
+        assertTrue(runCatching { OutgoingRecords(files).save("s", o, false) }.isFailure)
+        assertTrue(files.data.isEmpty())
+        // Everything but the index went in: the same.
+        files.room = 8
+        assertTrue(runCatching { OutgoingRecords(files).save("s", o, false) }.isFailure)
+        assertTrue(files.data.isEmpty())
+        files.room = null
+        OutgoingRecords(files).save("s", o, false)
+        assertEquals(listOf("r1"), OutgoingRecords(files).load("s").map { it.requestId })
+    }
+
+    @Test
     fun whatWaitsForImagesToBeKeptHearsOnceTheyAreOnDiskOrGone() {
         val files = MemoryFiles()
         val thread = java.util.concurrent.Executors.newSingleThreadExecutor()

@@ -148,14 +148,20 @@ class OutgoingRecords(private val files: SealedFiles) {
 
     fun save(sid: String, o: Outgoing, original: Boolean) {
         val f = folder(sid, o.requestId)
-        saveImages(files, f, o.images, original)
-        saveOrder(files, f, o.images, original)
-        files.put(f, "text", o.text.toByteArray())
-        files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
-        files.put(f, "mode", o.mode.name.toByteArray())
-        val line = "$sid\t${o.requestId}"
-        val idx = index()
-        if (line !in idx) writeIndex(idx + line)
+        try {
+            saveImages(files, f, o.images, original)
+            saveOrder(files, f, o.images, original)
+            files.put(f, "text", o.text.toByteArray())
+            files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
+            files.put(f, "mode", o.mode.name.toByteArray())
+            val line = "$sid\t${o.requestId}"
+            val idx = index()
+            if (line !in idx) writeIndex(idx + line)
+        } catch (e: Exception) {
+            // Not in the index: nothing would find what was written, and it would take up room unseen.
+            runCatching { files.clearFolder(f) }
+            throw e
+        }
     }
 
     fun load(sid: String, thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = { null }): List<Outgoing> =
