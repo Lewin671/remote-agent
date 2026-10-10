@@ -14,7 +14,9 @@ const (
 	// of them (a command forwarded to a machine, a page of history going
 	// out over a slow link) spend their time waiting, not decoding. They
 	// have their own, larger budget, so that a few of them in flight do
-	// not turn the rest away.
+	// not turn the rest away. A compressed body is not small whatever it
+	// declares: Connect inflates it up to the read limit before the
+	// interceptors see the request.
 	smallRPCBodyBytes             = 64 << 10
 	maxConcurrentSmallRPCRequests = 32
 	rpcBodyReadTimeout            = 15 * time.Second
@@ -27,7 +29,7 @@ func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) 
 			return
 		}
 		slots := s.rpcRequests
-		if r.ContentLength >= 0 && r.ContentLength <= smallRPCBodyBytes {
+		if r.ContentLength >= 0 && r.ContentLength <= smallRPCBodyBytes && !compressedRPC(r.Header) {
 			slots = s.smallRPCRequests
 			// The declared length is not trusted to bound the read.
 			r.Body = http.MaxBytesReader(w, r.Body, smallRPCBodyBytes)
@@ -52,4 +54,15 @@ func (s *Server) limitRPCRequests(next http.Handler, readTimeout time.Duration) 
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// compressedRPC reports whether a request says its messages are compressed,
+// in any of the protocols the Connect handlers speak.
+func compressedRPC(h http.Header) bool {
+	for _, k := range []string{"Content-Encoding", "Connect-Content-Encoding", "Grpc-Encoding"} {
+		if v := h.Get(k); v != "" && v != "identity" {
+			return true
+		}
+	}
+	return false
 }

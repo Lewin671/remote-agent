@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"net"
@@ -13,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"google.golang.org/protobuf/proto"
 )
 
 // slowRPCBody starts a request that declares a large body and withholds it.
@@ -156,5 +159,51 @@ func TestAuthMessagesHaveSmallerDecodeLimit(t *testing.T) {
 	_, err := ts.auth.GetChallenge(context.Background(), connect.NewRequest(&pb.GetChallengeRequest{DeviceId: strings.Repeat("x", 32<<10)}))
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("oversized auth body reached service: %v", err)
+	}
+}
+
+// A body that inflates to megabytes declares a few kilobytes. It must not
+// be counted as a small request, of which many more decode at once.
+func TestCompressedRPCBodyIsNotASmallRequest(t *testing.T) {
+	ts := newTestServer(t)
+	var conns []net.Conn
+	defer func() {
+		for _, conn := range conns {
+			conn.Close()
+		}
+	}()
+	for range maxConcurrentRPCRequests {
+		conns = append(conns, slowRPCBody(t, ts.url))
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for len(ts.srv.rpcRequests) != maxConcurrentRPCRequests {
+		if time.Now().After(deadline) {
+			t.Fatal("slow request bodies did not enter the decoder")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	msg, _ := proto.Marshal(&pb.GetEventsRequest{SessionId: strings.Repeat("a", 7<<20)})
+	var body bytes.Buffer
+	zw := gzip.NewWriter(&body)
+	zw.Write(msg)
+	zw.Close()
+	if body.Len() > smallRPCBodyBytes {
+		t.Fatalf("the compressed body is %d bytes, not a small one", body.Len())
+	}
+	for _, header := range []string{"Content-Encoding", "Connect-Content-Encoding", "Grpc-Encoding"} {
+		req, _ := http.NewRequest(http.MethodPost, ts.url+"/remoteagent.v1.ClientService/GetEvents", bytes.NewReader(body.Bytes()))
+		req.Header.Set("Content-Type", "application/proto")
+		req.Header.Set(header, "gzip")
+		res, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusServiceUnavailable {
+			t.Fatalf("%s: a compressed body was admitted as a small request: %d", header, res.StatusCode)
+		}
+	}
+	if len(ts.srv.smallRPCRequests) != 0 {
+		t.Fatal("a compressed body took a small request's slot")
 	}
 }
