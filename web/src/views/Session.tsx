@@ -41,7 +41,7 @@ import {
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
-import { ActionSheet, Alert, Banner, ConnBar, Dot, Exp, NavBar, Skeleton, useRemote } from "../ui";
+import { ActionSheet, Alert, Banner, ConnBar, Dot, Exp, fromHere, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
 import { Attempt } from "../attempt";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
@@ -255,6 +255,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
     setForking(true);
     setForkError("");
     const { slot } = forkTry.next(null);
+    const open = fromHere((id: string) => { location.hash = "/s/" + encodeURIComponent(id); });
     try {
       const res = await remote.command(sid, { case: "forkSession", value: { sessionId: sid } }, slot);
       forkTry.settle();
@@ -263,7 +264,7 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
       const id = res.kind.value.session.id;
       remote.created.add(id);
       setMenu(false);
-      location.hash = "/s/" + encodeURIComponent(id);
+      open(id);
     } catch (e) {
       forkTry.settle(e);
       setForkUnknown(forkTry.expired ? "expired" : forkTry.frozen ? "unknown" : "");

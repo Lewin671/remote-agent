@@ -2113,6 +2113,30 @@ it("sends a fork whose answer was lost again as the same request, and gives it u
   await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
 });
 
+it("keeps the route opened after a fork was sent when its reply arrives after unmount", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  const original = "#/s/" + s.id;
+  location.hash = original;
+  let reply!: (result: CommandResult) => void;
+  vi.spyOn(r, "command").mockImplementationOnce(() => new Promise((resolve) => { reply = resolve; }));
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await fromMenu("分叉会话");
+  await click(button("取消"));
+  act(() => root?.unmount());
+  root = undefined;
+  location.hash = "#/devices";
+  try {
+    await act(async () => {
+      reply(create(CommandResultSchema, { kind: { case: "forkSession", value: { session: { id: "fork-late" } } } }));
+    });
+    expect(r.created.has("fork-late")).toBe(true);
+    expect(location.hash).toBe("#/devices");
+  } finally {
+    location.hash = "";
+  }
+});
+
 it("forks a session from ⋯: says why it cannot yet, reports a failure in the menu, and opens the fork", async () => {
   const r = demo();
   const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
