@@ -68,7 +68,11 @@ const (
 	maxEventPageBytes = 1 << 20
 	// sendQueue is how many frames may wait for a slow stream peer before
 	// it is disconnected; it catches up from history after reconnecting.
-	sendQueue = 256
+	// sendQueueBytes bounds their size as well: a frame of events can be
+	// near 1 MiB. Clients are sent the same frames, so what waits for all
+	// of them together is no more than what waits for the slowest.
+	sendQueue      = 256
+	sendQueueBytes = 16 << 20
 )
 
 // Server is the relay.

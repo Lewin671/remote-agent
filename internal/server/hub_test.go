@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // Clients and daemons drop a stream whose first frame is not Ready, so
@@ -51,12 +52,12 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := ts.srv.hub
-	client := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan *pb.ServerFrame, sendQueue), cancel: func() {}}
+	client := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
 	h.mu.Lock()
 	h.clients[client] = true
 	h.mu.Unlock()
 	for round := range 100 {
-		machine := &peer{dev: &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan *pb.ServerFrame, sendQueue), cancel: func() {}}
+		machine := &peer{dev: &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan queuedFrame, sendQueue), cancel: func() {}}
 		h.add(machine)
 		// Several PutMachine calls are under way as the stream drops.
 		var wg sync.WaitGroup
@@ -72,7 +73,7 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 		wg.Wait()
 		var last *pb.Machine
 		for len(client.out) > 0 {
-			if m := (<-client.out).GetMachineUpdated(); m != nil {
+			if m := (<-client.out).frame.GetMachineUpdated(); m != nil {
 				last = m.Machine
 			}
 		}
@@ -110,5 +111,53 @@ func TestMachineIsLastSeenWhenItDisconnects(t *testing.T) {
 	}
 	if ms := res.Msg.Machines; len(ms) != 1 || ms[0].Online || ms[0].LastSeenMs < before {
 		t.Fatalf("machines after the disconnect: %v", ms)
+	}
+}
+
+func bigEvents(n int) *pb.ServerFrame {
+	env := &pb.Envelope{Ciphertext: make([]byte, n)}
+	return &pb.ServerFrame{Kind: &pb.ServerFrame_EventsAppended{EventsAppended: &pb.EventsAppended{
+		SessionId: "s1", Events: []*pb.StoredEvent{{Seq: 1, Envelope: env}},
+	}}}
+}
+
+// Frames of events can be near 1 MiB each, so a count of frames alone lets
+// one stalled client hold more than the server's memory.
+func TestSlowStreamPeerIsDroppedByBytesQueued(t *testing.T) {
+	ts := newTestServer(t)
+	h := ts.srv.hub
+	dropped := false
+	slow := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan queuedFrame, sendQueue), cancel: func() { dropped = true }}
+	h.mu.Lock()
+	h.clients[slow] = true
+	h.mu.Unlock()
+	f := bigEvents(900 << 10)
+	sent := 0
+	for !dropped && sent < sendQueue {
+		h.broadcast(f)
+		sent++
+	}
+	if !dropped {
+		t.Fatalf("a peer that reads nothing holds %d frames, %d MiB", sent, sent*proto.Size(f)>>20)
+	}
+	if held := len(slow.out) * proto.Size(f); held > sendQueueBytes {
+		t.Fatalf("%d bytes queued for one peer, over the budget of %d", held, sendQueueBytes)
+	}
+}
+
+// What a peer has been sent no longer counts against it.
+func TestStreamPeerThatKeepsUpIsNotDropped(t *testing.T) {
+	ts, _, _, _, _, _ := newV2Env(t)
+	cpriv, cid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := ts.stream(t, ts.login(t, cpriv, cid))
+	f := bigEvents(900 << 10)
+	for i := range 2 * sendQueueBytes / proto.Size(f) {
+		ts.srv.hub.broadcast(f)
+		if got := s.next(t, func(f *pb.ServerFrame) bool { return f.GetEventsAppended() != nil }); len(got.GetEventsAppended().Events) != 1 {
+			t.Fatalf("frame %d: %d events", i, len(got.GetEventsAppended().Events))
+		}
 	}
 }

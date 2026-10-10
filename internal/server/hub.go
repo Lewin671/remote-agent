@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -34,9 +35,17 @@ type hub struct {
 }
 
 type peer struct {
-	dev    *device
-	out    chan *pb.ServerFrame
+	dev *device
+	out chan queuedFrame
+	// queued is the bytes of the frames waiting in out or being written.
+	queued atomic.Int64
 	cancel context.CancelFunc
+}
+
+// queuedFrame is a frame waiting for a peer, and its serialized size.
+type queuedFrame struct {
+	frame *pb.ServerFrame
+	size  int64
 }
 
 type call struct {
@@ -104,7 +113,7 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(maxFrameBytes)
-	p := &peer{dev: dev, out: make(chan *pb.ServerFrame, sendQueue), cancel: cancel}
+	p := &peer{dev: dev, out: make(chan queuedFrame, sendQueue), cancel: cancel}
 	// Ready must be the first frame: peers drop a stream that starts with
 	// anything else. Queue it before the peer can be sent broadcasts,
 	// forwarded commands or heartbeats.
@@ -119,15 +128,17 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			conn.Close(websocket.StatusGoingAway, "")
 			return
-		case f := <-p.out:
-			b, err := proto.Marshal(f)
+		case q := <-p.out:
+			b, err := proto.Marshal(q.frame)
 			if err != nil {
 				slog.Error("marshal frame", "err", err)
+				p.queued.Add(-q.size)
 				continue
 			}
 			wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)
 			err = conn.Write(wctx, websocket.MessageBinary, b)
 			wcancel()
+			p.queued.Add(-q.size)
 			if err != nil {
 				return
 			}
@@ -247,16 +258,21 @@ func (h *hub) remove(p *peer) {
 	}
 }
 
-// send queues f for p, dropping the connection if p is too slow.
+// send queues f for p, dropping the connection if p is too slow: too many
+// frames are waiting for it, or too many bytes.
 func (h *hub) send(p *peer, f *pb.ServerFrame) bool {
-	select {
-	case p.out <- f:
-		return true
-	default:
-		slog.Warn("stream peer too slow; disconnecting", "device", p.dev.id)
-		p.cancel()
-		return false
+	q := queuedFrame{frame: f, size: int64(proto.Size(f))}
+	if p.queued.Add(q.size) <= sendQueueBytes {
+		select {
+		case p.out <- q:
+			return true
+		default:
+		}
 	}
+	p.queued.Add(-q.size)
+	slog.Warn("stream peer too slow; disconnecting", "device", p.dev.id)
+	p.cancel()
+	return false
 }
 
 // broadcast pushes f to every client, after the change is stored.
