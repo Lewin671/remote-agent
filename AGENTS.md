@@ -42,14 +42,14 @@
 
 用户已授权 agent 在合适的开发节点自动更新版本并发布，不需要逐次确认，不使用定时任务。
 
-- 一个用户任务的完整功能或一批相关修复完成、本地验收通过后，自动发布一次；不要给任务中间的小提交逐一发版。只有文档、界面稿或测试变化时不发产品版本
+- 一个用户任务的完整功能或一批相关修复完成、本地验收通过后，自动发布一次；不要给任务中间的小提交逐一发版。只有文档、界面稿或测试变化时不发产品版本；只改发布和把关工具（`release.py`、`public_scan.py`、`publish-public.sh`、流水线文件）或公开仓库页面时也不发，它们不进产物。产物由什么组成以 `scripts/release.py` 的 `PRODUCT_PATHS` 和 `PRODUCT_FILES` 为准，新增会被打进包里或决定构建方式的文件时把它加进去
 - 新功能升 minor，修复升 patch；1.0 以前的不兼容变化升 minor，1.0 起不兼容变化升 major。只有需要实际发布时才改 `version.properties`；各端共用产品版本，协议版本独立
 - 在独立 worktree 中提交任务代码并完成验收后，自动执行 `scripts/release-task.sh patch|minor|major "变化与升级要求"`。它会 fetch/rebase、检查是否有产品变化、递增共享版本与 Android code、提交版本文件、跑检查、创建 tag 并原子推送。没有产品变化会跳过；需要单步处理时用 `python3 scripts/release.py prepare patch|minor|major`
 - 版本提交 rebase 到最新 main 后重新跑 `go test ./...` 和改动涉及的检查。若别人已发布使版本不再适用，重新计算版本；冲突仍按下文规则停下报告
 - 验证通过后，在版本提交上创建 annotated tag，并以 `git push --atomic origin HEAD:main refs/tags/vX.Y.Z` 一次推送提交和 tag，禁止 force push、移动或复用已推送的版本 tag
 - GitHub 的 Release 工作流在版本提交推到 `main`（`version.properties` 变化）时触发，从 tag 所在的提交构建所有端，Go/网页/Android 检查全部通过才发布：正式签名 APK、各平台的 daemon 和 server、网页包，以及 `SHA256SUMS`。最新一版随后发布成公开仓库 `Lewin671/remote-agent-releases` 的 Release，App 从那里更新，别人从那里部署自己的一套（[docs/architecture.md](docs/architecture.md) 的「产品版本与发布」）；源码不公开。失败不算发布完成：查看 Actions 错误并修复；代码修复发下一版，同一 tag 的暂时失败可手动运行工作流并填入该 tag 重跑。不填 tag 手动运行是演练：跑全部检查和打包，但不发布
-- **公开的东西不带我们自己的部署**：公开仓库的页面在 `deploy/releases-repo/`，产物由 `scripts/build-dist.sh` 构建；域名、主机名、邮箱、设备号、密钥和本机路径都不能出现在里面。`scripts/public_scan.py` 在打包和交接时各查一遍，查到就不发布；新增一种不能公开的标识时把它加进这个脚本的名单。交接用的 `incoming` 分支是一次性的，`publish-public.sh` 对它的强推是「禁止 force push」的唯一例外；公开仓库已发布的 Release 不覆盖。公开的示例一律用 `example.com`
-- **改公开仓库的页面**：只改 `deploy/releases-repo/` 里的源文件，随任务提交到这里，再把这个目录的内容推到公开仓库的 `main`；不在 GitHub 网页上直接改，那样绕过扫描，下次同步还会被覆盖。推之前跑 `python3 scripts/public_scan.py <要推的目录>`，提交作者用 GitHub 的 noreply 地址（`37481138+Lewin671@users.noreply.github.com`），不用本机 git 配置的邮箱。改了那边的工作流或安装脚本，先在这里的演练里跑通
+- **公开的东西不带我们自己的部署**：公开仓库的页面在 `deploy/releases-repo/`，产物由 `scripts/build-dist.sh` 构建；域名、主机名、邮箱、设备号、密钥和本机路径都不能出现在里面。`scripts/public_scan.py` 在打包、交接和同步页面时各查一遍，查到就不发布：按名单查内容，按文件名拒绝部署的配置和状态（`.env`、数据库、密钥等），打包时还要求一版的文件和每个压缩包的成员正好是预期的那些，所以往包里加文件要同时改它的 `release()`；新增一种不能公开的标识时把它加进这个脚本的名单。交接用的 `incoming` 分支是一次性的，`publish-public.sh` 对它的强推是「禁止 force push」的唯一例外；公开仓库已发布的 Release 不覆盖。公开的示例一律用 `example.com`
+- **改公开仓库的页面**：只改 `deploy/releases-repo/` 里的源文件，随任务提交到这里。推到 `main` 后 `Public pages` 工作流自动把这个目录同步成公开仓库的 `main`（`scripts/sync-public-pages.sh`：先扫描，用 GitHub 的 noreply 地址提交，普通推送），不用发版，也不要手动推；不在 GitHub 网页上直接改，那样绕过扫描，下次同步还会被覆盖。推送后确认这个工作流成功。改了那边的工作流或安装脚本，先在这里的演练里跑通（Release 工作流不填 tag 手动运行）
 - **在公开仓库说话也是公开的**：回 issue、写评论或 Release 说明时，不贴 daemon 或 server 的日志原文、截图、域名、机器 ID、账户密钥、setup token 和配对链接；需要举例就用 `example.com` 和编造的 ID
 - **发布说明是公开的**：`release-task.sh` 的第二个参数成为 tag 的说明，原样进公开的清单和公开仓库的 Release，显示在 App 的更新弹层里。只写用户看得懂的变化和升级要求，不写服务器地址、部署细节、密钥或内部讨论
 - 发布产物不代表部署线上服务，不自动升级本机 daemon，也不自动安装 APK。已有部署授权按原任务执行

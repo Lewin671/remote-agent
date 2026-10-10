@@ -1,0 +1,33 @@
+name: Public pages
+
+# The public repository's pages, installer and workflow follow
+# deploy/releases-repo/ on main, without waiting for a release.
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/releases-repo/**
+      - scripts/sync-public-pages.sh
+      - scripts/public_scan.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time and none dropped midway: the last one to run decides the pages.
+concurrency:
+  group: public-pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Scanner tests
+        run: python3 -m unittest discover -s scripts -p 'public_scan_test.py'
+      - name: Update the public repository
+        env:
+          RELEASES_DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
+        run: scripts/sync-public-pages.sh
