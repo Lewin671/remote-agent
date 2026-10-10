@@ -144,6 +144,39 @@ import Testing
         #expect(q.offer(output("ab")) == .schedule)
         #expect(q.offer(output("abc")) == .overflow)
     }
+
+    @Test func aQueueThatNeverRunsEmptyLetsGoOfWhatWasTaken() {
+        final class Freed: @unchecked Sendable {
+            private let lock = NSLock()
+            private var n = 0
+            var count: Int { lock.withLock { n } }
+            func add() { lock.withLock { n += 1 } }
+        }
+        let freed = Freed()
+        // Too long to be kept inline: the bytes are let go of when the last frame holding them is.
+        func tracked() -> PBTerminalFrame {
+            let size = 64
+            let bytes = UnsafeMutableRawPointer.allocate(byteCount: size, alignment: 1)
+            bytes.initializeMemory(as: UInt8.self, repeating: 0x61, count: size)
+            return .with {
+                $0.output = Data(bytesNoCopy: bytes, count: size, deallocator: .custom { p, _ in
+                    p.deallocate()
+                    freed.add()
+                })
+            }
+        }
+        let q = TerminalFrames()
+        _ = q.offer(tracked())
+        // Output keeps coming: there is always a frame behind the ones taken.
+        for round in 1...100 {
+            _ = q.offer(tracked())
+            let (batch, more) = q.drain(maxBatchBytes: 64)
+            #expect(batch.count == 1)
+            #expect(more)
+            _ = consume batch
+            #expect(freed.count == round)
+        }
+    }
 }
 
 /// Android's term/TerminalGeometryTest.

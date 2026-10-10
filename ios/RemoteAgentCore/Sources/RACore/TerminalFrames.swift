@@ -25,8 +25,6 @@ public final class TerminalFrames: Sendable {
 
     private struct State {
         var frames: [PBTerminalFrame] = []
-        /// The frames before this one have been taken.
-        var head = 0
         var bytes = 0
         var scheduled = false
         var closed = false
@@ -45,7 +43,7 @@ public final class TerminalFrames: Sendable {
         let n = Self.size(frame)
         return state.withLock { s in
             if s.closed { return .closed }
-            if s.bytes + n > maxBytes || s.frames.count - s.head >= maxFrames {
+            if s.bytes + n > maxBytes || s.frames.count >= maxFrames {
                 s = State(closed: true)
                 return .overflow
             }
@@ -60,20 +58,17 @@ public final class TerminalFrames: Sendable {
     /// The next frames in order, about `maxBatchBytes` of them and at least one, and whether more wait.
     public func drain(maxBatchBytes: Int = 64 * 1024) -> (batch: [PBTerminalFrame], more: Bool) {
         state.withLock { s in
-            var batch: [PBTerminalFrame] = []
+            var taken = 0
             var n = 0
-            while s.head < s.frames.count, batch.isEmpty || n + Self.size(s.frames[s.head]) <= maxBatchBytes {
-                let f = s.frames[s.head]
-                s.head += 1
-                batch.append(f)
-                n += Self.size(f)
+            while taken < s.frames.count, taken == 0 || n + Self.size(s.frames[taken]) <= maxBatchBytes {
+                n += Self.size(s.frames[taken])
+                taken += 1
             }
+            let batch = Array(s.frames[..<taken])
+            // Taken out, not stepped over: a queue that never runs empty must not keep what was shown.
+            s.frames.removeFirst(taken)
             s.bytes -= n
-            if s.head == s.frames.count {
-                s.frames.removeAll(keepingCapacity: true)
-                s.head = 0
-            }
-            s.scheduled = s.head < s.frames.count
+            s.scheduled = !s.frames.isEmpty
             return (batch, s.scheduled)
         }
     }
