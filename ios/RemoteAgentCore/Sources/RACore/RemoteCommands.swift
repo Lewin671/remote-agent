@@ -194,6 +194,7 @@ extension Remote {
         req.deviceID = deviceId
         _ = try await api.client.removeDevice(request: req, headers: Api.headers(token: token)).value()
         await dropMachine(deviceId)
+        bump(&devicePushes, deviceId)
         devices[deviceId] = nil
         publish()
     }

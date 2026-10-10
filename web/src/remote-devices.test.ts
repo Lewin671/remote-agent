@@ -59,3 +59,19 @@ it("does not bring back a device removed while its metadata was opening", async 
   await p;
   expect(r.devices.has("other")).toBe(false);
 });
+
+it("leaves a device as a push left it while the list was on its way", async () => {
+  const { r, dev } = await setup();
+  await r.put(await dev(2n, "旧设备"));
+  // The server has answered with the list as it was; the answer is still on its way.
+  let answer!: (list: unknown) => void;
+  (r as unknown as { api: object }).api = { listDevices: () => new Promise((res) => (answer = res)) };
+  const reading = r.loadDevices();
+  const frame = (k: unknown) => (r as unknown as { onFrame(k: unknown): Promise<void> }).onFrame(k);
+  await frame({ case: "deviceRemoved", value: { deviceId: "other" } });
+  await frame({ case: "deviceUpdated", value: { device: create(DeviceSchema, { id: "new", kind: DeviceKind.CLIENT }) } });
+  answer({ devices: [await dev(2n, "旧设备")] });
+  await reading;
+  expect(r.devices.has("other")).toBe(false);
+  expect(r.devices.has("new")).toBe(true);
+});

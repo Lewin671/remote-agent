@@ -1062,6 +1062,39 @@ extension ServerTests {
             }
         }
 
+        @Test func aDeviceListInFlightDoesNotUndoWhatWasPushedMeanwhile() async throws {
+            try await world { w in
+                let hold = Signal()
+                let held = Signal()
+                let gate = Signal()
+                w.onClose { gate.set() }
+                let slow = Intercept.http(for: w.server.url, answered: { request in
+                    guard hold.isSet, request.url?.path.hasSuffix("/ListDevices") == true else { return }
+                    held.set()
+                    await gate.wait()
+                }) { $0 }
+                let a = try w.remote(try await w.join(), http: slow)
+                let other = try await w.client()
+                let leaving = try await w.join()
+                a.start()
+                other.start()
+                _ = try await a.awaitState("a devices") { $0.conn == .online && $0.devices[leaving.deviceId] != nil }
+                _ = try await other.awaitState("other online") { $0.conn == .online }
+                // The server has answered with the list as it is now; the answer is still on its way.
+                hold.set()
+                let reading = Task { await a.refreshDevices() }
+                #expect(await held.wait(10_000))
+                try await other.removeDevice(leaving.deviceId)
+                let joined = try await w.join()
+                _ = try await a.awaitState("both pushes") { $0.devices[leaving.deviceId] == nil && $0.devices[joined.deviceId] != nil }
+                gate.set()
+                await reading.value
+                #expect(a.current.devices[leaving.deviceId] == nil)
+                #expect(a.current.devices[joined.deviceId] != nil)
+                #expect(a.current.devices[a.account.deviceId] != nil)
+            }
+        }
+
         @Test func measuresTheWayToTheServerAndToAComputer() async throws {
             try await world { w in
                 let r = try await w.client()

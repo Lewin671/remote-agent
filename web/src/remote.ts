@@ -790,11 +790,13 @@ export class Remote {
         break;
       case "deviceUpdated":
         if (kind.value.device) {
+          this.devicePushed(kind.value.device.id);
           await this.putDevice(kind.value.device);
           this.changed();
         }
         break;
       case "deviceRemoved":
+        this.devicePushed(kind.value.deviceId);
         this.deviceRemovals.set(kind.value.deviceId, (this.deviceRemovals.get(kind.value.deviceId) ?? 0) + 1);
         this.devices.delete(kind.value.deviceId);
         this.changed();
@@ -1526,10 +1528,14 @@ export class Remote {
   /** Lists the account's devices. */
   async loadDevices() {
     try {
+      const then = new Map(this.devicePushes);
       const r = await this.api.listDevices({});
+      // A device pushed while the list was in flight is as the push left it:
+      // the list may be from before, and nothing would correct it afterwards.
+      const pushed = (id: string) => (this.devicePushes.get(id) ?? 0) !== (then.get(id) ?? 0);
       const ids = new Set(r.devices.map((d) => d.id));
-      for (const id of this.devices.keys()) if (!ids.has(id)) this.devices.delete(id);
-      for (const d of r.devices) await this.putDevice(d);
+      for (const id of this.devices.keys()) if (!ids.has(id) && !pushed(id)) this.devices.delete(id);
+      for (const d of r.devices) if (!pushed(d.id)) await this.putDevice(d);
       this.devicesStatus = "ready";
       this.changed();
       await this.describeSelf();
@@ -1542,6 +1548,14 @@ export class Remote {
   // Removals seen per device, so that metadata still opening when its
   // device goes does not bring it back.
   private deviceRemovals = new Map<string, number>();
+
+  // Pushes seen per device, registered, changed or removed, so that a list
+  // fetched before a push cannot undo it.
+  private devicePushes = new Map<string, number>();
+
+  private devicePushed(id: string) {
+    this.devicePushes.set(id, (this.devicePushes.get(id) ?? 0) + 1);
+  }
 
   private async putDevice(d: Device) {
     const removals = this.deviceRemovals.get(d.id) ?? 0;
@@ -1801,6 +1815,7 @@ export class Remote {
   /** Unregisters a device; a machine's sessions go with it. */
   async removeDevice(deviceId: string): Promise<void> {
     await this.api.removeDevice({ deviceId });
+    this.devicePushed(deviceId);
     this.deviceRemovals.set(deviceId, (this.deviceRemovals.get(deviceId) ?? 0) + 1);
     this.devices.delete(deviceId);
     for (const [id, s] of this.sessions) if (s.machineId === deviceId) this.forget(id);

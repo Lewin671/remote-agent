@@ -302,6 +302,8 @@ class Remote(
     private val machinePushes = HashMap<String, Int>()
     private val sessionPushes = HashMap<String, Int>()
     private val removedPushes = HashMap<String, Int>()
+    // And per device, registered, changed or removed: the same for the list of devices.
+    private val devicePushes = HashMap<String, Int>()
 
     @Volatile private var token = ""
     @Volatile private var tokenExpires = 0L
@@ -678,10 +680,12 @@ class Remote(
                 if (f.accountPrefsUpdated.`object`.objectId == PROJECT_PREFS) putPrefs(f.accountPrefsUpdated.`object`)
             }
             ServerFrame.KindCase.DEVICE_UPDATED -> {
+                bump(devicePushes, f.deviceUpdated.device.id)
                 putDevice(f.deviceUpdated.device)
                 publish()
             }
             ServerFrame.KindCase.DEVICE_REMOVED -> {
+                bump(devicePushes, f.deviceRemoved.deviceId)
                 devices.remove(f.deviceRemoved.deviceId)
                 publish()
             }
@@ -1106,10 +1110,13 @@ class Remote(
 
     private suspend fun loadDevices() {
         try {
+            val dp = HashMap(devicePushes)
             val r = api.client.listDevices(io.github.lewin671.remoteagent.proto.ListDevicesRequest.getDefaultInstance(), Api.headers(token)).value()
+            // A device pushed while the list was in flight is as the push left it:
+            // the list may be from before, and nothing would correct it afterwards.
             val ids = r.devicesList.map { it.id }.toSet()
-            devices.keys.retainAll(ids)
-            for (d in r.devicesList) putDevice(d)
+            devices.keys.retainAll { it in ids || pushed(devicePushes, dp, it) }
+            for (d in r.devicesList) if (!pushed(devicePushes, dp, d.id)) putDevice(d)
         } catch (e: Exception) {
             report(e)
         }
@@ -1495,6 +1502,7 @@ class Remote(
         api.client.removeDevice(RemoveDeviceRequest.newBuilder().setDeviceId(deviceId).build(), Api.headers(token)).value()
         withContext(dispatcher) {
             dropMachine(deviceId)
+            bump(devicePushes, deviceId)
             devices.remove(deviceId)
             publish()
         }

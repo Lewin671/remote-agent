@@ -710,6 +710,42 @@ class RemoteTest {
         val sb = b.awaitState("b sees the name") { it.devices[a.account.deviceId]?.meta?.name == "我的手机" }
         assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId))
     }
+
+    @Test
+    fun aDeviceListInFlightDoesNotUndoWhatWasPushedMeanwhile() = runBlocking<Unit> {
+        val hold = java.util.concurrent.atomic.AtomicBoolean(false)
+        val held = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val gate = java.util.concurrent.CountDownLatch(1)
+        // The server has answered; the answer waits here before it is handed on.
+        val slow = http.newBuilder().addInterceptor { chain ->
+            val res = chain.proceed(chain.request())
+            if (hold.get() && chain.request().url.encodedPath.endsWith("/ListDevices")) {
+                held.complete(Unit)
+                gate.await(10, TimeUnit.SECONDS)
+            }
+            res
+        }.build()
+        val a = Remote(joinWithRoot(root, server.url, http), slow)
+        closers += AutoCloseable { gate.countDown(); a.close() }
+        val other = client()
+        val leaving = joinWithRoot(root, server.url, http)
+        a.start()
+        other.start()
+        a.awaitState("a devices") { it.conn == ConnState.ONLINE && it.devices.containsKey(leaving.deviceId) }
+        other.awaitState("other online") { it.conn == ConnState.ONLINE }
+        hold.set(true)
+        val reading = launch { a.refreshDevices() }
+        withTimeout(10_000) { held.await() }
+        other.removeDevice(leaving.deviceId)
+        val joined = joinWithRoot(root, server.url, http)
+        a.awaitState("both pushes") { !it.devices.containsKey(leaving.deviceId) && it.devices.containsKey(joined.deviceId) }
+        gate.countDown()
+        reading.join()
+        val devices = a.state.value.devices
+        assertFalse(devices.containsKey(leaving.deviceId))
+        assertTrue(devices.containsKey(joined.deviceId))
+        assertTrue(devices.containsKey(a.account.deviceId))
+    }
 }
 
 /** A CipherCache in memory, as the Room one behaves. */

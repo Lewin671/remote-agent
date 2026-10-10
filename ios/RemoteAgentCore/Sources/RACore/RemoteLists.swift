@@ -408,10 +408,13 @@ extension Remote {
 
     func loadDevices() async {
         do {
+            let dp = devicePushes
             let r = try await api.client.listDevices(request: .init(), headers: Api.headers(token: token)).value()
+            // A device pushed while the list was in flight is as the push left it:
+            // the list may be from before, and nothing would correct it afterwards.
             let ids = Set(r.devices.map(\.id))
-            devices = devices.filter { ids.contains($0.key) }
-            for d in r.devices { putDevice(d) }
+            devices = devices.filter { ids.contains($0.key) || pushed(devicePushes, dp, $0.key) }
+            for d in r.devices where !pushed(devicePushes, dp, d.id) { putDevice(d) }
         } catch {
             report(error)
         }

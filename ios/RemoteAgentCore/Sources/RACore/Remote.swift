@@ -124,6 +124,8 @@ public actor Remote {
     var machinePushes: [String: Int] = [:]
     var sessionPushes: [String: Int] = [:]
     var removedPushes: [String: Int] = [:]
+    // And per device, registered, changed or removed: the same for the list of devices.
+    var devicePushes: [String: Int] = [:]
 
     var token = ""
     var tokenExpires: Int64 = 0
@@ -669,9 +671,11 @@ public actor Remote {
         case .accountPrefsUpdated(let u)?:
             if u.object.objectID == projectPrefsID { await putPrefs(u.object) }
         case .deviceUpdated(let u)?:
+            bump(&devicePushes, u.device.id)
             putDevice(u.device)
             publish()
         case .deviceRemoved(let r)?:
+            bump(&devicePushes, r.deviceID)
             devices[r.deviceID] = nil
             publish()
         case .machineRemoved(let r)?:
