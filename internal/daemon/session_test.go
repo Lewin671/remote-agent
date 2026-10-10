@@ -127,6 +127,15 @@ func newHarness(t *testing.T, cfg Config) *harness {
 	term := &fakeTerm{screen: idleScreen, alive: true, history: cfg.HistoryPath}
 	h := &harness{t: t, d: d, term: term, dir: dir}
 	h.open(meta{ID: "0123456789abcdef", Cwd: dir, Tmux: "ra-01234567", CreatedAt: time.Now()})
+	// A started session's loops are done before the test's directories
+	// are removed: they may still be saving when the test has seen what
+	// it waited for.
+	t.Cleanup(func() {
+		if s := h.s; s.stop != nil {
+			s.stop()
+			<-s.done
+		}
+	})
 	return h
 }
 

@@ -79,9 +79,13 @@ func inputStates(h *harness, id string) []*pb.InputState {
 
 func runInjector(t *testing.T, h *harness) {
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	done := make(chan struct{})
+	// It may still be saving the queue when the test has seen what it
+	// waited for: it is done before the test's directory is removed.
+	t.Cleanup(func() { cancel(); <-done })
 	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
-	go h.s.injectLoop(ctx)
+	s := h.s
+	go func() { defer close(done); s.injectLoop(ctx) }()
 }
 
 func TestSendWithImages(t *testing.T) {
