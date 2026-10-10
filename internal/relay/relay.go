@@ -65,6 +65,9 @@ type Relay struct {
 	backlog chan struct{}
 	// Retry is the first reconnect delay; it doubles up to a minute.
 	Retry time.Duration
+	// keyMu makes reading or creating a session's key one step. A sync
+	// left over from the previous connection may still be writing one.
+	keyMu sync.Mutex
 
 	mu        sync.Mutex
 	connected bool
@@ -349,13 +352,18 @@ var errKeyLost = errors.New("the session's key is missing locally but the server
 
 // sessionKey returns the session's key. A new key is only created for a
 // session the server does not have yet: the server keeps the first key it
-// gets, so a replacement would make later events unreadable.
+// gets, so a replacement would make later events unreadable. That holds
+// across connections too: two of them creating the key at once would each
+// write their own, and the file could end up with the one the server
+// did not keep.
 func (c *conn) sessionKey(id string, onServer bool) ([]byte, error) {
 	dir := c.r.backend.SessionDir(id)
 	if dir == "" {
 		return nil, fmt.Errorf("session %s has no state directory", id)
 	}
 	path := filepath.Join(dir, "relay.key")
+	c.r.keyMu.Lock()
+	defer c.r.keyMu.Unlock()
 	b, err := os.ReadFile(path)
 	if err == nil && len(b) == e2e.KeySize {
 		return b, nil
