@@ -93,6 +93,13 @@ enum SessionImages {
         return true
     }
 
+    /// Messages with images an earlier run left on their way come back with
+    /// the session's page, whether or not it has a message box now (an ended
+    /// session and one on a computer that is offline have none).
+    static func restore(session: String, remote: Remote, store: SessionStore) {
+        ImageCenter.of(remote).restoreOutgoing(session, store: store)
+    }
+
     /// 2. The attached images, over the text inside the message box.
     struct DraftStrip: View {
         let context: SessionImageContext
@@ -103,8 +110,6 @@ enum SessionImages {
                 center: center, key: ImageCenter.sessionKey(context.sessionId), machineId: context.machineId, blocked: context.blocked,
                 max: context.limit
             )
-            // Messages with images an earlier run left on their way come back with the session's page.
-            .task(id: context.sessionId) { center.restoreOutgoing(context.sessionId, store: context.store) }
             .sessionImageDebug(context)
         }
     }
