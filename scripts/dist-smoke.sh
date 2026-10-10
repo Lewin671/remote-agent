@@ -89,7 +89,8 @@ REMOTE_AGENT_HOME="$work/state" "$agent" account status
 if command -v docker >/dev/null 2>&1; then
 	sed -i 's|^RELAY_DOMAIN=.*|RELAY_DOMAIN=ra.example.com|; s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=https://app.example.com|' "$work/srv/.env"
 	(cd "$work/srv" && docker compose config --quiet && docker compose build --quiet remote-agent-server)
-	docker run --rm remote-agent-server:local --version
+	# The image starts the relay with its flags; asked directly, the binary names its version.
+	docker run --rm --entrypoint /remote-agent-server remote-agent-server:local --version
 	docker image rm remote-agent-server:local >/dev/null
 fi
 echo "dist-smoke: ok"
