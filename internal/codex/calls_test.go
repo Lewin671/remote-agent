@@ -240,3 +240,39 @@ func TestYieldedExecBeyondTheFirstBatchAfterRestart(t *testing.T) {
 		t.Fatalf("completion %v", evs)
 	}
 }
+
+// Two execs yielded and a wait went back to the first. The wait has no
+// event, so after a restart only the rollout says which call runs now:
+// what completes inside the wait belongs to the first exec, not to the
+// one started last.
+func TestWaitTargetAfterRestart(t *testing.T) {
+	p := restored(t, filepath.Join(t.TempDir(), "rollout.jsonl"), []string{
+		`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"tools.exec_command({cmd:\"go test ./...\"})"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 6"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c2","input":"tools.exec_command({cmd:\"npm run dev\"})"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c2","output":"Script running with cell ID 7"}}`,
+		`{"type":"response_item","payload":{"type":"function_call","name":"wait","call_id":"w1","arguments":"{\"cell_id\":\"6\",\"yield_time_ms\":20000}"}}`,
+		`{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":10},"last_token_usage":{"total_tokens":10},"model_context_window":1000}}}`,
+	})
+	evs, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"CommandExecution","id":"exec-1","command":["/bin/zsh","-lc","go test ./..."],"status":"completed"}}}`))
+	if err != nil || len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" {
+		t.Fatalf("item inside the wait: %v, err %v", evs, err)
+	}
+}
+
+// The call that ran last had ended before the restart: nothing runs now,
+// and an item completed afterwards is not given that call's ID.
+func TestNoCurrentCallAfterRestart(t *testing.T) {
+	p := restored(t, filepath.Join(t.TempDir(), "rollout.jsonl"), []string{
+		`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"tools.exec_command({cmd:\"npm run dev\"})"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 6"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c2","input":"tools.exec_command({cmd:\"touch x\"})"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c2","output":[{"type":"input_text","text":"Script completed\nOutput:\n"}]}}`,
+	})
+	evs, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"CommandExecution","id":"exec-9","command":["/bin/zsh","-lc","ls"],"status":"completed"}}}`))
+	if err != nil || len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "exec-9" {
+		t.Fatalf("item with no call running: %v, err %v", evs, err)
+	}
+}

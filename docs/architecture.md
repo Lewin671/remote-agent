@@ -209,7 +209,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **切换审批模式**：询问、自动、完全放行分别是 `/permissions` 菜单的 1、2、3，按数字直接选中；完全放行还要在 `Enable full access?` 里按 1 确认，以屏幕出现 `Permission selection requested` 为成功。计划模式用 Shift+Tab 切换，以状态栏右侧的 `Plan mode` 判断当前状态。运行中也能切，下一轮起生效（notes §4）。同样先记 `SettingsChanged`
 - **压缩上下文**：空闲时输入 `/compact`。压缩在 rollout 里是一条 `ContextCompaction`，无论是客户端发起的还是终端里敲的，都解析成「上下文已压缩」事件
 - **计划**：Plan 模式下模型给出计划后，rollout 里的 `Plan` 条目解析成 `PlanProposed` 事件，屏幕上的 `Implement this plan?` 让会话处于「计划待批准」，客户端显示计划卡片，回答时注入 1、2 或 3（notes §4）
-- **工具开始**：rollout 在调用工具时先写一条 `custom_tool_call`（或 `function_call`），结束时写同一个 `call_id` 的 `*_call_output`，中间可能有描述它做了什么的 `item_completed`（如 `CommandExecution`）。开始解析成带 `call_id` 的 `ToolStarted`；期间完成的第一个条目用这个 `call_id` 报成 `ToolCall`，同一次调用的后续条目用 `<call_id>#2` 这样的 ID；没有任何条目的调用（很多 `exec` 就是这样）在输出到来时补一条 `ToolCall`，保证每个开始都有结束。`wait` 是在等之前让出的 exec 单元（输出以 `Script running with cell ID N` 开头），不算新的调用，它的输出结束的是那个 exec。让出这条输出不产生事件，所以 daemon 重启后解析器除了重放事件日志，还要把 rollout 从头到已读位置再过一遍，只取回「哪个单元属于哪次调用、哪个 `wait` 在等它」；只有重放后还有没结束的 `exec` 时才读
+- **工具开始**：rollout 在调用工具时先写一条 `custom_tool_call`（或 `function_call`），结束时写同一个 `call_id` 的 `*_call_output`，中间可能有描述它做了什么的 `item_completed`（如 `CommandExecution`）。开始解析成带 `call_id` 的 `ToolStarted`；期间完成的第一个条目用这个 `call_id` 报成 `ToolCall`，同一次调用的后续条目用 `<call_id>#2` 这样的 ID；没有任何条目的调用（很多 `exec` 就是这样）在输出到来时补一条 `ToolCall`，保证每个开始都有结束。`wait` 是在等之前让出的 exec 单元（输出以 `Script running with cell ID N` 开头），不算新的调用，它的输出结束的是那个 exec。让出这条输出不产生事件，所以 daemon 重启后解析器除了重放事件日志，还要把 rollout 从头到已读位置再过一遍，只取回「哪个单元属于哪次调用、哪个 `wait` 在等它、现在跑的是哪次调用」；只有重放后还有没结束的 `exec` 时才读
 - **菜单操作的共同做法**：和注入一样拿控制锁、暂存本地按键，并在操作期间续期暂存；每一步都先确认画面再按键，等不到预期画面就按 Esc 退出。操作期间暂停状态检测，免得把自己打开的菜单当成弹窗
 - **命令参数**：Go 代码调用 tmux 和 codex 时一律传参数数组，不拼 shell 字符串
 

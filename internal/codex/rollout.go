@@ -100,9 +100,10 @@ func (p *Parser) Replay(e *pb.Event) {
 }
 
 // Restore reads again the rollout at path up to end for what no event
-// records: the exec cell a yielded call runs in, and the waits that
-// continue it. Without them a wait after a restart would be a call of its
-// own and the exec would never end. Only a call still open can have
+// records: the exec cell a yielded call runs in, the waits that continue
+// it, and which call runs now. Without them a wait after a restart would
+// be a call of its own and the exec would never end, and what completes
+// inside a wait would go to another call. Only a call still open can have
 // yielded.
 func (p *Parser) Restore(path string, end int64) error {
 	open := false
@@ -140,6 +141,12 @@ read:
 		if p.calls[call] != nil {
 			p.waits[wait] = call
 		}
+	}
+	// Replay takes the call started last for the one running now. A wait
+	// that went back to an earlier exec, or that call's end, has no event
+	// either.
+	if past.current == "" || p.calls[past.current] != nil {
+		p.current = past.current
 	}
 	return nil
 }
