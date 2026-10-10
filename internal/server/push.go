@@ -88,7 +88,7 @@ func newPusher(s *Server) (*pusher, error) {
 	if _, err := s.store.db.Exec(pushSchema); err != nil {
 		return nil, err
 	}
-	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent", client: newPushHTTPClient(), deliveries: make(chan struct{}, maxPushDeliveries)}
+	p := &pusher{s: s, recent: map[string]time.Time{}, subscriber: "https://github.com/Lewin671/remote-agent-releases", client: newPushHTTPClient(), deliveries: make(chan struct{}, maxPushDeliveries)}
 	if s.cfg.FCMServiceAccount != "" {
 		f, err := loadFCM(s.cfg.FCMServiceAccount)
 		if err != nil {
