@@ -6,7 +6,8 @@
 // The preview an event carries shows at once, enlarged, and the display
 // copy replaces it once it is here. That copy is decrypted in memory only:
 // what is cached on disk is the sealed envelope (`CipherCache.image`), and
-// `Remote.image` opens and checks it each time.
+// `Remote.image` opens and checks it each time. Both pictures are held by
+// the account's `ImageCenter` and go when the account is left.
 import Photos
 import RACore
 import RAProto
@@ -33,7 +34,10 @@ struct ViewerLoader {
     private func key(_ ref: PBImageRef) -> String { "\(session)/\(ref.imageID)" }
 
     /// The display copy held in memory for an image, if it was loaded while the viewer was open.
-    func held(_ ref: PBImageRef) -> ViewedImage? { center.viewed.get(center.remote, key: key(ref)) }
+    func held(_ ref: PBImageRef) -> ViewedImage? { center.viewedImage(key(ref)) }
+
+    /// Holds an image's display copy; whoever asked `held` for it is drawn again.
+    func keep(_ ref: PBImageRef, _ image: ViewedImage) { center.keepViewed(key(ref), image) }
 
     /// Where the image's display copy stands, fetching it if the event says there is one.
     func load(_ ref: PBImageRef, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
@@ -58,7 +62,7 @@ struct ViewerLoader {
             return ViewedImage(image: image.preparingForDisplay() ?? image, bytes: data, format: format)
         }.value
         guard let decoded else { return (.corrupt(why: "解不出图片"), nil) }
-        center.viewed.put(center.remote, key: key(ref), value: decoded)
+        keep(ref, decoded)
         return (.ready, decoded)
     }
 }
@@ -89,7 +93,7 @@ struct ViewerPage: View {
 
     var body: some View {
         let ref = image.ref
-        let shown = sharp ?? ViewerPreviews.image(ref)
+        let shown = sharp ?? loader.center.preview(ref)
         let note = viewerNote(big, sync: ref.sync)
         let retry = viewerCanRetry(big)
         ZStack {
@@ -157,25 +161,6 @@ final class ViewerPokes {
     var next = 0
     var save = 0
     var share = 0
-}
-
-/// The previews the events carry, decoded once for the viewer's pages.
-@MainActor
-enum ViewerPreviews {
-    private static let cache: NSCache<NSString, UIImage> = {
-        let c = NSCache<NSString, UIImage>()
-        c.countLimit = 60
-        return c
-    }()
-
-    static func image(_ ref: PBImageRef) -> UIImage? {
-        if ref.preview.isEmpty { return nil }
-        let key = "\(ref.imageID)/\(ref.preview.count)/\(ref.path)" as NSString
-        if let held = cache.object(forKey: key) { return held }
-        guard let image = UIImage(data: ref.preview) else { return nil }
-        cache.setObject(image, forKey: key)
-        return image
-    }
 }
 
 /// A picture on its way out of the app.

@@ -102,7 +102,16 @@ final class ImageCenter {
     /// The account was left: what was on its way when that happened must not go on for it.
     @ObservationIgnored private var closed = false
     /// Display copies decrypted while the viewer is open, so paging back does not fetch again.
-    @ObservationIgnored let viewed = AccountCache<ViewedImage>(limit: 6)
+    @ObservationIgnored private let viewed = AccountCache<ViewedImage>(limit: 6)
+    /// Counts the display copies that came in. Read with every look for one, so that a view that showed
+    /// what can be done without a copy is drawn again when the copy is here.
+    private var arrivals = 0
+    /// The previews the events carry, decoded once for the viewer's pages.
+    @ObservationIgnored private let previews: NSCache<NSString, UIImage> = {
+        let c = NSCache<NSString, UIImage>()
+        c.countLimit = 60
+        return c
+    }()
 
     #if DEBUG
     /// Sample images stay in the states they were shown in: nothing sends them.
@@ -149,6 +158,33 @@ final class ImageCenter {
         kept.removeAll()
         thumbs.removeAll()
         viewed.clear()
+        previews.removeAllObjects()
+    }
+
+    // MARK: Viewed images
+
+    /// The display copy held for an image of a session, if it was loaded while the viewer was open.
+    func viewedImage(_ key: String) -> ViewedImage? {
+        _ = arrivals
+        return viewed.get(remote, key: key)
+    }
+
+    /// Holds a display copy that was just decrypted. Not for an account that was left meanwhile.
+    func keepViewed(_ key: String, _ image: ViewedImage) {
+        if closed { return }
+        viewed.put(remote, key: key, value: image)
+        arrivals += 1
+    }
+
+    /// An event's preview as a picture, decoded once while the account is in use: it is decrypted
+    /// content like the display copies, and goes with them.
+    func preview(_ ref: PBImageRef) -> UIImage? {
+        if ref.preview.isEmpty { return nil }
+        let key = "\(ref.imageID)/\(ref.preview.count)/\(ref.path)" as NSString
+        if let held = previews.object(forKey: key) { return held }
+        guard let image = UIImage(data: ref.preview) else { return nil }
+        if !closed { previews.setObject(image, forKey: key) }
+        return image
     }
 
     // MARK: Drafts
