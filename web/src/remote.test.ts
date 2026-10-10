@@ -419,3 +419,67 @@ it("restores, for the next visit's first paint, the model lists and settings the
   await (other as unknown as { warm(): Promise<void> }).warm();
   expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
 });
+
+it("keeps an unauthenticated command result unknown and retries its slot", async () => {
+  const { Attempt } = await import("./attempt");
+  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { create } = await import("@bufbuild/protobuf");
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const device = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]) as CryptoKeyPair;
+  class Probe extends Remote {
+    constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key }); }
+  }
+  const r = new Probe();
+  const ids: string[] = [];
+  (r as unknown as { api: object }).api = { forward: async ({ command }: { command: Envelope }) => {
+    const requestId = fromBinary(HeaderSchema, command.header).requestId;
+    ids.push(requestId);
+    const result = await sealMessage(key, { kind: PayloadKind.COMMAND_RESULT, machineId: "m", requestId }, CommandResultSchema, create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "started" } } } }));
+    result.ciphertext[0] ^= 1;
+    return { result };
+  } };
+  const attempt = new Attempt<null>();
+  for (let i = 0; i < 2; i++) {
+    const { slot } = attempt.next(null);
+    const error = await r.machineCommand("m", { case: "createSession", value: { prompt: "task" } }, slot).catch(e => e);
+    expect(uncertain(error)).toBe(true);
+    attempt.settle(error);
+    expect(attempt.frozen).toBe(true);
+  }
+  expect(ids[1]).toBe(ids[0]);
+});
+
+it("reports unreadable preferences and allows a read retry", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { EnvelopeSchema } = await import("./gen/remoteagent/v1/envelope_pb");
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  class Probe extends Remote {
+    constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: key, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key }); }
+  }
+  const r = new Probe();
+  (r as unknown as { api: object }).api = { getAccountPrefs: async () => ({ object: { revision: 1n, envelope: create(EnvelopeSchema) } }) };
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  await r.loadPrefs();
+  expect(r.prefs.status).toBe("error");
+  expect(r.prefs.error).not.toBe("");
+  expect(r.prefs.snap).toBeUndefined();
+  (r as unknown as { api: object }).api = { getAccountPrefs: async () => ({}) };
+  await r.loadPrefs();
+  expect(r.prefs.status).toBe("ready");
+  expect(r.prefs.error).toBe("");
+});
+
+it("removes recorded text and image outbox entries even before the RPC settles", async () => {
+  const { DemoRemote } = await import("./dev/demo");
+  const r = DemoRemote.create(new URLSearchParams());
+  let finish!: () => void;
+  r.command = () => new Promise(resolve => { finish = () => resolve({ kind: { case: undefined } } as any); });
+  const id = r.send("s-idle", "text");
+  r.recorded("s-idle", [id]);
+  expect(r.outbox("s-idle")).toEqual([]);
+  finish();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(r.outbox("s-idle")).toEqual([]);
+  expect((r as unknown as { outboxes: Map<string, unknown> }).outboxes.has("s-idle")).toBe(false);
+});

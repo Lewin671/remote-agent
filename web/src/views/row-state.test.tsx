@@ -28,3 +28,19 @@ it("preserves expanded tools, prompts and details when a row leaves the viewport
     expect(host.querySelector("details")?.open).toBe(true);
   } finally { await act(async () => root.unmount()); host.remove(); }
 });
+
+it("preserves each code block's expansion independently across viewport remounts", async () => {
+  const { Markdown } = await import("../markdown");
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  const states = new Map<string, boolean>();
+  const code = Array.from({ length: 120 }, (_, i) => "line " + i).join("\n");
+  const row = <RowState id="row" states={states}><Markdown text={'```go\n' + code + '\n```\n\n> ```js\n' + code.split('\n').map(x => '> ' + x).join('\n') + '\n> ```'} /></RowState>;
+  try {
+    await act(async () => root.render(row));
+    expect(host.querySelectorAll(".cbmore")).toHaveLength(2);
+    await act(async () => host.querySelector<HTMLButtonElement>(".cbmore")!.click());
+    await act(async () => root.render(null));
+    await act(async () => root.render(row));
+    expect([...host.querySelectorAll(".cbmore")].map(b => b.getAttribute("aria-expanded"))).toEqual(["true", "false"]);
+  } finally { await act(async () => root.unmount()); host.remove(); }
+});

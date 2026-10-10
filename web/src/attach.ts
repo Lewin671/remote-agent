@@ -29,9 +29,8 @@ export interface TrayItem {
   machineId?: string; // where imageId is
   error?: string;
   bytes?: number;
-  // Put back with no bytes of its own (after a refresh, say): only its ID
-  // on the machine it was uploaded to. It can be sent there, never
-  // prepared or uploaded again.
+  // Put back with no bytes of its own (after a refresh, say): its old ID
+  // cannot prove the file is still there. It must be chosen again.
   remoteOnly?: boolean;
   // Tells the machine to drop this image's transfer, once one began.
   abort?: () => void;
@@ -85,13 +84,16 @@ export class Tray {
     this.onChange();
   }
 
-  /** Images already on the current machine, put back from a message that
-   * was not sent; nothing is prepared or uploaded again. All or nothing:
+  /** Images put back from a message that was not sent. Local bytes are
+   * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
   restore(images: { imageId: string; thumb?: Blob }[]): boolean {
     if (this.items.length + images.length > this.max) return false;
-    for (const im of images)
-      this.items.push({ key: "t" + ++keys, file: im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.thumb });
+    for (const im of images) {
+      const item: TrayItem = { key: "t" + ++keys, file: im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.thumb };
+      this.items.push(item);
+      void this.run(item, true);
+    }
     this.onChange();
     return true;
   }
@@ -172,12 +174,9 @@ export class Tray {
 
   private async run(item: TrayItem, prepare: boolean) {
     if (item.remoteOnly) {
-      // Nothing to prepare or upload: usable only where it already is.
-      if (item.machineId !== this.machineId) {
-        this.gen.set(item.key, (this.gen.get(item.key) ?? 0) + 1);
-        Object.assign(item, { state: "failed", error: "这张图只在原来的电脑上，换了电脑请移除后重新选择" });
-        this.onChange();
-      }
+      this.gen.set(item.key, (this.gen.get(item.key) ?? 0) + 1);
+      Object.assign(item, { state: "failed", error: "这张图没有本机副本，请移除后重新选择" });
+      this.onChange();
       return;
     }
     const g = (this.gen.get(item.key) ?? 0) + 1;

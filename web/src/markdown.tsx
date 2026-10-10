@@ -8,6 +8,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Box, BoxChecked, Check, ChevronDown, ChevronUp, Copy, X } from "./icons";
+import { useRowExpanded } from "./views/RowState";
 
 /** Whether a link target may be opened: web pages only, so javascript:,
  * data: and file paths never become clickable. */
@@ -561,10 +562,10 @@ function diffLine(l: string): string | undefined {
   return l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : undefined;
 }
 
-function Code({ lang, text }: { lang: string; text: string }) {
+function Code({ lang, text, name }: { lang: string; text: string; name: string }) {
   const lines = useMemo(() => text.split("\n"), [text]);
   const long = lines.length > FOLD_OVER;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useRowExpanded(name);
   const shown = long && !open ? lines.slice(0, FOLD_SHOWN) : lines;
   // Only a diff is colored: added and removed lines mean something.
   const diff = lang === "diff" || lang === "patch";
@@ -646,7 +647,7 @@ function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
   );
 }
 
-function Blocks({ blocks }: { blocks: Block[] }) {
+function Blocks({ blocks, path = "" }: { blocks: Block[]; path?: string }) {
   // A rule draws nothing but the space after it, so one that opens the
   // reply is left out: nothing is above it to be set apart from.
   let first = 0;
@@ -657,7 +658,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
         if (i < first) return null;
         switch (b.kind) {
           case "code":
-            return <Code key={i} lang={b.lang} text={b.text} />;
+            return <Code key={i} name={"code:" + path + i} lang={b.lang} text={b.text} />;
           case "heading":
             return (
               <p key={i} className={"mdh h" + Math.min(b.level, 4)}>
@@ -669,7 +670,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           case "quote":
             return (
               <blockquote key={i}>
-                <Blocks blocks={b.blocks} />
+                <Blocks blocks={b.blocks} path={path + i + "/"} />
               </blockquote>
             );
           case "list": {
@@ -677,7 +678,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
               <li key={n} className={it.task === "done" ? "task done" : it.task ? "task" : undefined}>
                 {it.task && (it.task === "done" ? <BoxChecked /> : <Box />)}
                 <Lines text={it.text} />
-                {it.children.length > 0 && <Blocks blocks={it.children} />}
+                {it.children.length > 0 && <Blocks blocks={it.children} path={path + i + "/" + n + "/"} />}
               </li>
             ));
             const loose = looseList(b.items.map((it) => it.text));

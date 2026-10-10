@@ -44,6 +44,25 @@ function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
+/** Registers this browser's saved choices for the current device after
+ * connecting, including when it has joined again under a new device ID. */
+export async function restorePushPrefs(remote: Remote): Promise<void> {
+  if (!pushSupported() || Notification.permission !== "granted") return;
+  const prefs = pushPrefs();
+  const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
+  if (!kinds.length) return;
+  const current = () => !remote.removed && remote.conn === "online";
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!current()) return;
+  if (!sub) {
+    const key = await remote.pushKey();
+    if (!current()) return;
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+  }
+  if (current()) await remote.setPushSubscription(JSON.stringify(sub), kinds);
+}
+
 /** Subscribes or unsubscribes to match prefs. */
 export async function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
   const reg = await navigator.serviceWorker.ready;

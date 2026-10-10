@@ -6,6 +6,7 @@ import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/p
 import { Code, ConnectError, createClient, type Client, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
+import { restorePushPrefs } from "./push";
 import {
   accountKey,
   checkServer,
@@ -18,6 +19,7 @@ import {
   newRequestID,
   open,
   openMessage,
+  OpenError,
   parseSecret,
   REGISTER_CONTEXT,
   sealMessage,
@@ -325,6 +327,7 @@ export class Remote {
   // What the user has typed and not sent, by session. Once sent, the
   // message is in the outbox.
   drafts = new Map<string, string>();
+  approvalReasons = new Map<string, string>();
   // The account's devices, machines and clients (ListDevices); names of
   // clients are sealed in their metadata.
   devices = new Map<string, DeviceInfo>();
@@ -339,6 +342,7 @@ export class Remote {
   // Cancels asked for from this page, by the queued message's request ID,
   // until the message leaves the queue.
   cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
+  resumes = new Map<string, { state: "sending" | "failed"; error: string }>();
   // Where each session's chat was scrolled to, so that leaving for the
   // terminal, the queue or a detail page and coming back keeps the place.
   scroll = new Map<string, { top: number; stick: boolean }>();
@@ -528,7 +532,7 @@ export class Remote {
         if (token && !this.token) [this.token, this.tokenExpires] = [String(token.token), Number(token.expiresMs)];
         if (machines && sessions && !this.listed)
           await this.quietly(async () => {
-            for (const m of fromBinary(ListMachinesResponseSchema, machines.bytes as Uint8Array).machines) await this.putMachine(m);
+            for (const m of fromBinary(ListMachinesResponseSchema, machines.bytes as Uint8Array).machines) await this.putMachine({ ...m, online: false });
             for (const s of fromBinary(ListRemoteSessionsResponseSchema, sessions.bytes as Uint8Array).sessions) await this.putSession(s);
           });
         // Still "loading": the list is shown as it was, and changed only once the server's copy is read.
@@ -784,6 +788,7 @@ export class Remote {
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
         void this.loadDevices();
         void this.loadPrefs();
+        void restorePushPrefs(this).catch(() => undefined);
         break;
       case "accountPrefsUpdated":
         if (kind.value.object) await this.takePrefs(kind.value.object, true);
@@ -1211,19 +1216,20 @@ export class Remote {
         );
         if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id) throw new Error("事件的位置被改动");
+        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
         b.pending.set(se.seq, msg);
         // What is held is the opened event: a packed envelope is smaller than it.
         b.bytes = (b.bytes ?? 0) + size + 256;
         fresh.push({ seq: se.seq, envelope: se.envelope! });
       } catch (e) {
         b.broken = true;
-        save();
         this.report(e);
-        return;
+        break;
       }
     }
     save();
     if (this.buffers.get(s.id) !== b) return;
+    const before = b.events.length;
     for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
       const event = b.pending.get(next)!;
       if (event.kind.case === "inputState") {
@@ -1237,7 +1243,7 @@ export class Remote {
       b.pending.delete(next);
     }
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
-    this.recorded(s.id, stored.length ? recordedIds(b.events.slice(-stored.length)) : []);
+    this.recorded(s.id, recordedIds(b.events.slice(before)));
     if (fillGaps && b.pending.size > 0) void this.fetchEvents(s.id);
     this.changed();
   }
@@ -1305,6 +1311,7 @@ export class Remote {
         return msg;
       } catch (e) {
         // The daemon's answer is final; only transport failures are retried.
+        if (e instanceof OpenError) throw new CommandError("unknown", "电脑的回复打不开，不确定指令有没有执行");
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
         if (ce.code === Code.Unauthenticated && attempt < 3) {
@@ -1356,6 +1363,7 @@ export class Remote {
   }
 
   private patchOut(sid: string, sendId: string, patch: Partial<Outgoing>) {
+    if (!this.outbox(sid).some((o) => o.sendId === sendId)) return;
     this.outboxes.set(
       sid,
       this.outbox(sid).map((o) => (o.sendId === sendId ? { ...o, ...patch } : o)),
@@ -1384,18 +1392,16 @@ export class Remote {
     this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs));
   }
 
-  /** The CLI recorded these messages: their images are in the session
-   * now, so this device's copies (up to six originals each) are let go.
-   * Messages not recorded keep theirs, to be put back into the input. */
+  /** The CLI recorded these messages: the history now holds them, so the
+   * outbox lets go of their text, requests and local image copies. */
   recorded(sid: string, requestIds: string[]) {
     if (!requestIds.length) return;
     const ids = new Set(requestIds);
     const box = this.outbox(sid);
-    if (!box.some((o) => ids.has(o.sendId) && o.thumbs?.length)) return;
-    this.outboxes.set(
-      sid,
-      box.map((o) => (ids.has(o.sendId) && o.thumbs ? { ...o, thumbs: undefined } : o)),
-    );
+    if (!box.some((o) => ids.has(o.sendId))) return;
+    const left = box.filter((o) => !ids.has(o.sendId));
+    if (left.length) this.outboxes.set(sid, left);
+    else this.outboxes.delete(sid);
     this.changed();
   }
 
@@ -1666,6 +1672,8 @@ export class Remote {
       this.prefs = { ...this.prefs, snap, status: "ready", changedAt: elsewhere ? Date.now() : this.prefs.changedAt };
       this.changed();
     } catch (e) {
+      if (!pushed) throw e;
+      this.prefs = { ...this.prefs, status: this.prefs.snap ? "ready" : "error", error: errorText(e) };
       this.report(e);
     }
   }

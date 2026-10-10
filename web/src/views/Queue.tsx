@@ -43,10 +43,13 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   const starting = session.info?.status === SessionStatus.STARTING;
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
   const act = async (id: string, resume = false) => {
+    if (resume) { remote.resumes.set(id, { state: "sending", error: "" }); remote.touch(); }
     if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
     try {
       await remote.command(sid, resume ? { case: "resumeInput", value: { sessionId: sid, requestId: id } } : { case: "cancelInput", value: { sessionId: sid, requestId: id } });
+      if (resume) { remote.resumes.delete(id); remote.touch(); }
     } catch (e) {
+      if (resume) remote.resumes.set(id, { state: "failed", error: errorText(e) });
       if (!resume) remote.cancels.set(id, { state: "failed", error: errorText(e) });
       remote.touch();
     }
@@ -57,16 +60,17 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
       const o = remote.outbox(sid).find((x) => x.sendId === id);
       const c = remote.cancels.get(id);
       const paused = d.paused.has(id);
+      const resume = paused ? remote.resumes.get(id) : undefined;
       const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
       const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
       const mode = a?.mode ?? o?.mode;
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : "另一客户端的消息");
-      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : paused ? "已暂停 · 中断前排着的" : mode === SendMode.QUEUE ? "排队 · 这一轮结束后发" : held ? "插入这一轮 · 等当前工具结束后并入" : starting ? `已送达电脑 · 等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮 · 等输入框就绪";
+      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停 · 中断前排着的" : mode === SendMode.QUEUE ? "排队 · 这一轮结束后发" : held ? "插入这一轮 · 等当前工具结束后并入" : starting ? `已送达电脑 · 等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮 · 等输入框就绪";
       return <div className="pending-bubble me" key={id}>
         <LocalThumbs blobs={o?.thumbs} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
         <div className="pending-meta"><span>{status}{!paused && !held && !c?.state && ` · 第 ${i + 1} 条`}{from && ` · ${from}`}</span>
-          {paused && <button onClick={() => void act(id, true)}>发送</button>}
+          {paused && <button disabled={resume?.state === "sending"} onClick={() => void act(id, true)}>{resume?.state === "failed" ? "重试" : "发送"}</button>}
           {c?.state === "failed" ? <button onClick={() => void act(id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void act(id)}>取消</button>}
         </div>
       </div>;

@@ -77,7 +77,12 @@ export function ApprovalActions({
   const own = useApproval(remote, sid, a);
   const ap = shared ?? own;
   const [reasonOpen, setReasonOpen] = useState(() => remote.demoFlag("deny"));
-  const [reason, setReason] = useState("");
+  const reason = remote.approvalReasons.get(a.approvalId) ?? "";
+  const setReason = (text: string) => {
+    if (text) remote.approvalReasons.set(a.approvalId, text);
+    else remote.approvalReasons.delete(a.approvalId);
+    remote.touch();
+  };
   const deadline = deadlineOf(a);
   const expired = deadline > 0 && now >= deadline;
   // An answer whose outcome is unknown holds: only a retry of it may go.

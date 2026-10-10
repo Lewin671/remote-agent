@@ -23,6 +23,7 @@ import { NewFlow, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { ManagePage } from "./Projects";
 import { SessionPage } from "./Session";
+import { useRemote } from "../ui";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1200,6 +1201,7 @@ describe("switching a new session's CLI (v2)", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "梳理登录流程");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
+    await act(async () => { await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false)); });
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].agent).toBe(Agent.CLAUDE);
@@ -1678,12 +1680,16 @@ describe("a failed message with images (review B6)", () => {
 
   it("puts text and images back into the input, to send them again", async () => {
     const t = setup("看这两张");
+    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    let uploads = 0;
+    t.r.uploadImage = async () => "restored-" + ++uploads;
     await click(button("放回输入框", row()));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(2);
+    await act(async () => { await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.disabled).toBe(false)); });
     await click(host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!);
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
-    expect(t.sent[0]).toEqual({ text: "看这两张", imageIds: ["i1", "i2"] });
+    expect(t.sent[0]).toEqual({ text: "看这两张", imageIds: ["restored-1", "restored-2"] });
   });
 
   it("can retry or restore a message of images only", async () => {
@@ -2358,4 +2364,185 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   act(() => (r as unknown as { changed(): void }).changed());
   expect(document.querySelector(".sheet")?.textContent).not.toContain("正在读取这个项目上次的设置…");
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
+});
+
+async function reviewType(el: HTMLInputElement | HTMLTextAreaElement, text: string) {
+  await act(async () => {
+    const proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(el, text);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+it("retains an unknown start across page unmounts", async () => {
+  const r = demo();
+  const slots: string[] = [];
+  r.machineCommand = async (_m: string, _c: CommandKind, slot?: RequestSlot) => { slots.push(slot!.requestId); throw new CommandError("unknown", "连接超时"); };
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { ns = useNewSession(r, "/Users/me/Code/foo", () => undefined); return null; }
+  mount(<Box />);
+  await act(async () => { await ns.create("task"); });
+  act(() => root!.render(null));
+  act(() => root!.render(<Box />));
+  expect(ns.frozen).toBe(true);
+  await act(async () => { await ns.create("task"); });
+  expect(slots[1]).toBe(slots[0]);
+});
+
+it("holds saved launch settings while a draft is written", async () => {
+  const r = demo();
+  const path = "/Users/me/Code/foo";
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
+  mount(<Box />);
+  const before = { ...ns.cfg };
+  act(() => ns.latch());
+  const saved = r.projectPrefs().settings.find(s => s.path === path)!;
+  saved.machineId = "imac";
+  saved.agent = Agent.CLAUDE;
+  saved.agents[0].model = "changed";
+  act(() => root!.render(<Box />));
+  expect(ns.cfg).toEqual(before);
+});
+
+it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
+  const r = demo();
+  const path = "/Users/me/Code/foo";
+  const saved = r.projectPrefs().settings.find(s => s.path === path)!;
+  saved.agent = Agent.CLAUDE;
+  r.machines.get(saved.machineId)!.meta!.agents = r.machines.get(saved.machineId)!.meta!.agents.filter(a => a.agent === Agent.CODEX);
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
+  mount(<Box />);
+  expect(ns.missing).toBe(Agent.CLAUDE);
+  await act(async () => { await ns.create("task"); });
+  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  expect(r.projectPrefs().settings.find(s => s.path === path)!.agent).toBe(Agent.CLAUDE);
+});
+
+it("appends a restored message to the current draft", async () => {
+  const r = demo();
+  r.drafts.set("s-idle", "draft");
+  r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } } }));
+  r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } } }));
+  mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+  await click(button("放回输入框"));
+  expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!.value).toBe("draft\n\nrestore");
+});
+
+it("keeps an approval reason across dock and detail mounts", async () => {
+  const r = demo();
+  const a = derive(r.events("s-appr")).approvals.values().next().value!;
+  const { ApprovalActions } = await import("./Dock");
+  const actions = <ApprovalActions remote={r} sid="s-appr" a={a} agent={Agent.CODEX} />;
+  mount(actions);
+  await click(button("不允许"));
+  await reviewType(host.querySelector("textarea")!, "reason");
+  act(() => root!.render(null));
+  act(() => root!.render(actions));
+  await click(button("不允许"));
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("reason");
+});
+
+it("shows failure and retry when resuming a paused message", async () => {
+  const r = demo();
+  const { PendingBubbles } = await import("./Queue");
+  const d = derive([create(EventSchema, { kind: { case: "inputState", value: { requestId: "paused", status: InputStatus.QUEUED, paused: true, text: "message" } } })]);
+  r.command = async () => { throw new CommandError("unavailable", "电脑不在线"); };
+  function Page() { useRemote(r); return <PendingBubbles remote={r} session={r.sessions.get("s-idle")!} d={d} />; }
+  mount(<Page />);
+  await click(button("发送"));
+  expect(host.textContent).toContain("发送没成功，仍已暂停");
+  expect(button("重试")).toBeTruthy();
+});
+
+it("offers more ended matches while filtering titles", async () => {
+  const r = demo();
+  const ended = [...r.sessions.values()].find(s => s.info?.status === SessionStatus.EXITED)!;
+  r.sessions.clear();
+  for (let i = 0; i < 40; i++) r.sessions.set("match" + i, { ...ended, id: "match" + i, info: { ...ended.info!, title: "match " + i } });
+  mount(<Home remote={r} go={() => undefined} />);
+  await reviewType(host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!, "match");
+  expect(host.querySelectorAll(".old").length).toBe(30);
+  await click(host.querySelector<HTMLButtonElement>("button.tail")!);
+  expect(host.querySelectorAll(".old").length).toBe(40);
+});
+
+it("fills only missing project settings after a first start races with another client", async () => {
+  const r = demo();
+  const path = "/Users/me/Code/shop";
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
+  mount(<Box />);
+  let finish!: (result: CommandResult) => void;
+  const original = r.machineCommand.bind(r);
+  r.machineCommand = async (machine: string, cmd: CommandKind): Promise<CommandResult> => cmd?.case === "createSession" ? new Promise<CommandResult>(resolve => { finish = resolve; }) : original(machine, cmd);
+  let start!: Promise<boolean>;
+  act(() => { start = ns.create("task"); });
+  await act(async () => { await r.changePrefs("settings", path, { id: "other-client", kind: "settings", path, at: Date.now(), settings: { machineId: "imac", sets: [{ agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO, standardContext: false }] } }); });
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "started" } } } })); await start; });
+  await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
+  expect(r.projectPrefs().settings.find(s => s.path === path)).toMatchObject({ machineId: "imac", agents: [{ model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO }] });
+});
+
+it.each([['removed', 'high'], ['gpt-6-astra', 'removed']])("falls back from unavailable model or effort (%s, %s) without changing saved settings", async (model, effort) => {
+  const r = demo();
+  const path = "/Users/me/Code/foo";
+  const saved = savedSet(r, path)!;
+  saved.model = model;
+  saved.effort = effort;
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
+  mount(<Box />);
+  await act(async () => { await r.listModels("mac", Agent.CODEX); });
+  act(() => root!.render(<Box />));
+  expect(ns.cfg).toMatchObject({ model: "", effort: "" });
+  expect(ns.configFallback).not.toBe("");
+  const calls: CommandKind[] = [];
+  r.machineCommand = async (_m, cmd) => { calls.push(cmd); throw new CommandError("failed_precondition", "failed"); };
+  await act(async () => { await ns.create("task"); });
+  expect(calls[0]).toMatchObject({ case: "createSession", value: { model: "", effort: "" } });
+  expect(savedSet(r, path)).toMatchObject({ model, effort });
+});
+
+it("offers a retained refusal reason for copying after another client resolves the approval", async () => {
+  const r = demo();
+  const a = derive(r.events("s-appr")).approvals.values().next().value!;
+  const { ApprovalActions } = await import("./Dock");
+  mount(<ApprovalActions remote={r} sid="s-appr" a={a} agent={Agent.CODEX} />);
+  await click(button("不允许"));
+  await reviewType(host.querySelector<HTMLTextAreaElement>("textarea.reason")!, "retained reason");
+  const writeText = vi.fn(async () => undefined);
+  vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
+  act(() => {
+    r.events("s-appr").push(create(EventSchema, { seq: BigInt(r.events("s-appr").length + 1), kind: { case: "approvalResolved", value: { approvalId: a.approvalId, decision: ApprovalDecision.ALLOW } } }));
+    r.touch();
+    root!.render(<SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />);
+  });
+  expect(host.textContent).toContain("retained reason");
+  await click(button("复制"));
+  expect(writeText).toHaveBeenCalledWith("retained reason");
+});
+
+it("shows the pending start and its original message when returning to the project", async () => {
+  const r = demo();
+  const slots: string[] = [];
+  const original = r.machineCommand.bind(r);
+  r.machineCommand = async (machine: string, cmd: CommandKind, slot?: RequestSlot) => {
+    if (cmd?.case === "createSession") { slots.push(slot!.requestId); throw new CommandError("unknown", "连接超时"); }
+    return original(machine, cmd);
+  };
+  const page = <ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />;
+  mount(page);
+  await reviewType(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!, "task");
+  await act(async () => { await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false)); });
+  await click(sendButton());
+  await act(async () => { await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动")); });
+  act(() => root!.render(null));
+  act(() => root!.render(page));
+  expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!.value).toBe("task");
+  expect(host.textContent).toContain("不确定是否已经启动");
+  await click(button("重试"));
+  expect(slots).toHaveLength(2);
+  expect(slots[1]).toBe(slots[0]);
 });

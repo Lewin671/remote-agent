@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
@@ -946,4 +946,13 @@ describe("dayTime", () => {
     expect(dayTime(new Date(2026, 9, 2, 5, 51).getTime(), now)).toBe("5:51");
     expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe("9月27日 14:02");
   });
+});
+
+it("updates accepted send mode while keeping original message content and origin", () => {
+  const list = events(
+    { case: "inputState", value: { requestId: "m", status: InputStatus.QUEUED, mode: SendMode.QUEUE, text: "text", imageIds: ["image"] } },
+    { case: "inputState", value: { requestId: "m", status: InputStatus.QUEUED, mode: SendMode.STEER } },
+  );
+  const d = derive(list);
+  expect(d.accepted.get("m")).toMatchObject({ mode: SendMode.STEER, text: "text", imageIds: ["image"] });
 });

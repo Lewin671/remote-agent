@@ -763,6 +763,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         d.inputs.set(k.value.requestId, k.value.status);
         if (k.value.status === InputStatus.QUEUED && !d.accepted.has(k.value.requestId) && (k.value.text || k.value.imageIds.length))
           d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin, mode: k.value.mode });
+        const accepted = d.accepted.get(k.value.requestId);
+        if (accepted && k.value.mode) accepted.mode = k.value.mode;
         if (k.value.paused) d.paused.add(k.value.requestId);
         else d.paused.delete(k.value.requestId);
         if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);

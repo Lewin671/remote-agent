@@ -32,6 +32,7 @@ import { errorText, type MachineView, type Remote } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
+const startAttempts = new WeakMap<Remote, Map<string, Attempt<StartPayload>>>();
 import { Avatar, Banner, Dot, fromHere, Sheet } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
@@ -162,12 +163,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // A project none of whose sessions are held starts on a machine that
   // has it, as its summary says, rather than on any machine.
   const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
-  const baseMachine = saved?.machineId || held?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key) ?? known).machineId;
+  const baseMachine = held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key) ?? known).machineId;
   const machineId = local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);
   const remembered = saved?.agent ? (saved.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) : undefined;
-  const wanted = picked ?? remembered ?? held?.agent ?? first?.agent ?? agents[0];
+  const wanted = picked ?? held?.agent ?? remembered ?? first?.agent ?? agents[0];
   // A CLI the machine lacks is not started: the one it has is, and the
   // box says so. What the project remembers stays.
   const agent = agents.includes(wanted) ? wanted : agents[0];
@@ -196,6 +197,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
    * as the project has it, leaving out this page's choices. */
   const configFor = (a: Agent, base = false): NewConfig => {
     const at = { machineId: base ? baseMachine : machineId, cwd: key, agent: a };
+    const heldConfig = !base && held?.by[a];
+    if (heldConfig && !local?.sets[a] && !local?.machineId) return { ...heldConfig, ...at };
     const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
     if (set) return { ...at, model: set.model, effort: set.effort, mode: set.mode, standardContext: set.standardContext };
     // Another machine has its own models and defaults.
@@ -204,13 +207,17 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     const h = held?.by[a] ?? inherit(a);
     return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: h?.mode ?? ApprovalMode.UNSPECIFIED, from: h?.from };
   };
-  const cfg = configFor(agent);
-  const info = useMachineInfo(remote, cfg.machineId, cfg.agent);
+  const configured = configFor(agent);
+  const info = useMachineInfo(remote, configured.machineId, configured.agent);
+  const model = findModel(info.models?.models, configured.model || defaultsOf(info.settings, agent).model || info.models?.defaultModel || "");
+  const unavailable = !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
+  const cfg = unavailable ? { ...configured, model: "", effort: "" } : configured;
+  const configFallback = unavailable ? "所选模型或推理强度在这台机器上不可用，这次用机器的默认值" : "";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [configError, setConfigError] = useState("");
-  const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }) =>
-    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
+  const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
+    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings, keepExisting }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
   // Settings not stored yet begin with where and on which CLI it starts now.
   const whole = () => (saved ? {} : { machineId: baseMachine, agent });
   /** Changes one CLI's set, or the machine: config is configFor of a CLI
@@ -234,9 +241,10 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // One pending attempt per project: the wide home reuses this hook when
   // switching projects, and an unknown start in one project must never be
   // what another project's box sends.
-  const attempts = useRef(new Map<string, Attempt<StartPayload>>());
-  let attempt = attempts.current.get(key);
-  if (!attempt) attempts.current.set(key, (attempt = new Attempt()));
+  let attempts = startAttempts.get(remote);
+  if (!attempts) startAttempts.set(remote, (attempts = new Map()));
+  let attempt = attempts.get(key);
+  if (!attempt) attempts.set(key, (attempt = new Attempt()));
   const current = attempt;
   // A failure shown for one project is not the next one's.
   useEffect(() => { setError(""); setConfigError(""); }, [key]);
@@ -245,7 +253,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others; the page's own view of the settings may
   // change as the started session's record arrives.
-  const chose = !!saved || !!local || picked !== undefined;
+  const chose = !!local || picked !== undefined;
   const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
     const pending = current.payload;
     const c = pending && !chose ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent, standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext };
@@ -297,12 +305,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       // CLI. A machine picked for one start is not what gets stored.
       const used = payload.req.agent;
       const asStored = configFor(used, true);
-      if (!saved) void save({ machineId: asStored.machineId, agent: used, sets: [setOf(local?.once ? asStored : cfg)] });
+      if (!saved) void save({ machineId: asStored.machineId, agent: missing ? undefined : used, sets: [setOf(local?.once ? asStored : cfg)] }, true);
       else {
         const patch: { agent?: Agent; sets?: AgentSet[] } = {};
-        if (remembered !== used) patch.agent = used;
+        if (!missing && remembered !== used) patch.agent = used;
         if (!saved.agents.some((x) => x.agent === used)) patch.sets = [setOf(local?.once ? asStored : cfg)];
-        if (patch.agent !== undefined || patch.sets) void save(patch);
+        if (patch.agent !== undefined || patch.sets) void save(patch, true);
       }
       setLocal(undefined);
       setPicked(undefined);
@@ -319,27 +327,24 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : (configured.model || configured.effort) && info.loading ? "正在读取模型列表…" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     current.abandon();
     setError("");
   };
-  /** What CLI a inherits, once it is known: one whose latest session may
-   * be on a page not fetched is left open, and read when it is used. */
-  const settled = (a: Agent) => (unreadFor(a) ? undefined : inherit(a));
   /** Holds the launch settings as they are now, once a draft begins. */
-  const hold = () => setLatched({ key, machineId: baseMachine, agent: first?.agent ?? agents[0], by: { [Agent.CODEX]: settled(Agent.CODEX), [Agent.CLAUDE]: settled(Agent.CLAUDE) } });
+  const hold = () => setLatched({ key, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
   // A draft begun while its CLI's settings were still being fetched is
   // held as soon as they are here.
   const [begun, setBegun] = useState<string>();
   const latch = () => {
-    if (saved || held) return;
+    if (held) return;
     if (unread) setBegun(key);
     else hold();
   };
   useEffect(() => {
-    if (begun === key && !unread && !saved && !held) hold();
+    if (begun === key && !unread && !held) hold();
     // What the draft's CLI inherits was left open when the draft began:
     // once known, it is held like the rest.
     else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
@@ -364,6 +369,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     agents,
     setAgent,
     missing,
+    configFallback,
     latch,
     unreadFor,
     setWatch,
@@ -379,7 +385,8 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     modeText,
     create,
     busy,
-    error,
+    error: error || (current.frozen && !busy ? "上次的启动结果还没有确认" : ""),
+    pendingPrompt: current.payload?.req.prompt,
     configError,
     blocked,
   };
@@ -405,7 +412,7 @@ export function NewBox({
   lead?: ReactNode;
   onDraft?: () => void;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => ns.pendingPrompt ?? "");
   const [config, setConfig] = useState<"" | "main" | Pick>("");
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, 132);
@@ -511,6 +518,7 @@ export function NewBox({
           {machineName(ns.machine)} 没有 {agentName(ns.missing)}，这次用 {agentName(ns.cfg.agent)}
         </Banner>
       )}
+      {ns.configFallback && <Banner>{ns.configFallback}</Banner>}
       {ns.issue && (
         <Banner kind="warn" action="改模式" onAction={() => setConfig("mode")}>
           {ns.issue}

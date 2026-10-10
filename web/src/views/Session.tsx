@@ -159,7 +159,8 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
     // All of the message or none of it: never a message short of images.
     if (ids.length && !tray.restore(ids.map((imageId, i) => ({ imageId, thumb: o?.thumbs?.[i] }))))
       return setToast(`输入框里已有 ${tray.items.length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`);
-    remote.drafts.set(sid, text);
+    const draft = remote.drafts.get(sid) ?? "";
+    remote.drafts.set(sid, draft.trim() ? draft.trimEnd() + "\n\n" + text : text);
     if (foreign) setToast("这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片");
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
@@ -570,6 +571,15 @@ function ChatBody({
             正在 {machine} 上启动 {agentName(agent)}…
           </div>
         )}
+        {events.flatMap((e) => {
+          if (e.kind.case !== "approvalRequested" || !d.resolved.has(e.kind.value.approvalId)) return [];
+          const reason = remote.approvalReasons.get(e.kind.value.approvalId);
+          return reason ? [<div className="record" key={"reason:" + e.kind.value.approvalId}>
+            <span className="muted">这条审批已经处理了。</span>
+            <pre>{reason}</pre>
+            <button className="link" onClick={() => void navigator.clipboard.writeText(reason).catch(() => undefined)}>复制</button>
+          </div>] : [];
+        })}
         {pending.map((o) => (
           <Pending key={o.sendId} remote={remote} sid={sid} o={o} phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))} agent={agent} />
         ))}

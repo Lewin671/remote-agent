@@ -138,7 +138,7 @@ describe("putting a message's images back (review W2, W4)", () => {
   it("never prepares again an image it has no bytes for", async () => {
     const { tray, prepare } = setup();
     expect(tray.restore([{ imageId: "remote-1" }])).toBe(true);
-    expect(tray.ready()).toBe(true);
+    expect(tray.ready()).toBe(false);
     expect(tray.canSwitchOriginal()).toBe(false);
     tray.setOriginal(true);
     expect(tray.original).toBe(false);
@@ -192,4 +192,22 @@ it("continues preparing the next image after a failed decoder", async () => {
   tray.machineId = "m";
   tray.add([file("bad"), file("good")]);
   await vi.waitFor(() => expect(tray.items.map((it) => it.state)).toEqual(["failed", "done"]));
+});
+
+it("uploads restored local image bytes again instead of trusting an old ID", async () => {
+  const { tray, upload } = setup();
+  tray.restore([{ imageId: "deleted", thumb: file("image") }]);
+  expect(tray.ready()).toBe(false);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(upload).toHaveBeenCalledTimes(1);
+  expect(tray.imageIds()).toEqual(["id1"]);
+});
+
+it("requires reselection when a restored image has only an unverified remote ID", () => {
+  const { tray, prepare, upload } = setup();
+  tray.restore([{ imageId: "deleted" }]);
+  expect(tray.ready()).toBe(false);
+  expect(tray.items[0].state).toBe("failed");
+  expect(prepare).not.toHaveBeenCalled();
+  expect(upload).not.toHaveBeenCalled();
 });

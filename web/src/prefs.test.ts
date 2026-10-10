@@ -144,3 +144,13 @@ describe("project preferences", () => {
     expect(stateOf(s).kind).toBe("approval");
   });
 });
+
+it("replays start initialization after a conflict without replacing existing settings", async () => {
+  const store = new FakeStore();
+  const snapshot = store.cur;
+  store.beforePut = () => store.other({ ...op("settings", "/p"), settings: { machineId: "chosen", sets: [set(Agent.CODEX, "gpt-6-sol", "high", ApprovalMode.AUTO)] } });
+  const result = await commitOp(store, { ...op("settings", "/p"), keepExisting: true, settings: { machineId: "initial", agent: Agent.CLAUDE, sets: [set(Agent.CODEX, "old", "low", ApprovalMode.ASK), set(Agent.CLAUDE, "sonnet", "medium", ApprovalMode.ASK)] } }, snapshot);
+  expect(store.puts).toBe(2);
+  expect(result.prefs.settings[0]).toMatchObject({ machineId: "chosen", agent: Agent.CLAUDE });
+  expect(result.prefs.settings[0].agents).toMatchObject([set(Agent.CODEX, "gpt-6-sol", "high", ApprovalMode.AUTO), set(Agent.CLAUDE, "sonnet", "medium", ApprovalMode.ASK)]);
+});

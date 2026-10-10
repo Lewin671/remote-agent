@@ -302,7 +302,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
   // Shown before the server has said anything, without logging in.
   expect(login).not.toHaveBeenCalled();
   expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
-  expect(r.machines.get("m")?.online).toBe(true);
+  expect(r.machines.get("m")?.online).toBe(false);
   expect(r.listed).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
   // A handshake the network dropped keeps the token.
@@ -323,4 +323,54 @@ it("starts from what the browser kept: the token, and the last listing", async (
   await vi.waitFor(() => expect(otherLogin).toHaveBeenCalled());
   expect(other.sessions.size).toBe(0);
   other.stop();
+});
+
+it("deduplicates an event after concurrent decryption", async () => {
+  const r = await probe();
+  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
+  (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const s = r.sessions.get("s")!;
+  const row = { seq: 1n, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq: 1n }, EventSchema, create(EventSchema, { sessionId: "s", seq: 1n })) };
+  await Promise.all([(r as any).ingest(s, [row], false), (r as any).ingest(s, [row], false)]);
+  expect(r.events("s")).toHaveLength(1);
+  expect((r as any).buffers.get("s").pending.size).toBe(0);
+  r.stop();
+});
+
+it("commits the valid prefix before a broken event", async () => {
+  const r = await probe();
+  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
+  (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const s = r.sessions.get("s")!;
+  const rows = await Promise.all([1n, 2n].map(async seq => ({ seq, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { sessionId: "s", seq: seq === 2n ? 99n : seq })) })));
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  await (r as any).ingest(s, rows, false);
+  expect(r.events("s").map(e => e.seq)).toEqual([1n]);
+  expect(r.history("s").broken).toBe(true);
+  r.stop();
+});
+
+it("settles a recorded message drained from pending while filling a history gap", async () => {
+  const r = await probe();
+  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
+  (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  r.command = () => new Promise(() => undefined);
+  const requestId = r.send("s", "message");
+  const s = r.sessions.get("s")!;
+  const rows = await Promise.all([1n, 2n, 3n].map(async seq => ({ seq, envelope: await sealMessage(s.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, create(EventSchema, { sessionId: "s", seq, kind: seq === 2n ? { case: "userMessage", value: { requestId, text: "message" } } : undefined })) })));
+  await (r as any).ingest(s, rows.slice(1), false);
+  expect(r.outbox("s")).toHaveLength(1);
+  await (r as any).ingest(s, rows.slice(0, 1), false);
+  expect(r.events("s")).toHaveLength(3);
+  expect(r.outbox("s")).toEqual([]);
+  r.stop();
 });

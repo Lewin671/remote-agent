@@ -22,6 +22,7 @@ export interface PrefOp {
   // What changes in the project's settings; the rest stays as stored. Each
   // set replaces the stored one of its CLI.
   settings?: { machineId?: string; agent?: AgentSettings["agent"]; sets?: Omit<AgentSettings, "$typeName">[] };
+  keepExisting?: boolean;
 }
 
 export interface PrefsSnapshot {
@@ -65,9 +66,12 @@ export function applyOp(prefs: ProjectPrefs, op: PrefOp): ProjectPrefs {
       const previous = settings.find((s) => s.path === op.path);
       const changed = previous ? clone(ProjectSettingsSchema, previous) : create(ProjectSettingsSchema, { path: op.path });
       const { machineId, agent, sets = [] } = op.settings ?? {};
-      if (machineId !== undefined) changed.machineId = machineId;
+      if (machineId !== undefined && (!op.keepExisting || !previous?.machineId)) changed.machineId = machineId;
       if (agent !== undefined) changed.agent = agent;
-      for (const set of sets) changed.agents = [...changed.agents.filter((a) => a.agent !== set.agent), create(AgentSettingsSchema, set)];
+      for (const set of sets) {
+        if (op.keepExisting && changed.agents.some((a) => a.agent === set.agent)) continue;
+        changed.agents = [...changed.agents.filter((a) => a.agent !== set.agent), create(AgentSettingsSchema, set)];
+      }
       changed.updatedMs = BigInt(op.at);
       settings = settings.filter((s) => s.path !== op.path);
       settings.push(changed);
