@@ -413,6 +413,9 @@ private func modeNamed(_ s: String) -> PBSendMode? {
 /// same request or put the message back. An index lists them by session.
 public struct OutgoingRecords: Sendable {
     private let files: any SealedFiles
+    /// The index is read, changed and written back: one change at a time,
+    /// whichever thread it comes from, or the later write undoes the other.
+    private static let indexLock = NSLock()
 
     public init(files: any SealedFiles) {
         self.files = files
@@ -436,8 +439,10 @@ public struct OutgoingRecords: Sendable {
         try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
         try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
         let line = "\(sid)\t\(o.requestId)"
-        let idx = try index()
-        if !idx.contains(line) { try writeIndex(idx + [line]) }
+        try Self.indexLock.withLock {
+            let idx = try index()
+            if !idx.contains(line) { try writeIndex(idx + [line]) }
+        }
     }
 
     /// The messages kept for a session, as a run that ended left them: whether they reached the computer is not known.
@@ -461,7 +466,9 @@ public struct OutgoingRecords: Sendable {
 
     public func remove(sid: String, requestId: String) throws {
         try files.clearFolder(folder(sid, requestId))
-        try writeIndex(try index().filter { $0 != "\(sid)\t\(requestId)" })
+        try Self.indexLock.withLock {
+            try writeIndex(try index().filter { $0 != "\(sid)\t\(requestId)" })
+        }
     }
 }
 

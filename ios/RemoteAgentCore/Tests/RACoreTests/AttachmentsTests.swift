@@ -33,6 +33,13 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
     }
 }
 
+private final class FailureCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var n = 0
+    func add() { lock.withLock { n += 1 } }
+    var count: Int { lock.withLock { n } }
+}
+
 /// Android's app AttachmentsTest.
 @MainActor @Suite struct AttachmentsTests {
     private func img(_ id: String) -> PendingImage {
@@ -55,6 +62,24 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         try d.restore()
         #expect(d.images.map(\.id) == ["zz", "aa", "mm"])
         #expect(d.original)
+    }
+
+    @Test func messagesSavedAtTheSameTimeAreAllInTheIndex() throws {
+        let files = MemoryFiles()
+        let records = (0..<24).map { Outgoing(requestId: "r\($0)", text: "t", imageIds: [], images: [], original: false).record }
+        let failed = FailureCount()
+        // Saves and removals run off the main thread, each on its own.
+        DispatchQueue.concurrentPerform(iterations: records.count) { i in
+            do { try OutgoingRecords(files: files).save(sid: "s", records[i], original: false) } catch { failed.add() }
+        }
+        #expect(failed.count == 0)
+        #expect(Set(try OutgoingRecords(files: files).load(sid: "s").map(\.requestId)) == Set(records.map(\.requestId)))
+        DispatchQueue.concurrentPerform(iterations: records.count) { i in
+            guard i % 2 == 0 else { return }
+            do { try OutgoingRecords(files: files).remove(sid: "s", requestId: "r\(i)") } catch { failed.add() }
+        }
+        #expect(failed.count == 0)
+        #expect(Set(try OutgoingRecords(files: files).load(sid: "s").map(\.requestId)) == Set((0..<24).filter { $0 % 2 == 1 }.map { "r\($0)" }))
     }
 
     @Test func aSentMessagesImagesStayOnDiskUntilTheCliHasThem() throws {
