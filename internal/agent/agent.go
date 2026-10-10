@@ -151,6 +151,10 @@ type Parser interface {
 	// Replay feeds an event logged earlier, so that a parser created after
 	// a restart knows what it needs about the past.
 	Replay(e *pb.Event)
+	// Restore, after the logged events were replayed, reads from the
+	// transcript at path up to offset end what the parser needs of the
+	// past and no event records.
+	Restore(path string, end int64) error
 	// Reported tells whether an event a hook reports (Source.HookEvents)
 	// was already parsed from the transcript.
 	Reported(e *pb.Event) bool

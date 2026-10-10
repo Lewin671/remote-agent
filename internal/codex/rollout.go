@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -20,7 +21,8 @@ import (
 const MaxOutput = 16 * 1024
 
 // Parser turns rollout lines into unified events. It keeps a little state
-// to drop duplicates; a fresh Parser is safe to use after a restart.
+// to drop duplicates and to pair calls; Replay and Restore rebuild that
+// after a restart.
 type Parser struct {
 	questions map[string]bool // call IDs of request_user_input calls
 	// userImages are the images of the user message just recorded as a
@@ -95,6 +97,43 @@ func (p *Parser) Replay(e *pb.Event) {
 	if e.GetTurnEnded() != nil {
 		p.endCalls()
 	}
+}
+
+// Restore reads again the rollout at path up to end for what no event
+// records: the exec cell a yielded call runs in, and the waits that
+// continue it. Without them a wait after a restart would be a call of its
+// own and the exec would never end. Only a call still open can have
+// yielded.
+func (p *Parser) Restore(path string, end int64) error {
+	open := false
+	for _, oc := range p.calls {
+		open = open || oc.exec
+	}
+	if !open {
+		return nil
+	}
+	lines, _, err := tail.NewReader(path, 0).Next()
+	if err != nil {
+		return err
+	}
+	past := NewParser()
+	for _, l := range lines {
+		if l.End > end {
+			break
+		}
+		_, _ = past.Parse(l.Data)
+	}
+	for cell, call := range past.cells {
+		if p.calls[call] != nil {
+			p.cells[cell] = call
+		}
+	}
+	for wait, call := range past.waits {
+		if p.calls[call] != nil {
+			p.waits[wait] = call
+		}
+	}
+	return nil
 }
 
 type line struct {

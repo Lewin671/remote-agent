@@ -105,6 +105,10 @@ func (p *Parser) Replay(e *pb.Event) {
 	}
 }
 
+// Restore has nothing to read again: every record the parser keeps state
+// for has an event.
+func (p *Parser) Restore(string, int64) error { return nil }
+
 // report records that a question or plan call has its event.
 func (p *Parser) report(id string) {
 	if len(p.reported) > 1000 {

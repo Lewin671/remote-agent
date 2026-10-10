@@ -180,6 +180,11 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		if path != m.RolloutPath {
 			off = 0
 		}
+		if off > 0 {
+			if err := s.parser.Restore(m.RolloutPath, off); err != nil {
+				slog.Warn("restore the parser from the rollout", "session", m.ID, "err", errClass(err))
+			}
+		}
 		s.reader = tail.NewReader(m.RolloutPath, off)
 	}
 	return s

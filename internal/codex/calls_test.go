@@ -2,6 +2,8 @@ package codex
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -113,5 +115,74 @@ func TestPlainFunctionResultFinishesCall(t *testing.T) {
 	evs, err := p.Parse([]byte(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"Slept"}}`))
 	if err != nil || len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" {
 		t.Fatalf("events %v, err %v", evs, err)
+	}
+}
+
+// A restart after an exec yielded: the yield itself has no event, and the
+// token count after it moved the saved reading position past its record,
+// so only the rollout still says which call cell 7 is. The wait that
+// follows continues that call, as without a restart (records as 0.159.0
+// writes them).
+func TestYieldedExecAfterRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rollout.jsonl")
+	var file []byte
+	var logged []*pb.Event
+	p := NewParser()
+	feed := func(line string) []*pb.Event {
+		t.Helper()
+		file = append(file, line+"\n"...)
+		if err := os.WriteFile(path, file, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		evs, err := p.Parse([]byte(line))
+		if err != nil {
+			t.Fatal(err)
+		}
+		logged = append(logged, evs...)
+		return evs
+	}
+	restart := func() {
+		t.Helper()
+		p = NewParser()
+		for _, e := range logged {
+			p.Replay(e)
+		}
+		if err := p.Restore(path, int64(len(file))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const usage = `{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":10},"last_token_usage":{"total_tokens":10},"model_context_window":1000}}}`
+	feed(`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t0"}}`)
+	// An earlier turn's cell with the same number is over with its turn.
+	feed(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c0","input":"tools.exec_command({cmd:\"npm run dev\"})"}}`)
+	feed(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c0","output":"Script running with cell ID 7"}}`)
+	feed(`{"type":"event_msg","payload":{"type":"task_complete","turn_id":"t0"}}`)
+	feed(`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`)
+	feed(`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"tools.exec_command({cmd:\"go test ./...\"})"}}`)
+	feed(`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 7\nWall time 31.0 seconds"}}`)
+	if evs := feed(usage); len(evs) != 1 {
+		t.Fatalf("token count: %v", evs)
+	}
+	restart()
+	if evs := feed(`{"type":"response_item","payload":{"type":"function_call","name":"wait","call_id":"w1","arguments":"{\"cell_id\":\"7\",\"yield_time_ms\":20000}"}}`); len(evs) != 0 {
+		t.Fatalf("wait became a call of its own: %v", evs)
+	}
+	feed(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"w1","output":"Script running with cell ID 7\nWall time 21.0 seconds"}}`)
+	feed(usage)
+	// And again, with the wait itself before the restart.
+	feed(`{"type":"response_item","payload":{"type":"function_call","name":"wait","call_id":"w2","arguments":"{\"cell_id\":\"7\",\"yield_time_ms\":20000}"}}`)
+	feed(usage)
+	restart()
+	evs := feed(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"w2","output":[{"type":"input_text","text":"Script completed\nWall time 11.1 seconds\nOutput:\nok"}]}}`)
+	if len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" || evs[0].GetToolCall().GetStatus() != "completed" {
+		t.Fatalf("completion %v", evs)
+	}
+	if len(p.calls) != 0 || len(p.cells) != 0 || len(p.waits) != 0 {
+		t.Fatalf("left over: calls %v, cells %v, waits %v", p.calls, p.cells, p.waits)
+	}
+	// With no call open there is nothing to read the rollout for.
+	restart()
+	if err := NewParser().Restore(filepath.Join(t.TempDir(), "none.jsonl"), 100); err != nil {
+		t.Fatal(err)
 	}
 }
