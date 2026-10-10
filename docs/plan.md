@@ -88,6 +88,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 以 bypass 启动时的风险确认弹窗（本机设置跳过了它）
 - API 出错时一轮怎么结束：transcript 里有没有 `turn_duration` 或其他结束记录；没有的话会一直显示运行中
 - AskUserQuestion 的选择框里按 Esc、选 `Type something.` 和 `Chat about this` 的结果
+- 2.1.293 的 Haiku 5.5 有 effort，代码里的模型列表仍按 Haiku 4.5 写成没有，所以客户端不能给 haiku 选推理强度；Plan 模式里的 Haiku 4.5 会话（回复临时换成 sonnet）循环里有没有 auto 也没测
 
 **Android 待验证**
 

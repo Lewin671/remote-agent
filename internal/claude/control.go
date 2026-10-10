@@ -389,10 +389,16 @@ func crosses(from, to string, limit int, offer map[string]bool) bool {
 	}
 }
 
+// noAutoRE matches the models known to have no auto mode: Haiku up to 4.5
+// (claude-code-notes §5).
+var noAutoRE = regexp.MustCompile(`^claude-(?:3(?:-5)?-haiku|haiku-[34])\b`)
+
 // offered is which of the modes not always on offer, bypass and auto, the
 // session offers, as far as known: bypass from the session's launch-time
-// capability; auto from the model (haiku has none, claude-code-notes §5)
-// or from having shown auto on the screen with this model. The status
+// capability; auto from the model (Haiku 4.5 has none, Haiku 5.5 has, and
+// which of them the alias is depends on Claude Code's version, so for
+// "haiku" it is not known) or from having shown auto on the screen with
+// this model. The status
 // area's "auto mode unavailable for this model" is not used: Claude Code
 // shows it for a while after Shift+Tab skipped auto, and it stays after a
 // switch to a model that has auto. A mode missing from the map is not
@@ -401,7 +407,7 @@ func offered(facts agent.ModeFacts) map[string]bool {
 	offer := map[string]bool{"default": true, "acceptEdits": true, "plan": true, "bypassPermissions": facts.FullAccess}
 	model := strings.ToLower(facts.Model)
 	switch {
-	case strings.Contains(model, "haiku"):
+	case noAutoRE.MatchString(model):
 		offer["auto"] = false
 	case slices.Contains(facts.Seen, "auto"):
 		offer["auto"] = true

@@ -645,8 +645,8 @@ func (a *Adapter) DoctorModels() (string, string, string, string) {
 	return "haiku", "", "sonnet", "low"
 }
 
-// DoctorModes: from manual through accept edits to plan, and back; haiku
-// offers no auto mode.
+// DoctorModes: from manual through accept edits to plan, and back, which
+// needs no auto mode.
 func (a *Adapter) DoctorModes() []pb.ApprovalMode {
 	return []pb.ApprovalMode{pb.ApprovalMode_APPROVAL_MODE_PLAN, pb.ApprovalMode_APPROVAL_MODE_ASK}
 }

@@ -100,3 +100,38 @@ func TestModelSwitchedInTerminal(t *testing.T) {
 		t.Fatalf("context changed: %v", ctx)
 	}
 }
+
+// Only Haiku 4.5 and older are known to have no auto mode. Haiku 5.5 has
+// it (2.1.293), and which of them the alias stands for depends on Claude
+// Code's version: for the alias auto is not known, and a running turn is
+// not taken from Plan to ask through it.
+func TestAutoWithHaiku(t *testing.T) {
+	for model, want := range map[string]string{
+		"claude-haiku-4-5-20251001": "off", "claude-3-5-haiku-20241022": "off", "claude-3-haiku-20240307": "off",
+		"claude-haiku-5-5": "on", "haiku": "unknown", "": "unknown",
+	} {
+		got := "unknown"
+		if on, known := offered(agent.ModeFacts{Model: model})["auto"]; known {
+			got = map[bool]string{true: "on", false: "off"}[on]
+		}
+		if got != want {
+			t.Errorf("%q: auto %s, want %s", model, got, want)
+		}
+	}
+	a := New("claude", "")
+	for _, model := range []string{"haiku", "claude-haiku-5-5"} {
+		f := &fakeClaude{noBypass: true}
+		f.mode = index("plan")
+		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, true, agent.ModeFacts{Model: model}); !errors.Is(err, agent.ErrBusy) || len(f.writes) != 0 {
+			t.Errorf("%s, running plan → ask via auto: %v %q", model, err, f.writes)
+		}
+	}
+	// Idle, the alias is taken through whichever way its model has.
+	for _, noAuto := range []bool{true, false} {
+		f := &fakeClaude{noBypass: true, noAuto: noAuto}
+		f.mode = index("plan")
+		if err := a.SetMode(f, pb.ApprovalMode_APPROVAL_MODE_ASK, false, agent.ModeFacts{Model: "haiku"}); err != nil || cycle[f.mode] != "default" {
+			t.Errorf("idle plan → ask, auto on offer %v: %v, ends in %s", !noAuto, err, cycle[f.mode])
+		}
+	}
+}
