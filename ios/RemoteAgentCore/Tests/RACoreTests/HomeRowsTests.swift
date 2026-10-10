@@ -195,6 +195,15 @@ import Testing
         let card = attentionCardText(st, api, scope: .all, approval: request, question: nil, now: now, zone: zone)
         #expect(card.kind == "请求执行" && card.right == "剩 8 分钟，超时拒绝" && card.action == "查看会话" && card.meta == "foo · m")
         #expect(attentionCardText(st, api, scope: .all, approval: .with { $0.approvalID = "A2" }, question: nil, now: now, zone: zone).kind == "请求权限")
+        // A tool that is not a shell command is named, as in the session's dock: the card offers 允许 too.
+        let write = PBApprovalRequested.with {
+            $0.approvalID = "A3"
+            $0.toolName = "Write"
+            $0.toolInputJson = "{\"file_path\":\"/p/foo/a.go\"}"
+        }
+        #expect(attentionCardText(st, api, scope: .all, approval: write, question: nil, now: now, zone: zone).kind == "请求权限 · Write")
+        #expect(approvalBody(write) == "{\"file_path\":\"/p/foo/a.go\"}")
+        #expect(approvalBody(request) == "go test ./...")
         // In its own project's scope the card does not repeat the project; from another one it does.
         #expect(attentionCardText(st, api, scope: .of(key: "/p/foo"), approval: nil, question: nil, now: now, zone: zone).meta == "m")
         #expect(attentionCardText(st, api, scope: .of(key: "/p/bar"), approval: nil, question: nil, now: now, zone: zone).meta == "foo · m")

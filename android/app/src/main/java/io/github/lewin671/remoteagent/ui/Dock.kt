@@ -154,11 +154,11 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -
     var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     PendingDock(DockItem.Approval(a), agent, more, body = {
         DockHead(
-            if (a.command.isNotEmpty()) "请求执行" else "请求权限" + (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else ""),
+            approvalHead(a),
             if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟，超时拒绝" else "",
         )
         if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(top = 4.dp))
-        val body = approvalDisplay(a.command.ifEmpty { a.toolInputJson })
+        val body = approvalBody(a)
         if (body.isNotEmpty()) {
             val cut = body.lines().size > 4 || body.length > 200
             Box(Modifier.padding(vertical = 8.dp)) {

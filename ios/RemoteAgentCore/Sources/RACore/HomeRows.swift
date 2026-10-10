@@ -254,7 +254,7 @@ public func endedRowText(_ s: SessionView, project: Bool, now: Int64, zone: Time
 
 /// A card of 需要处理 (Android's AttentionCard): what kind of thing waits, since when or until when, and where to go.
 public struct AttentionCardText: Equatable, Sendable {
-    /// 请求执行, 请求权限, 「Codex 在问你」, or the status word.
+    /// 请求执行, 「请求权限 · Write」, 「Codex 在问你」, or the status word.
     public var kind: String
     /// 「剩 8 分钟，超时拒绝」 for an approval with a deadline, else when it last changed.
     public var right: String
@@ -284,7 +284,7 @@ public func attentionCardText(
     let st = statusOf(s, machine: state.machines[s.machineId])
     let kind: String
     switch st {
-    case .approval: kind = (approval?.command ?? "").isEmpty ? "请求权限" : "请求执行"
+    case .approval: kind = approval.map(approvalHead) ?? "请求权限"
     case .question: kind = "\(agentName(s.agent)) 在问你"
     default: kind = st.text
     }

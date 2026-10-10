@@ -74,11 +74,13 @@ struct HomeAttentionCard: View {
                 if !approval.description_p.isEmpty {
                     Text(approvalDisplay(approval.description_p)).type(T.sm, Theme.fg2).padding(.top, 6)
                 }
-                if !approval.command.isEmpty {
-                    Code(approvalDisplay(approval.command), maxLines: 3, background: Theme.card, border: true).padding(.vertical, 8)
+                // 允许 is never offered next to nothing: a tool that is not a shell command shows its input.
+                let what = approvalBody(approval)
+                if !what.isEmpty {
+                    Code(what, maxLines: 3, background: Theme.card, border: true).padding(.vertical, 8)
                 }
                 ApprovalButtons(session: session, approval: approval, onCard: true)
-                    .padding(.top, approval.command.isEmpty ? 8 : 0)
+                    .padding(.top, what.isEmpty ? 8 : 0)
             }
         }
         .padding(.horizontal, 13).padding(.vertical, 11)

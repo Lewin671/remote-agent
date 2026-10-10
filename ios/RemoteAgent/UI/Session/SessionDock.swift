@@ -203,16 +203,6 @@ struct DockFoot: View {
 
 // MARK: Approvals
 
-/// What an approval asks for, as its dock and its page head it.
-func approvalHead(_ a: PBApprovalRequested) -> String {
-    a.command.isEmpty ? "请求权限" + (a.toolName.isEmpty ? "" : " · \(approvalDisplay(a.toolName))") : "请求执行"
-}
-
-/// What an approval would run or pass, shown with whatever it hides spelled out (`approvalDisplay`).
-func approvalBody(_ a: PBApprovalRequested) -> String {
-    approvalDisplay(a.command.isEmpty ? a.toolInputJson : a.command)
-}
-
 /// How long an approval still waits: muted, and orange only in its last minute (design-system §1).
 struct ApprovalDeadline: Equatable {
     var text: String

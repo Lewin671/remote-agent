@@ -14,6 +14,17 @@ class ApprovalDisplayTest {
             approvalDisplay("\u061c\u200e\u200f\u202e\u2066\u2069\r\u001b\u009b"))
     }
 
+    @Test fun anApprovalIsHeadedByWhatItAsksForWhereverAllowIsOffered() {
+        val command = ApprovalRequested.newBuilder().setCommand("go test ./...").setToolName("Bash").build()
+        assertEquals("请求执行", approvalHead(command))
+        assertEquals("go test ./...", approvalBody(command))
+        // A tool that is not a shell command has no command: its name heads it and its input is what is shown.
+        val write = ApprovalRequested.newBuilder().setToolName("Write").setToolInputJson("{\"file_path\":\"/p/foo/a.go\"}").build()
+        assertEquals("请求权限 · Write", approvalHead(write))
+        assertEquals("{\"file_path\":\"/p/foo/a.go\"}", approvalBody(write))
+        assertEquals("请求权限", approvalHead(ApprovalRequested.getDefaultInstance()))
+    }
+
     @Test fun notificationAndDockAgreeWithoutRewritingApproval() {
         val raw = "printf '\u202e'; dangerous"
         val a = ApprovalRequested.newBuilder().setApprovalId("approval").setCommand(raw).build()

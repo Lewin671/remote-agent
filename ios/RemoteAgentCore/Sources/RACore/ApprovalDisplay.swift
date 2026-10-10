@@ -1,4 +1,5 @@
 // From Android's ui/ApprovalDisplay.kt.
+import RAProto
 
 /// Show approval display controls as escapes; never rewrite the actual
 /// payload. A command that hides what it does behind direction overrides or
@@ -18,4 +19,16 @@ public func approvalDisplay(_ text: String) -> String {
         }
     }
     return String(out)
+}
+
+/// What an approval asks for, as its card, its dock and its page head it.
+public func approvalHead(_ a: PBApprovalRequested) -> String {
+    a.command.isEmpty ? "请求权限" + (a.toolName.isEmpty ? "" : " · \(approvalDisplay(a.toolName))") : "请求执行"
+}
+
+/// What an approval would run or pass, shown with whatever it hides spelled
+/// out (`approvalDisplay`). Every place that offers 允许 shows it: a tool
+/// that is not a shell command has no command, only its input.
+public func approvalBody(_ a: PBApprovalRequested) -> String {
+    approvalDisplay(a.command.isEmpty ? a.toolInputJson : a.command)
 }
