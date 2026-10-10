@@ -156,7 +156,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 val b = f.output.toByteArray()
                 session.append(b, b.size)
             }
-            TerminalFrame.KindCase.CLOSED -> _state.value = State.Closed(f.closed.ifEmpty { "终端已关闭" })
+            // The daemon says why before it hangs up; the end of the connection that follows says less.
+            TerminalFrame.KindCase.CLOSED -> if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.ifEmpty { "终端已关闭" })
             else -> {}
         }
     }

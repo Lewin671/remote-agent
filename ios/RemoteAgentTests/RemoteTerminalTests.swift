@@ -199,4 +199,24 @@ import Testing
         #expect(t.state == .live && t.fitted)
         t.close()
     }
+
+    /// The daemon says why it ends a stream and then hangs up: what the connection's end says does not replace it.
+    @Test func theDaemonsReasonForClosingStays() async {
+        let streams = Streams()
+        let t = terminal(streams)
+        t.connect()
+        await until { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("x"))
+        streams.listener(0).onFrame(.with { $0.closed = "cannot read the screen" })
+        streams.listener(0).onClose("终端连接断开")
+        await until { t.state != .connecting }
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(t.state == .closed("cannot read the screen"))
+        // A stream that just ends says what the connection says.
+        t.connect()
+        await until { streams.count == 2 }
+        streams.listener(1).onClose("终端连接断开")
+        await until { t.state != .connecting }
+        #expect(t.state == .closed("终端连接断开"))
+    }
 }

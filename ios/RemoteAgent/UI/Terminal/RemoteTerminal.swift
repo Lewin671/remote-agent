@@ -137,6 +137,8 @@ final class RemoteTerminal {
         case .output(let data):
             host.append(data)
         case .closed(let reason):
+            // The daemon says why before it hangs up; the end of the connection that follows says less.
+            if case .closed = state { return }
             state = .closed(reason)
         }
     }
