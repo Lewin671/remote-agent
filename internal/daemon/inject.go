@@ -139,6 +139,10 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 		s.mu.Unlock()
 		return 0, errExited
 	}
+	if s.queueLost {
+		s.mu.Unlock()
+		return 0, errQueueUnreadable
+	}
 	if requestID == "" {
 		requestID = newID(8)
 	} else if s.queue.seen(requestID) {

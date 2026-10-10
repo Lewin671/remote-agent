@@ -668,3 +668,55 @@ func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
 		}
 	}
 }
+
+// A queue.json that cannot be read holds accepted messages and the request
+// IDs that guard against sending twice. The session accepts no input, so
+// that nothing overwrites the file, instead of carrying on as if it had
+// never been given anything.
+func TestUnreadableQueueIsKeptAndBlocksInput(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	if _, err := h.s.send("accepted", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(h.dir, "queue.json")
+	saved, _ := os.ReadFile(path)
+	damaged := saved[:len(saved)/2]
+	if err := os.WriteFile(path, damaged, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.reopen()
+	if _, err := h.s.send("accepted", "r1"); !errors.Is(err, errQueueUnreadable) {
+		t.Fatalf("a retried request: %v", err)
+	}
+	if _, err := h.s.send("new", "r2"); !errors.Is(err, errQueueUnreadable) {
+		t.Fatalf("a new message: %v", err)
+	}
+	h.term.setScreen(idleScreen)
+	ctx, cancel := context.WithCancel(context.Background())
+	h.s.start(ctx)
+	time.Sleep(100 * time.Millisecond)
+	h.s.kill()
+	cancel()
+	<-h.s.done
+	if got, _ := os.ReadFile(path); string(got) != string(damaged) {
+		t.Fatal("the unreadable queue was overwritten")
+	}
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("wrote %q", w)
+	}
+	// Once the file is whole again, the next start carries on.
+	if err := os.WriteFile(path, saved, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := h.s.meta
+	m.Exited = false
+	h.s.log.Close()
+	h.open(m)
+	if n := h.s.info().QueuedInputs; n != 1 {
+		t.Fatalf("queued after repair: %d", n)
+	}
+	if pos, err := h.s.send("accepted", "r1"); err != nil || pos != 0 {
+		t.Fatalf("a retried request after repair: %d, %v", pos, err)
+	}
+}

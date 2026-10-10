@@ -33,6 +33,8 @@ var (
 	errNotAnswering = agent.ErrNotAnswering
 	errHeadChanged  = errors.New("the queue head changed")
 	errWriting      = errors.New("the message is being written to the terminal and can no longer be canceled")
+	// errQueueUnreadable: see session.queueLost.
+	errQueueUnreadable = errors.New("this session's saved input queue cannot be read; it accepts no messages until the file is repaired or removed and the daemon restarted")
 )
 
 // holdFor bounds how long local input is held while remote input is
@@ -101,6 +103,11 @@ type session struct {
 	answeredBy    map[string]*pb.Origin
 	interruptedBy *pb.Origin
 	queue         *queueState
+	// queueLost: queue.json was there but could not be read. It may hold
+	// accepted messages and the request IDs that keep a retry from being
+	// sent twice, so the session takes no input: with the queue empty,
+	// nothing then saves over the file.
+	queueLost bool
 	// recent are messages written lately, for matching late records.
 	recent []input
 	// unproven are the remembered messages that were reported
@@ -142,7 +149,7 @@ type decision struct {
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
 	q, err := loadQueue(dir)
 	if err != nil {
-		slog.Warn("load input queue; starting empty", "session", m.ID, "err", errClass(err))
+		slog.Error("load input queue; the session accepts no input until it can be read", "session", m.ID, "err", errClass(err))
 		q = &queueState{}
 	}
 	ag := d.adapter(m.Agent)
@@ -162,6 +169,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		done:       make(chan struct{}),
 		status:     pb.SessionStatus_SESSION_STATUS_STARTING,
 		queue:      q,
+		queueLost:  err != nil,
 		images:     openImageStore(dir),
 	}
 	if m.ForkedFrom != "" {

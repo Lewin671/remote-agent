@@ -24,7 +24,7 @@ func rpcErr(err error) error {
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning),
-		errors.Is(err, errForkBusy), errors.Is(err, errForkEmpty),
+		errors.Is(err, errForkBusy), errors.Is(err, errForkEmpty), errors.Is(err, errQueueUnreadable),
 		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, errHeldChanged), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
