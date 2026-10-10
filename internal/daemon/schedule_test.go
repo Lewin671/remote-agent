@@ -311,6 +311,50 @@ func TestScheduleLateConfirmationResumesRun(t *testing.T) {
 	}
 }
 
+// A task paused before or after its message was reported unconfirmed
+// stays paused, and the execution is still followed to its end: resuming
+// does not run a one-shot task a second time.
+func TestScheduleLateConfirmationWhilePaused(t *testing.T) {
+	for _, pauseFirst := range []bool{true, false} {
+		h := scheduleHarness(t)
+		task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+		now := time.Now().Add(time.Second)
+		h.d.tickSchedules(now)
+		run := readTask(t, h.d, task.ID).Active
+		pause := func() {
+			if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "pause", TaskId: task.ID}, originLocal); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if pauseFirst {
+			pause()
+		}
+		h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_UNCONFIRMED}}})
+		h.d.tickSchedules(now)
+		if !pauseFirst {
+			pause()
+		}
+		if got := readTask(t, h.d, task.ID); got.Status != "paused" || got.Active != nil || len(got.Runs) != 1 || got.Runs[0].Status != "uncertain" {
+			t.Fatalf("pauseFirst=%v: %+v", pauseFirst, got)
+		}
+		h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+		completeTask(h, run, now)
+		h.d.tickSchedules(now)
+		got := readTask(t, h.d, task.ID)
+		if got.Status != "paused" || got.Active != nil || len(got.Runs) != 1 || got.Runs[0].ID != run.ID || got.Runs[0].Status != "completed" {
+			t.Fatalf("pauseFirst=%v: not completed while paused %+v", pauseFirst, got)
+		}
+		if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "resume", TaskId: task.ID}, originLocal); err != nil {
+			t.Fatal(err)
+		}
+		h.d.tickSchedules(now.Add(time.Hour))
+		if got = readTask(t, h.d, task.ID); got.Dispatches != 1 || got.Active != nil || got.Status != "completed" {
+			t.Fatalf("pauseFirst=%v: ran again after resume %+v", pauseFirst, got)
+		}
+		h.s.log.Close()
+	}
+}
+
 func TestSchedulePersistenceIsPrivateAndCorruptionStopsLoad(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()

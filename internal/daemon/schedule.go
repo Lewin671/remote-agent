@@ -754,9 +754,12 @@ const unconfirmedRun = "message_submission_unconfirmed"
 // ended uncertain because its message was reported UNCONFIRMED, once the
 // CLI's record confirms the message after all (inject.go, confirmLate).
 // Until then, and for good if no record comes, the task stays uncertain;
-// the message is never sent again.
+// the message is never sent again. A paused task stays paused: its
+// execution is followed to the end all the same, as one that was running
+// when the task was paused.
 func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) {
-	if t.Status != "uncertain" || t.Reason != unconfirmedRun || len(t.Runs) == 0 {
+	paused := t.Status == "paused"
+	if !paused && (t.Status != "uncertain" || t.Reason != unconfirmedRun) || len(t.Runs) == 0 {
 		return
 	}
 	last := &t.Runs[len(t.Runs)-1]
@@ -775,7 +778,9 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) {
 			run.Status, run.Reason, run.EndedAt = "submitted", "", nil
 			t.Runs = t.Runs[:len(t.Runs)-1]
 			t.Active = &run
-			t.Status, t.Reason = run.Status, ""
+			if !paused {
+				t.Status, t.Reason = run.Status, ""
+			}
 			d.watchScheduledRun(t, now)
 			return
 		}
