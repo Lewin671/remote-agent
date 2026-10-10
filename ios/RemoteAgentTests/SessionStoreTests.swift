@@ -121,6 +121,16 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
 
+    @Test func aMessageCanceledElsewhereIsLetGoAfterItsAnswerWasLost() async {
+        computer.answer(unknown, offline)
+        await store.send(computer, sid: "s", text: "甲").value
+        await store.send(computer, sid: "s", text: "乙").value
+        var inputs = OrderedMap<String, PBInputStatus>()
+        inputs[store.outgoing("s")[0].requestId] = .canceled
+        store.settle("s", inputs: inputs)
+        #expect(store.outgoing("s").map(\.text) == ["乙"])
+    }
+
     // MARK: Drafts
 
     @Test func aDraftIsKeptPerSession() {

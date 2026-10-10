@@ -195,9 +195,12 @@ fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<S
     return out
 }
 
-/** The messages the CLI has recorded: the ones to let go of. */
+/** The messages submitted or canceled: the ones to let go of. */
 fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>): List<Outgoing> =
-    list.filter { inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED }
+    list.filter {
+        inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED ||
+            inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
+    }
 
 /**
  * Whether a message sent from here is still shown under the chat: until the
@@ -327,9 +330,8 @@ object Outbox {
     }
 
     /**
-     * Lets go of messages the CLI has recorded: their images' bytes,
-     * thumbnails and picker grants, and the copies on disk. The chat shows
-     * the images from the session's events from then on.
+     * Lets go of messages submitted or canceled: their images' bytes,
+     * thumbnails and picker grants, and the copies on disk.
      */
     fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>) {
         for (o in recorded(of(sid), inputs)) {

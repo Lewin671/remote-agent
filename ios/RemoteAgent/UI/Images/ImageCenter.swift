@@ -416,7 +416,7 @@ final class ImageCenter {
         return true
     }
 
-    /// Follows a message until the CLI has recorded it or the user removed it, whether or not the chat is on screen.
+    /// Follows a message until submitted, canceled or removed, whether or not the chat is on screen.
     private func hold(_ sid: String, _ o: Outgoing, _ store: SessionStore) {
         kept[sid, default: []].append(o)
         observe(sid, store)
@@ -443,8 +443,7 @@ final class ImageCenter {
         }
     }
 
-    /// Lets go of messages the CLI has recorded: their images' bytes, thumbnails and the copies on disk.
-    /// The chat shows the images from the session's events from then on.
+    /// Lets go of messages submitted or canceled: their images' bytes, thumbnails and the copies on disk.
     private func settle(_ sid: String, _ inputs: [String: PBInputStatus], _ store: SessionStore) {
         for o in recorded(kept[sid] ?? [], inputs: inputs) {
             store.remove(sid, o)

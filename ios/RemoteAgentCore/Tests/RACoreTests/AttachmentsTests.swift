@@ -106,12 +106,15 @@ private final class FailureCount: @unchecked Sendable {
         #expect(!files.keys.contains { $0.hasPrefix("out:s:r1/") })
     }
 
-    @Test func onlyMessagesTheCliRecordedAreLetGo() {
+    @Test func submittedAndCanceledMessagesAreLetGo() {
         let a = Outgoing(requestId: "a", text: "x", images: [img("1")])
         let b = Outgoing(requestId: "b", text: "y", images: [img("2")])
         let c = Outgoing(requestId: "c", text: "z")
         let done = recorded([a, b, c], inputs: ["a": .submitted, "b": .canceled])
-        #expect(done.count == 1 && done[0] === a)
+        #expect(done.count == 2 && done[0] === a && done[1] === b)
+        for status: PBInputStatus in [.queued, .heldByCli, .failed, .needsTerminal, .unconfirmed] {
+            #expect(recorded([c], inputs: ["c": status]).isEmpty)
+        }
     }
 
     @Test func sendingTakesOnlyItsImagesAndUntickesOriginal() {

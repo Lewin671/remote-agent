@@ -1227,7 +1227,11 @@ export class Remote {
     for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
       const event = b.pending.get(next)!;
       if (event.kind.case === "inputState") {
-        (b.inputStatuses ??= new Map()).set(event.kind.value.requestId, event.kind.value.status);
+        const { requestId, status } = event.kind.value;
+        (b.inputStatuses ??= new Map()).set(requestId, status);
+        if (status === InputStatus.CANCELED) {
+          this.outboxes.set(s.id, this.outbox(s.id).filter((o) => o.sendId !== requestId));
+        }
       }
       b.events.push(event);
       b.pending.delete(next);

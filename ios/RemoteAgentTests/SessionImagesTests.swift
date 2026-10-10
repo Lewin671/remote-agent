@@ -146,12 +146,14 @@ import Testing
         #expect(sent.imageIds == ["on-mac-a", "on-mac-b"] && sent.requestID == o.requestId && sent.text == "这两个页面底部的按钮都点不到")
     }
 
-    @Test func itIsLetGoOfOnceTheCliHasRecordedIt() async throws {
+    @Test(arguments: [PBInputStatus.submitted, .canceled])
+    func itIsLetGoOfOnceSubmittedOrCanceled(_ status: PBInputStatus) async throws {
         let c = center()
         c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
+        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有收到"))
         _ = await send(c, "看图")
         let o = try #require(store.outgoing(sid).first)
-        await eventually("delivered") { o.state == .sent }
+        await eventually("answer lost") { o.state == .unknown }
         func input(_ seq: UInt64, _ status: PBInputStatus) -> PBEvent {
             .with {
                 $0.seq = seq
@@ -165,9 +167,10 @@ import Testing
         await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued)]])
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(store.find(sid, requestId: o.requestId) != nil && o.images[0].processed != nil)
-        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued), input(2, .submitted)]])
+        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued), input(2, status)]])
         await eventually("settled") { store.find(sid, requestId: o.requestId) == nil }
         #expect(o.images[0].processed == nil)
+        await eventually("history released") { remote.events(sid).followers == 0 }
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 

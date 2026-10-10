@@ -212,10 +212,11 @@ final class SessionStore {
         setDraft(sid, current.jvmIsBlank ? text : kept + "\n" + text)
     }
 
-    /// Lets go of the messages the CLI has recorded: the chat shows them from the session's events from then on.
+    /// Lets go of messages submitted or canceled: the session's events have their outcome.
     func settle(_ sid: String, inputs: OrderedMap<String, PBInputStatus>) {
-        guard let list = outbox[sid], list.contains(where: { inputs[$0.requestId] == .submitted }) else { return }
-        outbox[sid] = list.filter { inputs[$0.requestId] != .submitted }
+        guard let list = outbox[sid] else { return }
+        let waiting = list.filter { inputs[$0.requestId] != .submitted && inputs[$0.requestId] != .canceled }
+        if waiting.count != list.count { outbox[sid] = waiting }
     }
 
     // MARK: Cancels

@@ -85,12 +85,12 @@ class AttachmentsTest {
     }
 
     @Test
-    fun onlyMessagesTheCliRecordedAreLetGo() {
+    fun submittedAndCanceledMessagesAreLetGo() {
         val a = Outgoing("a", "x", images = listOf(img("1")))
         val b = Outgoing("b", "y", images = listOf(img("2")))
         val c = Outgoing("c", "z")
         val done = recorded(listOf(a, b, c), mapOf("a" to InputStatus.INPUT_STATUS_SUBMITTED, "b" to InputStatus.INPUT_STATUS_CANCELED))
-        assertEquals(listOf(a), done)
+        assertEquals(listOf(a, b), done)
     }
 
     @Test

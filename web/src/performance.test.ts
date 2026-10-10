@@ -192,6 +192,29 @@ it("reclaims failed and canceled image histories without deleting retry thumbnai
   r.stop();
 });
 
+it("releases a canceled send and its images after a lost command reply", async () => {
+  const r = await probe();
+  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const thumb = new Blob(["image"]);
+  const canceled = { sendId: "canceled", status: "failed", unknown: true, thumbs: [thumb] };
+  const waiting = { sendId: "waiting", status: "failed", thumbs: [thumb] };
+  (r as any).outboxes.set("s", [canceled, waiting]);
+  const { sealMessage } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { EventSchema, InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  const session = r.sessions.get("s")!;
+  for (const [i, status] of [InputStatus.QUEUED, InputStatus.CANCELED].entries()) {
+    const seq = BigInt(i + 1);
+    const event = create(EventSchema, { seq, sessionId: "s", kind: { case: "inputState", value: { requestId: "canceled", status } } });
+    const envelope = await sealMessage(session.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, event);
+    await (r as any).ingest(session, [{ seq, envelope }]);
+    expect(r.outbox("s")).toEqual(status === InputStatus.QUEUED ? [canceled, waiting] : [waiting]);
+  }
+  r.stop();
+});
+
 async function sealedEvents(r: Remote, n: number) {
   const { sealMessage } = await import("./crypto");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");

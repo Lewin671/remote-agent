@@ -82,6 +82,16 @@ class SendImagesTest {
         assertEquals(listOf(failed), Outbox.of(sid).toList())
     }
 
+    @Test
+    fun aMessageCanceledElsewhereIsLetGoAfterItsAnswerWasLost() {
+        val sid = "s-canceled-text"
+        val lost = Outgoing("a", "甲").also { it.state = Outgoing.State.UNKNOWN }
+        val failed = Outgoing("b", "乙").also { it.state = Outgoing.State.FAILED }
+        Outbox.of(sid) += listOf(lost, failed)
+        Outbox.settle(sid, mapOf("a" to InputStatus.INPUT_STATUS_CANCELED))
+        assertEquals(listOf(failed), Outbox.of(sid).toList())
+    }
+
     /** A Remote that is never reached when keeping the images fails. */
     private fun throwingRemote(): io.github.lewin671.remoteagent.core.Remote =
         io.github.lewin671.remoteagent.core.Remote(

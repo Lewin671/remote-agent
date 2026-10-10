@@ -559,8 +559,8 @@ public func inputStates(_ events: some Sequence<PBEvent>) -> [String: PBInputSta
     return out
 }
 
-/// The messages the CLI has recorded: the ones to let go of.
+/// The messages submitted or canceled: the ones to let go of.
 @MainActor
 public func recorded(_ list: [Outgoing], inputs: [String: PBInputStatus]) -> [Outgoing] {
-    list.filter { inputs[$0.requestId] == .submitted }
+    list.filter { inputs[$0.requestId] == .submitted || inputs[$0.requestId] == .canceled }
 }
