@@ -105,6 +105,8 @@ type Daemon struct {
 	limits   *pb.TokenUsage // latest usage limits seen in any session
 	limitsAt time.Time      // when Codex reported them
 	quotas   claudeQuotas   // Claude Code's account limits
+	// reported is each session's last Claude Code status line.
+	reported map[string]quotaReport
 
 	scheduleMu sync.Mutex
 	tasks      map[string]*schedule.Task

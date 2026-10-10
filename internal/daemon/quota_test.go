@@ -101,3 +101,35 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 		t.Fatal("unknown account's report not kept by session")
 	}
 }
+
+// An idle session repeats the limits of its last reply. After another
+// account logged in, those are still the first account's: they are not
+// taken for the new one's, and do not outweigh what the new one reports.
+func TestClaudeQuotaOfAnEarlierLoginIsNotTheNewAccounts(t *testing.T) {
+	h := newHarness(t, Config{})
+	home := t.TempDir()
+	h.d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
+	writeAccount(t, home, "acct-1")
+	now := time.Now()
+	spent := []byte(`{"rate_limits":{"five_hour":{"used_percentage":100,"resets_at":1790774400}}}`)
+	h.d.statusLine("old", spent, now)
+	first := claudeQuota(h.d)[0].Account
+
+	writeAccount(t, home, "acct-2")
+	h.d.statusLine("old", spent, now.Add(time.Minute))
+	if q := claudeQuota(h.d); len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_WAITING {
+		t.Fatalf("the first account's limits shown for the second: %v", q)
+	}
+	h.d.statusLine("new", []byte(`{"rate_limits":{"five_hour":{"used_percentage":4,"resets_at":1790774400}}}`), now.Add(2*time.Minute))
+	h.d.statusLine("old", spent, now.Add(3*time.Minute))
+	q := claudeQuota(h.d)
+	if len(q) != 1 || q[0].Account == first || q[0].Account == "" || q[0].Windows[0].GetUsedPercent() != 4 {
+		t.Fatalf("after the second account reported: %v", q)
+	}
+	// Once the old session has a reply under the new login, its limits
+	// change and count again.
+	h.d.statusLine("old", []byte(`{"rate_limits":{"five_hour":{"used_percentage":9,"resets_at":1790774400}}}`), now.Add(4*time.Minute))
+	if q := claudeQuota(h.d); q[0].Windows[0].GetUsedPercent() != 9 {
+		t.Fatalf("a new reply's limits ignored: %v", q)
+	}
+}

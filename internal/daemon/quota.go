@@ -31,6 +31,13 @@ const quotaRefresh = time.Minute
 // when the account is unknown).
 type claudeQuotas map[string]*pb.AgentQuota
 
+// quotaReport is the last status line of a session: the windows it showed
+// and the account logged in then.
+type quotaReport struct {
+	account string
+	windows []*pb.QuotaWindow
+}
+
 func quotaPath() string { return filepath.Join(paths.Dir(), "quota.json") }
 
 // loadQuotas reads the saved Claude Code limits, keeping only the logged
@@ -134,14 +141,29 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 	if d.quotas == nil {
 		d.quotas = claudeQuotas{}
 	}
+	dropped := false
 	if e.Account != "" {
 		// Another account logged in: the old one's record goes.
 		for k, old := range d.quotas {
 			if old.Account != "" && old.Account != e.Account {
 				delete(d.quotas, k)
+				dropped = true
 			}
 		}
 	}
+	// The status line does not say whose limits it shows, and a session
+	// repeats those of its last reply until the next one. The same
+	// windows it reported under another login are that login's.
+	if d.reported == nil {
+		d.reported = map[string]quotaReport{}
+	}
+	if last, ok := d.reported[sessionID]; ok && last.account != e.Account && proto.Equal(&pb.AgentQuota{Windows: last.windows}, &pb.AgentQuota{Windows: e.Windows}) {
+		if dropped {
+			d.saveQuotasLocked()
+		}
+		return
+	}
+	d.reported[sessionID] = quotaReport{account: e.Account, windows: e.Windows}
 	if old := d.quotas[key]; old != nil {
 		reported := e.Windows
 		e.Windows = newestWindows(old.Windows, reported)
