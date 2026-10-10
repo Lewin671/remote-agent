@@ -145,6 +145,8 @@ fun JoinScreen(app: RaApp) {
     when (val s = step) {
         JoinStep.Scan -> QrScanner(
             onResult = { text ->
+                // The camera may still hand over a code after 取消: the scanner is not what is shown then, and nothing is joined.
+                if (step != JoinStep.Scan) return@QrScanner
                 val link = PairLink.parse(text)
                 if (link == null) {
                     error = "这不是 remote-agent 的配对二维码"

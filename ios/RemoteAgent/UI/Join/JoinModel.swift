@@ -153,8 +153,11 @@ final class JoinModel {
         }
     }
 
-    /// What the camera read. Anything but a pairing link of this app is said and left.
+    /// What the camera read. Anything but a pairing link of this app is said
+    /// and left. The camera may still hand over a code after 取消 was
+    /// tapped: the scanner is not what is shown then, and nothing is joined.
     func scanned(_ text: String) {
+        guard step == .scan else { return }
         guard let link = PairLink.parse(text) else {
             notice = "这不是 remote-agent 的配对二维码"
             noticeIsError = true

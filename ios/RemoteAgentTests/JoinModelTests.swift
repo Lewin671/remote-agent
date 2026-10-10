@@ -115,6 +115,7 @@ final class FakeJoin: @unchecked Sendable {
 
     @Test func aCodeTypedAfterScanningIsNotCheckedAgainstTheScannedCommitment() async {
         let m = model()
+        m.showScanner()
         m.scanned(PairLink(code: "12345678", server: "https://ra.example.com", commit: Data(repeating: 9, count: 32)).url(web: "https://app.example.com"))
         await eventually("called") { fake.pairings.count == 1 }
         m.cancel()
@@ -166,6 +167,18 @@ final class FakeJoin: @unchecked Sendable {
         p.onEmoji(["🐶", "🐱", "🐭", "🐹"])
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(m.step == .form)
+    }
+
+    @Test func aCodeTheCameraHandsOverAfterTheScannerWasLeftIsNotJoinedWith() async {
+        let m = model()
+        m.showScanner()
+        m.typeCode("")
+        // 取消 on the scanner; the camera had read a code that reaches the page afterwards.
+        m.showForm()
+        m.scanned(PairLink(code: "12345678", server: "https://other.example.com", commit: Data(repeating: 9, count: 32)).url(web: "https://app.example.com"))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(m.step == .form && m.code.isEmpty && m.server == "https://" && m.notice.isEmpty)
+        #expect(fake.pairings.isEmpty)
     }
 
     @Test func aJoinThatFailsSaysWhyAndKeepsWhatWasTyped() async {

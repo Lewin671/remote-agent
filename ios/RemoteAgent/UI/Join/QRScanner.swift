@@ -196,6 +196,8 @@ private final class ScanSession: NSObject, AVCaptureMetadataOutputObjectsDelegat
     }
 
     func stop() {
+        // A code the camera read before it stopped may still be on its way here.
+        done = true
         rotationWatch = nil
         rotation = nil
         let session = session
