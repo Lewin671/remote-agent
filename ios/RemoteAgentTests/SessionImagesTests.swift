@@ -327,6 +327,30 @@ import Testing
         await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: "解不出这张图片") } }
     }
 
+    /// What the photo picker hands over is a file: it is read whole unless it is too large, and then not at all.
+    @Test func aPickedPhotoIsReadFromItsFileUnlessItIsTooLarge() async throws {
+        func picked(_ file: URL) async throws -> PickedPhoto {
+            let provider = try #require(NSItemProvider(contentsOf: file))
+            return try await withCheckedThrowingContinuation { done in
+                _ = provider.loadTransferable(type: PickedPhoto.self) { done.resume(with: $0) }
+            }
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ra-picked-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let bytes = try #require(ready("a").processed?.bytes)
+        let small = dir.appendingPathComponent("small.png")
+        try bytes.write(to: small)
+        #expect(try await picked(small).read.get() == bytes)
+        // Larger than is ever read of one, as a scan or a long GIF can be: nothing of it is written here.
+        let large = dir.appendingPathComponent("large.tiff")
+        #expect(FileManager.default.createFile(atPath: large.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: large)
+        try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
+        try handle.close()
+        #expect(try await picked(large).read == .failure(ImageTooLarge("图片超过 80 MB")))
+    }
+
     @Test func theSealedStoreKeepsADraftWithoutItsPixelsInTheClear() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "ra-images-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: root) }

@@ -119,6 +119,24 @@ enum TestPictures {
         #expect(throws: ImageTooLarge("图片超过 60 MB")) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true) }
     }
 
+    @Test func aPickedFileTooLargeIsRefusedBeforeItIsRead() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ra-picked-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let small = dir.appendingPathComponent("small.png")
+        try Data("picked".utf8).write(to: small)
+        #expect(try readPicked(small) == Data("picked".utf8))
+        // One byte more than is ever read of a file; nothing of it is written, so nothing of it could be read fast.
+        let large = dir.appendingPathComponent("large.tiff")
+        #expect(FileManager.default.createFile(atPath: large.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: large)
+        try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
+        try handle.close()
+        #expect(throws: ImageTooLarge("图片超过 80 MB")) { try readPicked(large) }
+        try FileHandle(forWritingTo: large).truncate(atOffset: UInt64(pickedReadLimit(original: false)))
+        #expect(try readPicked(large).count == 80 * 1024 * 1024)
+    }
+
     @Test func whatAnOriginalThatCouldNotGoAsItWasSays() {
         #expect(originalNote(turned: true, png: false, sample: 1) == "按拍摄方向转正后以最高画质重新编码")
         #expect(originalNote(turned: false, png: false, sample: 1) == "转成了 JPEG，保留原始尺寸")

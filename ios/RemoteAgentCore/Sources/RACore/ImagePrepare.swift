@@ -45,6 +45,15 @@ public func checkPicked(bytes: Int64, original: Bool) throws {
     if bytes > limit { throw ImageTooLarge("图片超过 \(limit / 1024 / 1024) MB") }
 }
 
+/// Reads a picked file, unless it is larger than the most that is ever read
+/// of one: its size is asked for first, so that such a file never comes
+/// into memory (Android's `readUri` stops reading at the limit).
+public func readPicked(_ file: URL) throws -> Data {
+    let size = try FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64 ?? 0
+    try checkPicked(bytes: size, original: false)
+    return try Data(contentsOf: file)
+}
+
 /// What to try next when a compressed image came out at `bytes`.
 public enum CompressStep: Equatable, Sendable {
     /// Encode again at this JPEG quality.

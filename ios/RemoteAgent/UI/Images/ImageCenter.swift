@@ -38,6 +38,24 @@ final class VolatileFiles: RACore.SealedFiles, @unchecked Sendable {
     func clearFolder(_ folder: String) { lock.withLock { for k in data.keys where k.hasPrefix("\(folder)/") { data[k] = nil } } }
 }
 
+/// A photo picked from the library, taken as the file the picker hands over: its size is known before any
+/// of it is read, so one too large is refused without coming into memory.
+struct PickedPhoto: Transferable, Sendable {
+    /// The file's bytes, or why they were not read.
+    let read: Result<Data, ImageTooLarge>
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in
+            do {
+                return PickedPhoto(read: .success(try readPicked(received.file)))
+            } catch let refused as ImageTooLarge {
+                // Said as it is: an error thrown from here reaches the caller as the system's own.
+                return PickedPhoto(read: .failure(refused))
+            }
+        }
+    }
+}
+
 /// A display copy decrypted for the viewer: in memory only, for as long as the account is in use.
 struct ViewedImage: @unchecked Sendable {
     let image: UIImage
@@ -93,6 +111,9 @@ final class ImageCenter {
     @ObservationIgnored private(set) var uploads: ImageUploads!
     @ObservationIgnored private var drafts: [String: ImageDraft] = [:]
     @ObservationIgnored private var sources: [String: Source] = [:]
+    /// A picked file is being read, and who waits to read theirs.
+    @ObservationIgnored private var reading = false
+    @ObservationIgnored private var readers: [CheckedContinuation<Void, Never>] = []
     /// The machine each draft's images go to now.
     @ObservationIgnored private var targets: [String: String] = [:]
     /// Messages with images sent from here, by session, until the CLI has them.
@@ -285,17 +306,27 @@ final class ImageCenter {
         }
     }
 
-    /// The bytes that were picked at `uri`, read once and then held for the run.
+    /// The bytes that were picked at `uri`, read once and then held for the run. One file is read at a
+    /// time: several picked together would otherwise all be coming into memory at once.
     private func read(_ uri: String) async throws -> Data {
+        if reading {
+            await withCheckedContinuation { readers.append($0) }
+        } else {
+            reading = true
+        }
+        defer {
+            if readers.isEmpty { reading = false } else { readers.removeFirst().resume() }
+        }
         let unreadable = UserError("读不到这张图片")
         guard let source = sources[uri] else { throw unreadable }
         let data: Data
         switch source {
         case .data(let d): return d
         case .item(let item):
-            guard let d = try await item.loadTransferable(type: Data.self) else { throw unreadable }
-            data = d
+            guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else { throw unreadable }
+            data = try photo.read.get()
         case .provider(let provider):
+            // The clipboard hands over bytes, not a file: there is no size to ask for first.
             data = try await withCheckedThrowingContinuation { done in
                 _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { d, error in
                     if let d { done.resume(returning: d) } else { done.resume(throwing: error ?? unreadable) }
