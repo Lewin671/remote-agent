@@ -507,17 +507,35 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     }) { PlanButtons(s, full = false) }
 }
 
+/**
+ * 继续规划… / 批准执行. A reply whose outcome is unknown takes their place:
+ * it can only be sent again as it was, by a button that names its choice,
+ * or given up ([Plans]).
+ */
 @Composable
 fun PlanButtons(s: SessionView, full: Boolean, onDone: () -> Unit = {}) {
     val remote = LocalRemote.current
     val act = rememberAction()
-    val attempt = Plans.of(s.id)
+    val reply = Plans.of(s.id)
+    val offer = planOffer(reply)
     fun answer(c: PlanChoice) = act.run({
-        Plans.send(attempt, c, { choice ->
+        Plans.send(reply, c, { choice ->
             remote.prepare(s.machineId, s.id, remote.cmd { answerPlan = AnswerPlanRequest.newBuilder().setSessionId(s.id).setChoice(choice).build() })
         }) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
         null
     }) { onDone() }
+    fun retry() = act.run({
+        Plans.retry(reply) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
+        null
+    }) { onDone() }
+    if (!offer.choices) {
+        Banner(offer.note, Modifier.padding(bottom = 8.dp), Tone2.ERROR)
+        Btns {
+            if (offer.abandon) Btn("放弃", { Plans.abandon(reply); act.error = "" }, Modifier.weight(1f), enabled = !act.running)
+            offer.retry?.let { Btn(if (act.running) "提交中…" else it, { retry() }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running) }
+        }
+        return
+    }
     Btns {
         Btn("继续规划…", { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
         Btn(if (act.running) "提交中…" else "批准执行", { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running)
