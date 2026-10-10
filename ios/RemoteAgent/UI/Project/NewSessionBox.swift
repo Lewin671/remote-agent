@@ -51,10 +51,11 @@ struct NewSessionBox: View {
         let drafting = draft.drafting || ProjectImages.hasImages(images)
         let notices = newSessionNotices(
             state, config: config, name: name, pick: draft.agent, drafting: drafting, settled: settled, start: draft.progress)
+        let canSend = canStart(draft)
         VStack(spacing: 0) {
             if !notices.isEmpty {
                 VStack(spacing: 6) {
-                    ForEach(notices) { notice(of: $0, draft) }
+                    ForEach(notices) { notice(of: $0, draft, canStart: canSend) }
                 }
                 .padding(.horizontal, 12).padding(.top, 6).padding(.bottom, 2)
             }
@@ -68,9 +69,6 @@ struct NewSessionBox: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Space.page)
             }
-            // Every image must be on the machine first: never a start with some of them.
-            let canSend = canStartSession(state, config: config, drafting: drafting, settled: settled, running: draft.running)
-                && ProjectImages.ready(images)
             ComposerPill(
                 text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
                 plus: ProjectImages.available(images) ? .on : .dimmed, focus: $focused,
@@ -122,8 +120,20 @@ struct NewSessionBox: View {
         draft.config.retarget(RACore.switchAgent(c, project: to?.config, agent: agent), settled: to?.settled != false)
     }
 
+    /// Whether a session can be started with the draft as it is: ↑ is drawn
+    /// by it, and everything else that starts one (重试 after a failure, a
+    /// script) is held to it too.
+    private func canStart(_ draft: NewSessionDraft) -> Bool {
+        let config = draft.config.value
+        let images = ProjectImageContext(state: state, key: key, config: config, remote: context.remote)
+        // Every image must be on the machine first: never a start with some of them.
+        return canStartSession(
+            state, config: config, drafting: draft.drafting || ProjectImages.hasImages(images), settled: settled, running: draft.running)
+            && ProjectImages.ready(images)
+    }
+
     private func start(_ draft: NewSessionDraft) {
-        guard settled, let cfg = draft.config.value else { return }
+        guard canStart(draft), let cfg = draft.config.value else { return }
         let machine = initial?.machineId
         let images = ProjectImageContext(state: state, key: key, config: cfg, remote: context.remote)
         draft.start(
@@ -145,7 +155,7 @@ struct NewSessionBox: View {
         }
     }
 
-    @ViewBuilder private func notice(of notice: NewSessionNotice, _ draft: NewSessionDraft) -> some View {
+    @ViewBuilder private func notice(of notice: NewSessionNotice, _ draft: NewSessionDraft, canStart: Bool) -> some View {
         switch notice {
         case .reading(let text, let retry):
             EarlierTail(text, retry: retry).padding(.horizontal, 4).accessibilityIdentifier("settings-unread")
@@ -184,7 +194,8 @@ struct NewSessionBox: View {
         case .starting(let text):
             Banner(text, icon: Lucide.loaderCircle)
         case .failed(let text):
-            Banner(text, tone: .error, action: "重试", onAction: { start(draft) })
+            // 重试 is ↑ again: it is offered when ↑ is.
+            Banner(text, tone: .error, action: canStart ? "重试" : nil, onAction: { start(draft) })
         case .unknown(let text):
             Banner(text, tone: .warn, action: "放弃", onAction: { draft.abandon() })
         }

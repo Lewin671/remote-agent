@@ -595,7 +595,6 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val config = draft.value
     var text by entry.text
     val images = ImageDrafts.forProject(key)
-    val act = rememberAction()
     val fr = remember { FocusRequester() }
     val drafting = text.isNotBlank() || images.images.isNotEmpty()
     LaunchedEffect(initial, drafting, settled) { draft.follow(initial, drafting, settled) }
@@ -609,6 +608,10 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
     LaunchedEffect(machine, blocked, images.images.size) { if (machine != null && blocked == null) images.sendAllTo(remote, machine) }
     val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
+    val act = rememberAction()
+    // Whether a session can be started with the draft as it is: ↑ is drawn by it, and 重试 after a
+    // failure is held to it too.
+    val canStart = config != null && settled && !act.running && machineOnline && startable(text, images.images, config.machineId)
     fun launch(cfg: NewConfig, mode: ApprovalMode) {
         // While an earlier start's outcome is unknown, only it is sent
         // again, as it was: the daemon then answers from its log instead
@@ -649,7 +652,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         }
     }
     fun start() {
-        if (!settled) return
+        if (!canStart) return
         val cfg = config ?: return
         val st = Starts.of(key)
         // Other content is a new start; the unknown one is given up.
@@ -672,7 +675,8 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             if (act.running) Banner("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
             val frozen = Starts.of(key)
             // An unknown start has its own notice below.
-            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Banner("启动失败：${act.error}", tone = Tone2.ERROR, action = "重试", onAction = { start() })
+            // 重试 is ↑ again: it is offered when ↑ is.
+            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Banner("启动失败：${act.error}", tone = Tone2.ERROR, action = "重试".takeIf { canStart }, onAction = { start() })
             if (!act.running && frozen.attempt.frozen) {
                 var gaveUp by remember { mutableStateOf(0) }
                 Banner(
@@ -691,13 +695,22 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     }
     ComposeBox(
         text, { text = it }, "描述任务…",
-        canSend = c != null && settled && !act.running && machineOnline && drafting && (images.images.isEmpty() || images.ready(machine)),
+        canSend = canStart,
         onSend = ::start,
         onPlus = pick, plusEnabled = blocked == null,
         sendLabel = "开始", focusRequester = fr,
         top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
     )
 }
+
+/**
+ * Whether a draft is something to start a session with on [machineId]:
+ * there is no start with nothing to send, and none while an image is not on
+ * that machine yet. Never an empty session, never one with only some of the
+ * images.
+ */
+fun startable(text: String, images: List<PendingImage>, machineId: String): Boolean =
+    (text.isNotBlank() || images.isNotEmpty()) && images.all { it.readyFor(machineId) }
 
 /** The old name, for pages that start a session in a folder of their own. */
 @Composable

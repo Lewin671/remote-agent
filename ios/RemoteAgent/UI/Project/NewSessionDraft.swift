@@ -40,18 +40,22 @@ final class NewSessionDraft {
         NewSessionProgress(running: running, error: error, frozen: frozen, expired: expired, prompt: prompt)
     }
 
-    /// Starts a session with what is written, and with the images of
-    /// `images` that are on the machine. `onStarted` gets the new session's
-    /// ID and the configuration it started with, `onImagesUsed` the images
-    /// that went with it; a refusal, or no answer, leaves the text and the
-    /// images as they are.
+    /// Starts a session with what is written and the images of `images`.
+    /// There is no start with nothing to send, and none while an image is
+    /// not on the machine yet: never an empty session, never one with only
+    /// some of the images. `onStarted` gets the new session's ID and the
+    /// configuration it started with, `onImagesUsed` the images that went
+    /// with it; a refusal, or no answer, leaves the text and the images as
+    /// they are.
     func start(
-        _ remote: Remote, _ cfg: NewConfig, images: ImageDraft? = nil,
+        _ remote: any SessionCommands, _ cfg: NewConfig, images: ImageDraft? = nil,
         onImagesUsed: @escaping @MainActor ([PendingImage]) -> Void = { _ in },
         onStarted: @escaping @MainActor (_ sid: String, _ used: NewConfig, _ prompt: String) -> Void
     ) {
         guard !running else { return }
         let typed = promptText(text)
+        let attached = images?.images ?? []
+        guard !typed.isEmpty || !attached.isEmpty, attached.allSatisfy({ $0.readyFor(cfg.machineId) }) else { return }
         // Other content is a new start; the unknown one is given up.
         if attempt.frozen && typed != prompt { attempt.abandon() }
         // An unknown start is resent as prepared, with the mode it had.
@@ -63,7 +67,7 @@ final class NewSessionDraft {
                 let prepared = try attempt.next {
                     prompt = typed
                     // The images this request carries; any picked after it stay in the draft.
-                    taken = images?.images.filter { $0.readyFor(cfg.machineId) } ?? []
+                    taken = attached
                     return try remote.prepare(
                         machineId: cfg.machineId, sessionId: "",
                         createSessionCommand(

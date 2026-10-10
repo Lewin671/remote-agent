@@ -528,6 +528,32 @@ it("keeps the message being typed when a page opens and closes", async () => {
   expect(input().value).toBe("顺便看下 lint");
 });
 
+it("does not start an empty session when 重试 is tapped after the text was cleared", async () => {
+  const r = demo();
+  const sent: string[] = [];
+  r.machineCommand = async (_m: string, cmd: CommandKind): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") sent.push(cmd.value.prompt ?? "");
+    throw new CommandError("unavailable", "MacBook 没有回应");
+  };
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const write = (text: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input(), text);
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  await write("加限流");
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.textContent).toContain("启动失败"));
+  expect(sent).toEqual(["加限流"]);
+  // The send button is disabled now; the banner's 重试 is held to the same rule.
+  await write("");
+  expect(sendButton()?.disabled).toBe(true);
+  await click(button("重试"));
+  await act(async () => undefined);
+  expect(sent).toEqual(["加限流"]);
+});
+
 it("never renews a session start of unknown outcome, even once it expired", async () => {
   const r = demo();
   const sent: string[] = [];

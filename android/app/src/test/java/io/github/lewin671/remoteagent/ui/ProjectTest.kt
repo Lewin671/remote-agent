@@ -228,6 +228,27 @@ class ProjectTest {
             projectStart(none, "/work/new", machine = "mac")?.let { it.copy(config = it.config.copy(cwd = "/work/new")) })
     }
 
+    private fun image(id: String, on: String? = "mac") = PendingImage(id, null).also {
+        if (on != null) {
+            it.state = PendingImage.State.Ready
+            it.machineId = on
+            it.imageId = "on-$on-$id"
+        } else it.state = PendingImage.State.Uploading(0.4f)
+    }
+
+    // 重试 after a failed start comes to the same place as ↑, whose dimming is not what holds a start back.
+    @Test
+    fun nothingStartsWithoutSomethingToSendOrBeforeEveryImageIsOnTheMachine() {
+        // The text was cleared after a start that failed: there is no session without a first message.
+        assertEquals(false, startable("  \n", emptyList(), "mac"))
+        assertEquals(true, startable("say hi", emptyList(), "mac"))
+        // An image still on its way, or on another machine than the session starts on: the start waits for it.
+        assertEquals(false, startable("看这两张图", listOf(image("a"), image("b", on = null)), "mac"))
+        assertEquals(false, startable("看这两张图", listOf(image("a"), image("b", on = "vps")), "mac"))
+        // All of them there: images alone are a first message too.
+        assertEquals(true, startable("", listOf(image("a"), image("b")), "mac"))
+    }
+
     @Test
     fun theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() {
         val full = state(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_FULL_ACCESS)), emptyList(), host("mac", *both), host("vps", *both))

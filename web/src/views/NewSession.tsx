@@ -417,9 +417,10 @@ export function NewBox({
     const prompt = text;
     // An unknown start that expired is not sent again, nor replaced by the
     // same start under a new request. Chosen images must all be on the
-    // machine first.
+    // machine first, and there is no session without a first message: the
+    // send button is disabled for these, but 重试 comes here too.
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
-    if (ns.tray.items.length && !ns.tray.ready()) return;
+    if (ns.tray.items.length ? !ns.tray.ready() : !prompt.trim()) return;
     // Retrying an unknown start sends it as it was.
     const ok = await ns.create(prompt.trim());
     if (ok) setText("");
