@@ -5,9 +5,37 @@
 // and ⋯ open 项目设置. The header folds into the navigation bar once it
 // is scrolled away; the keyboard only shortens the list, so nothing jumps
 // as it comes and goes (design-system §6 「输入框」).
+import Observation
 import RACore
 import RAProto
 import SwiftUI
+
+/// The model list the settings summary reads a CLI's default model from,
+/// for the machine and CLI the summary is about now. The lists are fetched
+/// by tasks the page cannot stop (`Remote.listModels` shares one request
+/// among its callers), so an answer may arrive after the page has moved on
+/// to another CLI: it is only kept while it is still the one asked for.
+@MainActor
+@Observable
+final class SummaryModels {
+    struct Key: Hashable, Sendable {
+        var machine: String
+        var agent: PBAgent
+    }
+
+    private(set) var list: PBListModelsResponse?
+    @ObservationIgnored private var wanted: Key?
+
+    /// Shows nothing, then the list of `key` once `fetch` has it; nil shows nothing.
+    func load(_ key: Key?, fetch: @MainActor (Key) async -> PBListModelsResponse?) async {
+        wanted = key
+        list = nil
+        guard let key else { return }
+        let got = await fetch(key)
+        guard wanted == key else { return }
+        list = got
+    }
+}
 
 /// A project's page. `key` is the project's path; `focusNew` brings the keyboard up in the box.
 struct ProjectScreen: View {
@@ -43,7 +71,7 @@ struct ProjectPageView: View {
     @State private var scrolledAway = false
     @State private var settings: ProjectSettingsRequest? = HomeLaunch.value("-projectSheet")
         .map { ProjectSettingsRequest(page: ProjectSettingsPage(rawValue: $0) ?? .main) }
-    @State private var summaryModels: PBListModelsResponse?
+    @State private var summaryModels = SummaryModels()
     @State private var now = nowMs()
 
     private static let scroll = "project-scroll"
@@ -52,11 +80,6 @@ struct ProjectPageView: View {
     private struct HeaderEnd: PreferenceKey {
         static let defaultValue: CGFloat? = nil
         static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) { value = nextValue() ?? value }
-    }
-
-    private struct Models: Hashable {
-        var machine: String
-        var agent: PBAgent
     }
 
     var body: some View {
@@ -133,11 +156,12 @@ struct ProjectPageView: View {
                     onClose: { settings = nil })
             }
         }
-        .task(id: selected.map { Models(machine: $0.machineId, agent: $0.agent) }) {
-            summaryModels = nil
-            guard let selected else { return }
-            await HomeLaunch.settled(model)
-            summaryModels = try? await context.remote.listModels(selected.machineId, agent: selected.agent)
+        .task(id: selected.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) {
+            let remote = context.remote
+            await summaryModels.load(selected.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) { key in
+                await HomeLaunch.settled(model)
+                return try? await remote.listModels(key.machine, agent: key.agent)
+            }
         }
         .task(id: key) {
             // The folder is stored with the machine chosen, so it is listed before its first session.
@@ -156,7 +180,7 @@ struct ProjectPageView: View {
     }
 
     private func chip(_ state: RemoteState, _ selected: NewConfig) -> some View {
-        ProjectSummaryChip(summary: projectSummary(state, selected, models: summaryModels), full: isFullAccess(state, selected)) {
+        ProjectSummaryChip(summary: projectSummary(state, selected, models: summaryModels.list), full: isFullAccess(state, selected)) {
             settings = ProjectSettingsRequest()
         }
     }
