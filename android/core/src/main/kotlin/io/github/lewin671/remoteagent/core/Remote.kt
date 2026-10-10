@@ -341,6 +341,9 @@ class Remote(
     private val applying = Mutex()
     private var listRetry: Job? = null
     private var listBackoff = LIST_RETRY_MS
+    // The same for the preferences while there is no copy of them at all: nothing of them can be changed until one is read.
+    private var prefsRetry: Job? = null
+    private var prefsBackoff = LIST_RETRY_MS
     private var next: SessionPlace? = null
     private var firstEnd: SessionPlace? = null
     private var firstPage = false
@@ -385,6 +388,8 @@ class Remote(
             reconnect = null
             listRetry?.cancel()
             listRetry = null
+            prefsRetry?.cancel()
+            prefsRetry = null
             connecting?.cancel()
             connecting = null
             opening?.cancel()
@@ -1045,12 +1050,32 @@ class Remote(
 
     private val prefsCodec = PrefsCodec(keys.prefs, account.deviceId)
 
+    /**
+     * Reads the preferences. With no copy of them here nothing of them can
+     * be changed, so a read that fails then is tried again by itself, ever
+     * more slowly, while the connection holds.
+     */
     private suspend fun loadPrefs() {
+        prefsRetry?.cancel()
+        prefsRetry = null
+        val gen = generation
         try {
             val o = api.client.getAccountPrefs(io.github.lewin671.remoteagent.proto.GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), Api.headers(token)).value()
             putPrefs(o.`object`)
+            prefsBackoff = LIST_RETRY_MS
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             report(e)
+            // A connection made since reads them itself.
+            if (prefs != null || !running || gen != generation || prefsRetry != null) return
+            val wait = prefsBackoff
+            prefsBackoff = minOf(prefsBackoff * 2, 30_000)
+            prefsRetry = scope.launch {
+                delay(wait)
+                // Not this job's to cancel itself from loadPrefs.
+                prefsRetry = null
+                if (running && conn == ConnState.ONLINE && gen == generation && prefs == null) loadPrefs()
+            }
         }
     }
 

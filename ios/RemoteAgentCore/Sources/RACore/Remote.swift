@@ -165,6 +165,9 @@ public actor Remote {
     let applying = Gate()
     var listRetry: Scheduled?
     var listBackoff = listRetryMs
+    // The same for the preferences while there is no copy of them at all: nothing of them can be changed until one is read.
+    var prefsRetry: Scheduled?
+    var prefsBackoff = listRetryMs
     var next: SessionPlace?
     var firstEnd: SessionPlace?
     var firstPage = false
@@ -377,6 +380,8 @@ public actor Remote {
         reconnect = nil
         listRetry?.task.cancel()
         listRetry = nil
+        prefsRetry?.task.cancel()
+        prefsRetry = nil
         connecting?.cancel()
         connecting = nil
         opening?.task.cancel()

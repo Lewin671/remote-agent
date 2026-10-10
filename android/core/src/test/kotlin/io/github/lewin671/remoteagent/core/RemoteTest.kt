@@ -722,6 +722,22 @@ class RemoteTest {
     }
 
     @Test
+    fun preferencesThatCouldNotBeReadAreReadAgainWhileTheConnectionHolds() = runBlocking<Unit> {
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        val flaky = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/GetAccountPrefs") && reads.incrementAndGet() == 1) throw java.io.IOException("connection lost")
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(joinWithRoot(root, server.url, http), flaky)
+        closers += AutoCloseable { r.close() }
+        r.start()
+        // The stream stays up throughout: nothing but the read itself brings them.
+        val st = r.awaitState("preferences") { it.prefs != null }
+        assertEquals(ConnState.ONLINE, st.conn)
+        assertEquals(2, reads.get())
+    }
+
+    @Test
     fun aClientsNameReachesTheOtherClients() = runBlocking<Unit> {
         val a = client()
         val b = client()

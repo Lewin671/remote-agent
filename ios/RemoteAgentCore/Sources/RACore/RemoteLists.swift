@@ -331,14 +331,31 @@ extension Remote {
 
     // --- account preferences and devices ---
 
+    /// Reads the preferences. With no copy of them here nothing of them can
+    /// be changed, so a read that fails then is tried again by itself, ever
+    /// more slowly, while the connection holds.
     func loadPrefs() async {
+        prefsRetry?.task.cancel()
+        prefsRetry = nil
+        let gen = generation
         var ask = PBGetAccountPrefsRequest()
         ask.objectID = projectPrefsID
         do {
             let o = try await api.client.getAccountPrefs(request: ask, headers: Api.headers(token: token)).value()
             await putPrefs(o.object)
+            prefsBackoff = listRetryMs
         } catch {
             report(error)
+            // A connection made since reads them itself.
+            if prefs != nil || !running || gen != generation || prefsRetry != nil { return }
+            let wait = prefsBackoff
+            prefsBackoff = min(prefsBackoff * 2, 30_000)
+            prefsRetry = schedule(wait) { me, id in
+                guard me.prefsRetry?.id == id else { return }
+                // Not this timer's to cancel from loadPrefs while it runs.
+                me.prefsRetry = nil
+                if me.running && me.conn == .online && gen == me.generation && me.prefs == nil { await me.loadPrefs() }
+            }
         }
     }
 

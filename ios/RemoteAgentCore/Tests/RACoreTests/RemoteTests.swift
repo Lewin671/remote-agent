@@ -1067,6 +1067,27 @@ extension ServerTests {
             }
         }
 
+        @Test func preferencesThatCouldNotBeReadAreReadAgainWhileTheConnectionHolds() async throws {
+            try await world { w in
+                let reads = Counter()
+                let flaky = Intercept.http(for: w.server.url) { request in
+                    if request.url?.path.hasSuffix("/GetAccountPrefs") == true, reads.increment() == 1 {
+                        throw URLError(.networkConnectionLost)
+                    }
+                    return request
+                }
+                let r = try w.remote(try await w.join(), http: flaky)
+                r.start()
+                _ = try await r.awaitState("online") { $0.conn == .online && $0.synced }
+                try await eventually("the first read") { reads.value >= 1 }
+                // The stream stayed up throughout: nothing but the read itself brings them.
+                let st = try await r.awaitState("preferences") { $0.prefs != nil }
+                #expect(st.conn == .online)
+                #expect(prefsBlocked(st) == nil)
+                #expect(reads.value == 2)
+            }
+        }
+
         @Test func aClientsNameReachesTheOtherClients() async throws {
             try await world { w in
                 let a = try await w.client()
