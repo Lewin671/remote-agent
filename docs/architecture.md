@@ -197,7 +197,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **运行中的消息分两种**：
   - steer 是插入这一轮，daemon 照上一条的规则在输入框就绪时写入：Codex 运行中按回车就是插入当前这一轮；Claude Code 运行中回车会先进它自己的队列，等当前工具调用结束再并入这一轮（claude-code-notes §10）。
   - queue 是等这一轮结束再发，由 daemon 留在自己的队列里，看到这一轮结束（Codex 的 `task_complete`，Claude Code 的 `turn_duration`）后才按上一条的规则写入，不借用 Codex 的 Tab：两个 CLI 行为一致，daemon 重启后还在，也能照常取消。空闲时两者没有区别。
-  - **还没送到 Agent 的消息都能撤回**，不分 steer 和 queue：还在 daemon 队列里的直接移除（`CancelInput`）；Codex 的 steer 一写进终端就插进这一轮，算已送达，不能撤回；Claude Code 的 steer 写进后先留在 Claude Code 自己的队列里，直到当前工具结束才并入，这期间 daemon 按 ↑ 把它拉回输入框、清空，以 transcript 出现不是 `absorbed_mid_turn` 的 `queue-operation remove` 为撤回成功；先被并入了就报「已送达，不能取消」。
+  - **还没送到 Agent 的消息都能撤回**，不分 steer 和 queue：还在 daemon 队列里的直接移除（`CancelInput`）；Codex 的 steer 一写进终端就插进这一轮，算已送达，不能撤回；Claude Code 的 steer 写进后先留在 Claude Code 自己的队列里，直到当前工具结束才并入，这期间 daemon 按 ↑ 把它拉回输入框、清空，以 transcript 出现不是 `absorbed_mid_turn` 的 `queue-operation remove` 为撤回成功；先被并入了就报「已送达，不能取消」。↑ 会把 Claude Code 队列里的消息全部拉回，所以同时排着的其他消息在清空输入框之前先存回 daemon 的队列并暂停，确认输入框清空后才放开，照常重新写入；daemon 中途停了或输入框清不掉时它们保持暂停，等用户发送或取消，不会丢，也不会写进还留着原文的输入框。
   - **默认**：客户端默认发 steer，和两个 CLI 自己按回车一致；发送请求里带一个字段区分两种，没填时按 steer。
   - **一轮被中断后**，还没写入的消息（queue 的，以及 steer 但还没写入的）都暂停，不自动发出，等用户逐条选择发送或取消：中断往往说明方向变了，排好的后续消息可能已经不适用。暂停状态和原因同步给所有客户端
 - **判断输入框**：抓屏时保留颜色属性（`capture-pane -e`），按**样式属性**判断，不按转义序列的字面写法：逐个解析行首的 SGR 序列得到加粗、变淡、反色，再看第一个可见字符。Codex 升级常换写法（0.159.0 把 `\e[1m` 换成了 `\e[0;1m`），样式本身不变。输入框的提示符是加粗的 `›`，占位提示是淡色字（前面可能先有背景色设置，判断时跳过开头的样式和空格，看第一个可见字符是不是淡色），列表里选中的行是加粗反色的 `›`。只有看到占位提示才认定输入框是空的：多行草稿的第一行可能是空的，其余行和底部状态栏分不开（notes §10）
