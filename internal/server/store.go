@@ -278,6 +278,7 @@ func (s *store) machine(ctx context.Context, id string) (*pb.Machine, error) {
 }
 
 var errOtherMachine = errors.New("session belongs to another machine")
+var errNoMachine = errors.New("the machine has been removed")
 
 // putSession creates the session with key, or updates its metadata, and
 // with it when the session ended, unless a newer revision is stored. It
@@ -288,6 +289,16 @@ func (s *store) putSession(ctx context.Context, machineID, sessionID string, key
 		return nil, err
 	}
 	defer tx.Rollback()
+	// The caller was authenticated before this transaction began, and its
+	// machine may have been removed since, sessions and all. They must
+	// not come back.
+	var registered int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM machines WHERE id = ?`, machineID).Scan(&registered); err != nil {
+		return nil, err
+	}
+	if registered == 0 {
+		return nil, errNoMachine
+	}
 	var owner string
 	err = tx.QueryRowContext(ctx, `SELECT machine_id FROM sessions WHERE session_id = ?`, sessionID).Scan(&owner)
 	switch {

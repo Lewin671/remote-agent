@@ -20,6 +20,9 @@ func TestSessionPaging(t *testing.T) {
 	}
 	defer st.Close()
 	ctx := context.Background()
+	if _, err := st.db.Exec(`INSERT INTO machines (id) VALUES ('m')`); err != nil {
+		t.Fatal(err)
+	}
 	put := func(id string, ended int64) {
 		t.Helper()
 		if _, err := st.putSession(ctx, "m", id, []byte("key"), []byte("meta"), 1, ended); err != nil {

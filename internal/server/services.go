@@ -294,7 +294,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 	switch {
 	case errors.Is(err, errNoKey):
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, errOtherMachine):
+	case errors.Is(err, errOtherMachine), errors.Is(err, errNoMachine):
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	case err != nil:
 		return nil, internal(err)

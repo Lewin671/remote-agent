@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"net/http"
 	"sync"
 	"testing"
@@ -118,5 +119,30 @@ func TestConcurrentRegistrationCannotUndoRemoval(t *testing.T) {
 		if _, err := ts.srv.store.machine(ctx, id); err != errNoRows {
 			t.Fatalf("registration restored machine routing: %v", err)
 		}
+	}
+}
+
+// A PutSession that passed authentication before its machine was removed
+// must not bring the machine's sessions back.
+func TestRemovedMachineCannotPutSession(t *testing.T) {
+	ts, mid, _, machine, client, _ := newV2Env(t)
+	ctx := context.Background()
+	putTestSession(t, ts, machine, mid, "s1")
+	if _, err := client.RemoveDevice(ctx, connect.NewRequest(&pb.RemoveDeviceRequest{DeviceId: mid})); err != nil {
+		t.Fatal(err)
+	}
+	// The request is past the interceptor; only the store can refuse it.
+	if _, err := ts.srv.store.putSession(ctx, mid, "s1", []byte("key"), []byte("meta"), 1, 0); !errors.Is(err, errNoMachine) {
+		t.Fatalf("put session for a removed machine: %v", err)
+	}
+	var sessions int
+	if err := ts.srv.store.db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&sessions); err != nil || sessions != 0 {
+		t.Fatalf("%d sessions of a removed machine stored, %v", sessions, err)
+	}
+	svc := &machineService{s: ts.srv}
+	key, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s2"}, e2e.NewKey())
+	_, err := svc.PutSession(context.WithValue(ctx, ctxKey{}, &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}), connect.NewRequest(&pb.PutSessionRequest{SessionId: "s2", Key: key}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("put session for a removed machine: %v", err)
 	}
 }
