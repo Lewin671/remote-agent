@@ -268,7 +268,8 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     }
 
     /// The command may or may not have run; retrying with the same request ID is safe.
-    public var unknown: Bool { code == CommandError.unknownOutcome }
+    /// A daemon that stopped halfway through it answers "aborted" ever after.
+    public var unknown: Bool { code == CommandError.unknownOutcome || (fromDaemon && code == "aborted") }
     public var errorDescription: String? { message }
     public var description: String { message }
 

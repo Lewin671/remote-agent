@@ -25,6 +25,25 @@ class AttemptTest {
     }
 
     @Test
+    fun aDaemonThatStoppedHalfwayLeavesTheOutcomeUnknown() {
+        val a = Attempt()
+        val first = a.next(::make)
+        // What the daemon answers for a request it began and has no result for (errUnknownOutcome in internal/relay).
+        val stopped = CommandException("aborted", "the daemon stopped while running this command", fromDaemon = true)
+        assertTrue(uncertain(stopped))
+        a.settle(stopped)
+        assertTrue(a.frozen)
+        assertSame(first, a.next(::make))
+        // The same answer to the retry is still no answer.
+        a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
+        a.settle(stopped)
+        assertTrue(a.frozen)
+        assertSame(first, a.next(::make))
+        // The code alone is not the daemon's word: the app gives up on a device's name with it.
+        assertFalse(uncertain(CommandException("aborted", "设备名称一直在被其他客户端修改，没能保存")))
+    }
+
+    @Test
     fun aDefiniteFailureFreesTheNextAttempt() {
         val a = Attempt()
         val first = a.next(::make)

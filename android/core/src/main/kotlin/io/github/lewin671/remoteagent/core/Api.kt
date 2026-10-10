@@ -125,8 +125,11 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
     // fromDaemon: the daemon's own answer for this request, the final word
     // on it (except that it expired before reaching the daemon).
 
-    /** The command may or may not have run; retrying with the same request ID is safe. */
-    val unknown: Boolean get() = code == UNKNOWN
+    /**
+     * The command may or may not have run; retrying with the same request ID is safe.
+     * A daemon that stopped halfway through it answers "aborted" ever after.
+     */
+    val unknown: Boolean get() = code == UNKNOWN || (fromDaemon && code == "aborted")
 
     companion object {
         const val UNKNOWN = "unknown_outcome"
