@@ -64,6 +64,19 @@
 //                                    clearing; licenses: <a licence's id>; client/<id>, devices: renaming, removing
 //   -settingsEnd                     a settings page scrolled to its end
 //
+// The terminal (UI/Terminal/TerminalDebug.swift)
+//   -demo -demoRoute terminal/<session>   the terminal on a sample screen
+//   -termState <live|connecting|closed|offline|ended>   the pane in that state
+//   -termSize <cols>x<rows>          the sample screen as a window of that size, not fitted
+//
+// Images (UI/Images/ImageDebug.swift)
+//   -imageAdd <path[,path…]>         once a message box is up: these files through what the picker's results go through
+//   -imageDraft <state>              with -demo: the strip in a fixed state: ready, crowded, uploading, failed,
+//                                    original, full, notice
+//   -imageOutgoing                   with -demo: a message with images on its way, in the session shown
+//   -viewerState <state>             with -demo: the viewer's display copy: loading, ready, notSynced, expired,
+//                                    offline, failed, corrupt
+//
 // The component gallery (UI/Gallery/Gallery.swift)
 //   -gallery [page]                  the list of pages, or one (tokens, icons, buttons, notices, lists, choices,
 //                                    fields, states, nav, sheet, dialog, input, saving, menu, cover)
@@ -99,6 +112,14 @@
 //   machine.timeout, machine.remove             a computer's page: the next approval timeout, 移除
 //   check.again         再测一次 of 连接检测
 //   images.clear        清理 of 图片存储
+//   images.add, images.pick, images.original, images.retry, images.remove
+//                       a message box's images: the paths of debug.imagePaths, what ＋ does, 原图, 重试, 移除
+//   viewer.close, viewer.next, viewer.zoom, viewer.retry, viewer.save, viewer.share   the image viewer
+//   term.type, term.ime, term.paste             the terminal: the text of the tmp directory's `term-input`
+//   term.enter, term.esc, term.tab, term.ctrlc, term.left, term.up, term.down, term.right, term.keyboard
+//                       the key bar's keys
+//   term.fit, term.fontUp, term.fontDown, term.reconnect, term.details, term.dump
+//                       the toolbar and the notice; dump writes what the pane shows to `term-dump`
 //   gallery.save        保存 of the gallery's `saving` dialog
 import Foundation
 import RACore

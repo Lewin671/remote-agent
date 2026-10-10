@@ -56,7 +56,7 @@ enum SessionImages {
         center(context).draft(ImageCenter.sessionKey(context.sessionId))
     }
 
-    /// 1. The ＋ was tapped. It is only enabled while `context.blocked` is nil.
+    /// 1. The ＋ was tapped: shows the picker, or says why this computer takes no images now (it is dimmed then).
     static func plusTapped(_ context: SessionImageContext) {
         center(context).plus(ImageCenter.sessionKey(context.sessionId), blocked: context.blocked, max: context.limit)
     }

@@ -74,7 +74,7 @@ struct SessionComposeBox<Top: View>: View {
 
     var body: some View {
         ComposerPill(
-            text: $text, placeholder: placeholder, label: "消息", plus: plusEnabled ? .on : .off, focus: focus, onPlus: onPlus,
+            text: $text, placeholder: placeholder, label: "消息", plus: plusEnabled ? .on : .dimmed, focus: focus, onPlus: onPlus,
             top: { top }, trailing: { button })
         // A keyboard attached to an iPad or a Mac sends with ⌘↩; Return alone is a new line, as on the screen keyboard.
         .background {
