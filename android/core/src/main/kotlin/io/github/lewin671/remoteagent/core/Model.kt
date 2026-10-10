@@ -409,6 +409,9 @@ fun permissionMode(pm: String): Mode? = when (pm) {
     else -> null
 }
 
+/** Claude Code's permission mode as the chat names it: one of the four, or its own name for a mode outside them. */
+fun permissionModeName(pm: String): String = permissionMode(pm)?.text ?: if (pm == "acceptEdits") "accept edits" else pm
+
 /** A mode as shown: one of the four, or a CLI's own mode by its name. */
 data class ModeLabel(val text: String, val mode: Mode?)
 
@@ -457,6 +460,10 @@ fun <M> findModel(models: List<M>, id: String, slug: (M) -> String): M? {
     val words = id.lowercase().split(Regex("[-_.\\s]"))
     return models.firstOrNull { slug(it).lowercase() in words }
 }
+
+/** Whether the model a CLI reports ([id]) is the one chosen by slug or alias. */
+fun modelIs(id: String, slug: String): Boolean =
+    id.isNotEmpty() && slug.isNotEmpty() && (id == slug || slug.lowercase() in id.lowercase().split(Regex("[-_.\\s]")))
 
 /**
  * The approval mode a new session gets when none is chosen: the daemon's
@@ -581,8 +588,11 @@ fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived = Eve
 
 internal class EventReducer(agent: Agent) {
     private val d = Derived()
-    private var mode: Mode? = null
+    // The mode as the chat names it, a CLI's own name for one outside the four; empty until a context says.
+    private var mode = ""
     private var model = ""
+    // The model and effort last switched to from here, until a context shows a model.
+    private var expected: Pair<String, String>? = null
     // Messages sent from clients are recorded as submitted before the CLI
     // records them; the rest were typed in the terminal.
     private var submitted = 0
@@ -704,28 +714,38 @@ internal class EventReducer(agent: Agent) {
                 }
                 Event.KindCase.SETTINGS_CHANGED -> {
                     val c = e.settingsChanged
-                    // The client names models by slug or alias, contexts by the
-                    // CLI's own ID: start over from the next context rather than
-                    // compare the two.
-                    if (c.model.isNotEmpty()) model = ""
-                    modeOf(c.mode)?.let { mode = it }
+                    // The next context should show this model; the client names it
+                    // by slug or alias, the context by the CLI's own ID.
+                    if (c.model.isNotEmpty()) expected = c.model to c.effort
+                    modeOf(c.mode)?.let { mode = it.text }
                 }
                 Event.KindCase.TURN_CONTEXT -> {
                     val c = e.turnContext
-                    val m = contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode, c.permissionMode)
+                    // Claude Code's mode by its own name, so that one outside the four is a change like any other.
+                    val m = if (c.permissionMode.isNotEmpty()) permissionModeName(c.permissionMode)
+                    else contextMode(c.approvalsReviewer, c.approvalPolicy, c.sandbox, c.collaborationMode)?.text.orEmpty()
                     val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
                     val mm = "${c.model} ${c.effort}"
                     val changes = mutableListOf<String>()
-                    if (mode != null && m != null && m != mode && !(mode == Mode.PLAN && planned)) changes += "模式切到了 ${m.text}"
-                    if (m != null && m != mode) planned = false
+                    if (mode.isNotEmpty() && m.isNotEmpty() && m != mode && !(mode == Mode.PLAN.text && planned)) changes += "模式切到了 $m"
+                    if (m.isNotEmpty() && m != mode) planned = false
                     // Plan mode runs at its own effort; only a model change counts
                     // there. A context without a model is Claude Code's mode, read
-                    // off the screen; it says nothing about the model.
-                    if (model.isNotEmpty() && c.model.isNotEmpty() && mm != model && !planning) {
+                    // off the screen; it says nothing about the model. After a
+                    // switch from here the next context is compared with what was
+                    // chosen; a different model means the terminal changed it since.
+                    val want = expected
+                    val changed = if (want != null) {
+                        !(modelIs(c.model, want.first) && (want.second.isEmpty() || c.effort.isEmpty() || c.effort == want.second))
+                    } else {
+                        mm != model
+                    }
+                    if ((model.isNotEmpty() || want != null) && c.model.isNotEmpty() && changed && !planning) {
                         changes += "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
                     }
+                    if (c.model.isNotEmpty() && !planning) expected = null
                     if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.joinToString("，")
-                    if (m != null) mode = m
+                    if (m.isNotEmpty()) mode = m
                     if (!planning && c.model.isNotEmpty()) model = mm
                 }
                 Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {

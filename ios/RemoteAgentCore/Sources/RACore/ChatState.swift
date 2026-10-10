@@ -163,8 +163,11 @@ public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = .codex) ->
 
 struct EventReducer: Sendable {
     private var d = Derived()
-    private var mode: Mode?
+    // The mode as the chat names it, a CLI's own name for one outside the four; empty until a context says.
+    private var mode = ""
     private var model = ""
+    // The model and effort last switched to from here, until a context shows a model.
+    private var expected: (model: String, effort: String)?
     // Messages sent from clients are recorded as submitted before the CLI
     // records them; the rest were typed in the terminal.
     private var submitted = 0
@@ -295,28 +298,38 @@ struct EventReducer: Sendable {
             d.plan = p
             planned = true
         case .settingsChanged(let c):
-            // The client names models by slug or alias, contexts by the
-            // CLI's own ID: start over from the next context rather than
-            // compare the two.
-            if !c.model.isEmpty { model = "" }
-            if let m = modeOf(c.mode) { mode = m }
+            // The next context should show this model; the client names it
+            // by slug or alias, the context by the CLI's own ID.
+            if !c.model.isEmpty { expected = (c.model, c.effort) }
+            if let m = modeOf(c.mode) { mode = m.text }
         case .turnContext(let c):
-            let m = contextMode(
-                reviewer: c.approvalsReviewer, policy: c.approvalPolicy, sandbox: c.sandbox, collaboration: c.collaborationMode,
-                permission: c.permissionMode)
+            // Claude Code's mode by its own name, so that one outside the four is a change like any other.
+            let m = c.permissionMode.isEmpty
+                ? contextMode(
+                    reviewer: c.approvalsReviewer, policy: c.approvalPolicy, sandbox: c.sandbox, collaboration: c.collaborationMode)?.text ?? ""
+                : permissionModeName(c.permissionMode)
             let planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
             let mm = "\(c.model) \(c.effort)"
             var changes = [String]()
-            if let mode, let m, m != mode, !(mode == .plan && planned) { changes.append("模式切到了 \(m.text)") }
-            if let m, m != mode { planned = false }
+            if !mode.isEmpty && !m.isEmpty && m != mode && !(mode == Mode.plan.text && planned) { changes.append("模式切到了 \(m)") }
+            if !m.isEmpty && m != mode { planned = false }
             // Plan mode runs at its own effort; only a model change counts
             // there. A context without a model is Claude Code's mode, read
-            // off the screen; it says nothing about the model.
-            if !model.isEmpty && !c.model.isEmpty && mm != model && !planning {
+            // off the screen; it says nothing about the model. After a
+            // switch from here the next context is compared with what was
+            // chosen; a different model means the terminal changed it since.
+            let changed: Bool
+            if let expected {
+                changed = !(modelIs(c.model, expected.model) && (expected.effort.isEmpty || c.effort.isEmpty || c.effort == expected.effort))
+            } else {
+                changed = mm != model
+            }
+            if (!model.isEmpty || expected != nil) && !c.model.isEmpty && changed && !planning {
                 changes.append("模型切到了 \(c.model)" + (c.effort.isEmpty ? "" : " · \(c.effort)"))
             }
+            if !c.model.isEmpty && !planning { expected = nil }
             if !changes.isEmpty { d.terminalChanges[e.seq] = changes.joined(separator: "，") }
-            if let m { mode = m }
+            if !m.isEmpty { mode = m }
             if !planning && !c.model.isEmpty { model = mm }
         case .sessionState(let s):
             if s.status == .exited { endTools() }

@@ -135,6 +135,77 @@ import Testing
         #expect(d.terminalChanges[2] == "模式切到了 自动")
     }
 
+    // The web's "notes a model changed in the terminal after a switch from here".
+    @Test func notesAModelChangedInTheTerminalAfterASwitchFromHere() {
+        func context(_ model: String, _ effort: String) -> PBEvent.OneOf_Kind {
+            .turnContext(.with { $0.model = model; $0.effort = effort; $0.approvalPolicy = "on-request"; $0.approvalsReviewer = "user" })
+        }
+        let chosen = PBEvent.OneOf_Kind.settingsChanged(.with { $0.model = "gpt-6-sol"; $0.effort = "high" })
+        let d = derive([
+            Mk.ev(1, context("gpt-6-astra", "medium")),
+            Mk.ev(2, chosen),
+            // Changed again at the computer before the next turn.
+            Mk.ev(3, context("gpt-6-luna", "low")),
+            Mk.ev(4, chosen),
+            Mk.ev(5, context("gpt-6-sol", "high")),  // as chosen here: nothing to note
+        ])
+        #expect(d.terminalChanges == [3: "模型切到了 gpt-6-luna · low"])
+    }
+
+    // The web's "notes a switch back made in the terminal after a switch from here".
+    @Test func notesASwitchBackMadeInTheTerminalAfterASwitchFromHere() {
+        func context(_ model: String) -> PBEvent.OneOf_Kind {
+            .turnContext(.with { $0.model = model; $0.effort = "medium"; $0.approvalPolicy = "on-request"; $0.approvalsReviewer = "user" })
+        }
+        let d = derive([
+            Mk.ev(1, context("gpt-6-astra")),
+            Mk.ev(2, .settingsChanged(.with { $0.model = "gpt-6-sol"; $0.effort = "medium" })),
+            Mk.ev(3, context("gpt-6-astra")),  // switched back at the computer before the next turn
+            Mk.ev(4, context("gpt-6-sol")),  // and to Sol again there
+        ])
+        #expect(d.terminalChanges == [3: "模型切到了 gpt-6-astra · medium", 4: "模型切到了 gpt-6-sol · medium"])
+    }
+
+    private func claudeContext(_ permission: String, _ model: String = "claude-haiku-4-5-20251001") -> PBEvent.OneOf_Kind {
+        .turnContext(.with { $0.permissionMode = permission; $0.model = model })
+    }
+
+    // The web's "notes Claude Code mode changes made in the terminal, not model aliases set here".
+    @Test func notesClaudeCodeModesOutsideTheFourAndNotAModelAliasSetHere() {
+        let d = derive(
+            [
+                Mk.ev(1, claudeContext("default")),
+                Mk.ev(2, claudeContext("acceptEdits", "")),  // Shift+Tab in the terminal, read off the screen
+                Mk.ev(3, .settingsChanged(.with { $0.model = "sonnet" })),  // switched here, by alias
+                Mk.ev(4, claudeContext("acceptEdits", "claude-sonnet-5-5")),
+                Mk.ev(5, claudeContext("plan", "claude-sonnet-5-5")),
+                Mk.ev(6, claudeContext("default", "claude-sonnet-5-5")),
+            ], agent: .claude)
+        #expect(d.terminalChanges == [2: "模式切到了 accept edits", 5: "模式切到了 计划", 6: "模式切到了 询问"])
+    }
+
+    // The web's "notes nothing when a mode-only context carries the switched model".
+    @Test func notesNothingWhenAModeOnlyContextCarriesTheSwitchedModel() {
+        let d = derive(
+            [
+                Mk.ev(1, claudeContext("default")),
+                Mk.ev(2, .settingsChanged(.with { $0.model = "sonnet"; $0.effort = "medium" })),
+                Mk.ev(3, claudeContext("acceptEdits", "claude-sonnet-5-5")),  // mode changed before the next reply
+                Mk.ev(4, claudeContext("acceptEdits", "claude-sonnet-5-5")),
+                Mk.ev(5, claudeContext("acceptEdits", "claude-opus-5-5")),  // then changed at the computer
+                Mk.ev(6, claudeContext("default", "claude-opus-5-5")),  // and the mode back
+            ], agent: .claude)
+        #expect(d.terminalChanges == [3: "模式切到了 accept edits", 5: "模型切到了 claude-opus-5-5", 6: "模式切到了 询问"])
+    }
+
+    @Test func aModelIsTheOneChosenBySlugOrAlias() {
+        #expect(modelIs("gpt-6-sol", "gpt-6-sol"))
+        #expect(modelIs("claude-Sonnet-5-5", "sonnet"))
+        #expect(!modelIs("claude-opus-5-5", "sonnet"))
+        #expect(!modelIs("", "sonnet"))
+        #expect(!modelIs("sonnet", ""))
+    }
+
     @Test func saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
         func m(_ v: UInt32) -> MachineView {
             MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local"; $0.protocolVersion = v })

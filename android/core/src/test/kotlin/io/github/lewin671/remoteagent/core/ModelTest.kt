@@ -12,12 +12,14 @@ import io.github.lewin671.remoteagent.proto.Origin
 import io.github.lewin671.remoteagent.proto.OriginKind
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
+import io.github.lewin671.remoteagent.proto.SettingsChanged
 import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolStarted
 import io.github.lewin671.remoteagent.proto.TurnContext
 import io.github.lewin671.remoteagent.proto.TurnStarted
 import io.github.lewin671.remoteagent.proto.UserMessage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneId
@@ -154,6 +156,89 @@ class ModelTest {
             ),
         )
         assertEquals("模式切到了 自动", d.terminalChanges[2])
+    }
+
+    private fun changed(model: String = "", effort: String = "") =
+        Event.newBuilder().setSettingsChanged(SettingsChanged.newBuilder().setModel(model).setEffort(effort))
+
+    // The web's "notes a model changed in the terminal after a switch from here".
+    @Test
+    fun notesAModelChangedInTheTerminalAfterASwitchFromHere() {
+        fun context(model: String, effort: String) =
+            Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel(model).setEffort(effort).setApprovalPolicy("on-request").setApprovalsReviewer("user"))
+        val d = derive(
+            listOf(
+                ev(1, context("gpt-6-astra", "medium")),
+                ev(2, changed("gpt-6-sol", "high")),
+                // Changed again at the computer before the next turn.
+                ev(3, context("gpt-6-luna", "low")),
+                ev(4, changed("gpt-6-sol", "high")),
+                ev(5, context("gpt-6-sol", "high")), // as chosen here: nothing to note
+            ),
+        )
+        assertEquals(mapOf(3L to "模型切到了 gpt-6-luna · low"), d.terminalChanges)
+    }
+
+    // The web's "notes a switch back made in the terminal after a switch from here".
+    @Test
+    fun notesASwitchBackMadeInTheTerminalAfterASwitchFromHere() {
+        fun context(model: String) =
+            Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel(model).setEffort("medium").setApprovalPolicy("on-request").setApprovalsReviewer("user"))
+        val d = derive(
+            listOf(
+                ev(1, context("gpt-6-astra")),
+                ev(2, changed("gpt-6-sol", "medium")),
+                ev(3, context("gpt-6-astra")), // switched back at the computer before the next turn
+                ev(4, context("gpt-6-sol")), // and to Sol again there
+            ),
+        )
+        assertEquals(mapOf(3L to "模型切到了 gpt-6-astra · medium", 4L to "模型切到了 gpt-6-sol · medium"), d.terminalChanges)
+    }
+
+    private fun claudeContext(permission: String, model: String = "claude-haiku-4-5-20251001") =
+        Event.newBuilder().setTurnContext(TurnContext.newBuilder().setPermissionMode(permission).setModel(model))
+
+    // The web's "notes Claude Code mode changes made in the terminal, not model aliases set here".
+    @Test
+    fun notesClaudeCodeModesOutsideTheFourAndNotAModelAliasSetHere() {
+        val d = derive(
+            listOf(
+                ev(1, claudeContext("default")),
+                ev(2, claudeContext("acceptEdits", "")), // Shift+Tab in the terminal, read off the screen
+                ev(3, changed("sonnet")), // switched here, by alias
+                ev(4, claudeContext("acceptEdits", "claude-sonnet-5-5")),
+                ev(5, claudeContext("plan", "claude-sonnet-5-5")),
+                ev(6, claudeContext("default", "claude-sonnet-5-5")),
+            ),
+            Agent.AGENT_CLAUDE,
+        )
+        assertEquals(mapOf(2L to "模式切到了 accept edits", 5L to "模式切到了 计划", 6L to "模式切到了 询问"), d.terminalChanges)
+    }
+
+    // The web's "notes nothing when a mode-only context carries the switched model".
+    @Test
+    fun notesNothingWhenAModeOnlyContextCarriesTheSwitchedModel() {
+        val d = derive(
+            listOf(
+                ev(1, claudeContext("default")),
+                ev(2, changed("sonnet", "medium")),
+                ev(3, claudeContext("acceptEdits", "claude-sonnet-5-5")), // mode changed before the next reply
+                ev(4, claudeContext("acceptEdits", "claude-sonnet-5-5")),
+                ev(5, claudeContext("acceptEdits", "claude-opus-5-5")), // then changed at the computer
+                ev(6, claudeContext("default", "claude-opus-5-5")), // and the mode back
+            ),
+            Agent.AGENT_CLAUDE,
+        )
+        assertEquals(mapOf(3L to "模式切到了 accept edits", 5L to "模型切到了 claude-opus-5-5", 6L to "模式切到了 询问"), d.terminalChanges)
+    }
+
+    @Test
+    fun aModelIsTheOneChosenBySlugOrAlias() {
+        assertTrue(modelIs("gpt-6-sol", "gpt-6-sol"))
+        assertTrue(modelIs("claude-Sonnet-5-5", "sonnet"))
+        assertFalse(modelIs("claude-opus-5-5", "sonnet"))
+        assertFalse(modelIs("", "sonnet"))
+        assertFalse(modelIs("sonnet", ""))
     }
 
     @Test

@@ -263,6 +263,11 @@ public func permissionMode(_ pm: String) -> Mode? {
     }
 }
 
+/// Claude Code's permission mode as the chat names it: one of the four, or its own name for a mode outside them.
+public func permissionModeName(_ pm: String) -> String {
+    permissionMode(pm)?.text ?? (pm == "acceptEdits" ? "accept edits" : pm)
+}
+
 /// A mode as shown: one of the four, or a CLI's own mode by its name.
 public struct ModeLabel: Equatable, Sendable {
     public var text: String
@@ -319,6 +324,11 @@ public func findModel<M>(_ models: [M], id: String, slug: (M) -> String) -> M? {
     if let exact = models.first(where: { slug($0) == id }) { return exact }
     let words = modelWordBreak.split(id.lowercased())
     return models.first { words.contains(slug($0).lowercased()) }
+}
+
+/// Whether the model a CLI reports (`id`) is the one chosen by slug or alias.
+public func modelIs(_ id: String, _ slug: String) -> Bool {
+    !id.isEmpty && !slug.isEmpty && (id.jvmEquals(slug) || modelWordBreak.split(id.lowercased()).contains(slug.lowercased()))
 }
 
 /// The approval mode a new session gets when none is chosen: the daemon's
