@@ -27,8 +27,10 @@ const (
 	uploadBytes  = 1 << 20
 )
 
-// syncLoop uploads every session, starting sessions as they appear.
-func (c *conn) syncLoop(ctx context.Context) error {
+// syncLoop uploads every session, starting sessions as they appear, and
+// the machine's metadata when it differs from sentMeta, the one the server
+// was given on connecting.
+func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	res, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
 	if err != nil {
 		return fmt.Errorf("list session heads: %w", err)
@@ -41,7 +43,6 @@ func (c *conn) syncLoop(ctx context.Context) error {
 	errc := make(chan error, 1)
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
-	sentMeta := c.r.backend.MachineMeta()
 	for {
 		// Usage limits change as sessions report them.
 		if meta := c.r.backend.MachineMeta(); !proto.Equal(meta, sentMeta) {

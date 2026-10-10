@@ -179,7 +179,8 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	} else if f.GetReady() == nil {
 		return errors.New("server did not accept the stream")
 	}
-	if err := c.putMachine(ctx, c.r.backend.MachineMeta()); err != nil {
+	meta := c.r.backend.MachineMeta()
+	if err := c.putMachine(ctx, meta); err != nil {
 		return err
 	}
 	r.mu.Lock()
@@ -194,7 +195,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 
 	errc := make(chan error, 2)
 	go func() { errc <- c.readLoop(ctx) }()
-	go func() { errc <- c.syncLoop(ctx) }()
+	go func() { errc <- c.syncLoop(ctx, meta) }()
 	go func() {
 		// Keep the connection alive through proxies and notice a dead one.
 		t := time.NewTicker(25 * time.Second)

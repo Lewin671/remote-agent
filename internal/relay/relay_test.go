@@ -46,7 +46,9 @@ type fakeBackend struct {
 	resolved  []*pb.ResolveApprovalRequest
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
-	origins      []*pb.Origin
+	origins []*pb.Origin
+	// machineMeta replaces the machine's metadata when set.
+	machineMeta  func() *pb.MachineMeta
 	images       map[string]relay.ImageUpload
 	imageResults []string
 }
@@ -150,6 +152,12 @@ func (t *fakeTerminal) Resize(c, r int, fit bool) error {
 func (t *fakeTerminal) Close() error { t.once.Do(func() { close(t.done) }); return nil }
 
 func (b *fakeBackend) MachineMeta() *pb.MachineMeta {
+	b.mu.Lock()
+	meta := b.machineMeta
+	b.mu.Unlock()
+	if meta != nil {
+		return meta()
+	}
 	host, _ := os.Hostname()
 	return &pb.MachineMeta{Hostname: host}
 }
@@ -973,4 +981,25 @@ func TestRelayRetriesWhenStreamNeverBecomesReady(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	e.session(t, "ready-retry", 1)
+}
+
+// The machine's metadata is read once to upload it on connecting. What it
+// becomes right after that is a change like any later one.
+func TestMachineMetadataChangedWhileConnectingIsUploaded(t *testing.T) {
+	e := setup(t)
+	var reads atomic.Int32
+	e.backend.machineMeta = func() *pb.MachineMeta {
+		if reads.Add(1) == 1 {
+			return &pb.MachineMeta{Hostname: "before"}
+		}
+		return &pb.MachineMeta{Hostname: "after"}
+	}
+	e.startRelay()
+	waitFor(t, "the machine's current metadata", func() bool {
+		ms, err := e.client.Machines(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(ms) == 1 && ms[0].Meta.GetHostname() == "after"
+	})
 }
