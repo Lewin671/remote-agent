@@ -3,12 +3,21 @@
 // Android's AndroidView in term/TerminalPane.kt and its TerminalSession).
 //
 // SwiftTerm sizes its grid to its frame. Here the grid is the remote
-// window's, so the frame is made to be exactly that many cells, and the
-// font is the largest one, from the size chosen down, at which the cells
-// fit the area without the keyboard. The keyboard and a rotation therefore
+// window's, so the view is made to be exactly that many cells, and shown
+// at the largest size, from the one chosen down, at which the cells fit
+// the area without the keyboard. The keyboard and a rotation therefore
 // change neither the grid nor what is asked of the remote: with the
 // keyboard up the area is shorter than the grid, and the view is moved up
 // so that the cursor's line stays in sight, as Android scrolls its own.
+//
+// The size shown is not always the emulator's font. SwiftTerm 1.11.2
+// soft-resets the terminal whenever its font is set (`font` → `resetFont`
+// → `TerminalView.resize` → `Terminal.softReset`): the program's
+// cursor-key mode, its scroll region and the style it is writing in would
+// go, and nothing from the remote puts them back. So the font is set only
+// when a snapshot is about to replace the screen, to the size chosen; in
+// between, a rotation or 字号 scales the view, and the view draws at that
+// scale so the text stays sharp.
 //
 // What the remote's output may not do to the phone (android-client 「终端」):
 //
@@ -71,9 +80,12 @@ final class TerminalHostView: UIView {
     /// The remote window's size; none before the first snapshot.
     private(set) var grid = TerminalSize(0, 0)
     private(set) var capacity = TerminalSize(0, 0)
-    /// The font in use, in pixels of a screen of `fontScale`.
+    /// The emulator's font, in points: the size chosen when the last snapshot came.
+    private var base: CGFloat
+    /// The size shown, in pixels of a screen of `fontScale`, and what the view is scaled by to show it.
     private var pixels = 0
     private var fontScale: CGFloat = 1
+    private var zoom: CGFloat = 1
     private var keyboardUp = false
     /// How far the grid is moved up to keep the cursor above the keyboard.
     private var scrolled: CGFloat = 0
@@ -83,9 +95,12 @@ final class TerminalHostView: UIView {
         let scale = max(1, UITraitCollection.current.displayScale)
         pixels = Int((CGFloat(preferred) * scale).rounded())
         fontScale = scale
-        terminal = RemoteTerminalView(
-            frame: CGRect(x: 0, y: 0, width: 320, height: 240), font: TerminalFont.font(pixels: pixels, scale: scale))
+        base = CGFloat(pixels) / scale
+        terminal = RemoteTerminalView(frame: CGRect(x: 0, y: 0, width: 320, height: 240), font: TerminalFont.font(points: base))
         super.init(frame: .zero)
+        // Placed by its top left corner, which a scale then leaves where it is.
+        terminal.layer.anchorPoint = .zero
+        terminal.center = .zero
         clipsToBounds = true
         backgroundColor = UIColor(Theme.Term.bg)
 
@@ -126,6 +141,7 @@ final class TerminalHostView: UIView {
     func snapshot(cols: Int, rows: Int, data: Data) {
         grid = TerminalSize(max(4, cols), max(4, rows))
         terminal.isHidden = false
+        resize()
         refit()
         // RIS: full reset and clear, as a fresh terminal would be.
         terminal.feed(byteArray: ([0x1b, 0x63] + [UInt8](data))[...])
@@ -194,7 +210,42 @@ final class TerminalHostView: UIView {
         return gap > 120 ? gap : 0
     }
 
-    /// Works out the font and the frame for the area and the grid there are now.
+    /// The size shown, in points.
+    var shownPoints: CGFloat { CGFloat(pixels) / fontScale }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        // The window's screen may have another scale, and UIKit sets the view's own again.
+        setNeedsLayout()
+    }
+
+    /// Makes the emulator the remote window's size at the size chosen. Only
+    /// with a snapshot: both steps reset the terminal, which the snapshot
+    /// does anyway.
+    private func resize() {
+        let wanted = (CGFloat(preferred) * scale).rounded() / scale
+        if wanted != base {
+            base = wanted
+            // SwiftTerm reads the frame, which is the view's own size only while it is not scaled.
+            zoom = 1
+            terminal.transform = .identity
+            // The frame first, at the new cell: changing the font works the grid out again from the frame.
+            let cell = TerminalFont.cell(points: base)
+            terminal.bounds.size = CGSize(
+                width: CGFloat(grid.cols) * cell.width + Self.slack, height: CGFloat(grid.rows) * cell.height + Self.slack)
+            terminal.font = TerminalFont.font(points: base)
+        }
+        let emulator = terminal.getTerminal()
+        if emulator.cols != grid.cols || emulator.rows != grid.rows {
+            terminal.resize(cols: grid.cols, rows: grid.rows)
+        }
+        // SwiftTerm's own measure of the cell decides the frame.
+        let exact = terminal.getOptimalFrameSize().size
+        let size = CGSize(width: exact.width + Self.slack, height: exact.height + Self.slack)
+        if terminal.bounds.size != size { terminal.bounds.size = size }
+    }
+
+    /// Works out the size to show the grid at for the area there is now, and scales the view to it.
     private func refit() {
         guard bounds.width > 0, bounds.height > 0 else { return }
         // Opening the keyboard must neither shrink the font nor resize the shared window.
@@ -203,41 +254,39 @@ final class TerminalHostView: UIView {
         let width = Int(((bounds.width - Self.pad) * scale).rounded(.down))
         let height = Int(((fullHeight - Self.pad) * scale).rounded(.down))
         let wanted = Int((CGFloat(preferred) * scale).rounded())
-        let room = TerminalFont.geometry(pixels: wanted, scale: scale).capacity(width: width, height: height)
+        // Counted at the font the size chosen has once a snapshot comes, which is what a fit asks for.
+        let room = TerminalFont.geometry(pixels: wanted, scale: scale, base: CGFloat(wanted) / scale).capacity(width: width, height: height)
         if room != capacity {
             capacity = room
             onCapacity?(room)
         }
         guard grid.cols > 0 else { return }
+        let base = base
         let size = terminalFontSize(preferred: wanted, width: width, height: height, cols: grid.cols, rows: grid.rows) {
-            TerminalFont.geometry(pixels: $0, scale: scale)
+            TerminalFont.geometry(pixels: $0, scale: scale, base: base)
         }
-        if size != pixels || scale != fontScale {
-            // The frame first, at the new cell: changing the font works the grid out again from the frame.
-            let cell = TerminalFont.geometry(pixels: size, scale: scale)
-            terminal.frame.size = CGSize(
-                width: CGFloat(grid.cols) * cell.cellWidth / scale + Self.slack,
-                height: CGFloat(grid.rows * cell.lineHeight) / scale + Self.slack)
-            terminal.font = TerminalFont.font(pixels: size, scale: scale)
-            pixels = size
-            fontScale = scale
+        pixels = size
+        fontScale = scale
+        let zoom = CGFloat(size) / scale / base
+        if zoom != self.zoom {
+            self.zoom = zoom
+            terminal.transform = zoom == 1 ? .identity : CGAffineTransform(scaleX: zoom, y: zoom)
         }
-        let emulator = terminal.getTerminal()
-        if emulator.cols != grid.cols || emulator.rows != grid.rows {
-            terminal.resize(cols: grid.cols, rows: grid.rows)
+        // Drawn at the scale it is shown at, not drawn at the font's and then stretched.
+        if terminal.contentScaleFactor != scale * zoom {
+            terminal.contentScaleFactor = scale * zoom
+            terminal.setNeedsDisplay()
         }
-        // SwiftTerm's own measure of the cell decides the frame.
-        let exact = terminal.getOptimalFrameSize().size
-        let frame = CGSize(width: exact.width + Self.slack, height: exact.height + Self.slack)
-        if terminal.frame.size != frame { terminal.frame.size = frame }
         followCursor()
     }
 
     /// Keeps the cursor's line in the area: the grid is taller than it while the keyboard is up.
     private func followCursor() {
         guard grid.rows > 0 else { return }
-        let line = (terminal.frame.height - Self.slack) / CGFloat(grid.rows)
-        let content = max(bounds.height, terminal.frame.height + Self.pad)
+        // The grid as it is shown: the view's own size, scaled.
+        let shown = terminal.bounds.height * zoom
+        let line = (shown - Self.slack * zoom) / CGFloat(grid.rows)
+        let content = max(bounds.height, shown + Self.pad)
         let most = content - bounds.height
         let row = CGFloat(terminal.getTerminal().getCursorLocation().y)
         let bottom = (row + 3) * line
@@ -246,7 +295,7 @@ final class TerminalHostView: UIView {
         }
         scrolled = min(max(scrolled, 0), most)
         let origin = CGPoint(x: Self.pad / 2, y: (Self.pad / 2 - scrolled).rounded())
-        if terminal.frame.origin != origin { terminal.frame.origin = origin }
+        if terminal.center != origin { terminal.center = origin }
     }
 
     // MARK: VoiceOver

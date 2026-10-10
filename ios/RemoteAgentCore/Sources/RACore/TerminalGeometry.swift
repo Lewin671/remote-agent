@@ -6,10 +6,11 @@ import Foundation
 /// A font's cell: its width, the height of a line, and the space above the first line.
 public struct TerminalGeometry: Sendable, Equatable {
     public var cellWidth: Double
-    public var lineHeight: Int
+    /// Not always whole: iOS shows a font's cell scaled.
+    public var lineHeight: Double
     public var topOffset: Int
 
-    public init(cellWidth: Double, lineHeight: Int, topOffset: Int = 0) {
+    public init(cellWidth: Double, lineHeight: Double, topOffset: Int = 0) {
         self.cellWidth = cellWidth
         self.lineHeight = lineHeight
         self.topOffset = topOffset
@@ -18,11 +19,12 @@ public struct TerminalGeometry: Sendable, Equatable {
     /// The columns and rows an area has room for.
     public func capacity(width: Int, height: Int) -> TerminalSize {
         guard cellWidth > 0, lineHeight > 0 else { return TerminalSize(0, 0) }
-        return TerminalSize(Int((Double(max(width, 0)) / cellWidth).rounded(.down)), max(height - topOffset, 0) / lineHeight)
+        return TerminalSize(
+            Int((Double(max(width, 0)) / cellWidth).rounded(.down)), Int((Double(max(height - topOffset, 0)) / lineHeight).rounded(.down)))
     }
 
     public func contains(width: Int, height: Int, cols: Int, rows: Int) -> Bool {
-        Double(cols) * cellWidth <= Double(width) && rows * lineHeight + topOffset <= height
+        Double(cols) * cellWidth <= Double(width) && Double(rows) * lineHeight + Double(topOffset) <= Double(height)
     }
 }
 

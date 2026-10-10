@@ -93,7 +93,7 @@ import UIKit
         #expect((emulator.cols, emulator.rows) == (120, 40))
         // The whole window fits the area, at a smaller font than the one chosen.
         #expect(host.terminal.frame.maxX <= 400 && host.terminal.frame.maxY <= 500)
-        #expect(host.terminal.font.pointSize < 14)
+        #expect(host.shownPoints < 14)
         // A shorter area, as under the keyboard, and a turned one: the grid stays.
         for size in [CGSize(width: 400, height: 200), CGSize(width: 800, height: 300), CGSize(width: 400, height: 500)] {
             host.frame.size = size
@@ -104,8 +104,43 @@ import UIKit
         // A window that fits keeps the size chosen, and a new snapshot takes the new size.
         host.snapshot(cols: 40, rows: 20, data: Data("small".utf8))
         #expect((emulator.cols, emulator.rows) == (40, 20))
-        #expect(host.terminal.font.pointSize == 14)
+        #expect(host.shownPoints == 14 && host.terminal.font.pointSize == 14)
         #expect(text(host) == "small")
+    }
+
+    /// SwiftTerm resets the terminal when its font is set. A rotation or 字号 must not cost the program what
+    /// it set, since the remote does not say it again: the view is scaled, and its font left alone.
+    @Test func showingAtAnotherSizeKeepsWhatTheProgramSet() {
+        let host = host(width: 400, height: 500)
+        host.snapshot(cols: 120, rows: 40, data: Data("wide".utf8))
+        let emulator = host.terminal.getTerminal()
+        // Application cursor keys, a scroll region, and bold for what comes next.
+        host.append(Data("\u{1B}[?1h\u{1B}[5;20r\u{1B}[1m".utf8))
+        #expect(host.appCursor && emulator.buffer.scrollTop == 4 && emulator.buffer.scrollBottom == 19)
+        var shown = [host.shownPoints]
+        // Turned on its side, then a smaller size chosen without the window being fitted.
+        host.frame.size = CGSize(width: 800, height: 300)
+        host.layoutIfNeeded()
+        shown.append(host.shownPoints)
+        host.preferred = 10
+        host.frame.size = CGSize(width: 1200, height: 900)
+        host.layoutIfNeeded()
+        shown.append(host.shownPoints)
+        #expect(Set(shown).count == 3 && shown[2] == 10)
+        #expect(host.terminal.frame.maxX <= 1200 && host.terminal.frame.maxY <= 900)
+        #expect((emulator.cols, emulator.rows) == (120, 40))
+
+        #expect(host.appCursor)
+        #expect(emulator.buffer.scrollTop == 4 && emulator.buffer.scrollBottom == 19)
+        host.append(Data("\u{1B}[10;1Hbold".utf8))
+        #expect(emulator.getCharData(col: 0, row: 9)?.attribute.style.contains(.bold) == true)
+        #expect(text(host) == "wide\nbold")
+        // The size chosen becomes the font with the next snapshot, which resets the terminal itself.
+        #expect(host.terminal.font.pointSize == 14)
+        host.snapshot(cols: 120, rows: 40, data: Data("again".utf8))
+        #expect(host.terminal.font.pointSize == 10 && host.shownPoints == 10)
+        #expect((emulator.cols, emulator.rows) == (120, 40))
+        #expect(!host.appCursor && text(host) == "again")
     }
 
     @Test func theRoomIsCountedAtTheSizeChosenAndFollowsIt() {

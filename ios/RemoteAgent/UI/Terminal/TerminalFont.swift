@@ -9,7 +9,8 @@
 // search for the size at which a remote grid fits goes pixel by pixel. The
 // cell is measured as SwiftTerm measures it (`computeFontDimensions`): the
 // advance of a W, and the font's ascent, descent and leading rounded up to
-// whole points.
+// whole points. A size other than the emulator's font is that font's cell
+// scaled, because that is how `TerminalHostView` shows it.
 import CoreText
 import RACore
 import UIKit
@@ -30,21 +31,27 @@ enum TerminalFont {
         set { UserDefaults.standard.set(newValue, forKey: key) }
     }
 
-    static func font(pixels: Int, scale: CGFloat) -> UIFont {
-        .monospacedSystemFont(ofSize: CGFloat(pixels) / scale, weight: .regular)
+    static func font(points: CGFloat) -> UIFont {
+        .monospacedSystemFont(ofSize: points, weight: .regular)
     }
 
-    private static var measured: [String: TerminalGeometry] = [:]
+    private static var measured: [CGFloat: CGSize] = [:]
 
-    /// A size's cell, in pixels.
-    static func geometry(pixels: Int, scale: CGFloat) -> TerminalGeometry {
-        let id = "\(pixels)@\(scale)"
-        if let g = measured[id] { return g }
-        let font = font(pixels: pixels, scale: scale)
+    /// The cell of the font of a size, in points.
+    static func cell(points: CGFloat) -> CGSize {
+        if let c = measured[points] { return c }
+        let font = font(points: points)
         let height = ceil(CTFontGetAscent(font) + CTFontGetDescent(font) + CTFontGetLeading(font))
         let width = max(1, ("W" as NSString).size(withAttributes: [.font: font]).width)
-        let g = TerminalGeometry(cellWidth: Double(width * scale), lineHeight: max(1, Int((height * scale).rounded())))
-        measured[id] = g
-        return g
+        let c = CGSize(width: width, height: max(1, height))
+        measured[points] = c
+        return c
+    }
+
+    /// The cell, in pixels, of the font of `base` points shown at `pixels`: its own cell at its own size, scaled at any other.
+    static func geometry(pixels: Int, scale: CGFloat, base: CGFloat) -> TerminalGeometry {
+        let cell = cell(points: base)
+        let zoom = CGFloat(pixels) / scale / base
+        return TerminalGeometry(cellWidth: Double(cell.width * zoom * scale), lineHeight: Double(cell.height * zoom * scale))
     }
 }

@@ -190,6 +190,17 @@ import Testing
         #expect(!g.contains(width: 1059, height: 1673, cols: size.cols, rows: size.rows + 1))
     }
 
+    // --- not in Android's tests ---
+
+    /// iOS shows a font's cell scaled, so a line is not always whole pixels: rows are counted with what it is.
+    @Test func aLineThatIsNotWholePixelsIsCountedAsItIs() {
+        let g = TerminalGeometry(cellWidth: 10, lineHeight: 20.4)
+        #expect(g.capacity(width: 800, height: 1020) == TerminalSize(80, 50))
+        #expect(g.capacity(width: 800, height: 1019) == TerminalSize(80, 49))
+        #expect(g.contains(width: 800, height: 1020, cols: 80, rows: 50))
+        #expect(!g.contains(width: 800, height: 1019, cols: 80, rows: 50))
+    }
+
     @Test func keyboardSizedViewportDoesNotProduceNegativeCapacity() {
         #expect(TerminalGeometry(cellWidth: 19, lineHeight: 40, topOffset: 8).capacity(width: -1, height: 3) == TerminalSize(0, 0))
     }
@@ -198,7 +209,7 @@ import Testing
 
     /// A font whose cell is 0.6 by 1.2 of its size, as a monospaced one roughly is.
     private func cell(_ size: Int) -> TerminalGeometry {
-        TerminalGeometry(cellWidth: Double(size) * 0.6, lineHeight: Int((Double(size) * 1.2).rounded(.up)))
+        TerminalGeometry(cellWidth: Double(size) * 0.6, lineHeight: (Double(size) * 1.2).rounded(.up))
     }
 
     @Test func theFontShrinksUntilTheRemoteGridFits() {
