@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -508,5 +509,26 @@ func TestTitleFromFirstClause(t *testing.T) {
 		if got := titleFrom(in); got != want {
 			t.Errorf("titleFrom(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// A transcript that grew by more than one batch while nobody read it is
+// read to its end in one go.
+func TestRolloutBacklogIsReadToTheEnd(t *testing.T) {
+	h := newHarness(t, Config{})
+	var lines []string
+	for i := range 10 {
+		lines = append(lines, fmt.Sprintf(`{"timestamp":"2026-09-29T10:00:00Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m%d","content":[{"text":"%s"}]}}}`, i, strings.Repeat("x", 1<<20)))
+	}
+	h.writeRollout(lines...)
+	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl")) // reads once
+	n := 0
+	for _, e := range h.events() {
+		if e.GetAgentMessage() != nil {
+			n++
+		}
+	}
+	if n != 10 {
+		t.Fatalf("read %d of 10 messages", n)
 	}
 }

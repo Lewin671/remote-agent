@@ -41,16 +41,17 @@ func (h *history) submitted(match func(recorded string) bool, cliSessionID strin
 	if h.r == nil {
 		return false
 	}
-	lines, _, err := h.r.Next()
-	if err != nil {
-		return false
-	}
-	for _, l := range lines {
-		if h.ag.Submitted(l.Data, match, cliSessionID) {
-			return true
+	for {
+		lines, _, err := h.r.Next()
+		if err != nil || len(lines) == 0 {
+			return false
+		}
+		for _, l := range lines {
+			if h.ag.Submitted(l.Data, match, cliSessionID) {
+				return true
+			}
 		}
 	}
-	return false
 }
 
 // offset is where reading stands.

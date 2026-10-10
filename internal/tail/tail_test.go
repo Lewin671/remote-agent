@@ -126,3 +126,39 @@ func TestReadBlobRejectsHostileOffsets(t *testing.T) {
 		})
 	}
 }
+
+// A backlog is returned in batches of bounded size, each ending on a line,
+// until none is left.
+func TestBacklogIsReadInBatches(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f.jsonl")
+	line := strings.Repeat("x", 3<<20)
+	if err := os.WriteFile(path, []byte(strings.Repeat(line+"\n", 5)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := NewReader(path, 0)
+	var got []int
+	var end int64
+	for {
+		lines, _, err := r.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(lines) == 0 {
+			break
+		}
+		size := 0
+		for _, l := range lines {
+			if string(l.Data) != line || l.End <= end {
+				t.Fatalf("line ending at %d after %d", l.End, end)
+			}
+			size, end = size+len(l.Data), l.End
+		}
+		if size >= MaxBatch+MaxLine {
+			t.Fatalf("a batch of %d bytes", size)
+		}
+		got = append(got, len(lines))
+	}
+	if len(got) != 2 || got[0]+got[1] != 5 || r.Offset() != int64(5*(len(line)+1)) {
+		t.Fatalf("batches %v, offset %d", got, r.Offset())
+	}
+}

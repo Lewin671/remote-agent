@@ -367,16 +367,24 @@ func (s *session) pollLoop(ctx context.Context) {
 func (s *session) readRollout() {
 	s.readMu.Lock()
 	defer s.readMu.Unlock()
+	// A backlog comes in batches of bounded size (tail.MaxBatch).
+	for s.readBatch() {
+	}
+}
+
+// readBatch appends events for the next rollout lines and reports whether
+// there may be more. Callers hold readMu.
+func (s *session) readBatch() bool {
 	s.mu.Lock()
 	r := s.reader
 	s.mu.Unlock()
 	if r == nil {
-		return
+		return false
 	}
 	lines, truncated, err := r.Next()
 	if err != nil {
 		slog.Warn("read rollout", "session", s.meta.ID, "err", errClass(err))
-		return
+		return false
 	}
 	if truncated {
 		slog.Warn("rollout shrank; reading it again from the start", "session", s.meta.ID)
@@ -412,7 +420,7 @@ func (s *session) readRollout() {
 			s.mu.Lock()
 			s.reader = tail.NewReader(r.Path, off)
 			s.mu.Unlock()
-			return
+			return false
 		}
 		s.mu.Lock()
 		// Only now that the events are logged are the records they were
@@ -452,6 +460,7 @@ func (s *session) readRollout() {
 			}
 		}
 	}
+	return len(lines) > 0
 }
 
 // checkScreen updates the session status from the screen. It returns false

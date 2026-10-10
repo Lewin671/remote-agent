@@ -25,6 +25,11 @@ import (
 // compacted.
 const MaxLine = 8 << 20
 
+// MaxBatch is how many bytes of lines one call to Next returns before it
+// stops at the end of a line: a file that grew by gigabytes while nobody
+// read it is not held in memory at once.
+const MaxBatch = 8 << 20
+
 // Compaction limits: strings longer than ElideAbove are replaced; text
 // keeps its first KeepText bytes. A compacted line longer than MaxLine is
 // skipped after all.
@@ -62,9 +67,10 @@ func NewReader(path string, off int64) *Reader {
 // Offset is where the next complete line starts.
 func (r *Reader) Offset() int64 { return r.off }
 
-// Next returns the complete lines appended since the last call. A missing
-// file yields no lines and no error. If the file shrank below the current
-// offset it was replaced, and reading restarts from the beginning;
+// Next returns the complete lines appended since the last call, or the
+// first MaxBatch bytes of them: no lines means there are none left. A
+// missing file yields no lines and no error. If the file shrank below the
+// current offset it was replaced, and reading restarts from the beginning;
 // truncated reports that.
 func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 	f, err := os.Open(r.Path)
@@ -93,7 +99,8 @@ func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 	pos := r.off // file offset just past what was read
 	var buf []byte
 	long := false // the current line passed MaxLine; buf is not kept
-	for {
+	batch := 0    // bytes of the lines so far
+	for batch < MaxBatch {
 		chunk, err := br.ReadSlice('\n')
 		pos += int64(len(chunk))
 		if !long {
@@ -108,9 +115,11 @@ func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 			if long {
 				if line, lerr := compactLine(r.Path, r.off, pos-1); lerr == nil {
 					lines = append(lines, Line{Data: line, End: pos, Compacted: true})
+					batch += len(line)
 				}
 			} else if data := bytes.TrimSuffix(buf, []byte("\n")); len(bytes.TrimSpace(data)) > 0 {
 				lines = append(lines, Line{Data: data, End: pos})
+				batch += len(data)
 			}
 			r.off, buf, long = pos, nil, false
 		case errors.Is(err, bufio.ErrBufferFull):
@@ -121,6 +130,7 @@ func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 			return lines, truncated, err
 		}
 	}
+	return lines, truncated, nil
 }
 
 // compactLine copies the JSON line in [start, end) of the file at path,
