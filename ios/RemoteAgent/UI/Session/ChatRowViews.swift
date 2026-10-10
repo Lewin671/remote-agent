@@ -593,22 +593,24 @@ private struct PlanCard: View {
     let key: String
     let text: String
     @Environment(ChatOpen.self) private var open
+    /// The preview does not show all of its six lines: they wrap past the six it is drawn in.
+    @State private var cut = false
 
     var body: some View {
         let isOpen = open.isOpen(key)
-        let lines = text.jvmLines()
         VStack(alignment: .leading, spacing: 0) {
             Text("计划").type(T.smB, Theme.fg2).accessibilityAddTraits(.isHeader)
             Group {
                 if isOpen {
                     MarkdownView(text)
                 } else {
-                    Text(planPreview(text, lines: 6)).type(T.sm.with(lineHeight: 1.6), Theme.fg).lineLimit(6)
+                    CutText(planPreview(text, lines: 6), style: T.sm.with(lineHeight: 1.6), color: Theme.fg, lines: 6, cut: $cut)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
-            if lines.count > 6 {
+            // Whatever the preview leaves out can be opened, and what was opened can be closed again.
+            if isOpen || cut || planFolds(text, lines: 6) {
                 Button {
                     open.toggle(key)
                 } label: {
@@ -627,6 +629,12 @@ private struct PlanCard: View {
 
 /// The first line of a tool's title: a command of several lines is a row of one.
 private func firstLine(_ s: String) -> String { s.jvmLines()[0] }
+
+/// Whether a plan has more lines than its preview takes. A plan of fewer
+/// lines may still be cut where they wrap, which only its layout knows.
+func planFolds(_ text: String, lines: Int) -> Bool {
+    text.jvmLines().count > lines
+}
 
 /// A plan's first lines as plain text, for where it is shown cut short.
 func planPreview(_ text: String, lines: Int) -> String {

@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -564,14 +565,18 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp)) {
             Text("计划", style = T.smB, color = p.fg2)
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
+            // The preview does not show all of its six lines: they wrap past the six it is drawn in.
+            var cut by remember(item.key) { mutableStateOf(false) }
             Box(Modifier.animateContentSize().padding(top = 4.dp)) {
                 if (open) Markdown(item.text)
                 else Text(
                     item.text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(6).joinToString("\n"),
                     style = ts(13.sp, lineHeight = 1.6f), color = p.fg, maxLines = 6, overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { cut = it.hasVisualOverflow },
                 )
             }
-            if (item.text.lines().size > 6) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open) }
+            // Whatever the preview leaves out can be opened, and what was opened can be closed again.
+            if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open) }
         }
         is ChatItem.Unsent -> MeBubble(
             item.text ?: "一条排队的消息", caption = "会话结束，没有发出", captionColor = p.orangeInk,
@@ -583,6 +588,12 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         }
     }
 }
+
+/**
+ * Whether a plan has more lines than its preview takes. A plan of fewer
+ * lines may still be cut where they wrap, which only its layout knows.
+ */
+fun planFolds(text: String, lines: Int): Boolean = text.lines().size > lines
 
 /** A line that opens what is under it in place: 思考过程 and an arrow down. */
 @Composable

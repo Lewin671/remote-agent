@@ -427,6 +427,10 @@ enum SessionSamples {
             (.planProposed(.with {
                 $0.text = "1. 把筛选条件抽成 `useExportFilters`\n2. 预览表格换成虚拟列表\n3. 导出按钮在生成期间显示进度\n4. 补上 20000 行的性能测试\n5. 更新截图\n6. 更新文档\n7. 发版说明里写明行为变化"
             }), nil),
+            // Few lines, each long: cut where they wrap, not by their count.
+            (.planProposed(.with {
+                $0.text = "先把筛选条件抽成 `useExportFilters`，让导出页和预览表格共用同一份状态，再把预览表格换成虚拟列表，超过 200 行时只渲染可见的行；导出按钮在生成期间显示进度，失败时保留已经填好的筛选条件；最后补上 20000 行的性能测试，更新截图和文档，并在发版说明里写明行为变化，提醒升级的人先清一次本地缓存。"
+            }), nil),
             (.questionAnswered(.with { a in
                 a.questionID = "Q0"
                 a.answers = [.with { $0.answers = ["先做前两步"] }]

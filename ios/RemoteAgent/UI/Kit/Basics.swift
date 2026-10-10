@@ -139,6 +139,39 @@ struct ArrowText: View {
     }
 }
 
+/// Text held to `lines` lines, which says whether that cut it. How many
+/// lines a text takes is only known once it is laid out: one long
+/// paragraph is one line to count and many to draw.
+struct CutText: View {
+    private let text: String
+    private let style: TypeStyle
+    private let color: Color
+    private let lines: Int
+    @Binding private var cut: Bool
+    @State private var shown: CGFloat = 0
+    @State private var whole: CGFloat = 0
+
+    init(_ text: String, style: TypeStyle, color: Color, lines: Int, cut: Binding<Bool>) {
+        self.text = text
+        self.style = style
+        self.color = color
+        self.lines = lines
+        _cut = cut
+    }
+
+    var body: some View {
+        Text(text).type(style, color).lineLimit(lines)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { shown = $0 }
+            .background {
+                // The same text at the same width with nothing held back, measured and not drawn.
+                Text(text).type(style, color).fixedSize(horizontal: false, vertical: true).hidden()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { whole = $0 }
+                    .accessibilityHidden(true)
+            }
+            .onChange(of: whole > shown + 0.5, initial: true) { _, isCut in cut = isCut }
+    }
+}
+
 /// Text after an icon of its height, as the plus of 添加设备 or the turning circle of 正在连接….
 struct IconText: View {
     private let icon: LucideIcon
