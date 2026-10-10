@@ -19,7 +19,11 @@
 //   - links are not opened: 1.11.2 never calls `requestOpenLink` on iOS,
 //     and the one here does nothing;
 //   - the bell is silent (the default would play a haptic), the title, the
-//     current directory, OSC 777 notifications and OSC 1337 are ignored;
+//     current directory and OSC 777 notifications are ignored;
+//   - OSC 1337 is taken before the emulator reads it: 1.11.2 decodes an
+//     inline file (`File=inline=1:…`) and puts the image in the buffer
+//     itself, without asking the view or `isProcessTrusted`. Its other
+//     keys would only reach `iTermContent`, which does nothing here;
 //   - nothing the emulator itself says goes back as input: answers to
 //     status and attribute queries, focus reports, mouse reports. tmux is
 //     the terminal the program talks to and has answered already; a second
@@ -100,6 +104,7 @@ final class TerminalHostView: UIView {
         let emulator = terminal.getTerminal()
         emulator.silentLog = true
         emulator.changeHistorySize(2000)
+        emulator.registerOscHandler(code: 1337) { _ in }
         terminal.isHidden = true
         addSubview(terminal)
 

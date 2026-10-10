@@ -47,6 +47,26 @@ import UIKit
     }
 
     /// Queries, focus and mouse modes, a title, a bell, a notification: nothing comes back as input.
+    /// iTerm2's inline images: SwiftTerm would decode the file and put the picture in the buffer, moving the cursor past it.
+    @Test func outputCannotPutAnImageOnTheScreen() {
+        let host = host()
+        host.snapshot(cols: 80, rows: 24, data: Data("before".utf8))
+        let png = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { ctx in
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+        }.pngData()!
+        host.append(Data("\u{1B}]1337;File=inline=1;width=20;height=10:\(png.base64EncodedString())\u{07}after".utf8))
+        let emulator = host.terminal.getTerminal()
+        #expect(text(host) == "beforeafter")
+        #expect(emulator.getCursorLocation().y == 0)
+        // The same with the other terminator, and split over two frames.
+        let again = Data("\u{1B}]1337;File=inline=1:\(png.base64EncodedString())\u{1B}\\!".utf8)
+        host.append(again.prefix(40))
+        host.append(again.dropFirst(40))
+        #expect(text(host) == "beforeafter!")
+        #expect(emulator.getCursorLocation().y == 0)
+    }
+
     @Test func theEmulatorAnswersNothing() {
         let host = host()
         var sent: [Data] = []
