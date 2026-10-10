@@ -267,6 +267,17 @@ class ProjectTest {
     }
 
     @Test
+    fun reuploadingTheSameImageChangesThePreparedStart() {
+        val cfg = NewConfig("mac", path, Agent.AGENT_CODEX)
+        val a = image("a")
+        val start = Starts.Start().apply { prompt = ""; config = cfg; taken = listOf(a) }
+        assertEquals(true, start.same("", cfg, listOf(a)))
+        // Selecting 原图 uploads the same mutable draft image under a new ID.
+        a.imageId = "original-a"
+        assertEquals(false, start.same("", cfg, listOf(a)))
+    }
+
+    @Test
     fun theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() {
         val full = state(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_FULL_ACCESS)), emptyList(), host("mac", *both), host("vps", *both))
         val draft = DraftConfig(projectConfig(full, path))

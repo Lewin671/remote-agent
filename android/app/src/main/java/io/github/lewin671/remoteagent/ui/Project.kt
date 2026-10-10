@@ -625,7 +625,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                     start.config = cfg
                     // The images this request carries; any picked after it stay in the draft.
                     start.taken = images.images.filter { it.readyFor(cfg.machineId) }
-                    val ids = start.taken.mapNotNull { it.imageId }
+                    val ids = start.imageIds
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
                             .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(cfg.agent == Agent.AGENT_CLAUDE && cfg.standardContext).addAllImageIds(ids).build()
@@ -1135,8 +1135,15 @@ object Starts {
         var prompt = ""
         /** The configuration the prepared request starts the session with. */
         var config: NewConfig? = null
+        /** The upload IDs frozen when the request is prepared; draft images can be uploaded again. */
+        var imageIds: List<String> = emptyList()
+            private set
         /** The images the prepared request names, kept for a retry of the same request. */
         var taken: List<PendingImage> = emptyList()
+            set(value) {
+                field = value
+                imageIds = value.mapNotNull { it.imageId }
+            }
 
         /**
          * Whether a start with this message, configuration and images is the
@@ -1144,7 +1151,7 @@ object Starts {
          * request again.
          */
         fun same(prompt: String, cfg: NewConfig, images: List<PendingImage>): Boolean =
-            prompt == this.prompt && cfg == config && images.mapNotNull { it.imageId } == taken.mapNotNull { it.imageId }
+            prompt == this.prompt && cfg == config && images.mapNotNull { it.imageId } == imageIds
     }
 
     private val byProject = HashMap<String, Start>()
