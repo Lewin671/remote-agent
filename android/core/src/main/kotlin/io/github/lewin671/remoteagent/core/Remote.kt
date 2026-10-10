@@ -319,7 +319,8 @@ class Remote(
     // Bumped by stop: a connection attempt suspended in login when the app
     // went to the background must not open the stream afterwards.
     private var generation = 0
-    private var cacheRead = false
+    /** Putting what the cache holds in place, started once; no connection is made before it is done. */
+    private var restoring: Job? = null
     private var historySweep: Job? = null
 
     // The listing of ended sessions comes a page at a time. next is where the
@@ -366,9 +367,7 @@ class Remote(
         scope.launch {
             if (running || removed) return@launch
             running = true
-            val gen = ++generation
-            readCache()
-            if (running && gen == generation) beginConnect()
+            beginConnect()
         }
     }
 
@@ -500,9 +499,18 @@ class Remote(
         start()
     }
 
-    private suspend fun readCache() {
-        if (cacheRead || cache == null) return
-        cacheRead = true
+    /**
+     * Waits until what the cache holds is in place. It is read once, however
+     * many connections wait: one made while it was still being read would
+     * have its lists overwritten by what was cached before them.
+     */
+    private suspend fun restored() {
+        if (cache == null) return
+        val job = restoring ?: scope.launch { readCache(cache) }.also { restoring = it }
+        job.join()
+    }
+
+    private suspend fun readCache(cache: CipherCache) {
         try {
             for (m in cache.machines()) putMachine(m.toBuilder().setOnline(false).build(), save = false)
             for (s in cache.sessions()) {
@@ -537,6 +545,8 @@ class Remote(
         val gen = generation
         conn = ConnState.CONNECTING
         publish()
+        restored()
+        if (!running || gen != generation) return
         try {
             // A token kept from the last connection saves the two login calls
             // each time the app comes back. One about to expire is not worth a

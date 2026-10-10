@@ -143,7 +143,8 @@ public actor Remote {
     // background must not open the stream afterwards, and a frame of a
     // replaced socket must not be taken.
     var generation = 0
-    var cacheRead = false
+    /// Putting what the cache holds in place, started once; no connection is made before it is done.
+    var restoring: Task<Void, Never>?
     var historySweep: Task<Void, Never>?
     var useSeq = 0
     var timerSeq = 0
@@ -320,12 +321,7 @@ public actor Remote {
         case .start:
             if running || removed { return }
             running = true
-            generation += 1
-            let gen = generation
-            Task {
-                await self.readCache()
-                if self.running && gen == self.generation { self.beginConnect() }
-            }
+            beginConnect()
         case .stop:
             halt()
         case .close:
@@ -506,9 +502,16 @@ public actor Remote {
         if !closed { onLogin?(nil) }
     }
 
-    private func readCache() async {
-        guard let cache, !cacheRead else { return }
-        cacheRead = true
+    /// Waits until what the cache holds is in place. It is read once, however
+    /// many connections wait: one made while it was still being read would
+    /// have its lists overwritten by what was cached before them.
+    private func restored() async {
+        guard let cache else { return }
+        if restoring == nil { restoring = Task { await self.readCache(cache) } }
+        await restoring?.value
+    }
+
+    private func readCache(_ cache: any CipherCache) async {
         for var m in await cache.machines() {
             m.online = false
             await putMachine(m, save: false)
@@ -548,6 +551,8 @@ public actor Remote {
         let gen = generation
         conn = .connecting
         publish()
+        await restored()
+        if !running || gen != generation { return }
         do {
             // A token kept from the last connection saves the two login calls
             // each time the app comes back. One about to expire is not worth a

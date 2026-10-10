@@ -474,6 +474,40 @@ class RemoteTest {
     }
 
     @Test
+    fun aSlowCacheReadDoesNotOverwriteTheListsOfALaterConnection() = runBlocking<Unit> {
+        val base = MemoryCache()
+        val source = client(base)
+        source.start()
+        source.awaitState("lists") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
+        source.stop()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val blocked = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val cache = object : CipherCache by base {
+            override suspend fun machines(): List<Machine> {
+                blocked.complete(Unit)
+                gate.await()
+                return base.machines()
+            }
+        }
+        val r = client(cache)
+        try {
+            r.start()
+            withTimeout(10_000) { blocked.await() }
+            // The app went to the background and came back, and the network changed, while the cache was being read.
+            r.stop()
+            r.start()
+            r.setNetwork(false)
+            r.setNetwork(true)
+            delay(1_000)
+            assertFalse(r.state.value.conn == ConnState.ONLINE)
+            gate.complete(Unit)
+            r.awaitState("the machine online") { it.conn == ConnState.ONLINE && it.machines[daemon.id]?.online == true }
+            delay(200)
+            assertEquals(true, r.state.value.machines[daemon.id]?.online)
+        } finally { gate.complete(Unit) }
+    }
+
+    @Test
     fun aFrozenAttemptResendsTheSameRequest() = runBlocking<Unit> {
         val r = client()
         r.start()

@@ -430,17 +430,23 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
 final class HookedCache: CipherCache, @unchecked Sendable {
     let inner: MemoryCache
     private let lock = NSLock()
+    private var _machines: (@Sendable () async -> Void)?
     private var _events: (@Sendable (String) async -> [PBStoredEvent])?
     private var _putEvents: (@Sendable (String, [PBStoredEvent]) async -> Void)?
     private var _putMachine: (@Sendable (PBMachine) async -> Void)?
 
     init(_ inner: MemoryCache = MemoryCache()) { self.inner = inner }
 
+    /// Runs before the machines are read.
+    func hookMachines(_ f: (@Sendable () async -> Void)?) { lock.withLock { _machines = f } }
     func hookEvents(_ f: (@Sendable (String) async -> [PBStoredEvent])?) { lock.withLock { _events = f } }
     func hookPutEvents(_ f: (@Sendable (String, [PBStoredEvent]) async -> Void)?) { lock.withLock { _putEvents = f } }
     func hookPutMachine(_ f: (@Sendable (PBMachine) async -> Void)?) { lock.withLock { _putMachine = f } }
 
-    func machines() async -> [PBMachine] { await inner.machines() }
+    func machines() async -> [PBMachine] {
+        if let f = lock.withLock({ _machines }) { await f() }
+        return await inner.machines()
+    }
     func sessions() async -> [PBRemoteSession] { await inner.sessions() }
     func events(sessionId: String) async -> [PBStoredEvent] {
         if let f = lock.withLock({ _events }) { return await f(sessionId) }

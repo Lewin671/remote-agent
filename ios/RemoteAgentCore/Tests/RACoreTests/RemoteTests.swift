@@ -797,6 +797,39 @@ extension ServerTests {
             }
         }
 
+        @Test func aSlowCacheReadDoesNotOverwriteTheListsOfALaterConnection() async throws {
+            try await world { w in
+                let base = MemoryCache()
+                let source = try await w.client(cache: base)
+                source.start()
+                _ = try await source.awaitState("lists") { $0.conn == .online && $0.sessions["s1"]?.info != nil }
+                source.stop()
+                let gate = Signal()
+                let blocked = Signal()
+                let cache = HookedCache(base)
+                cache.hookMachines {
+                    blocked.set()
+                    await gate.wait()
+                }
+                w.onClose { gate.set() }
+                let r = try await w.client(cache: cache)
+                r.start()
+                #expect(await blocked.wait(10_000))
+                // The app went to the background and came back, and the network changed, while the cache was being read.
+                r.stop()
+                r.start()
+                r.setNetwork(false)
+                r.setNetwork(true)
+                await sleepMs(1_000)
+                #expect(r.current.conn != .online)
+                gate.set()
+                let mid = w.daemon.id
+                _ = try await r.awaitState("the machine online") { $0.conn == .online && $0.machines[mid]?.online == true }
+                await sleepMs(200)
+                #expect(r.current.machines[mid]?.online == true)
+            }
+        }
+
         @Test func aFrozenAttemptResendsTheSameRequest() async throws {
             try await world { w in
                 let r = try await w.client()
