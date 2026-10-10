@@ -26,6 +26,27 @@ import Testing
         return walk.compactMap { $0 as? URL }.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
     }
 
+    @Test func whatAnAccountWasStillWritingIsNotThereForTheNextOne() throws {
+        defer { cleanUp() }
+        let s = store()
+        let first = s.scoped()
+        try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
+        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("one".utf8))
+        try s.clearAll()
+        // Work the first account left on its way arrives after it was logged out.
+        #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
+        #expect(filesOnDisk().isEmpty)
+        #expect(try vault.read(.pendingKey) == nil)
+        // The next account's drafts are its own, also for the same project path.
+        let second = s.scoped()
+        #expect(second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        try second.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("new".utf8))
+        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        first.remove(folder: "project:/Users/me/Code/foo", name: "1.jpg")
+        first.clearFolder("project:/Users/me/Code/foo")
+        #expect(second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("new".utf8))
+    }
+
     @Test func whatIsPutComesBackAndIsNotReadableOnDisk() throws {
         defer { cleanUp() }
         let s = store()

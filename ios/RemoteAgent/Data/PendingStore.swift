@@ -36,6 +36,9 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     /// Read or made at first use; forgotten with everything else on logout,
     /// so the next account's images are sealed under a key that is kept.
     private var cachedKey: SymmetricKey?
+    /// Counts the accounts this store has served: `clearAll` ends one. A
+    /// `PendingScope` made before it writes and reads nothing after.
+    private var epoch = 0
     private static let expiredKey = "pending.expired-drafts"
 
     static var defaultDirectory: URL {
@@ -76,6 +79,18 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
             if removed > 0 { defaults.set(expired + removed, forKey: Self.expiredKey) }
             return removed
         }
+    }
+
+    /// The store as one account's writers see it: once that account is
+    /// logged out (`clearAll`) the scope stores nothing and finds nothing, so
+    /// work that was on its way cannot leave images for the next account.
+    func scoped() -> PendingScope {
+        PendingScope(store: self, epoch: lock.withLock { epoch })
+    }
+
+    /// Runs `body` under the lock if `scope` is still the account in use; nil when it is not.
+    fileprivate func current<T>(_ scope: Int, _ body: () throws -> T) rethrows -> T? {
+        try lock.withLock { scope == epoch ? try body() : nil }
     }
 
     func put(folder: String, name: String, data: Data) throws {
@@ -142,6 +157,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     /// Logging out: the files, their key and the expired count.
     func clearAll() throws {
         try lock.withLock {
+            epoch += 1
             cachedKey = nil
             if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
             try vault.delete(.pendingKey)
@@ -212,6 +228,30 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         let k = SymmetricKey(data: fresh)
         cachedKey = k
         return k
+    }
+}
+
+/// A `PendingStore` for the account that was in use when it was made
+/// (`PendingStore.scoped`).
+struct PendingScope: SealedFiles, RACore.SealedFiles {
+    fileprivate let store: PendingStore
+    fileprivate let epoch: Int
+
+    func put(folder: String, name: String, data: Data) throws {
+        let stored: Void? = try store.current(epoch) { try store.put(folder: folder, name: name, data: data) }
+        if stored == nil { throw UserError("已退出账户") }
+    }
+
+    func get(folder: String, name: String) -> Data? {
+        store.current(epoch) { store.get(folder: folder, name: name) } ?? nil
+    }
+
+    func remove(folder: String, name: String) {
+        store.current(epoch) { store.remove(folder: folder, name: name) }
+    }
+
+    func clearFolder(_ folder: String) {
+        store.current(epoch) { store.clearFolder(folder) }
     }
 }
 

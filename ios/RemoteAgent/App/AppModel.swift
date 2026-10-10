@@ -283,7 +283,8 @@ final class AppModel {
         described = nil
         state = made.remote.state.value
         context = AccountContext(account: account, remote: made.remote)
-        ImageCenter.install(remote: made.remote, files: parts.storage.pending)
+        // The account's own view of the store: what is still writing when the account is erased writes nothing.
+        ImageCenter.install(remote: made.remote, files: parts.storage.pending.scoped())
         stage = .ready
         made.engine.setNetwork(path.available)
         follow(made.engine.state, gen: generation)
