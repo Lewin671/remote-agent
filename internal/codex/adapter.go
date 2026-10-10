@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
@@ -115,23 +116,15 @@ func modelName(slug string) string {
 	return strings.Join(parts, "-")
 }
 
-var configModel = regexp.MustCompile(`(?m)^\s*model\s*=\s*"([^"]+)"`)
-
 // defaultModel is the model set at the top of Codex's config.toml.
 func defaultModel(codexHome string) string {
-	b, err := os.ReadFile(filepath.Join(codexHome, "config.toml"))
-	if err != nil {
-		return ""
+	var top struct {
+		Model string `toml:"model"`
 	}
-	// Only the part before the first table holds the top-level keys.
-	top := string(b)
-	if i := strings.Index(top, "\n["); i >= 0 {
-		top = top[:i]
+	if b, err := os.ReadFile(filepath.Join(codexHome, "config.toml")); err == nil {
+		_ = toml.Unmarshal(b, &top)
 	}
-	if m := configModel.FindStringSubmatch(top); m != nil {
-		return m[1]
-	}
-	return ""
+	return top.Model
 }
 
 // displayName is the name /model shows for a model slug.

@@ -119,3 +119,45 @@ func TestModelsIncludesConfiguredDefaultAndRereadsCatalog(t *testing.T) {
 		t.Fatalf("catalog not refreshed: %v, %v", m, err)
 	}
 }
+
+// config.toml is TOML, not only `key = "value"` lines: literal strings,
+// dotted keys and inline tables set the same keys, and Codex starts a new
+// session by them. A file that cannot be understood is reported as not
+// known rather than as Codex's defaults.
+func TestDefaultModeReadsTOML(t *testing.T) {
+	home := t.TempDir()
+	a := New("codex", home, filepath.Join(home, "history.jsonl"))
+	for _, c := range []struct {
+		name, config string
+		mode         pb.ApprovalMode
+		known        bool
+	}{
+		{"no file", "", pb.ApprovalMode_APPROVAL_MODE_ASK, true},
+		{"basic strings", "approval_policy = \"never\"\nsandbox_mode = \"danger-full-access\" # all\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"literal strings", "sandbox_mode = 'danger-full-access'\napproval_policy = 'never'\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"multi-line strings", "sandbox_mode = \"\"\"danger-full-access\"\"\"\napproval_policy = '''never'''\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"quoted keys", "\"approvals_reviewer\" = \"auto_review\"\n", pb.ApprovalMode_APPROVAL_MODE_AUTO, true},
+		{"profile table", "profile = 'yolo'\n[profiles.yolo]\napproval_policy = 'never'\nsandbox_mode = 'danger-full-access'\n[profiles.other]\napprovals_reviewer = 'auto_review'\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"profile in dotted keys", "profile = \"yolo\"\nprofiles.yolo.approval_policy = \"never\"\nprofiles.yolo.sandbox_mode = \"danger-full-access\"\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"profile inline", "profile = \"yolo\"\nprofiles = { yolo = { approval_policy = \"never\", sandbox_mode = \"danger-full-access\" } }\n", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, true},
+		{"profile not selected", "[profiles.yolo]\napproval_policy = 'never'\nsandbox_mode = 'danger-full-access'\n", pb.ApprovalMode_APPROVAL_MODE_ASK, true},
+		{"a key of another table", "[mcp_servers.x]\nsandbox_mode = 'danger-full-access'\napproval_policy = 'never'\n", pb.ApprovalMode_APPROVAL_MODE_ASK, true},
+		{"hash in a string", "model = \"a # b\"\napprovals_reviewer = \"auto_review\"\n", pb.ApprovalMode_APPROVAL_MODE_AUTO, true},
+		{"not TOML", "sandbox_mode = danger-full-access\n", pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, false},
+		{"not a string", "approval_policy = { granular = { rules = true } }\n", pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED, false},
+	} {
+		path := filepath.Join(home, "config.toml")
+		os.Remove(path)
+		if c.config != "" {
+			os.WriteFile(path, []byte(c.config), 0o600)
+		}
+		if m, known, varies := a.DefaultMode(""); m != c.mode || known != c.known || varies {
+			t.Errorf("%s: mode %v, known %v", c.name, m, known)
+		}
+	}
+	// The default model is read the same way.
+	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model = 'gpt-6-sol'\n[profiles.x]\nmodel = \"other\"\n"), 0o600)
+	if got := defaultModel(home); got != "gpt-6-sol" {
+		t.Errorf("default model %q", got)
+	}
+}
