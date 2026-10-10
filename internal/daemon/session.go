@@ -176,6 +176,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	})
 	s.dropSettled(&seen)
 	s.restorePause(&seen)
+	s.restoreRecent(&seen)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}

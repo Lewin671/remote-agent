@@ -19,17 +19,71 @@ type logged struct {
 	lastEnd *pb.Event
 	// input is each message's last InputState.
 	input map[string]*pb.Event
+	// sent are the messages no user message was tied to yet, by request
+	// ID, and written the IDs of those that were written and left the
+	// queue, in that order.
+	sent    map[string]*sentInput
+	written []string
+}
+
+// sentInput is a message as its first InputState describes it.
+type sentInput struct {
+	text    string
+	origin  *pb.Origin
+	images  bool
+	written bool
 }
 
 func (l *logged) note(e *pb.Event) {
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnEnded:
 		l.lastEnd = e
+	case *pb.Event_UserMessage:
+		delete(l.sent, k.UserMessage.RequestId)
 	case *pb.Event_InputState:
+		st := k.InputState
 		if l.input == nil {
-			l.input = map[string]*pb.Event{}
+			l.input, l.sent = map[string]*pb.Event{}, map[string]*sentInput{}
 		}
-		l.input[k.InputState.RequestId] = e
+		if l.input[st.RequestId] == nil {
+			l.sent[st.RequestId] = &sentInput{text: st.Text, origin: e.Origin, images: len(st.ImageIds) > 0}
+		}
+		l.input[st.RequestId] = e
+		in := l.sent[st.RequestId]
+		if in == nil {
+			return
+		}
+		switch st.Status {
+		case pb.InputStatus_INPUT_STATUS_QUEUED:
+			in.written = in.written || st.Stage == pb.InputStage_INPUT_STAGE_SUBMITTING
+		case pb.InputStatus_INPUT_STATUS_HELD_BY_CLI:
+			// Kept in the held list.
+		case pb.InputStatus_INPUT_STATUS_SUBMITTED, pb.InputStatus_INPUT_STATUS_UNCONFIRMED:
+			if in.written {
+				l.written = append(l.written, st.RequestId)
+				break
+			}
+			fallthrough
+		default:
+			delete(l.sent, st.RequestId)
+		}
+	}
+}
+
+// restoreRecent rebuilds the memory of written messages the CLI's record
+// may still come for: those that left the queue with no user message tied
+// to them (Codex may record one long after confirming the submit), and
+// those the CLI holds. A message with images cannot be rebuilt from the
+// log, which has neither its files nor its placeholders.
+func (s *session) restoreRecent(l *logged) {
+	for _, id := range l.written {
+		if in := l.sent[id]; in != nil && !in.images {
+			s.recent = append(s.recent, input{Text: in.text, RequestID: id, Origin: storeOrigin(in.origin)})
+		}
+	}
+	s.recent = append(s.recent, s.queue.Held...)
+	if n := len(s.recent) - recentInputs; n > 0 {
+		s.recent = s.recent[n:]
 	}
 }
 

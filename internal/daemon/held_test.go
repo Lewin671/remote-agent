@@ -256,3 +256,26 @@ func TestCancelHeldMessageWithImages(t *testing.T) {
 		t.Fatalf("err %v", err)
 	}
 }
+
+// After a restart, the CLI handing a held message to the model is still
+// recognized as that message.
+func TestHeldMessageIsReceivedAfterRestart(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	h.s.mu.Lock()
+	h.s.queue.Held = []input{{RequestID: "a", Text: "first", Origin: storeOrigin(&pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev"})}}
+	h.s.queue.save(h.dir)
+	h.s.mu.Unlock()
+	h.reopen()
+	msg := &pb.UserMessage{Text: "first"}
+	e := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: msg}}
+	annotateLogged(h.s, e)
+	h.s.emit(e)
+	h.s.received(msg.RequestId)
+	if msg.RequestId != "a" || e.Origin.GetDeviceId() != "dev" {
+		t.Fatalf("not recognized: %v", e)
+	}
+	if st := inputStates(h, "a"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED || len(h.s.queue.Held) != 0 {
+		t.Fatalf("states %v, held %+v", st, h.s.queue.Held)
+	}
+}

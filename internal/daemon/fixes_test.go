@@ -627,3 +627,44 @@ func TestExitedQueueIsSettledOnTheNextStart(t *testing.T) {
 		t.Fatalf("still queued: %+v", q)
 	}
 }
+
+// Codex may confirm a message in history.jsonl and record the user message
+// only later. A daemon restarted in between still ties the record to the
+// message it wrote: its request ID is what a scheduled run waits for.
+func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.bindRollout("", filepath.Join(h.dir, "rollout.jsonl"))
+	origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev", RequestId: "r1"}
+	if _, err := h.s.enqueue("run the checks", "r1", nil, origin); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+	go h.s.injectLoop(ctx)
+	eventually(t, "r1 submitted", func() bool { return inputStatus(h, "r1") == pb.InputStatus_INPUT_STATUS_SUBMITTED })
+	cancel()
+	h.reopen()
+	user := func(text string) string {
+		return `{"timestamp":"2026-09-29T10:00:00Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"UserMessage","id":"u1","content":[{"type":"text","text":"` + text + `"}]}}}`
+	}
+	h.writeRollout(user("run the checks"), user("run the checks"), user("typed here"))
+	h.s.readRollout()
+	var got []*pb.Event
+	for _, e := range h.events() {
+		if e.GetUserMessage() != nil {
+			got = append(got, e)
+		}
+	}
+	if len(got) != 3 {
+		t.Fatalf("%d user messages", len(got))
+	}
+	if got[0].GetUserMessage().RequestId != "r1" || got[0].Origin.GetDeviceId() != "dev" {
+		t.Fatalf("the late record lost its message: %v", got[0])
+	}
+	// It is matched once; what nothing was written for is local.
+	for _, e := range got[1:] {
+		if e.GetUserMessage().RequestId != "" || e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {
+			t.Fatalf("tied to a message that was not written for it: %v", e)
+		}
+	}
+}
