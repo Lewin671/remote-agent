@@ -102,3 +102,52 @@ func TestRPCOverUnixSocket(t *testing.T) {
 	}
 	t.Fatalf("stream ended: %v", stream.Err())
 }
+
+// A CLI can send its first hook before the daemon has registered the
+// session it just started. The hook waits for the registration instead of
+// being told the session does not exist, which would leave a session with
+// no later hook without its transcript.
+func TestHookWaitsForAStartingSession(t *testing.T) {
+	h := newHarness(t, Config{})
+	id := h.s.meta.ID
+	rollout := filepath.Join(h.dir, "rollout.jsonl")
+	payload, _ := json.Marshal(map[string]string{"hook_event_name": "SessionStart", "session_id": "cli-1", "transcript_path": rollout})
+	hook := func() error {
+		_, err := (&handler{d: h.d}).Hook(context.Background(), connect.NewRequest(&pb.HookRequest{SessionId: id, Payload: payload}))
+		return err
+	}
+	if err := hook(); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("a session nobody is starting: %v", err)
+	}
+	started := h.d.beginStart(id)
+	errc := make(chan error, 1)
+	go func() { errc <- hook() }()
+	select {
+	case err := <-errc:
+		t.Fatalf("answered before the session was registered: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	h.d.mu.Lock()
+	h.d.sessions[id] = h.s
+	h.d.mu.Unlock()
+	started()
+	if err := <-errc; err != nil {
+		t.Fatal(err)
+	}
+	h.s.mu.Lock()
+	bound := h.s.meta.RolloutPath
+	h.s.mu.Unlock()
+	if bound != rollout {
+		t.Fatalf("transcript %q", bound)
+	}
+	// A creation that failed answers as before.
+	h.d.mu.Lock()
+	delete(h.d.sessions, id)
+	h.d.mu.Unlock()
+	failed := h.d.beginStart(id)
+	go func() { errc <- hook() }()
+	failed()
+	if err := <-errc; connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("after a failed creation: %v", err)
+	}
+}

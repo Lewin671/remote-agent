@@ -98,6 +98,10 @@ type Daemon struct {
 
 	mu       sync.Mutex
 	sessions map[string]*session
+	// starting are the sessions whose CLI has been started and that are
+	// not in sessions yet; each channel is closed once its session is, or
+	// its creation failed.
+	starting map[string]chan struct{}
 	limits   *pb.TokenUsage // latest usage limits seen in any session
 	limitsAt time.Time      // when Codex reported them
 	quotas   claudeQuotas   // Claude Code's account limits
@@ -122,7 +126,7 @@ type Daemon struct {
 // New returns a daemon; call Run to start it.
 func New(cfg Config) *Daemon {
 	cfg.defaults()
-	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, agents: map[pb.Agent]agent.Adapter{}, uploads: newUploads()}
+	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, starting: map[string]chan struct{}{}, agents: map[pb.Agent]agent.Adapter{}, uploads: newUploads()}
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
 	d.uploads.pins = d.protectedImageSessions
 	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
@@ -348,6 +352,40 @@ func (d *Daemon) unstarted(m *meta, dir string, alive bool) bool {
 	return true
 }
 
+// beginStart is called before a new session's CLI is started. The CLI's
+// first hook (SessionStart, which says where its transcript is) can arrive
+// before the session is registered; hookSession makes it wait until the
+// returned function is called, when the session is registered or its
+// creation has failed.
+func (d *Daemon) beginStart(id string) (done func()) {
+	ch := make(chan struct{})
+	d.mu.Lock()
+	d.starting[id] = ch
+	d.mu.Unlock()
+	return func() {
+		d.mu.Lock()
+		delete(d.starting, id)
+		d.mu.Unlock()
+		close(ch)
+	}
+}
+
+// hookSession finds the session a hook is for, waiting for one that is
+// just starting.
+func (d *Daemon) hookSession(ctx context.Context, id string) (*session, error) {
+	d.mu.Lock()
+	starting := d.starting[id]
+	d.mu.Unlock()
+	if starting != nil {
+		select {
+		case <-starting:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return d.session(id)
+}
+
 // create starts a new CLI session in tmux.
 func (d *Daemon) create(req *pb.CreateSessionRequest) (*session, error) {
 	return d.createBy(req, originLocal)
@@ -438,6 +476,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	}
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(id), "--env-file", envFile, "--", ag.Bin()}
 	argv = append(argv, cliArgs...)
+	defer d.beginStart(id)()
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	})

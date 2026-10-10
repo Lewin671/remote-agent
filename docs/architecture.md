@@ -201,7 +201,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
   - **默认**：客户端默认发 steer，和两个 CLI 自己按回车一致；发送请求里带一个字段区分两种，没填时按 steer。
   - **一轮被中断后**，还没写入的消息（queue 的，以及 steer 但还没写入的）都暂停，不自动发出，等用户逐条选择发送或取消：中断往往说明方向变了，排好的后续消息可能已经不适用。暂停状态和原因同步给所有客户端
 - **判断输入框**：抓屏时保留颜色属性（`capture-pane -e`），按**样式属性**判断，不按转义序列的字面写法：逐个解析行首的 SGR 序列得到加粗、变淡、反色，再看第一个可见字符。Codex 升级常换写法（0.159.0 把 `\e[1m` 换成了 `\e[0;1m`），样式本身不变。输入框的提示符是加粗的 `›`，占位提示是淡色字（前面可能先有背景色设置，判断时跳过开头的样式和空格，看第一个可见字符是不是淡色），列表里选中的行是加粗反色的 `›`。只有看到占位提示才认定输入框是空的：多行草稿的第一行可能是空的，其余行和底部状态栏分不开（notes §10）
-- **找到 rollout**：`SessionStart` hook（发出第一条消息时触发）把 `RA_SESSION` 和 `transcript_path` 一起报给 daemon（notes §3）
+- **找到 rollout**：`SessionStart` hook（发出第一条消息时触发）把 `RA_SESSION` 和 `transcript_path` 一起报给 daemon（notes §3）。CLI 是先启动、会话后登记的，启动得快的 CLI（Claude Code 在已信任的目录里）可能在登记完成前就发来这个 hook；daemon 让它等到登记完成再处理，不回「没有这个会话」，否则之后再没有 hook 的会话（如 bypass）就一直绑不上 transcript
 - **轮次和空闲**：一轮以 `task_started` 开始，以 `task_complete` 或 `turn_aborted`（被中断）结束；屏幕底部的输入提示符作为辅助（notes §1、§8）
 - **模型提问**：问题从 rollout 的 `function_call` 读出，它在等待回答时就已经写入，不需要 hook。回答时暂存本地按键、抓屏确认选择框还在，再注入选项编号；以 rollout 的 `function_call_output` 为准，先在终端里答了的就收回卡片。异步提问（`request_user_input_async`）不单独处理，一轮结束后当普通消息回复（notes §9）
 - **中断**：只在一轮运行时发 Esc，绝不发 Ctrl-C。空闲时发 Ctrl-C 会清空输入框，再按一次会退出 Codex（notes §8）

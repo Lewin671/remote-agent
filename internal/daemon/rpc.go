@@ -181,7 +181,7 @@ func (h *handler) WatchEvents(ctx context.Context, req *connect.Request[pb.Watch
 }
 
 func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]) (*connect.Response[pb.HookResponse], error) {
-	s, err := h.d.session(req.Msg.SessionId)
+	s, err := h.d.hookSession(ctx, req.Msg.SessionId)
 	if err != nil {
 		return nil, rpcErr(err)
 	}

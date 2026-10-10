@@ -129,6 +129,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	}
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(nid), "--env-file", envFile, "--", src.ag.Bin()}
 	argv = append(argv, cliArgs...)
+	defer d.beginStart(nid)()
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: nm.Tmux, Dir: nm.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	}); err != nil {
