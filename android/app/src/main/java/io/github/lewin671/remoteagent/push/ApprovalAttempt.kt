@@ -13,22 +13,42 @@ fun acceptPush(hasAccount: Boolean, kind: NotifyKind, settings: Settings): Boole
     else -> false
 }
 
-/** A killed worker must leave evidence before an approval can leave the phone. */
+/** What the phone has durably recorded about an approval reply sent from a notification. */
+enum class ApprovalRecord {
+    /** It may have reached the computer: only the same request is sent again, as one whose outcome is unknown. */
+    SENT,
+    /** The computer confirmed it. */
+    DONE,
+}
+
+/**
+ * Sends a reply for the worker, which may be killed at any point and run
+ * again with the same input. [before] is what an earlier run recorded;
+ * [record] must be durable when it returns true, and null forgets the reply.
+ *
+ * It is recorded as possibly sent before it leaves the phone. A confirmed
+ * reply stays recorded: the worker's own success is not durable yet when
+ * this returns, and a run after that must neither send it again nor, past
+ * its deadline, report that it was never submitted. Only a definite failure
+ * forgets it.
+ */
 suspend fun sendApproval(
-    command: PreparedCommand, wasUnknown: Boolean,
-    mark: () -> Boolean, clear: () -> Unit,
+    command: PreparedCommand, before: ApprovalRecord?,
+    record: (ApprovalRecord?) -> Boolean,
     forward: suspend (PreparedCommand, Boolean) -> Unit,
 ) {
+    if (before == ApprovalRecord.DONE) return
+    val wasUnknown = before == ApprovalRecord.SENT
     val attempt = Attempt()
     attempt.next { command }
     if (wasUnknown) attempt.settle(CommandException(CommandException.UNKNOWN, "结果未知"))
-    check(mark()) { "没能保存审批提交状态，没有发出" }
+    check(record(ApprovalRecord.SENT)) { "没能保存审批提交状态，没有发出" }
     try {
         forward(command, wasUnknown)
-        clear()
+        record(ApprovalRecord.DONE)
     } catch (e: Exception) {
         val shown = attempt.settle(e) ?: e
-        if (!attempt.frozen) clear()
+        if (!attempt.frozen) record(null)
         throw shown
     }
 }

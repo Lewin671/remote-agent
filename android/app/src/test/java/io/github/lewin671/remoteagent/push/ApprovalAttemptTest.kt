@@ -23,47 +23,57 @@ class ApprovalAttemptTest {
         assertFalse(acceptPush(true, NotifyKind.NOTIFY_KIND_UNSPECIFIED, Settings()))
     }
 
+    private var durable: ApprovalRecord? = null
+    private val record = { r: ApprovalRecord? -> durable = r; true }
+
     @Test fun aProcessKilledDuringForwardLeavesAnUnknownMarker() = runBlocking {
-        var durable = false
         // Error models a killed process: ordinary exception handlers do not run.
         val killed = runCatching {
-            sendApproval(command, false, { durable = true; true }, { durable = false }) { _, retry ->
-                assertTrue(durable)
+            sendApproval(command, durable, record) { _, retry ->
+                assertEquals(ApprovalRecord.SENT, durable)
                 assertFalse(retry)
                 throw AssertionError("process killed")
             }
         }
         assertTrue(killed.exceptionOrNull() is AssertionError)
-        assertTrue(durable)
+        assertEquals(ApprovalRecord.SENT, durable)
         val expired = runCatching {
-            sendApproval(command, durable, { durable = true; true }, { durable = false }) { p, retry ->
+            sendApproval(command, durable, record) { p, retry ->
                 assertSame(command, p)
                 assertTrue(retry)
                 throw CommandException("deadline_exceeded", "expired", fromDaemon = true)
             }
         }.exceptionOrNull() as CommandException
         assertTrue(expired.unknown)
-        assertTrue(durable)
+        assertEquals(ApprovalRecord.SENT, durable)
+    }
+
+    @Test fun aProcessKilledAfterTheAnswerStillKnowsTheReplyWentThrough() = runBlocking {
+        // The computer confirmed it; the process dies before WorkManager records the worker's success.
+        sendApproval(command, durable, record) { _, _ -> }
+        // WorkManager runs the same input again, by now past the command's deadline.
+        var sent = 0
+        sendApproval(command, durable, record) { _, _ ->
+            sent++
+            throw CommandException(CommandException.EXPIRED, "expired, not sent")
+        }
+        assertEquals(0, sent)
+        assertEquals(ApprovalRecord.DONE, durable)
     }
 
     @Test fun anUnrecordedAttemptCannotLeaveThePhone() = runBlocking {
         var sent = false
         assertTrue(runCatching {
-            sendApproval(command, false, { false }, {}) { _, _ -> sent = true }
+            sendApproval(command, null, { false }) { _, _ -> sent = true }
         }.isFailure)
         assertFalse(sent)
     }
 
-    @Test fun aDefiniteAnswerClearsTheMarker() = runBlocking {
-        var durable = false
-        val mark = { durable = true; true }
-        val clear = { durable = false }
-        sendApproval(command, false, mark, clear) { _, _ -> }
-        assertFalse(durable)
+    @Test fun aDefiniteFailureForgetsTheReply() = runBlocking {
         val refused = runCatching {
-            sendApproval(command, true, mark, clear) { _, _ -> throw CommandException("permission_denied", "refused", fromDaemon = true) }
+            sendApproval(command, ApprovalRecord.SENT, record) { _, _ -> throw CommandException("permission_denied", "refused", fromDaemon = true) }
         }.exceptionOrNull() as CommandException
         assertFalse(refused.unknown)
-        assertFalse(durable)
+        assertNull(durable)
     }
 }

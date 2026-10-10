@@ -41,9 +41,11 @@ import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "remote-agent"
@@ -252,6 +254,8 @@ class ApprovalReceiver : BroadcastReceiver() {
             .putBoolean("allow", allow).putInt("nid", nid).build()
         val work = OneTimeWorkRequestBuilder<ApprovalWorker>()
             .setInputData(data)
+            // Finds the work of a recorded reply (ApprovalWorker).
+            .addTag(p.requestId)
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
             .build()
@@ -271,15 +275,27 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val allow = d.getBoolean("allow", false)
         val request = d.getString("request").orEmpty()
         val deadline = d.getLong("deadline", 0)
-        val attempts = applicationContext.getSharedPreferences("approval-attempts", Context.MODE_PRIVATE)
+        val records = applicationContext.getSharedPreferences("approval-attempts", Context.MODE_PRIVATE)
+        // What an earlier run of this work recorded: it may be run again after the process was killed.
+        fun recorded() = records.getString(request, null)?.let { runCatching { ApprovalRecord.valueOf(it) }.getOrNull() }
         // An earlier attempt of this reply may have gone through.
-        fun wasUnknown() = attempts.getBoolean(request, false)
+        fun wasUnknown() = recorded() == ApprovalRecord.SENT
+        fun done(): Result {
+            Notifier.update(applicationContext, nid, if (allow) "已允许" else "已拒绝", true)
+            return Result.success()
+        }
         fun finish(text: String): Result {
-            // WorkManager may be killed before it records this terminal result too.
-            if (!wasUnknown()) attempts.edit().remove(request).commit()
             Notifier.update(applicationContext, nid, text, true)
             return Result.failure()
         }
+        // A record is kept until WorkManager has recorded the end of its work: only then is no run left to read it.
+        withContext(Dispatchers.IO) {
+            val wm = WorkManager.getInstance(applicationContext)
+            val over = records.all.keys.filter { it != request && wm.getWorkInfosByTag(it).get().all { w -> w.state.isFinished } }
+            if (over.isNotEmpty()) records.edit().apply { over.forEach { remove(it) } }.commit()
+        }
+        // Confirmed by an earlier run that was killed before its success was recorded.
+        if (recorded() == ApprovalRecord.DONE) return done()
         val acct = try {
             RaApp.instance.vault.load()
         } catch (e: Exception) {
@@ -296,12 +312,10 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
         )
         val remote = Remote(acct, RaApp.instance.http)
         try {
-            sendApproval(p, wasUnknown(),
-                mark = { attempts.edit().putBoolean(request, true).commit() },
-                clear = { attempts.edit().remove(request).commit(); Unit },
-            ) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
-            Notifier.update(applicationContext, nid, if (allow) "已允许" else "已拒绝", true)
-            return Result.success()
+            sendApproval(p, recorded(), record = { r ->
+                records.edit().apply { if (r == null) remove(request) else putString(request, r.name) }.commit()
+            }) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
+            return done()
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: CommandException) {
