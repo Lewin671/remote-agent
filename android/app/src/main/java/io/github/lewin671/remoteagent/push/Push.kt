@@ -48,6 +48,11 @@ object Push {
 
     fun stop() = registration.stop()
 
+    /** The account is leaving: nothing registers until the next one is in use ([open]). */
+    fun close() = registration.close()
+
+    fun open() = registration.open()
+
     /** Withdraws the old account's subscription without waiting for a Google token. */
     suspend fun unregister(remote: Remote) {
         kotlinx.coroutines.withTimeoutOrNull(5_000) {

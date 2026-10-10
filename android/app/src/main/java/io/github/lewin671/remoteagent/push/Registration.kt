@@ -15,9 +15,11 @@ internal data class PushAttempt(val status: PushStatus, val retry: Boolean = fal
 /** One registration at a time; a new token/settings change supersedes old retries. */
 internal class PushRegistration(private val scope: CoroutineScope) {
     private var job: Job? = null
+    private var closed = false
 
     fun request(attempt: suspend () -> PushAttempt, publish: (PushStatus) -> Unit, autoRetry: Boolean = true) {
         stop()
+        if (closed) return
         job = scope.launch {
             var backoff = 30_000L
             while (true) {
@@ -34,6 +36,21 @@ internal class PushRegistration(private val scope: CoroutineScope) {
     fun stop() {
         job?.cancel()
         job = null
+    }
+
+    /**
+     * Stops, and refuses every request until [open]: the account is being
+     * removed, and whatever still holds it (a network callback, a return to
+     * the foreground, a new token) must not register it again.
+     */
+    fun close() {
+        closed = true
+        stop()
+    }
+
+    /** An account is in use again. */
+    fun open() {
+        closed = false
     }
 }
 

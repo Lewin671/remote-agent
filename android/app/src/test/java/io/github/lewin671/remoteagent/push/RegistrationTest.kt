@@ -77,4 +77,28 @@ class RegistrationTest {
         runCurrent()
         assertEquals(1, attempts)
     }
+
+    @Test fun anAccountBeingRemovedIsNotRegisteredAgainUntilAnotherIsInUse() = runTest {
+        val registration = PushRegistration(backgroundScope)
+        val cancelled = CompletableDeferred<Unit>()
+        registration.request({
+            try { awaitCancellation() } finally { cancelled.complete(Unit) }
+        }, {})
+        runCurrent()
+        // Logout: what was on its way stops, and a network callback or a return to the foreground meanwhile starts nothing.
+        registration.close()
+        runCurrent()
+        assertTrue(cancelled.isCompleted)
+        var attempts = 0
+        registration.request({ attempts++; tokenFailure(IOException("SERVICE_NOT_AVAILABLE")) }, {})
+        runCurrent()
+        advanceTimeBy(600_000)
+        runCurrent()
+        assertEquals(0, attempts)
+        // The next account registers as usual.
+        registration.open()
+        registration.request({ attempts++; PushAttempt(PushStatus()) }, {})
+        runCurrent()
+        assertEquals(1, attempts)
+    }
 }

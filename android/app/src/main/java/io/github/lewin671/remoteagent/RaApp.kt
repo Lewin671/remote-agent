@@ -165,6 +165,7 @@ class RaApp : Application() {
         val r = Remote(acct, http, RoomCache(db.dao(), imageEnvelopes), log = { Log.i(TAG, it) })
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         r.setNetwork(online)
+        Push.open()
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.
         if (foreground) {
@@ -199,7 +200,11 @@ class RaApp : Application() {
                 _accountError.value = ""
                 val leaving = _remote.value
                 leaving?.let { lastServer = it.account.server }
-                Push.stop()
+                // Before anything here suspends: a network callback or a return
+                // to the foreground meanwhile must not find the account, start
+                // it and register it for push again.
+                _remote.value = null
+                Push.close()
                 pendingStore.invalidate()
                 AccountMemory.clear()
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
@@ -216,8 +221,6 @@ class RaApp : Application() {
                 } catch (e: Exception) {
                     Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")
                     _accountError.value = "没能清除这台手机上的账户和缓存，请重试"
-                } finally {
-                    _remote.value = null
                 }
             }
         } finally {
