@@ -519,6 +519,8 @@ func (d *Daemon) tickSchedules(now time.Time) {
 		prev := schedule.Clone(t)
 		if t.Active != nil {
 			d.watchScheduledRun(t, now)
+		} else {
+			d.reconfirmScheduledRun(t, now)
 		}
 		if t.Status == "waiting_turn" {
 			s, err := d.exact(t.AnchorSession)
@@ -694,7 +696,7 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 					run.Status = "submitted"
 				}
 			case pb.InputStatus_INPUT_STATUS_UNCONFIRMED:
-				d.endScheduledRun(t, now, "uncertain", "message_submission_unconfirmed")
+				d.endScheduledRun(t, now, "uncertain", unconfirmedRun)
 				return
 			case pb.InputStatus_INPUT_STATUS_CANCELED:
 				d.endScheduledRun(t, now, "cancelled", "message_cancelled")
@@ -741,6 +743,42 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 	s.mu.Unlock()
 	if exited {
 		d.endScheduledRun(t, now, "failed", "execution_session_exited")
+	}
+}
+
+// unconfirmedRun is why an execution ended uncertain when its message was
+// reported UNCONFIRMED.
+const unconfirmedRun = "message_submission_unconfirmed"
+
+// reconfirmScheduledRun takes up again the last execution of a task that
+// ended uncertain because its message was reported UNCONFIRMED, once the
+// CLI's record confirms the message after all (inject.go, confirmLate).
+// Until then, and for good if no record comes, the task stays uncertain;
+// the message is never sent again.
+func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) {
+	if t.Status != "uncertain" || t.Reason != unconfirmedRun || len(t.Runs) == 0 {
+		return
+	}
+	last := &t.Runs[len(t.Runs)-1]
+	if last.Status != "uncertain" || last.Reason != unconfirmedRun {
+		return
+	}
+	s, err := d.exact(last.SessionID)
+	if err != nil {
+		return
+	}
+	evs, _ := s.log.Since(last.AfterSeq)
+	for _, e := range evs {
+		last.AfterSeq = e.Seq
+		if in := e.GetInputState(); in != nil && in.RequestId == last.RequestID && in.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED {
+			run := *last
+			run.Status, run.Reason, run.EndedAt = "submitted", "", nil
+			t.Runs = t.Runs[:len(t.Runs)-1]
+			t.Active = &run
+			t.Status, t.Reason = run.Status, ""
+			d.watchScheduledRun(t, now)
+			return
+		}
 	}
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {

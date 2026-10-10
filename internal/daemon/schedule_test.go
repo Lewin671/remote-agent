@@ -270,6 +270,47 @@ func TestScheduleUnconfirmedDoesNotRetry(t *testing.T) {
 	}
 }
 
+// The CLI's record of the message, coming after it was reported
+// unconfirmed, takes the execution up again: it is followed to its end and
+// a repeating task goes on, without the message being sent twice.
+func TestScheduleLateConfirmationResumesRun(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn", Repeat: true}), "")
+	now := time.Now().Add(time.Second)
+	h.d.tickSchedules(now)
+	run := readTask(t, h.d, task.ID).Active
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_UNCONFIRMED}}})
+	h.d.tickSchedules(now)
+	if got := readTask(t, h.d, task.ID); got.Status != "uncertain" || got.Active != nil {
+		t.Fatalf("not uncertain %+v", got)
+	}
+	// Another message's confirmation is not this one's.
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "other", Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	h.d.tickSchedules(now)
+	if got := readTask(t, h.d, task.ID); got.Status != "uncertain" || got.Active != nil {
+		t.Fatalf("taken up by another message %+v", got)
+	}
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}},
+		&pb.Event{TurnId: "scheduled-turn", Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "Check deployment", RequestId: run.RequestID}}})
+	h.d.tickSchedules(now)
+	got := readTask(t, h.d, task.ID)
+	if got.Status != "running" || got.Active == nil || got.Active.ID != run.ID || got.Active.EndedAt != nil || len(got.Runs) != 0 {
+		t.Fatalf("not taken up again %+v", got)
+	}
+	h.s.emit(&pb.Event{Time: timestamppb.New(now), TurnId: "scheduled-turn", Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED}}})
+	h.d.tickSchedules(now)
+	// The execution is completed, and the repeating task goes on to its
+	// next one.
+	got = readTask(t, h.d, task.ID)
+	if len(got.Runs) != 1 || got.Runs[0].ID != run.ID || got.Runs[0].Status != "completed" || got.Status == "uncertain" || got.Reason != "" {
+		t.Fatalf("not completed %+v", got)
+	}
+	if got.Dispatches != 2 || got.Active == nil || got.Active.ID == run.ID {
+		t.Fatalf("did not go on %+v", got)
+	}
+}
+
 func TestSchedulePersistenceIsPrivateAndCorruptionStopsLoad(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
