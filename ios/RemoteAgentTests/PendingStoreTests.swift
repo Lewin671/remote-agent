@@ -143,6 +143,36 @@ import Testing
         #expect(s.get(folder: "out:session-1:req-1", name: "1.meta") == nil)
     }
 
+    @Test func aWaitingMessageIsKeptByTheIndexAloneWhateverElseIsOnDisk() throws {
+        defer { cleanUp() }
+        let s = store()
+        try s.put(folder: "out:session-1:req-1", name: "1.meta", data: Data([1]))
+        try s.put(folder: "outbox", name: "index", data: Data("session-1\treq-1\n".utf8))
+        // A full disk, or the process ending right after the index was written, leaves nothing beside the folders.
+        for file in filesOnDisk() where file.lastPathComponent.hasPrefix(".") { try FileManager.default.removeItem(at: file) }
+        clock.advance(PendingPolicy.draftTTL + 60)
+        // Another run of the app: nothing is remembered but what is on disk.
+        let later = store()
+        #expect(later.expire() == 0)
+        #expect(later.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
+        #expect(later.get(folder: "outbox", name: "index") == Data("session-1\treq-1\n".utf8))
+    }
+
+    @Test func nothingExpiresWhileTheIndexDoesNotOpen() throws {
+        defer { cleanUp() }
+        let s = store()
+        try s.put(folder: "out:session-1:req-1", name: "1.meta", data: Data([1]))
+        try s.put(folder: "draft", name: "1.meta", data: Data([2]))
+        try s.put(folder: "outbox", name: "index", data: Data("session-1\treq-1\n".utf8))
+        let index = try #require(filesOnDisk().first { $0.lastPathComponent == "index" })
+        try Data("not sealed".utf8).write(to: index)
+        clock.advance(PendingPolicy.draftTTL + 60)
+        // What it named cannot be told from a draft: neither goes.
+        #expect(s.expire() == 0)
+        #expect(s.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
+        #expect(s.get(folder: "draft", name: "1.meta") == Data([2]))
+    }
+
     @Test func loggingOutRemovesTheFilesAndTheirKey() throws {
         defer { cleanUp() }
         let s = store()

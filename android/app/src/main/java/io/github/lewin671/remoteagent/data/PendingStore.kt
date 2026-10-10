@@ -28,9 +28,27 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
     val used: Long get() = synchronized(this) { ImageDiskPolicy.bytes(dir) }
     val expired: Int get() = prefs.getInt("expired-drafts", 0)
     @Synchronized fun expire(): Int {
-        val n = ImageDiskPolicy.expireDrafts(dir)
+        // An index that is there and does not open says nothing about what to keep: nothing goes.
+        val keep = outboxFolders() ?: return 0
+        val n = ImageDiskPolicy.expireDrafts(dir, keep)
         if (n > 0) prefs.edit().putInt("expired-drafts", expired + n).apply()
         return n
+    }
+
+    /**
+     * The folders that do not expire: the outbox's own, and those of the
+     * messages its index names, which wait to be confirmed or removed however
+     * long that takes. Read from the index every time, which is what says a
+     * message is waiting: a mark left beside each folder could be missing
+     * after a full disk or a process that ended in between. Null when the
+     * index is there and does not open.
+     */
+    private fun outboxFolders(): Set<String>? {
+        val index = File(File(dir, folderName("outbox")), "index")
+        if (!index.exists()) return emptySet()
+        val k = cachedKey ?: storedKey()?.also { cachedKey = it } ?: return null
+        val text = runCatching { open(index.readBytes(), k).toString(Charsets.UTF_8) }.getOrNull() ?: return null
+        return ImageDiskPolicy.outboxKeys(text).mapTo(mutableSetOf(folderName("outbox"))) { folderName(it) }
     }
     private val dir = File(context.noBackupFilesDir, "pending-images").apply { mkdirs() }
     private val keyFile = File(dir, "key.bin")
@@ -40,7 +58,10 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
     private val key: ByteArray
         get() = cachedKey ?: synchronized(this) { cachedKey ?: loadKey().also { cachedKey = it } }
 
-    private fun folder(draft: String) = File(dir, sha256(draft.toByteArray()).hex().take(32)).apply { mkdirs() }
+    /** A draft's folder is named by a hash of its key, which may hold a path or a session ID. */
+    private fun folderName(draft: String) = sha256(draft.toByteArray()).hex().take(32)
+
+    private fun folder(draft: String) = File(dir, folderName(draft)).apply { mkdirs() }
 
     @Synchronized override fun put(folder: String, name: String, data: ByteArray) {
         val draft = folder
@@ -55,18 +76,6 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
             tmp.writeBytes(sealed)
             check(tmp.renameTo(f)) { "没能保存待发图片" }
         } finally { tmp.delete() }
-        if (draft == "outbox" && name == "index") {
-            // Protect only records named by the durable outbox index. A
-            // failed save before that leaves ordinary expiring draft files.
-            val protected = data.toString(Charsets.UTF_8).lineSequence().mapNotNull { line ->
-                val parts = line.split("\t")
-                if (parts.size != 2) null else sha256("out:${parts[0]}:${parts[1]}".toByteArray()).hex().take(32)
-            }.toSet() + f.parentFile!!.name
-            for (d in dir.listFiles()?.filter { it.isDirectory }.orEmpty()) {
-                val marker = File(d, ".keep")
-                if (d.name in protected) marker.createNewFile() else marker.delete()
-            }
-        }
         f.parentFile?.setLastModified(System.currentTimeMillis())
     }
 
@@ -102,23 +111,28 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
         return iv + c.doFinal(plain)
     }
 
-    private fun open(data: ByteArray): ByteArray {
+    private fun open(data: ByteArray, k: ByteArray = key): ByteArray {
         val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, data, 0, 12))
+        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(128, data, 0, 12))
         return c.doFinal(data, 12, data.size - 12)
     }
 
+    private fun wrappingKey(): SecretKey? = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.getKey(ALIAS, null) as? SecretKey
+
+    /** The key there is, without making one; null when there is none or it does not open. */
+    private fun storedKey(wrap: SecretKey? = wrappingKey()): ByteArray? {
+        if (wrap == null || !keyFile.exists()) return null
+        return runCatching {
+            val d = keyFile.readBytes()
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.DECRYPT_MODE, wrap, GCMParameterSpec(128, d, 0, 12))
+            c.doFinal(d, 12, d.size - 12)
+        }.getOrNull()
+    }
+
     private fun loadKey(): ByteArray {
-        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        val wrap = ks.getKey(ALIAS, null) as? SecretKey
-        if (wrap != null && keyFile.exists()) {
-            runCatching {
-                val d = keyFile.readBytes()
-                val c = Cipher.getInstance("AES/GCM/NoPadding")
-                c.init(Cipher.DECRYPT_MODE, wrap, GCMParameterSpec(128, d, 0, 12))
-                return c.doFinal(d, 12, d.size - 12)
-            }
-        }
+        val wrap = wrappingKey()
+        storedKey(wrap)?.let { return it }
         // No key, or it does not open: what was stored under it is lost.
         dir.listFiles()?.forEach { if (it != keyFile) it.deleteRecursively() }
         val w = wrap ?: KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").run {

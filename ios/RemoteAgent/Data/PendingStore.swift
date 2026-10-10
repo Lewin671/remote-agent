@@ -68,8 +68,10 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     @discardableResult
     func expire() -> Int {
         lock.withLock {
+            // An index that is there and does not open says nothing about what to keep: nothing goes.
+            guard let kept = outboxFolders() else { return 0 }
             var removed = 0
-            for folder in folders() where !FileManager.default.fileExists(atPath: folder.appending(path: ".keep").path) {
+            for folder in folders() where !kept.contains(folder.lastPathComponent) {
                 let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
                 let last = ([folder] + files).compactMap { modified($0) }.max() ?? .distantPast
                 if now().timeIntervalSince(last) < PendingPolicy.draftTTL { continue }
@@ -108,23 +110,6 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
                 try sealed.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             } catch {
                 throw UserError("没能保存待发图片")
-            }
-            if folder == "outbox" && name == "index" {
-                // Protect only records named by the durable outbox index. A
-                // failed save before that leaves ordinary expiring draft files.
-                var protected: Set<String> = [dir.lastPathComponent]
-                for line in String(decoding: data, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: false) {
-                    let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
-                    if parts.count == 2 { protected.insert(Self.folderName("out:\(parts[0]):\(parts[1])")) }
-                }
-                for d in folders() {
-                    let marker = d.appending(path: ".keep")
-                    if protected.contains(d.lastPathComponent) {
-                        FileManager.default.createFile(atPath: marker.path, contents: nil)
-                    } else {
-                        try? FileManager.default.removeItem(at: marker)
-                    }
-                }
             }
             touch(dir)
         }
@@ -179,6 +164,22 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         return dir
     }
 
+    /// The folders that do not expire: the outbox's own, and those of the
+    /// messages its index names, which wait to be confirmed or removed
+    /// however long that takes. Read from the index every time, which is
+    /// what says a message is waiting: a mark left beside each folder could
+    /// be missing after a full disk or a process that ended in between. Nil
+    /// when the index is there and does not open.
+    private func outboxFolders() -> Set<String>? {
+        let outbox = Self.folderName("outbox")
+        let file = directory.appending(path: outbox, directoryHint: .isDirectory).appending(path: "index")
+        guard FileManager.default.fileExists(atPath: file.path) else { return [] }
+        guard let sealed = try? Data(contentsOf: file), let key = try? storedKey(),
+              let index = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
+        else { return nil }
+        return Set(ImageDiskPolicy.outboxKeys(String(decoding: index, as: UTF8.self)).map(Self.folderName)).union([outbox])
+    }
+
     private func folders() -> [URL] {
         let all = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
         return all.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
@@ -214,13 +215,17 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key())
     }
 
-    private func key() throws -> SymmetricKey {
+    /// The key there is, without making one.
+    private func storedKey() throws -> SymmetricKey? {
         if let cachedKey { return cachedKey }
-        if let stored = try vault.read(.pendingKey), stored.count == keySize {
-            let k = SymmetricKey(data: stored)
-            cachedKey = k
-            return k
-        }
+        guard let stored = try vault.read(.pendingKey), stored.count == keySize else { return nil }
+        let k = SymmetricKey(data: stored)
+        cachedKey = k
+        return k
+    }
+
+    private func key() throws -> SymmetricKey {
+        if let stored = try storedKey() { return stored }
         // No key: what was stored under the one before is lost.
         if FileManager.default.fileExists(atPath: directory.path) { try? FileManager.default.removeItem(at: directory) }
         let fresh = randomBytes(keySize)

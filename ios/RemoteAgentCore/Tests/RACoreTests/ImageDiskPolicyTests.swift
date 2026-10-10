@@ -42,18 +42,29 @@ import Testing
         try Data("sealed".utf8).write(to: expired.appendingPathComponent("image.meta"))
         try touch(expired.appendingPathComponent("image.meta"), ms: 1000)
         try touch(expired, ms: 1000)
-        let pinned = dir.appendingPathComponent("outbox", isDirectory: true)
+        // Named by the outbox, and with nothing in its folder to say so.
+        let pinned = dir.appendingPathComponent("waiting", isDirectory: true)
         try fm.createDirectory(at: pinned, withIntermediateDirectories: true)
-        try Data().write(to: pinned.appendingPathComponent(".keep"))
-        try touch(pinned.appendingPathComponent(".keep"), ms: 1000)
+        try Data("sealed".utf8).write(to: pinned.appendingPathComponent("image.meta"))
+        try touch(pinned.appendingPathComponent("image.meta"), ms: 1000)
         try touch(pinned, ms: 1000)
         let fresh = dir.appendingPathComponent("fresh", isDirectory: true)
         try fm.createDirectory(at: fresh, withIntermediateDirectories: true)
         try touch(fresh, ms: ttl)
-        #expect(ImageDiskPolicy.expireDrafts(dir, now: ttl + 1000) == 1)
+        #expect(ImageDiskPolicy.expireDrafts(dir, keep: ["waiting"], now: ttl + 1000) == 1)
         #expect(!exists(expired))
         #expect(exists(pinned))
         #expect(exists(fresh))
+        // Once the outbox no longer names it, it expires like any draft.
+        #expect(ImageDiskPolicy.expireDrafts(dir, now: ttl + 1000) == 1)
+        #expect(!exists(pinned))
+    }
+
+    @Test func theOutboxIndexNamesTheMessagesThatWait() {
+        #expect(ImageDiskPolicy.outboxKeys("s1\tr1\ns2\tr2\n") == ["out:s1:r1", "out:s2:r2"])
+        #expect(ImageDiskPolicy.outboxKeys("").isEmpty)
+        // A line that is not a record names nothing.
+        #expect(ImageDiskPolicy.outboxKeys("s1\tr1\nbroken\na\tb\tc") == ["out:s1:r1"])
     }
 
     @Test func fullDraftStoreRefusesNewBytesWithoutEviction() throws {

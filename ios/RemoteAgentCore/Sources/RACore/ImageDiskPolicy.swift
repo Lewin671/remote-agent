@@ -44,12 +44,13 @@ public enum ImageDiskPolicy {
         return total
     }
 
-    /// Drafts are user work: expire by inactivity, refuse new storage at quota, never LRU-delete them. Returns how many images went.
+    /// Drafts are user work: expire by inactivity, refuse new storage at quota, never LRU-delete them. The folders
+    /// named in `keep` never expire: those of the messages the outbox still waits on. Returns how many images went.
     @discardableResult
-    public static func expireDrafts(_ dir: URL, now: Int64 = nowMs()) -> Int {
+    public static func expireDrafts(_ dir: URL, keep: Set<String> = [], now: Int64 = nowMs()) -> Int {
         var removed = 0
         for folder in list(dir).filter(isDirectory) {
-            if FileManager.default.fileExists(atPath: folder.appendingPathComponent(".keep").path) { continue }
+            if keep.contains(folder.lastPathComponent) { continue }
             let files = list(folder)
             let last = max(lastModified(folder), files.map(lastModified).max() ?? 0)
             if now - last < draftTTL { continue }
@@ -57,6 +58,14 @@ public enum ImageDiskPolicy {
             if (try? FileManager.default.removeItem(at: folder)) != nil { removed += count }
         }
         return removed
+    }
+
+    /// The draft keys of the messages an outbox index names, one "session<TAB>request" a line.
+    public static func outboxKeys(_ index: String) -> [String] {
+        index.split(separator: "\n", omittingEmptySubsequences: false).compactMap { line in
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+            return parts.count == 2 ? "out:\(parts[0]):\(parts[1])" : nil
+        }
     }
 
     /// What follows the last dot of a file name, as Kotlin's File.extension.

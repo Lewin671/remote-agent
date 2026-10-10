@@ -21,11 +21,15 @@ object ImageDiskPolicy {
         return total
     }
 
-    /** Drafts are user work: expire by inactivity, refuse new storage at quota, never LRU-delete them. */
-    fun expireDrafts(dir: File, now: Long = System.currentTimeMillis()): Int {
+    /**
+     * Drafts are user work: expire by inactivity, refuse new storage at quota,
+     * never LRU-delete them. The folders named in [keep] never expire: those
+     * of the messages the outbox still waits on.
+     */
+    fun expireDrafts(dir: File, keep: Set<String> = emptySet(), now: Long = System.currentTimeMillis()): Int {
         var removed = 0
         for (folder in dir.listFiles()?.filter { it.isDirectory }.orEmpty()) {
-            if (File(folder, ".keep").exists()) continue
+            if (folder.name in keep) continue
             val files = folder.listFiles().orEmpty()
             val last = maxOf(folder.lastModified(), files.maxOfOrNull { it.lastModified() } ?: 0L)
             if (now - last < DRAFT_TTL) continue
@@ -34,6 +38,12 @@ object ImageDiskPolicy {
         }
         return removed
     }
+
+    /** The draft keys of the messages an outbox index names, one "session<TAB>request" a line. */
+    fun outboxKeys(index: String): List<String> = index.lineSequence().mapNotNull { line ->
+        val parts = line.split("\t")
+        if (parts.size != 2) null else "out:${parts[0]}:${parts[1]}"
+    }.toList()
 
     fun requireRoom(dir: File, replacing: File, incoming: Long, limit: Long) {
         require(bytes(dir) - replacing.length() + incoming <= limit) { "手机待发图片空间不足，请发送或移除旧草稿" }
