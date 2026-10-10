@@ -191,6 +191,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - 逐张粘贴多张图（0.159.0，GPT-6-Luna low，2026-09-29 实测）：每粘贴一次路径，输入框里**立即**多一个 `[Image #N]`（6 张 4 MB 的噪点 PNG 连着粘贴，50ms 后已经全部出现），占位之间 Codex 自己加一个空格；占位是青色（`\e[38;5;6m`），和正文颜色不同。编号在每个输入框里从 1 开始：清空输入框后再粘贴，又从 `[Image #1]` 起
 - 认不出的图：内容不是图片的 `.png`、不存在的路径、没有扩展名的文件、HEIC 都不转换，路径按普通文字进入输入框，紧接在前一个占位后面。PNG、JPEG、GIF 都能转换
 - 清空输入框：**Ctrl-U**（`\x15`）一次删掉整行，包括占位；删掉的图不会随后续消息提交（清空后粘贴一张绿图再提交，rollout 里只有这一张）。空输入框按 Ctrl-U 什么也不发生，不像 Ctrl-C 会退出。只清当前这一行：多行草稿要另想办法
+- **空闲时提交的消息，记录可能晚十几秒**（0.162.0，2026-10-09，一次观察，原因未查明）：会话空闲约 21 秒后写入正文和回车，Codex 4.0 秒后才有动作（rollout 的 `thread_settings_applied`），9.5 秒后 `task_started`，11.4 秒后才把用户消息写进 rollout 和 `history.jsonl`。同一天其余 8 条在 0.1–3.2 秒内。做法见 [architecture §6](architecture.md#6-接入-codex) 的「迟到的记录仍然算数」
 - 运行中粘贴两张图、正文再回车：出现在 `Messages to be submitted after next tool call` 下面，`history.jsonl` 在回车时就记下 `[Image #1] [Image #2] 正文`，rollout 的用户消息要等下一次工具调用之后（实测晚 22 秒）才写入
 - rollout 里的用户消息分两处：先是 `response_item` 的 `message`（`role: user`），依次是 `<image name=[Image #1] path="…">`、`input_image`（data URL）、`</image>` 和正文；随后的 `event_msg` `item_completed` 里 `UserMessage` 只有 `local_image`（`path`）和正文，正文带 `text_elements`，每个占位的 `byte_range` 和 `placeholder` 都写明了。图片的字节只在前一条里
 - `view_image`：模型先写 `custom_tool_call`（`exec`，脚本里调用 `tools.view_image`），然后是 `item_completed` 的 `ImageView`（只有 `path`），**最后**才是 `custom_tool_call_output`，其中的 `output` 数组带 `input_image`。三者之间没有共同的 ID。0.116.0 的历史记录是 `function_call`（`view_image`）后跟 `function_call_output`，没有 `ImageView`

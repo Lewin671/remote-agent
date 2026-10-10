@@ -131,7 +131,7 @@ func formatEvent(e *pb.Event) string {
 			body += " (the session ended before it was sent)"
 		}
 		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
-			body += " (delivered but not recorded by the CLI; not sent again)"
+			body += " (delivered but not recorded by the CLI in time; not sent again)"
 		}
 	case *pb.Event_PlanProposed:
 		body = "plan proposed: " + oneLine(k.PlanProposed.Text)

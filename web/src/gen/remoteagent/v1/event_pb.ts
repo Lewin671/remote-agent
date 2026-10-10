@@ -1738,7 +1738,9 @@ export enum InputStatus {
 
   /**
    * The keys were delivered but Codex did not record the message in time.
-   * It is not sent again, to avoid submitting it twice.
+   * It is not sent again, to avoid submitting it twice. A record that
+   * comes later still confirms it: SUBMITTED then follows, just before
+   * the user message.
    *
    * @generated from enum value: INPUT_STATUS_UNCONFIRMED = 3;
    */

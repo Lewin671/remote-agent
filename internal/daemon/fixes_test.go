@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -349,6 +350,60 @@ func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
 	}
 	if h.s.queue.Queue[0].Inflight != nil {
 		t.Fatal("inflight mark left in memory")
+	}
+}
+
+// Codex records a message when its turn starts, which may be after the
+// wait for it ran out: the record then confirms a message that was already
+// reported unconfirmed, and no later record confirms it again.
+func TestLateRecordConfirmsUnconfirmedMessage(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
+	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl") // Codex writes no history
+	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h.s.start(ctx)
+
+	h.s.send("recorded late", "r1")
+	eventually(t, "r1 unconfirmed", func() bool { return inputStatus(h, "r1") == pb.InputStatus_INPUT_STATUS_UNCONFIRMED })
+	record := func(id string) string {
+		return `{"timestamp":"2026-09-29T10:00:00Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"UserMessage","id":"` + id + `","content":[{"type":"text","text":"recorded late"}]}}}`
+	}
+	h.writeRollout(record("u1"))
+	eventually(t, "r1 submitted", func() bool { return inputStatus(h, "r1") == pb.InputStatus_INPUT_STATUS_SUBMITTED })
+	// The same text typed at the computer afterwards is not this message.
+	h.writeRollout(record("u2"))
+	eventually(t, "second record", func() bool {
+		n := 0
+		for _, e := range h.events() {
+			if e.GetUserMessage() != nil {
+				n++
+			}
+		}
+		return n == 2
+	})
+	time.Sleep(50 * time.Millisecond)
+	var got []pb.InputStatus
+	for _, e := range h.events() {
+		if st := e.GetInputState(); st != nil && st.RequestId == "r1" && st.Stage == pb.InputStage_INPUT_STAGE_UNSPECIFIED {
+			got = append(got, st.Status)
+		}
+	}
+	want := []pb.InputStatus{pb.InputStatus_INPUT_STATUS_UNCONFIRMED, pb.InputStatus_INPUT_STATUS_SUBMITTED}
+	if !slices.Equal(got, want) {
+		t.Fatalf("r1 outcomes %v, want %v", got, want)
+	}
+	// As when confirmed in time, the state comes just before the record.
+	evs := h.events()
+	for i, e := range evs {
+		if st := e.GetInputState(); st != nil && st.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED {
+			if i+1 >= len(evs) || evs[i+1].GetUserMessage().GetRequestId() != "r1" {
+				t.Fatalf("no record of r1 right after its late confirmation: %v", evs[i:])
+			}
+		}
+	}
+	if n := len(h.term.written()); n != 1 {
+		t.Fatalf("written %d times", n)
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Writing queued messages into the CLI (architecture §6, §17).
@@ -567,14 +568,33 @@ func (s *session) settle(ctx context.Context, in input) bool {
 		case <-time.After(50 * time.Millisecond):
 		}
 	}
-	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
-		slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
+	if status == pb.InputStatus_INPUT_STATUS_UNCONFIRMED && s.unconfirm(in) {
+		return true
 	}
-	if status == pb.InputStatus_INPUT_STATUS_SUBMITTED && s.heldByCLI(in) {
+	if s.heldByCLI(in) {
 		s.hold(in)
 		return true
 	}
-	s.finishInput(in, status, "")
+	s.finishInput(in, pb.InputStatus_INPUT_STATUS_SUBMITTED, "")
+	return true
+}
+
+// unconfirm reports the head message UNCONFIRMED and remembers that, so
+// that a record of it coming later still confirms it. It returns false,
+// reporting nothing, if the record came meanwhile. No record is read in
+// between: either it was logged before, or it finds the message
+// remembered as unconfirmed.
+func (s *session) unconfirm(in input) bool {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	if s.loggedUserMessage(in) {
+		return false
+	}
+	slog.Warn("injected message not confirmed; not sending it again", "session", s.meta.ID, "request", in.RequestID)
+	s.mu.Lock()
+	s.unproven[in.RequestID] = true
+	s.mu.Unlock()
+	s.finishInput(in, pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "")
 	return true
 }
 
@@ -696,6 +716,41 @@ func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) func() {
 	}
 }
 
+// rememberLocked keeps a written message a while, to match the CLI's
+// record of it. Callers hold s.mu.
+func (s *session) rememberLocked(in input) {
+	s.recent = append(s.recent, in)
+	if len(s.recent) > recentInputs {
+		delete(s.unproven, s.recent[0].RequestID)
+		s.recent = s.recent[1:]
+	}
+}
+
+// confirmLate reports a message SUBMITTED that was reported UNCONFIRMED
+// before the CLI recorded it (Codex records a message when its turn
+// starts, which may take longer than the wait). The state goes into the
+// batch just before the user message that proves it, the order of a
+// message confirmed in time: clients tell by it who sent a message.
+func (s *session) confirmLate(evs []*pb.Event) []*pb.Event {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.unproven) == 0 {
+		return evs
+	}
+	out := make([]*pb.Event, 0, len(evs)+1)
+	done := map[string]bool{}
+	for _, e := range evs {
+		if id := e.GetUserMessage().GetRequestId(); id != "" && s.unproven[id] && !done[id] {
+			done[id] = true
+			out = append(out, &pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_InputState{InputState: &pb.InputState{
+				RequestId: id, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED,
+			}}})
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
 // popInput removes the head message if it is requestID and reports
 // whether it did. A message that was written is remembered a while, to
 // match the CLI's record of it.
@@ -706,10 +761,7 @@ func (s *session) popInput(requestID string) bool {
 		return false
 	}
 	if in := s.queue.Queue[0]; in.Inflight != nil && !in.matched {
-		s.recent = append(s.recent, in)
-		if len(s.recent) > recentInputs {
-			s.recent = s.recent[1:]
-		}
+		s.rememberLocked(in)
 	}
 	previous := s.queue.Queue
 	s.queue.Queue = s.queue.Queue[1:]

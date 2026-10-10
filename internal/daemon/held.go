@@ -42,10 +42,7 @@ func (s *session) hold(in input) {
 	ok := len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == in.RequestID
 	if ok {
 		prevQueue, prevHeld := s.queue.Queue, s.queue.Held
-		s.recent = append(s.recent, s.queue.Queue[0])
-		if len(s.recent) > recentInputs {
-			s.recent = s.recent[1:]
-		}
+		s.rememberLocked(s.queue.Queue[0])
 		s.queue.Queue = s.queue.Queue[1:]
 		s.queue.Held = append(s.queue.Held[:len(s.queue.Held):len(s.queue.Held)], in)
 		if err := s.queue.save(s.dir); err != nil {

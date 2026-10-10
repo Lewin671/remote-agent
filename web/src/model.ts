@@ -1107,7 +1107,10 @@ function visible(e: Event, d: Derived): boolean {
     case "inputState":
       // A message never sent shows once, where it was queued.
       if (d.unsent.has(k.value.requestId)) return k.value.status === InputStatus.QUEUED;
-      return [InputStatus.CANCELED, InputStatus.UNCONFIRMED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL].includes(k.value.status);
+      // The CLI's record may come after the daemon stopped waiting for
+      // it: the message was submitted after all.
+      if (k.value.status === InputStatus.UNCONFIRMED) return d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
+      return [InputStatus.CANCELED, InputStatus.FAILED, InputStatus.NEEDS_TERMINAL].includes(k.value.status);
     case "settingsChanged":
       return k.value.compacted || !!k.value.model || !!modeName(k.value.mode);
     case "turnContext":

@@ -223,6 +223,23 @@ describe("messages the session ended before sending", () => {
   });
 });
 
+describe("a message the CLI recorded after the daemon stopped waiting", () => {
+  const rows = (list: Event[]) => timeline(list, derive(list)).map((it) => (it.kind === "event" ? it.event.kind.case : it.kind));
+  const queued = { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "x" } };
+  const unconfirmed = { case: "inputState", value: { requestId: "a", status: InputStatus.UNCONFIRMED } };
+
+  it("keeps its warning while nothing more is heard", () => {
+    expect(rows(events(queued, unconfirmed))).toEqual(["inputState"]);
+  });
+
+  it("loses the warning once it is confirmed", () => {
+    // The daemon logs the state just before the record that proves it.
+    const list = events(queued, unconfirmed, { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } }, { case: "userMessage", value: { text: "x", requestId: "a" } });
+    expect(rows(list)).toEqual(["userMessage"]);
+    expect(phaseOf({ status: "sent" }, derive(list).inputs.get("a"))).toBe("done");
+  });
+});
+
 describe("tools", () => {
   it("pairs completions by call ID when the CLI gives one", () => {
     const d = derive(

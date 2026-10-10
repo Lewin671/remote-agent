@@ -669,7 +669,9 @@ const (
 	// Codex recorded the message.
 	InputStatus_INPUT_STATUS_SUBMITTED InputStatus = 2
 	// The keys were delivered but Codex did not record the message in time.
-	// It is not sent again, to avoid submitting it twice.
+	// It is not sent again, to avoid submitting it twice. A record that
+	// comes later still confirms it: SUBMITTED then follows, just before
+	// the user message.
 	InputStatus_INPUT_STATUS_UNCONFIRMED InputStatus = 3
 	// Withdrawn before the model received it.
 	InputStatus_INPUT_STATUS_CANCELED InputStatus = 4

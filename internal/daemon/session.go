@@ -103,9 +103,12 @@ type session struct {
 	queue         *queueState
 	// recent are messages written lately, for matching late records.
 	recent []input
-	wake   chan struct{} // pokes the injector
-	done   chan struct{} // closed when the session's goroutines stop
-	stop   context.CancelFunc
+	// unproven are the remembered messages that were reported
+	// UNCONFIRMED: a record of one, coming late, still confirms it.
+	unproven map[string]bool
+	wake     chan struct{} // pokes the injector
+	done     chan struct{} // closed when the session's goroutines stop
+	stop     context.CancelFunc
 }
 
 type approval struct {
@@ -154,6 +157,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		approvals:  map[string]*approval{},
 		questions:  map[string]*pb.QuestionAsked{},
 		answeredBy: map[string]*pb.Origin{},
+		unproven:   map[string]bool{},
 		wake:       make(chan struct{}, 1),
 		done:       make(chan struct{}),
 		status:     pb.SessionStatus_SESSION_STATUS_STARTING,
@@ -389,6 +393,7 @@ func (s *session) readRollout() {
 			_, _ = s.d.trimImageCache(defaultImageCacheQuota)
 		}
 		consume := s.annotate(evs)
+		evs = s.confirmLate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
 			// Read this line and the rest of the batch again next time.
@@ -406,6 +411,9 @@ func (s *session) readRollout() {
 		// matched to used up; a failed write reads them again.
 		consume()
 		for _, e := range evs {
+			if st := e.GetInputState(); st != nil {
+				delete(s.unproven, st.RequestId) // confirmed late, and logged
+			}
 			s.observe(e)
 		}
 		s.mu.Unlock()

@@ -587,7 +587,9 @@ public enum PBInputStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
   case submitted // = 2
 
   /// The keys were delivered but Codex did not record the message in time.
-  /// It is not sent again, to avoid submitting it twice.
+  /// It is not sent again, to avoid submitting it twice. A record that
+  /// comes later still confirms it: SUBMITTED then follows, just before
+  /// the user message.
   case unconfirmed // = 3
 
   /// Withdrawn before the model received it.
