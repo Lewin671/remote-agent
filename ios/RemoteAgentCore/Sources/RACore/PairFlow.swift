@@ -88,6 +88,15 @@ private func poll(
     }
 }
 
+/// The kind of the device that asked to join, when it is one a device can
+/// be. The server is not trusted to have checked: any number may come.
+func joinerKind(_ st: PBGetPairingResponse) throws -> PBDeviceKind {
+    switch st.joinerKind {
+    case .machine, .client: return st.joinerKind
+    default: throw PairError("服务器返回了意外的设备类型，已停止配对")
+    }
+}
+
 /// Adding a device from this one.
 public final class Initiation: Sendable {
     public let code: String
@@ -132,16 +141,17 @@ public final class Initiation: Sendable {
     public func joined() async throws -> (emoji: [String], kind: PBDeviceKind) {
         let tok = try await remote.currentToken()
         let st = try await poll(stopped: { stopped.withLock { $0 } }, want: .joined, sleep: sleep) { try await ask(tok) }
+        let kind = try joinerKind(st)
         var reveal = PBRevealPairingRequest()
         reveal.pairingID = pairingId
         reveal.initiatorPublic = key.publicKey
         _ = try await remote.api.pairing.revealPairing(request: reveal, headers: Api.headers(token: tok)).value()
         let tr = Pairing.transcript(
             pairingId: pairingId, initiatorPublic: key.publicKey, joinerPublic: st.joinerPublic,
-            joinerKind: st.joinerKind.rawValue)
+            joinerKind: kind.rawValue)
         let s = try key.derive(otherPublic: st.joinerPublic, transcript: tr)
         secrets.withLock { $0 = s }
-        return (s.emoji, st.joinerKind)
+        return (s.emoji, kind)
     }
 
     /// Sends the root key; returns when the new device has it.

@@ -55,7 +55,9 @@ public func hkdf(secret: Data, salt: Data?, info: Data, size: Int) -> Data {
     return key.withUnsafeBytes { Data($0) }
 }
 
+/// The low 32 bits of `n`, most significant byte first: what the other
+/// clients write for an int32, negative ones included.
 func u32be(_ n: Int) -> Data {
-    let v = UInt32(n)
+    let v = UInt32(truncatingIfNeeded: n)
     return Data([UInt8(v >> 24), UInt8(v >> 16 & 0xff), UInt8(v >> 8 & 0xff), UInt8(v & 0xff)])
 }

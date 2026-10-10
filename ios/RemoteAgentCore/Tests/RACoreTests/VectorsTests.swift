@@ -152,6 +152,30 @@ import Testing
         #expect(Set(sasEmoji).count == 256)
     }
 
+    /// The joiner's kind comes from the server, which may send any int32.
+    @Test func aJoinerKindThatIsNoKindStopsThePairingAndNeverTraps() throws {
+        for raw in [-1, 0, 3, Int(Int32.min), Int(Int32.max)] {
+            var sent = PBGetPairingResponse()
+            sent.joinerKind = .UNRECOGNIZED(raw)
+            // As it arrives: the number survives the wire.
+            let got = try PBGetPairingResponse(serializedBytes: sent.serializedData() as Data)
+            #expect(got.joinerKind.rawValue == raw)
+            #expect(throws: PairError.self) { try joinerKind(got) }
+        }
+        for kind in [PBDeviceKind.machine, .client] {
+            var st = PBGetPairingResponse()
+            st.joinerKind = kind
+            #expect(try joinerKind(st) == kind)
+        }
+        // The transcript writes the number's 32 bits whatever it is, as Go, Kotlin and the page do.
+        let id = "p"
+        let (a, b) = (Data(repeating: 1, count: 32), Data(repeating: 2, count: 32))
+        var want = Data("remote-agent/v1/pair\u{0}".utf8)
+        for p in [Data(id.utf8), a, b] { want += Data([0, 0, 0, UInt8(p.count)]) + p }
+        want += Data([0xff, 0xff, 0xff, 0xff])
+        #expect(Pairing.transcript(pairingId: id, initiatorPublic: a, joinerPublic: b, joinerKind: -1) == sha256(want))
+    }
+
     @Test func rejectsAllZeroSharedSecrets() throws {
         // A low-order point gives an all-zero shared secret.
         #expect(throws: UserError.self) {
