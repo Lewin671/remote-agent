@@ -223,9 +223,10 @@ struct ProjectPageView: View {
         .padding(.horizontal, Theme.Space.page).padding(.bottom, 2)
     }
 
-    /// A change to the project's settings on its way, or why it did not arrive.
+    /// A change to the project's settings on its way, or why it did not arrive; also while it waits behind
+    /// another change to the project, whose failure is then why the settings are not saved either.
     @ViewBuilder private func changeNotice(_ state: RemoteState) -> some View {
-        if let change = context.prefsChanges.states[key], change.ofSettings {
+        if let change = context.prefsChanges.states[key], context.prefsChanges.settingsWaiting(key) {
             Group {
                 switch change {
                 case .saving:

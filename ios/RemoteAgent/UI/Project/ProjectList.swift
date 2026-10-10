@@ -11,6 +11,12 @@ import SwiftUI
 /// Changes to the project preferences in flight, per project path, for
 /// this run: the row says 正在同步 until the server has it, and a failure
 /// leaves the list as it was with a retry.
+///
+/// A project's changes are written one at a time, in the order they were
+/// made: one made while another is on its way waits for it, and is never
+/// dropped (pinning a project and then saving its settings are two
+/// changes). One that fails stops those behind it. They wait with it and go
+/// once it is tried again, by its 重试 or when another change is made.
 @MainActor
 @Observable
 final class PrefsChanges {
@@ -32,20 +38,63 @@ final class PrefsChanges {
         }
     }
 
+    /// How a project's changes stand: the one being written, or the one that failed.
     private(set) var states: [String: State] = [:]
 
-    /// Writes `op`; nothing while another change to the same project is on its way.
+    private struct Change {
+        var op: PrefsOp
+        var write: (PrefsOp) async throws -> Void
+        var onDone: @MainActor () -> Void
+    }
+
+    /// Each project's changes not yet on the server, oldest first; the first is the one `states` is about.
+    private var queues: [String: [Change]] = [:]
+
+    /// Whether a change to the project's settings is among those not yet on
+    /// the server: the one `states` is about, or one that waits behind it.
+    func settingsWaiting(_ path: String) -> Bool {
+        if states[path]?.ofSettings == true { return true }
+        return queues[path]?.contains { if case .setSettings = $0.op { true } else { false } } ?? false
+    }
+
+    /// Writes `op`, after the changes to the same project that are still on their way.
     func run(_ remote: Remote, _ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}) {
-        if states[op.path]?.saving == true { return }
-        states[op.path] = .saving(op)
+        run(op, onDone: onDone) { try await remote.changePrefs($0) }
+    }
+
+    /// The same with the write given, which tests answer in the server's place.
+    func run(_ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}, write: @escaping (PrefsOp) async throws -> Void) {
+        let path = op.path
+        let failed = states[path]?.saving == false
+        var queue = queues[path] ?? []
+        if failed, queue.first?.op == op {
+            // 重试: the change that failed, again, and then those that waited behind it.
+        } else if queue.last?.op != op {
+            // Twice the same in a row is one change.
+            queue.append(Change(op: op, write: write, onDone: onDone))
+        }
+        queues[path] = queue
+        if queue.count == 1 || failed { next(path) }
+    }
+
+    /// Writes the oldest change of a project, and then the one after it.
+    private func next(_ path: String) {
+        guard let change = queues[path]?.first else {
+            queues[path] = nil
+            states[path] = nil
+            return
+        }
+        states[path] = .saving(change.op)
         Task {
             do {
-                try await remote.changePrefs(op)
-                states[op.path] = nil
-                onDone()
+                try await change.write(change.op)
             } catch {
-                states[op.path] = .failed(op, errorText(error))
+                states[path] = .failed(change.op, errorText(error))
+                return
             }
+            queues[path]?.removeFirst()
+            change.onDone()
+            next(path)
         }
     }
 

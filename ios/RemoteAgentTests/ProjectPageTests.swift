@@ -125,6 +125,97 @@ import Testing
         #expect(computer.forwarded.map(\.id) == ["r1", "r1"])
     }
 
+    /// The server as the project preferences are written to it: it holds each write until the test lets it end.
+    @MainActor
+    private final class PrefsServer {
+        private(set) var asked: [PrefsOp] = []
+        private var waiting: [CheckedContinuation<Void, Error>] = []
+
+        func write(_ op: PrefsOp) async throws {
+            asked.append(op)
+            try await withCheckedThrowingContinuation { waiting.append($0) }
+        }
+
+        /// Ends the oldest write that is still open.
+        func answer(_ error: Error? = nil) {
+            let c = waiting.removeFirst()
+            if let error { c.resume(throwing: error) } else { c.resume() }
+        }
+
+        var open: Int { waiting.count }
+    }
+
+    @Test func aChangeMadeWhileAnotherIsOnItsWayIsWrittenAfterItNotDropped() async {
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let path = "/work/app"
+        let settings = PrefsOp.setSettings(.init(path: path, machineId: "mac", sets: [.with { $0.agent = .codex; $0.mode = .ask }]))
+        var done: [String] = []
+        changes.run(.pin(path: path), onDone: { done.append("pin") }, write: server.write)
+        // 完成 in 项目设置 while the pin is still on its way.
+        changes.run(settings, onDone: { done.append("settings") }, write: server.write)
+        // A second tap on the same thing is not a second change.
+        changes.run(settings, onDone: { done.append("again") }, write: server.write)
+        await until { server.open == 1 }
+        #expect(changes.states[path] == .saving(.pin(path: path)) && server.asked == [.pin(path: path)])
+        server.answer()
+        await until { server.asked.count == 2 }
+        // The page says its settings are being saved until they are.
+        #expect(changes.states[path] == .saving(settings) && changes.states[path]?.ofSettings == true)
+        #expect(done == ["pin"])
+        server.answer()
+        await until { changes.states[path] == nil }
+        #expect(server.asked == [.pin(path: path), settings] && done == ["pin", "settings"])
+        // Another project's changes do not wait for this one's.
+        changes.run(.pin(path: path), write: server.write)
+        changes.run(.pin(path: "/work/other"), write: server.write)
+        await until { server.open == 2 }
+        server.answer()
+        server.answer()
+        await until { changes.states.isEmpty }
+    }
+
+    @Test func aChangeThatFailsKeepsThoseBehindItUntilItIsTriedAgain() async {
+        struct Down: LocalizedError { var errorDescription: String? { "连接超时" } }
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let path = "/work/app"
+        let settings = PrefsOp.setSettings(.init(path: path, machineId: "mac"))
+        var done: [String] = []
+        changes.run(.pin(path: path), onDone: { done.append("pin") }, write: server.write)
+        changes.run(settings, onDone: { done.append("settings") }, write: server.write)
+        await until { server.open == 1 }
+        server.answer(Down())
+        await until { changes.states[path]?.saving == false }
+        #expect(changes.states[path] == .failed(.pin(path: path), "连接超时"))
+        // The project's page says so too: its settings are not saved while they wait behind the pin.
+        #expect(changes.settingsWaiting(path) && !changes.settingsWaiting("/work/other"))
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(server.asked == [.pin(path: path)], "the settings wait behind the change that failed")
+        // 重试: the pin again, once, and then the settings that waited.
+        changes.run(.pin(path: path), write: server.write)
+        await until { server.open == 1 }
+        server.answer()
+        await until { server.asked.count == 3 }
+        server.answer()
+        await until { changes.states[path] == nil }
+        #expect(server.asked == [.pin(path: path), .pin(path: path), settings] && done == ["pin", "settings"])
+        #expect(!changes.settingsWaiting(path))
+        // A change made after a failure takes the failed one along, in the order they were made.
+        changes.run(.unpin(path: path), write: server.write)
+        await until { server.open == 1 }
+        server.answer(Down())
+        await until { changes.states[path]?.saving == false }
+        changes.run(.hide(path: path), write: server.write)
+        await until { server.open == 1 }
+        #expect(changes.states[path] == .saving(.unpin(path: path)))
+        server.answer()
+        await until { server.open == 1 && changes.states[path] == .saving(.hide(path: path)) }
+        server.answer()
+        await until { changes.states[path] == nil }
+        #expect(server.asked.suffix(3) == [.unpin(path: path), .unpin(path: path), .hide(path: path)])
+    }
+
     @Test func aModelListThatArrivesAfterAnotherCliWasPickedIsNotShown() async {
         let models = SummaryModels()
         let codex = SummaryModels.Key(machine: "mac", agent: .codex)

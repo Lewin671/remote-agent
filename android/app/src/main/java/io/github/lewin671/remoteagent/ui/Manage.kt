@@ -62,6 +62,12 @@ import kotlinx.coroutines.launch
  * Changes to the project preferences in flight, per project path, for this
  * run: the row says 正在同步 until the server has it, and a failure leaves
  * the list as it was with a retry.
+ *
+ * A project's changes are written one at a time, in the order they were
+ * made: one made while another is on its way waits for it, and is never
+ * dropped (pinning a project and then saving its settings are two changes).
+ * One that fails stops those behind it. They wait with it and go once it is
+ * tried again, by its 重试 or when another change is made.
  */
 object PrefsChanges {
     sealed interface State {
@@ -69,23 +75,57 @@ object PrefsChanges {
         data class Failed(val op: PrefsOp, val error: String) : State
     }
 
+    /** How a project's changes stand: one is being written, or the one that failed. */
     val states = mutableStateMapOf<String, State>()
 
-    fun run(remote: Remote, op: PrefsOp, onDone: () -> Unit = {}) {
-        if (states[op.path] == State.Saving) return
-        states[op.path] = State.Saving
-        RaApp.instance.scope.launch {
+    private class Change(val op: PrefsOp, val write: suspend (PrefsOp) -> Unit, val onDone: () -> Unit)
+
+    /** Each project's changes not yet on the server, oldest first; the first is the one [states] is about. */
+    private val queues = HashMap<String, ArrayDeque<Change>>()
+
+    /** Writes [op], after the changes to the same project that are still on their way. */
+    fun run(remote: Remote, op: PrefsOp, onDone: () -> Unit = {}) = run(RaApp.instance.scope, op, onDone) { remote.changePrefs(it) }
+
+    /** The same with the write given, which tests answer in the server's place. */
+    fun run(scope: kotlinx.coroutines.CoroutineScope, op: PrefsOp, onDone: () -> Unit = {}, write: suspend (PrefsOp) -> Unit) {
+        val path = op.path
+        val failed = states[path] is State.Failed
+        val queue = queues.getOrPut(path) { ArrayDeque() }
+        if (failed && queue.firstOrNull()?.op == op) {
+            // 重试: the change that failed, again, and then those that waited behind it.
+        } else if (queue.lastOrNull()?.op != op) {
+            // Twice the same in a row is one change.
+            queue.addLast(Change(op, write, onDone))
+        }
+        if (queue.size == 1 || failed) next(scope, path)
+    }
+
+    /** Writes the oldest change of a project, and then the one after it. */
+    private fun next(scope: kotlinx.coroutines.CoroutineScope, path: String) {
+        val change = queues[path]?.firstOrNull()
+        if (change == null) {
+            queues.remove(path)
+            states.remove(path)
+            return
+        }
+        states[path] = State.Saving
+        scope.launch {
             try {
-                remote.changePrefs(op)
-                states.remove(op.path)
-                onDone()
+                change.write(change.op)
             } catch (e: Exception) {
-                states[op.path] = State.Failed(op, errorText(e))
+                states[path] = State.Failed(change.op, errorText(e))
+                return@launch
             }
+            queues[path]?.removeFirst()
+            change.onDone()
+            next(scope, path)
         }
     }
 
-    fun clear() = states.clear()
+    fun clear() {
+        states.clear()
+        queues.clear()
+    }
 }
 
 /** Why the preferences cannot be changed now, or null when they can. */

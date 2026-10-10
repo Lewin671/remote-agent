@@ -67,7 +67,7 @@ import Testing
         var done = false
         changes.run(remote, .pin(path: Demo.foo)) { done = true }
         #expect(changes.states[Demo.foo] == .saving(.pin(path: Demo.foo)))
-        // Nothing else is written for the project while one change is on its way.
+        // Another change to the project waits for the one on its way.
         changes.run(remote, .hide(path: Demo.foo))
         #expect(changes.states[Demo.foo] == .saving(.pin(path: Demo.foo)))
         await until { changes.states[Demo.foo]?.saving == false }
