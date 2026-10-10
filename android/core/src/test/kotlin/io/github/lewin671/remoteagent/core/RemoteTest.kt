@@ -641,6 +641,30 @@ class RemoteTest {
     }
 
     @Test
+    fun aCachedEventThatDoesNotOpenIsDroppedAndFetchedAgain() = runBlocking<Unit> {
+        val cache = MemoryCache()
+        val source = client(cache)
+        source.start()
+        source.awaitEvents("s1", 3)
+        withTimeout(10_000) { while (cache.events("s1").size < 3) delay(10) }
+        source.close()
+        val good = cache.events("s1").first { it.seq == 2L }
+        cache.damage("s1", 2) { e ->
+            val bad = e.envelope.ciphertext.toByteArray().reversedArray()
+            e.toBuilder().setEnvelope(e.envelope.toBuilder().setCiphertext(com.google.protobuf.ByteString.copyFrom(bad))).build()
+        }
+
+        val r = client(cache)
+        r.start()
+        val ev = withTimeout(10_000) { r.events("s1").first { it.loaded && it.events.size == 3 } }
+        assertEquals(listOf(1L, 2L, 3L), ev.events.map { it.seq })
+        // Nothing is missing, so nothing says so; and the next opening does not meet the bad copy again.
+        assertEquals(null, ev.error)
+        withTimeout(10_000) { while (cache.events("s1").size < 3) delay(10) }
+        assertEquals(good.envelope, cache.events("s1").first { it.seq == 2L }.envelope)
+    }
+
+    @Test
     fun stoppingDuringLoginLeavesTheStreamClosed() = runBlocking<Unit> {
         val r = client()
         r.start()
@@ -773,7 +797,18 @@ class MemoryCache : CipherCache {
 
     override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
         val m = this.events.getOrPut(sessionId) { java.util.TreeMap() }
-        synchronized(m) { for (e in events) m[e.seq] = e }
+        // An event already stored is left as it is, as in the app's database.
+        synchronized(m) { for (e in events) m.putIfAbsent(e.seq, e) }
+    }
+
+    override suspend fun dropEvents(sessionId: String) {
+        events.remove(sessionId)
+    }
+
+    /** Changes a stored event behind the cache's back, as a damaged row would be. */
+    fun damage(sessionId: String, seq: Long, change: (StoredEvent) -> StoredEvent) {
+        val m = events[sessionId] ?: return
+        synchronized(m) { m[seq]?.let { m[seq] = change(it) } }
     }
 
     override suspend fun removeMachine(id: String) {

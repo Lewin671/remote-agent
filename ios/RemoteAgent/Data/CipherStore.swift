@@ -159,6 +159,13 @@ final class CipherStore: CipherCache {
         }
     }
 
+    func dropEvents(sessionId: String) async {
+        await write { db in
+            try db.execute(sql: "DELETE FROM events WHERE sessionId = ?", arguments: [sessionId])
+            try db.execute(sql: "DELETE FROM cursors WHERE sessionId = ?", arguments: [sessionId])
+        }
+    }
+
     func removeMachine(id: String) async {
         await write { db in
             // Rows that are not listed stay to say which machine their events are of, so that they go here.

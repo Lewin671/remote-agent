@@ -92,6 +92,7 @@ class RoomCache(private val dao: CacheDao, private val images: ImageEnvelopes? =
     override suspend fun putSession(s: RemoteSession) = dao.put(SessionRow(s.sessionId, s.machineId, s.toByteArray()))
     override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) =
         dao.put(events.map { EventRow(sessionId, it.seq, it.toByteArray()) })
+    override suspend fun dropEvents(sessionId: String) = dao.deleteEvents(sessionId)
     override suspend fun removeMachine(id: String) = dao.removeMachine(id)
     override suspend fun removeSession(id: String) = dao.removeSession(id)
     override suspend fun unlistSession(id: String) = dao.unlist(id)

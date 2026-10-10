@@ -190,6 +190,9 @@ interface CipherCache {
     suspend fun putMachine(m: Machine)
     suspend fun putSession(s: RemoteSession)
     suspend fun putEvents(sessionId: String, events: List<StoredEvent>)
+
+    /** Forgets a session's events, e.g. when one of them does not open; the session stays listed. */
+    suspend fun dropEvents(sessionId: String)
     suspend fun removeMachine(id: String)
 
     /** A session that no longer exists: its entry and its events. */
@@ -1238,7 +1241,22 @@ class Remote(
         val cached = try { cache?.events(sid).orEmpty() }
         catch (e: Exception) { report(e); emptyList() }
         if (buffers[sid] !== b) return
-        if (cached.isNotEmpty()) ingest(sid, cached, fillGaps = false, save = false)
+        if (cached.isNotEmpty()) {
+            ingest(sid, cached, fillGaps = false, save = false)
+            if (buffers[sid] !== b) return
+            // A cached copy that does not open is dropped and the history
+            // fetched whole (architecture §10 「后台和内存」): the cache keeps
+            // an event as first stored, so the bad one would stay for good.
+            if (b.error != null) {
+                try { cache?.dropEvents(sid) } catch (e: Exception) { report(e) }
+                if (buffers[sid] !== b) return
+                b.events = PagedList.empty()
+                b.pending.clear()
+                b.bytes = 0
+                b.error = null
+                publishEvents(sid, b)
+            }
+        }
         fetchEvents(sid)
         trimHistory()
     }

@@ -9,6 +9,9 @@ public protocol CipherCache: Sendable {
     func putMachine(_ m: PBMachine) async
     func putSession(_ s: PBRemoteSession) async
     func putEvents(sessionId: String, events: [PBStoredEvent]) async
+
+    /// Forgets a session's events, e.g. when one of them does not open; the session stays listed.
+    func dropEvents(sessionId: String) async
     func removeMachine(id: String) async
 
     /// A session that no longer exists: its entry and its events.

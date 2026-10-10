@@ -134,6 +134,23 @@ private struct Stop: Error {}
         #expect(await store.cursor(sessionId: "empty") == 0)
     }
 
+    @Test func droppingASessionsEventsLeavesTheSessionListedAndTakesAFreshCopy() async throws {
+        defer { cleanUp() }
+        let store = try open()
+        await store.putMachine(machine("a"))
+        await store.putSession(session("s", machine: "a"))
+        await store.putEvents(sessionId: "s", events: [event(1), event(2, fill: 99)])
+        await store.putEvents(sessionId: "other", events: [event(7)])
+        await store.dropEvents(sessionId: "s")
+        #expect(await store.events(sessionId: "s").isEmpty)
+        #expect(await store.cursor(sessionId: "s") == 0)
+        #expect(await store.sessions() == [session("s", machine: "a")])
+        #expect(await store.events(sessionId: "other") == [event(7)])
+        // What is stored after that is the copy fetched again.
+        await store.putEvents(sessionId: "s", events: [event(1), event(2)])
+        #expect(await store.events(sessionId: "s") == [event(1), event(2)])
+    }
+
     @Test func eventsAndTheirCursorAreWrittenTogetherOrNotAtAll() async throws {
         defer { cleanUp() }
         let store = try open()

@@ -403,7 +403,19 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
     func putMachine(_ m: PBMachine) async { lock.withLock { machineStore[m.id] = m } }
     func putSession(_ s: PBRemoteSession) async { lock.withLock { sessionStore[s.sessionID] = s } }
     func putEvents(sessionId: String, events: [PBStoredEvent]) async {
-        lock.withLock { for e in events { eventStore[sessionId, default: [:]][e.seq] = e } }
+        // An event already stored is left as it is, as in the app's store.
+        lock.withLock { for e in events where eventStore[sessionId]?[e.seq] == nil { eventStore[sessionId, default: [:]][e.seq] = e } }
+    }
+    func dropEvents(sessionId: String) async { lock.withLock { eventStore[sessionId] = nil } }
+
+    /// Changes a stored event behind the cache's back, as a damaged row would be.
+    func damage(sessionId: String, seq: UInt64, _ change: (inout PBStoredEvent) -> Void) {
+        lock.withLock {
+            if var e = eventStore[sessionId]?[seq] {
+                change(&e)
+                eventStore[sessionId]?[seq] = e
+            }
+        }
     }
 
     func removeMachine(id: String) async {
@@ -461,6 +473,7 @@ final class HookedCache: CipherCache, @unchecked Sendable {
         if let f = lock.withLock({ _putEvents }) { return await f(sessionId, events) }
         await inner.putEvents(sessionId: sessionId, events: events)
     }
+    func dropEvents(sessionId: String) async { await inner.dropEvents(sessionId: sessionId) }
     func removeMachine(id: String) async { await inner.removeMachine(id: id) }
     func removeSession(id: String) async { await inner.removeSession(id: id) }
     func unlistSession(id: String) async { await inner.unlistSession(id: id) }

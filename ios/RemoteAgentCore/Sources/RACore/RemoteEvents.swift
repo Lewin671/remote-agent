@@ -95,7 +95,22 @@ extension Remote {
         buffers[sid] = b
         let cached = await cache?.events(sessionId: sid) ?? []
         if buffers[sid] !== b { return }
-        if !cached.isEmpty { await ingest(sid, cached, fillGaps: false, save: false) }
+        if !cached.isEmpty {
+            await ingest(sid, cached, fillGaps: false, save: false)
+            if buffers[sid] !== b { return }
+            // A cached copy that does not open is dropped and the history
+            // fetched whole (architecture §10 「后台和内存」): the cache keeps
+            // an event as first stored, so the bad one would stay for good.
+            if b.error != nil {
+                await cache?.dropEvents(sessionId: sid)
+                if buffers[sid] !== b { return }
+                b.events = PagedList()
+                b.pending = [:]
+                b.bytes = 0
+                b.error = nil
+                publishEvents(sid, b)
+            }
+        }
         await fetchEvents(sid)
         trimHistory()
     }

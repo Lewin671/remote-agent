@@ -969,6 +969,29 @@ extension ServerTests {
             }
         }
 
+        @Test func aCachedEventThatDoesNotOpenIsDroppedAndFetchedAgain() async throws {
+            try await world { w in
+                let cache = MemoryCache()
+                let source = try await w.client(cache: cache)
+                source.start()
+                _ = try await source.awaitEvents("s1", 3)
+                try await eventually("the events cached") { await cache.events(sessionId: "s1").count == 3 }
+                source.close()
+                let good = try #require(await cache.events(sessionId: "s1").first { $0.seq == 2 })
+                cache.damage(sessionId: "s1", seq: 2) { $0.envelope.ciphertext = Data($0.envelope.ciphertext.reversed()) }
+
+                let r = try await w.client(cache: cache)
+                r.start()
+                let ev = try await r.events("s1").await("the whole history") { $0.loaded && $0.events.count == 3 }
+                #expect(ev.seqs == [1, 2, 3])
+                // Nothing is missing, so nothing says so; and the next opening does not meet the bad copy again.
+                #expect(ev.error == nil)
+                try await eventually("the cache filled again") { await cache.events(sessionId: "s1").count == 3 }
+                let again = try #require(await cache.events(sessionId: "s1").first { $0.seq == 2 })
+                #expect(again.envelope == good.envelope)
+            }
+        }
+
         @Test func stoppingDuringLoginLeavesTheStreamClosed() async throws {
             try await world { w in
                 let r = try await w.client()
