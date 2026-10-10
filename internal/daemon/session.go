@@ -30,7 +30,7 @@ var (
 	errExited       = errors.New("session has exited")
 	errNotFound     = agent.ErrNotFound
 	errExpired      = errors.New("the approval has timed out")
-	errNotAnswering = errors.New("the question is not showing in the terminal")
+	errNotAnswering = agent.ErrNotAnswering
 	errHeadChanged  = errors.New("the queue head changed")
 	errWriting      = errors.New("the message is being written to the terminal and can no longer be canceled")
 )

@@ -607,21 +607,40 @@ func toggles(plain string, n int, want []int32) []int32 {
 	return out
 }
 
+// reviewing reports whether the page that submits the answers is showing:
+// its question with the "Submit answers" row under it. The words alone,
+// say in the conversation above a question, are not it.
+func reviewing(plain string) bool {
+	for _, r := range rowsAfter(plain, "Ready to submit your answers?") {
+		if r.num == 1 {
+			return strings.HasPrefix(r.label, "Submit answers")
+		}
+	}
+	return false
+}
+
 // Answer presses the option numbers of the question showing: one picks
 // and moves on; for a multi-select question they tick options and → goes
 // on. After the last question Claude Code shows a review page, where 1
 // submits (claude-code-notes §7).
+//
+// The review page left by answers given in the terminal names the
+// questions too, but there the numbers submit and cancel: nothing is
+// pressed on it.
 func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
+	styled, err := t.Capture()
+	if err != nil {
+		return err
+	}
+	if reviewing(plainText(styled)) {
+		return fmt.Errorf("%w: the answers given there are waiting to be submitted", agent.ErrNotAnswering)
+	}
 	i := 0
 	if index != nil {
 		i = int(*index)
 	} else if len(q.Questions) > 1 {
 		// Without an index, answer the question that is showing, found in
 		// the screen with wrapping undone; never guess.
-		styled, err := t.Capture()
-		if err != nil {
-			return err
-		}
 		screen := normalize(plainText(styled))
 		i = -1
 		for j, item := range q.Questions {
@@ -647,10 +666,6 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 	if item.MultiSelect {
 		// A number toggles its option: press only those whose tick differs
 		// from the answer, as the local user may have ticked some.
-		styled, err := t.Capture()
-		if err != nil {
-			return err
-		}
 		keys = toggles(plainText(styled), len(item.Options), options)
 	}
 	for _, o := range keys {
@@ -671,7 +686,7 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 		if err != nil {
 			return err
 		}
-		if strings.Contains(plain, "Ready to submit your answers?") {
+		if reviewing(plain) {
 			return t.Write([]byte("1"))
 		}
 		if !scr.QuestionOpen {

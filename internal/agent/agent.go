@@ -30,6 +30,9 @@ var (
 	ErrBackground  = errors.New("background work is running")
 )
 
+// ErrNotAnswering: the terminal does not show the question to answer.
+var ErrNotAnswering = errors.New("the question is not showing in the terminal")
+
 // HookTimeoutSeconds is the timeout the CLIs give the PermissionRequest
 // hook. Approvals must be decided before it, because a hook that times out
 // leaves the decision to the terminal. Changing it changes Codex's hook

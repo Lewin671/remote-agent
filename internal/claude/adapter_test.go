@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestOptionsAndArgv(t *testing.T) {
@@ -130,6 +131,7 @@ type fakeClaude struct {
 	picked     []int
 	ticked     map[int]bool
 	review     bool
+	canceled   bool // 2 was pressed on the review page
 	plan       bool
 	stuck      bool   // s does nothing in the model menu
 	wrap       int    // wrap question and plan text after this many characters
@@ -174,7 +176,12 @@ func (f *fakeClaude) draw() {
 		}
 		b.WriteString("  Enter to set as default · s to use this session only · Esc to cancel\n")
 	case f.review:
-		b.WriteString(rule + "\nReview your answers\nReady to submit your answers?\n❯ 1. Submit answers\n  2. Cancel\n")
+		// The page lists every question with the answer picked for it.
+		b.WriteString(rule + "\n←  ☒ Color  ☒ Fruit  ✔ Submit  →\nReview your answers\n")
+		if f.question != nil {
+			b.WriteString(" ● " + f.wrapped(f.question.Text) + "\n   → Blue\n")
+		}
+		b.WriteString("Ready to submit your answers?\n❯ 1. Submit answers\n  2. Cancel\n")
 	case f.question != nil:
 		b.WriteString(rule + "\n ☐ H\n" + f.wrapped(f.question.Text) + "\n")
 		for i, o := range f.question.Options {
@@ -200,6 +207,8 @@ func (f *fakeClaude) draw() {
 }
 
 func (f *fakeClaude) Capture() (string, error) { f.draw(); return f.screen, nil }
+
+func (f *fakeClaude) mustCapture() string { f.draw(); return f.screen }
 
 func (f *fakeClaude) Write(b []byte) error {
 	k := string(b)
@@ -232,6 +241,8 @@ func (f *fakeClaude) Write(b []byte) error {
 		}
 	case f.review && k == "1":
 		f.review, f.question = false, nil
+	case f.review && k == "2":
+		f.review, f.question, f.canceled = false, nil, true
 	case f.question != nil:
 		if k == agent.KeyRight || !f.question.MultiSelect {
 			f.review = true
@@ -614,5 +625,35 @@ func TestModelsContextWindow(t *testing.T) {
 		if got := LargeModel(in); got != out {
 			t.Errorf("LargeModel(%q) = %q, want %q", in, got, out)
 		}
+	}
+}
+
+// On the page that submits the answers a number is not an option of the
+// question: 1 would submit what was picked in the terminal and 2 cancel
+// the whole question. The page names the questions, so it passes for the
+// question showing; nothing is pressed there.
+func TestAnswerNotOnReviewPage(t *testing.T) {
+	a := New("claude", "")
+	q := &pb.QuestionAsked{QuestionId: "t", Questions: []*pb.Question{
+		{Id: "which color?", Text: "which color?", Options: []*pb.QuestionOption{{Label: "Red"}, {Label: "Blue"}}},
+		{Id: "which fruit?", Text: "which fruit?", MultiSelect: true, Options: []*pb.QuestionOption{{Label: "Apple"}, {Label: "Plum"}}},
+	}}
+	for i, options := range [][]int32{{2}, {1, 2}} {
+		for _, index := range []*int32{nil, proto.Int32(int32(i))} {
+			f := &fakeClaude{question: q.Questions[i], review: true}
+			if !AnalyzeScreen(f.mustCapture()).QuestionOpen {
+				t.Fatal("the review page is part of the question")
+			}
+			err := a.Answer(f, q, index, options)
+			if !errors.Is(err, agent.ErrNotAnswering) || len(f.writes) != 0 || f.canceled || !f.review {
+				t.Errorf("question %d, index %v: %v, keys %q", i, index, err, f.writes)
+			}
+		}
+	}
+	// The same words quoted in the conversation above a question are not
+	// the page.
+	f := &fakeClaude{question: q.Questions[0], note: "⏺ Then it asks: Ready to submit your answers?"}
+	if err := a.Answer(f, q, proto.Int32(0), []int32{2}); err != nil || strings.Join(f.writes, "|") != "2|1" {
+		t.Fatalf("quoted words: %v %q", err, f.writes)
 	}
 }
