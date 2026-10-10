@@ -284,3 +284,148 @@ func TestDamagedRecordIsNotTakenForATornTail(t *testing.T) {
 		})
 	}
 }
+
+// tornAfter writes a log that holds "a", then the batch "b", "c", "d" read
+// from one rollout line, and cuts the file after keep bytes of the
+// batch's second record, as a crash during the write may: its first
+// record is whole.
+func tornAfter(t *testing.T, keep int) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	l, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("a")}, "/r.jsonl", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("b"), msg("c"), msg("d")}, "/r.jsonl", 200); err != nil {
+		t.Fatal(err)
+	}
+	l.Close()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := bytes.SplitAfter(b, []byte("\n"))
+	if len(lines) != 5 { // four records and what follows the last newline
+		t.Fatalf("%d lines", len(lines))
+	}
+	if err := os.WriteFile(path, b[:len(lines[0])+len(lines[1])+keep], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// A batch is the events of one rollout line, and its last record carries
+// the checkpoint. A batch torn after its first record is dropped whole:
+// kept, its events would be appended a second time when the line is read
+// again from the old checkpoint.
+func TestTornBatchIsDroppedWhole(t *testing.T) {
+	for _, keep := range []int{0, 10} {
+		path := tornAfter(t, keep)
+		l, err := Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r, off := l.Checkpoint(); l.LastSeq() != 1 || r != "/r.jsonl" || off != 100 {
+			t.Fatalf("keep %d: last seq %d, checkpoint %s %d", keep, l.LastSeq(), r, off)
+		}
+		// The line is read again, once.
+		if err := l.Append("s1", []*pb.Event{msg("b"), msg("c"), msg("d")}, "/r.jsonl", 200); err != nil {
+			t.Fatal(err)
+		}
+		reopened(t, l, path, "a", "b", "c", "d")
+		l, err = Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r, off := l.Checkpoint(); r != "/r.jsonl" || off != 200 {
+			t.Fatalf("keep %d: checkpoint %s %d", keep, r, off)
+		}
+		l.Close()
+	}
+}
+
+// The first batch of a log, as a fork's copied history is: torn, nothing
+// of it is left.
+func TestTornFirstBatchLeavesAnEmptyLog(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	l, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("a"), msg("b"), msg("c")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	l.Close()
+	b, _ := os.ReadFile(path)
+	if err := os.WriteFile(path, b[:bytes.LastIndexByte(b[:len(b)-1], '\n')+1], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	if evs, _ := l.Since(0); l.LastSeq() != 0 || len(evs) != 0 {
+		t.Fatalf("last seq %d, events %v", l.LastSeq(), evs)
+	}
+	if st, _ := os.Stat(path); st.Size() != 0 {
+		t.Fatalf("%d bytes left", st.Size())
+	}
+}
+
+// A complete batch is kept, also when a torn line follows it, and after
+// the events were released from memory.
+func TestCompleteBatchIsKept(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	l, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("a"), msg("b"), msg("c")}, "/r.jsonl", 100); err != nil {
+		t.Fatal(err)
+	}
+	l.Release(0)
+	if evs, _ := l.Since(0); len(evs) != 3 {
+		t.Fatalf("%d events read again from the file", len(evs))
+	}
+	reopened(t, l, path, "a", "b", "c")
+	f, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	f.WriteString(`{"more":true,"event":{"seq":4`)
+	f.Close()
+	l, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	if r, off := l.Checkpoint(); l.LastSeq() != 3 || r != "/r.jsonl" || off != 100 {
+		t.Fatalf("last seq %d, checkpoint %s %d", l.LastSeq(), r, off)
+	}
+}
+
+// A log written before batches were marked reads as it always did: every
+// whole record counts, the last batch's too.
+func TestLogWithoutBatchMarksLoadsUnchanged(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	old := `{"rollout":"/r.jsonl","offset":100,"event":{"seq":"1","sessionId":"s1","agentMessage":{"text":"a"}}}
+{"event":{"seq":"2","sessionId":"s1","agentMessage":{"text":"b"}}}
+{"event":{"seq":"3","sessionId":"s1","agentMessage":{"text":"c"}}}
+`
+	if err := os.WriteFile(path, []byte(old+`{"rollout":"/r.jsonl","offset":200,"event":{"seq":"4"`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	if r, off := l.Checkpoint(); l.LastSeq() != 3 || r != "/r.jsonl" || off != 100 {
+		t.Fatalf("last seq %d, checkpoint %s %d", l.LastSeq(), r, off)
+	}
+	reopened(t, l, path, "a", "b", "c")
+	if b, _ := os.ReadFile(path); string(b) != old {
+		t.Fatalf("file changed: %q", b)
+	}
+}

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -823,5 +824,84 @@ func TestAnswerTellsApartQuestionsThatBeginAlike(t *testing.T) {
 	}
 	if w := h.term.written(); len(w) != 1 || w[0] != "2" {
 		t.Fatalf("writes %q", w)
+	}
+}
+
+// One transcript line gave several events and the machine crashed while
+// they were written: only the first reached the disk. The log drops it
+// with the rest of its batch, and the line, read again from the saved
+// position, gives each event once. The same goes for the copied history
+// a fork starts with, which is one batch too.
+func TestTornBatchIsReadAgainOnce(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	h.writeRollout(
+		`{"type":"assistant","uuid":"u1","message":{"id":"m1","model":"claude-haiku-4-5-20251001","content":[{"type":"text","text":"first"}]}}`,
+		`{"type":"assistant","uuid":"u2","message":{"id":"m2","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"text","text":"second"},{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"touch /w/x"}},{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"touch /w/y"}}]}}`,
+	)
+	h.s.bindRollout("cc-1", filepath.Join(h.dir, "rollout.jsonl"))
+	h.s.readRollout()
+	kinds := func() []string {
+		var out []string
+		for i, e := range h.events() {
+			if e.Seq != uint64(i+1) {
+				t.Fatalf("seq %d at position %d", e.Seq, i+1)
+			}
+			switch k := e.Kind.(type) {
+			case *pb.Event_AgentMessage:
+				out = append(out, "message "+k.AgentMessage.Text)
+			case *pb.Event_ToolStarted:
+				out = append(out, "started "+k.ToolStarted.CallId)
+			}
+		}
+		return out
+	}
+	want := kinds()
+	if len(want) != 4 || want[1] != "message second" || want[3] != "started t2" {
+		t.Fatalf("events %v", want)
+	}
+	m := h.s.meta
+	h.s.log.Close()
+	// The last line's batch lost its last record.
+	path := filepath.Join(h.dir, "events.jsonl")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, b[:bytes.LastIndexByte(b[:len(b)-1], '\n')+1], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.open(m)
+	if got := kinds(); len(got) != 1 || got[0] != "message first" {
+		t.Fatalf("events kept of the torn batch: %v", got)
+	}
+	h.s.readRollout()
+	if got := kinds(); !slices.Equal(got, want) {
+		t.Fatalf("events after the line was read again: %v, want %v", got, want)
+	}
+
+	// A fork's first write.
+	dir := t.TempDir()
+	path = filepath.Join(dir, "events.jsonl")
+	log, err := eventlog.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	forked := &pb.Event{Kind: &pb.Event_SessionForked{SessionForked: &pb.SessionForked{SourceSessionId: m.ID}}}
+	if err := log.Append("fork", append(forkHistory(h.events()), forked), "", 0); err != nil {
+		t.Fatal(err)
+	}
+	n := log.LastSeq()
+	log.Close()
+	b, _ = os.ReadFile(path)
+	if err := os.WriteFile(path, b[:bytes.LastIndexByte(b[:len(b)-1], '\n')+1], 0o600); err != nil {
+		t.Fatal(err)
+	}
+	log, err = eventlog.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer log.Close()
+	if n < 3 || log.LastSeq() != 0 {
+		t.Fatalf("%d of %d copied events kept without the record that says where the fork starts", log.LastSeq(), n)
 	}
 }

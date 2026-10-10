@@ -5,6 +5,12 @@
 // derived from, so the log doubles as the rollout checkpoint: after a
 // restart, reading resumes where the last record left off and no event is
 // assigned a second sequence number.
+//
+// The events appended together, as those of one rollout line, are a batch:
+// one record each, all but the last marked "more", the last carrying the
+// checkpoint. A crash can leave the first records of a batch without the
+// rest. They are dropped when the log is opened, so the line they came
+// from, which the checkpoint still names as unread, yields them once.
 package eventlog
 
 import (
@@ -23,9 +29,11 @@ import (
 )
 
 type record struct {
-	Rollout string          `json:"rollout,omitempty"`
-	Offset  int64           `json:"offset,omitempty"`
-	Event   json.RawMessage `json:"event"`
+	Rollout string `json:"rollout,omitempty"`
+	Offset  int64  `json:"offset,omitempty"`
+	// More: further records of the same batch follow.
+	More  bool            `json:"more,omitempty"`
+	Event json.RawMessage `json:"event"`
 }
 
 // Log is an open event log. It is safe for concurrent use.
@@ -60,8 +68,8 @@ type file interface {
 }
 
 // Open loads the log at path, creating it if needed. A torn last line from
-// a crash is cut off; a log with a damaged record is refused and left as
-// it is.
+// a crash is cut off, with the records of its batch before it; a log with
+// a damaged record is refused and left as it is.
 func Open(path string) (*Log, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
@@ -85,15 +93,22 @@ func Open(path string) (*Log, error) {
 }
 
 // load reads the events and the checkpoint from f, and returns how many
-// bytes of it are whole records.
+// bytes of it are whole batches.
 func (l *Log) load(f io.Reader) (int64, error) {
 	r := bufio.NewReader(f)
 	l.events = nil
-	var good int64
+	// good is where the whole records end; whole and n are where the last
+	// complete batch ends and how many events there are up to it.
+	var good, whole int64
+	n := 0
 	for {
 		line, err := r.ReadBytes('\n')
 		if err == io.EOF {
-			return good, nil // a line without newline is torn; drop it
+			// A line without newline is torn; it is dropped, and so are
+			// the records before it that still wait for the rest of their
+			// batch.
+			l.events = l.events[:n]
+			return whole, nil
 		}
 		if err != nil {
 			return 0, err
@@ -115,6 +130,9 @@ func (l *Log) load(f io.Reader) (int64, error) {
 			l.rollout, l.offset = rec.Rollout, rec.Offset
 		}
 		good += int64(len(line))
+		if !rec.More {
+			whole, n = good, len(l.events)
+		}
 	}
 }
 
@@ -192,10 +210,10 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		if err != nil {
 			return err
 		}
-		rec := record{Event: body}
+		rec := record{Event: body, More: i < len(evs)-1}
 		// The checkpoint goes on the last record of the batch, so a torn
 		// batch never claims its rollout line was consumed.
-		if i == len(evs)-1 && rollout != "" {
+		if !rec.More && rollout != "" {
 			rec.Rollout, rec.Offset = rollout, offset
 		}
 		line, err := json.Marshal(rec)
