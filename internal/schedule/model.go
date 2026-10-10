@@ -56,6 +56,7 @@ type Task struct {
 	NextRunAt     *time.Time `json:"next_run_at,omitempty"`
 	SourceSession string     `json:"source_session,omitempty"`
 	ScopedSession string     `json:"scoped_session,omitempty"` // MCP delegation bound to this session
+	ScopedMode    string     `json:"scoped_mode,omitempty"`    // that session's standard mode when the delegation was made
 	Source        string     `json:"source"`
 	AnchorSession string     `json:"anchor_session,omitempty"`
 	AnchorSeq     uint64     `json:"anchor_seq,omitempty"`

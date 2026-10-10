@@ -178,3 +178,63 @@ func TestMCPScheduledDispatchRechecksNarrowedPermissions(t *testing.T) {
 		t.Fatalf("unsafe delayed dispatch: %+v", got)
 	}
 }
+
+// A task the model made to continue its own session is bound to the
+// permissions the session had then: it runs while they are the same, and
+// waits for the user once they differ, wider or narrower. A task with no
+// record of them, made before they were recorded, waits for the user too.
+func TestMCPResumeTaskIsBoundToTheModeItWasCreatedUnder(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(h *harness, id string)
+		runs   bool
+	}{
+		{"unchanged", func(*harness, string) {}, true},
+		{"ask to full", func(h *harness, _ string) { setScopedMode(h, "full") }, false},
+		{"no record", func(h *harness, id string) {
+			h.d.scheduleMu.Lock()
+			h.d.tasks[id].ScopedMode = ""
+			h.d.scheduleMu.Unlock()
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := scopedHarness(t, "ask")
+			spec := taskSpec(schedule.Trigger{Type: "after_turn"})
+			out, err := scopedSchedule(t, h, "create", "", &spec)
+			if err != nil {
+				t.Fatal(err)
+			}
+			task := decodeScopedTask(t, out)
+			if task.ScopedMode != "ask" || task.Spec.Target.Session != h.s.meta.ID {
+				t.Fatalf("created %+v", task)
+			}
+			tc.change(h, task.ID)
+			h.d.tickSchedules(time.Now().Add(time.Second))
+			got := readTask(t, h.d, task.ID)
+			if tc.runs {
+				if got.Dispatches != 1 || got.Active == nil || got.Active.Status != "queued" || len(h.s.queue.Queue) != 1 {
+					t.Fatalf("not run: %+v", got)
+				}
+				return
+			}
+			if got.Status != "paused" || got.Reason != "agent_schedule_permissions_changed" || got.Dispatches != 0 || len(h.s.queue.Queue) != 0 {
+				t.Fatalf("run under other permissions: %+v", got)
+			}
+			// The model cannot set it going again; the user can, and takes
+			// the task over.
+			for _, op := range []string{"resume", "run"} {
+				if _, err := scopedSchedule(t, h, op, task.ID, nil); connect.CodeOf(err) != connect.CodePermissionDenied {
+					t.Fatalf("%s by the model: %v", op, err)
+				}
+			}
+			if _, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "resume", TaskId: task.ID}, originLocal); err != nil {
+				t.Fatal(err)
+			}
+			h.d.tickSchedules(time.Now().Add(time.Second))
+			got = readTask(t, h.d, task.ID)
+			if got.ScopedSession != "" || got.ScopedMode != "" || got.Dispatches != 1 {
+				t.Fatalf("not taken over: %+v", got)
+			}
+		})
+	}
+}

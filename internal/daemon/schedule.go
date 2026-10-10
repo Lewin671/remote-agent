@@ -288,7 +288,7 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 	}
 	// A machine-level request takes an agent's task over as the user's own.
 	if scope == "" && (q.Operation == "resume" || q.Operation == "run" || q.Operation == "update") {
-		t.ScopedSession = ""
+		t.ScopedSession, t.ScopedMode = "", ""
 		t.Source = "local"
 		if origin.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT {
 			t.Source = "client"

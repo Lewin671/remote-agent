@@ -17,7 +17,10 @@ func mcpScheduleDenied() error {
 // session ID is context, not OS authentication: code already running as the
 // same local user can independently access the daemon's private socket.
 // Check again before delayed dispatch so an old full-access task cannot
-// reopen a full-access CLI after its source permissions were narrowed.
+// reopen a full-access CLI after its source permissions were narrowed, and
+// a task made to continue an asking session does not run in it once it has
+// full access. freeze, when the model creates or redefines the task, binds
+// it to the source as it is now.
 func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	if t.ScopedSession == "" || t.SourceSession != t.ScopedSession {
 		return mcpScheduleDenied()
@@ -31,13 +34,20 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	if mode == "" {
 		return mcpScheduleDenied()
 	}
+	if freeze {
+		t.ScopedMode = mode
+	}
 	target := &t.Spec.Target
 	switch target.Type {
 	case "resume_session":
 		if freeze && (target.Session == "current" || target.Session == "") {
 			target.Session = info.Id
 		}
-		if target.Session != info.Id {
+		// A new session's mode is in its target; a resumed one runs under
+		// whatever the source has by then, so the mode the delegation was
+		// made under is what is compared. A task without one is not the
+		// model's to run.
+		if target.Session != info.Id || t.ScopedMode != mode {
 			return mcpScheduleDenied()
 		}
 	case "new_session":
