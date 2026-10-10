@@ -758,6 +758,53 @@ describe("an unknown session start, after leaving its page and coming back", () 
     host.remove();
   };
 
+  it("is retried on the machine and with the images it was sent with (review r2)", async () => {
+    const r = demo();
+    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    const uploads: string[] = [];
+    r.uploadImage = async (m) => {
+      uploads.push(m);
+      return `${m}-image-${uploads.length}`;
+    };
+    const sent: { machine: string; id: string; prompt?: string; imageIds?: string[] }[] = [];
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        sent.push({ machine: m, id: slot!.requestId, prompt: cmd.value.prompt, imageIds: cmd.value.imageIds });
+        throw new CommandError("unknown", "连接超时");
+      }
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    // The project's own machine is offline: this start goes to another.
+    r.machines.get("mac")!.online = false;
+    mount(page(r));
+    await click(button("换机器"));
+    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
+    if (document.querySelector(".sheet")) await click(button("完成", document));
+    await act(async () => {
+      const file = host.querySelector<HTMLInputElement>("input[type=file]")!;
+      Object.defineProperty(file, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
+      file.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await type("看这张图");
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
+    await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+    expect(sent).toEqual([{ machine: "imac", id: sent[0].id, prompt: "看这张图", imageIds: ["imac-image-1"] }]);
+    // The page is left; the project's own machine comes back meanwhile.
+    leave();
+    r.machines.get("mac")!.online = true;
+    mount(page(r));
+    await act(async () => undefined);
+    // The page shows the start that is pending: its message, its machine, its image as uploaded.
+    expect(input().value).toBe("看这张图");
+    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
+    expect(uploads).toEqual(["imac"]);
+    await click(button("重试"));
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toEqual(sent[0]);
+  });
+
   it("stays on its way, and nothing else is started in its place (review r2)", async () => {
     const r = demo();
     const sent: { id: string; prompt?: string }[] = [];

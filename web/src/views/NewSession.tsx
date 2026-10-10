@@ -42,6 +42,9 @@ class Start {
   /** Its request is on its way. Nothing else is started in the project
    * meanwhile, whichever page is open. */
   running = false;
+  /** What was chosen on the page the pending request was sent from. A page
+   * opened later goes on from there. */
+  page?: { local?: Local; picked?: Agent; latched?: Latched };
   /** How many sessions it has started. A page's draft is for the next one:
    * what it chose for one that has started is no longer held. */
   count = 0;
@@ -177,17 +180,34 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const current = start.attempt;
   // What a page chose is for one draft: the project's next session.
   const draft = `${start.count}:${key}`;
+  // A request that is on its way, or whose outcome is unknown, was sent
+  // with choices of its own. A page that has none goes on from them.
+  const sentWith = current.payload ? start.page : undefined;
   const [localState, setLocal] = useState<Local>();
-  const local = localState?.key === draft ? localState : undefined;
+  const local = localState?.key === draft ? localState : sentWith?.local;
   // The CLI picked next to the box, for this draft.
   const [pickedState, setPicked] = useState<{ key: string; agent: Agent }>();
-  const picked = pickedState?.key === draft ? pickedState.agent : undefined;
+  const picked = pickedState?.key === draft ? pickedState.agent : sentWith?.picked;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
   const [latched, setLatched] = useState<Latched>();
-  const held = latched?.key === draft ? latched : undefined;
+  const held = latched?.key === draft ? latched : sentWith?.latched;
+  // They are this page's own from then on: they stay when that start ends
+  // without a session, or is given up.
+  const adopt = () => {
+    if (!sentWith) return;
+    if (localState?.key !== draft && sentWith.local) setLocal(sentWith.local);
+    if (pickedState?.key !== draft && sentWith.picked !== undefined) setPicked({ key: draft, agent: sentWith.picked });
+    if (latched?.key !== draft && sentWith.latched) setLatched(sentWith.latched);
+  };
+  useEffect(adopt);
+  // While that request is pending and the user has chosen nothing else,
+  // the page shows the request's own configuration and nothing derived
+  // again: sessions and machines come and go meanwhile, and a retry is
+  // that request, on its machine, with its images.
+  const pinned = sentWith && local === sentWith.local && picked === sentWith.picked ? current.payload : undefined;
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
   const first = inherit();
   // Where it starts without a choice made on this page.
@@ -195,14 +215,14 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // has it, as its summary says, rather than on any machine.
   const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
   const baseMachine = held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key) ?? known).machineId;
-  const machineId = local?.machineId ?? baseMachine;
+  const machineId = pinned?.machineId ?? local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);
   const remembered = saved?.agent ? (saved.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) : undefined;
   const wanted = picked ?? held?.agent ?? remembered ?? first?.agent ?? agents[0];
   // A CLI the machine lacks is not started: the one it has is, and the
   // box says so. What the project remembers stays.
-  const agent = agents.includes(wanted) ? wanted : agents[0];
+  const agent = pinned ? pinned.req.agent : agents.includes(wanted) ? wanted : agents[0];
   const missing = agent !== wanted && machine?.meta ? wanted : undefined;
   // What a CLI starts with, where no set is stored for it, is how the
   // project's latest session on it ran. Sessions come a page at a time:
@@ -228,6 +248,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
    * as the project has it, leaving out this page's choices. */
   const configFor = (a: Agent, base = false): NewConfig => {
     const at = { machineId: base ? baseMachine : machineId, cwd: key, agent: a };
+    if (!base && pinned?.req.agent === a) return { ...at, model: pinned.req.model, effort: pinned.req.effort, mode: pinned.req.mode, standardContext: pinned.req.standardContext };
     const heldConfig = !base && held?.by[a];
     if (heldConfig && !local?.sets[a] && !local?.machineId) return { ...heldConfig, ...at };
     const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
@@ -241,7 +262,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const configured = configFor(agent);
   const info = useMachineInfo(remote, configured.machineId, configured.agent);
   const model = findModel(info.models?.models, configured.model || defaultsOf(info.settings, agent).model || info.models?.defaultModel || "");
-  const unavailable = !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
+  const unavailable = !pinned && !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
   const cfg = unavailable ? { ...configured, model: "", effort: "" } : configured;
   const configFallback = unavailable ? "所选模型或推理强度在这台机器上不可用，这次用机器的默认值" : "";
   // The request may have been sent from another page: this one is told
@@ -276,27 +297,21 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
 
   // What a start would send. While one's outcome is unknown, only what the
   // user changed counts: the message as sent (trimmed), and the settings
-  // only if they chose others; the page's own view of the settings may
-  // change as the started session's record arrives.
-  const chose = !!local || picked !== undefined;
-  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => {
-    const pending = current.payload;
-    const c = pending && !chose ? { machineId: pending.machineId, ...pending.req } : { machineId: cfg.machineId, cwd: cfg.cwd, model: cfg.model, effort: cfg.effort, mode: mode ?? cfg.mode, agent: cfg.agent, standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext };
-    // The images are part of what is started: other images, another start.
-    return {
-      machineId: c.machineId,
-      req: {
-        cwd: c.cwd,
-        prompt: prompt.trim(),
-        model: c.model,
-        effort: c.effort,
-        mode: c.mode,
-        agent: c.agent,
-        standardContext: c.standardContext,
-        imageIds: tray.imageIds(),
-      },
-    };
-  };
+  // only if they chose others, cfg being that request's own until then.
+  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => ({
+    machineId: cfg.machineId,
+    req: {
+      cwd: cfg.cwd,
+      prompt: prompt.trim(),
+      model: cfg.model,
+      effort: cfg.effort,
+      mode: mode ?? cfg.mode,
+      agent: cfg.agent,
+      standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext,
+      // The images are part of what is started: other images, another start.
+      imageIds: tray.imageIds(),
+    },
+  });
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
   const changes = (prompt: string, mode?: ApprovalMode): boolean => {
@@ -314,7 +329,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     // it was typed, is retried as the same request.
     if (changes(prompt, mode)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
+    const retry = current.frozen;
     const sent = current.next(payloadFor(prompt, mode));
+    if (!retry) start.page = { local, picked, latched: held };
     const { payload, slot } = sent;
     const open = fromHere(go);
     start.running = true;
@@ -363,6 +380,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : (configured.model || configured.effort) && info.loading ? "正在读取模型列表…" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
+    adopt();
     current.abandon();
     setError("");
     redraw((n) => n + 1);
