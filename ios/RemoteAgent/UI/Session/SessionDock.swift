@@ -50,6 +50,50 @@ struct PendingDock<Content: View, Actions: View>: View {
         _open = State(initialValue: startOpen)
     }
 
+    /// 「● 类型 · 摘要 · 处理」 on one line. Where the type, the count of
+    /// those waiting behind it and 处理 do not fit side by side, as with
+    /// large text on a narrow screen, the type takes a line of its own
+    /// (two if it must) and the rest goes under it, 处理 at the right
+    /// (design-system §6 「长内容、大量内容与大字号」).
+    private func head(_ summary: (label: String, brief: String)) -> some View {
+        let dot = Dot(Theme.orange, size: 7)
+        let label = Text(summary.label).type(T.sm, Theme.fg2)
+        // The summary gives way, down to nothing: it asks for no width of its own. That more wait behind it is always said.
+        let rest = HStack(spacing: 0) {
+            Text(summary.brief).type(T.sm, Theme.muted).lineLimit(1).frame(idealWidth: 0)
+            if more > 0 {
+                Text((summary.brief.isEmpty ? "" : " · ") + "还有 \(more) 项").type(T.sm, Theme.muted).lineLimit(1).fixedSize()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        let toggle = ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                dot
+                label.lineLimit(1).fixedSize()
+                rest
+                toggle
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    dot
+                    label.lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        rest
+                        toggle
+                    }
+                    VStack(alignment: .trailing, spacing: 0) {
+                        rest
+                        toggle
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
     var body: some View {
         let summary = dockSummary(item, agent: agent)
         VStack(spacing: 0) {
@@ -57,21 +101,9 @@ struct PendingDock<Content: View, Actions: View>: View {
                 if !open { onOpen() }
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { open.toggle() }
             } label: {
-                HStack(spacing: 6) {
-                    Dot(Theme.orange, size: 7)
-                    Text(summary.label).type(T.sm, Theme.fg2).lineLimit(1).fixedSize()
-                    // The summary gives way; that more wait behind it is always said.
-                    HStack(spacing: 0) {
-                        Text(summary.brief).type(T.sm, Theme.muted).lineLimit(1)
-                        if more > 0 {
-                            Text((summary.brief.isEmpty ? "" : " · ") + "还有 \(more) 项").type(T.sm, Theme.muted).lineLimit(1).fixedSize()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
-                }
-                .frame(minHeight: Theme.minHit)
-                .contentShape(Rectangle())
+                head(summary)
+                    .frame(minHeight: Theme.minHit)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PressStyle())
             .accessibilityElement(children: .combine)

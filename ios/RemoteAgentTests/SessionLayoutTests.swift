@@ -49,4 +49,49 @@ import UIKit
         // More lines than the preview takes is cut however it lays out.
         #expect(planFolds((1...7).map { "\($0). 步骤" }.joined(separator: "\n"), lines: 6))
     }
+
+    private func dock(more: Int, size: DynamicTypeSize, brief: String) -> some View {
+        let question = PBQuestionAsked.with {
+            $0.questionID = "Q"
+            $0.questions = [.with { $0.text = brief }]
+        }
+        return PendingDock(.question(question), agent: "Claude Code", more: more, onOpen: {}) {
+            EmptyView()
+        } actions: {
+            EmptyView()
+        }
+        .environment(\.dynamicTypeSize, size)
+    }
+
+    @MainActor
+    private final class Measured {
+        var size: CGSize?
+    }
+
+    /// The size the dock takes in a window `width` wide: wider than that, something does not fit.
+    private func fitted(_ view: some View, width: CGFloat) async throws -> CGSize {
+        let measured = Measured()
+        let root = view.onGeometryChange(for: CGSize.self) { $0.size } action: { measured.size = $0 }
+            .frame(maxHeight: .infinity, alignment: .top)
+        try await show(root, width: width) { measured.size != nil }
+        return try #require(measured.size)
+    }
+
+    @Test func theDockLineStaysWithinANarrowScreenAtTheLargestTextSizes() async throws {
+        let brief = "换成哪一种缓存？Redis 已经在用，内存 LRU 最简单"
+        for size in [DynamicTypeSize.accessibility1, .accessibility3, .accessibility5] {
+            for width in [320.0, 375, 402] {
+                let took = try await fitted(dock(more: 12, size: size, brief: brief), width: width)
+                #expect(took.width <= width + 0.5, "\(size) in \(width): 处理 is pushed off the screen")
+            }
+        }
+    }
+
+    @Test func theDockLineIsOneLineWhereItFits() async throws {
+        let brief = "换成哪一种缓存？Redis 已经在用，内存 LRU 最简单，Memcached 要多一台机器"
+        let took = try await fitted(dock(more: 2, size: .large, brief: brief), width: 390)
+        // The summary gives way; the line does not grow past the 44 pt it is to the finger.
+        #expect(took.width <= 390.5 && took.height < 50)
+        #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 50)
+    }
 }
