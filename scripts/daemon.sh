@@ -62,7 +62,7 @@ wait_up() {
 
 install() {
 	if [ ! -x "$BIN" ]; then
-		echo "no remote-agent binary at $BIN; build it first (scripts/install.sh) or set BIN" >&2
+		echo "no remote-agent binary at $BIN; install it first or set BIN" >&2
 		exit 1
 	fi
 	BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")

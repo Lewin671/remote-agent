@@ -1,7 +1,7 @@
 # Turns what the release workflow of the (private) source repository pushed
-# to the `incoming` branch into a release of this repository: the APK and
-# its manifest as assets, the notes from the manifest. The branch is
-# deleted afterwards; nothing of a release stays in git.
+# to the `incoming` branch into a release of this repository: the files
+# named in SHA256SUMS and the manifest as assets, the notes from notes.md.
+# The branch is deleted afterwards; nothing of a release stays in git.
 name: Publish
 
 on:
@@ -18,13 +18,14 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: incoming
+          persist-credentials: true
       - name: Publish the release
         run: |
           set -eu
@@ -33,12 +34,37 @@ jobs:
           printf '%s' "$version" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+'
           [ "$apk" = "remote-agent-v$version.apk" ]
           echo "$(sed -n 's/^sha256=//p' latest.properties)  $apk" | sha256sum --check
+          # A release is exactly the files its checksums name, each one of
+          # this version and of a kind this repository publishes.
+          sha256sum --check --strict SHA256SUMS
+          v=$(printf '%s' "$version" | sed 's/\./\\./g')
+          files=$(awk '{print $2}' SHA256SUMS)
+          for f in $files; do
+            printf '%s' "$f" | grep -Eqx "remote-agent-v$v\.apk|remote-agent-web-v$v\.tar\.gz|remote-agent(-server)?-v$v-(darwin|linux)-(arm64|amd64)\.tar\.gz"
+          done
+          printf '%s\n' "$files" | grep -qx "$apk"
           tag="v$version"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            gh release upload "$tag" "$apk" latest.properties --clobber
-          else
-            gh release create "$tag" "$apk" latest.properties --target main --title "$tag" --notes-file notes.md --latest
+          {
+            cat notes.md
+            printf '\n---\n\nInstall or upgrade: see the [README](https://github.com/%s#readme). Every file is listed in `SHA256SUMS`.\n' "$GITHUB_REPOSITORY"
+          } > "$RUNNER_TEMP/notes.md"
+          # A published release is never changed. Handing the same files over
+          # again is a no-op; different ones are refused. A draft is what an
+          # interrupted run left behind, and is made anew.
+          if state=$(gh release view "$tag" --json isDraft --jq .isDraft 2> /dev/null); then
+            if [ "$state" = false ]; then
+              mkdir "$RUNNER_TEMP/published"
+              gh release download "$tag" --pattern SHA256SUMS --pattern latest.properties --dir "$RUNNER_TEMP/published"
+              cmp SHA256SUMS "$RUNNER_TEMP/published/SHA256SUMS"
+              cmp latest.properties "$RUNNER_TEMP/published/latest.properties"
+              echo "$tag is already published with these files"
+              exit 0
+            fi
+            gh release delete "$tag" --yes
           fi
+          # Made as a draft and published once every file is there.
+          # shellcheck disable=SC2086
+          gh release create "$tag" $files latest.properties SHA256SUMS --target main --title "$tag" --notes-file "$RUNNER_TEMP/notes.md" --latest
       - name: Remove the incoming branch
         if: always()
         run: git push origin --delete incoming

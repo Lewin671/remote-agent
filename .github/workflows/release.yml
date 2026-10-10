@@ -61,6 +61,47 @@ jobs:
           pnpm test
           pnpm build
 
+  # What other people deploy from: the daemon and the server for each
+  # platform and the web client, built with nothing of our deployment in them.
+  dist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          # scripts/build-go.sh names a build by its tag only when it has the tags.
+          fetch-depth: 0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.mod', 'go.sum') }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install pnpm
+        run: npm install --global pnpm@10.19.0
+      - name: Build the archives
+        run: scripts/build-dist.sh
+      # Also in a rehearsal, which stops before the release is packaged.
+      - name: Refuse anything of our deployment
+        run: python3 scripts/public_scan.py dist deploy/releases-repo
+      - name: Install from the archives as a stranger would
+        run: scripts/dist-smoke.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/*.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
   android-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -170,7 +211,7 @@ jobs:
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
 
   publish:
-    needs: [checks, android-checks, android-build]
+    needs: [checks, android-checks, android-build, dist]
     if: github.event_name == 'push' || inputs.tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -216,6 +257,11 @@ jobs:
         with:
           name: apk
           path: android/app/build/outputs/apk/release
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          name: dist
+          path: dist
       - name: Package immutable release assets
         if: steps.plan.outputs.skip != 'true'
         run: |
@@ -227,7 +273,7 @@ jobs:
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
-          gh release upload "$RELEASE_TAG" "dist/remote-agent-$RELEASE_TAG.apk" dist/SHA256SUMS --clobber
+          gh release upload "$RELEASE_TAG" "dist/remote-agent-$RELEASE_TAG.apk" dist/remote-agent-*.tar.gz dist/SHA256SUMS --clobber
           # Retrying an older tag must not replace a newer release as "latest".
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/releases.json"
           latest=$(python3 - <<'PYTHON'
@@ -240,16 +286,17 @@ jobs:
           PYTHON
           )
           gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
-      # The app updates itself from the releases of a public repository that
-      # holds the APK only: this repository and its releases stay private.
-      # Publishing above cannot be undone, so this step does not depend on it
-      # having run now: a rerun of a tag that is already published hands over
-      # the APK that was published, which is how a failure here is repaired.
-      - name: Publish the latest APK where the app updates from
+      # The app updates itself from the releases of a public repository, and
+      # other people deploy from them: this repository and its releases stay
+      # private. Publishing above cannot be undone, so this step does not
+      # depend on it having run now: a rerun of a tag that is already
+      # published hands over the files that were published, which is how a
+      # failure here is repaired.
+      - name: Publish the latest release in the public repository
         env:
           RELEASES_DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
         run: |
-          # An older tag rerun must not put its APK over a newer one. A lookup
+          # An older tag rerun must not put its files over a newer one. A lookup
           # that fails must fail the step, not pass for "not the latest".
           latest_tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
           [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
@@ -258,9 +305,9 @@ jobs:
             exit 0
           fi
           if [ ! -f "dist/remote-agent-$RELEASE_TAG.apk" ]; then
-            mkdir -p dist
-            gh release download "$RELEASE_TAG" --pattern "remote-agent-$RELEASE_TAG.apk" --pattern SHA256SUMS --dir dist
-            (cd dist && sha256sum --check SHA256SUMS)
+            rm -rf dist
+            gh release download "$RELEASE_TAG" --dir dist
+            (cd dist && sha256sum --check --strict SHA256SUMS)
             python3 scripts/release.py manifest "$RELEASE_TAG" "dist/remote-agent-$RELEASE_TAG.apk" > dist/latest.properties
           fi
-          scripts/publish-apk.sh "$RELEASE_TAG"
+          scripts/publish-public.sh "$RELEASE_TAG"

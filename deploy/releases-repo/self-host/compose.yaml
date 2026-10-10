@@ -1,0 +1,46 @@
+# The relay behind Caddy, which gets and renews the HTTPS certificate.
+# Settings are read from .env (see env.example).
+#
+# Already running a reverse proxy? Remove the caddy service, and either put
+# the relay on your proxy's network or publish it on the host only, with
+#   ports: ["127.0.0.1:8080:8080"]
+# and proxy your relay domain to it. WebSockets must pass through.
+services:
+  remote-agent-server:
+    build: .
+    image: remote-agent-server:local
+    restart: unless-stopped
+    environment:
+      RA_SETUP_TOKEN: ${RA_SETUP_TOKEN:?set RA_SETUP_TOKEN in .env}
+    command: ["--allowed-origins", "${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in .env}"]
+    volumes:
+      - ./data:/data
+    mem_limit: 128m
+    pids_limit: 128
+    read_only: true # the relay writes only to /data
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      RELAY_DOMAIN: ${RELAY_DOMAIN:?set RELAY_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy_data:
+  caddy_config:

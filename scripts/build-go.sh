@@ -12,4 +12,7 @@ if [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]; then
     version="$version-dirty"
 fi
 cd "$ROOT"
-go build -trimpath -ldflags="-s -w -X github.com/Lewin671/remote-agent/internal/buildinfo.Version=$version -X github.com/Lewin671/remote-agent/internal/buildinfo.Commit=$commit" -o "$1" "$2"
+# The version and revision above are the build's identity. What Go would add
+# by itself comes from whichever repository encloses the directory, which
+# for a worktree inside another repository is not this one.
+go build -trimpath -buildvcs=false -ldflags="-s -w -X github.com/Lewin671/remote-agent/internal/buildinfo.Version=$version -X github.com/Lewin671/remote-agent/internal/buildinfo.Commit=$commit" -o "$1" "$2"

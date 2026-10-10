@@ -39,13 +39,17 @@
 
 Go 构建要求至少 1.26.9，发布流水线用 `govulncheck` 检查代码可达的已知漏洞。
 
-发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布正式签名 APK 和 `SHA256SUMS`。源提交写在发布说明中，各端仍统一版本；daemon/server 当前从源码安装部署、网页使用 Cloudflare Pages，所以不附 Go 二进制、网页压缩包，也不做 Go 多架构分发构建。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
+发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布：正式签名 APK，daemon（macOS 和 Linux 的 arm64、amd64）和 server（Linux 的 arm64、amd64）的压缩包，网页包，以及覆盖全部文件的 `SHA256SUMS`。源提交写在私有 Release 的说明中，各端仍统一版本。我们自己的部署仍从源码安装（daemon/server）和 Cloudflare Pages（网页），这些压缩包是给别人部署用的，见下文「公开发布」。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
 
 正式 APK 缺少固定签名或 Firebase 客户端配置就停止发布，不退回 debug 签名。GitHub Secrets 的 `ANDROID_SIGNING` 保存签名 keystore 与签名参数，`ANDROID_GOOGLE_SERVICES` 保存客户端配置；FCM 服务账户和账户加密密钥不进入构建流水线。签名密钥必须另有本地备份。手动 `Build development APK` 生成独立 `.dev` 应用，与正式版数据分开，使用固定签名以便后续覆盖升级，推送关闭，产物保留 3 天。
 
-**App 从哪里更新**：源码仓库和它的 Release 是私有的，App 拿不到。所以最新一版发布成功后，流水线把 APK 和一份清单 `latest.properties`（版本、versionCode、协议版本、APK 文件名、SHA-256、大小、发布说明）发布成公开仓库 `Lewin671/remote-agent-releases` 的一个 Release，App 读最新 Release 的清单、按版本号下载 APK（[android-client · 更新](android-client.md#更新)）。公开的只有 APK、清单和发布说明，源码、daemon、server 和网页的产物都不放；那个仓库的主分支只有一页 README 和下面说的工作流，APK 不进 git。
+**公开发布**：源码仓库和它的 Release 是私有的，App 拿不到，别人也拿不到。所以最新一版发布成功后，流水线把这一版的全部文件和一份清单 `latest.properties`（版本、versionCode、协议版本、APK 文件名、SHA-256、大小、发布说明）发布成公开仓库 `Lewin671/remote-agent-releases` 的一个 Release。它有两个用途：App 读最新 Release 的清单、按版本号下载 APK（[android-client · 更新](android-client.md#更新)）；别人照那个仓库的说明部署自己的中继、网页和 daemon。源码不公开；那个仓库的主分支只有说明文档、安装脚本、自部署模板和下面说的工作流（源文件都在 `deploy/releases-repo/`），发布的文件不进 git。
 
-一个仓库的工作流不能在另一个仓库建 Release：自带的令牌只管自己，能跨仓库的个人令牌要手工创建、会过期。所以分两步：这边用只对公开仓库有写权限的部署密钥（GitHub Secrets 的 `RELEASES_DEPLOY_KEY`，不会过期），把 APK、清单和发布说明作为那边 `main` 之上的一个提交推到 `incoming` 分支（推送的提交里必须带着工作流文件，GitHub 才会为这次推送运行它）；那边自己的工作流（源文件在 `deploy/releases-repo/`，改了要手动推过去）核对校验值后建 Release，再删掉这个分支。这边随后等公开的下载地址上出现校验值一致的清单，5 分钟内等不到就算失败。这一步不依赖本次是否刚发布：它失败后重跑同一个 tag，私有 Release 已经在了不会重发，但会取回已发布的那个 APK 再交一次。只交标为最新的那一版，重跑旧 tag 不会让旧版本成为最新。清单里的发布说明就是 tag 的说明，是公开的，只写变化和升级要求，不写部署信息。放在自己的服务器或 Cloudflare Pages 上也可以，没有选：前者不想让中继兼做下载站，后者每次发版要重新部署网页。
+给别人用的产物不带我们自己的部署：`scripts/build-dist.sh` 构建网页时不设默认中继（我们自己的网页由 `pnpm run deploy` 另行构建，带默认中继）；server 的压缩包里是 `deploy/releases-repo/self-host/` 的模板（自带 Caddy），不是 `deploy/` 里接入我们那台共用 Caddy 的那份；Go 构建关掉了自动嵌入的仓库信息，压缩包的文件头不记打包者。`scripts/public_scan.py` 按名单查域名、主机名、邮箱、设备号、私钥和填了值的 setup token，压缩包和 APK 逐个成员查，在打包（`package-release.sh`）和交接（`publish-public.sh`）时各查一遍，查到就失败、不发布。名单挡不住没见过的标识，所以新增公开内容时仍要人看一遍。
+
+别人的部署有两处和我们的不一样，公开文档里写明：正式 APK 绑定我们的 Firebase 项目，别人的 server 发不了 FCM，App 在他们那里没有推送（网页的 Web Push 不受影响）；网页由他们自己托管。
+
+一个仓库的工作流不能在另一个仓库建 Release：自带的令牌只管自己，能跨仓库的个人令牌要手工创建、会过期。所以分两步：这边用只对公开仓库有写权限的部署密钥（GitHub Secrets 的 `RELEASES_DEPLOY_KEY`，不会过期），把这一版的文件、`SHA256SUMS`、清单和发布说明作为那边 `main` 之上的一个提交推到 `incoming` 分支（推送的提交里必须带着工作流文件，GitHub 才会为这次推送运行它）；那边自己的工作流（源文件在 `deploy/releases-repo/`，改了要手动推过去）核对校验值、确认只有这一版该有的文件名后建 Release，再删掉这个分支。这边随后等公开的下载地址上出现校验值一致的清单，5 分钟内等不到就算失败。这一步不依赖本次是否刚发布：它失败后重跑同一个 tag，私有 Release 已经在了不会重发，但会取回已发布的那些文件再交一次。只交标为最新的那一版，重跑旧 tag 不会让旧版本成为最新。清单里的发布说明就是 tag 的说明，是公开的，只写变化和升级要求，不写部署信息。放在自己的服务器或 Cloudflare Pages 上也可以，没有选：前者不想让中继兼做下载站，后者每次发版要重新部署网页。
 
 Release 不自动部署 VPS/Cloudflare、不升级本机 daemon，各端分别部署；App 的更新也要在手机上点一下，再由系统确认安装。当前部署脚本仍从本地工作目录构建，并嵌入版本和源提交；它不是从 Release 晋级产物的入口。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
 
