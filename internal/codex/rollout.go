@@ -112,16 +112,24 @@ func (p *Parser) Restore(path string, end int64) error {
 	if !open {
 		return nil
 	}
-	lines, _, err := tail.NewReader(path, 0).Next()
-	if err != nil {
-		return err
-	}
 	past := NewParser()
-	for _, l := range lines {
-		if l.End > end {
+	// The lines come in batches of bounded size (tail.MaxBatch).
+	r := tail.NewReader(path, 0)
+read:
+	for {
+		lines, _, err := r.Next()
+		if err != nil {
+			return err
+		}
+		if len(lines) == 0 {
 			break
 		}
-		_, _ = past.Parse(l.Data)
+		for _, l := range lines {
+			if l.End > end {
+				break read
+			}
+			_, _ = past.Parse(l.Data)
+		}
 	}
 	for cell, call := range past.cells {
 		if p.calls[call] != nil {

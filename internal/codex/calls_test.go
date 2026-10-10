@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/tail"
 )
 
 // Every started call ends with a ToolCall of the same ID: from the item
@@ -184,5 +186,57 @@ func TestYieldedExecAfterRestart(t *testing.T) {
 	restart()
 	if err := NewParser().Restore(filepath.Join(t.TempDir(), "none.jsonl"), 100); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// restored is a parser as a restarted daemon builds it: the events parsed
+// from lines replayed, then the rollout read again up to its end.
+func restored(t *testing.T, path string, lines []string) *Parser {
+	t.Helper()
+	var file []byte
+	var logged []*pb.Event
+	p := NewParser()
+	for _, l := range lines {
+		file = append(file, l+"\n"...)
+		evs, err := p.Parse([]byte(l))
+		if err != nil {
+			t.Fatal(err)
+		}
+		logged = append(logged, evs...)
+	}
+	if err := os.WriteFile(path, file, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p = NewParser()
+	for _, e := range logged {
+		p.Replay(e)
+	}
+	if err := p.Restore(path, int64(len(file))); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// The rollout is read in batches of bounded size. An exec that yielded
+// further in than the first batch is still found after a restart.
+func TestYieldedExecBeyondTheFirstBatchAfterRestart(t *testing.T) {
+	lines := []string{`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`}
+	filler := `{"type":"other","payload":"` + strings.Repeat("x", 1<<20) + `"}`
+	for size := 0; size <= tail.MaxBatch; size += len(filler) {
+		lines = append(lines, filler)
+	}
+	lines = append(lines,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"tools.exec_command({cmd:\"go test ./...\"})"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c1","output":"Script running with cell ID 7\nWall time 31.0 seconds"}}`,
+		`{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":10},"last_token_usage":{"total_tokens":10},"model_context_window":1000}}}`,
+	)
+	p := restored(t, filepath.Join(t.TempDir(), "rollout.jsonl"), lines)
+	evs, err := p.Parse([]byte(`{"type":"response_item","payload":{"type":"function_call","name":"wait","call_id":"w1","arguments":"{\"cell_id\":\"7\",\"yield_time_ms\":20000}"}}`))
+	if err != nil || len(evs) != 0 {
+		t.Fatalf("wait became a call of its own: %v, err %v", evs, err)
+	}
+	evs, _ = p.Parse([]byte(`{"type":"response_item","payload":{"type":"function_call_output","call_id":"w1","output":[{"type":"input_text","text":"Script completed\nWall time 11.1 seconds\nOutput:\nok"}]}}`))
+	if len(evs) != 1 || evs[0].GetToolCall().GetCallId() != "c1" || evs[0].GetToolCall().GetStatus() != "completed" {
+		t.Fatalf("completion %v", evs)
 	}
 }
