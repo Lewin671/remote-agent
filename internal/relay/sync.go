@@ -371,6 +371,11 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 // dropped or the pass was canceled for a reconnect. Any other answer is a
 // refusal of the notification itself.
 func notifyOwed(err error) bool {
+	// A pass canceled while the call still waited for its turn never became
+	// a Connect error.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	switch connect.CodeOf(err) {
 	case connect.CodeResourceExhausted, connect.CodeCanceled, connect.CodeUnavailable, connect.CodeDeadlineExceeded:
 		return true

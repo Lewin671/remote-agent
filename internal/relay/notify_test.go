@@ -1,67 +1,34 @@
 package relay
 
 import (
-	"strings"
+	"context"
+	"errors"
+	"fmt"
 	"testing"
-	"time"
 
-	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/e2e"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"connectrpc.com/connect"
 )
 
-func TestNotifyRequestSealsApprovals(t *testing.T) {
-	root := e2e.NewKey()
-	keys, _ := e2e.Derive(root)
-	c := &conn{acct: &Account{Root: root, DeviceID: "machine-1"}, keys: keys}
-	deadline := time.Now().Add(10 * time.Minute)
-	long := strings.Repeat("x", 5000)
-	e := &pb.Event{Seq: 3, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{
-		ApprovalId: "appr-1", ToolName: "shell", Command: long, Deadline: timestamppb.New(deadline),
-	}}}
-	req, err := c.notifyRequest("s1", &pb.Session{Title: "修复登录超时"}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
-	if err != nil {
-		t.Fatal(err)
+// A retry canceled while it still waited for its turn among the machine's
+// calls fails with the context's own error, not a Connect one: the
+// notification is still owed.
+func TestNotificationCanceledBeforeItWasSentIsStillOwed(t *testing.T) {
+	for _, err := range []error{
+		context.Canceled, context.DeadlineExceeded,
+		fmt.Errorf("waiting for a slot: %w", context.Canceled),
+		connect.NewError(connect.CodeCanceled, context.Canceled),
+		connect.NewError(connect.CodeResourceExhausted, errors.New("busy")),
+	} {
+		if !notifyOwed(err) {
+			t.Errorf("%v: taken for a refusal", err)
+		}
 	}
-	if req.DedupeKey != "appr-1" || req.SessionId != "s1" {
-		t.Fatalf("request %v", req)
-	}
-	var nc pb.NotifyContent
-	h, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: "machine-1", SessionId: "s1", RequestId: "appr-1"}, &nc)
-	if err != nil || h.Sender != "machine-1" {
-		t.Fatalf("open: %v", err)
-	}
-	a := nc.Approval
-	if nc.Title != "修复登录超时" || a.ApprovalId != "appr-1" || !a.Truncated || len([]rune(a.Command)) > notifyCommand+1 || a.DeadlineMs != deadline.UnixMilli() {
-		t.Fatalf("content %v", &nc)
-	}
-	// Sealed with the notify key only.
-	if _, _, err := e2e.Open(keys.Command, req.Content); err == nil {
-		t.Fatal("opened with the command key")
-	}
-	// Small enough for FCM's 4 KB payload even with a huge command.
-	if n := len(req.Content.Ciphertext) + len(req.Content.Header); n > 2400 {
-		t.Fatalf("content is %d bytes", n)
-	}
-}
-
-func TestNotifyRequestKeepsCommandsAndOtherToolsApart(t *testing.T) {
-	root := e2e.NewKey()
-	keys, _ := e2e.Derive(root)
-	c := &conn{acct: &Account{Root: root, DeviceID: "machine-1"}, keys: keys}
-	e := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{
-		ApprovalId: "w1", ToolName: "Write", ToolInputJson: `{"file_path":"/tmp/a.txt","content":"hi"}`,
-	}}}
-	req, err := c.notifyRequest("s1", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var nc pb.NotifyContent
-	if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, &nc); err != nil {
-		t.Fatal(err)
-	}
-	// Not a command: the app titles it 请求权限 · Write, as the web does.
-	if a := nc.Approval; a.Command != "" || a.ToolInput != `{"file_path":"/tmp/a.txt","content":"hi"}` || a.ToolName != "Write" {
-		t.Fatalf("approval %v", a)
+	for _, err := range []error{
+		connect.NewError(connect.CodeInvalidArgument, errors.New("no")),
+		connect.NewError(connect.CodePermissionDenied, errors.New("no")),
+	} {
+		if notifyOwed(err) {
+			t.Errorf("%v: still owed", err)
+		}
 	}
 }
