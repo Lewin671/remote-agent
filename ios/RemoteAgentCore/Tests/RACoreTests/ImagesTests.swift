@@ -364,6 +364,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         var sha = Data()
         var done = false
         var failNextPutAfterStoring = false
+        var stopNextPutAfterStoring = false
         var puts = 0
         var refuseComplete = false
 
@@ -372,6 +373,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         }
 
         func lose() { failNextPutAfterStoring = true }
+        func stop() { stopNextPutAfterStoring = true }
         func refuse() { refuseComplete = true }
 
         private func st() -> PBImageUploadStatus {
@@ -403,6 +405,10 @@ private let exifHeader = Data("Exif\0\0".utf8)
                 failNextPutAfterStoring = false
                 throw Refused(code: "unknown_outcome", message: "reply lost")
             }
+            if stopNextPutAfterStoring {
+                stopNextPutAfterStoring = false
+                throw CommandError("aborted", "the daemon stopped", fromDaemon: true)
+            }
             return st()
         }
 
@@ -428,6 +434,14 @@ private let exifHeader = Data("Exif\0\0".utf8)
     @Test func aLostReplyGoesOnFromWhatTheDaemonStored() async throws {
         let d = FakeDaemon()
         await d.lose()
+        #expect(try await uploadImage(d, transferId: "t", data: png) == "img1")
+        #expect(await d.stored == png)
+    }
+
+    /// A daemon that stopped while storing a chunk answers "aborted" for it: the chunk may be there.
+    @Test func aDaemonThatStoppedHalfwayGoesOnFromWhatItStored() async throws {
+        let d = FakeDaemon()
+        await d.stop()
         #expect(try await uploadImage(d, transferId: "t", data: png) == "img1")
         #expect(await d.stored == png)
     }

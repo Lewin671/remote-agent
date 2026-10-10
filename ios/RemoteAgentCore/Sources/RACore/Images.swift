@@ -408,11 +408,16 @@ public protocol UploadChannel: Sendable {
 }
 
 /// What an upload needs to know of a command that failed: its Connect code
-/// name. The sync engine's command error conforms; "unknown_outcome" (the
-/// command may or may not have run) and "network" are the two an upload goes
-/// on after, by asking the daemon where it stands.
+/// name, and whether the command may or may not have run. The sync engine's
+/// command error conforms. An unknown outcome and "network" are the two an
+/// upload goes on after, by asking the daemon where it stands.
 public protocol UploadFailure: Error {
     var code: String { get }
+    var unknown: Bool { get }
+}
+
+extension UploadFailure {
+    public var unknown: Bool { code == CommandError.unknownOutcome }
 }
 
 /// An upload that ended without the daemon refusing it: its answer was not one to go on from.
@@ -450,7 +455,7 @@ public func uploadImage(
     var tries = 0
     // Whether to go on after a failed step: only when its outcome is not known, and not forever.
     func again(_ error: any Error) -> Bool {
-        guard let e = error as? any UploadFailure, e.code == "unknown_outcome" || e.code == "network", tries < retries else { return false }
+        guard let e = error as? any UploadFailure, e.unknown || e.code == "network", tries < retries else { return false }
         tries += 1
         return true
     }
