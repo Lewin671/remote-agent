@@ -115,10 +115,11 @@ final class NewSessionDraft {
 /// The new-session drafts of the account's projects, by project path.
 @MainActor
 final class NewSessionDrafts {
-    private var byProject: [String: NewSessionDraft] = [:]
+    private var byProject: [JvmKey: NewSessionDraft] = [:]
 
     /// The draft of a project; `initial` only seeds one that does not exist yet (`settled`: see `ProjectStart`).
     func of(_ key: String, initial: NewConfig?, settled: Bool) -> NewSessionDraft {
+        let key = JvmKey(key)
         if let d = byProject[key] { return d }
         let d = NewSessionDraft(initial, settled: settled)
         byProject[key] = d

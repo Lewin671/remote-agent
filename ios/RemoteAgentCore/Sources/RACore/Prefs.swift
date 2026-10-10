@@ -101,18 +101,18 @@ public func applyPrefsOp(base: PBProjectPrefs, op: PrefsOp, opId: String, now: I
     }
     switch op {
     case .pin(let path):
-        out.hidden.removeAll { $0.path == path }
-        if !out.pinned.contains(where: { $0.path == path }) { out.pinned.append(pref(path)) }
+        out.hidden.removeAll { $0.path.jvmEquals(path) }
+        if !out.pinned.contains(where: { $0.path.jvmEquals(path) }) { out.pinned.append(pref(path)) }
     case .unpin(let path):
-        out.pinned.removeAll { $0.path == path }
+        out.pinned.removeAll { $0.path.jvmEquals(path) }
     case .hide(let path):
-        out.pinned.removeAll { $0.path == path }
-        if !out.hidden.contains(where: { $0.path == path }) { out.hidden.append(pref(path)) }
+        out.pinned.removeAll { $0.path.jvmEquals(path) }
+        if !out.hidden.contains(where: { $0.path.jvmEquals(path) }) { out.hidden.append(pref(path)) }
     case .unhide(let path):
-        out.hidden.removeAll { $0.path == path }
+        out.hidden.removeAll { $0.path.jvmEquals(path) }
     case .setSettings(let s):
-        let stored = base.settings.first { $0.path == s.path }
-        out.settings = base.settings.filter { $0.path != s.path } + [applySettings(stored: stored, op: s, now: now)]
+        let stored = base.settings.first { $0.path.jvmEquals(s.path) }
+        out.settings = base.settings.filter { !$0.path.jvmEquals(s.path) } + [applySettings(stored: stored, op: s, now: now)]
     }
     out.schema = 1
     out.recentOps = Array((base.recentOps + [opId]).suffix(recentOps))
@@ -129,8 +129,9 @@ public struct PrefsObject: Equatable, Sendable {
         self.prefs = prefs
     }
 
-    public var pinned: [String] { prefs.pinned.map(\.path) }
-    public var hidden: Set<String> { Set(prefs.hidden.map(\.path)) }
+    // Paths by their code units, as Kotlin compares them.
+    public var pinned: [JvmKey] { prefs.pinned.map { JvmKey($0.path) } }
+    public var hidden: Set<JvmKey> { Set(prefs.hidden.map { JvmKey($0.path) }) }
 
     public static let empty: PrefsObject = {
         var p = PBProjectPrefs()

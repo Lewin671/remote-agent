@@ -48,6 +48,31 @@ import Testing
         #expect(defaultScope(state(session("1", "/a"), session("2", "/b"), hidden: ["/b"])) == .of(key: "/a"))
     }
 
+    @Test func foldersThatAreOnlyCanonicallyEqualAreTwoProjects() {
+        // é as one character, and as e with a combining accent: Kotlin and the daemon tell them apart.
+        let composed = "/work/caf\u{e9}", decomposed = "/work/cafe\u{301}"
+        func units(_ paths: [String]) -> Set<[UInt8]> { Set(paths.map { Array($0.utf8) }) }
+        let st = state(session("1", composed), session("2", decomposed, ended: now - 1000), session("3", "/b"), pinned: [decomposed])
+        let all = projects(st)
+        #expect(units(all.map(\.key)) == units([composed, decomposed, "/b"]))
+        #expect(project(st, key: composed)?.sessions.map(\.id) == ["1"])
+        #expect(project(st, key: decomposed)?.sessions.map(\.id) == ["2"])
+        #expect(Set(all.map(\.id)).count == 3)
+        #expect(units(projectGroups(st).pinned.map(\.key)) == units([decomposed]))
+        #expect(isPinned(st, key: decomposed) && !isPinned(st, key: composed))
+
+        #expect(HomeScope.of(key: composed) != .of(key: decomposed))
+        #expect(resolveScope(remembered: .of(key: decomposed), state: state(session("1", composed), session("3", "/b"))) == .all)
+        let line = homeTimeline(st, scope: .of(key: composed), zone: zone)
+        #expect(line.running.map(\.id) == ["1"])
+        #expect(line.ended.map(\.id) == [])
+        // Removing one of them leaves the other on the list.
+        let hidden = state(session("1", composed), session("2", decomposed, ended: now - 1000), session("3", "/b"), hidden: [composed])
+        #expect(units(listedProjects(hidden).map(\.key)) == units([decomposed, "/b"]))
+        #expect(homeTimeline(hidden, scope: .all, zone: zone).ended.map(\.id) == ["2"])
+        #expect(isHidden(hidden, key: composed) && !isHidden(hidden, key: decomposed))
+    }
+
     @Test func theRememberedScopeHoldsWhileItsProjectIsListed() {
         let two = state(session("1", "/a"), session("2", "/b"), session("3", "/c"))
         #expect(resolveScope(remembered: .of(key: "/b"), state: two) == .of(key: "/b"))

@@ -20,7 +20,7 @@ import Testing
         // One of each thing that waits, on computers that are online.
         let waiting = s.sessions.values.filter { needsAttention($0, machine: s.machines[$0.machineId]) }.map(\.id).sorted()
         #expect(waiting == ["api", "plan", "trust"])
-        #expect(s.prefs?.pinned == [Demo.foo])
+        #expect(s.prefs?.pinned == [JvmKey(Demo.foo)])
         #expect(!quotaGroups(s.machines["mac"]!, now: now).isEmpty)
     }
 

@@ -19,7 +19,8 @@ public struct Project: Equatable, Sendable, Identifiable {
     /// How many of its sessions have ended, on all machines: by their summaries, and no fewer than are held here.
     public var ended: Int
 
-    public var id: String { key }
+    /// The key by its code units: the identity Kotlin gives a path.
+    public var id: JvmKey { JvmKey(key) }
 
     public init(
         key: String, name: String, sessions: [SessionView], updatedMs: Int64, hasLive: Bool, latestCreatedMs: Int64,
@@ -64,9 +65,9 @@ private struct ProjectSums {
 /// listed while the machine chosen for it is one of the account's, as created
 /// when it was added.
 public func projects(_ state: RemoteState) -> [Project] {
-    var byKey = [String: [SessionView]]()
-    for s in state.sessions.values { byKey[projectKey(s), default: []].append(s) }
-    var sums = [String: ProjectSums]()
+    var byKey = [JvmKey: [SessionView]]()
+    for s in state.sessions.values { byKey[JvmKey(projectKey(s)), default: []].append(s) }
+    var sums = [JvmKey: ProjectSums]()
     // The machine whose newest session there is the latest comes first. A
     // machine's own summaries keep the order it listed them in.
     let summaries = state.machines.values.sorted { jvmLess($0.id, $1.id) }
@@ -76,25 +77,26 @@ public func projects(_ state: RemoteState) -> [Project] {
             return jvmLess(a.machineId, b.machineId)
         }
     for (machineId, p) in summaries {
-        var sum = sums[p.path] ?? ProjectSums()
+        var sum = sums[JvmKey(p.path)] ?? ProjectSums()
         sum.endedBy[machineId] = Int(p.ended)
         sum.latestCreatedMs = max(sum.latestCreatedMs, p.latestCreatedMs)
         sum.latestEndedMs = max(sum.latestEndedMs, p.latestEndedMs)
         if !sum.machineIds.contains(machineId) { sum.machineIds.append(machineId) }
-        sums[p.path] = sum
+        sums[JvmKey(p.path)] = sum
     }
-    var added = [String: PBProjectSettings]()
-    for s in state.prefs?.prefs.settings ?? []
-    where !s.path.isEmpty && byKey[s.path] == nil && sums[s.path] == nil && state.machines[s.machineID] != nil {
-        added[s.path] = s
+    var added = [JvmKey: PBProjectSettings]()
+    for s in state.prefs?.prefs.settings ?? [] {
+        let key = JvmKey(s.path)
+        if !s.path.isEmpty && byKey[key] == nil && sums[key] == nil && state.machines[s.machineID] != nil { added[key] = s }
     }
     let keys = (Array(byKey.keys) + Array(sums.keys) + Array(added.keys)).distinct()
-    return keys.map { key -> Project in
-        let sorted = (byKey[key] ?? []).sorted { a, b in
+    return keys.map { id -> Project in
+        let key = id.text
+        let sorted = (byKey[id] ?? []).sorted { a, b in
             a.updatedMs != b.updatedMs ? a.updatedMs > b.updatedMs : jvmLess(a.id, b.id)
         }
-        let sum = sums[key]
-        let own = added[key]
+        let sum = sums[id]
+        let own = added[id]
         let machineIds = (sorted.map(\.machineId) + (sum?.machineIds ?? []) + (own.map { [$0.machineID] } ?? [])).distinct()
         var paths = sorted.compactMap { s -> String? in
             guard let c = s.info?.cwd, !c.isEmpty else { return nil }
@@ -125,7 +127,7 @@ public func projects(_ state: RemoteState) -> [Project] {
 }
 
 /// One project of `projects`, or nil when no summary, session held here or stored settings name it.
-public func project(_ state: RemoteState, key: String) -> Project? { projects(state).first { $0.key == key } }
+public func project(_ state: RemoteState, key: String) -> Project? { projects(state).first { $0.key.jvmEquals(key) } }
 
 /// The projects a machine has sessions in: by its summary and by the
 /// sessions held here, in that order. The sessions are gone through by ID,
@@ -157,22 +159,22 @@ public func projectGroups(_ state: RemoteState) -> ProjectGroups {
     let all = projects(state)
     let prefs = state.prefs ?? .empty
     let hidden = prefs.hidden
-    var byKey = [String: Project]()
-    for p in all { byKey[p.key] = p }
+    var byKey = [JvmKey: Project]()
+    for p in all { byKey[p.id] = p }
     let pinned = prefs.pinned.filter { !hidden.contains($0) }.compactMap { byKey[$0] }
-    let pinnedKeys = Set(pinned.map(\.key))
+    let pinnedKeys = Set(pinned.map(\.id))
     return ProjectGroups(
         pinned: pinned,
-        others: all.filter { !pinnedKeys.contains($0.key) && !hidden.contains($0.key) },
-        hidden: all.filter { hidden.contains($0.key) }
+        others: all.filter { !pinnedKeys.contains($0.id) && !hidden.contains($0.id) },
+        hidden: all.filter { hidden.contains($0.id) }
     )
 }
 
-public func isHidden(_ state: RemoteState, key: String) -> Bool { state.prefs?.hidden.contains(key) == true }
+public func isHidden(_ state: RemoteState, key: String) -> Bool { state.prefs?.hidden.contains(JvmKey(key)) == true }
 
 public func isPinned(_ state: RemoteState, key: String) -> Bool {
     guard let p = state.prefs else { return false }
-    return p.pinned.contains(key) && !p.hidden.contains(key)
+    return p.pinned.contains(JvmKey(key)) && !p.hidden.contains(JvmKey(key))
 }
 
 /// A computer's name: its host name without .local, else the start of its ID.

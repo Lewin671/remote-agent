@@ -143,6 +143,32 @@ import Testing
         #expect(p.hidden.isEmpty)
     }
 
+    // Two folders a Linux machine can have side by side: é as one character, and as e with a combining accent.
+    private let composed = "/work/caf\u{e9}"
+    private let decomposed = "/work/cafe\u{301}"
+
+    private func units(_ paths: [String]) -> [[UInt8]] { paths.map { Array($0.utf8) } }
+
+    @Test func pathsThatAreOnlyCanonicallyEqualAreDifferentProjects() {
+        var p = PBProjectPrefs()
+        p.settings = [settings(composed, "mac", 1), settings(decomposed, "vps", 1)]
+        p = applyPrefsOp(base: p, op: .setSettings(.init(path: decomposed, machineId: "imac", moved: true)), opId: "1", now: 2)
+        // The other folder's settings stay as they were.
+        #expect(units(p.settings.map(\.path)) == units([composed, decomposed]))
+        #expect(p.settings.map(\.machineID) == ["mac", "imac"])
+
+        p = applyPrefsOp(base: p, op: .pin(path: composed), opId: "2", now: 3)
+        p = applyPrefsOp(base: p, op: .pin(path: decomposed), opId: "3", now: 4)
+        #expect(units(p.pinned.map(\.path)) == units([composed, decomposed]))
+        p = applyPrefsOp(base: p, op: .hide(path: composed), opId: "4", now: 5)
+        #expect(units(p.pinned.map(\.path)) == units([decomposed]))
+        #expect(units(p.hidden.map(\.path)) == units([composed]))
+        p = applyPrefsOp(base: p, op: .unpin(path: composed), opId: "5", now: 6)
+        #expect(units(p.pinned.map(\.path)) == units([decomposed]))
+        p = applyPrefsOp(base: p, op: .unhide(path: decomposed), opId: "6", now: 7)
+        #expect(units(p.hidden.map(\.path)) == units([composed]))
+    }
+
     @Test func aLostReplyIsSettledByTheOpId() async throws {
         let server = FakeServer()
         server.loseNextReply = true

@@ -4,10 +4,17 @@
 import Foundation
 import RAProto
 
-/// What the home page lists: one project, or every project.
+/// What the home page lists: one project, or every project. Two scopes
+/// name the same project when the code units of its path are the same.
 public enum HomeScope: Hashable, Sendable {
     case all
     case of(key: String)
+
+    private var id: JvmKey? { key.map { JvmKey($0) } }
+
+    public static func == (a: HomeScope, b: HomeScope) -> Bool { a.id == b.id }
+
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
     /// The project the scope names, nil for every project.
     public var key: String? {
@@ -47,7 +54,7 @@ public func defaultScope(_ state: RemoteState) -> HomeScope {
 public func resolveScope(remembered: HomeScope?, state: RemoteState) -> HomeScope {
     let listed = listedProjects(state)
     switch remembered {
-    case .of(let key): return listed.contains { $0.key == key } ? .of(key: key) : defaultScope(state)
+    case .of(let key): return listed.contains { $0.key.jvmEquals(key) } ? .of(key: key) : defaultScope(state)
     case .all: return listed.count > 1 ? .all : defaultScope(state)
     case nil: return defaultScope(state)
     }
@@ -149,7 +156,7 @@ public struct HomeTimeline: Equatable, Sendable {
 
 /// Whether a session belongs to another project than the one the scope names.
 public func outsideScope(_ s: SessionView, scope: HomeScope) -> Bool {
-    if case .of(let key) = scope { return projectKey(s) != key }
+    if case .of(let key) = scope { return !projectKey(s).jvmEquals(key) }
     return false
 }
 
@@ -159,8 +166,8 @@ public func homeTimeline(_ state: RemoteState, scope: HomeScope, query: String =
     let waitingIds = Set(waiting.map(\.id))
     let hidden = state.prefs?.hidden ?? []
     let inScope: (String) -> Bool = { key in
-        if case .of(let k) = scope { return key == k }
-        return !hidden.contains(key)
+        if case .of(let k) = scope { return key.jvmEquals(k) }
+        return !hidden.contains(JvmKey(key))
     }
     let running = all.filter { !exited($0) && !waitingIds.contains($0.id) && !outsideScope($0, scope: scope) }.sorted(by: liveOrder)
     let ended = all.filter { exited($0) && inScope(projectKey($0)) }.sorted(by: endedOrder)

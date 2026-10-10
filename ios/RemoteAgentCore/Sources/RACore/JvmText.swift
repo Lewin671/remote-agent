@@ -203,6 +203,23 @@ extension String {
     }
 }
 
+/// A string as a dictionary or set key the way Kotlin's is one: equal and
+/// hashed by its code units. Keyed by String itself, two folders whose names
+/// are only canonically equal (a precomposed é and e with a combining
+/// accent) would be one project.
+public struct JvmKey: Hashable, Sendable, ExpressibleByStringLiteral {
+    public let text: String
+
+    public init(_ text: String) { self.text = text }
+    public init(stringLiteral value: String) { text = value }
+
+    public static func == (a: JvmKey, b: JvmKey) -> Bool { a.text.jvmEquals(b.text) }
+
+    public func hash(into hasher: inout Hasher) {
+        for unit in text.utf8 { hasher.combine(unit) }
+    }
+}
+
 /// Kotlin's String.compareTo as a "comes before": by UTF-16 unit. Swift's <
 /// orders by Unicode scalar under canonical equivalence, which puts an emoji
 /// after U+FFxx where UTF-16 puts it before.
@@ -227,6 +244,11 @@ extension Sequence {
 
 extension Sequence where Element: Hashable {
     func distinct() -> [Element] { distinct(by: { $0 }) }
+}
+
+extension Sequence where Element == String {
+    /// Kotlin's distinct() on strings: by code units.
+    func distinct() -> [String] { distinct(by: { JvmKey($0) }) }
 }
 
 // --- regular expressions ---
