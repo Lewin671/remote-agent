@@ -769,7 +769,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         else d.paused.delete(k.value.requestId);
         if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);
         if (k.value.status === InputStatus.FAILED || k.value.status === InputStatus.NEEDS_TERMINAL) d.inputReasons.set(k.value.requestId, k.value.reason);
-        if (k.value.status === InputStatus.CANCELED && k.value.reason === "exited") d.unsent.add(k.value.requestId);
+        if (endedUnsent(k.value)) d.unsent.add(k.value.requestId);
         else if (k.value.status !== InputStatus.QUEUED) d.unsent.delete(k.value.requestId);
         if (k.value.status === InputStatus.QUEUED && !queuedAt.has(k.value.requestId)) queuedAt.set(k.value.requestId, e.seq);
         if (k.value.status === InputStatus.SUBMITTED) {
@@ -1057,6 +1057,12 @@ export function queueReason(s: SessionLike, d: Derived): string {
  * first message of a session started here, which the chat shows. */
 export function queuedIds(d: Derived, skip?: string): string[] {
   return [...d.inputs.entries()].filter(([id, st]) => (st === InputStatus.QUEUED || st === InputStatus.HELD_BY_CLI) && !d.unsent.has(id) && id !== skip).map(([id]) => id);
+}
+
+/** Whether a message's state says the session ended before writing it:
+ * canceled by the daemon, not by anyone, and offered to be put back. */
+export function endedUnsent(state: { status: InputStatus; reason: string }): boolean {
+  return state.status === InputStatus.CANCELED && state.reason === "exited";
 }
 
 /** Why a message was not written, from the daemon's reason code. */

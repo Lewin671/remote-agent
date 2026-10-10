@@ -215,6 +215,40 @@ it("releases a canceled send and its images after a lost command reply", async (
   r.stop();
 });
 
+it("keeps the images of a message the session ended before sending, while it can still be put back", async () => {
+  const r = await probe();
+  (r as any).api = { getEvents: vi.fn(async () => ({ events: [], more: false })) };
+  r.events("s");
+  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  const thumb = new Blob(["image"]);
+  const ended = { sendId: "ended", status: "sent", imageIds: ["i1"], thumbs: [thumb] };
+  const canceled = { sendId: "canceled", status: "sent", imageIds: ["i2"], thumbs: [thumb] };
+  (r as any).outboxes.set("s", [ended, canceled]);
+  const { sealMessage } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { EventSchema, InputStatus } = await import("./gen/remoteagent/v1/event_pb");
+  const { derive } = await import("./model");
+  const session = r.sessions.get("s")!;
+  const states = [
+    { requestId: "ended", status: InputStatus.QUEUED },
+    { requestId: "canceled", status: InputStatus.QUEUED },
+    // The session exited with one waiting; the user canceled the other.
+    { requestId: "ended", status: InputStatus.CANCELED, reason: "exited" },
+    { requestId: "canceled", status: InputStatus.CANCELED },
+  ];
+  for (const [i, value] of states.entries()) {
+    const seq = BigInt(i + 1);
+    const event = create(EventSchema, { seq, sessionId: "s", kind: { case: "inputState", value } });
+    const envelope = await sealMessage(session.key, { kind: PayloadKind.EVENT, machineId: "m", sessionId: "s", seq }, EventSchema, event);
+    await (r as any).ingest(session, [{ seq, envelope }]);
+  }
+  // What the chat still offers for 放回输入框 keeps this device's copies.
+  expect([...derive(r.events("s")).unsent]).toEqual(["ended"]);
+  expect(r.outbox("s")).toEqual([ended]);
+  expect(r.outbox("s")[0].thumbs![0]).toBe(thumb);
+  r.stop();
+});
+
 async function sealedEvents(r: Remote, n: number) {
   const { sealMessage } = await import("./crypto");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");

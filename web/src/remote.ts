@@ -72,7 +72,7 @@ import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import type { Prepare, Tray } from "./attach";
 import { commitOp, emptyPrefs, type PrefKind, type PrefOp, type PrefsSnapshot, type PrefsStore } from "./prefs";
-import { machineName, modelLabel, type Outgoing } from "./model";
+import { endedUnsent, machineName, modelLabel, type Outgoing } from "./model";
 import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
 import { loadAccount, saveAccount, type StoredAccount } from "./storage";
@@ -1235,7 +1235,10 @@ export class Remote {
       if (event.kind.case === "inputState") {
         const { requestId, status } = event.kind.value;
         (b.inputStatuses ??= new Map()).set(requestId, status);
-        if (status === InputStatus.CANCELED) {
+        // A message someone canceled is gone, and its local image copies
+        // with it. One the session ended before writing can still be put
+        // back into the input: it keeps them for that.
+        if (status === InputStatus.CANCELED && !endedUnsent(event.kind.value)) {
           this.outboxes.set(s.id, this.outbox(s.id).filter((o) => o.sendId !== requestId));
         }
       }
