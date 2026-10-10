@@ -68,12 +68,17 @@ struct LocalImageFiles: Sendable {
 
     /// The account's own stores, asked themselves: the cache of sealed
     /// envelopes the sync engine fills, and the sealed store of images
-    /// waiting to be sent. Without an open cache (it did not open, and the
+    /// waiting to be sent, counted after the drafts left idle too long have
+    /// gone. Without an open cache (it did not open, and the
     /// app goes on from the server alone) there is nothing kept to count
     /// or to clear.
     static func stores(cache: CipherStore?, pending: PendingStore) -> LocalImageFiles {
         LocalImageFiles(
-            pendingUsed: { pending.used },
+            pendingUsed: {
+                // Drafts expire when one is read or written; none may have been since the app started.
+                pending.expire()
+                return pending.used
+            },
             cacheUsed: { cache?.imageBytes ?? 0 },
             clearCache: { cache?.clearImages() })
     }

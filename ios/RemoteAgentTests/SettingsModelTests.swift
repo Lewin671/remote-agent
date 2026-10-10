@@ -527,6 +527,22 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         try store.close()
     }
 
+    @Test func draftsLeftIdleTooLongAreGoneBeforeTheSpaceIsCounted() async throws {
+        defer { try? FileManager.default.removeItem(at: root) }
+        let clock = TestClock()
+        let waiting = PendingStore(
+            directory: root.appending(path: "pending"), vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"),
+            defaults: UserDefaults(suiteName: "ra-settings-\(UUID().uuidString)")!, now: { clock.now })
+        defer { try? waiting.clearAll() }
+        try waiting.put(folder: "project:/Users/me/Code/foo", name: "1.meta", data: Data(count: 1234))
+        // The app is opened again after more than a week, straight on this page: no draft was read or written since.
+        clock.advance(PendingPolicy.draftTTL + 60)
+        let model = ImageStorageModel(files: .stores(cache: nil, pending: waiting))
+        await model.load()
+        #expect(model.pending == 0)
+        #expect(waiting.expired == 1)
+    }
+
     @Test func aClearThatFailsSaysSoAndReadsAgain() async {
         struct Refused: LocalizedError { var errorDescription: String? { "磁盘只读" } }
         let model = ImageStorageModel(files: LocalImageFiles(pendingUsed: { 1 }, cacheUsed: { 77 }, clearCache: { throw Refused() }))
