@@ -148,3 +148,86 @@ func TestQueueGateFallback(t *testing.T) {
 		t.Fatalf("held after fallback %v, before %v", held, heldNow)
 	}
 }
+
+// reopen stands for a daemon restart: the session is loaded again from its
+// directory.
+func (h *harness) reopen() {
+	h.t.Helper()
+	h.s.mu.Lock()
+	m := h.s.meta
+	h.s.mu.Unlock()
+	h.s.log.Close()
+	h.open(m)
+}
+
+func turnEnd(outcome pb.TurnOutcome) *pb.Event {
+	return &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: outcome}}}
+}
+
+// The daemon stopped after the interrupted turn's end was logged and
+// before the waiting input was saved as paused: the next daemon pauses it
+// before anything is written.
+func TestRestartAfterInterruptPausesWaitingInput(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	if _, err := h.s.enqueueMode("after", "q1", nil, originLocal, pb.SendMode_SEND_MODE_QUEUE); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.s.send("steer", "s1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_ABORTED)) // and no afterTurn
+	h.reopen()
+	for _, id := range []string{"s1", "q1"} {
+		st := inputStates(h, id)
+		if last := st[len(st)-1]; !last.Paused || last.Status != pb.InputStatus_INPUT_STATUS_QUEUED || last.Reason != "interrupted" {
+			t.Fatalf("%s after restart: %v", id, last)
+		}
+	}
+	h.term.setScreen(idleScreen)
+	runInjector(t, h)
+	time.Sleep(150 * time.Millisecond)
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("interrupted input written after restart: %q", w)
+	}
+	// It is saved: a second restart reports nothing new.
+	n := len(h.events())
+	h.reopen()
+	if len(h.events()) != n || !h.s.queue.Queue[0].Paused {
+		t.Fatal("pause not saved")
+	}
+}
+
+// What was accepted or resumed after the interrupted turn is not paused by
+// a restart, and an interruption long past does not pause what waits when
+// a later turn ends.
+func TestRestartKeepsInputFromAfterTheInterrupt(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	if _, err := h.s.send("resumed", "s1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_ABORTED))
+	h.s.afterTurn()
+	if err := h.s.resumeInputBy("s1", originLocal); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.s.send("new", "s2"); err != nil {
+		t.Fatal(err)
+	}
+	h.reopen()
+	for _, in := range h.s.queue.Queue {
+		if in.Paused {
+			t.Fatalf("%s paused by the restart", in.RequestID)
+		}
+	}
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}, turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
+	h.s.afterTurn()
+	for _, in := range h.s.queue.Queue {
+		if in.Paused {
+			t.Fatalf("%s paused by a turn that completed", in.RequestID)
+		}
+	}
+}

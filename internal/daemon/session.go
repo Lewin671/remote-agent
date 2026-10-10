@@ -168,10 +168,13 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		s.copied = ag.Copied(dir)
 	}
 	// Rebuild derived state from the events already logged.
+	var seen logged
 	log.Each(func(e *pb.Event) {
 		s.observe(e)
 		s.parser.Replay(e)
+		seen.note(e)
 	})
+	s.restorePause(&seen)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}

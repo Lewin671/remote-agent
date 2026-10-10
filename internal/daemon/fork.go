@@ -142,8 +142,6 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 
 	s := newSession(d, dir, nm, d.terminal(&nm), log)
 	s.mu.Lock()
-	// The copied turns are over, and nothing of this session waits on them.
-	s.aborted = false
 	s.meta.Starting = false
 	started := s.meta
 	s.mu.Unlock()

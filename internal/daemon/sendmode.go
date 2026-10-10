@@ -72,12 +72,17 @@ func (s *session) afterTurn() {
 		time.AfterFunc(heldSweep, s.sweepHeld)
 	}
 	for _, in := range paused {
-		s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-			RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING,
-			Mode: in.Mode, Paused: true, Reason: "interrupted",
-		}}})
+		s.emit(pausedState(in))
 	}
 	s.poke()
+}
+
+// pausedState reports a message paused by an interruption.
+func pausedState(in input) *pb.Event {
+	return &pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING,
+		Mode: in.Mode, Paused: true, Reason: "interrupted",
+	}}}
 }
 
 // resumeInputBy sends a paused message now, as a steer.
