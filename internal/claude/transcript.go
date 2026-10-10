@@ -257,7 +257,13 @@ func (p *Parser) user(r *record) ([]*pb.Event, error) {
 	if r.Origin != nil && r.Origin.Kind == "task-notification" {
 		return p.startTurn(r), nil
 	}
-	if r.Origin == nil || r.Origin.Kind != "human" {
+	if r.Origin == nil {
+		if c := p.modelSet(text); c != nil {
+			return []*pb.Event{c}, nil
+		}
+		return nil, nil
+	}
+	if r.Origin.Kind != "human" {
 		return nil, nil
 	}
 	evs = append(evs, p.startTurn(r)...)
@@ -332,6 +338,46 @@ func unwrapPasted(text string) string {
 		return text
 	}
 	return out.String() + rest
+}
+
+// modelSetRE matches /model's output: "Set model to `Sonnet 5.5` for this
+// session only with `low` effort", "Set model to `Fable 5.1` and saved as
+// your default for new sessions". An effort that did not change is not
+// named, and the first builds of 2.1.284 wrote no quotes
+// (claude-code-notes §9).
+var modelSetRE = regexp.MustCompile("^<local-command-stdout>Set model to `?([^`<]+?)`?(?: for this session only| and saved as your default for new sessions| as the default)?(?: with `?(\\w+)`? effort)?</local-command-stdout>$")
+
+// modelSet reads a model switch from the output of /model, however it was
+// run: typed in the terminal, it is recorded nowhere else until the next
+// reply, and in Plan mode not even there. The model becomes its alias, as
+// for a switch made through remote-agent; one that is none of the aliases
+// keeps the name Claude Code prints.
+func (p *Parser) modelSet(text string) *pb.Event {
+	m := modelSetRE.FindStringSubmatch(text)
+	if m == nil {
+		return nil
+	}
+	next := &pb.TurnContext{}
+	if p.ctx != nil {
+		next = proto.CloneOf(p.ctx)
+	}
+	next.Model = m[1]
+	for _, info := range models {
+		if strings.EqualFold(strings.Fields(m[1])[0], info.DisplayName) {
+			next.Model = info.Slug
+			if len(info.Efforts) == 0 {
+				next.Effort = ""
+			}
+		}
+	}
+	if m[2] != "" {
+		next.Effort = m[2]
+	}
+	if p.ctx != nil && proto.Equal(next, p.ctx) {
+		return nil
+	}
+	p.ctx = next
+	return &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: proto.CloneOf(next)}}
 }
 
 // startTurn opens the turn of a user record.

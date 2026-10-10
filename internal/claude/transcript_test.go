@@ -188,9 +188,14 @@ func TestTranscriptFixture(t *testing.T) {
 		t.Errorf("contexts %q", models)
 	}
 	for _, m := range models {
-		if strings.Contains(m, "sonnet") {
+		if strings.Contains(m, "claude-sonnet") {
 			t.Errorf("the planning model became the session's: %q", models)
 		}
+	}
+	// The two /model switches typed in the terminal, in Plan mode, are read
+	// from the command's output.
+	if i := slices.Index(models, "sonnet/low/plan"); i < 0 || i+1 >= len(models) || models[i+1] != "haiku//plan" {
+		t.Errorf("/model in the terminal: %q", models)
 	}
 }
 

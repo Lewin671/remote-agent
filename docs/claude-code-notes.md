@@ -166,7 +166,7 @@
 - 底部：`Enter to set as default · s to use this session only · Esc to cancel`。和 Codex 一样，**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
 - **按数字键等于移到那一行再按回车**（走「设为默认」这条路），不能用
 - 对话已有缓存时，按 `s` 后还会弹 `Switch model?` / `❯ 1. Yes, switch to Haiku 4.5` / `2. No, go back`，按 1 确认后仍然只改当前会话
-- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（haiku 没有 effort 部分；effort 没变时也不写这一段），transcript 里也有同样文字的 `<local-command-stdout>`；状态栏右侧显示 `○ low · /effort`
+- 成功后对话里出现 `⎿  Set model to Sonnet 5.5 for this session only with low effort`（haiku 没有 effort 部分；effort 没变时也不写这一段），状态栏右侧显示 `○ low · /effort`。transcript 里是一条没有 `origin` 的用户记录，正文为 `<local-command-stdout>…</local-command-stdout>`，文字相同，只是模型名和 effort 各用反引号括起来（``Set model to `Sonnet 5.5` for this session only with `low` effort``，2.1.284 的记录）；回车设为默认时是 ``Set model to `Fable 5.1` and saved as your default for new sessions``（2.1.258 到 2.1.280 的本机记录，名字可能带 `(1M context)`、`(default)`）。这条记录的时间戳是执行命令的时刻，排在下一条用户消息之前
 - 下一次回复的 `assistant` 记录里 `message.model`、`perTurnEffort` 随之变化
 
 ## 10. 中断和运行中的输入
