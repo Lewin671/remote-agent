@@ -185,6 +185,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	})
 	s.dropSettled(&seen)
 	s.restorePause(&seen)
+	s.restoreReceived(&seen)
 	s.restoreRecent(&seen)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
@@ -456,6 +457,11 @@ func (s *session) readBatch() bool {
 			s.observe(e)
 		}
 		s.mu.Unlock()
+		if len(evs) > 0 {
+			// The log takes writes: an outcome an earlier failure left
+			// owing is logged now.
+			s.settleReceived()
+		}
 		for _, e := range evs {
 			if m := e.GetUserMessage(); m != nil {
 				s.received(m.RequestId)

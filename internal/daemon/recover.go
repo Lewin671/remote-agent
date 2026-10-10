@@ -24,6 +24,8 @@ type logged struct {
 	// queue, in that order.
 	sent    map[string]*sentInput
 	written []string
+	// received are the request IDs user messages were tied to.
+	received map[string]bool
 }
 
 // sentInput is a message as its first InputState describes it.
@@ -40,6 +42,12 @@ func (l *logged) note(e *pb.Event) {
 		l.lastEnd = e
 	case *pb.Event_UserMessage:
 		delete(l.sent, k.UserMessage.RequestId)
+		if id := k.UserMessage.RequestId; id != "" {
+			if l.received == nil {
+				l.received = map[string]bool{}
+			}
+			l.received[id] = true
+		}
 	case *pb.Event_InputState:
 		st := k.InputState
 		if l.input == nil {
@@ -83,7 +91,11 @@ func (s *session) restoreRecent(l *logged) {
 			s.recent = append(s.recent, input{Text: in.text, RequestID: id, Origin: storeOrigin(in.origin)})
 		}
 	}
-	s.recent = append(s.recent, s.queue.Held...)
+	for _, in := range s.queue.Held {
+		if !in.received { // its record came already
+			s.recent = append(s.recent, in)
+		}
+	}
 	if n := len(s.recent) - recentInputs; n > 0 {
 		s.recent = s.recent[n:]
 	}
@@ -91,6 +103,23 @@ func (s *session) restoreRecent(l *logged) {
 		if l.input[in.RequestID].GetInputState().GetStatus() == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
 			s.unproven[in.RequestID] = true
 		}
+	}
+}
+
+// restoreReceived settles the held messages the model got before a
+// previous daemon stopped, or could log their outcome: the log has the
+// user message tied to each (held.go, received). They are not taken for
+// withdrawn in the terminal later.
+func (s *session) restoreReceived(l *logged) {
+	found := false
+	for i, in := range s.queue.Held {
+		if l.received[in.RequestID] {
+			s.queue.Held[i].received = true
+			found = true
+		}
+	}
+	if found {
+		s.settleReceived()
 	}
 }
 

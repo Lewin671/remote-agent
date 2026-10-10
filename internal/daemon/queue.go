@@ -32,6 +32,9 @@ type input struct {
 	Indexes []int32 `json:"indexes,omitempty"`
 	// matched: a user message in the CLI's record was tied to it.
 	matched bool
+	// received: a held message whose user message is logged, so the model
+	// got it, while its outcome is still to be logged (held.go).
+	received bool
 	// Inflight is set just before the message is written to the terminal:
 	// it holds the history.jsonl offset at that moment. After a crash, the
 	// history from there tells whether the message was submitted.

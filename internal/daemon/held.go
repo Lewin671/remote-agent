@@ -64,12 +64,38 @@ func (s *session) hold(in input) {
 	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
 }
 
-// received settles a held message once the model got it.
+// received settles a held message once the model got it: the user message
+// tied to requestID is logged. If its outcome cannot be logged now, the
+// message stays held and marked, and settleReceived tries again; the
+// transcript is not read a second time to bring it up.
 func (s *session) received(requestID string) {
 	if requestID == "" {
 		return
 	}
-	s.dropHeld(requestID, pb.InputStatus_INPUT_STATUS_SUBMITTED, "", nil)
+	s.mu.Lock()
+	i := slices.IndexFunc(s.queue.Held, func(in input) bool { return in.RequestID == requestID })
+	if i >= 0 {
+		s.queue.Held[i].received = true
+	}
+	s.mu.Unlock()
+	if i >= 0 {
+		s.settleReceived()
+	}
+}
+
+// settleReceived logs SUBMITTED for the held messages the model got.
+func (s *session) settleReceived() {
+	s.mu.Lock()
+	var ids []string
+	for _, in := range s.queue.Held {
+		if in.received {
+			ids = append(ids, in.RequestID)
+		}
+	}
+	s.mu.Unlock()
+	for _, id := range ids {
+		s.dropHeld(id, pb.InputStatus_INPUT_STATUS_SUBMITTED, "", nil)
+	}
 }
 
 // dropHeld logs the outcome of a held message and removes it from the held
@@ -91,8 +117,10 @@ func (s *session) dropHeld(requestID string, status pb.InputStatus, reason strin
 }
 
 // sweepHeld runs a while after a turn ends: a message still held while no
-// turn runs was removed in the terminal.
+// turn runs was removed in the terminal, unless the model got it and only
+// its outcome is still to be logged.
 func (s *session) sweepHeld() {
+	s.settleReceived()
 	s.mu.Lock()
 	if s.running || len(s.queue.Held) == 0 {
 		s.mu.Unlock()
@@ -100,7 +128,9 @@ func (s *session) sweepHeld() {
 	}
 	var ids []string
 	for _, in := range s.queue.Held {
-		ids = append(ids, in.RequestID)
+		if !in.received {
+			ids = append(ids, in.RequestID)
+		}
 	}
 	s.mu.Unlock()
 	for _, id := range ids {

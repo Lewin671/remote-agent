@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
 )
 
 // ccBox is Claude Code's input box holding text.
@@ -277,5 +278,80 @@ func TestHeldMessageIsReceivedAfterRestart(t *testing.T) {
 	}
 	if st := inputStates(h, "a"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED || len(h.s.queue.Held) != 0 {
 		t.Fatalf("states %v, held %+v", st, h.s.queue.Held)
+	}
+}
+
+// heldReceivedUnlogged is a Claude Code session whose CLI handed the held
+// message "a" to the model while only the user message could be logged:
+// the write of its SUBMITTED outcome failed. The log takes writes again.
+func heldReceivedUnlogged(t *testing.T) *harness {
+	h := claudeHarness(t, Config{})
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	h.s.mu.Lock()
+	h.s.queue.Held = []input{{RequestID: "a", Text: "first"}}
+	h.s.recent = append(h.s.recent, h.s.queue.Held...)
+	if err := h.s.queue.save(h.dir); err != nil {
+		t.Fatal(err)
+	}
+	h.s.mu.Unlock()
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "a", Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
+	msg := &pb.UserMessage{Text: "first"}
+	e := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: msg}}
+	annotateLogged(h.s, e)
+	h.s.emit(e)
+	h.s.log.Close() // the disk is full
+	h.s.received(msg.RequestId)
+	if st := inputStates(h, "a"); msg.RequestId != "a" || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_HELD_BY_CLI || len(h.s.queue.Held) != 1 {
+		t.Fatalf("request %q, states %v, held %+v", msg.RequestId, st, h.s.queue.Held)
+	}
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	return h
+}
+
+// A held message the model got stays delivered when that outcome could
+// not be logged at once: it is not taken for withdrawn in the terminal
+// when the turn ends.
+func TestReceivedHeldMessageIsNotSweptAsWithdrawn(t *testing.T) {
+	h := heldReceivedUnlogged(t)
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
+	h.s.sweepHeld()
+	if st := inputStates(h, "a"); st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED || len(h.s.queue.Held) != 0 {
+		t.Fatalf("states %v, held %+v", st, h.s.queue.Held)
+	}
+	if q, _ := loadQueue(h.dir); len(q.Held) != 0 {
+		t.Fatalf("still saved as held: %+v", q.Held)
+	}
+}
+
+// The outcome is logged as soon as the log takes the transcript's events
+// again, without waiting for the turn to end.
+func TestReceivedHeldMessageIsSettledWhenTheLogComesBack(t *testing.T) {
+	h := heldReceivedUnlogged(t)
+	h.writeRollout(`{"type":"assistant","uuid":"u1","message":{"role":"assistant","content":[{"type":"text","text":"on it"}]}}`)
+	h.s.bindRollout("", filepath.Join(h.dir, "rollout.jsonl"))
+	h.s.readRollout()
+	st := inputStates(h, "a")
+	if st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED || len(st) != 2 || len(h.s.queue.Held) != 0 {
+		t.Fatalf("states %v, held %+v", st, h.s.queue.Held)
+	}
+}
+
+// And after a restart: the log has the user message tied to the held
+// message, so it was delivered.
+func TestReceivedHeldMessageIsSettledAfterRestart(t *testing.T) {
+	h := heldReceivedUnlogged(t)
+	h.reopen()
+	st := inputStates(h, "a")
+	if st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED || len(h.s.queue.Held) != 0 || len(h.s.recent) != 0 {
+		t.Fatalf("states %v, held %+v, remembered %+v", st, h.s.queue.Held, h.s.recent)
+	}
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
+	h.s.sweepHeld()
+	if st := inputStates(h, "a"); len(st) != 2 {
+		t.Fatalf("settled again: %v", st)
 	}
 }
