@@ -24,7 +24,7 @@ import s422o8 from "../testdata/images/s422-o8.jpg?inline";
 import s444 from "../testdata/images/s444.jpg?inline";
 import { ImageError } from "./error";
 import { decodeJpegCoefficients, rotateJpegLossless, type JpegCoefficients } from "./jpeg";
-import { jpegSegments, readOrientation } from "./metadata";
+import { jpegSegments, readOrientation, stripMetadata } from "./metadata";
 import { exifOrientation, fixture, segment, withSegments } from "../testdata/images/helpers";
 
 function decode(b: Uint8Array): JpegCoefficients {
@@ -155,6 +155,23 @@ describe("rotateJpegLossless", () => {
     let rst = 0;
     for (let i = 0; i + 1 < out.length; i++) if (out[i] === 0xff && out[i + 1] >= 0xd0 && out[i + 1] <= 0xd7) rst++;
     expect(rst).toBe(11);
+  });
+
+  it("reads fill bytes before restart markers", () => {
+    const input = fixture(restart);
+    const scan = [...jpegSegments(input)].find((s) => s.marker === 0xda)!;
+    // In the scan's data 0xFF is followed by 0x00 or a restart marker.
+    const filled: number[] = [...input.subarray(0, scan.end)];
+    for (let i = scan.end; i < input.length; i++) {
+      if (input[i] === 0xff && input[i + 1] >= 0xd0 && input[i + 1] <= 0xd7) filled.push(0xff, 0xff);
+      filled.push(input[i]);
+    }
+    const bytes = Uint8Array.from(filled);
+    expect(bytes.length).toBe(input.length + 22);
+    expect(markers(bytes)).toEqual(markers(input));
+    expect(stripMetadata(bytes, "jpeg")).toEqual(bytes);
+    expect(decode(bytes).components.map((c) => c.coef)).toEqual(decode(input).components.map((c) => c.coef));
+    expect(rotateJpegLossless(bytes, 6)).toEqual(rotateJpegLossless(input, 6));
   });
 
   it("rotates 90 when only the unmoved edge is partial, like jpegtran", () => {

@@ -342,6 +342,34 @@ class JpegAfterScanTest {
     }
 
     @Test
+    fun fillBytesBeforeARestartMarkerAreScanData() {
+        // The web client's fixture: 4x3 MCUs with a restart marker between each two.
+        val fixture = "web/src/testdata/images/restart.jpg"
+        var dir: java.io.File? = java.io.File("").absoluteFile
+        while (dir != null && !java.io.File(dir, fixture).isFile) dir = dir.parentFile
+        val src = java.io.File(checkNotNull(dir) { "$fixture is not above ${java.io.File("").absolutePath}" }, fixture).readBytes()
+        val s = String(src, Charsets.ISO_8859_1)
+        val scan = s.indexOf("ÿÚ")
+        // In the scan's data 0xFF is followed by 0x00 or a restart marker.
+        val out = java.io.ByteArrayOutputStream()
+        out.write(src, 0, scan)
+        var restarts = 0
+        for (i in scan until src.size) {
+            if (src[i] == 0xFF.toByte() && i + 1 < src.size && (src[i + 1].toInt() and 0xff) in 0xD0..0xD7) {
+                out.write(0xFF)
+                out.write(0xFF)
+                restarts++
+            }
+            out.write(src[i].toInt())
+        }
+        assertEquals(11, restarts)
+        val filled = out.toByteArray()
+        val stripped = stripJpeg(filled)
+        assertArrayEquals(filled, stripped)
+        assertArrayEquals(pixels(src), pixels(stripped))
+    }
+
+    @Test
     fun whatFollowsTheEndIsDropped() {
         val src = jpeg(false) + "TRAILER-GPS".toByteArray()
         assertFalse(leaks(stripJpeg(src), "TRAILER-GPS"))

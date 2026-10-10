@@ -150,13 +150,17 @@ fun stripJpeg(b: ByteArray): ByteArray {
                 i = end
                 if (marker == 0xDA) {
                     // The scan's coded data runs to the next marker other than
-                    // a stuffed zero or a restart marker.
+                    // a stuffed zero or a restart marker. Fill bytes (more
+                    // 0xFF) may come before a restart marker too.
                     var j = i
                     while (j + 1 < b.size) {
                         if (b[j] == 0xFF.toByte()) {
-                            val n = b[j + 1].toInt() and 0xff
+                            var k = j
+                            while (k + 1 < b.size && b[k + 1] == 0xFF.toByte()) k++
+                            if (k + 1 >= b.size) bad()
+                            val n = b[k + 1].toInt() and 0xff
                             if (n != 0x00 && n !in 0xD0..0xD7) break
-                            j += 2
+                            j = k + 2
                         } else j++
                     }
                     if (j + 1 >= b.size) bad()

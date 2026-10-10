@@ -167,13 +167,17 @@ private func stripJpeg(_ b: Bytes) throws -> Bytes {
             i = end
             if marker == 0xDA {
                 // The scan's coded data runs to the next marker other than
-                // a stuffed zero or a restart marker.
+                // a stuffed zero or a restart marker. Fill bytes (more
+                // 0xFF) may come before a restart marker too.
                 var j = i
                 while j + 1 < b.count {
                     if b[j] == 0xFF {
-                        let n = Int(b[j + 1])
+                        var k = j
+                        while k + 1 < b.count, b[k + 1] == 0xFF { k += 1 }
+                        if k + 1 >= b.count { throw bad }
+                        let n = Int(b[k + 1])
                         if n != 0x00 && !(0xD0...0xD7).contains(n) { break }
-                        j += 2
+                        j = k + 2
                     } else {
                         j += 1
                     }

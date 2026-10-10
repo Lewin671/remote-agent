@@ -259,6 +259,27 @@ private let exifHeader = Data("Exif\0\0".utf8)
         #expect(try stripWebp(try fixture("tiny.webp")).count <= (try fixture("tiny.webp")).count)
     }
 
+    @Test func fillBytesBeforeARestartMarkerAreScanData() throws {
+        let src = try Data(contentsOf: repoRoot.appendingPathComponent("web/src/testdata/images/restart.jpg"))
+        let scan = try #require(sos(src, from: 0))
+        // The file has no 0xFF before its scan's data but in markers; in the data one is followed by 0x00 or a restart marker.
+        var filled = Data(src[..<scan])
+        var restarts = 0
+        for i in scan..<src.count {
+            if src[i] == 0xFF, i + 1 < src.count, (0xD0...0xD7).contains(src[i + 1]) {
+                filled.append(contentsOf: [0xFF, 0xFF])
+                restarts += 1
+            }
+            filled.append(src[i])
+        }
+        #expect(restarts == 11)
+        let out = try stripJpeg(filled)
+        #expect(out == filled)
+        #expect(Pictures.pixels(out) == Pictures.pixels(src))
+        // Fill bytes that run to the end of the file are no marker.
+        #expect(throws: UserError.self) { try stripJpeg(Data(filled[..<scan]) + Data(repeating: 0xFF, count: 16)) }
+    }
+
     @Test func filesCutShortAreRefusedNotReadPastTheirEnd() throws {
         // Kotlin's version gets array bounds exceptions for some of these; here every one is an error or a plain answer.
         let jpeg = exifJpeg(6)

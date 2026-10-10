@@ -112,13 +112,19 @@ export function* jpegSegments(b: Uint8Array): Generator<JpegSegment> {
   }
 }
 
-/** Finds the first real marker after entropy-coded data: not a stuffed 0xFF00, not RSTn. */
+/**
+ * Finds the first real marker after entropy-coded data: not a stuffed 0xFF00, not RSTn.
+ * Fill bytes (more 0xFF) may come before a restart marker too.
+ */
 function entropyEnd(b: Uint8Array, pos: number): number {
   for (let i = pos; i + 1 < b.length; i++) {
     if (b[i] !== 0xff) continue;
-    const next = b[i + 1];
+    let k = i;
+    while (k + 1 < b.length && b[k + 1] === 0xff) k++;
+    if (k + 1 >= b.length) break;
+    const next = b[k + 1];
     if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
-      i++;
+      i = k + 1;
       continue;
     }
     return i;

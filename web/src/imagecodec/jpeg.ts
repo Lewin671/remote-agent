@@ -148,6 +148,8 @@ class BitReader {
     this.fake = 0;
     this.atMarker = false;
     const b = this.b;
+    // Fill bytes may come before the marker.
+    while (this.pos + 1 < this.end && b[this.pos] === 0xff && b[this.pos + 1] === 0xff) this.pos++;
     if (this.pos + 1 >= this.end || b[this.pos] !== 0xff || b[this.pos + 1] !== 0xd0 + expected) {
       throw malformed("JPEG: missing restart marker");
     }
