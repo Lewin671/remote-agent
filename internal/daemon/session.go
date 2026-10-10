@@ -174,6 +174,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		s.parser.Replay(e)
 		seen.note(e)
 	})
+	s.dropSettled(&seen)
 	s.restorePause(&seen)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
@@ -555,13 +556,6 @@ func (s *session) markExited(detail string) {
 		}
 		delete(s.approvals, id)
 	}
-	// Messages still queued are not sent after a resume; each is
-	// settled here, never dropped without a word.
-	left := s.queue.Queue
-	s.queue.Queue = nil
-	if err := s.queue.save(s.dir); err != nil {
-		slog.Error("save input queue", "session", m.ID, "err", errClass(err))
-	}
 	s.mu.Unlock()
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", errClass(err))
@@ -570,19 +564,7 @@ func (s *session) markExited(detail string) {
 	// session's transcript again. It may have been written while no daemon
 	// ran, and it tells what became of a message that was written.
 	s.readRollout()
-	for _, in := range left {
-		switch {
-		case in.Inflight == nil:
-			s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-				RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED, Reason: "exited",
-			}}})
-		case s.loggedUserMessage(in):
-			s.emitInput(in.RequestID, pb.InputStatus_INPUT_STATUS_SUBMITTED)
-		default:
-			// Written, maybe submitted: as when confirming times out.
-			s.emitInput(in.RequestID, pb.InputStatus_INPUT_STATUS_UNCONFIRMED)
-		}
-	}
+	s.settleExited()
 	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
 	}}})
@@ -593,6 +575,36 @@ func (s *session) markExited(detail string) {
 	if s.stop != nil {
 		s.stop()
 	}
+}
+
+// settleExited settles the messages an exited session still has queued:
+// they are not sent after a resume, and each is settled, never dropped
+// without a word. Nothing else touches the queue of an exited session.
+func (s *session) settleExited() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.meta.Exited || len(s.queue.Queue) == 0 {
+		return
+	}
+	var outcomes []*pb.Event
+	for _, in := range s.queue.Queue {
+		st := &pb.InputState{RequestId: in.RequestID}
+		switch {
+		case in.Inflight == nil:
+			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_CANCELED, "exited"
+		case s.loggedUserMessage(in):
+			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+		default:
+			// Written, maybe submitted: as when confirming times out.
+			st.Status = pb.InputStatus_INPUT_STATUS_UNCONFIRMED
+		}
+		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+	}
+	if !s.logOutcomeLocked(outcomes...) {
+		return // they stay for the next start to settle
+	}
+	s.queue.Queue = nil
+	s.saveSettledLocked()
 }
 
 // Info summarizes the session.
@@ -730,6 +742,10 @@ func (s *session) cancelInput(requestID string) error {
 // cancelInputBy is cancelInput on behalf of origin.
 func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	s.mu.Lock()
+	if s.meta.Exited {
+		s.mu.Unlock()
+		return errExited
+	}
 	idx := -1
 	for i, in := range s.queue.Queue {
 		if in.RequestID == requestID {
@@ -746,19 +762,18 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 		s.mu.Unlock()
 		return errWriting
 	}
+	if !s.logOutcomeLocked(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
+	}}}, origin)) {
+		s.mu.Unlock()
+		return errors.New("could not record the cancellation; the message is still queued")
+	}
 	prev := s.queue.Queue
 	q := append([]input{}, prev[:idx]...)
 	s.queue.Queue = append(q, prev[idx+1:]...)
-	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue = prev
-		s.mu.Unlock()
-		return fmt.Errorf("save input queue: %w", err)
-	}
+	s.saveSettledLocked()
 	s.mu.Unlock()
 	s.d.uploads.releaseRefs(prev[idx].Images, s.meta.ID, requestID)
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
-	}}}, origin))
 	return nil
 }
 

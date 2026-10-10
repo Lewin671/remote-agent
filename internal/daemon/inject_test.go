@@ -142,9 +142,7 @@ func TestSendWithImagesStopsWhenOneIsNotTaken(t *testing.T) {
 	if w := h.term.written(); w[len(w)-1] != "\x15" {
 		t.Fatalf("input box not cleared: %q", w)
 	}
-	if len(h.s.queue.Queue) != 0 {
-		t.Fatal("message left queued")
-	}
+	eventually(t, "the message leaving the queue", func() bool { return h.s.info().QueuedInputs == 0 })
 }
 
 // When the input box holds something that is not ours, nothing is deleted

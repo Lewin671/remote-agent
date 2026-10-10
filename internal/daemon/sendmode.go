@@ -88,6 +88,10 @@ func pausedState(in input) *pb.Event {
 // resumeInputBy sends a paused message now, as a steer.
 func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	s.mu.Lock()
+	if s.meta.Exited {
+		s.mu.Unlock()
+		return errExited
+	}
 	idx := -1
 	for i, in := range s.queue.Queue {
 		if in.RequestID == requestID {

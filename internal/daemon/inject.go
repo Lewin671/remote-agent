@@ -173,10 +173,6 @@ func (s *session) send(text, requestID string) (int, error) {
 	return s.enqueue(text, requestID, nil, originLocal)
 }
 
-func (s *session) emitInput(requestID string, status pb.InputStatus) {
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status}}})
-}
-
 // injectLoop submits queued input one message at a time, in order.
 func (s *session) injectLoop(ctx context.Context) {
 	retry := time.NewTimer(time.Hour)
@@ -219,6 +215,11 @@ func (s *session) injectLoop(ctx context.Context) {
 				retry.Reset(s.d.cfg.RetryInterval)
 				goto wait
 			case finished:
+				if s.heads(next.RequestID) {
+					// Its outcome could not be logged: once more later.
+					retry.Reset(s.d.cfg.RetryInterval)
+					goto wait
+				}
 				continue
 			}
 			// The mark was made on the queue's copy. If the head is no
@@ -235,6 +236,10 @@ func (s *session) injectLoop(ctx context.Context) {
 			}
 			if !s.settle(ctx, next) {
 				return // ctx done; it stays inflight for the next daemon
+			}
+			if s.heads(next.RequestID) {
+				retry.Reset(s.d.cfg.RetryInterval)
+				goto wait
 			}
 			continue
 		}
@@ -527,7 +532,7 @@ func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int3
 	s.mu.Lock()
 	// The head may have been paused, or be a queue message whose turn
 	// started, while the injector looked at the screen.
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
+	if s.meta.Exited || len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
 		s.mu.Unlock()
 		return errHeadChanged
 	}
@@ -553,13 +558,20 @@ func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int3
 	return nil
 }
 
-// finishInput removes the head message and reports its outcome.
+// finishInput reports the head message's outcome and removes it.
 func (s *session) finishInput(in input, status pb.InputStatus, reason string) {
-	if !s.popInput(in.RequestID) {
-		return // the session exited and reported it already
+	outcome := &pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: status, Reason: reason}}}
+	if !s.popInput(in.RequestID, outcome) {
+		return // the session exited and reports it, or it stays for another try
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: status, Reason: reason}}})
+}
+
+// heads reports whether requestID is the head message.
+func (s *session) heads(requestID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == requestID
 }
 
 // settle waits for evidence that the written head message was submitted,
@@ -767,26 +779,57 @@ func (s *session) confirmLate(evs []*pb.Event) []*pb.Event {
 	return out
 }
 
-// popInput removes the head message if it is requestID and reports
-// whether it did. A message that was written is remembered a while, to
-// match the CLI's record of it.
-func (s *session) popInput(requestID string) bool {
+// popInput logs the outcome of the head message, if it is requestID, and
+// removes it; it reports whether it did. A message that was written is
+// remembered a while, to match the CLI's record of it.
+func (s *session) popInput(requestID string, outcome *pb.Event) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+	if s.meta.Exited || len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID {
+		return false
+	}
+	if !s.logOutcomeLocked(outcome) {
 		return false
 	}
 	if in := s.queue.Queue[0]; in.Inflight != nil && !in.matched {
 		s.rememberLocked(in)
 	}
-	previous := s.queue.Queue
 	s.queue.Queue = s.queue.Queue[1:]
-	if err := s.queue.save(s.dir); err != nil {
-		s.queue.Queue = previous
-		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+	s.saveSettledLocked()
+	return true
+}
+
+// A message leaves the queue or the held list in two steps: its outcome is
+// logged, then queue.json is saved without it. In that order, a daemon
+// that stops in between comes back to a message whose outcome is logged
+// and drops it (dropSettled); the other way round, the message would be
+// gone with clients forever shown it waiting. Both steps happen under one
+// hold of s.mu.
+
+// logOutcomeLocked logs the outcomes of messages about to be removed.
+// Nothing is removed if it fails. Callers hold s.mu.
+func (s *session) logOutcomeLocked(outcomes ...*pb.Event) bool {
+	now := timestamppb.Now()
+	for _, e := range outcomes {
+		if e.Time == nil {
+			e.Time = now
+		}
+	}
+	// An InputState changes no derived state: nothing to observe.
+	if err := s.log.Append(s.meta.ID, outcomes, "", 0); err != nil {
+		slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
 		return false
 	}
 	return true
+}
+
+// saveSettledLocked saves the queue once messages whose outcomes are
+// logged were removed. If that fails they stay removed: the log has the
+// last word, and the next start puts the file right. Callers hold s.mu.
+func (s *session) saveSettledLocked() {
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+	}
 }
 
 // markInflight records, before the head message's text and Enter are
@@ -796,7 +839,7 @@ func (s *session) markInflight(offset int64, requestID string) error {
 	s.mu.Lock()
 	// The head may have been paused, or be a queue message whose turn
 	// started, while the injector looked at the screen.
-	if len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
+	if s.meta.Exited || len(s.queue.Queue) == 0 || s.queue.Queue[0].RequestID != requestID || s.holdsLocked(s.queue.Queue[0]) {
 		s.mu.Unlock()
 		return errHeadChanged
 	}

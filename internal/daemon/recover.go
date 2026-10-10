@@ -33,6 +33,32 @@ func (l *logged) note(e *pb.Event) {
 	}
 }
 
+// dropSettled removes the messages whose outcome is logged: a previous
+// daemon stopped after logging it and before saving the queue without
+// them (logOutcomeLocked).
+func (s *session) dropSettled(l *logged) {
+	settled := func(in input) bool {
+		last := l.input[in.RequestID]
+		if last == nil {
+			return false
+		}
+		switch last.GetInputState().Status {
+		case pb.InputStatus_INPUT_STATUS_QUEUED, pb.InputStatus_INPUT_STATUS_HELD_BY_CLI:
+			return false
+		}
+		return true
+	}
+	n := len(s.queue.Queue) + len(s.queue.Held)
+	s.queue.Queue = slices.DeleteFunc(s.queue.Queue, settled)
+	s.queue.Held = slices.DeleteFunc(s.queue.Held, settled)
+	if len(s.queue.Queue)+len(s.queue.Held) == n {
+		return
+	}
+	if err := s.queue.save(s.dir); err != nil {
+		slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
+	}
+}
+
 // restorePause finishes what afterTurn was doing when a previous daemon
 // stopped. If the last turn was interrupted, a message that waits unpaused
 // with nothing logged for it since was neither accepted nor resumed after

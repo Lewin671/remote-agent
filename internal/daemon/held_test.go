@@ -30,7 +30,7 @@ func heldPair(t *testing.T) (h *harness, clears *int, stuck *bool) {
 	h.s.mu.Unlock()
 	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
 	for _, id := range []string{"a", "b"} {
-		h.s.emitInput(id, pb.InputStatus_INPUT_STATUS_HELD_BY_CLI)
+		h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: id, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
 	}
 	clears, stuck = new(int), new(bool)
 	box := ""

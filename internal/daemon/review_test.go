@@ -175,7 +175,7 @@ func TestOriginMatchesOnce(t *testing.T) {
 	if first.Origin.GetDeviceId() != "dev" {
 		t.Fatalf("first: %v", first.Origin)
 	}
-	h.s.popInput("r1")
+	h.s.finishInput(in, pb.InputStatus_INPUT_STATUS_SUBMITTED, "")
 	second := msg()
 	annotateLogged(h.s, second)
 	if second.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {

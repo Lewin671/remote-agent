@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/codex"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
 )
 
 // Accepted input and request IDs survive a daemon restart.
@@ -505,5 +506,124 @@ func TestExitSettlesQueuedInput(t *testing.T) {
 	}
 	if n := h.s.info().QueuedInputs; n != 0 {
 		t.Errorf("still queued: %d", n)
+	}
+}
+
+// A message leaves the queue only once its outcome is logged: when the
+// log cannot be written the message stays, and is settled later instead of
+// being gone with clients still shown it waiting.
+func TestOutcomeIsLoggedBeforeTheMessageLeavesTheQueue(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: 50 * time.Millisecond})
+	h.term.setScreen(draftScreen)
+	for _, id := range []string{"r1", "r2"} {
+		if _, err := h.s.send("msg "+id, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	queued := func() []string {
+		q, err := loadQueue(h.dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []string
+		for _, in := range q.Queue {
+			ids = append(ids, in.RequestID)
+		}
+		return ids
+	}
+	h.s.log.Close() // the disk is full
+	h.s.finishInput(h.s.queue.Queue[0], pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "")
+	if err := h.s.cancelInput("r2"); err == nil {
+		t.Fatal("cancel reported done though it could not be recorded")
+	}
+	if ids := queued(); len(ids) != 2 || len(h.s.queue.Queue) != 2 {
+		t.Fatalf("left the queue without an outcome: %v", ids)
+	}
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	h.s.finishInput(h.s.queue.Queue[0], pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "")
+	if err := h.s.cancelInput("r2"); err != nil {
+		t.Fatal(err)
+	}
+	if ids := queued(); len(ids) != 0 {
+		t.Fatalf("still queued: %v", ids)
+	}
+	if inputStatus(h, "r1") != pb.InputStatus_INPUT_STATUS_UNCONFIRMED || inputStatus(h, "r2") != pb.InputStatus_INPUT_STATUS_CANCELED {
+		t.Fatal("outcomes not logged")
+	}
+}
+
+// The daemon stopped after logging a message's outcome and before saving
+// the queue without it: the next one drops the message instead of settling
+// it a second time.
+func TestRestartDropsMessagesWhoseOutcomeIsLogged(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	for _, id := range []string{"r1", "r2", "r3"} {
+		if _, err := h.s.send("msg "+id, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.s.mu.Lock()
+	h.s.queue.Held = []input{{Text: "held", RequestID: "h1"}, {Text: "held too", RequestID: "h2"}}
+	h.s.queue.save(h.dir)
+	h.s.mu.Unlock()
+	before, _ := os.ReadFile(filepath.Join(h.dir, "queue.json"))
+	off := int64(0)
+	h.s.queue.Queue[0].Inflight = &off
+	h.s.finishInput(h.s.queue.Queue[0], pb.InputStatus_INPUT_STATUS_SUBMITTED, "")
+	if err := h.s.cancelInput("r3"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.received("h1")
+	n := len(h.events())
+	// As if none of the three saves had happened.
+	if err := os.WriteFile(filepath.Join(h.dir, "queue.json"), before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.reopen()
+	if ids := queueIDs(h); len(ids) != 1 || ids[0] != "r2" {
+		t.Fatalf("queue after restart %v", ids)
+	}
+	if held := h.s.queue.Held; len(held) != 1 || held[0].RequestID != "h2" {
+		t.Fatalf("held after restart %+v", held)
+	}
+	if len(h.events()) != n {
+		t.Fatal("settled again")
+	}
+	q, _ := loadQueue(h.dir)
+	if len(q.Queue) != 1 || len(q.Held) != 1 {
+		t.Fatalf("not saved: %+v", q)
+	}
+}
+
+// A session that exited while the log could not be written keeps its
+// queued messages until their outcomes can be logged; they are never sent.
+func TestExitedQueueIsSettledOnTheNextStart(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.term.setScreen(draftScreen)
+	if _, err := h.s.send("never written", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.log.Close()
+	h.s.markExited("stopped")
+	if q, _ := loadQueue(h.dir); len(q.Queue) != 1 {
+		t.Fatalf("dropped without a word: %+v", q)
+	}
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	h.reopen()
+	h.s.settleExited() // as restoring an exited session does
+	if st := inputStates(h, "r1"); st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_CANCELED || st[len(st)-1].Reason != "exited" {
+		t.Fatalf("states %v", st)
+	}
+	if q, _ := loadQueue(h.dir); len(q.Queue) != 0 {
+		t.Fatalf("still queued: %+v", q)
 	}
 }

@@ -278,6 +278,9 @@ func (d *Daemon) restore() error {
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
 		} else if m.Exited {
+			// A daemon that stopped while the session exited may have left
+			// messages queued.
+			s.settleExited()
 			// Read once to restore it; nothing reads an ended session's
 			// events again unless a client or the server asks. Letting go
 			// now keeps a start from holding every session at once.
@@ -681,6 +684,8 @@ func (d *Daemon) resume(id string) (*session, error) {
 	if d.cfg.Tmux.HasSession(m.Tmux) {
 		return nil, errRunning
 	}
+	// Nothing queued before it exited is sent now.
+	s.settleExited()
 	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}

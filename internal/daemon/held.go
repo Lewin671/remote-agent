@@ -43,7 +43,7 @@ func (s *session) heldByCLI(in input) bool {
 // heldByCLI looked, and it settles only messages it finds held.
 func (s *session) hold(in input) {
 	s.mu.Lock()
-	ok := len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == in.RequestID && !s.queue.Queue[0].matched
+	ok := !s.meta.Exited && len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == in.RequestID && !s.queue.Queue[0].matched
 	if ok {
 		prevQueue, prevHeld := s.queue.Queue, s.queue.Held
 		s.rememberLocked(s.queue.Queue[0])
@@ -66,29 +66,28 @@ func (s *session) hold(in input) {
 
 // received settles a held message once the model got it.
 func (s *session) received(requestID string) {
-	if requestID == "" || !s.dropHeld(requestID) {
+	if requestID == "" {
 		return
 	}
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	s.dropHeld(requestID, pb.InputStatus_INPUT_STATUS_SUBMITTED, "", nil)
 }
 
-// dropHeld removes a message from the held list.
-func (s *session) dropHeld(requestID string) bool {
+// dropHeld logs the outcome of a held message and removes it from the held
+// list (see logOutcomeLocked); it reports whether it did.
+func (s *session) dropHeld(requestID string, status pb.InputStatus, reason string, origin *pb.Origin) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for i, in := range s.queue.Held {
-		if in.RequestID == requestID {
-			prev := s.queue.Held
-			s.queue.Held = append(s.queue.Held[:i:i], s.queue.Held[i+1:]...)
-			if err := s.queue.save(s.dir); err != nil {
-				s.queue.Held = prev
-				slog.Error("save input queue", "session", s.meta.ID, "err", errClass(err))
-				return false
-			}
-			return true
-		}
+	i := slices.IndexFunc(s.queue.Held, func(in input) bool { return in.RequestID == requestID })
+	if i < 0 {
+		return false
 	}
-	return false
+	outcome := withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: requestID, Status: status, Reason: reason}}}, origin)
+	if !s.logOutcomeLocked(outcome) {
+		return false
+	}
+	s.queue.Held = append(s.queue.Held[:i:i], s.queue.Held[i+1:]...)
+	s.saveSettledLocked()
+	return true
 }
 
 // sweepHeld runs a while after a turn ends: a message still held while no
@@ -105,9 +104,7 @@ func (s *session) sweepHeld() {
 	}
 	s.mu.Unlock()
 	for _, id := range ids {
-		if s.dropHeld(id) {
-			s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: id, Status: pb.InputStatus_INPUT_STATUS_CANCELED, Reason: "terminal"}}})
-		}
+		s.dropHeld(id, pb.InputStatus_INPUT_STATUS_CANCELED, "terminal", nil)
 	}
 }
 
@@ -194,12 +191,13 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 		}
 		return errHeldChanged
 	}
-	if !s.dropHeld(requestID) {
+	if !s.dropHeld(requestID, pb.InputStatus_INPUT_STATUS_CANCELED, "", origin) {
+		// The others stay paused, for the user to send.
+		for _, in := range others {
+			s.emit(pausedState(in))
+		}
 		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
 	}
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
-		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
-	}}}, origin))
 	s.releaseRequeued(others)
 	return nil
 }
