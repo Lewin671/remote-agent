@@ -153,6 +153,19 @@ final class SessionStore {
         outbox[sid, default: []].append(o)
     }
 
+    private var keeping = Set<String>()
+
+    /// A message's images are being kept on disk before it is sent
+    /// (`SessionImages.send`). Until that ends they are still in the
+    /// session's draft, so nothing else is sent from its box. The lock is
+    /// the session's, not the box's: the box goes away and comes back with
+    /// the 聊天 / 终端 tabs while the images are still being kept.
+    func isKeeping(_ sid: String) -> Bool { keeping.contains(sid) }
+
+    func setKeeping(_ sid: String, _ on: Bool) {
+        if on { keeping.insert(sid) } else { keeping.remove(sid) }
+    }
+
     /// Sends, or sends again, a message under its own request ID.
     @discardableResult
     func deliver(_ commands: any SessionCommands, sid: String, _ o: Outgoing) -> Task<Void, Never> {

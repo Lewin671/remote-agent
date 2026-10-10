@@ -26,6 +26,31 @@ class SendImagesTest {
     }
 
     @Test
+    fun aSecondSendWhileTheImagesAreBeingKeptSendsNothing() {
+        val sid = "s-keep-twice"
+        val disk = java.util.concurrent.CountDownLatch(1)
+        val stored = java.util.concurrent.atomic.AtomicInteger()
+        kotlinx.coroutines.runBlocking {
+            val done = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+            // Keeping fails in the end, so that nothing here has to reach a computer.
+            fun send(onKept: (Result<Unit>) -> Unit) = Outbox.sendWithImages(
+                this, remote = throwingRemote(), sid = sid, text = "看图",
+                imageIds = listOf("i1"), images = listOf(PendingImage("a", null)), original = false,
+                store = { _, _, _ -> stored.incrementAndGet(); disk.await(); throw java.io.IOException("disk full") },
+                onKept = onKept,
+            )
+            send { done.complete(it) }
+            assertTrue(Outbox.keeping(sid))
+            // The message box as it is composed again after a look at the terminal: the lock is not its own.
+            send { throw AssertionError("a second message was kept") }
+            disk.countDown()
+            assertTrue(done.await().isFailure)
+        }
+        assertEquals(1, stored.get())
+        assertFalse(Outbox.keeping(sid))
+    }
+
+    @Test
     fun theLatestStateOfEachMessageComesFromTheEvents() {
         fun input(seq: Long, id: String, st: InputStatus) = Event.newBuilder().setSeq(seq).setInputState(InputState.newBuilder().setRequestId(id).setStatus(st)).build()
         val m = inputStates(listOf(input(1, "a", InputStatus.INPUT_STATUS_QUEUED), input(2, "a", InputStatus.INPUT_STATUS_SUBMITTED), input(3, "b", InputStatus.INPUT_STATUS_QUEUED)))

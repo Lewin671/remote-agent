@@ -93,8 +93,6 @@ struct SessionComposer: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var interrupt = ActionRunner()
-    /// A message's images are being kept before it is sent.
-    @State private var keeping = false
     @State private var notice = ""
 
     private var images: SessionImageContext {
@@ -117,7 +115,6 @@ struct SessionComposer: View {
         if attached && !SessionImages.ready(images) { return }
         SessionHaptics.tap()
         let taken = SessionImages.send(images, text: message, mode: mode) { kept in
-            keeping = false
             switch kept {
             case .success:
                 if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
@@ -125,10 +122,8 @@ struct SessionComposer: View {
                 notice = "没能保存待发的图，这条没有发出：\(errorText(error))"
             }
         }
-        if taken {
-            keeping = true
-            return
-        }
+        // The message's images are being kept before it is sent (`SessionStore.isKeeping`).
+        if taken { return }
         notice = ""
         store.setDraft(sid, "")
         store.send(context.remote, sid: sid, text: message, mode: mode)
@@ -151,7 +146,7 @@ struct SessionComposer: View {
                 text: Binding(get: { store.draft(sid) }, set: { store.setDraft(sid, $0) }),
                 placeholder: composerPlaceholder(derived),
                 canSend: composerCanSend(
-                    text: text, online: online, keeping: keeping, hasImages: attached, imagesReady: SessionImages.ready(images),
+                    text: text, online: online, keeping: store.isKeeping(sid), hasImages: attached, imagesReady: SessionImages.ready(images),
                     refused: refused),
                 onSend: { send(.steer) },
                 onPlus: { SessionImages.plusTapped(images) },

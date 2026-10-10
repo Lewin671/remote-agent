@@ -28,6 +28,8 @@
 //                        the text alone; returns true once it has taken the
 //                        message over, and calls `done` with the outcome of
 //                        keeping the images, for the box to clear the text.
+//                        Meanwhile `SessionStore.isKeeping` is true and a
+//                        second send does nothing.
 //   5. `OutgoingThumbs`  the thumbnails over a message that is on its way.
 //   6. `putBack`         a message that was not submitted goes back into
 //                        the box with its images; false when they do not
@@ -71,10 +73,23 @@ enum SessionImages {
     }
 
     /// 4. Sends `text` with the draft's images, or returns false when the draft has none.
+    /// `commands` and `keep` stand in for the computer and the disk in tests.
     static func send(
-        _ context: SessionImageContext, text: String, mode: PBSendMode, done: @escaping @MainActor (Result<Void, Error>) -> Void
+        _ context: SessionImageContext, text: String, mode: PBSendMode, commands: (any SessionCommands)? = nil,
+        keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil,
+        done: @escaping @MainActor (Result<Void, Error>) -> Void
     ) -> Bool {
-        center(context).send(sid: context.sessionId, machineId: context.machineId, store: context.store, text: text, mode: mode, done: done)
+        let (store, sid) = (context.store, context.sessionId)
+        // The images of the message being kept are still in the draft: another send would take them a second time.
+        if store.isKeeping(sid) { return true }
+        let taken = center(context).send(
+            sid: sid, machineId: context.machineId, store: store, text: text, mode: mode, commands: commands, keep: keep
+        ) { kept in
+            store.setKeeping(sid, false)
+            done(kept)
+        }
+        if taken { store.setKeeping(sid, true) }
+        return taken
     }
 
     /// 6. Puts a message's images back into the draft; false when they do not fit, and then nothing moved.

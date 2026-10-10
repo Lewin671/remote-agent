@@ -100,6 +100,33 @@ import Testing
         #expect(remote.events(sid).followers == 0)
     }
 
+    @Test func aSecondSendWhileTheImagesAreBeingKeptSendsNothing() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a")])
+        // The message box as it is drawn, and as it is drawn again after a look at the terminal: each is
+        // a new view, and what they share is the session's store.
+        func box() -> SessionImageContext {
+            SessionImageContext(sessionId: sid, machineId: "mac", remote: remote, store: store, blocked: nil, limit: 4)
+        }
+        let disk = DispatchSemaphore(value: 0)
+        var outcomes = 0
+        #expect(SessionImages.send(box(), text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in disk.wait() }) { _ in outcomes += 1 })
+        #expect(store.isKeeping(sid))
+        // Taken over, and nothing done: the first message has these images.
+        #expect(SessionImages.send(box(), text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(store.outgoing(sid).isEmpty && outcomes == 0)
+        disk.signal()
+        await eventually("the first message is delivered") { store.outgoing(sid).first?.state == .sent }
+        #expect(!store.isKeeping(sid) && outcomes == 1)
+        #expect(store.outgoing(sid).count == 1 && computer.sent.count == 1 && draft.images.isEmpty)
+        // The lock went with the message: the next one is sent.
+        draft.append([ready("b")])
+        #expect(SessionImages.send(box(), text: "再看", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
+        await eventually("the second message is delivered") { computer.sent.count == 2 }
+    }
+
     @Test func aMessageGoesWithItsImagesOnceTheyAreKept() async throws {
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))

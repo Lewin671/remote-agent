@@ -541,7 +541,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
     val online = state.conn == ConnState.ONLINE
     val running = status == Status.RUNNING || d.running
     val images = ImageDrafts.forSession(s.id)
-    var keeping by remember { mutableStateOf(false) }
+    val keeping = Outbox.keeping(s.id)
     val machine = state.machines[s.machineId]
     val maxImg = maxImages(machine)
     val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
@@ -561,9 +561,7 @@ internal fun Composer(state: RemoteState, s: SessionView, d: io.github.lewin671.
         }
         // Kept on disk with the message until the CLI has it; sent
         // only once that worked, and only then out of the draft.
-        keeping = true
         Outbox.sendWithImages(RaApp.instance.scope, remote, s.id, msg, images.ids(s.machineId), picked, images.original, mode) { kept ->
-            keeping = false
             kept.onSuccess {
                 if (text.trim() == msg) text = ""
                 images.detach(picked)

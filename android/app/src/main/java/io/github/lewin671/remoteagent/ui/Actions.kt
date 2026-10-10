@@ -229,6 +229,8 @@ object Outbox {
      * the main thread; only once that worked is the message sent and
      * [onKept] told true, for the caller to take the images out of the draft.
      * If keeping them failed nothing is sent and the draft stays as it is.
+     * Meanwhile [keeping] is true and a second send does nothing: the
+     * images are still in the draft and would be taken a second time.
      */
     fun sendWithImages(
         scope: CoroutineScope, remote: Remote, sid: String, text: String,
@@ -237,9 +239,12 @@ object Outbox {
         store: (String, Outgoing, Boolean) -> Unit = { s, o, orig -> records.save(s, o, orig) },
         onKept: (Result<Unit>) -> Unit,
     ) {
+        if (keeping(sid)) return
+        keepingNow[sid] = true
         val o = Outgoing(newRequestId(), text, imageIds, images, original, mode)
         scope.launch {
             val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { store(sid, o, original) } }
+            keepingNow.remove(sid)
             onKept(kept)
             if (kept.isFailure) return@launch
             of(sid) += o
@@ -247,6 +252,15 @@ object Outbox {
             deliver(scope, remote, sid, o)
         }
     }
+
+    private val keepingNow = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
+
+    /**
+     * A message's images are being kept before it is sent. The lock is the
+     * session's, not the message box's: the box goes away and comes back
+     * with the 聊天 / 终端 tabs while the images are still being kept.
+     */
+    fun keeping(sid: String): Boolean = keepingNow[sid] == true
 
     private val watching = HashMap<String, kotlinx.coroutines.Job>()
 
@@ -341,6 +355,7 @@ object Outbox {
 
     fun clear() {
         bySession.clear()
+        keepingNow.clear()
         watching.values.forEach { it.cancel() }
         watching.clear()
         prompts.clear()
