@@ -68,6 +68,38 @@ import Testing
         #expect(draft.images.map(\.id) == ["a"])
     }
 
+    /// Logging out does not wait for images that are being written; the message they were for is not sent after it.
+    @Test func aMessageStillBeingKeptWhenTheAccountIsLeftIsNotSent() async {
+        final class Gate: @unchecked Sendable {
+            private let lock = NSLock()
+            private var reached = false
+            let open = DispatchSemaphore(value: 0)
+            var entered: Bool {
+                get { lock.withLock { reached } }
+                set { lock.withLock { reached = newValue } }
+            }
+        }
+        let gate = Gate()
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a")])
+        async let kept = send(c, "看图") { _, _, _ in
+            gate.entered = true
+            gate.open.wait()
+        }
+        await eventually("the images are being written") { gate.entered }
+        ImageCenter.remove(remote)
+        gate.open.signal()
+        guard case .failure(let error)? = await kept else {
+            Issue.record("the message was taken as sent")
+            return
+        }
+        #expect(errorText(error) == "已退出账户")
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(computer.sent.isEmpty && store.outgoing(sid).isEmpty)
+        #expect(remote.events(sid).followers == 0)
+    }
+
     @Test func aMessageGoesWithItsImagesOnceTheyAreKept() async throws {
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))

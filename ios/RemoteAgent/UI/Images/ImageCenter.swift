@@ -99,6 +99,8 @@ final class ImageCenter {
     @ObservationIgnored private var kept: [String: [Outgoing]] = [:]
     @ObservationIgnored private var restored = Set<String>()
     @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
+    /// The account was left: what was on its way when that happened must not go on for it.
+    @ObservationIgnored private var closed = false
     /// Display copies decrypted while the viewer is open, so paging back does not fetch again.
     @ObservationIgnored let viewed = AccountCache<ViewedImage>(limit: 6)
 
@@ -138,6 +140,7 @@ final class ImageCenter {
     }
 
     private func close() {
+        closed = true
         for draft in drafts.values { for img in draft.images { img.job?.cancel() } }
         for task in watchers.values { task.cancel() }
         watchers.removeAll()
@@ -170,7 +173,7 @@ final class ImageCenter {
         let id = img.id
         Task {
             let made = await Task.detached { thumbnailImage(bytes, maxLong: 256).map { UIImage(cgImage: $0) } }.value
-            if let made { thumbs[id] = made }
+            if let made, !closed { thumbs[id] = made }
         }
     }
 
@@ -306,6 +309,12 @@ final class ImageCenter {
             }.value
             if case .failure = kept {
                 done(kept)
+                return
+            }
+            // Logged out while the images were being written: the message is not the next account's to
+            // send, and logging out has taken what was written.
+            if closed {
+                done(.failure(UserError("已退出账户")))
                 return
             }
             // The message has them now; images picked meanwhile stay in the box.
