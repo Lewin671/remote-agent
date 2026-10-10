@@ -176,7 +176,7 @@ final class AppModel {
     @ObservationIgnored private var path = NetworkPath.unknown
     @ObservationIgnored private var watching = false
     @ObservationIgnored private var terminals: [UUID: TermConn] = [:]
-    /// The revision of this device's metadata and connection a description was last sent for.
+    /// The revision of this device's metadata a description was last sent for on this connection.
     @ObservationIgnored private var described: String?
     @ObservationIgnored private let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "app")
 
@@ -349,10 +349,15 @@ final class AppModel {
     /// once it is listed and online, and again only when what is stored
     /// differs. As MainActivity.kt does it.
     private func describeSelf(_ s: RemoteState) {
-        guard !isDemo, let engine, s.conn == .online, let me = s.devices[engine.account.deviceId] else { return }
+        guard s.conn == .online else {
+            // A try made on the connection that is gone may not have arrived: the next one tries again.
+            described = nil
+            return
+        }
+        guard !isDemo, let engine, let me = s.devices[engine.account.deviceId] else { return }
         let description = parts.deviceDescription()
         guard me.meta?.platform != "ios" || me.meta?.description_p != description else { return }
-        // One try per revision: a failure waits for the next change instead of spinning.
+        // One try per revision and connection: a failure waits for the next change instead of spinning.
         let key = "\(me.metaRev)"
         guard described != key else { return }
         described = key

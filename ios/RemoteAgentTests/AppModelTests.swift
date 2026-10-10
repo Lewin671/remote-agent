@@ -39,7 +39,17 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     func reconnectNow() { note("reconnect") }
     func retryLogin() { note("retryLogin") }
     func close() { note("close") }
-    func describeSelf(platform: String, description: String) async throws { note("describe \(platform) \(description)") }
+    /// What `describeSelf` throws, for a description that does not arrive.
+    var describeFailure: (any Error)? {
+        get { lock.withLock { failure } }
+        set { lock.withLock { failure = newValue } }
+    }
+    private var failure: (any Error)?
+
+    func describeSelf(platform: String, description: String) async throws {
+        note("describe \(platform) \(description)")
+        if let describeFailure { throw describeFailure }
+    }
 }
 
 /// A network that says only what the test says.
@@ -364,5 +374,31 @@ final class Harness {
         h.model.scenePhase(.active)
         try await Task.sleep(nanoseconds: 100_000_000)
         #expect(tries.withLock { $0 } == 2)
+    }
+
+    @Test func aDescriptionThatDidNotArriveIsSentAgainOnTheNextConnection() async throws {
+        defer { h.cleanUp() }
+        try await h.ready()
+        h.engine.describeFailure = URLError(.networkConnectionLost)
+        var s = RemoteState()
+        s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
+        s.conn = .online
+        s.link = .online
+        await h.engine.remote.showForTest(state: s)
+        await eventually("tried") { h.engine.calls.contains { $0.hasPrefix("describe") } }
+        // Still the same connection and the same revision: the failure is not tried over and over.
+        s.machines["m1"] = MachineView(id: "m1", online: true, lastSeenMs: 1)
+        await h.engine.remote.showForTest(state: s)
+        await eventually("state") { h.model.state == s }
+        #expect(h.engine.calls.filter { $0.hasPrefix("describe") }.count == 1)
+        // The connection drops and comes back. The server stored nothing, so the revision is the same.
+        var off = s
+        off.conn = .offline
+        off.link = .waiting
+        await h.engine.remote.showForTest(state: off)
+        await eventually("offline") { h.model.state == off }
+        h.engine.describeFailure = nil
+        await h.engine.remote.showForTest(state: s)
+        await eventually("tried again") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
     }
 }
