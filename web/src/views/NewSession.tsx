@@ -408,9 +408,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   useEffect(() => {
     if (begun === draft && !unread && !held) hold();
     // What the draft's CLI inherits was left open when the draft began:
-    // once known, it is held like the rest. What a pending request was
-    // sent with stays as it was sent.
-    else if (held && held !== sentWith?.latched && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
+    // once known, it is held like the rest. A pending request names its
+    // own CLI's settings, so this is only ever another CLI's, picked since.
+    else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
   });
   // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
