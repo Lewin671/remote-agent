@@ -299,8 +299,9 @@ func (p *pusher) send(deviceID, sub string, payload []byte) {
 	res.Body.Close()
 	switch {
 	case res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone:
-		// The browser dropped the subscription.
-		_, _ = p.s.store.db.Exec(`DELETE FROM push_subs WHERE device_id = ?`, deviceID)
+		// The browser dropped the subscription: this one, not one the
+		// device has registered since the delivery began.
+		_, _ = p.s.store.db.Exec(`DELETE FROM push_subs WHERE device_id = ? AND subscription = ?`, deviceID, sub)
 	case res.StatusCode >= 300:
 		slog.Warn("web push refused", "device", deviceID, "status", res.StatusCode)
 	}
