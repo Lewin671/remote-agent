@@ -123,7 +123,7 @@ fun outsideScope(s: SessionView, scope: HomeScope): Boolean = scope is HomeScope
 
 fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault()): HomeTimeline {
     val all = state.sessions.values
-    val waiting = all.filter { needsAttention(it, state.machines[it.machineId]) }.sortedWith(attentionOrder(state))
+    val waiting = all.filter(::needsAttention).sortedWith(attentionOrder)
     val waitingIds = waiting.mapTo(HashSet()) { it.id }
     val hidden = state.prefs?.hidden.orEmpty()
     val running = all.filter { !exited(it) && it.id !in waitingIds && !outsideScope(it, scope) }.sortedWith(liveOrder)

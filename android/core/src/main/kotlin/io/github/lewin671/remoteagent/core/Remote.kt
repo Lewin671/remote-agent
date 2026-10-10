@@ -46,6 +46,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -251,6 +252,8 @@ const val COMMAND_TTL_MS = 60_000L
 /** How often stream connections ping; the server pings at the same pace. */
 private const val STREAM_PING_SECONDS = 20L
 private const val STREAM_OPEN_MS = 15_000L
+private const val STREAM_FRAME_BYTES = 2 * 1024 * 1024
+private const val STREAM_QUEUE_BYTES = 8L * 1024 * 1024
 
 /** The WebSocket close code the server refuses a hello with. */
 private const val POLICY_VIOLATION = 1008
@@ -572,7 +575,8 @@ class Remote(
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
-        val frames = Channel<ByteArray>(frameQueue)
+        val queuedBytes = java.util.concurrent.atomic.AtomicLong()
+        val frames = Channel<ByteArray>(frameQueue, onUndeliveredElement = { queuedBytes.addAndGet(-it.size.toLong()) })
         val hello = PeerFrame.newBuilder().setHello(StreamHello.newBuilder().setToken(token)).build().toByteArray()
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
@@ -584,9 +588,21 @@ class Remote(
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                    if (frames.trySend(bytes.toByteArray()).isFailure) {
+                    if (bytes.size > STREAM_FRAME_BYTES) {
                         webSocket.cancel()
-                        frames.close()
+                        frames.cancel()
+                        return
+                    }
+                    if (queuedBytes.addAndGet(bytes.size.toLong()) > STREAM_QUEUE_BYTES) {
+                        queuedBytes.addAndGet(-bytes.size.toLong())
+                        webSocket.cancel()
+                        frames.cancel()
+                        return
+                    }
+                    if (frames.trySend(bytes.toByteArray()).isFailure) {
+                        queuedBytes.addAndGet(-bytes.size.toLong())
+                        webSocket.cancel()
+                        frames.cancel()
                     }
                 }
 
@@ -620,14 +636,19 @@ class Remote(
         scope.launch {
             try {
                 for (b in frames) {
-                    if (ws !== socket || gen != generation) break
-                    val f = ServerFrame.parseFrom(b)
-                    if (f.kindCase == ServerFrame.KindCase.READY) {
-                        opening?.cancel()
-                        opening = null
+                    try {
+                        if (ws !== socket || gen != generation) break
+                        val f = ServerFrame.parseFrom(b)
+                        if (f.kindCase == ServerFrame.KindCase.READY) {
+                            opening?.cancel()
+                            opening = null
+                        }
+                        onFrame(f)
+                        if (ws !== socket || gen != generation) break
+                    } finally {
+                        // A frame remains in flight while its handler is suspended.
+                        queuedBytes.addAndGet(-b.size.toLong())
                     }
-                    onFrame(f)
-                    if (ws !== socket || gen != generation) break
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -1298,6 +1319,7 @@ class Remote(
         val gen = generation
         try {
             do {
+                if (!running || gen != generation || buffers[sid] !== b) return
                 b.refetch = false
                 while (true) {
                     if (!running || gen != generation || buffers[sid] !== b) return
@@ -1308,6 +1330,7 @@ class Remote(
                     ).value()
                     if (!running || gen != generation || buffers[sid] !== b) return
                     ingest(sid, res.eventsList, fillGaps = false, save = true)
+                    if (!running || gen != generation || buffers[sid] !== b) return
                     // An event that does not open stops progress; asking for the
                     // same page again would not help.
                     if (!res.more || b.events.size == before) break
@@ -1469,50 +1492,60 @@ class Remote(
         var mayHaveRun = retryOfUnknown
         fun notSent(code: String, text: String, later: String) =
             if (mayHaveRun) CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：请求可能已经送到，之后$later") else CommandException(code, text)
-        while (true) {
-            try {
-                if (token.isEmpty()) token = relogin(mayHaveRun)
-                val res = api.client.forward(
-                    ForwardRequest.newBuilder().setMachineId(p.machineId).setCommand(p.envelope).build(),
-                    Api.headers(token),
-                ).value()
-                val (_, msg) = try {
-                    Envelopes.openMessage(
-                        keys.command, res.result,
-                        Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
-                        CommandResult::parseFrom,
-                    )
-                } catch (e: OpenException) {
-                    // A result that does not open says nothing about whether
-                    // the command ran; retrying the same request asks again.
-                    throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
+        var waiting = false
+        try {
+            while (true) {
+                waiting = false
+                try {
+                    if (token.isEmpty()) token = relogin(mayHaveRun)
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    waiting = true
+                    val res = api.client.forward(
+                        ForwardRequest.newBuilder().setMachineId(p.machineId).setCommand(p.envelope).build(),
+                        Api.headers(token),
+                    ).value()
+                    val (_, msg) = try {
+                        Envelopes.openMessage(
+                            keys.command, res.result,
+                            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = p.machineId, sessionId = p.sessionId, requestId = p.requestId),
+                            CommandResult::parseFrom,
+                        )
+                    } catch (e: OpenException) {
+                        // A result that does not open says nothing about whether
+                        // the command ran; retrying the same request asks again.
+                        throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
+                    }
+                    if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode }, fromDaemon = true)
+                    return msg
+                } catch (ce: ConnectException) {
+                    waiting = false
+                    val cause = ce.exception
+                    if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
+                        throw notSent("network", "网络不通，指令没有发出", "网络断了")
+                    }
+                    if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
+                        attempt++
+                        token = relogin(mayHaveRun)
+                        continue
+                    }
+                    // ABORTED: the daemon could not seal a result, as on the web.
+                    val unknown = ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED)
+                    if (unknown) mayHaveRun = true
+                    if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
+                        attempt++
+                        delay(1000L * attempt)
+                        continue
+                    }
+                    if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
+                    if (unknown || ce.code == Code.UNAVAILABLE) {
+                        throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：${errorText(ce)}")
+                    }
+                    throw CommandException(ce.code.codeName, errorText(ce))
                 }
-                if (msg.errorCode.isNotEmpty()) throw CommandException(msg.errorCode, msg.errorMessage.ifEmpty { msg.errorCode }, fromDaemon = true)
-                return msg
-            } catch (ce: ConnectException) {
-                val cause = ce.exception
-                if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
-                    throw notSent("network", "网络不通，指令没有发出", "网络断了")
-                }
-                if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
-                    attempt++
-                    token = relogin(mayHaveRun)
-                    continue
-                }
-                // ABORTED: the daemon could not seal a result, as on the web.
-                val unknown = ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED)
-                if (unknown) mayHaveRun = true
-                if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
-                    attempt++
-                    delay(1000L * attempt)
-                    continue
-                }
-                if (ce.code == Code.UNAVAILABLE && cause == null) throw notSent(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", "电脑离线了")
-                if (unknown || ce.code == Code.UNAVAILABLE) {
-                    throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：${errorText(ce)}")
-                }
-                throw CommandException(ce.code.codeName, errorText(ce))
             }
+        } catch (e: CancellationException) {
+            if (waiting || mayHaveRun) throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
+            throw e
         }
     }
 

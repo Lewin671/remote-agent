@@ -53,6 +53,14 @@ class ImagesTest {
     private fun contains(hay: ByteArray, needle: String) = String(hay, Charsets.ISO_8859_1).contains(needle)
 
     @Test
+    fun oversizedImageNumbersStayAsText() {
+        val refs = listOf(io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setCliIndex(1).build())
+        val huge = "[Image #999999999999999999999]"
+        assertEquals("$huge text", imageText("$huge text", refs))
+        assertEquals("text $huge 图 1", imageText("text $huge [Image #1]", refs))
+    }
+
+    @Test
     fun readsTheOrientationOfAJpeg() {
         assertEquals(6, jpegOrientation(exifJpeg(6)))
         assertEquals(1, jpegOrientation(picture("jpg")))
@@ -254,6 +262,18 @@ class UploadTest {
 
 class SessionImagesTest {
     private fun ref(n: Int, id: String = "i$n") = io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setImageId(id).setCliIndex(n).build()
+
+    @Test
+    fun oversizedPlaceholderNumbersStayAsWritten() {
+        val refs = listOf(ref(1))
+        for (number in listOf("2147483648", "4294967297", "9".repeat(100))) {
+            val large = "[Image #$number]"
+            assertEquals("$large text", imageText("$large text", refs))
+            assertEquals("see $large", imageText("see $large", refs))
+            assertEquals("$large and 图 1", imageText("$large and [Image #1]", refs))
+            assertEquals("$large text", imageText("[Image #1] $large text", refs))
+        }
+    }
 
     @Test
     fun placeholdersBecomeNumbersAndLeadingOnesGo() {

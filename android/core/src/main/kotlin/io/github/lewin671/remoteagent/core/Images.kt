@@ -433,12 +433,12 @@ fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.Imag
     var t = text
     while (true) {
         val m = Regex("^\\s*\\[Image #(\\d+)]").find(t) ?: break
-        if (m.groupValues[1].toInt() !in known) break
+        if (m.groupValues[1].toIntOrNull() !in known) break
         t = t.substring(m.range.last + 1)
     }
-    val laterRefs = placeholder.findAll(t).any { it.groupValues[1].toInt() in known }
+    val laterRefs = placeholder.findAll(t).any { it.groupValues[1].toIntOrNull() in known }
     val base = if (laterRefs) text else t.trimStart()
-    return placeholder.replace(base) { m -> if (m.groupValues[1].toInt() in known) "图 ${m.groupValues[1]}" else m.value }
+    return placeholder.replace(base) { m -> if (m.groupValues[1].toIntOrNull() in known) "图 ${m.groupValues[1]}" else m.value }
 }
 
 /** Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB. */

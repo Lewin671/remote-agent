@@ -175,7 +175,7 @@ val sessionOrder: Comparator<SessionView> = Comparator { a, b ->
     val group = exited(a).compareTo(exited(b))
     if (group != 0) group else if (exited(a)) endedOrder.compare(a, b) else liveOrder.compare(a, b)
 }
-fun attentionOrder(state: RemoteState): Comparator<SessionView> = compareBy<SessionView> { statusOf(it, state.machines[it.machineId]).ordinal }.thenBy { attentionMs(it) }.thenBy { it.id }
+val attentionOrder: Comparator<SessionView> = compareBy<SessionView> { statusOf(it, null).ordinal }.thenBy { attentionMs(it) }.thenBy { it.id }
 
 // --- sessions ---
 
@@ -230,7 +230,8 @@ fun statusOf(s: SessionView, machine: MachineView?): Status {
 fun popupHint(agent: Agent, detail: String): String =
     if (effectiveAgent(agent) == Agent.AGENT_CLAUDE && detail == "trust folder") "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎" else ""
 
-fun needsAttention(s: SessionView, machine: MachineView?): Boolean = statusOf(s, machine).tone == Tone.WAIT
+/** Pending work stays pending while its computer is out of reach. */
+fun needsAttention(s: SessionView): Boolean = statusOf(s, null).tone == Tone.WAIT
 
 /** The session's title; without one, "<folder> · <start time>". */
 fun titleOf(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): String {

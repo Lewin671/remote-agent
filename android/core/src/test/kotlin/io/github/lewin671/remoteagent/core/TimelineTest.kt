@@ -135,6 +135,23 @@ class TimelineTest {
     }
 
     @Test
+    fun offlineMachinesKeepEveryPendingCategoryAcrossProjectScopes() {
+        val approval = session("approval", "/b", approvals = 1, created = now - 1000)
+        val question = session("question", "/b").let { it.copy(info = it.info!!.toBuilder().setPendingQuestions(1).build()) }
+        val plan = session("plan", "/b").let { it.copy(info = it.info!!.toBuilder().setPlanOpen(true).build()) }
+        val popup = session("popup", "/b").let { it.copy(info = it.info!!.toBuilder().setStatus(SessionStatus.SESSION_STATUS_BLOCKED).build()) }
+        val ended = session("ended", "/b", ended = now, approvals = 1)
+        val online = state(session("run", "/a"), popup, plan, question, approval, ended)
+        val offline = online.copy(machines = online.machines.mapValues { it.value.copy(online = false) })
+        val scope = HomeScope.Of("/a")
+        assertEquals(listOf("approval", "question", "plan", "popup"), homeTimeline(offline, scope).attention.map { it.id })
+        assertEquals(homeTimeline(online, scope).attention.size, homeTimeline(offline, scope).attention.size)
+        assertEquals(listOf("run"), homeTimeline(offline, scope).running.map { it.id })
+        assertEquals(Status.OFFLINE, statusOf(approval, offline.machines["m"]))
+        assertEquals(Status.UNLINKED, shownStatus(offline.copy(link = Link.NO_SERVER), approval))
+    }
+
+    @Test
     fun aProjectScopeListsItsOwnSessionsButEveryPendingOne() {
         val st = state(
             session("run-a", "/a", created = now - 1000), session("old-a", "/a", ended = now - 5000),

@@ -82,6 +82,99 @@ class RemoteTest {
         withTimeout(10_000) { events(sid).first { it.events.size >= n } }
 
     @Test
+    fun cancelingLoginBeforeAForwardDoesNotFreezeTheAttempt() = runBlocking<Unit> {
+        val acct = joinWithRoot(root, server.url, http)
+        val blocked = java.util.concurrent.CountDownLatch(1)
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val slow = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/GetChallenge")) {
+                blocked.countDown()
+                while (!gate.await(10, TimeUnit.MILLISECONDS)) {
+                    if (chain.call().isCanceled()) throw java.io.IOException("cancelled")
+                }
+            }
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(acct, slow)
+        closers += AutoCloseable { r.close() }
+        val attempt = Attempt()
+        val p = attempt.next { r.prepare(daemon.id, "s1", Command.getDefaultInstance()) }
+        val sending = launch {
+            try { r.forward(p); attempt.settle() }
+            catch (e: Exception) { attempt.settle(e) }
+        }
+        try {
+            withTimeout(5000) { while (blocked.count != 0L) delay(10) }
+            sending.cancelAndJoin()
+            assertFalse(attempt.frozen)
+            assertEquals(null, attempt.pending)
+            assertTrue(daemon.commands.isEmpty())
+        } finally { gate.countDown(); sending.cancelAndJoin() }
+    }
+
+    @Test
+    fun cancelingAForwardAfterDeliveryKeepsThePreparedRequest() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("session") { it.sessions["s1"]?.info != null }
+        val gate = java.util.concurrent.CountDownLatch(1)
+        daemon.answer = { _, c -> gate.await(10, TimeUnit.SECONDS); FakeDaemon.defaultResult(c) }
+        val attempt = Attempt()
+        val prepared = attempt.next {
+            r.prepare(daemon.id, "s1", Command.newBuilder().setSend(SendRequest.newBuilder().setSessionId("s1").setText("test")).build())
+        }
+        val sending = launch {
+            try { r.forward(prepared); attempt.settle() }
+            catch (e: Exception) { attempt.settle(e) }
+        }
+        try {
+            withTimeout(5000) { while (daemon.commands.isEmpty()) delay(10) }
+            sending.cancelAndJoin()
+            assertTrue(attempt.frozen)
+            assertSame(prepared, attempt.pending)
+            assertSame(prepared, attempt.next { error("must not prepare another command") })
+        } finally { gate.countDown(); sending.cancelAndJoin() }
+    }
+
+    @Test
+    fun aBlockedStreamReaderDropsAnExcessiveByteBacklog() = blockedStreamDrops(ByteArray(1024 * 1024), 9)
+
+    @Test
+    fun aBlockedStreamReaderDropsAnOversizedFrame() = blockedStreamDrops(ByteArray(2 * 1024 * 1024 + 1), 1)
+
+    private fun blockedStreamDrops(frame: ByteArray, copies: Int) = runBlocking<Unit> {
+        val blocked = java.util.concurrent.CountDownLatch(1)
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val acct = joinWithRoot(root, server.url, http)
+        val hole = StreamBlackhole { socket ->
+            socket.getOutputStream().let { out ->
+                val ready = io.github.lewin671.remoteagent.proto.ServerFrame.newBuilder()
+                    .setReady(io.github.lewin671.remoteagent.proto.Ready.getDefaultInstance()).build().toByteArray()
+                StreamBlackhole.writeFrame(out, ready)
+                check(blocked.await(10, TimeUnit.SECONDS))
+                repeat(copies) { StreamBlackhole.writeFrame(out, frame) }
+            }
+        }
+        val routed = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath == "/v1/stream") return@addInterceptor chain.proceed(chain.request())
+            if (chain.request().url.encodedPath.endsWith("/ListMachines")) {
+                blocked.countDown()
+                gate.await(10, TimeUnit.SECONDS)
+            }
+            chain.proceed(chain.request().newBuilder().url(server.url + chain.request().url.encodedPath).build())
+        }.build()
+        val r = Remote(Account(hole.url, acct.root, acct.deviceSeed, acct.deviceId), routed)
+        closers += AutoCloseable { r.close() }
+        try {
+            r.start()
+            withTimeout(5000) { while (hole.disconnections.get() == 0) delay(10) }
+            assertEquals(0L, blocked.count)
+            gate.countDown()
+            r.awaitState("reconnected after overflow") { hole.attempts.get() > 1 && it.conn == ConnState.ONLINE && it.loaded }
+        } finally { gate.countDown(); r.close(); hole.close() }
+    }
+
+    @Test
     fun aRemovedClientLearnsItAndStopsConnecting() = runBlocking<Unit> {
         val r = client()
         val other = client()
@@ -446,6 +539,41 @@ class RemoteTest {
         val cached = withTimeout(10_000) { again.events("s1").first { it.events.size >= 5 } }
         assertEquals(5, cached.events.size)
         assertEquals(false, again.state.value.machines[daemon.id]!!.online)
+    }
+
+    @Test
+    fun aReconnectKeepsTheRefetchRequestedDuringAnOldCacheWrite() = runBlocking<Unit> {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val blocked = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val writes = java.util.concurrent.atomic.AtomicInteger()
+        val deviceLists = java.util.concurrent.atomic.AtomicInteger()
+        val base = MemoryCache()
+        val cache = object : CipherCache by base {
+            override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
+                if (writes.getAndIncrement() == 0) { blocked.complete(Unit); gate.await() }
+                base.putEvents(sessionId, events)
+            }
+        }
+        val counting = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/ListDevices")) deviceLists.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = Remote(joinWithRoot(root, server.url, http), counting, cache)
+        closers += AutoCloseable { r.close() }
+        try {
+            r.start()
+            r.awaitState("session before history") { it.loaded && it.sessions["s1"]?.info != null }
+            r.events("s1")
+            withTimeout(5000) { blocked.await(); while (deviceLists.get() < 1) delay(10) }
+            r.stop()
+            r.awaitState("stopped") { it.conn == ConnState.OFFLINE }
+            daemon.upload("s1", agent("while disconnected"))
+            r.start()
+            withTimeout(5000) { while (deviceLists.get() < 2) delay(10) }
+            gate.complete(Unit)
+            val ev = withTimeout(5000) { r.events("s1").first { it.events.size == 4 } }
+            assertEquals(listOf(1L, 2L, 3L, 4L), ev.events.map { it.seq })
+        } finally { gate.complete(Unit) }
     }
 
     @Test

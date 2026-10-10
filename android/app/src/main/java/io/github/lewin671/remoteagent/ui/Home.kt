@@ -453,7 +453,7 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
     val nav = LocalNav.current
     val remote = LocalRemote.current
     // What it waits for stays true while the server is out of reach.
-    val st = statusOf(s, state.machines[s.machineId])
+    val st = statusOf(s, null)
     val events by remote.events(s.id).collectAsState()
     val d = rememberDerived(events.events, s.agent())
     val a = d.approvals.values.firstOrNull()
@@ -491,7 +491,12 @@ private fun AttentionCard(state: RemoteState, s: SessionView, t: Long, scope: Ho
                 what, style = T.mono, color = p.fg2, maxLines = 3, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clip(Radii.XS).background(p.card).border(1.dp, p.line, Radii.XS).padding(horizontal = 10.dp, vertical = 7.dp),
             )
-            ApprovalButtons(s, a, compact = true, onCard = true)
+            if (state.conn == ConnState.ONLINE && state.machines[s.machineId]?.online == true) {
+                ApprovalButtons(s, a, compact = true, onCard = true)
+            }
+        }
+        if (state.conn != ConnState.ONLINE || state.machines[s.machineId]?.online != true) {
+            Text(if (state.conn != ConnState.ONLINE) "未连接" else "电脑离线", style = T.meta, color = p.muted, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

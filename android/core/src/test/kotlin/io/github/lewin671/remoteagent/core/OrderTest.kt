@@ -20,7 +20,7 @@ class OrderTest {
         val a = s("a", 100, 99999) { pendingApprovals = 1; attentionSince = at(2000) }
         val b = s("b", 200, 1) { pendingApprovals = 1; attentionSince = at(1000) }
         val q = s("q", 1, 999999) { pendingQuestions = 1; attentionSince = at(1) }
-        assertEquals(listOf("b", "a", "q"), listOf(q, a, b).sortedWith(attentionOrder(RemoteState())).map { it.id })
+        assertEquals(listOf("b", "a", "q"), listOf(q, a, b).sortedWith(attentionOrder).map { it.id })
     }
     @Test fun exitAndLegacyTimesIgnoreRelayTime() {
         val a = s("a", 100, 99999) { endedAt = at(1000) }
