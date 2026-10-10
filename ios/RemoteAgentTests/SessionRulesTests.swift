@@ -232,6 +232,15 @@ extension Ref<LiveAnnouncer> {
         #expect(say.announce(last: reply(5), dock: [approval, question], agent: "Codex", now: 60_000, initial: false) == nil)
     }
 
+    @Test func theTerminalGivesWayToTheChatWhenItCannotBeShown() {
+        #expect(!terminalAvailable(.exited))
+        // The computer is away: the cached chat can still be read, the terminal cannot.
+        #expect(!terminalAvailable(.offline))
+        for status in [Status.idle, .running, .starting, .approval, .question, .plan, .popup, .unlinked, .loading] {
+            #expect(terminalAvailable(status))
+        }
+    }
+
     @Test func anApprovalIsHeadedByWhatItAsksFor() {
         let command = PBApprovalRequested.with {
             $0.command = "curl https://example.com\u{202E}"

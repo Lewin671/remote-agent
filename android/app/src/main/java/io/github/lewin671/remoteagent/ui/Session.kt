@@ -124,7 +124,6 @@ fun SessionScreen(sid: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val viewPrefs = remember(context) { context.getSharedPreferences("session-view", android.content.Context.MODE_PRIVATE) }
     var tab by rememberSaveable { mutableStateOf(viewPrefs.getInt("tab", 0)) }
-    BackHandler(enabled = tab == 1) { tab = 0 }
     // Another page (a tool's details) asked for the terminal.
     val wantTerminal = OpenTerminal.requested[sid] == true
     LaunchedEffect(wantTerminal) {
@@ -134,16 +133,18 @@ fun SessionScreen(sid: String) {
         }
     }
 
-    val term = tab == 1 && status != Status.EXITED
+    val hasTerminal = terminalAvailable(status)
+    val term = tab == 1 && hasTerminal
+    BackHandler(enabled = term) { tab = 0 }
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
         SessionTopBar(state, s, status, d.running || status == Status.RUNNING, io.github.lewin671.remoteagent.core.sentMessage(s, events.events), dark = term)
         ConnBanner(state)
-        SessionTabs(if (term) 1 else 0, status != Status.EXITED, status == Status.POPUP, dark = term) {
+        SessionTabs(if (term) 1 else 0, hasTerminal, status == Status.POPUP, dark = term) {
             tab = it
             viewPrefs.edit().putInt("tab", it).apply()
         }
-        if (tab == 1 && status != Status.EXITED) {
-            TerminalPane(remote, sid, sessionRunning = status != Status.EXITED, modifier = Modifier.weight(1f).fillMaxWidth())
+        if (term) {
+            TerminalPane(remote, sid, sessionRunning = true, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
             ChatPane(state, s, status, events.events, d, events.loaded, events.error, events.fetchError, Modifier.weight(1f), onTerminal = { tab = 1 })
         }
@@ -614,6 +615,14 @@ class Follow {
         if (atBottom) on = true else if (userDragging) on = false
     }
 }
+
+/**
+ * Whether the session's terminal can be shown now. An ended session and one
+ * whose computer is away have none: the page shows the chat meanwhile and
+ * leaves the view picked on this device as it was (design-system §6
+ * 「视图切换」).
+ */
+fun terminalAvailable(status: Status): Boolean = status != Status.EXITED && status != Status.OFFLINE
 
 /** Sessions whose terminal another page asked to show. */
 object OpenTerminal {

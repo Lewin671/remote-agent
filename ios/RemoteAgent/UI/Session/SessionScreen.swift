@@ -142,7 +142,8 @@ private struct SessionPage: View {
         let sid = s.id
         let status = shownStatus(state, s)
         let running = chat.derived.running || status == .running
-        let term = tab == 1 && status != .exited
+        let hasTerminal = terminalAvailable(status)
+        let term = tab == 1 && hasTerminal
         let live = status != .exited && status != .offline
         let mode = status == .exited ? nil : modeLabel(s)
         // Unknown context is left out, never shown as 0%.
@@ -160,7 +161,7 @@ private struct SessionPage: View {
             }
             ViewTabs(
                 ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
-                enabled: { $0 == 0 || status != .exited }, dot: status == .popup ? 1 : nil, dark: term)
+                enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil, dark: term)
             if term {
                 TerminalPane(sessionId: sid, running: true) { pick(0) }
             } else {

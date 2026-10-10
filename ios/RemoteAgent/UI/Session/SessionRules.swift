@@ -185,6 +185,16 @@ func sessionSubtitle(status: Status, mode: ModeLabel?) -> SessionSubtitle {
     return SessionSubtitle(status: status.text, mode: mode?.text ?? "审批：CLI 配置（未读到）", danger: mode?.mode == .full)
 }
 
+// MARK: The view
+
+/// Whether the session's terminal can be shown now. An ended session and
+/// one whose computer is away have none: the page shows the chat meanwhile
+/// and leaves the view picked on this device as it was (design-system §6
+/// 「视图切换」).
+func terminalAvailable(_ status: Status) -> Bool {
+    status != .exited && status != .offline
+}
+
 // MARK: In place of the message box
 
 /// What the card says when a session ended, and whether it can be resumed from here now.
