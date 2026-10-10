@@ -95,7 +95,7 @@ class PublicScanTests(unittest.TestCase):
             tar(f'remote-agent-{tag}-{target}', ['remote-agent', 'remote-agent-service', 'THIRD_PARTY_NOTICES.txt'])
             if target.startswith('linux'):
                 tar(f'remote-agent-server-{tag}-{target}', ['remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt'])
-        tar(f'remote-agent-web-{tag}', ['index.html', '_headers', 'sw.js', 'manifest.webmanifest', 'icon-192.png', 'assets/index-Ab_1.js', 'fonts/Inter-Bold.woff2', 'licenses/THIRD_PARTY_NOTICES.txt'])
+        tar(f'remote-agent-web-{tag}', sorted(public_scan.web_files()) + ['assets/index-Ab_1cD-9.js', 'assets/index-S8FXQorW.css'])
         for name in (f'remote-agent-{tag}.apk', 'SHA256SUMS', 'latest.properties'):
             (dist / name).write_text('x')
         return dist
@@ -111,7 +111,7 @@ class PublicScanTests(unittest.TestCase):
             for f in ('remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt', 'data/x'):
                 t.addfile(tarfile.TarInfo(f'remote-agent-server-v1.2.3-linux-amd64/{f}'), io.BytesIO(b''))
         with tarfile.open(dist / 'remote-agent-web-v1.2.3.tar.gz', 'w:gz') as t:
-            for f in ('index.html', '_headers', 'report.html'):
+            for f in sorted(public_scan.web_files() - {'sw.js'}) + ['report.html', 'assets/index-Ab_1cD-9.js', 'assets/deployment-backup.txt']:
                 t.addfile(tarfile.TarInfo(f'remote-agent-web-v1.2.3/{f}'), io.BytesIO(b''))
         self.assertEqual({
             ('notes.txt', '', 'not a file of a release'),
@@ -119,6 +119,7 @@ class PublicScanTests(unittest.TestCase):
             ('remote-agent-server-v1.2.3-linux-amd64.tar.gz', 'data/x', 'not what this archive holds'),
             ('remote-agent-web-v1.2.3.tar.gz', 'report.html', 'not what this archive holds'),
             ('remote-agent-web-v1.2.3.tar.gz', 'sw.js', 'not what this archive holds'),
+            ('remote-agent-web-v1.2.3.tar.gz', 'assets/deployment-backup.txt', 'not what this archive holds'),
         }, {(Path(f).name, m, why) for f, m, why in public_scan.release('v1.2.3', dist)})
 
     def test_the_public_repository_pages_are_clean(self):

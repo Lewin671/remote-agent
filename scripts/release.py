@@ -15,7 +15,9 @@ SEMVER = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
 # that test, version and publish a release are not in it, nor are the public
 # repository's pages, which reach it without a release (scripts/sync-public-pages.sh).
 PRODUCT_PATHS = ("cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/releases-repo/self-host/")
-PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py"}
+PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py",
+                 # Writes the signing and Firebase settings the APK is built with.
+                 "scripts/android-ci.py"}
 
 
 def git(*args):

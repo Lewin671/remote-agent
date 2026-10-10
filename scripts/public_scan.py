@@ -97,7 +97,16 @@ def scan(paths):
 
 
 TARGETS = ("darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64")
-WEB = re.compile(r"(index\.html|_headers|sw\.js|manifest\.webmanifest|[\w-]+\.png|(assets|fonts|licenses)(/[\w.@-]+)?)")
+# What a build adds to the files of web/public: the page, its headers, the
+# notices, and scripts and styles named with the hash of their content.
+WEB_BUILT = {"index.html", "_headers", "licenses/THIRD_PARTY_NOTICES.txt"}
+WEB_ASSET = re.compile(r"assets/[\w.-]+-[\w-]{8}\.(js|css)")
+
+
+def web_files():
+    """The files every web archive holds: web/public as it is here, and what a build adds."""
+    public = Path(__file__).resolve().parents[1] / "web" / "public"
+    return WEB_BUILT | {p.relative_to(public).as_posix() for p in public.rglob("*") if p.is_file() and p.name != ".DS_Store"}
 
 
 def release(tag, dist):
@@ -123,8 +132,9 @@ def release(tag, dist):
             continue
         inside = {m[len(name) + 1:] for m in inside}
         if contents is None:
-            wrong = sorted(m for m in inside if not WEB.fullmatch(m))
-            wrong += [m for m in ("index.html", "_headers", "sw.js") if m not in inside]
+            fixed = web_files()
+            assets = {m for m in inside if WEB_ASSET.fullmatch(m)}
+            wrong = sorted((inside - assets) ^ fixed) + ([] if assets else ["assets/"])
         else:
             wrong = sorted(inside ^ contents)
         found += [(str(file), m, "not what this archive holds") for m in wrong]
