@@ -874,6 +874,49 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(host.textContent).not.toContain("启动结果");
     expect(asked).toBe(1);
   });
+
+  it("keeps what was chosen for the next message once its session has started", async () => {
+    const r = demo();
+    const sent: { machine: string; prompt?: string }[] = [];
+    let answer!: () => void;
+    r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        sent.push({ machine: m, prompt: cmd.value.prompt });
+        if (sent.length === 1) await new Promise<void>((resolve) => (answer = resolve));
+      }
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    const before = r.sessions.size;
+    mount(page(r));
+    await type("加限流");
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toEqual([{ machine: "mac", prompt: "加限流" }]));
+    // Left and reopened while the request is on its way; its machine goes
+    // offline, and the next message is given another one, for this once.
+    leave();
+    r.machines.get("mac")!.online = false;
+    mount(page(r));
+    await type("给登录接口加限流");
+    await click(button("换机器"));
+    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
+    if (document.querySelector(".sheet")) await click(button("完成", document));
+    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    // The first session starts, its machine back meanwhile.
+    r.machines.get("mac")!.online = true;
+    await act(async () => answer());
+    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
+    // The next message is still there, and still goes where it was told to.
+    expect(input().value).toBe("给登录接口加限流");
+    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
+    // What went with that one is not held for the message after it.
+    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 2));
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")!.textContent).not.toContain("iMac"));
+  });
 });
 
 

@@ -44,9 +44,12 @@ class Start {
   running = false;
   /** What was chosen on the page the pending request was sent from. A page
    * opened later goes on from there. */
-  page?: { local?: Local; picked?: Agent; latched?: Latched };
-  /** How many sessions it has started. A page's draft is for the next one:
-   * what it chose for one that has started is no longer held. */
+  page?: { local?: Local; picked?: Picked; latched?: Latched };
+  /** What the requests that started a session were sent with. It went with
+   * them, on every page that held it; what a page chose meanwhile, for the
+   * session after, is another choice and stays. */
+  readonly spent = new WeakSet<Local | Picked | Latched>();
+  /** How many sessions it has started. */
   count = 0;
   /** The first message of the session it started last. */
   prompt?: string;
@@ -164,6 +167,8 @@ function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
  * (yet): another machine, edited sets. once: the machine is for this
  * start only and nothing of it is saved. */
 type Local = { key: string; machineId?: string; once: boolean; sets: Partial<Record<Agent, AgentSet>> };
+/** The CLI picked next to the box. */
+type Picked = { key: string; agent: Agent };
 /** The launch settings a draft was begun with. */
 type Latched = { key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> };
 
@@ -178,36 +183,38 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
   const start = startOf(remote, key);
   const current = start.attempt;
-  // What a page chose is for one draft: the project's next session.
-  const draft = `${start.count}:${key}`;
+  // What a page chose is for one draft, of this project: once a session
+  // has started with it, it is no longer held.
+  const own = <T extends Local | Picked | Latched>(x: T | undefined) => (x?.key === key && !start.spent.has(x) ? x : undefined);
   // A request that is on its way, or whose outcome is unknown, was sent
   // with choices of its own. A page that has none goes on from them.
   const sentWith = current.payload ? start.page : undefined;
   const [localState, setLocal] = useState<Local>();
-  const local = localState?.key === draft ? localState : sentWith?.local;
+  const local = own(localState) ?? sentWith?.local;
   // The CLI picked next to the box, for this draft.
-  const [pickedState, setPicked] = useState<{ key: string; agent: Agent }>();
-  const picked = pickedState?.key === draft ? pickedState.agent : sentWith?.picked;
+  const [pickedState, setPicked] = useState<Picked>();
+  const pick = own(pickedState) ?? sentWith?.picked;
+  const picked = pick?.agent;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
   const [latched, setLatched] = useState<Latched>();
-  const held = latched?.key === draft ? latched : sentWith?.latched;
+  const held = own(latched) ?? sentWith?.latched;
   // They are this page's own from then on: they stay when that start ends
   // without a session, or is given up.
   const adopt = () => {
     if (!sentWith) return;
-    if (localState?.key !== draft && sentWith.local) setLocal(sentWith.local);
-    if (pickedState?.key !== draft && sentWith.picked !== undefined) setPicked({ key: draft, agent: sentWith.picked });
-    if (latched?.key !== draft && sentWith.latched) setLatched(sentWith.latched);
+    if (!own(localState) && sentWith.local) setLocal(sentWith.local);
+    if (!own(pickedState) && sentWith.picked) setPicked(sentWith.picked);
+    if (!own(latched) && sentWith.latched) setLatched(sentWith.latched);
   };
   useEffect(adopt);
   // While that request is pending and the user has chosen nothing else,
   // the page shows the request's own configuration and nothing derived
   // again: sessions and machines come and go meanwhile, and a retry is
   // that request, on its machine, with its images.
-  const pinned = sentWith && local === sentWith.local && picked === sentWith.picked ? current.payload : undefined;
+  const pinned = sentWith && local === sentWith.local && picked === sentWith.picked?.agent ? current.payload : undefined;
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
   const first = inherit();
   // Where it starts without a choice made on this page.
@@ -280,17 +287,17 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const setCfg = (config: NewConfig, once = false) => {
     if (config.machineId !== machineId) {
       const sets = { [Agent.CODEX]: setOf({ ...config, agent: Agent.CODEX }), [Agent.CLAUDE]: setOf({ ...config, agent: Agent.CLAUDE }) };
-      setLocal({ key: draft, machineId: config.machineId, once, sets });
+      setLocal({ key, machineId: config.machineId, once, sets });
       if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
       return;
     }
     const set = setOf(config);
-    setLocal({ key: draft, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
+    setLocal({ key, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
     if (!local?.once) void save({ ...whole(), sets: [set] });
   };
   const setAgent = (a: Agent) => {
     latch();
-    setPicked({ key: draft, agent: a });
+    setPicked({ key, agent: a });
   };
   // A failure shown for one project is not the next one's.
   useEffect(() => { setError(""); setConfigError(""); }, [key]);
@@ -331,7 +338,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     // While an earlier attempt's outcome is unknown, only it is retried.
     const retry = current.frozen;
     const sent = current.next(payloadFor(prompt, mode));
-    if (!retry) start.page = { local, picked, latched: held };
+    if (!retry) start.page = { local, picked: pick, latched: held };
     const { payload, slot } = sent;
     const open = fromHere(go);
     start.running = true;
@@ -361,6 +368,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
         if (patch.agent !== undefined || patch.sets) void save(patch, true);
       }
       // The draft went with it, on every page that shows this project.
+      for (const x of Object.values(start.page ?? {})) if (x) start.spent.add(x);
       start.prompt = payload.req.prompt;
       start.count++;
       open("s/" + sid);
@@ -386,9 +394,11 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     redraw((n) => n + 1);
   };
   /** Holds the launch settings as they are now, once a draft begins. */
-  const hold = () => setLatched({ key: draft, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
+  const hold = () => setLatched({ key, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
   // A draft begun while its CLI's settings were still being fetched is
   // held as soon as they are here.
+  // The draft that began so: the one for the project's next session.
+  const draft = `${start.count}:${key}`;
   const [begun, setBegun] = useState<string>();
   const latch = () => {
     if (held) return;
@@ -398,8 +408,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   useEffect(() => {
     if (begun === draft && !unread && !held) hold();
     // What the draft's CLI inherits was left open when the draft began:
-    // once known, it is held like the rest.
-    else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
+    // once known, it is held like the rest. What a pending request was
+    // sent with stays as it was sent.
+    else if (held && held !== sentWith?.latched && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
   });
   // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
