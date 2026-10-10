@@ -100,11 +100,13 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(maxFrameBytes)
 	p := &peer{dev: dev, out: make(chan *pb.ServerFrame, sendQueue), cancel: cancel}
+	// Ready must be the first frame: peers drop a stream that starts with
+	// anything else. Queue it before the peer can be sent broadcasts,
+	// forwarded commands or heartbeats.
+	h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{ServerTimeMs: nowMs()}}})
 	h.add(p)
 	defer h.remove(p)
 
-	// Ready must precede heartbeats, even if this goroutine is descheduled.
-	h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{ServerTimeMs: nowMs()}}})
 	go h.ping(ctx, conn, p)
 	go h.read(ctx, conn, p)
 	for {
