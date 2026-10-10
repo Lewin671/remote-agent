@@ -11,14 +11,14 @@
 
 ## 不写兼容逻辑
 
-项目还在早期，只有一份部署。代码只支持当前协议版本：
+项目还在早期。代码只支持当前协议版本：
 
 - 两端能不能互通只看协议版本，不看产品版本。只改某一端自己的逻辑（界面、交互、本地状态）、不改变两端之间约定的改动，不提升协议版本，没升级的旧客户端继续可用
 - 不为旧版本的 daemon、server 或客户端写降级、推断分支，不保留废弃字段。字段或行为变了就直接改，旧的一并删掉
 - 改动会被旧版本的另一端误解时，提升协议版本号：Go 的 `internal/protocol`、网页的 `web/src/protocol.ts`、Android 的 `core/Version.kt`、iOS 的 `RACore/Version.swift` 四处同值（iOS 的测试核对这四处一致）。版本不一致的两端互相拒绝并提示更新，机制见 [docs/architecture.md](docs/architecture.md) 第 4 节的「版本」
 - 不写数据迁移代码。存储格式要变时，一次性手动迁移或清掉重建，并在发布说明里写明升级要求
 - 这些不算兼容逻辑，照常保留：适配外部工具的不同版本（Codex、Claude Code、浏览器、Android 和 iOS 系统），以及当前版本自己也会出现的缺失值
-- 有其他人开始使用或到 1.0 时，重新讨论这条规则
+- 有其他人开始使用或到 1.0 时，重新讨论这条规则。v0.32.0（2026-10-10）起产物公开发布，别人可以自己部署，这个条件已经出现；用户还没有重新决定，在那之前规则照旧，但任何要求一起升级或重建数据的改动，都必须在发布说明里写清楚
 
 改动或新建 `docs/` 下的文档前，先读 [docs/README.md](docs/README.md)，里面规定了每类内容写在哪。
 
@@ -49,6 +49,8 @@
 - 验证通过后，在版本提交上创建 annotated tag，并以 `git push --atomic origin HEAD:main refs/tags/vX.Y.Z` 一次推送提交和 tag，禁止 force push、移动或复用已推送的版本 tag
 - GitHub 的 Release 工作流在版本提交推到 `main`（`version.properties` 变化）时触发，从 tag 所在的提交构建所有端，Go/网页/Android 检查全部通过才发布：正式签名 APK、各平台的 daemon 和 server、网页包，以及 `SHA256SUMS`。最新一版随后发布成公开仓库 `Lewin671/remote-agent-releases` 的 Release，App 从那里更新，别人从那里部署自己的一套（[docs/architecture.md](docs/architecture.md) 的「产品版本与发布」）；源码不公开。失败不算发布完成：查看 Actions 错误并修复；代码修复发下一版，同一 tag 的暂时失败可手动运行工作流并填入该 tag 重跑。不填 tag 手动运行是演练：跑全部检查和打包，但不发布
 - **公开的东西不带我们自己的部署**：公开仓库的页面在 `deploy/releases-repo/`，产物由 `scripts/build-dist.sh` 构建；域名、主机名、邮箱、设备号、密钥和本机路径都不能出现在里面。`scripts/public_scan.py` 在打包和交接时各查一遍，查到就不发布；新增一种不能公开的标识时把它加进这个脚本的名单。交接用的 `incoming` 分支是一次性的，`publish-public.sh` 对它的强推是「禁止 force push」的唯一例外；公开仓库已发布的 Release 不覆盖。公开的示例一律用 `example.com`
+- **改公开仓库的页面**：只改 `deploy/releases-repo/` 里的源文件，随任务提交到这里，再把这个目录的内容推到公开仓库的 `main`；不在 GitHub 网页上直接改，那样绕过扫描，下次同步还会被覆盖。推之前跑 `python3 scripts/public_scan.py <要推的目录>`，提交作者用 GitHub 的 noreply 地址（`37481138+Lewin671@users.noreply.github.com`），不用本机 git 配置的邮箱。改了那边的工作流或安装脚本，先在这里的演练里跑通
+- **在公开仓库说话也是公开的**：回 issue、写评论或 Release 说明时，不贴 daemon 或 server 的日志原文、截图、域名、机器 ID、账户密钥、setup token 和配对链接；需要举例就用 `example.com` 和编造的 ID
 - **发布说明是公开的**：`release-task.sh` 的第二个参数成为 tag 的说明，原样进公开的清单和公开仓库的 Release，显示在 App 的更新弹层里。只写用户看得懂的变化和升级要求，不写服务器地址、部署细节、密钥或内部讨论
 - 发布产物不代表部署线上服务，不自动升级本机 daemon，也不自动安装 APK。已有部署授权按原任务执行
 - 手动 APK 工作流只生成独立 `.dev` 应用，推送关闭，短期保留，不更新正式版本、不创建 Release
