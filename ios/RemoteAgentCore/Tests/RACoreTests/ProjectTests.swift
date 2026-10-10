@@ -446,6 +446,15 @@ import Testing
         #expect(kept.agent == .claude)
     }
 
+    @Test func anotherMachineStartsInItsOwnDefaultMode() {
+        // Full access chosen for Claude Code is not what the other machine's Codex starts in.
+        var full = c
+        full.agent = .claude
+        full.mode = .full
+        #expect(switchMachine(full, machineId: "vps", agents: [.codex]) == NewConfig(machineId: "vps", cwd: full.cwd, agent: .codex))
+        #expect(switchMachine(full, machineId: "imac", agents: [.codex, .claude]).mode == nil)
+    }
+
     @Test func theConfigurationIsTwoLines() {
         let (a, b) = configLines(RemoteState(), c, default: DefaultMode(mode: nil, known: false, varies: false))
         #expect(a.hasSuffix("自动"))

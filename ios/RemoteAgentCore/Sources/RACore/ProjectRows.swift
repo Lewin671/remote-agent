@@ -231,7 +231,7 @@ public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMach
     projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.machines[$0]?.online == true }.map { id in
         let agents = machineAgents(state.machines[id])
         let note = agents.contains(c.agent)
-            ? "有 \(agentName(c.agent))；模型和强度会按这台机器重新选择"
+            ? "有 \(agentName(c.agent))；模型和模式会按这台机器重新选择"
             : "只有 \(agents.map(agentName).joined(separator: "、"))；会改用 \(agentName(agents[0]))，模型和模式按这台机器重新选择"
         return OfflineMachineChoice(
             id: id, title: "改用 \(machineLabel(state, id: id))", note: note, config: switchMachine(c, machineId: id, agents: agents))

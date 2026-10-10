@@ -369,14 +369,16 @@ public func switchAgent(_ c: NewConfig, project: NewConfig?, agent: PBAgent) -> 
 }
 
 /// Another machine for a draft: the model and effort were that machine's
-/// list, so they go. The CLI stays when the machine has it; otherwise the
-/// caller must have the user pick one (`machineAgents`), never silently.
-/// `agents` are that machine's and never empty.
+/// list, so they go, and the mode is that machine's default again. The CLI
+/// stays when the machine has it; otherwise the caller must have the user
+/// pick one (`machineAgents`), never silently. `agents` are that machine's
+/// and never empty.
 public func switchMachine(_ c: NewConfig, machineId: String, agents: [PBAgent]) -> NewConfig {
     var out = c
     out.machineId = machineId
     out.model = ""
     out.effort = ""
+    out.mode = nil
     out.agent = agents.contains(c.agent) ? c.agent : agents.first ?? .codex
     return out
 }

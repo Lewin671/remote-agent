@@ -442,6 +442,14 @@ class SwitchTest {
     }
 
     @org.junit.Test
+    fun anotherMachineStartsInItsOwnDefaultMode() {
+        // Full access chosen for Claude Code is not what the other machine's Codex starts in.
+        val full = c.copy(agent = Agent.AGENT_CLAUDE, mode = Mode.FULL)
+        org.junit.Assert.assertEquals(NewConfig("vps", full.cwd, Agent.AGENT_CODEX), switchMachine(full, "vps", listOf(Agent.AGENT_CODEX)))
+        org.junit.Assert.assertNull(switchMachine(full, "imac", listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)).mode)
+    }
+
+    @org.junit.Test
     fun theConfigurationIsTwoLines() {
         val state = io.github.lewin671.remoteagent.core.RemoteState()
         val (a, b) = configLines(state, c, DefaultMode(null, false, false))

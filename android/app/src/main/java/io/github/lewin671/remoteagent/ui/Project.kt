@@ -544,11 +544,12 @@ fun switchAgent(c: NewConfig, project: NewConfig?, agent: Agent): NewConfig {
 
 /**
  * Another machine for a draft: the model and effort were that machine's
- * list, so they go. The CLI stays when the machine has it; otherwise the
- * caller must have the user pick one ([machineAgents]), never silently.
+ * list, so they go, and the mode is that machine's default again. The CLI
+ * stays when the machine has it; otherwise the caller must have the user
+ * pick one ([machineAgents]), never silently.
  */
 fun switchMachine(c: NewConfig, machineId: String, agents: List<Agent>): NewConfig =
-    c.copy(machineId = machineId, model = "", effort = "", agent = if (c.agent in agents) c.agent else agents.first())
+    c.copy(machineId = machineId, model = "", effort = "", mode = null, agent = if (c.agent in agents) c.agent else agents.first())
 
 /** The two lines of the configuration: machine and mode, then model and effort, neither cut. */
 fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, String> =
@@ -703,7 +704,7 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
         for (id in others) {
             val agents = machineAgents(state.machines[id])
             val cliNote = when {
-                c.agent in agents -> "有 ${agentName(c.agent)}；模型和强度会按这台机器重新选择"
+                c.agent in agents -> "有 ${agentName(c.agent)}；模型和模式会按这台机器重新选择"
                 else -> "只有 ${agents.joinToString("、") { agentName(it) }}；会改用 ${agentName(agents.first())}，模型和模式按这台机器重新选择"
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChoose(switchMachine(c, id, agents)) }, verticalAlignment = Alignment.CenterVertically) {
