@@ -95,7 +95,7 @@ fun maxImages(m: MachineView?): Int = capabilities(m)?.maxImagesPerMessage?.take
 
 private const val ORDER = "order"
 
-/** Writes images and their order under [folder]; the order file lists them as picked, so a restore keeps it. */
+/** Writes images under [folder]. Which of the folder's images belong to it, and in what order, is [saveOrder]'s to say. */
 internal fun saveImages(files: SealedFiles, folder: String, images: List<PendingImage>, original: Boolean) {
     for (img in images) {
         val p = img.processed ?: continue
@@ -103,9 +103,13 @@ internal fun saveImages(files: SealedFiles, folder: String, images: List<Pending
         val meta = listOf(p.format.number, p.width, p.height, if (original) 1 else 0, img.uri.orEmpty(), p.note).joinToString("\n")
         files.put(folder, img.id + ".meta", meta.toByteArray())
     }
-    saveOrder(files, folder, images, original)
 }
 
+/**
+ * Writes the order file: the whole selection as picked, so a restore keeps
+ * it. Written once per save, after the images it lists, so that it never
+ * names fewer than are kept.
+ */
 internal fun saveOrder(files: SealedFiles, folder: String, images: List<PendingImage>, original: Boolean) {
     files.put(folder, ORDER, (listOf(if (original) "1" else "0") + images.map { it.id }).joinToString("\n").toByteArray())
 }
@@ -133,8 +137,14 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
 class ImageDraft(
     val key: String,
     private val files: SealedFiles = RaApp.instance.pendingStore,
-    /** Where saves run, one at a time for this draft; tests run them in place. */
+    /**
+     * Where saves and removals run, one at a time for this draft, so that an
+     * older snapshot never lands after a newer one nor after the removal of
+     * what it wrote.
+     */
     private val saves: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    /** What they run in; without one (tests) they run in place. */
+    private val scope: kotlinx.coroutines.CoroutineScope? = RaApp.scopeOrNull(),
 ) {
     val images = mutableStateListOf<PendingImage>()
     var original by mutableStateOf(false)
@@ -161,28 +171,83 @@ class ImageDraft(
      * the order of the whole selection. Saves run one at a time, so an
      * older snapshot never lands after a newer one.
      */
-    private fun persistOrder() {
-        RaApp.scopeOrNull()?.launch(saves) { saveNow() } ?: saveNow()
+    private fun persistOrder() = enqueue { saveNow() }
+
+    /** Runs [work] after the saves and removals asked for before it. */
+    private fun enqueue(work: () -> Unit) {
+        scope?.launch(saves) { work() } ?: work()
     }
 
+    // The three below are read and changed under `marks`, by the main thread and by saves.
+    private val marks = Any()
+
     /** Images whose current bytes are on disk; an image prepared again is written again. */
-    private val saved = java.util.Collections.synchronizedSet(HashSet<String>())
+    private val saved = HashSet<String>()
+
+    /** Images being prepared again: `processed` still holds what they were before. */
+    private val stale = HashSet<String>()
+
+    /** How often each image was prepared again or taken out: a save that began before does not answer for it. */
+    private val turns = HashMap<String, Int>()
+
+    /** What waits for images to be on disk here or gone from the draft ([whenKept]); the main thread's. */
+    private val waiting = ArrayList<Pair<List<String>, () -> Unit>>()
 
     private fun saveNow() {
         runCatching {
             val now = images.toList()
-            saveImages(files, key, now.filter { it.id !in saved }, original)
-            now.filter { it.processed != null }.forEach { saved += it.id }
+            val fresh = synchronized(marks) { now.filter { it.id !in saved && it.id !in stale && it.processed != null }.map { it to (turns[it.id] ?: 0) } }
+            saveImages(files, key, fresh.map { it.first }, original)
             saveOrder(files, key, now, original)
+            synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
         }.onFailure {
             notice = "这张图未保存到手机：${errorText(it)}。当前仍可发送，关闭应用后可能丢失"
             android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}")
         }
+        scope?.launch { settle() } ?: settle()
+    }
+
+    /**
+     * Calls [then] once none of the images [ids] needs a copy kept
+     * elsewhere: each is on disk here, or gone from the draft. A save that
+     * fails keeps it waiting for the next one.
+     */
+    fun whenKept(ids: List<String>, then: () -> Unit) {
+        waiting += ids to then
+        settle()
+    }
+
+    private fun settle() {
+        val ready = waiting.filter { (ids, _) ->
+            ids.all { id ->
+                // One without bytes has nothing a copy elsewhere could hold either.
+                val img = images.firstOrNull { it.id == id }
+                img?.processed == null || synchronized(marks) { id in saved }
+            }
+        }
+        waiting.removeAll(ready.toSet())
+        for ((_, then) in ready) then()
+    }
+
+    /** An image is being prepared again, or is taken out: its bytes on disk are not its bytes any more. */
+    private fun unmark(img: PendingImage, preparing: Boolean) = synchronized(marks) {
+        saved -= img.id
+        if (preparing) stale += img.id else stale -= img.id
+        turns[img.id] = (turns[img.id] ?: 0) + 1
+    }
+
+    /** An image is being prepared again: its bytes, in memory and on disk, are the old ones until [prepared]. */
+    internal fun invalidate(img: PendingImage) = unmark(img, preparing = true)
+
+    /** An image has the bytes it was prepared for: they are saved. */
+    internal fun prepared(img: PendingImage) {
+        synchronized(marks) { stale -= img.id }
+        persistOrder()
     }
 
     private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
         img.job?.cancel()
-        saved -= img.id
+        invalidate(img)
         img.state = PendingImage.State.Processing
         img.machineId = null
         img.imageId = null
@@ -193,7 +258,7 @@ class ImageDraft(
                 img.processed = p
                 img.thumb = withContext(Dispatchers.Default) { thumbnail(p.bytes) }
                 // Kept for a reclaimed process; sending does not depend on it.
-                persistOrder()
+                prepared(img)
                 machine()?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
@@ -264,13 +329,17 @@ class ImageDraft(
         forget(img)
         img.release()
         persistOrder()
+        settle()
     }
 
+    /** Takes an image's files away, after any save of it that is still on its way. */
     private fun forget(img: PendingImage) {
-        saved -= img.id
-        runCatching {
-            files.remove(key, img.id + ".img")
-            files.remove(key, img.id + ".meta")
+        unmark(img, preparing = false)
+        enqueue {
+            runCatching {
+                files.remove(key, img.id + ".img")
+                files.remove(key, img.id + ".meta")
+            }
         }
     }
 
@@ -290,6 +359,7 @@ class ImageDraft(
         for (img in taken) forget(img)
         if (images.isEmpty()) original = false
         persistOrder()
+        settle()
     }
 
     /**
@@ -318,7 +388,7 @@ class ImageDraft(
         for (img in images.toList()) remove(img)
         notice = ""
         original = false
-        runCatching { files.clearFolder(key) }
+        enqueue { runCatching { files.clearFolder(key) } }
     }
 
     /** Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again. */
@@ -326,6 +396,7 @@ class ImageDraft(
         val (list, orig) = loadImages(files, key, thumb)
         original = orig
         images += list
+        synchronized(marks) { saved += list.map { it.id } }
     }
 }
 

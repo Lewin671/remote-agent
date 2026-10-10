@@ -60,7 +60,7 @@ public final class ImageUploads {
                 img.processed = p
                 self?.onPrepared?(img)
                 // Kept for a reclaimed process; sending does not depend on it.
-                draft.persist()
+                draft.prepared(img)
                 img.job = nil
                 if let m = machine() { self?.upload(img, machineId: m) } else { img.state = .failed(error: "先选一台电脑") }
             } catch {

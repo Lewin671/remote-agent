@@ -128,7 +128,7 @@ struct StoredImage: Sendable {
 private func utf8(_ s: String) -> Data { Data(s.utf8) }
 private func text(_ d: Data) -> String { String(decoding: d, as: UTF8.self) }
 
-/// Writes images and their order under `folder`; the order file lists them as picked, so a restore keeps it.
+/// Writes images under `folder`. Which of the folder's images belong to it, and in what order, is `saveOrder`'s to say.
 func saveImages(_ files: any SealedFiles, folder: String, images: [StoredImage], original: Bool) throws {
     for img in images {
         guard let p = img.processed else { continue }
@@ -136,9 +136,10 @@ func saveImages(_ files: any SealedFiles, folder: String, images: [StoredImage],
         let meta = ["\(p.format.rawValue)", "\(p.width)", "\(p.height)", original ? "1" : "0", img.uri ?? "", p.note].joined(separator: "\n")
         try files.put(folder: folder, name: img.id + ".meta", data: utf8(meta))
     }
-    try saveOrder(files, folder: folder, ids: images.map(\.id), original: original)
 }
 
+/// Writes the order file: the whole selection as picked, so a restore keeps it. Written once per save, after the
+/// images it lists, so that it never names fewer than are kept.
 func saveOrder(_ files: any SealedFiles, folder: String, ids: [String], original: Bool) throws {
     try files.put(folder: folder, name: orderName, data: utf8(([original ? "1" : "0"] + ids).joined(separator: "\n")))
 }
@@ -179,10 +180,18 @@ private func revive(_ stored: [StoredImage]) -> [PendingImage] {
 public final class ImageDraft {
     public nonisolated let key: String
     @ObservationIgnored private let files: any SealedFiles
-    /// Where saves run, one at a time for this draft; nil runs them in place.
+    /// Where saves and removals run, one at a time for this draft; nil runs them in place.
     @ObservationIgnored private let saves: DispatchQueue?
-    /// Images whose current bytes are on disk; an image prepared again is written again.
-    @ObservationIgnored private var saved = Set<String>()
+    /// Images whose current bytes are on disk or on their way there, with the save that writes them; an image
+    /// prepared again is written again.
+    @ObservationIgnored private var saved = [String: Int]()
+    @ObservationIgnored private var lastSave = 0
+    /// Images being prepared again: `processed` still holds what they were before.
+    @ObservationIgnored private var stale = Set<String>()
+    /// Images a save has put on disk here.
+    @ObservationIgnored private var landed = Set<String>()
+    /// What waits for images to be on disk here or gone from the draft (`whenKept`).
+    @ObservationIgnored private var waiting: [(ids: [String], then: @MainActor () -> Void)] = []
 
     public var images: [PendingImage] = []
     public private(set) var original = false
@@ -190,9 +199,9 @@ public final class ImageDraft {
     /// Said once after a pick or a put back: how many did not fit.
     public var notice = ""
 
-    /// `saves`: the queue the sealed files are written on, serial so that an
-    /// older snapshot never lands after a newer one; nil writes in place, as
-    /// tests want.
+    /// `saves`: the queue the sealed files are written and removed on, serial
+    /// so that an older snapshot never lands after a newer one nor after the
+    /// removal of what it wrote; nil works in place, as tests want.
     public init(key: String, files: any SealedFiles, saves: DispatchQueue? = DispatchQueue(label: "remote-agent.image-draft")) {
         self.key = key
         self.files = files
@@ -214,44 +223,93 @@ public final class ImageDraft {
     }
 
     /// Saves the draft as it is now: every prepared image not yet on disk and
-    /// the order of the whole selection. Call it when an image was prepared.
+    /// the order of the whole selection.
     public func persist() {
         let now = images
-        let fresh = now.filter { !saved.contains($0.id) && $0.processed != nil }
+        let fresh = now.filter { saved[$0.id] == nil && !stale.contains($0.id) && $0.processed != nil }
         let write = fresh.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed) }
         let ids = now.map(\.id)
         // Taken as written now; put back below if the write fails.
-        for img in fresh { saved.insert(img.id) }
+        lastSave += 1
+        let save = lastSave
+        for img in fresh { saved[img.id] = save }
         let files = self.files
         let key = self.key
         let original = self.original
-        let work: @Sendable () -> String? = {
+        enqueue {
+            try saveImages(files, folder: key, images: write, original: original)
+            try saveOrder(files, folder: key, ids: ids, original: original)
+        } then: { [weak self] failure in
+            self?.wrote(write.map(\.id), save, failure)
+        }
+    }
+
+    /// Runs `work` after the saves and removals asked for before it, then tells the main actor how it went.
+    private func enqueue(_ work: @escaping @Sendable () throws -> Void, then: (@MainActor @Sendable (String?) -> Void)? = nil) {
+        let run: @Sendable () -> String? = {
             do {
-                try saveImages(files, folder: key, images: write, original: original)
-                try saveOrder(files, folder: key, ids: ids, original: original)
+                try work()
                 return nil
             } catch {
                 return error.localizedDescription
             }
         }
-        if let saves {
-            saves.async { [weak self] in
-                guard let failure = work() else { return }
-                Task { @MainActor in self?.saveFailed(write.map(\.id), failure) }
-            }
-        } else if let failure = work() {
-            saveFailed(write.map(\.id), failure)
+        guard let saves else {
+            let failure = run()
+            then?(failure)
+            return
+        }
+        saves.async {
+            let failure = run()
+            guard let then else { return }
+            // In the order the work ran.
+            DispatchQueue.main.async { MainActor.assumeIsolated { then(failure) } }
         }
     }
 
-    private func saveFailed(_ ids: [String], _ why: String) {
-        for id in ids { saved.remove(id) }
-        notice = "这张图未保存到手机：\(why)。当前仍可发送，关闭应用后可能丢失"
+    /// A save ran. An image prepared again or taken out since is no longer that save's to answer for.
+    private func wrote(_ ids: [String], _ save: Int, _ failure: String?) {
+        let mine = ids.filter { saved[$0] == save }
+        if let failure {
+            for id in mine { saved[id] = nil }
+            notice = "这张图未保存到手机：\(failure)。当前仍可发送，关闭应用后可能丢失"
+        } else {
+            landed.formUnion(mine)
+            settle()
+        }
     }
 
-    /// An image is being prepared again: its bytes on disk are the old ones.
+    /// Calls `then` once none of the images `ids` needs a copy kept elsewhere: each is on disk here, or gone
+    /// from the draft. A save that fails keeps it waiting for the next one.
+    public func whenKept(_ ids: [String], _ then: @escaping @MainActor () -> Void) {
+        waiting.append((ids, then))
+        settle()
+    }
+
+    private func settle() {
+        var ready = [@MainActor () -> Void]()
+        waiting.removeAll { wait in
+            let kept = wait.ids.allSatisfy { id in
+                // One without bytes has nothing a copy elsewhere could hold either.
+                guard let img = images.first(where: { $0.id == id }), img.processed != nil else { return true }
+                return landed.contains(id)
+            }
+            if kept { ready.append(wait.then) }
+            return kept
+        }
+        for then in ready { then() }
+    }
+
+    /// An image is being prepared again: its bytes, in memory and on disk, are the old ones until `prepared`.
     public func invalidate(_ img: PendingImage) {
-        saved.remove(img.id)
+        saved[img.id] = nil
+        stale.insert(img.id)
+    }
+
+    /// An image has the bytes it was prepared for: they are saved.
+    public func prepared(_ img: PendingImage) {
+        stale.remove(img.id)
+        persist()
     }
 
     /// Originals or compressed, for this message; true when that changed and every image is to be prepared again from what was picked.
@@ -267,12 +325,21 @@ public final class ImageDraft {
         forget(img)
         img.release()
         persist()
+        settle()
     }
 
+    /// Takes an image's files away, after any save of it that is still on its way.
     private func forget(_ img: PendingImage) {
-        saved.remove(img.id)
-        try? files.remove(folder: key, name: img.id + ".img")
-        try? files.remove(folder: key, name: img.id + ".meta")
+        let id = img.id
+        saved[id] = nil
+        stale.remove(id)
+        landed.remove(id)
+        let files = self.files
+        let key = self.key
+        enqueue {
+            try? files.remove(folder: key, name: id + ".img")
+            try? files.remove(folder: key, name: id + ".meta")
+        }
     }
 
     public func ready(machineId: String?) -> Bool {
@@ -297,6 +364,7 @@ public final class ImageDraft {
         for img in taken { forget(img) }
         if images.isEmpty { original = false }
         persist()
+        settle()
     }
 
     /// Puts images back, e.g. from a message that was not submitted. Nothing
@@ -325,7 +393,9 @@ public final class ImageDraft {
         for img in images { remove(img) }
         notice = ""
         original = false
-        try? files.clearFolder(key)
+        let files = self.files
+        let key = self.key
+        enqueue { try? files.clearFolder(key) }
     }
 
     /// Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again.
@@ -333,7 +403,10 @@ public final class ImageDraft {
         let (list, orig) = try loadStored(files, folder: key)
         original = orig
         images.append(contentsOf: revive(list))
-        for img in list { saved.insert(img.id) }
+        for img in list {
+            saved[img.id] = lastSave
+            landed.insert(img.id)
+        }
     }
 }
 
@@ -435,6 +508,7 @@ public struct OutgoingRecords: Sendable {
     public func save(sid: String, _ o: OutgoingRecord, original: Bool) throws {
         let f = folder(sid, o.requestId)
         try saveImages(files, folder: f, images: o.images, original: original)
+        try saveOrder(files, folder: f, ids: o.images.map(\.id), original: original)
         try files.put(folder: f, name: "text", data: utf8(o.text))
         try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
         try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))

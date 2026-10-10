@@ -101,6 +101,23 @@ private final class FakeSources: @unchecked Sendable {
     }
 }
 
+/// Holds whoever waits at it until it is opened.
+private actor Gate {
+    private var open = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        if open { return }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func letThrough() {
+        open = true
+        for w in waiting { w.resume() }
+        waiting = []
+    }
+}
+
 /// Android's `ImageDraft` jobs: prepare, send, send again (ui/ImageDrafts.kt).
 @MainActor @Suite struct ImageSendingTests {
     private let machines = FakeMachines()
@@ -260,6 +277,33 @@ private final class FakeSources: @unchecked Sendable {
         #expect(sources.count("picked:new") == 2)
         d.remove(added[1])
         #expect(!u.canReprepare(d))
+    }
+
+    @Test func anImageStillBeingPreparedAgainIsNotTakenForSaved() async throws {
+        let gate = Gate()
+        let machines = machines
+        let u = ImageUploads(
+            prepare: { uri, original in
+                if original, uri == "picked:b" { await gate.wait() }
+                return Processed(bytes: Data("\(uri) \(original)".utf8), format: .png, width: 1, height: 1)
+            },
+            channel: { FakeChannel(machines: machines, machine: $0) })
+        let d = draft()
+        let added = u.add(d, uris: ["picked:a", "picked:b"], machine: { "mac" })
+        for img in added { await settled(img) }
+        func kept(_ img: PendingImage) throws -> String {
+            String(decoding: try #require(try files.get(folder: "session:s", name: img.id + ".img")), as: UTF8.self)
+        }
+        #expect(try kept(added[0]) == "picked:a false" && kept(added[1]) == "picked:b false")
+        // 原图: the first is ready and saved while the second is still being read.
+        u.setOriginal(d, true, machine: { "mac" })
+        await settled(added[0])
+        #expect(added[1].state == .processing)
+        #expect(try kept(added[0]) == "picked:a true")
+        await gate.letThrough()
+        await settled(added[1])
+        // What a reclaimed process would find is what the draft says it sends.
+        #expect(try kept(added[1]) == "picked:b true")
     }
 
     @Test func anImageRemovedWhileItIsOnItsWayStaysGone() async {

@@ -10,6 +10,10 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
     private var data = [String: Data]()
     /// Set to have every write fail, as a full disk would.
     var full = false
+    /// How many more writes there is room for; nil for any number.
+    var room: Int?
+    /// Every write that went in, in order.
+    private(set) var puts = [(key: String, data: Data)]()
 
     struct Full: Error, LocalizedError {
         var errorDescription: String? { "磁盘已满" }
@@ -19,8 +23,10 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
 
     func put(folder: String, name: String, data: Data) throws {
         try lock.withLock {
-            if full { throw Full() }
+            if full || room == 0 { throw Full() }
+            room = room.map { $0 - 1 }
             self.data["\(folder)/\(name)"] = data
+            puts.append(("\(folder)/\(name)", data))
         }
     }
 
@@ -58,6 +64,7 @@ private final class FailureCount: @unchecked Sendable {
         // Random-looking IDs in an order no listing would give back.
         let picked = [img("zz"), img("aa"), img("mm")]
         try saveImages(files, folder: "session:s", images: picked.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed) }, original: true)
+        try saveOrder(files, folder: "session:s", ids: picked.map(\.id), original: true)
         let d = draft("session:s", files)
         try d.restore()
         #expect(d.images.map(\.id) == ["zz", "aa", "mm"])
@@ -156,6 +163,63 @@ private final class FailureCount: @unchecked Sendable {
         #expect(Array(order.dropFirst()) == ["a", "b"])
     }
 
+    @Test func everyOrderWrittenListsTheImagesAlreadyKept() throws {
+        let files = MemoryFiles()
+        let d = draft("session:s", files)
+        d.attach([img("a")], max: 6)
+        // A second image is prepared: only it is written, and the order still names the first at every moment.
+        d.images.append(img("b"))
+        d.persist()
+        let orders = files.puts.filter { $0.key == "session:s/order" }.map { String(decoding: $0.data, as: UTF8.self) }
+        #expect(orders == ["0\na", "0\na\nb"])
+        #expect(files.puts.filter { $0.key == "session:s/a.img" }.count == 1)
+    }
+
+    @Test func anImageRemovedBeforeItsSaveRanLeavesNoFiles() throws {
+        let files = MemoryFiles()
+        let saves = DispatchQueue(label: "test.image-draft")
+        let d = ImageDraft(key: "session:s", files: files, saves: saves)
+        // The save waits its turn; the image is removed meanwhile.
+        saves.suspend()
+        let a = img("a")
+        d.attach([a, img("b")], max: 6)
+        d.remove(a)
+        saves.resume()
+        saves.sync {}
+        #expect(Set(files.keys) == ["session:s/b.img", "session:s/b.meta", "session:s/order"])
+        #expect(String(decoding: try #require(try files.get(folder: "session:s", name: "order")), as: UTF8.self) == "0\nb")
+        // The same for a draft dropped whole.
+        saves.suspend()
+        d.attach([img("c")], max: 6)
+        d.clear()
+        saves.resume()
+        saves.sync {}
+        #expect(files.keys.isEmpty)
+    }
+
+    @Test func whatWaitsForImagesToBeKeptHearsOnceTheyAreOnDiskOrGone() throws {
+        let files = MemoryFiles()
+        let d = draft("session:s", files)
+        var heard: [String] = []
+        // No room: the images are in the draft but not on disk, so their copy elsewhere must stay.
+        files.full = true
+        let (a, b) = (img("a"), img("b"))
+        d.attach([a, b], max: 6)
+        d.whenKept(["a", "b"]) { heard.append("both") }
+        d.whenKept(["a"]) { heard.append("a") }
+        #expect(heard.isEmpty)
+        // Removed: nothing of it is left to keep.
+        d.remove(a)
+        #expect(heard == ["a"])
+        files.full = false
+        d.persist()
+        #expect(heard == ["a", "both"])
+        #expect(try files.get(folder: "session:s", name: "b.img") != nil)
+        // Already there: said at once.
+        d.whenKept(["b"]) { heard.append("again") }
+        #expect(heard == ["a", "both", "again"])
+    }
+
     // --- not in Android's tests ---
 
     @Test func whatIsPutBackGoesToTheComputerAgainUnderANewTransfer() {
@@ -207,6 +271,7 @@ private final class FailureCount: @unchecked Sendable {
     @Test func aRecordThatDoesNotReadIsLeftOutAndTheRestRestored() throws {
         let files = MemoryFiles()
         try saveImages(files, folder: "f", images: [img("a"), img("b")].map { StoredImage(id: $0.id, uri: nil, processed: $0.processed) }, original: false)
+        try saveOrder(files, folder: "f", ids: ["a", "b"], original: false)
         try files.put(folder: "f", name: "a.meta", data: Data("not a record".utf8))
         let (got, original) = try loadStored(files, folder: "f")
         #expect(got.map(\.id) == ["b"] && !original)
