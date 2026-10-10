@@ -23,7 +23,6 @@ struct HomeSessionRow: View {
     var meta = RowMeta()
     /// The last of its list draws no line under it.
     var last = false
-    var preview = true
     @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 8
@@ -32,7 +31,7 @@ struct HomeSessionRow: View {
         if exited(session) {
             HomeEndedRow(session: session, now: now, project: meta.project)
         } else {
-            let t = sessionRowText(state, session, meta: meta, now: now, preview: preview)
+            let t = sessionRowText(state, session, meta: meta, now: now)
             let tone = StatusTone(t.status.tone)
             Button {
                 nav.open(.session(id: session.id))

@@ -81,7 +81,7 @@ public struct MarkdownTheme: Equatable, Sendable {
         self.removed = removed
     }
 
-    /// The light palette of the design (client-v37.html `:root`).
+    /// The light palette of the design (client-v38.html `:root`).
     public static let light = MarkdownTheme(
         text: Color(hex: 0x16181C), secondary: Color(hex: 0x3A3F46), muted: Color(hex: 0x626970), line: Color(hex: 0xE6E8EB),
         soft: Color(hex: 0xF5F5F7), chip: Color(hex: 0xEFF0F2), track: Color(hex: 0xD9DCE0),

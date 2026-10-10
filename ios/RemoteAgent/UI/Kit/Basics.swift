@@ -1,4 +1,4 @@
-// The small shared pieces of docs/design/client-v37.html, sized as the
+// The small shared pieces of docs/design/client-v38.html, sized as the
 // mockup's CSS (1 CSS px = 1 pt): lines, tap targets, dots, arrows, avatars,
 // chips. What each is for is in docs/design-system.md §6; the Android
 // counterparts are in ui/Kit.kt and ui/Common.kt.

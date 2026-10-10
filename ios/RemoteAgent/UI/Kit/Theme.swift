@@ -1,6 +1,6 @@
 // The design tokens of docs/design-system.md: colours (§2), radii and
 // spacing (§4). The values are the ones at the top of the mockup
-// (docs/design/client-v37.html, :root and [data-theme="dark"]) and in
+// (docs/design/client-v38.html, :root and [data-theme="dark"]) and in
 // Android's ui/Theme.kt; what each colour is for is in the design system.
 //
 // There is no asset catalogue behind them: a colour is one dynamic UIColor

@@ -2,9 +2,9 @@
 // sessions, and at the bottom the message box that starts a new one, which
 // is what the page is for on a phone (architecture §8 「主页的范围」). Under
 // the title a line says which CLI and settings the next session uses; it
-// and ⋯ open 项目设置. With the keyboard up the header folds into the
-// navigation bar and the rows lose their previews, so that the sessions
-// still fit above the box.
+// and ⋯ open 项目设置. The header folds into the navigation bar once it
+// is scrolled away; the keyboard only shortens the list, so nothing jumps
+// as it comes and goes (design-system §6 「输入框」).
 import RACore
 import RAProto
 import SwiftUI
@@ -38,14 +38,21 @@ struct ProjectPageView: View {
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showEnded = HomeLaunch.flag("-projectEnded")
-    /// The message box has the keyboard.
-    @State private var typing = false
+    /// The header is scrolled out of sight: the navigation bar says what it said.
+    @State private var scrolledAway = false
     @State private var settings: ProjectSettingsRequest? = HomeLaunch.value("-projectSheet")
         .map { ProjectSettingsRequest(page: ProjectSettingsPage(rawValue: $0) ?? .main) }
     @State private var summaryModels: PBListModelsResponse?
     @State private var now = nowMs()
+
+    private static let scroll = "project-scroll"
+
+    /// Where the header ends in the scroll view; nil while nothing measures it.
+    private struct HeaderEnd: PreferenceKey {
+        static let defaultValue: CGFloat? = nil
+        static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) { value = nextValue() ?? value }
+    }
 
     private struct Models: Hashable {
         var machine: String
@@ -66,7 +73,7 @@ struct ProjectPageView: View {
         let hidden = isHidden(state, key: key)
         // A folder just chosen that has no session yet: there is nothing to list, the page is its message box.
         let fresh = machine != nil && page.active.isEmpty && page.endedTotal == 0
-        let folded = typing || fresh
+        let folded = scrolledAway || fresh
         let name = projectName(key)
         Page {
             VStack(spacing: 0) {
@@ -75,16 +82,26 @@ struct ProjectPageView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if fresh {
                             if let selected { chip(state, selected).padding(.horizontal, Theme.Space.page).padding(.vertical, 4) }
-                        } else if !typing {
+                        } else {
                             header(state, page, selected, name: name)
+                                .background {
+                                    GeometryReader { g in
+                                        Color.clear.preference(key: HeaderEnd.self, value: g.frame(in: .named(Self.scroll)).maxY)
+                                    }
+                                }
+                                // A lazy stack lets go of what is far off the screen, and then nothing measures it.
+                                .onDisappear { scrolledAway = true }
                         }
                         changeNotice(state)
                         if hidden { HiddenProjectNotice(state: state, projectKey: key) }
-                        sessions(state, page, compact: typing)
+                        sessions(state, page)
                         Color.clear.frame(height: 12)
                     }
                     .readableColumn()
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: typing)
+                }
+                .coordinateSpace(.named(Self.scroll))
+                .onPreferenceChange(HeaderEnd.self) { end in
+                    if let end { scrolledAway = end <= 0 }
                 }
                 .scrollDismissesKeyboard(.interactively)
                 // 最近结束 wants three; the whole list asks for a page each time its end is reached. Either
@@ -97,7 +114,7 @@ struct ProjectPageView: View {
                 if !hidden {
                     NewSessionBox(
                         state: state, key: key, initial: initial, name: name, focus: focus, settled: start?.settled != false,
-                        onFocus: { typing = $0 }, onMachine: { settings = ProjectSettingsRequest(page: .machine) })
+                        onMachine: { settings = ProjectSettingsRequest(page: .machine) })
                 }
             }
         }
@@ -194,16 +211,16 @@ struct ProjectPageView: View {
         }
     }
 
-    @ViewBuilder private func sessions(_ state: RemoteState, _ page: ProjectPage, compact: Bool) -> some View {
+    @ViewBuilder private func sessions(_ state: RemoteState, _ page: ProjectPage) -> some View {
         if !page.active.isEmpty {
             SectionLabel("进行中", count: page.active.count).accessibilityElement(children: .combine)
             ForEach(page.active) { s in
-                HomeSessionRow(state: state, session: s, now: now, meta: page.meta, last: s.id == page.active.last?.id, preview: !compact)
+                HomeSessionRow(state: state, session: s, now: now, meta: page.meta, last: s.id == page.active.last?.id)
             }
         }
         let recent = page.recent(all: showEnded)
         let earlier = state.moreSessions && page.ended.count < page.endedTotal
-        if (!recent.isEmpty || (showEnded && earlier)) && !compact {
+        if !recent.isEmpty || (showEnded && earlier) {
             SectionLabel(showEnded ? "已结束" : "最近结束", count: showEnded ? page.endedTotal : nil).accessibilityElement(children: .combine)
             ForEach(recent) { HomeEndedRow(session: $0, now: now) }
             // On screen when the end of the list is reached: that is when the next page is fetched.

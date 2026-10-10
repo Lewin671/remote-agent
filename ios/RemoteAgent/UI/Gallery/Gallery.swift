@@ -1,7 +1,7 @@
 // The component gallery: every piece of UI/Kit with the mockup's example
 // text, a page per group, for looking at them in light and dark and at
 // large text sizes, and for screenshots to compare with
-// docs/design/client-v37.html (as Android's V7Gallery and V8Gallery do
+// docs/design/client-v38.html (as Android's V7Gallery and V8Gallery do
 // under androidTest). Debug builds only.
 //
 //   -gallery            opens the list of pages

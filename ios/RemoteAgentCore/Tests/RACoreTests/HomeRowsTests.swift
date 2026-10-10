@@ -167,7 +167,6 @@ import Testing
         let row = sessionRowText(st, run, meta: RowMeta(project: true, agent: true, machine: true), now: now, zone: zone)
         #expect(row == SessionRowText(title: "修复登录超时", time: "刚刚", status: .running, preview: "正在执行 go test", meta: "foo · Codex · m"))
         #expect(row.spoken == "修复登录超时，运行中，正在执行 go test，foo，Codex，m，刚刚")
-        #expect(sessionRowText(st, run, meta: RowMeta(), now: now, preview: false, zone: zone).preview.isEmpty)
         // The status word already says a plan waits.
         let plan = session("plan", plan: true)
         #expect(sessionRowText(st, plan, meta: RowMeta(), now: now, zone: zone).preview.isEmpty)

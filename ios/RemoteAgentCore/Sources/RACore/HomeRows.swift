@@ -217,12 +217,11 @@ public struct SessionRowText: Equatable, Sendable {
     }
 }
 
-/// `preview`: off where the row is squeezed (the project page under the keyboard).
 public func sessionRowText(
-    _ state: RemoteState, _ s: SessionView, meta: RowMeta, now: Int64, preview: Bool = true, zone: TimeZone = .current
+    _ state: RemoteState, _ s: SessionView, meta: RowMeta, now: Int64, zone: TimeZone = .current
 ) -> SessionRowText {
     let st = shownStatus(state, s)
-    let pv = preview ? previewOf(s, status: st) : ""
+    let pv = previewOf(s, status: st)
     return SessionRowText(
         title: titleOf(s, zone: zone), time: whenText(s.updatedMs, now: now, zone: zone), status: st,
         // The status word already says a plan waits.

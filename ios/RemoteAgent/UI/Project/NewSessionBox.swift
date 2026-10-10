@@ -28,7 +28,6 @@ struct NewSessionBox: View {
     /// not, the pages of the listing are fetched and nothing starts; what is
     /// written stays, and takes the settings once they are known.
     var settled = true
-    var onFocus: (Bool) -> Void = { _ in }
     /// Opens the machine choice of the project's settings.
     var onMachine: () -> Void = {}
     @Environment(AppModel.self) private var model
@@ -92,7 +91,6 @@ struct NewSessionBox: View {
         .onChange(of: Follow(initial: initial, drafting: drafting, settled: settled), initial: true) { _, now in
             draft.config.follow(now.initial, drafting: now.drafting, settled: now.settled)
         }
-        .onChange(of: focused) { _, on in onFocus(on) }
         // ↑ and the other CLI, for a script (debug builds).
         .debugSignal("project.start") { start(draft) }
         .debugSignal("project.agent") {
