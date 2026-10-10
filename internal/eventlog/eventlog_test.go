@@ -1,6 +1,7 @@
 package eventlog
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -240,4 +241,46 @@ func TestNothingIsAppendedAfterBytesThatCouldNotBeRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened(t, l, path, "a", "d")
+}
+
+func TestDamagedRecordIsNotTakenForATornTail(t *testing.T) {
+	for name, damage := range map[string]func([]byte) []byte{
+		// The second of three records no longer parses.
+		"in the middle": func(b []byte) []byte {
+			i := bytes.IndexByte(b, '\n') + 1
+			return append(append(bytes.Clone(b[:i]), "{\"event\":{\"seq\":2,\n"...), b[i+bytes.IndexByte(b[i:], '\n')+1:]...)
+		},
+		// A whole last line is not what a torn write leaves either: the
+		// record was written, and the server may hold its number.
+		"at the end": func(b []byte) []byte {
+			i := bytes.LastIndexByte(b[:len(b)-1], '\n') + 1
+			return append(bytes.Clone(b[:i]), "{\"event\":{\"seq\":3,\n"...)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "events.jsonl")
+			l, err := Open(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, text := range []string{"a", "b", "c"} {
+				if err := l.Append("s1", []*pb.Event{msg(text)}, "", 0); err != nil {
+					t.Fatal(err)
+				}
+			}
+			l.Close()
+			whole, _ := os.ReadFile(path)
+			damaged := damage(whole)
+			if err := os.WriteFile(path, damaged, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if l, err := Open(path); err == nil {
+				l.Close()
+				t.Error("a log with a damaged record opened")
+			}
+			if after, _ := os.ReadFile(path); !bytes.Equal(after, damaged) {
+				t.Fatalf("opening a damaged log changed it: %d bytes, was %d", len(after), len(damaged))
+			}
+		})
+	}
 }

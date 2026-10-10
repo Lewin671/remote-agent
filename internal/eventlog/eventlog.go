@@ -60,7 +60,8 @@ type file interface {
 }
 
 // Open loads the log at path, creating it if needed. A torn last line from
-// a crash is cut off.
+// a crash is cut off; a log with a damaged record is refused and left as
+// it is.
 func Open(path string) (*Log, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
@@ -97,13 +98,14 @@ func (l *Log) load(f io.Reader) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
+		// A torn write ends without a newline. A whole line that does not
+		// parse is damage: cutting the file there would delete the events
+		// after it, and reuse sequence numbers the server already holds.
+		// The error names the place only, never the line.
 		var rec record
-		if json.Unmarshal(bytes.TrimSpace(line), &rec) != nil {
-			return good, nil
-		}
 		e := &pb.Event{}
-		if err := protojson.Unmarshal(rec.Event, e); err != nil {
-			return good, nil
+		if json.Unmarshal(bytes.TrimSpace(line), &rec) != nil || protojson.Unmarshal(rec.Event, e) != nil {
+			return 0, fmt.Errorf("damaged record at byte %d", good)
 		}
 		if want := uint64(len(l.events) + 1); e.Seq != want {
 			return 0, fmt.Errorf("seq %d at position %d", e.Seq, want)
