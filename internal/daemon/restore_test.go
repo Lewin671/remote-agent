@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 )
@@ -27,8 +28,8 @@ func newRestoreHarness(t *testing.T) *restoreHarness {
 	bin := t.TempDir()
 	alive := filepath.Join(bin, "sessions")
 	script := "#!/bin/sh\nshift 2\ncase \"$1\" in\n" +
-		"list-sessions) cat '" + alive + "' 2>/dev/null ;;\n" +
-		"has-session) grep -q \"^${3#=}\t\" '" + alive + "' ;;\n" +
+		"list-sessions) cat '" + alive + "' 2>/dev/null; exit 0 ;;\n" +
+		"has-session) grep -q \"^${3#=}\t\" '" + alive + "' 2>/dev/null ;;\n" +
 		"capture-pane) printf '\\033[1m›\\033[0m \\033[2mAsk Codex to do anything\\033[0m\\n  GPT-6-Sol medium · /w\\n' ;;\n" +
 		"esac\n"
 	if err := os.WriteFile(filepath.Join(bin, "tmux"), []byte(script), 0o700); err != nil {
@@ -119,4 +120,44 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 		_, off := last.log.Checkpoint()
 		return off > 0
 	})
+}
+
+// The CLI went on and exited while the daemon was down: what it wrote to
+// its transcript meanwhile is read before the session is marked exited, as
+// nothing reads an exited session's transcript later.
+func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
+	r := newRestoreHarness(t)
+	id := "00000000000000aa"
+	rollout := filepath.Join(paths.SessionDir(id), "rollout.jsonl")
+	r.save(meta{ID: id, RolloutPath: rollout}, false)
+	lines := []string{
+		taskStarted,
+		`{"timestamp":"2026-09-29T10:00:01Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m1","content":[{"text":"done while you were away"}]}}}`,
+		`{"timestamp":"2026-09-29T10:00:02Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1"}}`,
+	}
+	if err := os.WriteFile(rollout, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.d.restore(); err != nil {
+		t.Fatal(err)
+	}
+	s := r.session(id)
+	evs, _ := s.log.Since(0)
+	var kinds []string
+	for _, e := range evs {
+		switch {
+		case e.GetAgentMessage() != nil:
+			kinds = append(kinds, "message")
+		case e.GetTurnEnded() != nil:
+			kinds = append(kinds, "end")
+		case e.GetSessionState().GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED:
+			kinds = append(kinds, "exited")
+		}
+	}
+	if strings.Join(kinds, " ") != "message end exited" {
+		t.Fatalf("events %v", kinds)
+	}
+	if info := s.info(); info.Status != pb.SessionStatus_SESSION_STATUS_EXITED {
+		t.Fatalf("status %v", info.Status)
+	}
 }

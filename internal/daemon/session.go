@@ -566,9 +566,10 @@ func (s *session) markExited(detail string) {
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", m.ID, "err", errClass(err))
 	}
-	if len(left) > 0 {
-		s.readRollout()
-	}
+	// What the CLI wrote last is read now: nothing reads an exited
+	// session's transcript again. It may have been written while no daemon
+	// ran, and it tells what became of a message that was written.
+	s.readRollout()
 	for _, in := range left {
 		switch {
 		case in.Inflight == nil:
