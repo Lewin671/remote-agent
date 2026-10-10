@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
-import { restorePushPrefs } from "./push";
+import { pushPrefs, restorePushPrefs, setPushPrefs } from "./push";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import { Remote } from "./remote";
 
@@ -39,4 +39,32 @@ it("does not register a subscription after the account was removed during the re
   finish({ endpoint: "https://push.example.com/subscription" });
   await work;
   expect(remote.setPushSubscription).not.toHaveBeenCalled();
+});
+
+it("leaves notifications off when they are turned off while the saved choices are being registered", async () => {
+  localStorage.setItem("ra-push", JSON.stringify({ attention: true, turns: true }));
+  vi.stubGlobal("Notification", { permission: "granted" });
+  vi.stubGlobal("PushManager", class {});
+  // The browser's one subscription, as its push manager keeps it.
+  let browser: { endpoint: string; unsubscribe(): Promise<boolean> } | null = null;
+  const pushManager = {
+    getSubscription: async () => browser,
+    subscribe: async () => (browser = { endpoint: "https://push.example.com/subscription", unsubscribe: async () => { browser = null; return true; } }),
+  };
+  vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ pushManager }) } });
+  // What the server holds for this device.
+  let server: number[] = [];
+  let key!: (k: string) => void;
+  const asked = vi.fn(() => new Promise<string>((resolve) => { key = resolve; }));
+  const remote = { conn: "online", removed: false, pushKey: asked, setPushSubscription: vi.fn(async (_sub: string, kinds: number[]) => { server = kinds; }) } as unknown as Remote;
+  const restoring = restorePushPrefs(remote);
+  await vi.waitFor(() => expect(asked).toHaveBeenCalled());
+  // The user turns everything off while the server's key is on its way.
+  const off = setPushPrefs(remote, { attention: false, turns: false });
+  await new Promise((resolve) => setTimeout(resolve));
+  key("AAAA");
+  await Promise.all([restoring, off]);
+  expect(pushPrefs()).toEqual({ attention: false, turns: false });
+  expect(server).toEqual([]);
+  expect(browser).toBeNull();
 });

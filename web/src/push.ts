@@ -44,40 +44,56 @@ function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
+// Restoring the saved choices and changing them both read the browser's
+// subscription and then write the server's. One runs at a time, in the
+// order asked, so that the server ends with what was chosen last: a
+// restore that began with the old choices is never what lands after them.
+let turn: Promise<unknown> = Promise.resolve();
+function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  const next = turn.then(work, work);
+  turn = next.catch(() => undefined);
+  return next;
+}
+
 /** Registers this browser's saved choices for the current device after
  * connecting, including when it has joined again under a new device ID. */
-export async function restorePushPrefs(remote: Remote): Promise<void> {
-  if (!pushSupported() || Notification.permission !== "granted") return;
-  const prefs = pushPrefs();
-  const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
-  if (!kinds.length) return;
-  const current = () => !remote.removed && remote.conn === "online";
-  const reg = await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  if (!current()) return;
-  if (!sub) {
-    const key = await remote.pushKey();
+export function restorePushPrefs(remote: Remote): Promise<void> {
+  return inTurn(async () => {
+    if (!pushSupported() || Notification.permission !== "granted") return;
+    // As saved when its turn comes, not when the connection opened.
+    const prefs = pushPrefs();
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
+    if (!kinds.length) return;
+    const current = () => !remote.removed && remote.conn === "online";
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
     if (!current()) return;
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
-  }
-  if (current()) await remote.setPushSubscription(JSON.stringify(sub), kinds);
+    if (!sub) {
+      const key = await remote.pushKey();
+      if (!current()) return;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+    }
+    if (current()) await remote.setPushSubscription(JSON.stringify(sub), kinds);
+  });
 }
 
 /** Subscribes or unsubscribes to match prefs. */
-export async function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
-  const reg = await navigator.serviceWorker.ready;
-  let sub = await reg.pushManager.getSubscription();
-  const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
-  if (kinds.length === 0) {
-    await remote.setPushSubscription("", []);
-    await sub?.unsubscribe();
-  } else {
-    if ((await Notification.requestPermission()) !== "granted") throw new Error("浏览器没有允许通知");
-    if (!sub) {
-      const key = await remote.pushKey();
-      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
+  return inTurn(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    const kinds = [...(prefs.attention ? [NotifyKind.ATTENTION] : []), ...(prefs.turns ? [NotifyKind.TURN_ENDED] : [])];
+    if (kinds.length === 0) {
+      await remote.setPushSubscription("", []);
+      await sub?.unsubscribe();
+    } else {
+      if ((await Notification.requestPermission()) !== "granted") throw new Error("浏览器没有允许通知");
+      if (!sub) {
+        const key = await remote.pushKey();
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+      }
+      await remote.setPushSubscription(JSON.stringify(sub), kinds);
     }
-    await remote.setPushSubscription(JSON.stringify(sub), kinds);
-  }
-  localStorage.setItem(KEY, JSON.stringify(prefs));
+    localStorage.setItem(KEY, JSON.stringify(prefs));
+  });
 }
