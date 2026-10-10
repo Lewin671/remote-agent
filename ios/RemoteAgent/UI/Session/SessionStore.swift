@@ -17,6 +17,8 @@
 //   - an approval or an answer whose outcome is unknown is sent again as it
 //     was, the same sealed command (`Attempt`), and the opposite decision is
 //     never offered in its place;
+//   - a fork whose outcome is unknown is sent again as it was too, so that
+//     the computer never forks the session twice for one tap;
 //   - a draft is the user's: it survives leaving the page, a failed send and
 //     a card another client answered first.
 import Foundation
@@ -63,6 +65,24 @@ final class SessionStore {
         /// The outcome is unknown: only the same sealed command is sent again (`Attempt`).
         fileprivate(set) var frozen = false
         /// The unknown decision expired and is not sent again.
+        fileprivate(set) var expired = false
+    }
+
+    /// A fork of a session asked from this client. It outlives the menu and
+    /// the page: while its outcome is unknown the next try is the same
+    /// sealed command, which the daemon answers from its log with the
+    /// session it already made (architecture §10).
+    @MainActor
+    @Observable
+    final class Fork {
+        @ObservationIgnored let attempt = Attempt()
+        /// It is on its way to the computer.
+        fileprivate(set) var running = false
+        /// Why the last try did not make a session; empty while one is running and once one did.
+        fileprivate(set) var error = ""
+        /// The outcome is unknown: only the same sealed command is sent again (`Attempt`).
+        fileprivate(set) var frozen = false
+        /// The unknown fork expired and is not sent again.
         fileprivate(set) var expired = false
     }
 
@@ -302,6 +322,67 @@ final class SessionStore {
         let r = resolve(approvalId)
         return decide(
             commands, machineId: machineId, sid: sid, approvalId: approvalId, allow: r.allow, message: r.message, always: r.always)
+    }
+
+    // MARK: Forks
+
+    @ObservationIgnored private var forks: [String: Fork] = [:]
+
+    /// The fork of a session as this client knows it; one object per session for as long as the account is in use.
+    func fork(_ sid: String) -> Fork {
+        if let f = forks[sid] { return f }
+        let f = Fork()
+        forks[sid] = f
+        return f
+    }
+
+    /// Forks a session, or sends the earlier fork again while its outcome
+    /// is unknown. One try at a time. The task's value is the new session's
+    /// ID, or nil when none is known to have been made; `fork` says why.
+    @discardableResult
+    func forkSession(_ commands: any SessionCommands, machineId: String, sid: String) -> Task<String?, Never> {
+        let f = fork(sid)
+        guard !f.running else { return Task { nil } }
+        f.running = true
+        f.error = ""
+        return Task {
+            defer {
+                f.frozen = f.attempt.frozen
+                f.expired = f.attempt.expired
+                f.running = false
+            }
+            do {
+                let retry = f.attempt.frozen
+                let prepared = try f.attempt.next {
+                    var cmd = PBCommand()
+                    cmd.forkSession = .with { $0.sessionID = sid }
+                    return try commands.prepare(machineId: machineId, sessionId: sid, cmd)
+                }
+                let result = try await commands.forward(prepared, retryOfUnknown: retry)
+                f.attempt.settle()
+                guard let made = forkedSession(result) else { throw CommandError("internal", "意外的回复") }
+                return made
+            } catch {
+                f.error = errorText(f.attempt.settle(error) ?? error)
+                return nil
+            }
+        }
+    }
+
+    /// Gives up on a fork that expired with its outcome unknown: the next one is a new request.
+    func abandonFork(_ sid: String) {
+        let f = fork(sid)
+        guard !f.running else { return }
+        f.attempt.abandon()
+        f.error = ""
+        f.frozen = false
+        f.expired = false
+    }
+
+    /// The menu was closed: a fork that surely did not happen is not said again. One that may have is kept.
+    func dismissForkError(_ sid: String) {
+        guard let f = forks[sid], !f.frozen else { return }
+        f.error = ""
     }
 
     // MARK: Questions

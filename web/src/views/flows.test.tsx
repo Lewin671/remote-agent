@@ -2051,6 +2051,42 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
 });
 
+it("sends a fork whose answer was lost again as the same request, and gives it up only once it expired", async () => {
+  const r = demo();
+  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+  const s = r.sessions.get("s-idle")!;
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+
+  // The computer may have forked: the row says so and promises no second fork.
+  const command = vi.spyOn(r, "command");
+  command.mockRejectedValueOnce(new CommandError("unknown", "不确定电脑有没有执行"));
+  await click(row());
+  await vi.waitFor(() => expect(row().textContent).toBe("分叉会话上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"));
+  const slot = command.mock.calls[0][2];
+  expect(slot).toBeTruthy();
+
+  // Closing the menu and opening it again does not forget it.
+  await click(button("取消")!);
+  await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+  expect(row().textContent).toContain("上次的分叉结果不确定");
+
+  // The retry is the same request; one that comes back expired is not sent again.
+  command.mockRejectedValueOnce(new CommandError("deadline_exceeded", "过期了"));
+  await click(row());
+  await vi.waitFor(() => expect(row().textContent).toMatch(/^放弃上次的分叉/));
+  expect(command.mock.calls[1][2]).toBe(slot);
+  await click(row());
+  expect(command).toHaveBeenCalledTimes(2);
+  expect(row().textContent).toBe("分叉会话");
+
+  // Given up: the next fork is a new request.
+  location.hash = "";
+  await click(row());
+  expect(command.mock.calls[2][2]).not.toBe(slot);
+  await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
+});
+
 it("forks a session from ⋯: says why it cannot yet, reports a failure in the menu, and opens the fork", async () => {
   const r = demo();
   const row = () => [...host.querySelectorAll<HTMLButtonElement>(".actsheet .ai2")].find((b) => /分叉/.test(b.textContent ?? ""))!;
@@ -2078,7 +2114,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   // While it forks the row says so and the others wait; then the fork opens.
   location.hash = "";
   await click(row());
-  expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } });
+  expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } }, expect.anything());
   expect(row().textContent).toBe("正在分叉…");
   expect(button("重命名")!.disabled).toBe(true);
   await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });

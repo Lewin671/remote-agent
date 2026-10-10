@@ -241,6 +241,24 @@ extension Ref<LiveAnnouncer> {
         }
     }
 
+    @Test func theForkActionSaysHowAForkStands() {
+        func row(blocked: String? = nil, running: Bool = false, error: String = "", frozen: Bool = false, expired: Bool = false) -> ForkAction {
+            forkAction(blocked: blocked, running: running, error: error, frozen: frozen, expired: expired)
+        }
+        #expect(row() == ForkAction(text: "分叉会话", note: "", noteError: true, enabled: true, busy: false, tap: .fork))
+        #expect(row(running: true, error: "x", frozen: true) == ForkAction(text: "正在分叉…", busy: true))
+        #expect(row(blocked: "这一轮结束后可用", frozen: true) == ForkAction(note: "这一轮结束后可用", enabled: false))
+        #expect(row(error: "电脑不在线") == ForkAction(note: "没能分叉：电脑不在线", noteError: true))
+        // It may have happened: the row never promises a new fork, only the same request again.
+        let unsure = row(error: "不确定电脑有没有执行", frozen: true)
+        #expect(unsure.tap == .fork && unsure.enabled && unsure.noteError)
+        #expect(unsure.note == "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次")
+        // Expired: it cannot be asked again, so the tap gives it up and nothing is sent.
+        let gone = row(error: "x", frozen: true, expired: true)
+        #expect(gone.text == "放弃上次的分叉" && gone.tap == .abandon && gone.enabled)
+        #expect(gone.note == "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表")
+    }
+
     @Test func anApprovalIsHeadedByWhatItAsksFor() {
         let command = PBApprovalRequested.with {
             $0.command = "curl https://example.com\u{202E}"

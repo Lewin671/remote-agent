@@ -195,6 +195,37 @@ func terminalAvailable(_ status: Status) -> Bool {
     status != .exited && status != .offline
 }
 
+// MARK: The menu
+
+/// 分叉会话 in a session's menu: what the row says, and what a tap does.
+struct ForkAction: Equatable, Sendable {
+    enum Tap: Equatable, Sendable { case fork, abandon }
+
+    var text = "分叉会话"
+    var note = ""
+    /// The note is something that went wrong, not when the row can be used.
+    var noteError = false
+    var enabled = true
+    var busy = false
+    var tap = Tap.fork
+}
+
+/// `blocked`: why the session cannot be forked now (`forkBlocked`). The
+/// rest is how a fork asked from here stands (`SessionStore.Fork`). A fork
+/// that may have happened is only ever sent again as it was; once that
+/// request has expired the row gives it up, and only the tap after that
+/// asks for a new fork.
+func forkAction(blocked: String?, running: Bool, error: String, frozen: Bool, expired: Bool) -> ForkAction {
+    if running { return ForkAction(text: "正在分叉…", busy: true) }
+    if let blocked { return ForkAction(note: blocked, enabled: false) }
+    if expired {
+        return ForkAction(
+            text: "放弃上次的分叉", note: "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表", noteError: true, tap: .abandon)
+    }
+    if frozen { return ForkAction(note: "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次", noteError: true) }
+    return ForkAction(note: error.isEmpty ? "" : "没能分叉：\(error)", noteError: true)
+}
+
 // MARK: In place of the message box
 
 /// What the card says when a session ended, and whether it can be resumed from here now.

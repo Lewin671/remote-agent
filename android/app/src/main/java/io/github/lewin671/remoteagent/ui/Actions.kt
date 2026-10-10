@@ -123,6 +123,7 @@ object AccountMemory {
         Drafts.clear()
         Outbox.clear()
         Starts.clear()
+        Forks.clear()
         Answers.clear()
         Cancels.clear()
         PrefsChanges.clear()

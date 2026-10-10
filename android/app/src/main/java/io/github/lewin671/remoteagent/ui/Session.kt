@@ -169,10 +169,12 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
     val live = status != Status.EXITED && status != Status.OFFLINE
     // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
     val canRename = state.conn == ConnState.ONLINE && machineOf(state, s)?.online == true
-    // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
-    val fork = rememberAction()
+    // A fork starts at once, in the menu: its row shows the progress, and a failure under it. It is kept
+    // for the account: one whose outcome is unknown is still that fork after the menu or the page was left.
+    val fork = Forks.of(s.id)
     val forking = fork.running
-    val forkBlock = io.github.lewin671.remoteagent.core.forkBlocked(status, running, sent)
+    val forkScope = rememberCoroutineScope()
+    val forkRow = forkAction(io.github.lewin671.remoteagent.core.forkBlocked(status, running, sent), forking, fork.error, fork.frozen, fork.expired)
     // Claude Code records full model IDs; show the alias the list offers.
     var models by remember(s.machineId) { mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null) }
     LaunchedEffect(s.machineId, s.agent()) {
@@ -208,18 +210,15 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
             add(SheetAction("项目设置", enabled = !forking) { projectSettings = true })
             if (canRename) {
                 add(SheetAction("重命名", enabled = !forking) { rename = true })
-                add(SheetAction(
-                    if (forking) "正在分叉…" else "分叉会话", enabled = forkBlock == null, busy = forking, keepOpen = true,
-                    note = if (forking) "" else forkBlock ?: if (fork.error.isNotEmpty()) "没能分叉：${fork.error}" else "",
-                    noteError = forkBlock == null,
-                ) {
-                    fork.run({
-                        remote.command(s.id, remote.cmd { forkSession = ForkSessionRequest.newBuilder().setSessionId(s.id).build() }).also {
-                            if (io.github.lewin671.remoteagent.core.forkedSession(it) == null) throw io.github.lewin671.remoteagent.core.CommandException("internal", "意外的回复")
-                        }
-                    }) { r ->
+                add(SheetAction(forkRow.text, enabled = forkRow.enabled, busy = forkRow.busy, keepOpen = true, note = forkRow.note, noteError = forkRow.noteError) {
+                    if (forkRow.abandons) return@SheetAction Forks.abandon(fork)
+                    forkScope.launch {
+                        val sid = Forks.send(
+                            fork,
+                            { remote.prepare(s.machineId, s.id, remote.cmd { forkSession = ForkSessionRequest.newBuilder().setSessionId(s.id).build() }) },
+                            { p, retry -> remote.forward(p, retryOfUnknown = retry) },
+                        ) ?: return@launch
                         // The new session may not be in the list yet: its page waits for it, as after starting one.
-                        val sid = io.github.lewin671.remoteagent.core.forkedSession(r) ?: return@run
                         menu = false
                         nav.session(sid)
                     }
@@ -230,7 +229,7 @@ private fun SessionTopBar(state: RemoteState, s: SessionView, status: Status, ru
         },
         onDismiss = {
             menu = false
-            fork.error = ""
+            Forks.dismissError(fork)
         },
     )
     // On the session's own CLI: its set is the one this page is about.
@@ -623,6 +622,108 @@ class Follow {
  * 「视图切换」).
  */
 fun terminalAvailable(status: Status): Boolean = status != Status.EXITED && status != Status.OFFLINE
+
+/**
+ * Forks of sessions asked from here, per session, for this run. One whose
+ * outcome is unknown is sent again unchanged, the same request (architecture
+ * §10): the daemon answers it from its log with the session it already
+ * made, instead of forking the session a second time. They outlive the menu
+ * and the page, which may both be left meanwhile.
+ */
+object Forks {
+    class Fork {
+        val attempt = io.github.lewin671.remoteagent.core.Attempt()
+        /** It is on its way to the computer. */
+        var running by mutableStateOf(false)
+            internal set
+        /** Why the last try did not make a session; empty while one is running and once one did. */
+        var error by mutableStateOf("")
+            internal set
+        /** The outcome is unknown: only the same sealed command is sent again. */
+        var frozen by mutableStateOf(false)
+            internal set
+        /** The unknown fork expired and is not sent again. */
+        var expired by mutableStateOf(false)
+            internal set
+    }
+
+    private val bySession = HashMap<String, Fork>()
+
+    fun of(sid: String): Fork = bySession.getOrPut(sid) { Fork() }
+
+    fun clear() = bySession.clear()
+
+    /**
+     * Forks, or sends the earlier fork again while its outcome is unknown.
+     * One try at a time. Returns the new session's ID, or null when none is
+     * known to have been made; [f] says why.
+     */
+    suspend fun send(
+        f: Fork,
+        prepare: () -> io.github.lewin671.remoteagent.core.PreparedCommand,
+        forward: suspend (io.github.lewin671.remoteagent.core.PreparedCommand, Boolean) -> io.github.lewin671.remoteagent.proto.CommandResult?,
+    ): String? {
+        if (f.running) return null
+        f.running = true
+        f.error = ""
+        try {
+            val retry = f.attempt.frozen
+            val result = forward(f.attempt.next(prepare), retry)
+            f.attempt.settle()
+            return io.github.lewin671.remoteagent.core.forkedSession(result) ?: throw io.github.lewin671.remoteagent.core.CommandException("internal", "意外的回复")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // The page went away with the request on its way: whether the computer got it is not known.
+            f.error = errorText(f.attempt.settle(io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN, "不确定电脑有没有执行")) ?: e)
+            throw e
+        } catch (e: Exception) {
+            f.error = errorText(f.attempt.settle(e) ?: e)
+            return null
+        } finally {
+            f.frozen = f.attempt.frozen
+            f.expired = f.attempt.expired
+            f.running = false
+        }
+    }
+
+    /** Gives up on a fork that expired with its outcome unknown: the next one is a new request. */
+    fun abandon(f: Fork) {
+        if (f.running) return
+        f.attempt.abandon()
+        f.error = ""
+        f.frozen = false
+        f.expired = false
+    }
+
+    /** The menu was closed: a fork that surely did not happen is not said again. One that may have is kept. */
+    fun dismissError(f: Fork) {
+        if (!f.frozen) f.error = ""
+    }
+}
+
+/** 分叉会话 in a session's menu: what the row says, and whether a tap gives up the last fork instead of forking. */
+data class ForkAction(
+    val text: String = "分叉会话",
+    val note: String = "",
+    /** The note is something that went wrong, not when the row can be used. */
+    val noteError: Boolean = false,
+    val enabled: Boolean = true,
+    val busy: Boolean = false,
+    val abandons: Boolean = false,
+)
+
+/**
+ * [blocked]: why the session cannot be forked now ([forkBlocked]). The rest
+ * is how a fork asked from here stands ([Forks.Fork]). A fork that may have
+ * happened is only ever sent again as it was; once that request has expired
+ * the row gives it up, and only the tap after that asks for a new fork.
+ */
+fun forkAction(blocked: String?, running: Boolean, error: String, frozen: Boolean, expired: Boolean): ForkAction = when {
+    running -> ForkAction(text = "正在分叉…", busy = true)
+    blocked != null -> ForkAction(note = blocked, enabled = false)
+    expired -> ForkAction(text = "放弃上次的分叉", note = "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表", noteError = true, abandons = true)
+    frozen -> ForkAction(note = "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次", noteError = true)
+    else -> ForkAction(note = if (error.isNotEmpty()) "没能分叉：$error" else "", noteError = true)
+}
 
 /** Sessions whose terminal another page asked to show. */
 object OpenTerminal {

@@ -12,7 +12,10 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
     private var commands: [PBCommand] = []
     private var forwards: [(id: String, retry: Bool)] = []
     private var made = 0
+    private var reply = PBCommandResult()
 
+    /// What a command that succeeds is answered with.
+    func result(_ r: PBCommandResult) { lock.withLock { reply = r } }
     /// What the next commands end with, in order; nil is success. With none left they succeed.
     func answer(_ list: Error?...) { lock.withLock { answers += list } }
     var sent: [PBCommand] { lock.withLock { commands } }
@@ -20,7 +23,7 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
 
     private func next() throws -> PBCommandResult {
         if let error = lock.withLock({ answers.isEmpty ? nil : answers.removeFirst() }) { throw error }
-        return PBCommandResult()
+        return lock.withLock { reply }
     }
 
     func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
@@ -277,6 +280,76 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
             #expect(uncertain(error))
         }
         #expect(store.resolve("A").attempt.frozen)
+    }
+
+    // MARK: Forks
+
+    private func forked(_ id: String) -> PBCommandResult {
+        .with { $0.forkSession = .with { $0.session = .with { $0.id = id } } }
+    }
+
+    @Test func aForkWhoseAnswerWasLostIsSentAgainAsItWas() async {
+        computer.result(forked("s-fork"))
+        computer.answer(unknown)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
+        // What the menu reads when it is opened again, and what the page reads when it is come back to.
+        let f = store.fork("s")
+        #expect(f.frozen && !f.expired && !f.running)
+        #expect(f.error == errorText(unknown))
+        store.dismissForkError("s")
+        #expect(f.frozen && !f.error.isEmpty, "closing the menu does not forget a fork that may have happened")
+        // The same request: the computer answers with the session it already made instead of forking again.
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == "s-fork")
+        #expect(computer.forwarded.map(\.id) == ["r1", "r1"])
+        #expect(computer.forwarded.map(\.retry) == [false, true])
+        #expect(computer.sent.count == 1)
+        #expect(!f.frozen && f.error.isEmpty)
+        // The next fork is another one.
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == "s-fork")
+        #expect(computer.forwarded.map(\.id) == ["r1", "r1", "r2"])
+    }
+
+    @Test func aForkThatSurelyDidNotHappenIsANewRequestNextTime() async {
+        computer.result(forked("s-fork"))
+        computer.answer(offline)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
+        let f = store.fork("s")
+        #expect(!f.frozen && f.error == errorText(offline))
+        store.dismissForkError("s")
+        #expect(f.error.isEmpty)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == "s-fork")
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2"])
+        // Each session has its own.
+        #expect(store.fork("other") !== f)
+    }
+
+    @Test func anUnknownForkThatExpiredIsNotSentAgainUntilItIsGivenUp() async {
+        computer.result(forked("s-fork"))
+        computer.answer(unknown, CommandError(CommandError.expired, "这条指令已过期，没有发出"))
+        _ = await store.forkSession(computer, machineId: "m", sid: "s").value
+        _ = await store.forkSession(computer, machineId: "m", sid: "s").value
+        let f = store.fork("s")
+        #expect(f.frozen && f.expired)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
+        #expect(computer.forwarded.count == 2, "nothing more is sent")
+        store.abandonFork("s")
+        #expect(!f.frozen && !f.expired && f.error.isEmpty)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == "s-fork")
+        #expect(computer.forwarded.map(\.id) == ["r1", "r1", "r2"])
+    }
+
+    @Test func oneForkAtATime() async {
+        computer.result(forked("s-fork"))
+        let first = store.forkSession(computer, machineId: "m", sid: "s")
+        #expect(store.fork("s").running)
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
+        #expect(await first.value == "s-fork")
+        #expect(computer.forwarded.count == 1)
+    }
+
+    @Test func anAnswerThatNamesNoSessionIsAFailure() async {
+        #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
+        #expect(store.fork("s").error == "意外的回复" && !store.fork("s").frozen)
     }
 
     // MARK: Answers

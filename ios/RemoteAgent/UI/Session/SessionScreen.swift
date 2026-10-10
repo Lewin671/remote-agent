@@ -93,8 +93,6 @@ private struct SessionPage: View {
     @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
     @State private var act = ActionRunner()
-    @State private var fork = ActionRunner()
-    @State private var forked: String?
     /// Claude Code records full model IDs; the list gives the alias to show.
     @State private var models: PBListModelsResponse?
 
@@ -191,7 +189,7 @@ private struct SessionPage: View {
             }
             .multilineTextAlignment(.center)
         }
-        .onChange(of: menu) { _, shown in if !shown { fork.error = "" } }
+        .onChange(of: menu) { _, shown in if !shown { context.sessionStore.dismissForkError(sid) } }
         .kitSheet(item: $sheet) { which in
             switch which {
             case .mode: SessionModeSheet(session: s, startConfirm: SessionDebug.shows("confirmFull")) { sheet = nil }
@@ -252,6 +250,9 @@ private struct SessionPage: View {
         let state = model.state
         let s = session
         let sid = s.id
+        let store = context.sessionStore
+        // Kept for the account: a fork whose outcome is unknown is still that fork after the menu or the page was left.
+        let fork = store.fork(sid)
         let forking = fork.running
         // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
         let reachable = state.conn == .online && state.machines[s.machineId]?.online == true
@@ -278,24 +279,18 @@ private struct SessionPage: View {
         if reachable {
             list.append(SheetAction("重命名", enabled: !forking) { afterMenu { rename = true } })
             // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
+            let row = forkAction(blocked: forkBlock, running: forking, error: fork.error, frozen: fork.frozen, expired: fork.expired)
             list.append(SheetAction(
-                forking ? "正在分叉…" : "分叉会话", enabled: forkBlock == nil,
-                note: forking ? "" : forkBlock ?? (fork.error.isEmpty ? "" : "没能分叉：\(fork.error)"), noteError: forkBlock == nil,
-                busy: forking, keepOpen: true
+                row.text, enabled: row.enabled, note: row.note, noteError: row.noteError, busy: row.busy, keepOpen: true
             ) {
-                let remote = context.remote
-                fork.run({
-                    var cmd = PBCommand()
-                    cmd.forkSession = .with { $0.sessionID = sid }
-                    guard let made = forkedSession(try await remote.command(sid, cmd)) else {
-                        throw CommandError("internal", "意外的回复")
-                    }
-                    forked = made
-                }, onDone: {
+                if row.tap == .abandon { return store.abandonFork(sid) }
+                let made = store.forkSession(context.remote, machineId: s.machineId, sid: sid)
+                Task {
+                    guard let forked = await made.value else { return }
                     // The new session may not be in the list yet: its page waits for it, as after starting one.
                     menu = false
-                    if let forked { afterMenu { nav.open(.session(id: forked), from: page) } }
-                })
+                    afterMenu { nav.open(.session(id: forked), from: page) }
+                }
             })
         }
         if running {

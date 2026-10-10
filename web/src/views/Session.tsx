@@ -43,6 +43,7 @@ import { errorText, type Remote, type SessionView } from "../remote";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Dot, Exp, NavBar, Skeleton, useRemote } from "../ui";
 import { useDerived } from "./actions";
+import { Attempt } from "../attempt";
 import { elsewhereLabel, originLabel, platformLabel, type OriginContext } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
@@ -128,6 +129,12 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const [renaming, setRenaming] = useState(false);
   const [forking, setForking] = useState(false);
   const [forkError, setForkError] = useState("");
+  // A fork whose outcome is unknown is sent again as the same request,
+  // also after the menu was closed and opened again, so the computer
+  // answers with the session it already made instead of forking a second
+  // time. The page is one session's (it is keyed by the session).
+  const forkTry = useRef(new Attempt<null>()).current;
+  const [forkUnknown, setForkUnknown] = useState<"" | "unknown" | "expired">("");
   const menuOpen = useRef(false);
   menuOpen.current = menu;
   const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>("");
@@ -247,19 +254,31 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
   const fork = async () => {
     setForking(true);
     setForkError("");
+    const { slot } = forkTry.next(null);
     try {
-      const res = await remote.command(sid, { case: "forkSession", value: { sessionId: sid } });
+      const res = await remote.command(sid, { case: "forkSession", value: { sessionId: sid } }, slot);
+      forkTry.settle();
+      setForkUnknown("");
       if (res.kind.case !== "forkSession" || !res.kind.value.session) throw new Error("意外的回复");
       const id = res.kind.value.session.id;
       remote.created.add(id);
       setMenu(false);
       location.hash = "/s/" + encodeURIComponent(id);
     } catch (e) {
+      forkTry.settle(e);
+      setForkUnknown(forkTry.expired ? "expired" : forkTry.frozen ? "unknown" : "");
       if (menuOpen.current) setForkError(errorText(e));
       else setToast("没能分叉：" + errorText(e));
     } finally {
       setForking(false);
     }
+  };
+  /** Gives up a fork that expired with its outcome unknown: the next one
+   * is a new request. */
+  const abandonFork = () => {
+    forkTry.abandon();
+    setForkUnknown("");
+    setForkError("");
   };
   const forkWhy = forkBlocked(session, machine, d.running);
   const more = (
@@ -387,7 +406,16 @@ export function SessionPage({ remote, session, onBack, wide }: { remote: Remote;
                     ? { label: "正在分叉…", busy: true, keep: true, onClick: () => undefined }
                     : forkWhy
                       ? { label: "分叉会话", disabled: true, note: forkWhy, onClick: () => undefined }
-                      : { label: "分叉会话", keep: true, note: forkError && "没能分叉：" + forkError, noteRed: true, onClick: () => void fork() },
+                      : forkUnknown === "expired"
+                        ? { label: "放弃上次的分叉", keep: true, note: "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表", noteRed: true, onClick: abandonFork }
+                        : {
+                            label: "分叉会话",
+                            keep: true,
+                            // It may have happened: only the same request is sent again.
+                            note: forkUnknown ? "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次" : forkError && "没能分叉：" + forkError,
+                            noteRed: true,
+                            onClick: () => void fork(),
+                          },
                 ]
               : []),
             ...(!inactive && d.running ? [{ label: "中断本轮", red: true, onClick: interrupt }] : []),
