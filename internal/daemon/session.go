@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -923,13 +924,15 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 		return err
 	}
 	items := q.Questions
+	var others []*pb.Question
 	if index != nil {
 		if *index < 0 || int(*index) >= len(items) {
 			return fmt.Errorf("question index %d out of range", *index)
 		}
+		others = slices.Delete(slices.Clone(items), int(*index), int(*index)+1)
 		items = items[*index : *index+1]
 	}
-	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items) {
+	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items, others) {
 		return errNotAnswering
 	}
 	// Known before the keys go out: the transcript may record the answer
@@ -1316,17 +1319,31 @@ func promptKey(input []byte) string {
 	return key
 }
 
-// showsQuestion reports whether the screen shows one of the questions. The
-// start of the text is enough and survives line wrapping.
-func showsQuestion(styled string, questions []*pb.Question) bool {
-	screen := normalizeText(agent.StripANSI(styled))
+// showsQuestion reports whether the screen shows one of the questions and
+// none of others, the rest of the same call. The start of the text is
+// enough and survives the screen cutting it short; it is taken as long as
+// it must be to differ from every one of others, and a question whose
+// whole text also begins another cannot be told from it. White space is
+// left out, so that line wrapping does not matter wherever it falls.
+func showsQuestion(styled string, questions, others []*pb.Question) bool {
+	squeeze := func(s string) []rune { return []rune(strings.Join(strings.Fields(s), "")) }
+	screen := string(squeeze(agent.StripANSI(styled)))
 	for _, item := range questions {
-		words := strings.Fields(item.Text)
-		prefix := []rune(strings.Join(words, " "))
-		if len(prefix) > 24 {
-			prefix = prefix[:24]
+		text := squeeze(item.Text)
+		n := min(len(text), 24)
+		for _, o := range others {
+			other := squeeze(o.Text)
+			same := 0
+			for same < len(text) && same < len(other) && text[same] == other[same] {
+				same++
+			}
+			if same == len(text) {
+				n = 0
+				break
+			}
+			n = max(n, same+1)
 		}
-		if len(prefix) > 0 && strings.Contains(screen, string(prefix)) {
+		if n > 0 && strings.Contains(screen, string(text[:n])) {
 			return true
 		}
 	}

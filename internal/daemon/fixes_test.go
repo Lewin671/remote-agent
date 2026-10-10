@@ -720,3 +720,40 @@ func TestUnreadableQueueIsKeptAndBlocksInput(t *testing.T) {
 		t.Fatalf("a retried request after repair: %d, %v", pos, err)
 	}
 }
+
+// Two questions of one call that begin alike are told apart by as much of
+// their text as it takes: an answer meant for one is not entered while the
+// other is showing.
+func TestAnswerTellsApartQuestionsThatBeginAlike(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
+		QuestionId: "q1", Questions: []*pb.Question{
+			{Text: "Which implementation should we use for the parser?"},
+			{Text: "Which implementation should we use for the API?"},
+			{Text: "Which implementation should we use for the API? Pick one"},
+		},
+	}}})
+	h.term.setScreen("  \x1b[2mQuestion 2/3 (2 unanswered)\x1b[0m\n  Which implementation should we\n  use for the API?\n  \x1b[1;7m› 1. Ours\n")
+	first, second, third := int32(0), int32(1), int32(2)
+	if err := h.s.answer("q1", []int32{1}, &first); !errors.Is(err, errNotAnswering) {
+		t.Fatalf("answered the parser question while the API question is showing: %v", err)
+	}
+	if err := h.s.answer("q1", []int32{1}, &third); !errors.Is(err, errNotAnswering) {
+		t.Fatalf("answered the third question while the second is showing: %v", err)
+	}
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("writes %q", w)
+	}
+	// The second question's whole text is how the third begins: the screen
+	// cannot tell whether the second is showing.
+	if err := h.s.answer("q1", []int32{1}, &second); !errors.Is(err, errNotAnswering) {
+		t.Fatalf("second: %v", err)
+	}
+	h.term.setScreen("  \x1b[2mQuestion 1/3 (3 unanswered)\x1b[0m\n  Which implementation should we\n  use for the parser?\n  \x1b[1;7m› 1. Ours\n")
+	if err := h.s.answer("q1", []int32{2}, &first); err != nil {
+		t.Fatal(err)
+	}
+	if w := h.term.written(); len(w) != 1 || w[0] != "2" {
+		t.Fatalf("writes %q", w)
+	}
+}
