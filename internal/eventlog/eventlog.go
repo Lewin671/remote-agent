@@ -36,8 +36,12 @@ type record struct {
 // which is all an idle session's watchers do, need only the count.
 type Log struct {
 	mu   sync.Mutex
-	f    *os.File
+	f    file
 	path string
+	// size is where the whole records end and the next one goes. dirty
+	// says a failed append may have left bytes after it.
+	size  int64
+	dirty bool
 	// events is nil while released; n is how many the file holds.
 	events  []*pb.Event
 	n       uint64
@@ -45,6 +49,14 @@ type Log struct {
 	rollout string
 	offset  int64
 	changed chan struct{} // closed and replaced on every append
+}
+
+// file is what the log needs of its file.
+type file interface {
+	io.WriterAt
+	Sync() error
+	Truncate(size int64) error
+	Close() error
 }
 
 // Open loads the log at path, creating it if needed. A torn last line from
@@ -67,10 +79,7 @@ func Open(path string) (*Log, error) {
 		f.Close()
 		return nil, err
 	}
-	if _, err := f.Seek(good, io.SeekStart); err != nil {
-		f.Close()
-		return nil, err
-	}
+	l.size = good
 	return l, nil
 }
 
@@ -202,12 +211,22 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		l.rollout, l.offset = rollout, offset
 		return nil
 	}
-	if _, err := l.f.Write(buf.Bytes()); err != nil {
+	// A failed append must leave no bytes behind: the next one would
+	// follow them, and write the same sequence numbers a second time.
+	if err := l.rollback(); err != nil {
+		return err
+	}
+	l.dirty = true
+	if _, err := l.f.WriteAt(buf.Bytes(), l.size); err != nil {
+		_ = l.rollback()
 		return err
 	}
 	if err := l.f.Sync(); err != nil {
+		_ = l.rollback()
 		return err
 	}
+	l.dirty = false
+	l.size += int64(buf.Len())
 	if l.events != nil || l.n == 0 {
 		l.events = append(l.events, evs...)
 	}
@@ -217,6 +236,19 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 	}
 	close(l.changed)
 	l.changed = make(chan struct{})
+	return nil
+}
+
+// rollback cuts off what a failed append left in the file. Until that
+// works nothing more is appended.
+func (l *Log) rollback() error {
+	if !l.dirty {
+		return nil
+	}
+	if err := l.f.Truncate(l.size); err != nil {
+		return fmt.Errorf("event log is not at a record boundary: %w", err)
+	}
+	l.dirty = false
 	return nil
 }
 
