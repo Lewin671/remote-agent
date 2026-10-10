@@ -122,7 +122,7 @@ func Config(b []byte) (pb.ImageFormat, int, int, error) {
 }
 
 // Decode decodes one image (the first frame of an animation) within lim,
-// turned upright by a JPEG's EXIF orientation.
+// turned upright by its EXIF orientation.
 func Decode(b []byte, lim Limits) (image.Image, pb.ImageFormat, error) {
 	f, err := check(b, lim)
 	if err != nil {
@@ -158,9 +158,6 @@ func decode(b []byte, f pb.ImageFormat) (image.Image, pb.ImageFormat, error) {
 		img, err = png.Decode(r)
 	case pb.ImageFormat_IMAGE_FORMAT_JPEG:
 		img, err = jpeg.Decode(r)
-		if err == nil {
-			img = orient(img, Orientation(b))
-		}
 	case pb.ImageFormat_IMAGE_FORMAT_WEBP:
 		img, err = webp.Decode(r)
 	case pb.ImageFormat_IMAGE_FORMAT_GIF:
@@ -169,7 +166,8 @@ func decode(b []byte, f pb.ImageFormat) (image.Image, pb.ImageFormat, error) {
 	if err != nil {
 		return nil, f, fmt.Errorf("%w: %v", ErrFormat, err)
 	}
-	return img, f, nil
+	// The copies made of it carry no orientation; GIF has none.
+	return orient(img, Orientation(b)), f, nil
 }
 
 // Encoded is an encoded image.

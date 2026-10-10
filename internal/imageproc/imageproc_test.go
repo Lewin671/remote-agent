@@ -308,3 +308,137 @@ func TestStripJPEGFilledRestart(t *testing.T) {
 		t.Fatal("scan changed")
 	}
 }
+
+// bits writes a VP8L bitstream, least significant bit first.
+type bits struct {
+	b []byte
+	n int
+}
+
+func (w *bits) put(v uint32, n int) {
+	for i := range n {
+		if w.n%8 == 0 {
+			w.b = append(w.b, 0)
+		}
+		w.b[w.n/8] |= byte(v>>i&1) << (w.n % 8)
+		w.n++
+	}
+}
+
+func riffChunk(typ string, data []byte) []byte {
+	c := binary.LittleEndian.AppendUint32([]byte(typ), uint32(len(data)))
+	c = append(c, data...)
+	if len(data)%2 == 1 {
+		c = append(c, 0)
+	}
+	return c
+}
+
+// exifWebP is a 2x1 lossless WebP, red then blue, in the extended format
+// with an EXIF chunk saying orientation o. There is no encoder to make
+// one with, so its few bits are written out here.
+func exifWebP(o byte, exifHeader bool) []byte {
+	var w bits
+	w.put(0x2f, 8)   // signature
+	w.put(2-1, 14)   // width
+	w.put(1-1, 14)   // height
+	w.put(0, 1+3)    // no alpha, version 0
+	w.put(0, 1+1+1)  // no transform, no colour cache, one group of codes
+	w.put(0b0001, 4) // green: always 0
+	w.put(0b111, 3)  // red: 0 or 255, a bit each
+	w.put(0, 8)      //
+	w.put(255, 8)    //
+	w.put(0b111, 3)  // blue: the same
+	w.put(0, 8)      //
+	w.put(255, 8)    //
+	w.put(0b101, 3)  // alpha: always 255
+	w.put(255, 8)    //
+	w.put(0b0001, 4) // distance: unused
+	w.put(0b01, 2)   // first pixel: red 255, blue 0
+	w.put(0b10, 2)   // second pixel: red 0, blue 255
+	tiff := []byte("MM\x00\x2a\x00\x00\x00\x08\x00\x01\x01\x12\x00\x03\x00\x00\x00\x01\x00")
+	tiff = append(tiff, o, 0, 0, 0, 0, 0, 0)
+	if exifHeader {
+		tiff = append([]byte("Exif\x00\x00"), tiff...)
+	}
+	body := []byte("WEBP")
+	body = append(body, riffChunk("VP8X", []byte{0x08, 0, 0, 0, 2 - 1, 0, 0, 1 - 1, 0, 0})...)
+	body = append(body, riffChunk("VP8L", w.b)...)
+	body = append(body, riffChunk("EXIF", tiff)...)
+	return append(binary.LittleEndian.AppendUint32([]byte("RIFF"), uint32(len(body))), body...)
+}
+
+// exifPNG is the 40x20 picture of exifJPEG as a PNG whose eXIf chunk says
+// orientation 6.
+func exifPNG(t *testing.T) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 40, 20))
+	for x := 0; x < 20; x++ {
+		for y := 0; y < 20; y++ {
+			img.Set(x, y, color.RGBA{255, 0, 0, 255})
+			img.Set(x+20, y, color.RGBA{0, 0, 255, 255})
+		}
+	}
+	b := encPNG(t, img)
+	tiff := []byte("II\x2a\x00\x08\x00\x00\x00\x01\x00\x12\x01\x03\x00\x01\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00")
+	return append(append(append([]byte(nil), b[:33]...), pngChunk("eXIf", tiff)...), b[33:]...)
+}
+
+// The CLIs record pasted images as they are. A viewer shows a PNG or a WebP
+// turned by its orientation tag as much as a JPEG, and so do the clients'
+// own decoders; the copies made here carry no tag, so the pixels must be
+// turned.
+func TestOrientationOfPNGAndWebP(t *testing.T) {
+	red := func(img image.Image, x, y int) bool {
+		r, _, b, _ := img.At(x, y).RGBA()
+		return r > 0x8000 && b < 0x8000
+	}
+	b := exifPNG(t)
+	if o := Orientation(b); o != 6 {
+		t.Fatalf("png orientation %d", o)
+	}
+	img, f, err := Decode(b, DefaultLimits)
+	if err != nil || f != pb.ImageFormat_IMAGE_FORMAT_PNG {
+		t.Fatal(err, f)
+	}
+	// Turned right, the red left half ends up on top.
+	if bd := img.Bounds(); bd.Dx() != 20 || bd.Dy() != 40 || !red(img, 10, 5) || red(img, 10, 35) {
+		t.Fatalf("png not turned upright: %v", bd)
+	}
+	p, err := Process(b, DefaultLimits, func(Encoded) bool { return true })
+	if err != nil || p.Width != 20 || p.Height != 40 || p.Preview.Width != 20 || p.Display.Height != 40 {
+		t.Fatalf("processed png: %v %+v", err, p)
+	}
+
+	for _, header := range []bool{false, true} {
+		b = exifWebP(6, header)
+		if o := Orientation(b); o != 6 {
+			t.Fatalf("webp orientation %d (Exif header %v)", o, header)
+		}
+		img, f, err = Decode(b, DefaultLimits)
+		if err != nil || f != pb.ImageFormat_IMAGE_FORMAT_WEBP {
+			t.Fatal(err, f)
+		}
+		if bd := img.Bounds(); bd.Dx() != 1 || bd.Dy() != 2 || !red(img, 0, 0) || red(img, 0, 1) {
+			t.Fatalf("webp not turned upright: %v", bd)
+		}
+	}
+	// Stripping the tag alone would leave them on their side.
+	for name, b := range map[string][]byte{"png": exifPNG(t), "webp": exifWebP(6, false)} {
+		clean, err := StripMetadata(b)
+		if err != nil || Orientation(clean) != 1 || bytes.Contains(clean, []byte("eXIf")) {
+			t.Fatalf("%s: strip: %v", name, err)
+		}
+		_, w, h, _ := Config(b)
+		if f, cw, ch, err := Config(clean); err != nil || f != pb.ImageFormat_IMAGE_FORMAT_PNG || cw != h || ch != w {
+			t.Fatalf("%s: stripped copy is %v %dx%d, want an upright PNG: %v", name, f, cw, ch, err)
+		}
+	}
+	// Orientation 1 and a WebP without EXIF are left alone.
+	img, _, err = Decode(exifWebP(1, false), DefaultLimits)
+	if bd := img.Bounds(); err != nil || bd.Dx() != 2 || bd.Dy() != 1 || !red(img, 0, 0) || red(img, 1, 0) {
+		t.Fatalf("upright webp: %v %v", err, bd)
+	}
+	if Orientation(encPNG(t, noise(8, 8, false))) != 1 {
+		t.Fatal("a PNG without eXIf has an orientation")
+	}
+}

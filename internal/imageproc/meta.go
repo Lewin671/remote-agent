@@ -7,18 +7,31 @@ import (
 	"image"
 	"image/draw"
 	"image/jpeg"
+	"image/png"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
-// Orientation returns the EXIF orientation (1 to 8) of a JPEG, 1 if it
-// has none.
+// Orientation returns the EXIF orientation (1 to 8) of a JPEG, PNG or
+// WebP, 1 if it has none.
 func Orientation(b []byte) int {
-	exif := jpegSegment(b, 0xE1, []byte("Exif\x00\x00"))
-	if exif == nil {
-		return 1
+	switch Sniff(b) {
+	case pb.ImageFormat_IMAGE_FORMAT_JPEG:
+		if exif := jpegSegment(b, 0xE1, []byte("Exif\x00\x00")); exif != nil {
+			return tiffOrientation(exif[6:])
+		}
+	case pb.ImageFormat_IMAGE_FORMAT_PNG:
+		return tiffOrientation(chunkPNG(b, "eXIf"))
+	case pb.ImageFormat_IMAGE_FORMAT_WEBP:
+		// Some writers put the Exif header in front of the TIFF block.
+		exif, _ := bytes.CutPrefix(chunkWebP(b, "EXIF"), []byte("Exif\x00\x00"))
+		return tiffOrientation(exif)
 	}
-	t := exif[6:]
+	return 1
+}
+
+// tiffOrientation reads the orientation from EXIF's TIFF block.
+func tiffOrientation(t []byte) int {
 	if len(t) < 8 {
 		return 1
 	}
@@ -49,6 +62,39 @@ func Orientation(b []byte) int {
 		}
 	}
 	return 1
+}
+
+// chunkPNG returns the data of a PNG's first chunk of a type, or nil.
+func chunkPNG(b []byte, typ string) []byte {
+	for i := 8; i+12 <= len(b); {
+		n := int(binary.BigEndian.Uint32(b[i:]))
+		if n < 0 || n > len(b)-i-12 {
+			return nil
+		}
+		switch string(b[i+4 : i+8]) {
+		case typ:
+			return b[i+8 : i+8+n]
+		case "IEND":
+			return nil
+		}
+		i += 12 + n
+	}
+	return nil
+}
+
+// chunkWebP returns the data of a WebP's first chunk of a type, or nil.
+func chunkWebP(b []byte, typ string) []byte {
+	for i := 12; i+8 <= len(b); {
+		n := int(binary.LittleEndian.Uint32(b[i+4:]))
+		if n < 0 || n > len(b)-i-8 {
+			return nil
+		}
+		if string(b[i:i+4]) == typ {
+			return b[i+8 : i+8+n]
+		}
+		i += 8 + n + n%2
+	}
+	return nil
 }
 
 // jpegSegment returns the payload of the first segment with marker m whose
@@ -122,23 +168,29 @@ func orient(img image.Image, o int) image.Image {
 
 // StripMetadata removes metadata that may reveal where and when a photo
 // was taken (EXIF, XMP, text chunks) from an image a client sent, keeping
-// its pixels. A JPEG whose EXIF turns it is re-encoded upright instead, at
-// high quality, since dropping the orientation alone would leave it on
-// its side.
+// its pixels. An image whose EXIF turns it is re-encoded upright instead,
+// since dropping the orientation alone would leave it on its side: a JPEG
+// at high quality, a PNG or a WebP as PNG (there is no WebP encoder).
 func StripMetadata(b []byte) ([]byte, error) {
-	switch Sniff(b) {
-	case pb.ImageFormat_IMAGE_FORMAT_JPEG:
-		if Orientation(b) != 1 {
-			img, _, err := Decode(b, DefaultLimits)
-			if err != nil {
-				return nil, err
-			}
-			var buf bytes.Buffer
-			if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 95}); err != nil {
-				return nil, err
-			}
-			return buf.Bytes(), nil
+	f := Sniff(b)
+	if Orientation(b) != 1 {
+		img, _, err := Decode(b, DefaultLimits)
+		if err != nil {
+			return nil, err
 		}
+		var buf bytes.Buffer
+		if f == pb.ImageFormat_IMAGE_FORMAT_JPEG {
+			err = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 95})
+		} else {
+			err = png.Encode(&buf, img)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+	switch f {
+	case pb.ImageFormat_IMAGE_FORMAT_JPEG:
 		return stripJPEG(b)
 	case pb.ImageFormat_IMAGE_FORMAT_PNG:
 		return stripPNG(b)
