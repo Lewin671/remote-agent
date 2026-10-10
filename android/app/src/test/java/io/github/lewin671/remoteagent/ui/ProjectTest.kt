@@ -250,6 +250,23 @@ class ProjectTest {
     }
 
     @Test
+    fun anUnknownStartIsOnlyRepeatedWhileItIsStillTheSameStart() {
+        val cfg = NewConfig("mac", path, Agent.AGENT_CODEX)
+        val a = image("a")
+        // Images alone: the text is the same nothing before and after.
+        val st = Starts.Start().apply { prompt = ""; config = cfg; taken = listOf(a) }
+        assertEquals(true, st.same("", cfg, listOf(a)))
+        // Another image in its place is another first message: it is not image A's request again.
+        assertEquals(false, st.same("", cfg, listOf(image("b"))))
+        assertEquals(false, st.same("", cfg, listOf(a, image("b"))))
+        // Another mode, another CLI or another machine is another start too, and so is another message.
+        assertEquals(false, st.same("", cfg.copy(mode = Mode.ASK), listOf(a)))
+        assertEquals(false, st.same("", cfg.copy(agent = Agent.AGENT_CLAUDE), listOf(a)))
+        assertEquals(false, st.same("", cfg.copy(machineId = "vps"), listOf(a)))
+        assertEquals(false, st.same("看这张图", cfg, listOf(a)))
+    }
+
+    @Test
     fun theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() {
         val full = state(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_FULL_ACCESS)), emptyList(), host("mac", *both), host("vps", *both))
         val draft = DraftConfig(projectConfig(full, path))

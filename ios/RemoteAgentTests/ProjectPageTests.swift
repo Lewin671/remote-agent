@@ -65,6 +65,66 @@ import Testing
         #expect(computer.sent.map(\.createSession.imageIds) == [["on-mac-a", "on-mac-b"]])
     }
 
+    private let lost = CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行")
+
+    /// A start, awaited; what it reported when it made a session.
+    private func start(_ draft: NewSessionDraft, _ cfg: NewConfig, _ images: ImageDraft? = nil) async -> NewConfig? {
+        var used: NewConfig?
+        draft.start(computer, cfg, images: images) { _, with, _ in used = with }
+        await until { !draft.running }
+        return used
+    }
+
+    @Test func anUnknownStartIsOnlyRepeatedWhileItIsStillTheSameStart() async {
+        computer.result(started("s-new"))
+        let draft = NewSessionDraft(cfg, settled: true)
+        let attached = images()
+        // Images alone, and no answer: the text is the same nothing before and after.
+        attached.images = [image("a")]
+        computer.answer(lost)
+        #expect(await start(draft, cfg, attached) == nil)
+        #expect(draft.frozen)
+        // Another image in its place is another first message: it is not image A's request again.
+        attached.images = [image("b")]
+        computer.answer(lost)
+        _ = await start(draft, cfg, attached)
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2"])
+        #expect(computer.forwarded.map(\.retry) == [false, false])
+        #expect(computer.sent.map(\.createSession.imageIds) == [["on-mac-a"], ["on-mac-b"]])
+        // The same start once more is the same request, which the computer answers from its log.
+        computer.answer(lost)
+        _ = await start(draft, cfg, attached)
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2", "r2"] && computer.forwarded.last?.retry == true)
+        #expect(computer.sent.count == 2, "no third command was sealed")
+        // Another mode, another CLI or another machine is another start too.
+        var asked = cfg
+        asked.mode = .ask
+        computer.answer(lost)
+        _ = await start(draft, asked, attached)
+        var claude = asked
+        claude.agent = .claude
+        computer.answer(lost)
+        _ = await start(draft, claude, attached)
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2", "r2", "r3", "r4"])
+        #expect(computer.sent.map(\.createSession.mode) == [.unspecified, .unspecified, .ask, .ask])
+        #expect(computer.sent.map(\.createSession.agent) == [.codex, .codex, .codex, .claude])
+        // And so is another message; this one arrives, and reports what it was sent with.
+        draft.text = "看这张图"
+        #expect(await start(draft, claude, attached) == claude)
+        #expect(computer.forwarded.map(\.id).last == "r5" && !draft.frozen && draft.text.isEmpty)
+    }
+
+    @Test func aRepeatedStartReportsTheSettingsItWasSentWith() async {
+        computer.result(started("s-new"))
+        let draft = NewSessionDraft(cfg, settled: true)
+        draft.text = "say hi"
+        computer.answer(lost)
+        #expect(await start(draft, cfg) == nil)
+        // The same start again: what the project stores of it is what the request carried.
+        #expect(await start(draft, cfg) == cfg)
+        #expect(computer.forwarded.map(\.id) == ["r1", "r1"])
+    }
+
     @Test func aModelListThatArrivesAfterAnotherCliWasPickedIsNotShown() async {
         let models = SummaryModels()
         let codex = SummaryModels.Key(machine: "mac", agent: .codex)

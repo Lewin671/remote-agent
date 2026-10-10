@@ -13,6 +13,14 @@ import RAProto
 @MainActor
 @Observable
 final class NewSessionDraft {
+    /// What a start sends. With another message, other images, another
+    /// machine or other settings it is another start.
+    struct Start: Equatable {
+        var prompt: String
+        var config: NewConfig
+        var imageIds: [String]
+    }
+
     var text = ""
     var config: DraftConfig
     /// The CLI picked next to the message box for this draft, or nil to use the one the project remembers.
@@ -23,6 +31,8 @@ final class NewSessionDraft {
     @ObservationIgnored private let attempt = Attempt()
     /// The first message of the start that was last sent.
     private(set) var prompt = ""
+    /// The whole of the start that was last prepared: what a retry of an unknown one sends again.
+    @ObservationIgnored private var sent: Start?
     /// The images the prepared request names, kept for a retry of the same request.
     @ObservationIgnored private var taken: [PendingImage] = []
     private(set) var running = false
@@ -46,7 +56,8 @@ final class NewSessionDraft {
     /// some of the images. `onStarted` gets the new session's ID and the
     /// configuration it started with, `onImagesUsed` the images that went
     /// with it; a refusal, or no answer, leaves the text and the images as
-    /// they are.
+    /// they are. While an earlier start's outcome is unknown, the same
+    /// start is that request again and anything else gives it up.
     func start(
         _ remote: any SessionCommands, _ cfg: NewConfig, images: ImageDraft? = nil,
         onImagesUsed: @escaping @MainActor ([PendingImage]) -> Void = { _ in },
@@ -56,8 +67,12 @@ final class NewSessionDraft {
         let typed = promptText(text)
         let attached = images?.images ?? []
         guard !typed.isEmpty || !attached.isEmpty, attached.allSatisfy({ $0.readyFor(cfg.machineId) }) else { return }
-        // Other content is a new start; the unknown one is given up.
-        if attempt.frozen && typed != prompt { attempt.abandon() }
+        let wanted = Start(prompt: typed, config: cfg, imageIds: attached.compactMap(\.imageId))
+        // Another message, other images, another machine or other settings is a new start; the unknown one is given up.
+        if attempt.frozen && wanted != sent {
+            attempt.abandon()
+            taken = []
+        }
         // An unknown start is resent as prepared, with the mode it had.
         let retry = attempt.frozen
         running = true
@@ -65,13 +80,13 @@ final class NewSessionDraft {
         Task {
             do {
                 let prepared = try attempt.next {
+                    sent = wanted
                     prompt = typed
                     // The images this request carries; any picked after it stay in the draft.
                     taken = attached
                     return try remote.prepare(
                         machineId: cfg.machineId, sessionId: "",
-                        createSessionCommand(
-                            cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: taken.compactMap(\.imageId)))
+                        createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds))
                 }
                 let result = try await remote.forward(prepared, retryOfUnknown: retry)
                 attempt.settle()
@@ -82,7 +97,8 @@ final class NewSessionDraft {
                     let used = taken
                     taken = []
                     if !used.isEmpty { onImagesUsed(used) }
-                    onStarted(sid, cfg, prompt)
+                    // What the session started with is what the request said, not what the page says by now.
+                    onStarted(sid, sent?.config ?? cfg, prompt)
                 }
             } catch {
                 finish(errorText(attempt.settle(error) ?? error))

@@ -622,6 +622,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                 val retry = start.attempt.frozen
                 val prepared = start.attempt.next {
                     start.prompt = text.trim()
+                    start.config = cfg
                     // The images this request carries; any picked after it stay in the draft.
                     start.taken = images.images.filter { it.readyFor(cfg.machineId) }
                     val ids = start.taken.mapNotNull { it.imageId }
@@ -639,7 +640,9 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             // Only a session that started takes the draft; a refusal that asks
             // for confirmation, or no answer, leaves text and images as they are.
             val sid = startedSession(r) ?: return@run
-            startSettings(savedSettings(state, key), projectConfig(state, key, cfg.agent, initial?.machineId) ?: cfg, cfg)?.let { PrefsChanges.run(remote, it) }
+            // What the session started with is what the request said, not what the page says by now.
+            val used = start.config ?: cfg
+            startSettings(savedSettings(state, key), projectConfig(state, key, used.agent, initial?.machineId) ?: used, used)?.let { PrefsChanges.run(remote, it) }
             // The project remembers this CLI now; the next draft starts from it.
             entry.agent.value = null
             Outbox.rememberPrompt(sid, start.prompt)
@@ -655,8 +658,11 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         if (!canStart) return
         val cfg = config ?: return
         val st = Starts.of(key)
-        // Other content is a new start; the unknown one is given up.
-        if (st.attempt.frozen && text.trim() != st.prompt) st.attempt.abandon()
+        // Another message, other images, another machine or other settings is a new start; the unknown one is given up.
+        if (st.attempt.frozen && !st.same(text.trim(), cfg, images.images)) {
+            st.attempt.abandon()
+            st.taken = emptyList()
+        }
         // An unknown start is resent as prepared, with the mode it had.
         if (st.attempt.frozen) return launch(cfg, ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
         launch(cfg, cfg.mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED)
@@ -1127,8 +1133,18 @@ object Starts {
     class Start {
         val attempt = io.github.lewin671.remoteagent.core.Attempt()
         var prompt = ""
+        /** The configuration the prepared request starts the session with. */
+        var config: NewConfig? = null
         /** The images the prepared request names, kept for a retry of the same request. */
         var taken: List<PendingImage> = emptyList()
+
+        /**
+         * Whether a start with this message, configuration and images is the
+         * one last prepared: only then is a retry of an unknown outcome that
+         * request again.
+         */
+        fun same(prompt: String, cfg: NewConfig, images: List<PendingImage>): Boolean =
+            prompt == this.prompt && cfg == config && images.mapNotNull { it.imageId } == taken.mapNotNull { it.imageId }
     }
 
     private val byProject = HashMap<String, Start>()
