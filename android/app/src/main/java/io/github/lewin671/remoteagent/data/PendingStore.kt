@@ -23,6 +23,10 @@ import javax.crypto.spec.SecretKeySpec
  * here goes into backups, and logging out deletes it all.
  */
 class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedFiles {
+    private val scopes = FileScopes(this)
+    fun scoped() = scopes.scoped()
+    fun invalidate() = scopes.invalidate()
+
     private val prefs = context.getSharedPreferences("image-storage", Context.MODE_PRIVATE)
     private val limit = ImageDiskPolicy.DRAFT_LIMIT
     val used: Long get() = synchronized(this) { ImageDiskPolicy.bytes(dir) }
@@ -96,6 +100,7 @@ class PendingStore(context: Context) : io.github.lewin671.remoteagent.ui.SealedF
     }
 
     @Synchronized fun clearAll() {
+        invalidate()
         cachedKey?.fill(0)
         cachedKey = null
         dir.listFiles()?.forEach { if (it != keyFile) it.deleteRecursively() }

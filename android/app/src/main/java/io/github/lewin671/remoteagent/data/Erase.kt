@@ -12,3 +12,7 @@ suspend fun everyStep(vararg steps: suspend () -> Unit) {
     }
     first?.let { throw it }
 }
+
+/** An account change finishes even when its calling page leaves composition. */
+suspend fun <T> finishAccountChange(work: suspend () -> T): T =
+    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { work() }

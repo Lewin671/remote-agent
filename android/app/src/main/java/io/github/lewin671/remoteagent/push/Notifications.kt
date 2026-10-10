@@ -59,11 +59,14 @@ class RaMessagingService : FirebaseMessagingService() {
         val data = message.data
         val session = data["session"] ?: return
         val kind = NotifyKind.forNumber(data["kind"]?.toIntOrNull() ?: 0) ?: NotifyKind.NOTIFY_KIND_UNSPECIFIED
+        val app = RaApp.instance
+        val settings = runBlocking { app.prefs.settings.first() }
+        if (!acceptPush(app.acceptsPush, kind, settings)) return
         val content = data["content"]?.let { open(session, it) }
+        if (data["content"] != null && content == null) return
         // The app is open: it shows the change itself.
         if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return
-        val showContent = runBlocking { RaApp.instance.prefs.settings.first().showContent }
-        Notifier.show(this, session, kind, content, showContent)
+        Notifier.show(this, session, kind, content, settings.showContent)
         // Timing only, for the notes on cold starts; no content.
         Log.i(TAG, "push shown in ${SystemClock.elapsedRealtime() - started} ms, content=${content != null}")
     }
@@ -272,7 +275,8 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
         // An earlier attempt of this reply may have gone through.
         fun wasUnknown() = attempts.getBoolean(request, false)
         fun finish(text: String): Result {
-            attempts.edit().remove(request).apply()
+            // WorkManager may be killed before it records this terminal result too.
+            if (!wasUnknown()) attempts.edit().remove(request).commit()
             Notifier.update(applicationContext, nid, text, true)
             return Result.failure()
         }
@@ -285,19 +289,22 @@ class ApprovalWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 return Result.retry()
             }
             return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：手机一直锁着，审批已超时")
-        } ?: return finish("没能提交：这台手机没有账户")
+        } ?: return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：这台手机没有账户")
         val p = PreparedCommand(
             d.getString("machine").orEmpty(), d.getString("session").orEmpty(), d.getString("request").orEmpty(),
             d.getLong("deadline", 0), Envelope.parseFrom(ByteString.copyFrom(d.getByteArray("envelope") ?: return Result.failure())),
         )
         val remote = Remote(acct, RaApp.instance.http)
         try {
-            remote.forward(p)
-            attempts.edit().remove(request).apply()
+            sendApproval(p, wasUnknown(),
+                mark = { attempts.edit().putBoolean(request, true).commit() },
+                clear = { attempts.edit().remove(request).commit(); Unit },
+            ) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
             Notifier.update(applicationContext, nid, if (allow) "已允许" else "已拒绝", true)
             return Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: CommandException) {
-            if (e.unknown) attempts.edit().putBoolean(request, true).apply()
             if ((e.unknown || e.code == "network") && System.currentTimeMillis() + 5_000 < p.deadlineMs && runAttemptCount < 5) {
                 Notifier.update(applicationContext, nid, "还在提交…（${errorText(e)}）", false)
                 return Result.retry()

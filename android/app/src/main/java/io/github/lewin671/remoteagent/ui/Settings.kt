@@ -572,7 +572,7 @@ fun PairScreen() {
             phase = "error"
         }
     }
-    DisposableEffect(Unit) { onDispose { init?.let { i -> if (phase != "done") scope.launch { i.cancelOnServer() } } } }
+    DisposableEffect(Unit) { onDispose { init?.let { i -> if (phase != "done") RaApp.instance.scope.launch { i.cancelOnServer() } } } }
     PageScaffold("添加设备") {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             val i = init
@@ -595,7 +595,7 @@ fun PairScreen() {
                     Text(emoji.orEmpty().joinToString("  "), fontSize = 30.sp, modifier = Modifier.padding(top = 10.dp, bottom = 12.dp))
                     Text("和新设备上的 4 个图案一模一样才允许", style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 10.dp))
                     Btns {
-                        Btn("拒绝", { scope.launch { i?.cancelOnServer() }; nav.back() }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = phase == "emoji", bg = p.card)
+                        Btn("拒绝", { RaApp.instance.scope.launch { i?.cancelOnServer() }; nav.back() }, Modifier.weight(1f), BtnKind.NEGATIVE, enabled = phase == "emoji", bg = p.card)
                         Btn(if (phase == "sending") "正在交给新设备…" else "图案一致，允许", {
                             phase = "sending"
                             scope.launch {

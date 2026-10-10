@@ -55,6 +55,31 @@ class AttachmentsTest {
     }
 
     @Test
+    fun recordsFromDifferentSessionsShareOneIndexTransaction() {
+        val files = MemoryFiles()
+        val reads = java.util.concurrent.CountDownLatch(2)
+        val racing = object : SealedFiles by files {
+            override fun get(folder: String, name: String): ByteArray? {
+                val value = files.get(folder, name)
+                if (folder == "outbox" && name == "index") {
+                    reads.countDown()
+                    reads.await(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                }
+                return value
+            }
+        }
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            val a = pool.submit { OutgoingRecords(racing).save("a", Outgoing("r1", "a"), false) }
+            val b = pool.submit { OutgoingRecords(racing).save("b", Outgoing("r2", "b"), false) }
+            a.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            b.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(listOf("r1"), OutgoingRecords(racing).load("a").map { it.requestId })
+            assertEquals(listOf("r2"), OutgoingRecords(racing).load("b").map { it.requestId })
+        } finally { pool.shutdownNow() }
+    }
+
+    @Test
     fun aRestoredDraftKeepsThePickOrder() {
         val files = MemoryFiles()
         // Random-looking IDs in an order no listing would give back.

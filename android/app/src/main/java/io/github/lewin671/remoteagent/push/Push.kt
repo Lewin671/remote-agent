@@ -48,6 +48,22 @@ object Push {
 
     fun stop() = registration.stop()
 
+    /** Withdraws the old account's subscription without waiting for a Google token. */
+    suspend fun unregister(remote: Remote) {
+        kotlinx.coroutines.withTimeoutOrNull(5_000) {
+            try {
+                remote.api.client.setPushTarget(
+                    SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).build(),
+                    Api.headers(remote.currentToken()),
+                ).value()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "push withdrawal failed: ${e.javaClass.simpleName}")
+            }
+        }
+    }
+
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL_ATTENTION, "等我处理时", NotificationManager.IMPORTANCE_HIGH).apply {

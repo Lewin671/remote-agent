@@ -73,7 +73,8 @@ public final class TerminalSession extends TerminalOutput {
         } else {
             mEmulator.resize(mColumns, mRows, mCellWidth, mCellHeight);
         }
-        // RIS: full reset and clear, as a fresh terminal would be.
+        // Reset the parser directly: RIS inside an unfinished OSC/DCS is only string data.
+        mEmulator.reset();
         byte[] reset = {27, 'c'};
         mEmulator.append(reset, reset.length);
         mEmulator.append(data, data.length);

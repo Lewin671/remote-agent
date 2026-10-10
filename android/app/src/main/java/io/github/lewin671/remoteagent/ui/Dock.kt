@@ -227,9 +227,9 @@ fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reas
     val p = pal
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    val act = rememberAction()
+    val act = rememberAction(a.approvalId)
     val r = Resolves.of(a.approvalId)
-    var which by remember { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
+    var which by remember(a.approvalId) { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
     var reason by Drafts.of("deny:${a.approvalId}")
     var opened by remember(a.approvalId) { mutableStateOf(false) }
     val alwaysAvailable = io.github.lewin671.remoteagent.core.capabilities(state.machines[s.machineId])?.approvalAlways == true
@@ -511,15 +511,19 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
 fun PlanButtons(s: SessionView, full: Boolean, onDone: () -> Unit = {}) {
     val remote = LocalRemote.current
     val act = rememberAction()
+    val attempt = Plans.of(s.id)
     fun answer(c: PlanChoice) = act.run({
-        remote.command(s.id, remote.cmd { answerPlan = AnswerPlanRequest.newBuilder().setSessionId(s.id).setChoice(c).build() })
+        Plans.send(attempt, c, { choice ->
+            remote.prepare(s.machineId, s.id, remote.cmd { answerPlan = AnswerPlanRequest.newBuilder().setSessionId(s.id).setChoice(choice).build() })
+        }) { prepared, retry -> remote.forward(prepared, retryOfUnknown = retry) }
+        null
     }) { onDone() }
     Btns {
         Btn("继续规划…", { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
         Btn(if (act.running) "提交中…" else "批准执行", { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !act.running)
     }
     // Claude Code has no such choice.
-    if (full && s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) {
+    if (full && !act.running && s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) {
         DockFoot("", "清空上下文后执行") { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
     }
     if (act.error.isNotEmpty()) Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)

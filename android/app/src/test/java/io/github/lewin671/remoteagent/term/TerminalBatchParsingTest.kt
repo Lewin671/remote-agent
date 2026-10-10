@@ -14,6 +14,20 @@ class TerminalBatchParsingTest {
             override fun onViewSize(columns: Int, rows: Int) {}
         }).apply { snapshot(80, 24, byteArrayOf()) }
     }
+    @Test fun aSnapshotDiscardsUnfinishedParserSequences() {
+        for (sequence in listOf("\u001b]0;unfinished", "\u001bPunfinished", "\u001b[", "\u00e4")) {
+            val terminal = session()
+            val old = "OLD$sequence".toByteArray()
+            terminal.append(old, old.size)
+            terminal.snapshot(80, 24, "NEW SNAPSHOT".toByteArray())
+            assertEquals("NEW SNAPSHOT", terminal.emulator.screen.getSelectedText(0, 0, 79, 23).trim())
+        }
+        val terminal = session()
+        terminal.append(byteArrayOf(0xe4.toByte()), 1)
+        terminal.snapshot(80, 24, "NEW SNAPSHOT".toByteArray())
+        assertEquals("NEW SNAPSHOT", terminal.emulator.screen.getSelectedText(0, 0, 79, 23).trim())
+    }
+
     @Test fun batchingPreservesSplitUtf8AndControlSequences() {
         val bytes = "hello 中😀\r\nworld\u001b[1;1HOK\u001b[2;5Hdone".toByteArray()
         val split = session(); val merged = session()

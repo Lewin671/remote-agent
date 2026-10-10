@@ -638,7 +638,7 @@ fun TabBar(route: String?, waiting: Int, onSelect: (String) -> Unit) {
 @Composable
 fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, dismiss: String = "取消", text: String? = null, onConfirm: (String) -> Unit) {
     val p = pal
-    var value by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(initial) }
+    var value by remember(initial) { androidx.compose.runtime.mutableStateOf(initial) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).imePadding(), contentAlignment = Alignment.Center) {
             Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {

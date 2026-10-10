@@ -18,12 +18,13 @@ class SavedStateTest {
     fun noWrittenTextGoesIntoSavedState() {
         val src = File("src/main/java")
         assertTrue(src.isDirectory)
-        val saved = Regex("""var (\w+) by rememberSaveable(\([^)]*\))? \{ mutableStateOf\(""")
+        val saved = Regex("""var (\w+) by (?:androidx\.compose\.runtime\.saveable\.)?rememberSaveable(\([^)]*\))? \{ (?:androidx\.compose\.runtime\.)?mutableStateOf\(""")
         val texts = src.walk().filter { it.extension == "kt" }.flatMap { f ->
             f.readLines().mapNotNull { line ->
                 val m = saved.find(line) ?: return@mapNotNull null
                 // Strings only; flags and indexes are not content.
-                if (!line.substring(m.range.last + 1).startsWith("\"")) return@mapNotNull null
+                val initial = line.substring(m.range.last + 1)
+                if (!initial.startsWith("\"") && !initial.startsWith("initial)")) return@mapNotNull null
                 m.groupValues[1].takeIf { it !in allowed }?.let { "${f.name}: $it" }
             }
         }.toList()

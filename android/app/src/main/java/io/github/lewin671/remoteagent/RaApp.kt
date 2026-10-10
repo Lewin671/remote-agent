@@ -14,6 +14,7 @@ import io.github.lewin671.remoteagent.core.Keys
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.data.CacheDb
 import io.github.lewin671.remoteagent.data.everyStep
+import io.github.lewin671.remoteagent.data.finishAccountChange
 import io.github.lewin671.remoteagent.data.Prefs
 import io.github.lewin671.remoteagent.data.RoomCache
 import io.github.lewin671.remoteagent.data.Vault
@@ -61,6 +62,9 @@ class RaApp : Application() {
     val accountError: StateFlow<String> = _accountError.asStateFlow()
     private var foreground = false
     private var loading = false
+    @Volatile private var erasePending = false
+    private var erasing = false
+    val acceptsPush: Boolean get() = !erasePending && vault.hasAccount()
     // Reading the stored account, storing a joined one and erasing on logout
     // go one at a time: a read beside an erase would find the account being
     // removed and put it back in use, and an erase beside a join would take
@@ -128,10 +132,18 @@ class RaApp : Application() {
      * phone locked again meanwhile, is retried at the next start.
      */
     fun loadAccount() {
+        if (erasePending) {
+            if (!erasing) scope.launch { logout() }
+            return
+        }
         if (_remote.value != null || loading) return
         loading = true
         scope.launch {
             accountLock.withLock {
+                if (erasePending) {
+                    loading = false
+                    return@withLock
+                }
                 val result = withContext(Dispatchers.IO) { runCatching { if (vault.hasAccount()) vault.load() else null } }
                 loading = false
                 result.onSuccess { acct ->
@@ -177,18 +189,39 @@ class RaApp : Application() {
      * them fails, so one that does not go cannot leave the next account the
      * images that waited to be sent.
      */
-    suspend fun logout() = accountLock.withLock {
-        _remote.value?.let { lastServer = it.account.server }
-        Push.stop()
-        _remote.value?.close()
-        _remote.value = null
-        AccountMemory.clear()
-        io.github.lewin671.remoteagent.ui.HomeScopes.clear(this)
-        // Notifications may show the old account's approvals in full.
-        getSystemService(NotificationManager::class.java).cancelAll()
-        withContext(Dispatchers.IO) {
-            vault.clear()
-            everyStep({ db.clearAllTables() }, { imageEnvelopes.clear() }, { pendingStore.clearAll() }, { prefs.clear() })
+    suspend fun logout() = finishAccountChange {
+        if (erasing) return@finishAccountChange
+        erasing = true
+        try {
+            accountLock.withLock {
+                erasePending = true
+                _loaded.value = false
+                _accountError.value = ""
+                val leaving = _remote.value
+                leaving?.let { lastServer = it.account.server }
+                Push.stop()
+                pendingStore.invalidate()
+                AccountMemory.clear()
+                io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
+                getSystemService(NotificationManager::class.java).cancelAll()
+                leaving?.let { Push.unregister(it) }
+                leaving?.close()
+                try {
+                    withContext(Dispatchers.IO) {
+                        vault.clear()
+                        everyStep({ db.clearAllTables() }, { imageEnvelopes.clear() }, { pendingStore.clearAll() }, { prefs.clear() })
+                    }
+                    erasePending = false
+                    _loaded.value = true
+                } catch (e: Exception) {
+                    Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")
+                    _accountError.value = "没能清除这台手机上的账户和缓存，请重试"
+                } finally {
+                    _remote.value = null
+                }
+            }
+        } finally {
+            erasing = false
         }
     }
 

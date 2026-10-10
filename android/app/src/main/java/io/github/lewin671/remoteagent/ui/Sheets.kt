@@ -296,6 +296,13 @@ fun ApprovalPage(sid: String, aid: String) {
         if (s == null || a == null) {
             val r = d.resolved[aid]
             Text(if (r != null) "这条审批已经处理了。" else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", style = T.body, color = p.muted, modifier = Modifier.padding(16.dp))
+            if (r != null && reason.isNotEmpty()) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                    Code(reason)
+                    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+                    TextAction("复制", { act.run({ clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(android.content.ClipData.newPlainText("", reason))); null }) }, alignment = Alignment.Center)
+                }
+            }
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {

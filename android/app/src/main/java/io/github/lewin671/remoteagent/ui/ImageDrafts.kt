@@ -28,6 +28,7 @@ import kotlinx.coroutines.withContext
 
 /** Sealed files by folder and name: the pending-image store, or memory in tests. */
 interface SealedFiles {
+    fun <T> transaction(work: () -> T): T = synchronized(this) { work() }
     fun put(folder: String, name: String, data: ByteArray)
     fun get(folder: String, name: String): ByteArray?
     fun remove(folder: String, name: String)
@@ -136,7 +137,7 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
 /** The images of one draft (a session's message box or a project's new-session card). */
 class ImageDraft(
     val key: String,
-    private val files: SealedFiles = RaApp.instance.pendingStore,
+    private val files: SealedFiles = RaApp.instance.pendingStore.scoped(),
     /**
      * Where saves and removals run, one at a time for this draft, so that an
      * older snapshot never lands after a newer one nor after the removal of

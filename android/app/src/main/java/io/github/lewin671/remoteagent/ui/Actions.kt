@@ -45,9 +45,9 @@ class Action(private val scope: CoroutineScope) {
 }
 
 @Composable
-fun rememberAction(): Action {
+fun rememberAction(vararg keys: Any?): Action {
     val scope = rememberCoroutineScope()
-    return remember { Action(scope) }
+    return remember(*keys) { Action(scope) }
 }
 
 fun Remote.cmd(b: Command.Builder.() -> Unit): Command = Command.newBuilder().apply(b).build()
@@ -109,6 +109,8 @@ object Drafts {
  * can share, so all of it goes when the account changes or is logged out.
  */
 object AccountMemory {
+    var token: Any = Any()
+        private set
     private var account: String? = null
 
     /** The account now in use; a different one than before starts from nothing. */
@@ -119,12 +121,14 @@ object AccountMemory {
 
     /** Forgets everything, e.g. on logout. */
     fun clear() {
+        token = Any()
         account = null
         Drafts.clear()
         Outbox.clear()
         Starts.clear()
         Forks.clear()
         Answers.clear()
+        Plans.clear()
         Cancels.clear()
         PrefsChanges.clear()
         ImageDrafts.clear()
@@ -147,7 +151,7 @@ class OutgoingRecords(private val files: SealedFiles) {
 
     private fun writeIndex(lines: List<String>) = files.put("outbox", "index", lines.joinToString("\n").toByteArray())
 
-    fun save(sid: String, o: Outgoing, original: Boolean) {
+    fun save(sid: String, o: Outgoing, original: Boolean) = files.transaction {
         val f = folder(sid, o.requestId)
         try {
             saveImages(files, f, o.images, original)
@@ -165,7 +169,7 @@ class OutgoingRecords(private val files: SealedFiles) {
         }
     }
 
-    fun load(sid: String, thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = { null }): List<Outgoing> =
+    fun load(sid: String, thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = { null }): List<Outgoing> = files.transaction {
         index().mapNotNull { line ->
             val (s, req) = line.split("\t").takeIf { it.size == 2 } ?: return@mapNotNull null
             if (s != sid) return@mapNotNull null
@@ -181,8 +185,9 @@ class OutgoingRecords(private val files: SealedFiles) {
                 error = "App 重启过，不确定这条有没有送到"
             }
         }
+    }
 
-    fun remove(sid: String, requestId: String) {
+    fun remove(sid: String, requestId: String) = files.transaction {
         files.clearFolder(folder(sid, requestId))
         writeIndex(index().filter { it != "$sid\t$requestId" })
     }
@@ -215,7 +220,7 @@ fun outgoingShown(input: io.github.lewin671.remoteagent.proto.InputStatus?): Boo
 /** Messages sent from this device, per session, for this run of the app (and those with images, from before it). */
 object Outbox {
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
-    private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore)
+    private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore.scoped())
 
     fun of(sid: String) = bySession.getOrPut(sid) {
         mutableStateListOf<Outgoing>().also { list -> runCatching { list += records.load(sid, ::thumbnail) } }
@@ -239,14 +244,17 @@ object Outbox {
         scope: CoroutineScope, remote: Remote, sid: String, text: String,
         imageIds: List<String>, images: List<PendingImage>, original: Boolean,
         mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
-        store: (String, Outgoing, Boolean) -> Unit = { s, o, orig -> records.save(s, o, orig) },
+        store: ((String, Outgoing, Boolean) -> Unit)? = null,
         onKept: (Result<Unit>) -> Unit,
     ) {
         if (keeping(sid)) return
         keepingNow[sid] = true
         val o = Outgoing(newRequestId(), text, imageIds, images, original, mode)
+        val account = AccountMemory.token
+        val keep = store ?: records.let { r -> { s: String, message: Outgoing, orig: Boolean -> r.save(s, message, orig) } }
         scope.launch {
-            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { store(sid, o, original) } }
+            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { keep(sid, o, original) } }
+            if (account !== AccountMemory.token) return@launch
             keepingNow.remove(sid)
             onKept(kept)
             if (kept.isFailure) return@launch
@@ -325,7 +333,10 @@ object Outbox {
      */
     fun takeBack(sid: String, o: Outgoing, draft: ImageDraft) {
         of(sid).remove(o)
-        if (o.images.isNotEmpty()) draft.whenKept(o.images.map { it.id }) { runCatching { records.remove(sid, o.requestId) } }
+        if (o.images.isNotEmpty()) {
+            val kept = records
+            draft.whenKept(o.images.map { it.id }) { runCatching { kept.remove(sid, o.requestId) } }
+        }
         unwatch(sid)
     }
 

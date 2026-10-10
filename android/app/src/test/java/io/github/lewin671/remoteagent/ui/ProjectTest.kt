@@ -15,10 +15,24 @@ import io.github.lewin671.remoteagent.proto.ProjectPrefs
 import io.github.lewin671.remoteagent.proto.ProjectSettings
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.ApprovalMode
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ProjectTest {
+    @Test
+    fun aFinishedDraftFollowsTheProjectsNextSuggestion() {
+        val project = NewConfig("main", "/p", Agent.AGENT_CODEX)
+        val draft = DraftConfig(project)
+        draft.choose(project.copy(machineId = "temporary"))
+        draft.reset()
+        draft.follow(project, drafting = false)
+        assertEquals(project, draft.value)
+        // The successful-start path must release the choice for this one draft.
+        val source = java.io.File("src/main/java/io/github/lewin671/remoteagent/ui/Project.kt").readText()
+        assertTrue(source.contains("draft.reset()"))
+    }
+
     @Test fun defaultModelResolvesSupportedEffortsWithoutPinningTheModel() {
         val models = io.github.lewin671.remoteagent.proto.ListModelsResponse.newBuilder().setDefaultModel("fallback")
             .addModels(io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("fallback").addEfforts("low"))

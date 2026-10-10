@@ -173,6 +173,7 @@ fun JoinScreen(app: RaApp) {
                 JoinStep.Working -> {
                     JoinTitle("加入账户")
                     IconText(Lucide.LoaderCircle, "正在连接…", p.muted, T.sm, Modifier.padding(horizontal = 16.dp))
+                    if (error.isNotEmpty()) Hint(error, Modifier.padding(horizontal = 16.dp))
                 }
                 JoinStep.Secret -> {
                     JoinTitle("用账户密钥加入")
@@ -185,12 +186,15 @@ fun JoinScreen(app: RaApp) {
                         scope.launch {
                             try {
                                 val sec = Secret.parse(secret)
+                                registering = true
                                 val acct = withContext(Dispatchers.IO) { joinWithRoot(sec.root, sec.server, app.http) }
                                 secret = ""
                                 app.joined(acct)
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = if (registering) "不确定这台手机有没有加入：${errorText(e)}。可以在已有设备的设置里看看客户端列表" else errorText(e)
                                 step = JoinStep.Secret
+                            } finally {
+                                registering = false
                             }
                         }
                     }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), BtnKind.PRIMARY, enabled = secret.isNotBlank())

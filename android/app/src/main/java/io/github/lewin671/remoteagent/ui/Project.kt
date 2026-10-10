@@ -307,6 +307,12 @@ class DraftConfig(initial: NewConfig?, settled: Boolean = true) {
         }
     }
 
+    /** A completed start releases choices made for that draft only. */
+    fun reset() {
+        chosen = false
+        guess = false
+    }
+
     /** Another CLI for this draft: taken at once, written or not, and still following the project. */
     fun retarget(c: NewConfig, settled: Boolean = true) {
         value = c
@@ -645,6 +651,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             startSettings(savedSettings(state, key), projectConfig(state, key, used.agent, initial?.machineId) ?: used, used)?.let { PrefsChanges.run(remote, it) }
             // The project remembers this CLI now; the next draft starts from it.
             entry.agent.value = null
+            if (text.trim() == start.prompt && images.images.toList() == start.taken) draft.reset()
             Outbox.rememberPrompt(sid, start.prompt)
             nav.session(sid)
             if (text.trim() == start.prompt) text = ""

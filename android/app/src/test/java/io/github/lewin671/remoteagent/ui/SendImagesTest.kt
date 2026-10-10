@@ -10,6 +10,24 @@ import org.junit.Test
 
 class SendImagesTest {
     @Test
+    fun aSaveThatFinishesAfterLogoutDoesNotSendOrCallTheOldPage() = kotlinx.coroutines.runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = java.util.concurrent.CountDownLatch(1)
+        val stored = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val remote = throwingRemote()
+        Outbox.sendWithImages(this, remote, "old-account", "看图", listOf("i"), listOf(PendingImage("a", null)), false,
+            store = { _, _, _ -> entered.complete(Unit); release.await(); stored.complete(Unit) },
+        ) { throw AssertionError("old page called") }
+        entered.await()
+        AccountMemory.clear()
+        release.countDown()
+        stored.await()
+        // runBlocking also waits for the sending job, whose callback must never run.
+        assertTrue(Outbox.of("old-account").isEmpty())
+        remote.close()
+    }
+
+    @Test
     fun aMessageWhoseImagesCouldNotBeKeptIsNotSent() {
         val result = kotlinx.coroutines.runBlocking {
             val done = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
