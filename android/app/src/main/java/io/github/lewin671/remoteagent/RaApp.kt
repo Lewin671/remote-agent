@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
@@ -58,6 +60,11 @@ class RaApp : Application() {
     val accountError: StateFlow<String> = _accountError.asStateFlow()
     private var foreground = false
     private var loading = false
+    // Reading the stored account, storing a joined one and erasing on logout
+    // go one at a time: a read beside an erase would find the account being
+    // removed and put it back in use, and an erase beside a join would take
+    // the new account's keys.
+    private val accountLock = Mutex()
     // The device has a default network, by the system's word.
     @Volatile private var online = true
 
@@ -123,15 +130,18 @@ class RaApp : Application() {
         if (_remote.value != null || loading) return
         loading = true
         scope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { if (vault.hasAccount()) vault.load() else null } }
-            loading = false
-            result.onSuccess { acct ->
-                _accountError.value = ""
-                if (acct != null) use(acct)
-                _loaded.value = true
-            }.onFailure { e ->
-                Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
-                _accountError.value = "读不出这台手机保存的账户（${e.javaClass.simpleName}）。解锁手机后重试"
+            accountLock.withLock {
+                val result = withContext(Dispatchers.IO) { runCatching { if (vault.hasAccount()) vault.load() else null } }
+                loading = false
+                result.onSuccess { acct ->
+                    _accountError.value = ""
+                    // Joined while this waited for its turn: that account is the one in use.
+                    if (acct != null && _remote.value == null) use(acct)
+                    _loaded.value = true
+                }.onFailure { e ->
+                    Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
+                    _accountError.value = "读不出这台手机保存的账户（${e.javaClass.simpleName}）。解锁手机后重试"
+                }
             }
         }
     }
@@ -151,7 +161,7 @@ class RaApp : Application() {
     }
 
     /** Stores a newly joined account and starts syncing. */
-    suspend fun joined(acct: Account) {
+    suspend fun joined(acct: Account) = accountLock.withLock {
         withContext(Dispatchers.IO) { vault.save(acct, Keys.derive(acct.root).notify) }
         use(acct)
     }
@@ -161,7 +171,7 @@ class RaApp : Application() {
         private set
 
     /** Forgets the account, the cache and the keys on this device. */
-    suspend fun logout() {
+    suspend fun logout() = accountLock.withLock {
         _remote.value?.let { lastServer = it.account.server }
         Push.stop()
         _remote.value?.close()

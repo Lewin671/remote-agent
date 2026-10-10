@@ -2,6 +2,7 @@ import Foundation
 import RACore
 import RAProto
 import Testing
+import os
 
 @testable import RemoteAgent
 
@@ -61,6 +62,8 @@ final class Harness {
         deviceId: "00112233445566778899aabbccddeeff")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
+    /// What the erase of a logout does instead of erasing, when set: called off the main actor.
+    var erase: (@Sendable (AccountStorage) throws -> Void)?
     lazy var model: AppModel = {
         var parts = AppModel.Parts()
         parts.storage = AccountStorage(vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
@@ -74,6 +77,7 @@ final class Harness {
         parts.frame = { _ in }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
         parts.clearNotifications = { [unowned self] in self.cleared += 1 }
+        if let erase { parts.erase = erase }
         return AppModel(settings: settings, parts: parts)
     }()
 
@@ -302,5 +306,33 @@ final class Harness {
         let next = try #require(h.model.context)
         #expect(next !== context)
         #expect(next.memory.value(String.self) { "" } == "")
+    }
+
+    @Test func nothingIsReadWhileALogoutIsErasing() async throws {
+        defer { h.cleanUp() }
+        // The erase is slow: it has not reached the keys when the app goes to the background and comes back.
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let go = DispatchSemaphore(value: 0)
+        h.erase = { storage in
+            started.withLock { $0 = true }
+            go.wait()
+            try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+        }
+        try await h.ready()
+        let leaving = Task { await h.model.logout() }
+        await eventually("erasing") { started.withLock { $0 } }
+        h.model.scenePhase(.background)
+        h.model.scenePhase(.active)
+        h.model.loadAccount()
+        try await Task.sleep(nanoseconds: 200_000_000)
+        // The account being removed is not found and put back in use.
+        #expect(h.model.stage == .loading)
+        #expect(h.model.context == nil)
+        #expect(h.engines.count == 1)
+        go.signal()
+        await leaving.value
+        #expect(h.model.stage == .join)
+        #expect(h.model.context == nil && h.engines.count == 1)
+        #expect(try !h.vault.hasAccount())
     }
 }
