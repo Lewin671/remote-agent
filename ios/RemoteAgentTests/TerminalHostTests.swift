@@ -67,6 +67,25 @@ import UIKit
         #expect(emulator.getCursorLocation().y == 0)
     }
 
+    @Test func outputCannotDrawSixelOrKittyGraphics() {
+        let host = host()
+        host.snapshot(cols: 80, rows: 24, data: Data("before".utf8))
+        // A red Sixel square, and a Kitty image of one pixel.
+        host.append(Data("\u{1B}Pq#0;2;100;0;0#0~~~~~~-~~~~~~\u{1B}\\after".utf8))
+        let emulator = host.terminal.getTerminal()
+        #expect(text(host) == "beforeafter")
+        #expect(emulator.getCursorLocation().y == 0)
+        let kitty = Data("\u{1B}_Gf=24,s=1,v=1,a=T;/wAA\u{1B}\\!".utf8)
+        host.append(kitty.prefix(9))
+        host.append(kitty.dropFirst(9))
+        #expect(text(host) == "beforeafter!")
+        #expect(emulator.getCursorLocation().y == 0)
+        // A snapshot starts over, also in the middle of a string.
+        host.append(Data("\u{1B}Pq#0~~".utf8))
+        host.snapshot(cols: 80, rows: 24, data: Data("fresh".utf8))
+        #expect(text(host) == "fresh")
+    }
+
     @Test func theEmulatorAnswersNothing() {
         let host = host()
         var sent: [Data] = []

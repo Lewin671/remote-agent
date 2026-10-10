@@ -33,6 +33,9 @@
 //     inline file (`File=inline=1:…`) and puts the image in the buffer
 //     itself, without asking the view or `isProcessTrusted`. Its other
 //     keys would only reach `iTermContent`, which does nothing here;
+//   - device control strings and application program commands never reach
+//     the emulator (`TerminalStringFilter`): 1.11.2 draws Sixel and Kitty
+//     graphics from them the same way, and has no handler to replace;
 //   - nothing the emulator itself says goes back as input: answers to
 //     status and attribute queries, focus reports, mouse reports. tmux is
 //     the terminal the program talks to and has answered already; a second
@@ -87,6 +90,8 @@ final class TerminalHostView: UIView {
     private var fontScale: CGFloat = 1
     private var zoom: CGFloat = 1
     private var keyboardUp = false
+    /// Takes Sixel and Kitty graphics out of the output, across frames.
+    private var strings = TerminalStringFilter()
     /// How far the grid is moved up to keep the cursor above the keyboard.
     private var scrolled: CGFloat = 0
 
@@ -144,14 +149,15 @@ final class TerminalHostView: UIView {
         resize()
         refit()
         // RIS: full reset and clear, as a fresh terminal would be.
-        terminal.feed(byteArray: ([0x1b, 0x63] + [UInt8](data))[...])
+        strings = TerminalStringFilter()
+        terminal.feed(byteArray: ([0x1b, 0x63] + [UInt8](strings.take(data)))[...])
         followCursor()
     }
 
     /// Feeds output of the remote terminal.
     func append(_ data: Data) {
         guard grid.cols > 0 else { return }
-        terminal.feed(byteArray: [UInt8](data)[...])
+        terminal.feed(byteArray: [UInt8](strings.take(data))[...])
         followCursor()
     }
 

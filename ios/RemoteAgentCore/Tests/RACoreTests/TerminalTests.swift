@@ -224,3 +224,41 @@ import Testing
         #expect(terminalFontSize(preferred: 42, width: 100, height: 100, cols: 0, rows: 0, measure: cell) == 42)
     }
 }
+
+@Suite struct TerminalStringFilterTests {
+    private func run(_ frames: [String]) -> String {
+        var f = TerminalStringFilter()
+        return frames.map { String(decoding: f.take(Data($0.utf8)), as: UTF8.self) }.joined()
+    }
+
+    @Test func controlStringsAreTakenOutAndTheRestIsAsItWas() {
+        // Sixel is a DCS, Kitty graphics an APC; each ends with ST, in either form.
+        #expect(run(["a\u{1B}Pq#0~~\u{1B}\\b"]) == "ab")
+        #expect(run(["a\u{1B}_Gf=24;AAAA\u{1B}\\b"]) == "ab")
+        #expect(run(["a\u{90}q~~\u{9C}b\u{9F}G;AA\u{9C}c"]) == "abc")
+        // An APC also ends at BEL, as the emulator reads it; a DCS does not.
+        #expect(run(["a\u{1B}_G;AA\u{07}b"]) == "ab")
+        #expect(run(["a\u{1B}Pq\u{07}~\u{1B}\\b"]) == "ab")
+        // CAN and SUB cancel either.
+        #expect(run(["a\u{1B}Pq~\u{18}b\u{1B}_G\u{1A}c"]) == "abc")
+        // Other sequences, and text of more than one byte, pass through.
+        let plain = "\u{1B}[31m红\u{1B}]0;title\u{07}\u{1B}(B é\u{1B}[0m"
+        #expect(run([plain]) == plain)
+    }
+
+    @Test func aStringMayBeginInOneFrameAndEndInAnother() {
+        #expect(run(["a\u{1B}", "Pq#0~~", "~~\u{1B}", "\\b"]) == "ab")
+        // What only might begin a string is held, and comes with the next frame.
+        var f = TerminalStringFilter()
+        #expect(f.take(Data([0x61, 0x1B])) == Data([0x61]))
+        #expect(f.take(Data("[1m".utf8)) == Data("\u{1B}[1m".utf8))
+        #expect(f.take(Data([0xC2])) == Data())
+        #expect(f.take(Data([0xA9])) == Data([0xC2, 0xA9]))
+    }
+
+    @Test func anEscapeSequenceInsideAStringEndsItAndIsRead() {
+        #expect(run(["a\u{1B}Pq~~\u{1B}[1mb"]) == "a\u{1B}[1mb")
+        // Also another string.
+        #expect(run(["a\u{1B}Pq~~\u{1B}_G;AA\u{1B}\\b"]) == "ab")
+    }
+}
