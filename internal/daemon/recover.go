@@ -73,8 +73,10 @@ func (l *logged) note(e *pb.Event) {
 // restoreRecent rebuilds the memory of written messages the CLI's record
 // may still come for: those that left the queue with no user message tied
 // to them (Codex may record one long after confirming the submit), and
-// those the CLI holds. A message with images cannot be rebuilt from the
-// log, which has neither its files nor its placeholders.
+// those the CLI holds. One that was reported UNCONFIRMED is remembered as
+// that too, for its record to confirm it (confirmLate). A message with
+// images cannot be rebuilt from the log, which has neither its files nor
+// its placeholders.
 func (s *session) restoreRecent(l *logged) {
 	for _, id := range l.written {
 		if in := l.sent[id]; in != nil && !in.images {
@@ -84,6 +86,11 @@ func (s *session) restoreRecent(l *logged) {
 	s.recent = append(s.recent, s.queue.Held...)
 	if n := len(s.recent) - recentInputs; n > 0 {
 		s.recent = s.recent[n:]
+	}
+	for _, in := range s.recent {
+		if l.input[in.RequestID].GetInputState().GetStatus() == pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+			s.unproven[in.RequestID] = true
+		}
 	}
 }
 

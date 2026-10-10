@@ -669,6 +669,34 @@ func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
 	}
 }
 
+// A message reported unconfirmed stays one a late record confirms when the
+// daemon restarts in between: the restart remembers it as written, and as
+// unconfirmed.
+func TestLateRecordConfirmsUnconfirmedMessageAfterRestart(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
+	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl") // Codex writes no history
+	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
+	ctx, cancel := context.WithCancel(context.Background())
+	h.s.start(ctx)
+	h.s.send("recorded late", "r1")
+	eventually(t, "r1 unconfirmed", func() bool { return inputStatus(h, "r1") == pb.InputStatus_INPUT_STATUS_UNCONFIRMED })
+	cancel()
+	h.reopen()
+	h.writeRollout(`{"timestamp":"2026-09-29T10:00:00Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"UserMessage","id":"u1","content":[{"type":"text","text":"recorded late"}]}}}`)
+	h.s.readRollout()
+	if got := inputStatus(h, "r1"); got != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+		t.Fatalf("r1 is %v after its record came", got)
+	}
+	evs := h.events()
+	for i, e := range evs {
+		if m := e.GetUserMessage(); m != nil {
+			if m.RequestId != "r1" || i == 0 || evs[i-1].GetInputState().GetStatus() != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+				t.Fatalf("the record is not r1's, confirmed just before it: %v", e)
+			}
+		}
+	}
+}
+
 // A queue.json that cannot be read holds accepted messages and the request
 // IDs that guard against sending twice. The session accepts no input, so
 // that nothing overwrites the file, instead of carrying on as if it had
