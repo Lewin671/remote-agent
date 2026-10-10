@@ -84,27 +84,94 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         #expect(m.readError == "没有回应")
     }
 
-    @Test func aReadAskedForDuringASaveDoesNotLeaveThePageSaving() async {
+    /// A model whose update waits until the test lets it go, then answers with `outcome`, or what it was sent.
+    private func held(_ outcome: Result<PBUpdateSettingsResponse, Error>? = nil) -> (MachineSettingsModel, AsyncStream<Void>.Continuation) {
         let (held, release) = AsyncStream.makeStream(of: Void.self)
         let m = MachineSettingsModel(calls: MachineSettingsCalls(
             read: { [reads] in try reads.next() },
             update: { s, _ in
                 for await _ in held { break }
-                return .with { $0.settings = s }
+                return try outcome?.get() ?? .with { $0.settings = s }
             }))
+        return (m, release)
+    }
+
+    @Test func aReadAskedForDuringASaveWaitsForItAndDoesNotLeaveThePageSaving() async {
+        let (m, release) = held()
         reads.then(reply(settings()))
         await m.read()
         let saving = Task { await m.save(settings(timeout: 600)) }
         while !m.saving { await Task.yield() }
-        // A pull to refresh, or the computer coming back, while the change is on its way.
-        reads.then(reply(settings(timeout: 900)))
+        // A pull to refresh, or the computer coming back, while the change is on its way: the computer
+        // might answer it with the settings from before the change, so it is not sent yet.
         await m.read()
-        #expect(m.saving)
+        #expect(m.saving && reads.calls == 1)
+        // Read after the change has ended, the settings are the computer's own word on it.
+        reads.then(reply(settings(timeout: 590)))
+        release.yield()
+        await saving.value
+        #expect(!m.saving && !m.reading)
+        #expect(reads.calls == 2)
+        #expect(m.settings?.approvalTimeoutSeconds == 590)
+    }
+
+    @Test func aSaveIsShownWhateverWasAskedForMeanwhile() async {
+        let (m, release) = held()
+        reads.then(reply(settings()))
+        await m.read()
+        let saving = Task { await m.save(settings(timeout: 600)) }
+        while !m.saving { await Task.yield() }
+        await m.read()
+        // The read made afterwards fails: what the save came to stays.
+        reads.thenFail(UserError("没有回应"))
         release.yield()
         await saving.value
         #expect(!m.saving)
-        // What was read later is what is shown.
-        #expect(m.settings?.approvalTimeoutSeconds == 900)
+        #expect(m.settings?.approvalTimeoutSeconds == 600)
+        #expect(m.readError == "没有回应" && m.saveError.isEmpty)
+    }
+
+    @Test func aSaveThatFailsIsSaidWhateverWasAskedForMeanwhile() async {
+        let (m, release) = held(.failure(CommandError("invalid_argument", "审批超时要在 30 秒以上", fromDaemon: true)))
+        reads.then(reply(settings(timeout: 300)))
+        await m.read()
+        let saving = Task { await m.save(settings(timeout: 1)) }
+        while !m.saving { await Task.yield() }
+        await m.read()
+        reads.then(reply(settings(timeout: 300)))
+        release.yield()
+        await saving.value
+        #expect(!m.saving)
+        #expect(m.saveError == "审批超时要在 30 秒以上")
+        #expect(m.settings?.approvalTimeoutSeconds == 300)
+    }
+
+    @Test func aReadASaveOvertookIsMadeAgainAfterIt() async {
+        let (held, release) = AsyncStream.makeStream(of: Void.self)
+        let entered = Mail<Void>()
+        let m = MachineSettingsModel(calls: MachineSettingsCalls(
+            read: { [reads] in
+                entered.put(())
+                // The second read is slow: a change is sent while it is on its way.
+                if entered.all.count == 2 { for await _ in held { break } }
+                return try reads.next()
+            },
+            update: { s, _ in .with { $0.settings = s } }))
+        reads.then(reply(settings()))
+        await m.read()
+        let reading = Task { await m.read() }
+        while entered.all.count < 2 { await Task.yield() }
+        // The read made after the change says what the computer has now.
+        reads.then(reply(settings(timeout: 590)))
+        await m.save(settings(timeout: 600))
+        #expect(entered.all.count == 3)
+        #expect(m.settings?.approvalTimeoutSeconds == 590)
+        // Asked before the change, the slow one answers after it with the settings from before: dropped.
+        reads.then(reply(settings(timeout: 300)))
+        release.yield()
+        await reading.value
+        #expect(m.settings?.approvalTimeoutSeconds == 590)
+        #expect(!m.reading && !m.saving)
     }
 
     @Test func aSaveShowsWhatTheComputerAnswered() async {

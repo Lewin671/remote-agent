@@ -55,15 +55,25 @@ final class MachineSettingsModel {
     private(set) var saveUnknown = false
 
     @ObservationIgnored private let calls: MachineSettingsCalls
-    /// Bumped by every read and save: an answer that arrives after a newer one was asked for is dropped.
+    /// Bumped by every read and save: a read's answer that arrives after a newer one was asked for is dropped.
     @ObservationIgnored private var asked = 0
+    /// A read was asked for, or was on its way, while a change was: it is made once the change has ended.
+    @ObservationIgnored private var readAfterSave = false
 
     init(calls: MachineSettingsCalls) {
         self.calls = calls
     }
 
-    /// Reads the settings. What is shown stays until the answer comes, so a retry does not blank the page.
+    /// Reads the settings. What is shown stays until the answer comes, so a
+    /// retry does not blank the page. While a change is on its way the read
+    /// waits for it to end: the order two commands are sent in is not the
+    /// order the computer takes them in, so an answer read meanwhile could
+    /// be the settings from before the change, shown after it.
     func read() async {
+        guard !saving else {
+            readAfterSave = true
+            return
+        }
         asked += 1
         let mine = asked
         reading = true
@@ -88,38 +98,43 @@ final class MachineSettingsModel {
 
     /// Sends `next` as the computer's settings. On an answer that did not
     /// come, the settings are read once more: they say whether the change
-    /// was applied, which the lost answer could not.
+    /// was applied, which the lost answer could not. What the change came
+    /// to is always shown: nothing asked for meanwhile takes it away.
     func save(_ next: PBDaemonSettings, clean: Bool = false) async {
         guard !saving, settings != nil else { return }
+        // A read on its way may answer with the settings from before this change: it is dropped, and made again after.
         asked += 1
-        let mine = asked
+        readAfterSave = reading
         saving = true
         reading = false
         saveError = ""
         saveUnknown = false
-        // Only one save runs at a time (the guard above), so this one ending is the end of saving,
-        // also when a read asked for meanwhile has made its answer one to drop.
-        defer { saving = false }
+        await send(next, clean: clean)
+        // Only one save runs at a time (the guard above), so this one ending is the end of saving.
+        saving = false
+        if readAfterSave {
+            readAfterSave = false
+            await read()
+        }
+    }
+
+    private func send(_ next: PBDaemonSettings, clean: Bool) async {
         do {
             let reply = try await calls.update(next, clean)
-            guard mine == asked else { return }
             take(reply.settings, reply.hasImageStorage ? reply.imageStorage : nil)
         } catch is CancellationError {
             // The page went away; the next visit reads what the computer has.
         } catch {
-            guard mine == asked else { return }
             guard (error as? CommandError)?.unknown == true else {
                 saveError = errorText(error)
                 return
             }
             do {
                 let reply = try await calls.read()
-                guard mine == asked else { return }
                 take(reply.settings, reply.hasImageStorage ? reply.imageStorage : nil)
                 // A cleaning leaves no trace in the settings: only the sizes say, and they are shown.
                 if reply.settings != next { saveError = "这次修改没有保存上，电脑上还是原来的设置" }
             } catch {
-                guard mine == asked else { return }
                 saveUnknown = true
                 saveError = "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准"
             }
