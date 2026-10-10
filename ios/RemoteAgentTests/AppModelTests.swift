@@ -335,4 +335,34 @@ final class Harness {
         #expect(h.model.context == nil && h.engines.count == 1)
         #expect(try !h.vault.hasAccount())
     }
+
+    @Test func anEraseThatFailedIsFinishedBeforeAnythingIsReadAgain() async throws {
+        defer { h.cleanUp() }
+        struct Stuck: LocalizedError { var errorDescription: String? { "没能删除缓存" } }
+        let tries = OSAllocatedUnfairLock(initialState: 0)
+        h.erase = { storage in
+            // The first try gets as far as the keys.
+            if tries.withLock({ $0 += 1; return $0 }) == 1 {
+                try storage.vault.clear()
+                throw Stuck()
+            }
+            try LocalAccountData.erase(vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
+        }
+        try await h.ready()
+        try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
+        await h.model.logout()
+        #expect(h.model.stage == .failed("没能删除缓存"))
+        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+        // 重试 erases again, and only then is there no account to find.
+        h.model.loadAccount()
+        await eventually("join") { h.model.stage == .join }
+        #expect(tries.withLock { $0 } == 2)
+        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
+        // Erased once: the next read is only a read.
+        h.model.scenePhase(.background)
+        h.model.scenePhase(.active)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(tries.withLock { $0 } == 2)
+    }
 }

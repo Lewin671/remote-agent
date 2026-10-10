@@ -13,6 +13,7 @@ import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Keys
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.data.CacheDb
+import io.github.lewin671.remoteagent.data.everyStep
 import io.github.lewin671.remoteagent.data.Prefs
 import io.github.lewin671.remoteagent.data.RoomCache
 import io.github.lewin671.remoteagent.data.Vault
@@ -170,7 +171,12 @@ class RaApp : Application() {
     var lastServer = ""
         private set
 
-    /** Forgets the account, the cache and the keys on this device. */
+    /**
+     * Forgets the account, the cache and the keys on this device. The keys
+     * go first; once they are gone every other store is cleared whichever of
+     * them fails, so one that does not go cannot leave the next account the
+     * images that waited to be sent.
+     */
     suspend fun logout() = accountLock.withLock {
         _remote.value?.let { lastServer = it.account.server }
         Push.stop()
@@ -182,10 +188,7 @@ class RaApp : Application() {
         getSystemService(NotificationManager::class.java).cancelAll()
         withContext(Dispatchers.IO) {
             vault.clear()
-            db.clearAllTables()
-            imageEnvelopes.clear()
-            pendingStore.clearAll()
-            prefs.clear()
+            everyStep({ db.clearAllTables() }, { imageEnvelopes.clear() }, { pendingStore.clearAll() }, { prefs.clear() })
         }
     }
 

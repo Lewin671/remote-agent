@@ -217,4 +217,51 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: cacheRoot.path))
         #expect(!FileManager.default.fileExists(atPath: dir.path))
     }
+
+    @Test func aCacheThatDoesNotGoStillEndsTheAccountsPendingImages() async throws {
+        defer { cleanUp() }
+        // The cache cannot be removed: the folder it is in does not allow it.
+        let locked = FileManager.default.temporaryDirectory.appending(path: "ra-locked-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let cacheRoot = locked.appending(path: "cache", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: cacheRoot, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+            try? FileManager.default.removeItem(at: locked)
+        }
+        let s = store()
+        let first = s.scoped()
+        try vault.save(VaultAccount(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
+        try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
+
+        #expect(throws: (any Error).self) { try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s) }
+        #expect(FileManager.default.fileExists(atPath: cacheRoot.path))
+        #expect(try !vault.hasAccount())
+        // The images, the key in memory and the account's scope went all the same.
+        #expect(!FileManager.default.fileExists(atPath: dir.path))
+        #expect(try vault.read(.pendingKey) == nil)
+        #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
+        // The next account joined on this run finds none of it under the same project path.
+        #expect(s.scoped().get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        // Erasing again, with the cache free to go, finishes it.
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+        try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s)
+        #expect(!FileManager.default.fileExists(atPath: cacheRoot.path))
+    }
+
+    @Test func filesThatDoNotGoAreStillClosedToTheAccountThatLeft() throws {
+        defer { cleanUp() }
+        let s = store()
+        let first = s.scoped()
+        try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
+        // The directory cannot be removed: what is in it does not allow it.
+        let inner = try #require(try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil).first)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: inner.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: inner.path) }
+        #expect(throws: (any Error).self) { try s.clearAll() }
+        // The key went though the files did not, and the scope ended.
+        #expect(try vault.read(.pendingKey) == nil)
+        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
+    }
 }

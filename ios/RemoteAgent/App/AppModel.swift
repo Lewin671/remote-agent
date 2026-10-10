@@ -12,7 +12,8 @@
 //     reconnect (`NetworkChange`);
 //   - logging out forgets the keys first, then everything stored for the
 //     account, and what the screens kept in memory with it; nothing is read
-//     until that has ended.
+//     until that has ended, and an erase that failed is finished before the
+//     next read.
 //
 // Screens read three things from the environment: this model (`state`,
 // `settings`, `foreground`, `logout`), the `AccountContext` of the account
@@ -168,6 +169,8 @@ final class AppModel {
     @ObservationIgnored private var loading = false
     /// A logout is erasing what is stored. Nothing is read meanwhile: the account it is removing would come back.
     @ObservationIgnored private var erasing = false
+    /// The last erase failed: the next read erases again first.
+    @ObservationIgnored private var unerased = false
     /// Bumped whenever the account in use changes: a step that awaited meanwhile finds its work unwanted.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var path = NetworkPath.unknown
@@ -231,17 +234,27 @@ final class AppModel {
 
     /// Reads the stored account, only in the foreground: a process started
     /// in the background while the device is locked could not open the
-    /// Keychain. A failure is shown with 重试 and tried again on the next return.
+    /// Keychain. A failure is shown with 重试 and tried again on the next
+    /// return. After a logout that could not erase everything, the erase
+    /// is what is tried again: the user asked for the account to go, and
+    /// nothing is read or joined over what is left of it.
     func loadAccount() {
         guard context == nil, !loading, !erasing, !isDemo, foreground else { return }
         loading = true
-        let vault = parts.storage.vault
+        let storage = parts.storage
+        let erase = unerased ? parts.erase : nil
         let gen = generation
         Task {
             // The Keychain call blocks.
-            let result = await Task.detached { Result { try vault.load() } }.value
+            let result = await Task.detached {
+                Result {
+                    try erase?(storage)
+                    return try storage.vault.load()
+                }
+            }.value
             loading = false
             guard gen == generation, context == nil else { return }
+            if case .success = result { unerased = false }
             switch result {
             case .success(let stored?):
                 await use(Account(stored))
@@ -371,10 +384,10 @@ final class AppModel {
     }
 
     /// Forgets the account, the cache and the keys on this device, then
-    /// shows the join flow with the server filled in. When the Keychain does
-    /// not let go the account is still here, and that is what is said. Until
-    /// the erase has ended no account is read: the one being removed would
-    /// be found and put back in use.
+    /// shows the join flow with the server filled in. When something does
+    /// not let go that is what is said, and 重试 erases again
+    /// (`loadAccount`). Until the erase has ended no account is read: the
+    /// one being removed would be found and put back in use.
     func logout() async {
         if let account { lastServer = account.server }
         generation += 1
@@ -411,6 +424,7 @@ final class AppModel {
             }
         }.value
         erasing = false
+        if case .failure = result { unerased = true } else { unerased = false }
         settings.clear()
         AccountDefaults.clear(parts.defaults)
         switch result {

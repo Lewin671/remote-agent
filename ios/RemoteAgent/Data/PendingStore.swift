@@ -139,14 +139,20 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         }
     }
 
-    /// Logging out: the files, their key and the expired count.
+    /// Logging out: the files, their key and the expired count. The
+    /// account's scopes end and the key in memory is forgotten first, and
+    /// whatever fails after that: files that would not go are then
+    /// ciphertext nothing here can open, and no scope of the account left
+    /// reaches them.
     func clearAll() throws {
         try lock.withLock {
             epoch += 1
             cachedKey = nil
-            if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
-            try vault.delete(.pendingKey)
             clearExpiredCount()
+            try everyStep([
+                { if FileManager.default.fileExists(atPath: self.directory.path) { try FileManager.default.removeItem(at: self.directory) } },
+                { try self.vault.delete(.pendingKey) },
+            ])
         }
     }
 
@@ -261,13 +267,27 @@ struct PendingScope: SealedFiles, RACore.SealedFiles {
 }
 
 /// Logging out. The keys go first: once they are gone nothing else stored
-/// here can be opened, so being cut short leaves ciphertext at worst. Stores
-/// opened on the cache must be closed before; this device's preferences
+/// here can be opened, so being cut short leaves ciphertext at worst. With
+/// the keys gone the account is: the cache and the pending images are both
+/// cleared whichever of them fails, and the first failure is thrown.
+/// Erasing again finishes what an earlier try left. Stores opened on the
+/// cache must be closed before; this device's preferences
 /// (`SettingsStore.clear`) are the caller's to reset.
 enum LocalAccountData {
     static func erase(vault: Vault = Vault(), cacheRoot: URL = CipherStore.defaultRoot, pending: PendingStore) throws {
         try vault.clear()
-        try CipherStore.eraseAll(root: cacheRoot)
-        try pending.clearAll()
+        try everyStep([
+            { try CipherStore.eraseAll(root: cacheRoot) },
+            { try pending.clearAll() },
+        ])
     }
+}
+
+/// Runs every step, also after one failed, then throws the first failure.
+private func everyStep(_ steps: [() throws -> Void]) throws {
+    var first: (any Error)?
+    for step in steps {
+        do { try step() } catch { first = first ?? error }
+    }
+    if let first { throw first }
 }
