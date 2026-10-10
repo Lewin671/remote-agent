@@ -745,6 +745,90 @@ describe("an unknown session start", () => {
   });
 });
 
+describe("an unknown session start, after leaving its page and coming back", () => {
+  const page = (r: DemoRemote) => <ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />;
+  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const type = async (value: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input(), value);
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  const leave = () => {
+    act(() => root!.unmount());
+    host.remove();
+  };
+
+  it("stays on its way, and nothing else is started in its place (review r2)", async () => {
+    const r = demo();
+    const sent: { id: string; prompt?: string }[] = [];
+    const answers: ((e?: CommandError) => void)[] = [];
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case !== "createSession") return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+      sent.push({ id: slot!.requestId, prompt: cmd.value.prompt });
+      const e = await new Promise<CommandError | undefined>((resolve) => answers.push(resolve));
+      throw e ?? new CommandError("unknown", "连接超时");
+    };
+    mount(page(r));
+    await type("加限流");
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    // Left and reopened while the request is on its way.
+    leave();
+    mount(page(r));
+    expect(input().value).toBe("加限流");
+    expect(host.textContent).toContain("上启动…");
+    // Another message cannot go while that one is out.
+    await type("给登录接口加限流");
+    expect(sendButton()?.disabled).toBe(true);
+    await click(sendButton());
+    expect(sent).toHaveLength(1);
+    // Its reply is lost: the page that is open now says so, and the other message is a new start.
+    await act(async () => answers[0]());
+    await vi.waitFor(() => expect(host.textContent).toContain("上次的启动结果还没有确认"));
+    expect(sendButton()?.disabled).toBe(false);
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toMatchObject({ prompt: "给登录接口加限流" });
+    expect(sent[1].id).not.toBe(sent[0].id);
+    // That one's reply is lost too: it is retried as itself.
+    await act(async () => answers[1]());
+    await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+    await click(button("重试"));
+    await vi.waitFor(() => expect(sent).toHaveLength(3));
+    expect(sent[2]).toEqual(sent[1]);
+  });
+
+  it("takes its message from the page open now once its session has started (review r2)", async () => {
+    const r = demo();
+    let answer!: () => void;
+    let asked = 0;
+    r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        asked++;
+        await new Promise<void>((resolve) => (answer = resolve));
+      }
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    const before = r.sessions.size;
+    mount(page(r));
+    await type("加限流");
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    await click(sendButton());
+    await vi.waitFor(() => expect(asked).toBe(1));
+    leave();
+    mount(page(r));
+    expect(input().value).toBe("加限流");
+    await act(async () => answer());
+    await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
+    // Nothing is left to send again by mistake, and nothing is unknown.
+    await vi.waitFor(() => expect(input().value).toBe(""));
+    expect(host.textContent).not.toContain("上启动…");
+    expect(host.textContent).not.toContain("启动结果");
+    expect(asked).toBe(1);
+  });
+});
+
 
 it("keeps a project's model and effort after the page remounts", async () => {
   const project = "/Users/me/Code/ai-bot/remote-agent";

@@ -32,7 +32,32 @@ import { errorText, type MachineView, type Remote } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
-const startAttempts = new WeakMap<Remote, Map<string, Attempt<StartPayload>>>();
+
+/** A project's start. It belongs to the account, not to the page that
+ * sent it (Android's `Starts`, iOS's `NewSessionDraft`): the page may be
+ * left and opened again while the request is on its way or its outcome
+ * unknown, and the wide home shows one project after another in one box. */
+class Start {
+  readonly attempt = new Attempt<StartPayload>();
+  /** Its request is on its way. Nothing else is started in the project
+   * meanwhile, whichever page is open. */
+  running = false;
+  /** How many sessions it has started. A page's draft is for the next one:
+   * what it chose for one that has started is no longer held. */
+  count = 0;
+  /** The first message of the session it started last. */
+  prompt?: string;
+}
+const starts = new WeakMap<Remote, Map<string, Start>>();
+/** One start per project: an unknown start in one project must never be
+ * what another project's box sends. */
+function startOf(remote: Remote, key: string): Start {
+  let all = starts.get(remote);
+  if (!all) starts.set(remote, (all = new Map()));
+  let start = all.get(key);
+  if (!start) all.set(key, (start = new Start()));
+  return start;
+}
 import { Avatar, Banner, Dot, fromHere, Sheet } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
@@ -136,6 +161,8 @@ function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
  * (yet): another machine, edited sets. once: the machine is for this
  * start only and nothing of it is saved. */
 type Local = { key: string; machineId?: string; once: boolean; sets: Partial<Record<Agent, AgentSet>> };
+/** The launch settings a draft was begun with. */
+type Latched = { key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> };
 
 /** The configuration and the create call of a new session in project key.
  * The project's settings name the machine and keep one set of model,
@@ -146,17 +173,21 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // session's activity, not only when sessions come or go.
   const p = projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings).find((x) => x.key === key);
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
+  const start = startOf(remote, key);
+  const current = start.attempt;
+  // What a page chose is for one draft: the project's next session.
+  const draft = `${start.count}:${key}`;
   const [localState, setLocal] = useState<Local>();
-  const local = localState?.key === key ? localState : undefined;
+  const local = localState?.key === draft ? localState : undefined;
   // The CLI picked next to the box, for this draft.
   const [pickedState, setPicked] = useState<{ key: string; agent: Agent }>();
-  const picked = pickedState?.key === key ? pickedState.agent : undefined;
+  const picked = pickedState?.key === draft ? pickedState.agent : undefined;
   // Once a draft is begun its launch settings hold: later activity (a
   // newer session in the project, a machine coming or going) does not
   // change where or how the draft will start. Only the user's own choice
   // does.
-  const [latched, setLatched] = useState<{ key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> }>();
-  const held = latched?.key === key ? latched : undefined;
+  const [latched, setLatched] = useState<Latched>();
+  const held = latched?.key === draft ? latched : undefined;
   const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
   const first = inherit();
   // Where it starts without a choice made on this page.
@@ -213,7 +244,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const unavailable = !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
   const cfg = unavailable ? { ...configured, model: "", effort: "" } : configured;
   const configFallback = unavailable ? "所选模型或推理强度在这台机器上不可用，这次用机器的默认值" : "";
-  const [busy, setBusy] = useState(false);
+  // The request may have been sent from another page: this one is told
+  // when it ends through the Remote, like the page that sent it.
+  const busy = start.running;
   const [error, setError] = useState("");
   const [configError, setConfigError] = useState("");
   const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
@@ -226,26 +259,18 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const setCfg = (config: NewConfig, once = false) => {
     if (config.machineId !== machineId) {
       const sets = { [Agent.CODEX]: setOf({ ...config, agent: Agent.CODEX }), [Agent.CLAUDE]: setOf({ ...config, agent: Agent.CLAUDE }) };
-      setLocal({ key, machineId: config.machineId, once, sets });
+      setLocal({ key: draft, machineId: config.machineId, once, sets });
       if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
       return;
     }
     const set = setOf(config);
-    setLocal({ key, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
+    setLocal({ key: draft, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
     if (!local?.once) void save({ ...whole(), sets: [set] });
   };
   const setAgent = (a: Agent) => {
     latch();
-    setPicked({ key, agent: a });
+    setPicked({ key: draft, agent: a });
   };
-  // One pending attempt per project: the wide home reuses this hook when
-  // switching projects, and an unknown start in one project must never be
-  // what another project's box sends.
-  let attempts = startAttempts.get(remote);
-  if (!attempts) startAttempts.set(remote, (attempts = new Map()));
-  let attempt = attempts.get(key);
-  if (!attempt) attempts.set(key, (attempt = new Attempt()));
-  const current = attempt;
   // A failure shown for one project is not the next one's.
   useEffect(() => { setError(""); setConfigError(""); }, [key]);
 
@@ -281,18 +306,24 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // Images for the first message go to the chosen machine; a new machine
   // gets them again (the tray keeps them prepared).
   const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
+  const [, redraw] = useState(0);
   const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
+    // One request at a time, whichever page sent the one on its way.
+    if (start.running) return false;
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
     if (changes(prompt, mode)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
-    const { payload, slot } = current.next(payloadFor(prompt, mode));
+    const sent = current.next(payloadFor(prompt, mode));
+    const { payload, slot } = sent;
     const open = fromHere(go);
-    setBusy(true);
+    start.running = true;
+    remote.touch();
     setError("");
     try {
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
-      current.settle();
+      // Only this request's own answer settles it.
+      current.settle(undefined, sent);
       if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error("意外的回复");
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
@@ -312,17 +343,19 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
         if (!saved.agents.some((x) => x.agent === used)) patch.sets = [setOf(local?.once ? asStored : cfg)];
         if (patch.agent !== undefined || patch.sets) void save(patch, true);
       }
-      setLocal(undefined);
-      setPicked(undefined);
-      setLatched(undefined);
+      // The draft went with it, on every page that shows this project.
+      start.prompt = payload.req.prompt;
+      start.count++;
       open("s/" + sid);
       return true;
     } catch (e) {
-      current.settle(e);
+      current.settle(e, sent);
       setError(errorText(e));
       return false;
     } finally {
-      setBusy(false);
+      start.running = false;
+      remote.touch();
+      redraw((n) => n + 1);
     }
   };
   // A project removed from the list (here or on another client) keeps its
@@ -332,19 +365,20 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const abandon = () => {
     current.abandon();
     setError("");
+    redraw((n) => n + 1);
   };
   /** Holds the launch settings as they are now, once a draft begins. */
-  const hold = () => setLatched({ key, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
+  const hold = () => setLatched({ key: draft, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
   // A draft begun while its CLI's settings were still being fetched is
   // held as soon as they are here.
   const [begun, setBegun] = useState<string>();
   const latch = () => {
     if (held) return;
-    if (unread) setBegun(key);
+    if (unread) setBegun(draft);
     else hold();
   };
   useEffect(() => {
-    if (begun === key && !unread && !held) hold();
+    if (begun === draft && !unread && !held) hold();
     // What the draft's CLI inherits was left open when the draft began:
     // once known, it is held like the rest.
     else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
@@ -387,6 +421,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     busy,
     error: error || (current.frozen && !busy ? "上次的启动结果还没有确认" : ""),
     pendingPrompt: current.payload?.req.prompt,
+    key,
+    started: start.count,
+    startedPrompt: start.prompt,
     configError,
     blocked,
   };
@@ -432,6 +469,14 @@ export function NewBox({
     const ok = await ns.create(prompt.trim());
     if (ok) setText("");
   };
+  // A session started by a request sent from another page (this one was
+  // opened while it was on its way) took the message shown here with it.
+  const seen = useRef({ key: ns.key, started: ns.started });
+  useEffect(() => {
+    const was = seen.current;
+    seen.current = { key: ns.key, started: ns.started };
+    if (was.key === ns.key && was.started !== ns.started && text.trim() === ns.startedPrompt) setText("");
+  });
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
     box: "描述任务…",

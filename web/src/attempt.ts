@@ -35,10 +35,12 @@ export class Attempt<P> {
   /** Records how the attempt ended. Success or a definite failure frees
    * the next attempt; an unknown outcome freezes it. A retry that comes
    * back expired leaves it unknown for good: it is not sent again and no
-   * new request replaces it until the user gives it up. */
-  settle(error?: unknown) {
+   * new request replaces it until the user gives it up. sent: what next()
+   * gave for the request that ended. An answer to a request that was
+   * given up meanwhile says nothing about the one that replaced it. */
+  settle(error?: unknown, sent?: { slot: RequestSlot }) {
     const p = this.pending;
-    if (!p) return;
+    if (!p || (sent && sent !== p)) return;
     if (error !== undefined && stillUnknown(error, p.tries > 1)) {
       if (expiredError(error)) p.expired = true;
       return;

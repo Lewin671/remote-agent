@@ -59,3 +59,21 @@ it("keeps an unknown start unknown when its retry finds the machine offline", ()
   expect(a.frozen).toBe(true);
   expect(a.next("y").slot).toBe(first.slot);
 });
+
+it("is settled only by the request that came back", () => {
+  const a = new Attempt<string>();
+  const x = a.next("x");
+  // x is given up while it is on its way, and y is sent.
+  a.abandon();
+  const y = a.next("y");
+  expect(y.slot.requestId).not.toBe(x.slot.requestId);
+  // x's answer says nothing about y.
+  a.settle(undefined, x);
+  expect(a.payload).toBe("y");
+  a.settle(new CommandError("unknown", "连接超时"), y);
+  expect(a.frozen).toBe(true);
+  expect(a.next("z").slot).toBe(y.slot);
+  // Nor does a failure of x free y.
+  a.settle(new CommandError("failed_precondition", "no"), x);
+  expect(a.next("z").slot).toBe(y.slot);
+});
