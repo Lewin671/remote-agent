@@ -215,3 +215,34 @@ type countingControl struct {
 }
 
 func (c *countingControl) Hold(d time.Duration) error { c.holds++; return c.fakeControl.Hold(d) }
+
+// A session that ends between the Enter and the injector's next look at the
+// queue has settled the message already: the injector does not settle it
+// again from the copy it took before the message was marked as written.
+func TestExitWhileWritingDoesNotSettleTwice(t *testing.T) {
+	h := newHarness(t, Config{SubmitTimeout: 50 * time.Millisecond})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl")
+	exited := make(chan struct{})
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		// The CLI goes away as the Enter arrives.
+		go func() { h.s.markExited("stopped"); cancel(); close(exited) }()
+		<-exited
+	}
+	if _, err := h.s.send("last words", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("injector panicked: %v", r)
+			}
+		}()
+		h.s.injectLoop(ctx)
+	}()
+	if st := inputStates(h, "r1"); st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		t.Fatalf("states %v", st)
+	}
+}

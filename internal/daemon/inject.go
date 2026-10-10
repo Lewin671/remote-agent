@@ -221,11 +221,18 @@ func (s *session) injectLoop(ctx context.Context) {
 			case finished:
 				continue
 			}
+			// The mark was made on the queue's copy. If the head is no
+			// longer this message as marked, the session exited meanwhile
+			// and settled it.
 			s.mu.Lock()
-			if len(s.queue.Queue) > 0 {
+			marked := len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == next.RequestID && s.queue.Queue[0].Inflight != nil
+			if marked {
 				next = s.queue.Queue[0]
 			}
 			s.mu.Unlock()
+			if !marked {
+				continue
+			}
 			if !s.settle(ctx, next) {
 				return // ctx done; it stays inflight for the next daemon
 			}
