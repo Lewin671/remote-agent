@@ -104,6 +104,11 @@ type Daemon struct {
 
 	scheduleMu sync.Mutex
 	tasks      map[string]*schedule.Task
+	// lateRuns names, by task ID, the execution that ended uncertain
+	// because its message was reported UNCONFIRMED and that a late record
+	// may still confirm (schedule.go, reconfirmScheduledRun). Like the
+	// sessions' memory of such messages, it does not outlive the daemon.
+	lateRuns map[string]string
 
 	settingsMu sync.Mutex
 	cached     *pb.DaemonSettings

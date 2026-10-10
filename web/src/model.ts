@@ -758,7 +758,8 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         d.questions.clear();
         settle(d, k.value.outcome === TurnOutcome.ABORTED);
         break;
-      case "inputState":
+      case "inputState": {
+        const late = d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
         d.inputs.set(k.value.requestId, k.value.status);
         if (k.value.status === InputStatus.QUEUED && !d.accepted.has(k.value.requestId) && (k.value.text || k.value.imageIds.length))
           d.accepted.set(k.value.requestId, { text: k.value.text, imageIds: [...k.value.imageIds], origin: e.origin, mode: k.value.mode });
@@ -776,13 +777,16 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           // enqueue record, before the message. So the state claims only
           // a message recorded after its request was queued: one recorded
           // before that was typed at the computer.
+          // A message confirmed after it was reported unconfirmed is the
+          // one recorded right after this state, never one before it.
           const since = queuedAt.get(k.value.requestId);
-          if (agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n && (since === undefined || unclaimed > since)) {
+          if (!late && agent === Agent.CLAUDE && unclaimed !== undefined && e.seq - unclaimed <= 3n && (since === undefined || unclaimed > since)) {
             d.typedLocally.delete(unclaimed);
             unclaimed = undefined;
           } else submitted++;
         }
         break;
+      }
       case "userMessage":
         // The daemon says who sent it; the counting below is for a message
         // it could not tell the sender of.

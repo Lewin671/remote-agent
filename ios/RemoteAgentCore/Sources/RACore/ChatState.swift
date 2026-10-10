@@ -224,6 +224,7 @@ struct EventReducer: Sendable {
             }
             d.tools.removeAll()
         case .inputState(let st):
+            let late = d.inputs[st.requestID] == .unconfirmed
             d.inputs[st.requestID] = st.status
             let before = d.inputDetails[st.requestID]
             var detail = st
@@ -246,8 +247,10 @@ struct EventReducer: Sendable {
             if st.status == .submitted {
                 // Codex marks a message submitted before recording it;
                 // Claude Code records the message first and the state
-                // follows, claiming the message just before it.
-                if claude, let u = unclaimed, Int64(bitPattern: e.seq) &- Int64(bitPattern: u) <= 3 {
+                // follows, claiming the message just before it. A
+                // message confirmed after it was reported unconfirmed is
+                // the one recorded right after this state.
+                if !late, claude, let u = unclaimed, Int64(bitPattern: e.seq) &- Int64(bitPattern: u) <= 3 {
                     d.typedLocally.remove(u)
                     unclaimed = nil
                 } else {

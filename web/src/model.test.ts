@@ -621,6 +621,23 @@ describe("events", () => {
     expect([...codex.typedLocally]).toEqual([1n]);
   });
 
+  it("keeps a message typed at the computer just before a late confirmation", () => {
+    // Claude Code: the state confirms the message recorded after it, not
+    // the one typed at the computer in the meantime.
+    const list = [
+      ...events(
+        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "sent from the phone" } },
+        { case: "inputState", value: { requestId: "a", status: InputStatus.UNCONFIRMED } },
+        { case: "userMessage", value: { text: "typed at the computer" } },
+        { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } },
+      ),
+      create(EventSchema, { seq: 5n, origin: { kind: OriginKind.CLIENT, deviceId: "x" }, kind: { case: "userMessage", value: { text: "sent from the phone", requestId: "a" } } }),
+      create(EventSchema, { seq: 6n, kind: { case: "userMessage", value: { text: "typed later" } } }),
+    ];
+    expect([...derive(list, Agent.CLAUDE).typedLocally]).toEqual([3n, 6n]);
+    expect([...derive(list, Agent.CODEX).typedLocally]).toEqual([3n, 6n]);
+  });
+
   it("does not take leaving plan mode after a plan for a terminal switch", () => {
     const ctx = (permissionMode: string) => ({ case: "turnContext", value: { permissionMode } });
     const d = derive(events(ctx("default"), ctx("plan"), { case: "planProposed", value: { text: "1." } }, ctx("default"), ctx("plan"), ctx("default")));

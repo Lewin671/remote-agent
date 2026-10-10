@@ -179,6 +179,21 @@ import Testing
         #expect(findModel(models, id: "opus[1m]") { $0 } == "opus")
     }
 
+    @Test func aLateConfirmationIsForTheMessageRecordedAfterIt() {
+        let client = PBOrigin.with { $0.kind = .client; $0.deviceID = "x" }
+        let events = [
+            Mk.ev(1, Mk.inputState("a", .queued) { $0.text = "sent from the phone" }),
+            Mk.ev(2, Mk.inputState("a", .unconfirmed)),
+            Mk.ev(3, Mk.user("typed at the computer")),
+            Mk.ev(4, Mk.inputState("a", .submitted)),
+            Mk.ev(5, .userMessage(.with { $0.text = "sent from the phone"; $0.requestID = "a" }), origin: client),
+            Mk.ev(6, Mk.user("typed later")),
+        ]
+        #expect(derive(events, agent: .claude).typedLocally == [3, 6])
+        #expect(derive(events, agent: .codex).typedLocally == [3, 6])
+        #expect(derive(events, agent: .claude).inputs["a"] == .submitted)
+    }
+
     @Test func claudeCodeRecordsTheMessageBeforeItsState() {
         let events = [Mk.ev(1, Mk.user("hi")), Mk.ev(2, Mk.inputState("r", .submitted))]
         #expect(derive(events, agent: .claude).typedLocally == [])

@@ -630,6 +630,7 @@ internal class EventReducer(agent: Agent) {
                 }
                 Event.KindCase.INPUT_STATE -> {
                     val st = e.inputState
+                    val late = d.inputs[st.requestId] == InputStatus.INPUT_STATUS_UNCONFIRMED
                     d.inputs[st.requestId] = st.status
                     val before = d.inputDetails[st.requestId]
                     d.inputDetails[st.requestId] = st.toBuilder().apply {
@@ -647,9 +648,11 @@ internal class EventReducer(agent: Agent) {
                     if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
                         // Codex marks a message submitted before recording it;
                         // Claude Code records the message first and the state
-                        // follows, claiming the message just before it.
+                        // follows, claiming the message just before it. A
+                        // message confirmed after it was reported unconfirmed
+                        // is the one recorded right after this state.
                         val u = unclaimed
-                        if (claude && u != null && e.seq - u <= 3) {
+                        if (!late && claude && u != null && e.seq - u <= 3) {
                             d.typedLocally.remove(u)
                             unclaimed = null
                         } else {

@@ -355,6 +355,74 @@ func TestScheduleLateConfirmationWhilePaused(t *testing.T) {
 	}
 }
 
+// unconfirmedTask is a task whose execution just ended uncertain because
+// its message was reported unconfirmed.
+func unconfirmedTask(t *testing.T, h *harness, now time.Time) (*schedule.Task, *schedule.Run) {
+	t.Helper()
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
+	h.d.tickSchedules(now)
+	run := readTask(t, h.d, task.ID).Active
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_UNCONFIRMED}}})
+	h.d.tickSchedules(now)
+	if got := readTask(t, h.d, task.ID); got.Status != "uncertain" || got.Active != nil {
+		t.Fatalf("not uncertain %+v", got)
+	}
+	return task, run
+}
+
+func scheduleOp(t *testing.T, h *harness, op, id string, spec *schedule.Spec) {
+	t.Helper()
+	q := &pb.ScheduleRequest{Operation: op, TaskId: id}
+	if spec != nil {
+		q.SpecJson, _ = json.Marshal(spec)
+	}
+	if _, err := h.d.scheduleCommand(q, originLocal); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Resuming right after the late record was logged, before the scheduler
+// looked, takes the execution up instead of sending the message again.
+func TestScheduleResumeTakesUpLateConfirmation(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	now := time.Now().Add(time.Second)
+	task, run := unconfirmedTask(t, h, now)
+	scheduleOp(t, h, "pause", task.ID, nil)
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	scheduleOp(t, h, "resume", task.ID, nil)
+	got := readTask(t, h.d, task.ID)
+	if got.Active == nil || got.Active.ID != run.ID || got.Dispatches != 1 || len(got.Runs) != 0 {
+		t.Fatalf("moved on from a confirmed execution %+v", got)
+	}
+	completeTask(h, run, now)
+	h.d.tickSchedules(now.Add(time.Hour))
+	if got = readTask(t, h.d, task.ID); got.Status != "completed" || got.Dispatches != 1 || len(h.s.queue.Queue) != 1 {
+		t.Fatalf("sent again %+v", got)
+	}
+}
+
+// Replacing the task's definition, or running or resuming it, moves on
+// from the uncertain execution: a late record no longer takes it up, and
+// cannot end the replacement in its place.
+func TestScheduleLateConfirmationAfterMovingOn(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	now := time.Now().Add(time.Second)
+	task, run := unconfirmedTask(t, h, now)
+	at := now.Add(24 * time.Hour)
+	spec := taskSpec(schedule.Trigger{Type: "at", At: &at})
+	scheduleOp(t, h, "update", task.ID, &spec)
+	scheduleOp(t, h, "pause", task.ID, nil)
+	h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}})
+	completeTask(h, run, now)
+	h.d.tickSchedules(now)
+	got := readTask(t, h.d, task.ID)
+	if got.Active != nil || got.Status != "paused" || got.NextRunAt == nil || !got.NextRunAt.Equal(at) || len(got.Runs) != 1 || got.Runs[0].Status != "uncertain" {
+		t.Fatalf("the old execution ended the replacement %+v", got)
+	}
+}
+
 func TestSchedulePersistenceIsPrivateAndCorruptionStopsLoad(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()

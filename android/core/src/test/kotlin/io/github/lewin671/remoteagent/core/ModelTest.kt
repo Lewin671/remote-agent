@@ -8,6 +8,8 @@ import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.InputState
 import io.github.lewin671.remoteagent.proto.InputStatus
 import io.github.lewin671.remoteagent.proto.MachineMeta
+import io.github.lewin671.remoteagent.proto.Origin
+import io.github.lewin671.remoteagent.proto.OriginKind
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import io.github.lewin671.remoteagent.proto.ToolCall
@@ -198,6 +200,22 @@ class ModelTest {
         assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
         assertEquals("sonnet", findModel(models, "sonnet") { it })
         assertEquals(null, findModel(models, "gpt-6-luna") { it })
+    }
+
+    @Test
+    fun aLateConfirmationIsForTheMessageRecordedAfterIt() {
+        val client = Origin.newBuilder().setKind(OriginKind.ORIGIN_KIND_CLIENT).setDeviceId("x")
+        val events = listOf(
+            ev(1, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("a").setStatus(InputStatus.INPUT_STATUS_QUEUED).setText("sent from the phone"))),
+            ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("a").setStatus(InputStatus.INPUT_STATUS_UNCONFIRMED))),
+            ev(3, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("typed at the computer"))),
+            ev(4, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("a").setStatus(InputStatus.INPUT_STATUS_SUBMITTED))),
+            ev(5, Event.newBuilder().setOrigin(client).setUserMessage(UserMessage.newBuilder().setText("sent from the phone").setRequestId("a"))),
+            ev(6, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("typed later"))),
+        )
+        assertEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CLAUDE).typedLocally)
+        assertEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CODEX).typedLocally)
+        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, derive(events, Agent.AGENT_CLAUDE).inputs["a"])
     }
 
     @Test

@@ -193,6 +193,16 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 	if q.ExpectedRevision != 0 && q.ExpectedRevision != t.Revision {
 		return nil, connect.NewError(connect.CodeAborted, errors.New("scheduled task changed; reload before editing"))
 	}
+	// An execution that was confirmed late is taken up first: no operation
+	// moves on from an execution that is in fact under way.
+	if before := schedule.Clone(t); d.reconfirmScheduledRun(t, now) {
+		touchTask(t, now)
+		if err := d.saveSchedulesLocked(); err != nil {
+			d.tasks[t.ID] = before
+			d.lateRuns[t.ID] = before.Runs[len(before.Runs)-1].ID
+			return nil, errors.New("could not persist scheduled task")
+		}
+	}
 	prev := schedule.Clone(t)
 	switch q.Operation {
 	case "update":
@@ -288,6 +298,11 @@ func (d *Daemon) scheduleCommandScoped(q *pb.ScheduleRequest, origin *pb.Origin,
 	if err := d.saveSchedulesLocked(); err != nil {
 		d.tasks[t.ID] = prev
 		return nil, errors.New("could not persist scheduled task")
+	}
+	// Pausing waits for the uncertain execution's late record; anything
+	// else moves on from it.
+	if q.Operation != "pause" {
+		delete(d.lateRuns, t.ID)
 	}
 	return json.Marshal(t)
 }
@@ -517,6 +532,7 @@ func (d *Daemon) tickSchedules(now time.Time) {
 	defer d.scheduleMu.Unlock()
 	for _, t := range d.tasks {
 		prev := schedule.Clone(t)
+		late, hadLate := d.lateRuns[t.ID]
 		if t.Active != nil {
 			d.watchScheduledRun(t, now)
 		} else {
@@ -579,6 +595,9 @@ func (d *Daemon) tickSchedules(now time.Time) {
 			if err := d.saveSchedulesLocked(); err != nil {
 				if t.Dispatches == prev.Dispatches {
 					d.tasks[t.ID] = prev
+					if hadLate {
+						d.lateRuns[t.ID] = late
+					}
 				} else {
 					t.Status = "uncertain"
 					t.Reason = "could_not_persist_dispatch_result"
@@ -696,6 +715,10 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 					run.Status = "submitted"
 				}
 			case pb.InputStatus_INPUT_STATUS_UNCONFIRMED:
+				if d.lateRuns == nil {
+					d.lateRuns = map[string]string{}
+				}
+				d.lateRuns[t.ID] = run.ID
 				d.endScheduledRun(t, now, "uncertain", unconfirmedRun)
 				return
 			case pb.InputStatus_INPUT_STATUS_CANCELED:
@@ -750,25 +773,27 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 // reported UNCONFIRMED.
 const unconfirmedRun = "message_submission_unconfirmed"
 
-// reconfirmScheduledRun takes up again the last execution of a task that
-// ended uncertain because its message was reported UNCONFIRMED, once the
-// CLI's record confirms the message after all (inject.go, confirmLate).
-// Until then, and for good if no record comes, the task stays uncertain;
-// the message is never sent again. A paused task stays paused: its
-// execution is followed to the end all the same, as one that was running
-// when the task was paused.
-func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) {
+// reconfirmScheduledRun takes up again the execution of a task that ended
+// uncertain because its message was reported UNCONFIRMED, once the CLI's
+// record confirms the message after all (inject.go, confirmLate), and
+// reports whether it did. Until then, and for good if no record comes, the
+// task stays uncertain; the message is never sent again. A task paused
+// meanwhile stays paused: its execution is followed to the end all the
+// same, as one that was running when the task was paused. Any other
+// operation on the task moves on from that execution (scheduleCommand).
+func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
+	id, ok := d.lateRuns[t.ID]
 	paused := t.Status == "paused"
-	if !paused && (t.Status != "uncertain" || t.Reason != unconfirmedRun) || len(t.Runs) == 0 {
-		return
+	if !ok || !paused && (t.Status != "uncertain" || t.Reason != unconfirmedRun) || len(t.Runs) == 0 {
+		return false
 	}
 	last := &t.Runs[len(t.Runs)-1]
-	if last.Status != "uncertain" || last.Reason != unconfirmedRun {
-		return
+	if last.ID != id || last.Status != "uncertain" || last.Reason != unconfirmedRun {
+		return false
 	}
 	s, err := d.exact(last.SessionID)
 	if err != nil {
-		return
+		return false
 	}
 	evs, _ := s.log.Since(last.AfterSeq)
 	for _, e := range evs {
@@ -781,10 +806,12 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) {
 			if !paused {
 				t.Status, t.Reason = run.Status, ""
 			}
+			delete(d.lateRuns, t.ID)
 			d.watchScheduledRun(t, now)
-			return
+			return true
 		}
 	}
+	return false
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
 	t.Active.Status = status
