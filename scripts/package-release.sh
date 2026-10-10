@@ -49,5 +49,6 @@ p = Path('dist')
 (p / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256((p / name).read_bytes()).hexdigest()}  {name}\n' for name in sys.argv[1:]))
 PY
 python3 scripts/release.py manifest "$tag" "dist/remote-agent-$tag.apk" > dist/latest.properties
-# shellcheck disable=SC2046
-python3 scripts/public_scan.py dist/SHA256SUMS dist/latest.properties $(printf 'dist/%s ' $files) deploy/releases-repo
+# The release as a whole: these files and no others, each archive holding
+# exactly what belongs in it, and nothing of ours anywhere.
+python3 scripts/public_scan.py --release "$tag" dist deploy/releases-repo

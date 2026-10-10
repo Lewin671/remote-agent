@@ -73,6 +73,54 @@ class PublicScanTests(unittest.TestCase):
             ('d.tar.gz', 'server/link', 'a link or special file'),
         }, set(self.terms()))
 
+    def test_refuses_plain_files_by_name_and_links(self):
+        (self.root / 'pages').mkdir()
+        (self.root / 'pages' / '.env').write_text('RELAY_DOMAIN=ra.example.com\n')
+        (self.root / 'pages' / 'account.json').write_text('{}')
+        (self.root / 'pages' / 'env.example').write_text('RA_SETUP_TOKEN=\n')
+        (self.root / 'pages' / '.dockerignore').write_text('*\n')
+        (self.root / 'pages' / 'link').symlink_to('/etc/hosts')
+        self.assertEqual({('.env', '', 'a file that is never published'), ('account.json', '', 'a file that is never published'), ('link', '', 'a link')}, set(self.terms()))
+        self.assertEqual([(str(self.root / 'pages' / '.env'), '', 'a file that is never published')], public_scan.scan([self.root / 'pages' / '.env']))
+
+    def release_dir(self, tag='v1.2.3'):
+        dist = self.root / 'dist'
+        dist.mkdir()
+        def tar(name, files):
+            with tarfile.open(dist / (name + '.tar.gz'), 'w:gz') as t:
+                for f in files:
+                    info = tarfile.TarInfo(f'{name}/{f}')
+                    t.addfile(info, io.BytesIO(b''))
+        for target in public_scan.TARGETS:
+            tar(f'remote-agent-{tag}-{target}', ['remote-agent', 'remote-agent-service', 'THIRD_PARTY_NOTICES.txt'])
+            if target.startswith('linux'):
+                tar(f'remote-agent-server-{tag}-{target}', ['remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt'])
+        tar(f'remote-agent-web-{tag}', ['index.html', '_headers', 'sw.js', 'manifest.webmanifest', 'icon-192.png', 'assets/index-Ab_1.js', 'fonts/Inter-Bold.woff2', 'licenses/THIRD_PARTY_NOTICES.txt'])
+        for name in (f'remote-agent-{tag}.apk', 'SHA256SUMS', 'latest.properties'):
+            (dist / name).write_text('x')
+        return dist
+
+    def test_a_complete_release_passes(self):
+        self.assertEqual([], public_scan.release('v1.2.3', self.release_dir()))
+
+    def test_a_release_with_other_or_missing_files_is_refused(self):
+        dist = self.release_dir()
+        (dist / 'notes.txt').write_text('x')
+        (dist / 'remote-agent-v1.2.3-linux-arm64.tar.gz').unlink()
+        with tarfile.open(dist / 'remote-agent-server-v1.2.3-linux-amd64.tar.gz', 'w:gz') as t:
+            for f in ('remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt', 'data/x'):
+                t.addfile(tarfile.TarInfo(f'remote-agent-server-v1.2.3-linux-amd64/{f}'), io.BytesIO(b''))
+        with tarfile.open(dist / 'remote-agent-web-v1.2.3.tar.gz', 'w:gz') as t:
+            for f in ('index.html', '_headers', 'report.html'):
+                t.addfile(tarfile.TarInfo(f'remote-agent-web-v1.2.3/{f}'), io.BytesIO(b''))
+        self.assertEqual({
+            ('notes.txt', '', 'not a file of a release'),
+            ('remote-agent-v1.2.3-linux-arm64.tar.gz', '', 'missing from the release'),
+            ('remote-agent-server-v1.2.3-linux-amd64.tar.gz', 'data/x', 'not what this archive holds'),
+            ('remote-agent-web-v1.2.3.tar.gz', 'report.html', 'not what this archive holds'),
+            ('remote-agent-web-v1.2.3.tar.gz', 'sw.js', 'not what this archive holds'),
+        }, {(Path(f).name, m, why) for f, m, why in public_scan.release('v1.2.3', dist)})
+
     def test_the_public_repository_pages_are_clean(self):
         pages = Path(__file__).resolve().parents[1] / 'deploy' / 'releases-repo'
         self.assertEqual([], public_scan.scan([pages]))

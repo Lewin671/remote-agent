@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Refuses to publish files that name our own deployment or carry a key.
 
-Usage: scripts/public_scan.py PATH...
+Usage: scripts/public_scan.py [--release TAG DIST] PATH...
 
 Everything handed to the public repository goes through this first: the
 release's files and that repository's own pages. Archives and the APK are
 read member by member, and text is looked for in UTF-16 as well, which is
-how an APK stores its resources. This repository is private, so the list
-below may name what must stay out.
+how an APK stores its resources. Files are also refused by name, and with
+--release a packaged release must be exactly the files a release has. This
+repository is private, so the list below may name what must stay out.
 """
 import gzip
 import io
@@ -75,8 +76,18 @@ def scan(paths):
     """(file, member, term) for everything found under paths."""
     found = []
     for root in map(Path, paths):
-        files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file() and ".git" not in p.relative_to(root).parts[:1])
+        entries = [root] if not root.is_dir() else sorted(p for p in root.rglob("*") if ".git" not in p.relative_to(root).parts[:1])
+        files = []
+        for entry in entries:
+            # A link is published as the name of what it points at, or as its contents.
+            if entry.is_symlink():
+                found.append((str(entry), "", "a link"))
+            elif entry.is_file():
+                files.append(entry)
         for file in files:
+            # By name first: a file of a deployment is refused whatever it says.
+            if UNWANTED.search(file.name if file == root else file.relative_to(root).as_posix()):
+                found.append((str(file), "", "a file that is never published"))
             found += [(str(file), name, why) for name, why in members(file, file.read_bytes())]
             for member, data in blobs(file):
                 for term, pattern in PATTERNS:
@@ -85,13 +96,54 @@ def scan(paths):
     return found
 
 
+TARGETS = ("darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64")
+WEB = re.compile(r"(index\.html|_headers|sw\.js|manifest\.webmanifest|[\w-]+\.png|(assets|fonts|licenses)(/[\w.@-]+)?)")
+
+
+def release(tag, dist):
+    """What is wrong with a packaged release as a whole: its files are exactly
+    the ones a release has, and each archive holds exactly what belongs in it."""
+    daemon = {"remote-agent", "remote-agent-service", "THIRD_PARTY_NOTICES.txt"}
+    server = {"remote-agent-server", "Dockerfile", ".dockerignore", "compose.yaml", "Caddyfile", "env.example", "THIRD_PARTY_NOTICES.txt"}
+    archives = {f"remote-agent-{tag}-{t}": daemon for t in TARGETS}
+    archives |= {f"remote-agent-server-{tag}-{t}": server for t in TARGETS if t.startswith("linux")}
+    archives[f"remote-agent-web-{tag}"] = None
+    expected = {name + ".tar.gz" for name in archives} | {f"remote-agent-{tag}.apk", "SHA256SUMS", "latest.properties"}
+    present = {p.name for p in Path(dist).iterdir()}
+    found = [(str(Path(dist) / name), "", "not a file of a release") for name in sorted(present - expected)]
+    found += [(str(Path(dist) / name), "", "missing from the release") for name in sorted(expected - present)]
+    for name, contents in archives.items():
+        file = Path(dist) / (name + ".tar.gz")
+        if not file.is_file():
+            continue
+        with tarfile.open(file, "r:gz") as t:
+            inside = {m.name for m in t.getmembers() if not m.isdir()}
+        if not all(m.startswith(name + "/") for m in inside):
+            found.append((str(file), "", "files outside its one directory"))
+            continue
+        inside = {m[len(name) + 1:] for m in inside}
+        if contents is None:
+            wrong = sorted(m for m in inside if not WEB.fullmatch(m))
+            wrong += [m for m in ("index.html", "_headers", "sw.js") if m not in inside]
+        else:
+            wrong = sorted(inside ^ contents)
+        found += [(str(file), m, "not what this archive holds") for m in wrong]
+    return found
+
+
 def main():
-    if len(sys.argv) < 2:
+    args = sys.argv[1:]
+    found = []
+    # --release TAG DIR: also check DIR as that release, complete and exact.
+    if args[:1] == ["--release"] and len(args) >= 3:
+        found = release(args[1], args[2])
+        args = args[2:]
+    if not args or args[0].startswith("-"):
         sys.exit(__doc__)
-    missing = [p for p in sys.argv[1:] if not Path(p).exists()]
+    missing = [p for p in args if not Path(p).exists()]
     if missing:
         sys.exit("Nothing to scan at: " + ", ".join(missing))
-    found = scan(sys.argv[1:])
+    found += scan(args)
     for file, member, term in found:
         print(f"{file}{' › ' + member if member else ''}: {term}", file=sys.stderr)
     if found:
