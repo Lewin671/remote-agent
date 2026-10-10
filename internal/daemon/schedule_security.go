@@ -27,7 +27,7 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 		return mcpScheduleDenied()
 	}
 	info := source.info()
-	mode := exactMCPScheduleMode(info)
+	mode := exactScheduleMode(info)
 	if mode == "" {
 		return mcpScheduleDenied()
 	}
@@ -65,10 +65,11 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	return nil
 }
 
-// Client-facing ASK/AUTO labels may round custom settings (e.g. read-only
-// Codex sandboxes). Never use those labels to authorize a new CLI's broader
-// standard mode. Plan/unknown/custom settings fail closed.
-func exactMCPScheduleMode(info *pb.Session) string {
+// exactScheduleMode is the standard mode a session's complete settings
+// are, or "". Client-facing ASK/AUTO labels may round custom settings (e.g.
+// read-only Codex sandboxes). Never use those labels to authorize a new
+// CLI's broader standard mode. Plan/unknown/custom settings fail closed.
+func exactScheduleMode(info *pb.Session) string {
 	if info.Mode == pb.ApprovalMode_APPROVAL_MODE_PLAN || info.CollaborationMode == "plan" {
 		return ""
 	}

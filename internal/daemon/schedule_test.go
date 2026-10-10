@@ -506,3 +506,42 @@ func TestScheduleInputPauseAndResumeAreTracked(t *testing.T) {
 		t.Fatalf("did not track input resume %+v", got)
 	}
 }
+
+// A new session inherits the source's mode only when the source's whole
+// configuration is a standard mode: the ASK label also covers a read-only
+// sandbox, which a new "ask" session would widen to workspace-write.
+func TestScheduleNewSessionInheritsOnlyExactModes(t *testing.T) {
+	h := scopedHarness(t, "custom")
+	create := func(mode string) (*schedule.Task, error) {
+		spec := taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600})
+		spec.Target = schedule.Target{Type: "new_session", Mode: mode}
+		b, _ := json.Marshal(spec)
+		res, err := h.d.scheduleCommand(&pb.ScheduleRequest{Operation: "create", SessionId: h.s.meta.ID, SpecJson: b}, originLocal)
+		if err != nil {
+			return nil, err
+		}
+		task := &schedule.Task{}
+		return task, json.Unmarshal(res, task)
+	}
+	if h.s.info().Mode != pb.ApprovalMode_APPROVAL_MODE_ASK {
+		t.Fatal("the read-only source should show as ASK")
+	}
+	if task, err := create(""); err == nil {
+		t.Fatalf("read-only source inherited as %q", task.Spec.Target.Mode)
+	}
+	if task, err := create("ask"); err != nil || task.Spec.Target.Mode != "ask" {
+		t.Fatalf("explicit mode: %v", err)
+	}
+	for _, mode := range []string{"ask", "full"} {
+		setScopedMode(h, mode)
+		if task, err := create(""); err != nil || task.Spec.Target.Mode != mode {
+			t.Fatalf("%s source: %v", mode, err)
+		}
+	}
+	for _, mode := range []string{"plan", "unknown"} {
+		setScopedMode(h, mode)
+		if _, err := create(""); err == nil {
+			t.Fatalf("%s source inherited", mode)
+		}
+	}
+}

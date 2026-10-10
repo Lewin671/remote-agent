@@ -331,19 +331,6 @@ func scheduleMode(name string) (pb.ApprovalMode, error) {
 	}
 	return 0, errors.New("mode must be ask, auto, full or plan")
 }
-func modeName(m pb.ApprovalMode) string {
-	switch m {
-	case pb.ApprovalMode_APPROVAL_MODE_ASK:
-		return "ask"
-	case pb.ApprovalMode_APPROVAL_MODE_AUTO:
-		return "auto"
-	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
-		return "full"
-	case pb.ApprovalMode_APPROVAL_MODE_PLAN:
-		return "plan"
-	}
-	return ""
-}
 
 func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 	spec := &t.Spec
@@ -413,10 +400,13 @@ func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 					target.Effort = info.Effort
 				}
 			}
+			// The client-facing label is not enough to inherit from: ASK also
+			// covers a read-only sandbox, which starting a new session in
+			// "ask" would widen. An unknown/nonstandard mode cannot be
+			// silently replaced by defaults either.
 			if target.Mode == "" {
-				target.Mode = modeName(info.Mode)
+				target.Mode = exactScheduleMode(info)
 			}
-			// An unknown/nonstandard mode cannot be silently replaced by defaults.
 			if target.Mode == "" {
 				return errors.New("set an explicit mode for a new session when the source mode is unknown or nonstandard")
 			}
