@@ -1089,3 +1089,73 @@ func TestRefusedNotificationSurvivesReconnect(t *testing.T) {
 	e.http.CloseClientConnections()
 	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
 }
+
+// The connection drops while a refused notification is offered again. The
+// server gave no answer, and the event is long uploaded, so the
+// notification is still owed on the next connection.
+func TestOwedNotificationSurvivesAnInterruptedRetry(t *testing.T) {
+	var notifies atomic.Int32
+	var srv atomic.Pointer[httptest.Server]
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/remoteagent.v1.MachineService/Notify" {
+				switch notifies.Add(1) {
+				case 1:
+					connect.NewErrorWriter().Write(w, r, connect.NewError(connect.CodeResourceExhausted, errors.New("push capacity exhausted; try again later")))
+					return
+				case 2:
+					// Every connection goes, this request's included.
+					srv.Load().CloseClientConnections()
+					panic(http.ErrAbortHandler)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	srv.Store(e.http)
+	l := e.backend.add(t, "sess1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := relay.New(e.backend)
+	r.Retry = 50 * time.Millisecond
+	done := make(chan struct{})
+	go func() { defer close(done); r.Run(ctx) }()
+	defer func() { cancel(); <-done }()
+	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the notification to be refused", func() bool { return notifies.Load() >= 1 })
+	e.http.CloseClientConnections()
+	waitFor(t, "the notification to be offered again after the interrupted retry", func() bool { return notifies.Load() >= 3 })
+	// Once taken it is not offered again.
+	time.Sleep(6 * time.Second)
+	if n := notifies.Load(); n != 3 {
+		t.Fatalf("%d notify calls for one event", n)
+	}
+}
+
+// A notification the server answered with a refusal other than lack of
+// capacity is not offered again.
+func TestRejectedNotificationIsNotOfferedAgain(t *testing.T) {
+	var notifies atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/remoteagent.v1.MachineService/Notify" {
+				notifies.Add(1)
+				connect.NewErrorWriter().Write(w, r, connect.NewError(connect.CodeInvalidArgument, errors.New("refused")))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	l := e.backend.add(t, "sess1")
+	e.startRelay()
+	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the notification to be offered", func() bool { return notifies.Load() >= 1 })
+	time.Sleep(6 * time.Second)
+	if n := notifies.Load(); n != 1 {
+		t.Fatalf("%d notify calls for one rejected notification", n)
+	}
+}

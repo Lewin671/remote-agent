@@ -78,8 +78,8 @@ type Relay struct {
 	// connections: a reconnect then sends only what changed.
 	sentMeta map[string]*pb.Session
 	// owedNotify holds, per session, the events whose notification the
-	// server had no capacity for. Their upload is not repeated, so nothing
-	// else would bring them up again.
+	// server had no capacity for or never answered. Their upload is not
+	// repeated, so nothing else would bring them up again.
 	owedNotify map[string][]*pb.Event
 }
 

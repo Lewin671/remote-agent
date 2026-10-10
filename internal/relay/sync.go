@@ -173,20 +173,21 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 		// Those the server had no room for come first, while they are
 		// still recent enough to notify about.
 		var owed []*pb.Event
-		for _, e := range append(c.r.takeOwedNotify(id), uploaded...) {
+		pending := append(c.r.takeOwedNotify(id), uploaded...)
+		for i, e := range pending {
 			if e.Seq <= info.ForkedSeq {
 				continue // the source's history, copied into a fork
 			}
 			if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
 				req, err := c.notifyRequest(id, info, kind, e)
 				if err != nil {
+					// Those not offered yet are owed still.
+					c.r.oweNotify(id, append(owed, pending[i:]...))
 					return err
 				}
 				if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
 					slog.Warn("relay: notify", "session", id, "err", err)
-					// Refused for lack of capacity, which the server
-					// promises not to count as sent.
-					if connect.CodeOf(err) == connect.CodeResourceExhausted {
+					if notifyOwed(err) {
 						owed = append(owed, e)
 					}
 				}
@@ -364,8 +365,21 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 	return &pb.NotifyRequest{SessionId: sessionID, Kind: kind, Content: env, DedupeKey: dedupe}, nil
 }
 
-// maxOwedNotify bounds the refused notifications kept for one session;
-// the latest are the ones worth sending.
+// notifyOwed reports whether a notification that failed with err is still
+// owed: the server refused it for lack of capacity, which it promises not
+// to count as sent, or gave no answer at all, as when the connection
+// dropped or the pass was canceled for a reconnect. Any other answer is a
+// refusal of the notification itself.
+func notifyOwed(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodeResourceExhausted, connect.CodeCanceled, connect.CodeUnavailable, connect.CodeDeadlineExceeded:
+		return true
+	}
+	return false
+}
+
+// maxOwedNotify bounds the owed notifications kept for one session; the
+// latest are the ones worth sending.
 const maxOwedNotify = 16
 
 // takeOwedNotify returns the events of a session whose notification is
@@ -378,7 +392,7 @@ func (r *Relay) takeOwedNotify(id string) []*pb.Event {
 	return evs
 }
 
-// oweNotify remembers events whose notification the server refused.
+// oweNotify remembers events whose notification is still owed.
 func (r *Relay) oweNotify(id string, evs []*pb.Event) {
 	if len(evs) == 0 {
 		return

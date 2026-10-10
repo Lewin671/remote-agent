@@ -421,7 +421,7 @@ server 把指令原样转给那台机器的 WebSocket，最多等 30 秒。机�
 
 server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订阅时说明要哪几类通知：「等我处理时」（审批、提问、计划、终端弹窗）和「一轮结束时」。
 
-- **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送。server 因推送容量已满而拒绝的通知，daemon 记着，在这两分钟内每轮同步再发一次，重连后也一样
+- **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送。server 因推送容量已满而拒绝的通知，以及连接中断、没等到 server 答复的通知，daemon 记着，在这两分钟内每轮同步再发一次，重连后也一样；server 明确拒绝的不再发
 - **内容**：只有通用文案（「有会话在等你处理」），外加用于跳转的会话 ID，符合 scope 第 4 节「推送不含具体内容」。同一会话同一类别 15 秒内只推一次
 - **客户端**：service worker 收到推送时，如果应用正开着并在前台，就不再弹通知；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
 - **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
