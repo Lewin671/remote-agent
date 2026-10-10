@@ -521,18 +521,41 @@ func runHook(args []string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 	c := dial()
-	start := time.Now()
-	for {
+	out, err := forwardHook(ctx, retryFor, time.Second, func(ctx context.Context) ([]byte, error) {
 		resp, err := c.Hook(ctx, connect.NewRequest(&pb.HookRequest{SessionId: sessionID, Payload: payload}))
+		if err != nil {
+			return nil, err
+		}
+		return resp.Msg.Output, nil
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "remote-agent hook:", explain(err))
+		return 0
+	}
+	os.Stdout.Write(out)
+	return 0
+}
+
+// forwardHook makes the hook call, again every pause for up to retryFor
+// while the daemon cannot be reached. The time runs from when the daemon
+// was lost, not from the first call: an approval may have waited for
+// minutes before the daemon restarted under it. A call that outlasted the
+// pause was being served, so its failure starts the time anew.
+func forwardHook(ctx context.Context, retryFor, pause time.Duration, call func(context.Context) ([]byte, error)) ([]byte, error) {
+	var lost time.Time
+	for {
+		called := time.Now()
+		out, err := call(ctx)
 		if err == nil {
-			os.Stdout.Write(resp.Msg.Output)
-			return 0
+			return out, nil
 		}
-		if connect.CodeOf(err) != connect.CodeUnavailable || time.Since(start) > retryFor || ctx.Err() != nil {
-			fmt.Fprintln(os.Stderr, "remote-agent hook:", explain(err))
-			return 0
+		if lost.IsZero() || time.Since(called) > pause {
+			lost = time.Now()
 		}
-		time.Sleep(time.Second)
+		if connect.CodeOf(err) != connect.CodeUnavailable || time.Since(lost) >= retryFor || ctx.Err() != nil {
+			return nil, err
+		}
+		time.Sleep(pause)
 	}
 }
 
