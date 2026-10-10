@@ -426,13 +426,19 @@ func (s *session) readBatch() bool {
 			// Read this line and the rest of the batch again next time,
 			// with a parser that has not seen them: parsing changed its
 			// state (a turn it ended would not end again), so it is
-			// rebuilt from the log, as after a restart.
+			// rebuilt from the log, as after a restart, with what only the
+			// rollout before that position tells (Restore).
 			path, off := s.log.Checkpoint()
 			if path != r.Path {
 				off = 0
 			}
 			p := s.ag.NewParser()
 			s.log.Each(p.Replay)
+			if off > 0 {
+				if err := p.Restore(r.Path, off); err != nil {
+					slog.Warn("restore the parser from the rollout", "session", s.meta.ID, "err", errClass(err))
+				}
+			}
 			s.mu.Lock()
 			s.reader = tail.NewReader(r.Path, off)
 			s.parser = p
