@@ -416,7 +416,7 @@ final class ImageCenter {
         return true
     }
 
-    /// Follows a message until submitted, canceled or removed, whether or not the chat is on screen.
+    /// Follows a message until it is let go of (`settle`) or removed, whether or not the chat is on screen.
     private func hold(_ sid: String, _ o: Outgoing, _ store: SessionStore) {
         kept[sid, default: []].append(o)
         observe(sid, store)
@@ -443,8 +443,9 @@ final class ImageCenter {
         }
     }
 
-    /// Lets go of messages submitted or canceled: their images' bytes, thumbnails and the copies on disk.
-    private func settle(_ sid: String, _ inputs: [String: PBInputStatus], _ store: SessionStore) {
+    /// Lets go of messages submitted or canceled by the user (`letsGo`): their images' bytes, thumbnails
+    /// and the copies on disk.
+    private func settle(_ sid: String, _ inputs: [String: PBInputState], _ store: SessionStore) {
         for o in recorded(kept[sid] ?? [], inputs: inputs) {
             store.remove(sid, o)
             release(sid, o)

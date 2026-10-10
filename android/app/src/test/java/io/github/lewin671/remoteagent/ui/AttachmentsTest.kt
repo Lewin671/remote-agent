@@ -114,8 +114,11 @@ class AttachmentsTest {
         val a = Outgoing("a", "x", images = listOf(img("1")))
         val b = Outgoing("b", "y", images = listOf(img("2")))
         val c = Outgoing("c", "z")
-        val done = recorded(listOf(a, b, c), mapOf("a" to InputStatus.INPUT_STATUS_SUBMITTED, "b" to InputStatus.INPUT_STATUS_CANCELED))
+        fun state(status: InputStatus, reason: String = "") = io.github.lewin671.remoteagent.proto.InputState.newBuilder().setStatus(status).setReason(reason).build()
+        val done = recorded(listOf(a, b, c), mapOf("a" to state(InputStatus.INPUT_STATUS_SUBMITTED), "b" to state(InputStatus.INPUT_STATUS_CANCELED)))
         assertEquals(listOf(a, b), done)
+        // The session ended on it: the chat still offers to put it back, images included.
+        assertEquals(emptyList<Outgoing>(), recorded(listOf(b), mapOf("b" to state(InputStatus.INPUT_STATUS_CANCELED, "exited"))))
     }
 
     @Test

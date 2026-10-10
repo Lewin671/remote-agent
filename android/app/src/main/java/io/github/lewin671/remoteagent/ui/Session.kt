@@ -287,7 +287,7 @@ private fun ChatPane(
     val pendingInputs = pendingInputs(d)
     LaunchedEffect(d.inputs) {
         // The messages the CLI has recorded are the chat's own rows from here on.
-        Outbox.settle(s.id, d.inputs)
+        Outbox.settle(s.id, d.inputDetails)
         d.inputs.forEach { (id, status) ->
             if (status != InputStatus.INPUT_STATUS_QUEUED && status != InputStatus.INPUT_STATUS_HELD_BY_CLI) Cancels.states.remove(id)
         }

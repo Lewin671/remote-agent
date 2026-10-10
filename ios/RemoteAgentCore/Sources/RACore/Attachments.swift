@@ -553,14 +553,22 @@ public struct OutgoingRecords: Sendable {
 }
 
 /// The latest state of each message by request ID, from a session's events.
-public func inputStates(_ events: some Sequence<PBEvent>) -> [String: PBInputStatus] {
-    var out = [String: PBInputStatus]()
-    for e in events { if case .inputState(let st) = e.kind { out[st.requestID] = st.status } }
+public func inputStates(_ events: some Sequence<PBEvent>) -> [String: PBInputState] {
+    var out = [String: PBInputState]()
+    for e in events { if case .inputState(let st) = e.kind { out[st.requestID] = st } }
     return out
 }
 
-/// The messages submitted or canceled: the ones to let go of.
+/// Whether a message in this state is let go of: submitted, or canceled by the user. One the session
+/// ended on (canceled, reason "exited") is kept: the chat offers to put it back into the message box,
+/// text and images.
+public func letsGo(_ state: PBInputState?) -> Bool {
+    guard let state else { return false }
+    return state.status == .submitted || (state.status == .canceled && state.reason != "exited")
+}
+
+/// The messages to let go of (`letsGo`).
 @MainActor
-public func recorded(_ list: [Outgoing], inputs: [String: PBInputStatus]) -> [Outgoing] {
-    list.filter { inputs[$0.requestId] == .submitted || inputs[$0.requestId] == .canceled }
+public func recorded(_ list: [Outgoing], inputs: [String: PBInputState]) -> [Outgoing] {
+    list.filter { letsGo(inputs[$0.requestId]) }
 }

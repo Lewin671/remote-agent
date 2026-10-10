@@ -442,9 +442,9 @@ struct ChatPane: View {
             SelectableText(text: picked.text)
         }
         // Also when the pane comes back from the terminal with the events it already had.
-        .onChange(of: d.inputs, initial: true) { _, inputs in
+        .onChange(of: d.inputDetails, initial: true) { _, inputs in
             store.settle(sid, inputs: inputs)
-            store.settleCancels(inputs: inputs)
+            store.settleCancels(inputs: d.inputs)
         }
         .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock) }
         .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }

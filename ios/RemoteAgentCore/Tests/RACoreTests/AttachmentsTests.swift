@@ -110,11 +110,19 @@ private final class FailureCount: @unchecked Sendable {
         let a = Outgoing(requestId: "a", text: "x", images: [img("1")])
         let b = Outgoing(requestId: "b", text: "y", images: [img("2")])
         let c = Outgoing(requestId: "c", text: "z")
-        let done = recorded([a, b, c], inputs: ["a": .submitted, "b": .canceled])
+        func state(_ status: PBInputStatus, _ reason: String = "") -> PBInputState {
+            .with {
+                $0.status = status
+                $0.reason = reason
+            }
+        }
+        let done = recorded([a, b, c], inputs: ["a": state(.submitted), "b": state(.canceled)])
         #expect(done.count == 2 && done[0] === a && done[1] === b)
         for status: PBInputStatus in [.queued, .heldByCli, .failed, .needsTerminal, .unconfirmed] {
-            #expect(recorded([c], inputs: ["c": status]).isEmpty)
+            #expect(recorded([c], inputs: ["c": state(status)]).isEmpty)
         }
+        // The session ended on it: the chat still offers to put it back, images included.
+        #expect(recorded([b], inputs: ["b": state(.canceled, "exited")]).isEmpty)
     }
 
     @Test func sendingTakesOnlyItsImagesAndUntickesOriginal() {
@@ -326,7 +334,7 @@ private final class FailureCount: @unchecked Sendable {
 @Suite struct SendImagesTests {
     @Test func theLatestStateOfEachMessageComesFromTheEvents() {
         let m = inputStates([Mk.ev(1, Mk.inputState("a", .queued)), Mk.ev(2, Mk.inputState("a", .submitted)), Mk.ev(3, Mk.inputState("b", .queued))])
-        #expect(m["a"] == .submitted)
-        #expect(m["b"] == .queued)
+        #expect(m["a"]?.status == .submitted)
+        #expect(m["b"]?.status == .queued)
     }
 }

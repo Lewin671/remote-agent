@@ -5,6 +5,9 @@ import io.github.lewin671.remoteagent.proto.InputState
 import io.github.lewin671.remoteagent.proto.InputStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -72,8 +75,8 @@ class SendImagesTest {
     fun theLatestStateOfEachMessageComesFromTheEvents() {
         fun input(seq: Long, id: String, st: InputStatus) = Event.newBuilder().setSeq(seq).setInputState(InputState.newBuilder().setRequestId(id).setStatus(st)).build()
         val m = inputStates(listOf(input(1, "a", InputStatus.INPUT_STATUS_QUEUED), input(2, "a", InputStatus.INPUT_STATUS_SUBMITTED), input(3, "b", InputStatus.INPUT_STATUS_QUEUED)))
-        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, m["a"])
-        assertEquals(InputStatus.INPUT_STATUS_QUEUED, m["b"])
+        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, m["a"]?.status)
+        assertEquals(InputStatus.INPUT_STATUS_QUEUED, m["b"]?.status)
     }
 
     @Test
@@ -95,7 +98,7 @@ class SendImagesTest {
         val lost = Outgoing("a", "甲").also { it.state = Outgoing.State.UNKNOWN }
         val failed = Outgoing("b", "乙").also { it.state = Outgoing.State.FAILED }
         Outbox.of(sid) += listOf(lost, failed)
-        Outbox.settle(sid, mapOf("a" to InputStatus.INPUT_STATUS_SUBMITTED))
+        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_SUBMITTED)))
         // The one the events say nothing of stays, with its retry.
         assertEquals(listOf(failed), Outbox.of(sid).toList())
     }
@@ -106,9 +109,32 @@ class SendImagesTest {
         val lost = Outgoing("a", "甲").also { it.state = Outgoing.State.UNKNOWN }
         val failed = Outgoing("b", "乙").also { it.state = Outgoing.State.FAILED }
         Outbox.of(sid) += listOf(lost, failed)
-        Outbox.settle(sid, mapOf("a" to InputStatus.INPUT_STATUS_CANCELED))
+        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED)))
         assertEquals(listOf(failed), Outbox.of(sid).toList())
     }
+
+    @Test
+    fun aMessageTheSessionEndedOnIsKeptToBePutBack() {
+        val sid = "s-exited"
+        val image = PendingImage("i1", null).apply {
+            processed = Processed(byteArrayOf(1, 2, 3), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_JPEG, 10, 20)
+        }
+        val waiting = Outgoing("a", "甲", listOf("on-mac"), listOf(image))
+        Outbox.of(sid) += waiting
+        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_QUEUED)))
+        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED, "exited")))
+        // What 放回输入框 on the chat's row finds: the text and the images.
+        assertSame(waiting, Outbox.find(sid, "a"))
+        assertEquals("甲", Outbox.text(sid, "a"))
+        assertEquals(listOf(image), Outbox.find(sid, "a")?.images)
+        assertNotNull(image.processed)
+        // Canceled by the user instead, it is let go of with its images.
+        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED)))
+        assertNull(Outbox.find(sid, "a"))
+        assertNull(image.processed)
+    }
+
+    private fun state(status: InputStatus, reason: String = "") = InputState.newBuilder().setStatus(status).setReason(reason).build()
 
     /** A Remote that is never reached when keeping the images fails. */
     private fun throwingRemote(): io.github.lewin671.remoteagent.core.Remote =

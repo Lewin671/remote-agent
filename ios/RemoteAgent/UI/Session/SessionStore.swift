@@ -212,10 +212,11 @@ final class SessionStore {
         setDraft(sid, current.jvmIsBlank ? text : kept + "\n" + text)
     }
 
-    /// Lets go of messages submitted or canceled: the session's events have their outcome.
-    func settle(_ sid: String, inputs: OrderedMap<String, PBInputStatus>) {
+    /// Lets go of messages submitted or canceled by the user: the session's events have their outcome.
+    /// One the session ended on stays, for the chat's 放回输入框 (`letsGo`).
+    func settle(_ sid: String, inputs: OrderedMap<String, PBInputState>) {
         guard let list = outbox[sid] else { return }
-        let waiting = list.filter { inputs[$0.requestId] != .submitted && inputs[$0.requestId] != .canceled }
+        let waiting = list.filter { !letsGo(inputs[$0.requestId]) }
         if waiting.count != list.count { outbox[sid] = waiting }
     }
 

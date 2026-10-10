@@ -194,17 +194,22 @@ class OutgoingRecords(private val files: SealedFiles) {
 }
 
 /** The latest state of each message by request ID, from a session's events. */
-fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<String, io.github.lewin671.remoteagent.proto.InputStatus> {
-    val out = HashMap<String, io.github.lewin671.remoteagent.proto.InputStatus>()
-    for (e in events) if (e.kindCase == io.github.lewin671.remoteagent.proto.Event.KindCase.INPUT_STATE) out[e.inputState.requestId] = e.inputState.status
+fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<String, io.github.lewin671.remoteagent.proto.InputState> {
+    val out = HashMap<String, io.github.lewin671.remoteagent.proto.InputState>()
+    for (e in events) if (e.kindCase == io.github.lewin671.remoteagent.proto.Event.KindCase.INPUT_STATE) out[e.inputState.requestId] = e.inputState
     return out
 }
 
-/** The messages submitted or canceled: the ones to let go of. */
-fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>): List<Outgoing> =
+/**
+ * The messages to let go of: submitted, or canceled by the user. One the
+ * session ended on (CANCELED, reason "exited") is kept: the chat offers to
+ * put it back into the message box, text and images.
+ */
+fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputState>): List<Outgoing> =
     list.filter {
-        inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED ||
-            inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
+        val st = inputs[it.requestId]
+        st?.status == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED ||
+            (st?.status == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED && st.reason != "exited")
     }
 
 /**
@@ -341,10 +346,11 @@ object Outbox {
     }
 
     /**
-     * Lets go of messages submitted or canceled: their images' bytes,
-     * thumbnails and picker grants, and the copies on disk.
+     * Lets go of messages submitted or canceled by the user ([recorded]):
+     * their images' bytes, thumbnails and picker grants, and the copies on
+     * disk.
      */
-    fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>) {
+    fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputState>) {
         for (o in recorded(of(sid), inputs)) {
             remove(sid, o)
             o.images.forEach { it.release() }

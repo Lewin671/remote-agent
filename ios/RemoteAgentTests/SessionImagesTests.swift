@@ -174,6 +174,36 @@ import Testing
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
+    @Test func aMessageTheSessionEndedOnKeepsItsImagesToBePutBack() async throws {
+        let c = center()
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append([ready("a")])
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("delivered") { o.state == .sent }
+        func input(_ seq: UInt64, _ status: PBInputStatus, _ reason: String = "") -> PBEvent {
+            .with {
+                $0.seq = seq
+                $0.inputState = .with {
+                    $0.requestID = o.requestId
+                    $0.status = status
+                    $0.reason = reason
+                }
+            }
+        }
+        // The session ended while it waited: the chat offers to put it back.
+        let events = [input(1, .queued), input(2, .canceled, "exited")]
+        await remote.showForTest(state: RemoteState(), events: [sid: events])
+        store.settle(sid, inputs: derive(events).inputDetails)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(store.find(sid, requestId: o.requestId) === o && o.images[0].processed != nil)
+        #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
+
+        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(store.draft(sid) == "看图" && store.outgoing(sid).isEmpty)
+        #expect(draft.images.map(\.id) == ["a"] && draft.images[0].processed != nil)
+    }
+
     @Test func aMessageNotSubmittedGoesBackIntoTheBoxWithItsImages() async throws {
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))

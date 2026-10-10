@@ -102,9 +102,9 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
     @Test func messagesTheCliRecordedAreLetGo() async {
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
-        var inputs = OrderedMap<String, PBInputStatus>()
-        inputs[store.outgoing("s")[0].requestId] = .submitted
-        inputs[store.outgoing("s")[1].requestId] = .queued
+        var inputs = OrderedMap<String, PBInputState>()
+        inputs[store.outgoing("s")[0].requestId] = input(.submitted)
+        inputs[store.outgoing("s")[1].requestId] = input(.queued)
         store.settle("s", inputs: inputs)
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
@@ -114,8 +114,8 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
         #expect(store.outgoing("s").map(\.state) == [.unknown, .failed])
-        var inputs = OrderedMap<String, PBInputStatus>()
-        inputs[store.outgoing("s")[0].requestId] = .submitted
+        var inputs = OrderedMap<String, PBInputState>()
+        inputs[store.outgoing("s")[0].requestId] = input(.submitted)
         store.settle("s", inputs: inputs)
         // The one the events say nothing of stays, with its retry.
         #expect(store.outgoing("s").map(\.text) == ["乙"])
@@ -125,10 +125,30 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         computer.answer(unknown, offline)
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
-        var inputs = OrderedMap<String, PBInputStatus>()
-        inputs[store.outgoing("s")[0].requestId] = .canceled
+        var inputs = OrderedMap<String, PBInputState>()
+        inputs[store.outgoing("s")[0].requestId] = input(.canceled)
         store.settle("s", inputs: inputs)
         #expect(store.outgoing("s").map(\.text) == ["乙"])
+    }
+
+    @Test func aMessageTheSessionEndedOnIsKeptToBePutBack() async {
+        computer.answer(unknown)
+        await store.send(computer, sid: "s", text: "甲").value
+        let o = store.outgoing("s")[0]
+        var inputs = OrderedMap<String, PBInputState>()
+        inputs[o.requestId] = input(.canceled, reason: "exited")
+        store.settle("s", inputs: inputs)
+        // What 放回输入框 on the chat's row finds.
+        #expect(store.find("s", requestId: o.requestId) === o)
+        store.putBack("s", o)
+        #expect(store.draft("s") == "甲" && store.outgoing("s").isEmpty)
+    }
+
+    private func input(_ status: PBInputStatus, reason: String = "") -> PBInputState {
+        .with {
+            $0.status = status
+            $0.reason = reason
+        }
     }
 
     // MARK: Drafts
