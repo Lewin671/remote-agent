@@ -176,7 +176,11 @@ func (f *fakeClaude) draw() {
 		} else {
 			b.WriteString("  ◐ " + []string{"Low", "Medium", "High", "xHigh", "Max"}[f.effort] + " effort ←/→ to adjust\n")
 		}
-		b.WriteString("  Enter to set as default · s to use this session only · Esc to cancel\n")
+		if f.wrap > 0 {
+			b.WriteString("  Enter to set as default · s to use this\n  session only · Esc to cancel\n")
+		} else {
+			b.WriteString("  Enter to set as default · s to use this session only · Esc to cancel\n")
+		}
 	case f.review:
 		// The page lists every question with the answer picked for it.
 		b.WriteString(rule + "\n←  ☒ Color  ☒ Fruit  ✔ Submit  →\nReview your answers\n")
@@ -241,6 +245,9 @@ func (f *fakeClaude) Write(b []byte) error {
 			}
 			f.menu = nil
 			f.note = "⎿  Set model to " + label + " for this session only with " + efforts[f.effort] + " effort"
+			if f.wrap > 0 {
+				f.note = "  ⎿  Set model to " + label + " for this session\n     only with " + efforts[f.effort] + " effort"
+			}
 		case agent.KeyEsc:
 			f.menu = nil
 		}
@@ -494,6 +501,37 @@ func TestAnswerPlanWrapped(t *testing.T) {
 	f := &fakeClaude{plan: true, planText: text}
 	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil || strings.Join(f.writes, "|") != "2" {
 		t.Fatalf("implement: %v %q", err, f.writes)
+	}
+}
+
+// A window 46 columns wide wraps /model's hint and its confirmation
+// (2.1.293): both are read with the wrapping undone, or the switch, though
+// made, would be reported as failed.
+func TestSetModelWrapped(t *testing.T) {
+	note := "❯ /model\n  ⎿  Set model to Fable 5.1 for this session\n     only with xhigh effort\n" + rule + "\n❯ \n" + rule + "\n"
+	if !confirmed(note, "Fable", "xhigh") || !confirmed(note, "Fable", "") {
+		t.Fatal("wrapped confirmation not recognized")
+	}
+	if confirmed(note, "Fable", "low") || confirmed(note, "Sonnet", "xhigh") {
+		t.Fatal("wrapped confirmation of another switch accepted")
+	}
+	// What follows the note is not part of it.
+	if !confirmed("  ⎿  Set model to Fable 5.1\n     for this session only\n\n     with low effort is what I asked for\n", "Fable", "xhigh") {
+		t.Fatal("text after the note was read as its effort")
+	}
+	a := New("claude", "")
+	f := &fakeClaude{wrap: 46}
+	if err := a.SetModel(f, "sonnet", "max"); err != nil {
+		t.Fatal(err)
+	}
+	if f.menu != nil || !strings.Contains(f.note, "Set model to Sonnet 5.5") {
+		t.Fatalf("keys %q, note %q", f.writes, f.note)
+	}
+	// The menu, wrapped, still tells the words in the conversation from the
+	// confirmation (review C3).
+	f = &fakeClaude{wrap: 46, stuck: true, note: "⏺ You asked: Switch model?\n  ❯ 1. Yes, switch to Opus"}
+	if err := a.SetModel(f, "sonnet", ""); err == nil || slices.Contains(f.writes, "1") {
+		t.Fatalf("pressed into a wrapped menu: %v %q", err, f.writes)
 	}
 }
 

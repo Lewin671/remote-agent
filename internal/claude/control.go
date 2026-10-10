@@ -114,6 +114,9 @@ func titleLine(lines []string, title string) int {
 // normalize collapses white space, as wrapping changes it.
 func normalize(s string) string { return strings.Join(strings.Fields(s), " ") }
 
+// menuHint is in the last line of /model, which a narrow window wraps.
+const menuHint = "to use this session only"
+
 // switchPrompt finds the "Switch model?" confirmation, which Claude Code
 // shows instead of the menu: the title below any menu, and its "Yes,
 // switch to …" row. The words alone, say in the conversation, are not it.
@@ -123,10 +126,8 @@ func switchPrompt(plain string) (int, bool) {
 	if at < 0 {
 		return 0, false
 	}
-	for _, l := range lines[at+1:] {
-		if strings.Contains(l, "Select model") || strings.Contains(l, "to use this session only") {
-			return 0, false // the menu is still up
-		}
+	if below := normalize(strings.Join(lines[at+1:], " ")); strings.Contains(below, "Select model") || strings.Contains(below, menuHint) {
+		return 0, false // the menu is still up
 	}
 	for _, r := range rowsAfter(plain, "Switch model?") {
 		if strings.HasPrefix(r.label, "Yes, switch to") {
@@ -238,7 +239,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	plain, err := waitFor(t, "the model menu", func(_ agent.Screen, p string) bool {
-		return strings.Contains(p, "Select model") && strings.Contains(p, "to use this session only")
+		return strings.Contains(p, "Select model") && strings.Contains(normalize(p), menuHint)
 	})
 	if err != nil {
 		bail(t)
@@ -331,12 +332,21 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 
 // confirmed reports whether the latest "Set model to …" note names the
 // model and effort, e.g. "Set model to Sonnet 5.5 for this session only
-// with low effort"; an effort that did not change is not named.
+// with low effort"; an effort that did not change is not named. A narrow
+// window wraps the note onto lines indented like its text, which are
+// joined to it.
 func confirmed(plain, name, effort string) bool {
 	lines := strings.Split(plain, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		if strings.Contains(lines[i], "Set model to") {
 			l := lines[i]
+			for _, next := range lines[i+1:] {
+				if !strings.HasPrefix(next, "     ") || strings.TrimSpace(next) == "" {
+					break
+				}
+				l += " " + next
+			}
+			l = normalize(l)
 			// The effort is named only when it changed.
 			return strings.Contains(l, name) && strings.Contains(l, "for this session only") &&
 				(effort == "" || !strings.Contains(l, " effort") || strings.Contains(l, "with "+effort+" effort"))
