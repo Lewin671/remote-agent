@@ -159,6 +159,61 @@ import UIKit
         }
     }
 
+    /// Leaving the strings out changes nothing else: with strings that draw nothing, the screen is the one the
+    /// emulator draws from the output as it came, for every short order of what begins, fills and ends them.
+    @Test func leavingStringsOutShowsWhatTheOutputShows() {
+        let pieces: [[UInt8]] = [
+            [0x1B], [0x50], [0x5F], [0x90], [0x9F], [0x18], [0x1A], [0x19], [0x1B, 0x5C], [0x9C], [0x07], [0x85], [0x9B], [0x9D],
+            [0x24, 0x71, 0x6D], [0x5A, 0x78], [0x3A], [0x31, 0x3B], [0xE5, 0x90, 0x90], [0x61, 0x62], [0x5D, 0x30, 0x3B], [0x0A],
+        ]
+        let filtered = host()
+        let bare = host()
+        func same(_ frames: [[UInt8]]) -> Bool {
+            filtered.snapshot(cols: 40, rows: 8, data: Data())
+            bare.snapshot(cols: 40, rows: 8, data: Data())
+            for frame in frames {
+                filtered.append(Data(frame))
+                bare.terminal.feed(byteArray: frame[...])
+            }
+            // What is still open is closed, so that both are back in plain text, and a mark shows where they are.
+            let end: [UInt8] = [0x1A, 0x7C]
+            filtered.append(Data(end))
+            bare.terminal.feed(byteArray: end[...])
+            let (a, b) = (filtered.terminal.getTerminal(), bare.terminal.getTerminal())
+            if text(filtered) == text(bare), a.getCursorLocation().x == b.getCursorLocation().x, a.getCursorLocation().y == b.getCursorLocation().y {
+                return true
+            }
+            let said = frames.map { $0.map { String($0, radix: 16) }.joined(separator: " ") }.joined(separator: " | ")
+            Issue.record("\(said): shown as \(text(filtered).debugDescription), not \(text(bare).debugDescription)")
+            return false
+        }
+        var order = [Int]()
+        func every(_ left: Int) -> Bool {
+            if !order.isEmpty, !same([order.flatMap { pieces[$0] }]) { return false }
+            guard left > 0 else { return true }
+            for i in pieces.indices {
+                order.append(i)
+                defer { order.removeLast() }
+                if !every(left - 1) { return false }
+            }
+            return true
+        }
+        guard every(3) else { return }
+        // Longer ones at random, in one frame or two.
+        var seed: UInt64 = 0x2545_F491_4F6C_DD1D
+        func next(_ n: Int) -> Int {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int((seed >> 33) % UInt64(n))
+        }
+        for round in 0..<6000 {
+            var stream: [UInt8] = []
+            for _ in 0..<(4 + next(8)) { stream += pieces[next(pieces.count)] }
+            let cut = round % 2 == 0 ? stream.count : next(stream.count + 1)
+            let frames = cut < stream.count && cut > 0 ? [Array(stream[..<cut]), Array(stream[cut...])] : [stream]
+            if !same(frames) { return }
+        }
+    }
+
     @Test func theEmulatorAnswersNothing() {
         let host = host()
         var sent: [Data] = []
