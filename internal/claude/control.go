@@ -153,6 +153,66 @@ func shownEffort(plain string) string {
 	return ""
 }
 
+// versionRE matches a version as /model prints it after a model's name.
+var versionRE = regexp.MustCompile(`^\d+(\.\d+)*$`)
+
+// modelRow finds the row of /model for the alias called name. The menu
+// has one row per alias ("Sonnet"), or names its rows by version ("Sonnet
+// 5.5") and lists older models after the current ones (claude-code-notes
+// §9): the alias is the newest of them. Rows the version does not tell
+// apart are not chosen between.
+func modelRow(rows []row, name string) (int, error) {
+	var found []int
+	for i, r := range rows {
+		if strings.EqualFold(strings.Fields(r.label)[0], name) {
+			found = append(found, i)
+		}
+	}
+	if len(found) == 0 {
+		return -1, fmt.Errorf("model %s is not in Claude Code's /model menu", name)
+	}
+	if len(found) == 1 {
+		return found[0], nil
+	}
+	ambiguous := fmt.Errorf("the /model menu lists %d models named %s that cannot be told apart", len(found), name)
+	// The alias's own row.
+	own := -1
+	for _, i := range found {
+		if len(strings.Fields(rows[i].label)) == 1 {
+			if own >= 0 {
+				return -1, ambiguous
+			}
+			own = i
+		}
+	}
+	if own >= 0 {
+		return own, nil
+	}
+	best, tie := -1, false
+	var newest []int
+	for _, i := range found {
+		f := strings.Fields(rows[i].label)
+		if len(f) != 2 || !versionRE.MatchString(f[1]) {
+			return -1, ambiguous
+		}
+		var v []int
+		for _, part := range strings.Split(f[1], ".") {
+			n, _ := strconv.Atoi(part)
+			v = append(v, n)
+		}
+		switch c := slices.Compare(v, newest); {
+		case c > 0:
+			best, newest, tie = i, v, false
+		case c == 0:
+			tie = true
+		}
+	}
+	if tie {
+		return -1, ambiguous
+	}
+	return best, nil
+}
+
 // SetModel picks the model in /model with the arrow keys, sets the effort
 // with ←/→ and presses s, which applies to this session only; the number
 // keys and Enter would change the default.
@@ -185,19 +245,16 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	rows := rowsAfter(plain, "Select model")
-	target, cur := -1, -1
-	for i, r := range rows {
-		if strings.EqualFold(strings.Fields(r.label)[0], info.DisplayName) {
-			target = i
-		}
-		if r.cursor {
-			cur = i
-		}
+	target, err := modelRow(rows, info.DisplayName)
+	cur := slices.IndexFunc(rows, func(r row) bool { return r.cursor })
+	if err == nil && cur < 0 {
+		err = errors.New("cannot find the cursor in Claude Code's /model menu")
 	}
-	if target < 0 || cur < 0 {
+	if err != nil {
 		bail(t)
-		return fmt.Errorf("model %s is not in Claude Code's /model menu", info.DisplayName)
+		return err
 	}
+	label := rows[target].label
 	key := agent.KeyDown
 	steps := target - cur
 	if steps < 0 {
@@ -209,10 +266,10 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		}
 		time.Sleep(60 * time.Millisecond)
 	}
-	plain, err = waitFor(t, "the cursor on "+info.DisplayName, func(_ agent.Screen, p string) bool {
-		for _, r := range rowsAfter(p, "Select model") {
+	plain, err = waitFor(t, "the cursor on "+label, func(_ agent.Screen, p string) bool {
+		for i, r := range rowsAfter(p, "Select model") {
 			if r.cursor {
-				return strings.EqualFold(strings.Fields(r.label)[0], info.DisplayName)
+				return i == target && r.label == label
 			}
 		}
 		return false

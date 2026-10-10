@@ -161,7 +161,7 @@
 
 ## 9. 切换模型和 effort
 
-- `/model` 回车打开 `Select model`：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，每行后面是显示名和说明（`Opus 5.5 · Best for everyday, complex tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。列表随账号和版本变化：2.1.287（Claude Max，2026-10-02）列的是带版本号的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 4.5`，后面还有旧版本模型，没有单独的 1M 上下文选项
+- `/model` 回车打开 `Select model`：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，每行后面是显示名和说明（`Opus 5.5 · Best for everyday, complex tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。列表随账号和版本变化：2.1.287（Claude Max，2026-10-02）列的是带版本号的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 4.5`，后面还有旧版本模型，没有单独的 1M 上下文选项；2.1.293（Claude Max，2026-10-09）又是每个别名一行：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，后面的显示名是 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 5.5`，没有旧版本
 - 列表下面是 effort 行：`◐ Medium effort (default) ←/→ to adjust`，按 → 依次是 `● High effort`、`◉ xHigh effort`、`◈ Max effort`、`○ Low effort`，再回到 Medium，首尾相接。haiku 显示 `○ Effort not supported for Haiku`
 - 底部：`Enter to set as default · s to use this session only · Esc to cancel`。和 Codex 一样，**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
 - **按数字键等于移到那一行再按回车**（走「设为默认」这条路），不能用

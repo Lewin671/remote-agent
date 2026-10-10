@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -122,6 +123,7 @@ type fakeClaude struct {
 	noAuto     bool
 	typed      string
 	menu       []string // model menu labels
+	models     []string // the labels /model lists, if not 2.1.284's
 	cursor     int
 	effort     int // index in efforts
 	cached     bool
@@ -229,13 +231,16 @@ func (f *fakeClaude) Write(b []byte) error {
 			if f.stuck {
 				return nil
 			}
-			label := strings.Fields(f.menu[f.cursor])[0]
+			label := strings.TrimSuffix(f.menu[f.cursor], " ✔")
+			if len(strings.Fields(label)) == 1 {
+				label += " 5.5" // a row named by alias
+			}
 			if f.cached {
 				f.confirm = true
 				return nil
 			}
 			f.menu = nil
-			f.note = "⎿  Set model to " + label + " 5.5 for this session only with " + efforts[f.effort] + " effort"
+			f.note = "⎿  Set model to " + label + " for this session only with " + efforts[f.effort] + " effort"
 		case agent.KeyEsc:
 			f.menu = nil
 		}
@@ -274,6 +279,9 @@ func (f *fakeClaude) Write(b []byte) error {
 	case k == agent.KeyEnter && f.typed == "/model":
 		f.typed = ""
 		f.menu = []string{"Default (recommended)", "Opus", "Fable", "Sonnet", "Haiku ✔"}
+		if f.models != nil {
+			f.menu = f.models
+		}
 		f.cursor, f.effort = 4, 1
 	}
 	return nil
@@ -655,5 +663,41 @@ func TestAnswerNotOnReviewPage(t *testing.T) {
 	f := &fakeClaude{question: q.Questions[0], note: "⏺ Then it asks: Ready to submit your answers?"}
 	if err := a.Answer(f, q, proto.Int32(0), []int32{2}); err != nil || strings.Join(f.writes, "|") != "2|1" {
 		t.Fatalf("quoted words: %v %q", err, f.writes)
+	}
+}
+
+// A menu that names its rows by version lists older models of an alias
+// after the current ones (2.1.287): the alias is its newest model, not the
+// last row that starts with its name. Rows that the version does not tell
+// apart are not chosen between.
+func TestSetModelAmongVersions(t *testing.T) {
+	a := New("claude", "")
+	f := &fakeClaude{models: []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5 ✔", "Opus 5", "Sonnet 5", "Sonnet 4.5"}}
+	if err := a.SetModel(f, "sonnet", ""); err != nil {
+		t.Fatal(err)
+	}
+	if w := strings.Join(f.writes, "|"); w != "/model|\r|"+agent.KeyUp+"|s" || !strings.Contains(f.note, "Set model to Sonnet 5.5 for") {
+		t.Fatalf("keys %q, note %q", f.writes, f.note)
+	}
+	// Below the cursor, and a two-digit version.
+	f = &fakeClaude{models: []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5 ✔", "Haiku 4.10", "Haiku 4.9"}}
+	if err := a.SetModel(f, "haiku", ""); err != nil || f.cursor != 5 {
+		t.Fatalf("haiku: %v, cursor on row %d", err, f.cursor)
+	}
+	for _, rows := range [][]string{
+		{"Default (recommended)", "Opus 5.5", "Opus 5.5 (1M context)", "Sonnet 5.5", "Haiku 4.5 ✔"},
+		{"Default (recommended)", "Opus 5.5", "Opus 5.5", "Sonnet 5.5", "Haiku 4.5 ✔"},
+		{"Default (recommended)", "Opus latest", "Opus 5.5", "Sonnet 5.5", "Haiku 4.5 ✔"},
+	} {
+		f = &fakeClaude{models: rows}
+		err := a.SetModel(f, "opus", "")
+		if err == nil || f.menu != nil || slices.Contains(f.writes, "s") {
+			t.Errorf("%q: %v, keys %q", rows, err, f.writes)
+		}
+	}
+	// The alias's own row wins over versions of it.
+	f = &fakeClaude{models: []string{"Default (recommended)", "Opus", "Opus 5", "Sonnet", "Haiku ✔"}}
+	if err := a.SetModel(f, "opus", ""); err != nil || f.cursor != 1 {
+		t.Fatalf("opus: %v, cursor on row %d", err, f.cursor)
 	}
 }
