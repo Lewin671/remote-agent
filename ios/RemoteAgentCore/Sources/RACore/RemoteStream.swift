@@ -19,7 +19,7 @@ final class Socket: Sendable {
     struct End: Sendable {
         /// The close code the server sent, nil when it sent none.
         var closeCode: Int?
-        /// Why the connection broke; nil when the server closed it or this side dropped it.
+        /// Why the connection broke; nil when the server closed it, or this side dropped it before it broke.
         var error: Error?
     }
 
@@ -27,7 +27,8 @@ final class Socket: Sendable {
         var opened = false
         var closeCode: Int?
         var failure: Error?
-        /// Dropped by this side: what the task then fails with says nothing.
+        /// Dropped by this side: what the task fails with after that says
+        /// nothing. A failure noted before it is still why the connection ended.
         var dropped = false
         var end: End?
         var waiters: [CheckedContinuation<End, Never>] = []
@@ -102,7 +103,7 @@ final class Socket: Sendable {
             if s.closeCode == nil, code != 0 { s.closeCode = code }
             // A connection the server closed, or this side dropped, did not break.
             if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
-            let end = End(closeCode: s.closeCode, error: s.closeCode != nil || s.dropped ? nil : s.failure)
+            let end = End(closeCode: s.closeCode, error: s.closeCode != nil ? nil : s.failure)
             s.end = end
             s.pinger?.cancel()
             s.pinger = nil

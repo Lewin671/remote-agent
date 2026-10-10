@@ -81,6 +81,24 @@ import Testing
         #expect(end.error == nil)
     }
 
+    /// The engine drops a socket as soon as its frames end, which may be before the task says it is over.
+    @Test func droppingASocketThatAlreadyBrokeKeepsWhyItBroke() async throws {
+        // Nothing listens here: the connection is refused.
+        let url = URL(string: "ws://127.0.0.1:\(freePort())/v1/stream")!
+        let http = HTTP()
+        for _ in 0..<40 {
+            let socket = Socket(http: http, url: url, hello: Data("x".utf8), sleep: realSleep)
+            do {
+                _ = try await socket.receive()
+                Issue.record("a refused connection gave a frame")
+            } catch {
+                socket.cancel()
+            }
+            let end = await socket.ended()
+            #expect(networkFailure(end.error) == .refused)
+        }
+    }
+
     @Test func everyRpcEntryRejectsInsecureRemoteOrigins() throws {
         for server in ["http://relay.example", "http://192.168.1.2:8080", "https://user:password@relay.example", "ftp://relay.example", ""] {
             #expect(throws: UserError.self, "\(server)") { try Api(server: server, http: HTTP()) }
