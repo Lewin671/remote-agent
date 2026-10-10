@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -29,6 +30,87 @@ class PrefsChangesTest {
     private suspend fun settle() = repeat(20) { yield() }
 
     @Test
+    fun repeatingTheOnlyPendingChangeDoesNotStartAnotherWorker() = runBlocking {
+        val done = mutableListOf<String>()
+        PrefsChanges.run(this, pin, { done += "pin" }, write)
+        settle()
+        PrefsChanges.run(this, pin, { done += "again" }, write)
+        PrefsChanges.run(this, settings, { done += "settings" }, write)
+        settle()
+        val singleWorker = asked == listOf<PrefsOp>(pin) && open.size == 1
+        if (!singleWorker) {
+            PrefsChanges.clear()
+            while (open.isNotEmpty()) open.removeFirst().completeExceptionally(java.io.IOException("连接超时"))
+            settle()
+        }
+        assertEquals(true, singleWorker)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(listOf(pin, settings), asked)
+        assertEquals(PrefsChanges.State.Saving, PrefsChanges.states[path])
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(listOf("pin", "settings"), done)
+        assertNull(PrefsChanges.states[path])
+    }
+
+    @Test
+    fun aClearedWorkersSuccessDoesNotConsumeTheNewAccountsQueue() = runBlocking {
+        var oldDone = false
+        PrefsChanges.run(this, pin, { oldDone = true }, write)
+        settle()
+        val oldWrite = open.removeFirst()
+        AccountMemory.clear()
+        PrefsChanges.run(this, settings, write = write)
+        PrefsChanges.run(this, PrefsOp.Hide(path), write = write)
+        settle()
+        oldWrite.complete(Unit)
+        settle()
+        val kept = asked == listOf(pin, settings) && open.size == 1 && !oldDone
+        if (!kept) {
+            PrefsChanges.clear()
+            while (open.isNotEmpty()) open.removeFirst().completeExceptionally(java.io.IOException("连接超时"))
+            settle()
+        }
+        assertEquals(true, kept)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(listOf(pin, settings, PrefsOp.Hide(path)), asked)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertNull(PrefsChanges.states[path])
+        assertFalse(oldDone)
+    }
+
+    @Test
+    fun aClearedWorkersFailureDoesNotRestoreTheOldAccountsOperation() = runBlocking {
+        PrefsChanges.run(this, pin, write = write)
+        settle()
+        val oldWrite = open.removeFirst()
+        AccountMemory.clear()
+        oldWrite.completeExceptionally(java.io.IOException("连接超时"))
+        settle()
+        assertNull(PrefsChanges.states[path])
+    }
+
+    @Test
+    fun aClearedWorkersFailureDoesNotReplaceTheNewAccountsState() = runBlocking {
+        PrefsChanges.run(this, pin, write = write)
+        settle()
+        val oldWrite = open.removeFirst()
+        AccountMemory.clear()
+        PrefsChanges.run(this, settings, write = write)
+        settle()
+        oldWrite.completeExceptionally(java.io.IOException("连接超时"))
+        settle()
+        val state = PrefsChanges.states[path]
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(PrefsChanges.State.Saving, state)
+        assertNull(PrefsChanges.states[path])
+    }
+
+    @Test
     fun aChangeMadeWhileAnotherIsOnItsWayIsWrittenAfterItNotDropped() = runBlocking {
         val done = mutableListOf<String>()
         PrefsChanges.run(this, pin, { done += "pin" }, write)
@@ -49,6 +131,37 @@ class PrefsChangesTest {
         assertNull(PrefsChanges.states[path])
         assertEquals(listOf("pin", "settings"), done)
         assertEquals(2, asked.size)
+    }
+
+    @Test
+    fun repeatingTheOnlyInFlightChangeDoesNotStartAnotherWriter() = runBlocking {
+        val done = mutableListOf<String>()
+        PrefsChanges.run(this, pin, { done += "pin" }, write)
+        settle()
+        PrefsChanges.run(this, pin, { done += "duplicate" }, write)
+        settle()
+        if (asked.size != 1) {
+            val count = asked.size
+            while (open.isNotEmpty()) open.removeFirst().completeExceptionally(java.io.IOException("连接超时"))
+            settle()
+            assertEquals(1, count)
+            return@runBlocking
+        }
+        PrefsChanges.run(this, settings, { done += "settings" }, write)
+        PrefsChanges.run(this, PrefsOp.Hide(path), { done += "hide" }, write)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(listOf(pin, settings), asked)
+        assertEquals(1, open.size)
+        assertEquals(listOf("pin"), done)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertEquals(1, open.size)
+        assertEquals(listOf("pin", "settings"), done)
+        open.removeFirst().complete(Unit)
+        settle()
+        assertNull(PrefsChanges.states[path])
+        assertEquals(listOf("pin", "settings", "hide"), done)
     }
 
     @Test

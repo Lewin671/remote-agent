@@ -66,14 +66,14 @@ import Testing
         let changes = PrefsChanges()
         var done = false
         changes.run(remote, .pin(path: Demo.foo)) { done = true }
-        #expect(changes.states[Demo.foo] == .saving(.pin(path: Demo.foo)))
+        #expect(changes.states[JvmKey(Demo.foo)] == .saving(.pin(path: Demo.foo)))
         // Another change to the project waits for the one on its way.
         changes.run(remote, .hide(path: Demo.foo))
-        #expect(changes.states[Demo.foo] == .saving(.pin(path: Demo.foo)))
-        await until { changes.states[Demo.foo]?.saving == false }
-        #expect(changes.states[Demo.foo] == .failed(.pin(path: Demo.foo), "没有连上服务器，连上后才能修改"))
+        #expect(changes.states[JvmKey(Demo.foo)] == .saving(.pin(path: Demo.foo)))
+        await until { changes.states[JvmKey(Demo.foo)]?.saving == false }
+        #expect(changes.states[JvmKey(Demo.foo)] == .failed(.pin(path: Demo.foo), "没有连上服务器，连上后才能修改"))
         #expect(!done)
-        #expect(changes.states[Demo.foo]?.ofSettings == false)
+        #expect(changes.states[JvmKey(Demo.foo)]?.ofSettings == false)
         #expect(PrefsChanges.State.saving(.setSettings(.init(path: "/p", machineId: "m"))).ofSettings)
     }
 

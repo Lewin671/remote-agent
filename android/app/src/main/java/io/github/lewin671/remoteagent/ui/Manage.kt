@@ -97,12 +97,13 @@ object PrefsChanges {
             // Twice the same in a row is one change.
             queue.addLast(Change(op, write, onDone))
         }
-        if (queue.size == 1 || failed) next(scope, path)
+        if (states[path] != State.Saving) next(scope, path, queue)
     }
 
     /** Writes the oldest change of a project, and then the one after it. */
-    private fun next(scope: kotlinx.coroutines.CoroutineScope, path: String) {
-        val change = queues[path]?.firstOrNull()
+    private fun next(scope: kotlinx.coroutines.CoroutineScope, path: String, queue: ArrayDeque<Change>) {
+        if (queues[path] !== queue) return
+        val change = queue.firstOrNull()
         if (change == null) {
             queues.remove(path)
             states.remove(path)
@@ -113,12 +114,14 @@ object PrefsChanges {
             try {
                 change.write(change.op)
             } catch (e: Exception) {
+                if (queues[path] !== queue) return@launch
                 states[path] = State.Failed(change.op, errorText(e))
                 return@launch
             }
-            queues[path]?.removeFirst()
+            if (queues[path] !== queue) return@launch
+            queue.removeFirst()
             change.onDone()
-            next(scope, path)
+            next(scope, path, queue)
         }
     }
 

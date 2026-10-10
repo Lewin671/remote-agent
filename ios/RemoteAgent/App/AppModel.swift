@@ -403,6 +403,7 @@ final class AppModel {
         engine = nil
         // Drafts, thumbnails and viewed images held in memory go with the account.
         if let remote { ImageCenter.remove(remote) }
+        context?.prefsChanges.close()
         context = nil
         state = RemoteState()
         described = nil

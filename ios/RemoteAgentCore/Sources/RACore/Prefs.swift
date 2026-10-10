@@ -33,6 +33,11 @@ public enum PrefsOp: Equatable, Sendable {
         /// A start: `sets` only fill in a CLI that has no entry yet.
         public var keepExisting = false
 
+        public static func == (a: SetSettings, b: SetSettings) -> Bool {
+            a.path.jvmEquals(b.path) && a.machineId == b.machineId && a.moved == b.moved &&
+                a.agent == b.agent && a.sets == b.sets && a.keepExisting == b.keepExisting
+        }
+
         public init(
             path: String, machineId: String, moved: Bool = false, agent: PBAgent? = nil,
             sets: [PBAgentSettings] = [], keepExisting: Bool = false
@@ -43,6 +48,18 @@ public enum PrefsOp: Equatable, Sendable {
             self.agent = agent
             self.sets = sets
             self.keepExisting = keepExisting
+        }
+    }
+
+    public static func == (a: PrefsOp, b: PrefsOp) -> Bool {
+        switch (a, b) {
+        case (.pin(let x), .pin(let y)), (.unpin(let x), .unpin(let y)),
+             (.hide(let x), .hide(let y)), (.unhide(let x), .unhide(let y)):
+            return x.jvmEquals(y)
+        case (.setSettings(let x), .setSettings(let y)):
+            return x == y
+        default:
+            return false
         }
     }
 

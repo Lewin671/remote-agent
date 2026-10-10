@@ -34,7 +34,7 @@ struct ManageProjectsScreen: View {
                             Banner("项目列表已在另一客户端更新", action: "知道了", onAction: { elsewhere = false }).padding(.vertical, 4)
                         }
                         ProjectList(state, onNew: { adding = true }) { pr in
-                            row(state, pr, blocked: blocked, saving: changes.states[pr.key]?.saving == true)
+                            row(state, pr, blocked: blocked, saving: changes.states[JvmKey(pr.key)]?.saving == true)
                         }
                         Hint("移除只是不再列出这个项目，会话和电脑上的目录都不动。").padding(.top, 4).padding(.bottom, 16)
                     }

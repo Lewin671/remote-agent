@@ -39,7 +39,7 @@ final class PrefsChanges {
     }
 
     /// How a project's changes stand: the one being written, or the one that failed.
-    private(set) var states: [String: State] = [:]
+    private(set) var states: [JvmKey: State] = [:]
 
     private struct Change {
         var op: PrefsOp
@@ -48,13 +48,15 @@ final class PrefsChanges {
     }
 
     /// Each project's changes not yet on the server, oldest first; the first is the one `states` is about.
-    private var queues: [String: [Change]] = [:]
+    private var queues: [JvmKey: [Change]] = [:]
+
+    private var closed = false
 
     /// Whether a change to the project's settings is among those not yet on
     /// the server: the one `states` is about, or one that waits behind it.
     func settingsWaiting(_ path: String) -> Bool {
-        if states[path]?.ofSettings == true { return true }
-        return queues[path]?.contains { if case .setSettings = $0.op { true } else { false } } ?? false
+        if states[JvmKey(path)]?.ofSettings == true { return true }
+        return queues[JvmKey(path)]?.contains { if case .setSettings = $0.op { true } else { false } } ?? false
     }
 
     /// Writes `op`, after the changes to the same project that are still on their way.
@@ -64,7 +66,8 @@ final class PrefsChanges {
 
     /// The same with the write given, which tests answer in the server's place.
     func run(_ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}, write: @escaping (PrefsOp) async throws -> Void) {
-        let path = op.path
+        guard !closed else { return }
+        let path = JvmKey(op.path)
         let failed = states[path]?.saving == false
         var queue = queues[path] ?? []
         if failed, queue.first?.op == op {
@@ -74,11 +77,11 @@ final class PrefsChanges {
             queue.append(Change(op: op, write: write, onDone: onDone))
         }
         queues[path] = queue
-        if queue.count == 1 || failed { next(path) }
+        if states[path]?.saving != true { next(path) }
     }
 
     /// Writes the oldest change of a project, and then the one after it.
-    private func next(_ path: String) {
+    private func next(_ path: JvmKey) {
         guard let change = queues[path]?.first else {
             queues[path] = nil
             states[path] = nil
@@ -89,18 +92,27 @@ final class PrefsChanges {
             do {
                 try await change.write(change.op)
             } catch {
+                guard !closed else { return }
                 states[path] = .failed(change.op, errorText(error))
                 return
             }
+            guard !closed else { return }
             queues[path]?.removeFirst()
             change.onDone()
             next(path)
         }
     }
 
+    /// Drops retry data and view callbacks when the account is left.
+    func close() {
+        closed = true
+        queues.removeAll()
+        states.removeAll()
+    }
+
     #if DEBUG
     /// A state to look at, for screenshots of sample data.
-    func show(_ state: State, for path: String) { states[path] = state }
+    func show(_ state: State, for path: String) { states[JvmKey(path)] = state }
     #endif
 }
 
@@ -143,7 +155,7 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
     }
 
     var body: some View {
-        let change = context.prefsChanges.states[project.key]
+        let change = context.prefsChanges.states[JvmKey(project.key)]
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Button(action: action) {

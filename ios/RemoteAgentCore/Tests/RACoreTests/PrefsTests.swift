@@ -53,6 +53,21 @@ import Testing
         return s
     }
 
+    @Test func operationEqualityKeepsCodeUnitDistinctPathsSeparate() {
+        let a = "/work/caf\u{e9}"
+        let b = "/work/cafe\u{301}"
+        #expect(a == b && !a.jvmEquals(b))
+        let left: [PrefsOp] = [.pin(path: a), .unpin(path: a), .hide(path: a), .unhide(path: a), .setSettings(.init(path: a, machineId: "mac"))]
+        let right: [PrefsOp] = [.pin(path: b), .unpin(path: b), .hide(path: b), .unhide(path: b), .setSettings(.init(path: b, machineId: "mac"))]
+        for (x, y) in zip(left, right) {
+            #expect(x != y)
+            #expect(x == x)
+        }
+        #expect(PrefsOp.SetSettings(path: a, machineId: "mac") != PrefsOp.SetSettings(path: b, machineId: "mac"))
+        #expect(PrefsOp.pin(path: a) != .hide(path: a))
+        #expect(PrefsOp.setSettings(.init(path: a, machineId: "mac")) != .setSettings(.init(path: a, machineId: "vps")))
+    }
+
     @Test func aConflictRedoesTheOperationAndKeepsTheOtherClientsChange() async throws {
         let server = FakeServer()
         let a = try await write(server, .empty, .pin(path: "/p/foo"), "op1")

@@ -145,6 +145,31 @@ import Testing
         var open: Int { waiting.count }
     }
 
+    @Test func repeatingTheOnlyPendingChangeDoesNotStartAnotherWorker() async {
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let path = "/work/app"
+        let pin = PrefsOp.pin(path: path)
+        let settings = PrefsOp.setSettings(.init(path: path, machineId: "mac"))
+        var done: [String] = []
+        changes.run(pin, onDone: { done.append("pin") }, write: server.write)
+        await until { server.open == 1 }
+        changes.run(pin, onDone: { done.append("again") }, write: server.write)
+        changes.run(settings, onDone: { done.append("settings") }, write: server.write)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(server.asked == [pin] && server.open == 1)
+        guard server.asked == [pin], server.open == 1 else {
+            while server.open > 0 { server.answer(CommandError("unavailable", "连接超时")) }
+            return
+        }
+        server.answer()
+        await until { server.asked.count == 2 }
+        #expect(server.asked == [pin, settings] && changes.states[JvmKey(path)] == .saving(settings))
+        server.answer()
+        await until { changes.states[JvmKey(path)] == nil }
+        #expect(done == ["pin", "settings"])
+    }
+
     @Test func aChangeMadeWhileAnotherIsOnItsWayIsWrittenAfterItNotDropped() async {
         let server = PrefsServer()
         let changes = PrefsChanges()
@@ -157,14 +182,14 @@ import Testing
         // A second tap on the same thing is not a second change.
         changes.run(settings, onDone: { done.append("again") }, write: server.write)
         await until { server.open == 1 }
-        #expect(changes.states[path] == .saving(.pin(path: path)) && server.asked == [.pin(path: path)])
+        #expect(changes.states[JvmKey(path)] == .saving(.pin(path: path)) && server.asked == [.pin(path: path)])
         server.answer()
         await until { server.asked.count == 2 }
         // The page says its settings are being saved until they are.
-        #expect(changes.states[path] == .saving(settings) && changes.states[path]?.ofSettings == true)
+        #expect(changes.states[JvmKey(path)] == .saving(settings) && changes.states[JvmKey(path)]?.ofSettings == true)
         #expect(done == ["pin"])
         server.answer()
-        await until { changes.states[path] == nil }
+        await until { changes.states[JvmKey(path)] == nil }
         #expect(server.asked == [.pin(path: path), settings] && done == ["pin", "settings"])
         // Another project's changes do not wait for this one's.
         changes.run(.pin(path: path), write: server.write)
@@ -173,6 +198,78 @@ import Testing
         server.answer()
         server.answer()
         await until { changes.states.isEmpty }
+    }
+
+    @Test func repeatingTheOnlyInFlightChangeDoesNotStartAnotherWriter() async {
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let path = "/work/app"
+        let pin = PrefsOp.pin(path: path)
+        let settings = PrefsOp.setSettings(.init(path: path, machineId: "mac"))
+        var done: [String] = []
+        changes.run(pin, onDone: { done.append("pin") }, write: server.write)
+        await until { server.open == 1 }
+        changes.run(pin, onDone: { done.append("duplicate") }, write: server.write)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(server.asked == [pin] && server.open == 1)
+        guard server.open == 1 else {
+            while server.open > 0 { server.answer(URLError(.cancelled)) }
+            return
+        }
+        changes.run(settings, onDone: { done.append("settings") }, write: server.write)
+        changes.run(.hide(path: path), onDone: { done.append("hide") }, write: server.write)
+        server.answer()
+        await until { server.asked.count == 2 }
+        #expect(server.asked == [pin, settings] && server.open == 1 && done == ["pin"])
+        server.answer()
+        await until { server.asked.count == 3 }
+        #expect(server.open == 1 && done == ["pin", "settings"])
+        server.answer()
+        await until { changes.states.isEmpty }
+        #expect(done == ["pin", "settings", "hide"])
+    }
+
+    @Test func codeUnitDistinctProjectsHaveIndependentPreferenceQueues() async {
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let a = "/work/caf\u{e9}"
+        let b = "/work/cafe\u{301}"
+        var done = 0
+        changes.run(.setSettings(.init(path: a, machineId: "mac")), onDone: { done += 1 }, write: server.write)
+        await until { server.open == 1 }
+        #expect(!changes.settingsWaiting(b))
+        changes.run(.setSettings(.init(path: b, machineId: "mac")), onDone: { done += 1 }, write: server.write)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(server.open == 2 && changes.states.count == 2)
+        #expect(server.asked.map { JvmKey($0.path) } == [JvmKey(a), JvmKey(b)])
+        guard changes.states.count == 2 else {
+            while server.open > 0 { server.answer(URLError(.cancelled)) }
+            return
+        }
+        server.answer()
+        await until { !changes.settingsWaiting(a) }
+        #expect(changes.settingsWaiting(b) && done == 1)
+        server.answer()
+        await until { changes.states.isEmpty }
+        #expect(done == 2)
+    }
+
+    @Test func closingThePreferenceQueueDiscardsCallbacksAndLateAnswers() async {
+        let server = PrefsServer()
+        let changes = PrefsChanges()
+        let path = "/work/app"
+        var done = false
+        changes.run(.pin(path: path), onDone: { done = true }, write: server.write)
+        changes.run(.hide(path: path), onDone: { done = true }, write: server.write)
+        await until { server.open == 1 }
+        changes.close()
+        #expect(changes.states.isEmpty && !changes.settingsWaiting(path))
+        server.answer()
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(!done && changes.states.isEmpty && server.asked == [.pin(path: path)])
+        changes.run(.hide(path: path), write: server.write)
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(server.open == 0 && changes.states.isEmpty)
     }
 
     @Test func aChangeThatFailsKeepsThoseBehindItUntilItIsTriedAgain() async {
@@ -186,8 +283,8 @@ import Testing
         changes.run(settings, onDone: { done.append("settings") }, write: server.write)
         await until { server.open == 1 }
         server.answer(Down())
-        await until { changes.states[path]?.saving == false }
-        #expect(changes.states[path] == .failed(.pin(path: path), "连接超时"))
+        await until { changes.states[JvmKey(path)]?.saving == false }
+        #expect(changes.states[JvmKey(path)] == .failed(.pin(path: path), "连接超时"))
         // The project's page says so too: its settings are not saved while they wait behind the pin.
         #expect(changes.settingsWaiting(path) && !changes.settingsWaiting("/work/other"))
         try? await Task.sleep(for: .milliseconds(30))
@@ -198,21 +295,21 @@ import Testing
         server.answer()
         await until { server.asked.count == 3 }
         server.answer()
-        await until { changes.states[path] == nil }
+        await until { changes.states[JvmKey(path)] == nil }
         #expect(server.asked == [.pin(path: path), .pin(path: path), settings] && done == ["pin", "settings"])
         #expect(!changes.settingsWaiting(path))
         // A change made after a failure takes the failed one along, in the order they were made.
         changes.run(.unpin(path: path), write: server.write)
         await until { server.open == 1 }
         server.answer(Down())
-        await until { changes.states[path]?.saving == false }
+        await until { changes.states[JvmKey(path)]?.saving == false }
         changes.run(.hide(path: path), write: server.write)
         await until { server.open == 1 }
-        #expect(changes.states[path] == .saving(.unpin(path: path)))
+        #expect(changes.states[JvmKey(path)] == .saving(.unpin(path: path)))
         server.answer()
-        await until { server.open == 1 && changes.states[path] == .saving(.hide(path: path)) }
+        await until { server.open == 1 && changes.states[JvmKey(path)] == .saving(.hide(path: path)) }
         server.answer()
-        await until { changes.states[path] == nil }
+        await until { changes.states[JvmKey(path)] == nil }
         #expect(server.asked.suffix(3) == [.unpin(path: path), .unpin(path: path), .hide(path: path)])
     }
 
