@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
@@ -77,5 +79,36 @@ func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
 		if last == nil || last.Online {
 			t.Fatalf("round %d: the last word on a disconnected machine was online: %v", round, last != nil)
 		}
+	}
+}
+
+// Clients show a disconnected machine's last-seen time as when it went
+// offline, so that is when it has to be recorded.
+func TestMachineIsLastSeenWhenItDisconnects(t *testing.T) {
+	ts, mid, _, _, client, machine := newV2Env(t)
+	cpriv, cid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	watcher := ts.stream(t, ts.login(t, cpriv, cid))
+	// The machine has been connected, with nothing to report, for hours.
+	connected := nowMs() - 3*3600*1000
+	if _, err := ts.srv.store.db.Exec(`UPDATE machines SET last_seen_ms = ? WHERE id = ?`, connected, mid); err != nil {
+		t.Fatal(err)
+	}
+	before := nowMs()
+	machine.ws.CloseNow()
+	f := watcher.next(t, func(f *pb.ServerFrame) bool {
+		return f.GetMachineUpdated() != nil && !f.GetMachineUpdated().Machine.Online
+	})
+	if seen := f.GetMachineUpdated().Machine.LastSeenMs; seen < before {
+		t.Fatalf("the disconnect was broadcast with a last-seen time %d ms before it", before-seen)
+	}
+	res, err := client.ListMachines(context.Background(), connect.NewRequest(&pb.ListMachinesRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ms := res.Msg.Machines; len(ms) != 1 || ms[0].Online || ms[0].LastSeenMs < before {
+		t.Fatalf("machines after the disconnect: %v", ms)
 	}
 }

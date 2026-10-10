@@ -310,15 +310,15 @@ func splitEvents(ev *pb.EventsAppended) []*pb.EventsAppended {
 func (h *hub) machineChanged(id string) {
 	h.changeMu.Lock()
 	defer h.changeMu.Unlock()
+	// The machine was seen just now whichever way it changed: it
+	// connected, sent metadata, or was connected until this moment.
+	_ = h.s.store.touchMachine(context.Background(), id)
 	m, err := h.s.store.machine(context.Background(), id)
 	if err != nil {
 		slog.Error("load machine", "machine", id, "err", err)
 		return
 	}
 	m.Online = h.online(id)
-	if m.Online {
-		_ = h.s.store.touchMachine(context.Background(), id)
-	}
 	h.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_MachineUpdated{MachineUpdated: &pb.MachineUpdated{Machine: m}}})
 }
 
