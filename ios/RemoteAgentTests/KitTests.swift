@@ -92,8 +92,8 @@ import Testing
     @Test func anIconScalesIntoTheRectItIsGiven() {
         let box = Lucide.minus.path(in: CGRect(x: 0, y: 0, width: 48, height: 48)).boundingRect
         #expect(box == CGRect(x: 10, y: 24, width: 28, height: 0))
-        let mark = AppMark().path(in: CGRect(x: 0, y: 0, width: 104, height: 94)).boundingRect
-        #expect(mark.minX.isClose(to: 0) && mark.maxX.isClose(to: 104) && mark.minY.isClose(to: 0) && mark.maxY.isClose(to: 94))
+        let mark = AppMark().path(in: CGRect(x: 0, y: 0, width: 261, height: 202)).boundingRect
+        #expect(mark.minX.isClose(to: 0) && mark.maxX.isClose(to: 261) && mark.minY.isClose(to: 0) && mark.maxY.isClose(to: 202))
     }
 }
 

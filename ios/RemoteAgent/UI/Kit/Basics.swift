@@ -334,17 +334,21 @@ struct Code: View {
     }
 }
 
-/// The app's mark, the one on its icon: a chat bubble with a terminal
-/// prompt, from the Android launcher's vector
-/// (android/app/src/main/res/drawable/ic_launcher_foreground.xml).
+/// The app's mark, the one on its icon: a terminal prompt and its cursor,
+/// in the coordinates of the icon's 512 master drawing
+/// (scripts/gen-icons.swift).
 struct AppMark: Shape {
     private static let outline: Path = {
-        var p = SVGPath.parse("M34,32h40a6,6 0,0 1,6 6v26a6,6 0,0 1,-6 6H48l-10,9v-9h-4a6,6 0,0 1,-6 -6V38a6,6 0,0 1,6 -6z")
-        p.addPath(SVGPath.parse("M40,43l8,6 -8,6 -2.5,-3 4.5,-3 -4.5,-3zM52,54h14v4H52z"))
+        var prompt = Path()
+        prompt.move(to: CGPoint(x: 146, y: 176))
+        prompt.addLine(to: CGPoint(x: 238, y: 256))
+        prompt.addLine(to: CGPoint(x: 146, y: 336))
+        var p = prompt.strokedPath(StrokeStyle(lineWidth: 42, lineCap: .round, lineJoin: .round))
+        p.addRoundedRect(in: CGRect(x: 276, y: 314, width: 110, height: 42), cornerSize: CGSize(width: 21, height: 21))
         return p
     }()
-    /// What the mark covers of the drawable's 108 canvas.
-    private static let box = CGRect(x: 28, y: 32, width: 52, height: 47)
+    /// What the mark covers of the master drawing.
+    private static let box = CGRect(x: 125, y: 155, width: 261, height: 202)
 
     func path(in rect: CGRect) -> Path {
         let k = min(rect.width / Self.box.width, rect.height / Self.box.height)
@@ -354,10 +358,10 @@ struct AppMark: Shape {
         return Self.outline.applying(t)
     }
 
-    /// The bubble in `color`, the prompt cut out of it.
+    /// The mark in `color`, `size` tall.
     static func view(size: CGFloat, color: Color) -> some View {
-        AppMark().fill(color, style: FillStyle(eoFill: true))
-            .frame(width: size * 52 / 47, height: size)
+        AppMark().fill(color)
+            .frame(width: size * 261 / 202, height: size)
             .accessibilityHidden(true)
     }
 }
