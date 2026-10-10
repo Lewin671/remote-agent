@@ -28,6 +28,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/server"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // marker is plaintext that must never reach the server's database.
@@ -40,6 +41,7 @@ type fakeBackend struct {
 	sessions  map[string]*eventlog.Log
 	titles    map[string]string
 	exited    map[string]bool
+	forked    map[string]uint64 // the seq of a fork's SessionForked event
 	sends     []*pb.SendRequest
 	schedules []*pb.ScheduleRequest
 	term      *fakeTerminal
@@ -54,7 +56,7 @@ type fakeBackend struct {
 }
 
 func newFakeBackend(t *testing.T) *fakeBackend {
-	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, exited: map[string]bool{}, images: map[string]relay.ImageUpload{}}
+	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, exited: map[string]bool{}, forked: map[string]uint64{}, images: map[string]relay.ImageUpload{}}
 }
 
 func (b *fakeBackend) add(t *testing.T, id string) *eventlog.Log {
@@ -104,7 +106,7 @@ func (b *fakeBackend) SessionInfo(id string) (*pb.Session, error) {
 	if b.exited[id] {
 		status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
-	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: status, LastSeq: l.LastSeq(), Title: b.titles[id]}, nil
+	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: status, LastSeq: l.LastSeq(), Title: b.titles[id], ForkedSeq: b.forked[id]}, nil
 }
 
 func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error) {
@@ -1002,4 +1004,48 @@ func TestMachineMetadataChangedWhileConnectingIsUploaded(t *testing.T) {
 		}
 		return len(ms) == 1 && ms[0].Meta.GetHostname() == "after"
 	})
+}
+
+// countNotifies wraps the server to count the Notify calls it is sent, and
+// to refuse those refuse says to, as it does when pushes are at capacity.
+func countNotifies(n *atomic.Int32, refuse func(call int32) bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/remoteagent.v1.MachineService/Notify" && refuse(n.Add(1)) {
+				connect.NewErrorWriter().Write(w, r, connect.NewError(connect.CodeResourceExhausted, errors.New("push capacity exhausted; try again later")))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func turnEnded() *pb.Event {
+	return &pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}}
+}
+
+// A fork starts with copies of its source's events, at their own times. The
+// turn that ended there a moment ago must not be announced again.
+func TestForkedHistoryIsNotNotified(t *testing.T) {
+	var notifies atomic.Int32
+	e := setupWithHandler(t, countNotifies(&notifies, func(int32) bool { return false }))
+	l := e.backend.add(t, "fork")
+	forked := &pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionForked{SessionForked: &pb.SessionForked{SourceSessionId: "source"}}}
+	if err := l.Append("fork", []*pb.Event{turnEnded(), forked}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	e.backend.mu.Lock()
+	e.backend.forked["fork"] = 2
+	e.backend.mu.Unlock()
+	e.startRelay()
+	e.session(t, "fork", 2)
+	// The fork's own turn is announced, and it is the only one.
+	if err := l.Append("fork", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the fork's own turn to be notified", func() bool { return notifies.Load() > 0 })
+	time.Sleep(200 * time.Millisecond)
+	if n := notifies.Load(); n != 1 {
+		t.Fatalf("%d notifications for a fork with one turn of its own", n)
+	}
 }
