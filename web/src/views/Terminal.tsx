@@ -60,6 +60,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   // Each connection fits once on its own, unless "还原" was chosen here.
   const [linked, setLinked] = useState(false);
   const autoFitted = useRef(false);
+  /** This connection's first snapshot is on the screen. */
+  const pictured = useRef(false);
   const released = useRef(false);
 
   // Scale the font so the whole width of the tmux window fits.
@@ -119,6 +121,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     dimsSeen.current = false;
     releasing.current = false;
     autoFitted.current = false;
+    pictured.current = false;
     setLinked(false);
     remote
       .openTerminal(
@@ -150,7 +153,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               const data = f.kind.value.data;
               const written = new Promise<void>((resolve) => t.write(data, resolve));
               scale();
-              setState("live");
+              pictured.current = true;
+              if (conn.current) setState("live");
               return written;
             }
             case "output": {
@@ -174,6 +178,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           if (!alive) return c.close();
           conn.current = c;
           setLinked(true);
+          // The snapshot can be here before the opening command has answered: live once both are.
+          if (pictured.current) setState((s) => (s === "connecting" ? "live" : s));
         },
         (e) => {
           if (!alive) return;

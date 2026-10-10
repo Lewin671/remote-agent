@@ -21,6 +21,7 @@ import RAProto
 final class RemoteTerminal {
     enum State: Equatable {
         case connecting
+        /// The screen shows the remote terminal and what is typed goes to it.
         case live
         case closed(String)
     }
@@ -61,6 +62,8 @@ final class RemoteTerminal {
     @ObservationIgnored private var fitSize = TerminalSize(0, 0)
     @ObservationIgnored private var fit = FitTracker()
     @ObservationIgnored private var conn: TermConn?
+    /// This connection's first snapshot is on the screen.
+    @ObservationIgnored private var pictured = false
     @ObservationIgnored private var held: UUID?
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
@@ -87,6 +90,7 @@ final class RemoteTerminal {
         let queue = TerminalFrames()
         frames = queue
         state = .connecting
+        pictured = false
         fit.reset()
         fitted = false
         autoFit = !released
@@ -106,7 +110,7 @@ final class RemoteTerminal {
                 }
                 self.conn = opened
                 self.held = link.hold(opened)
-                self.fitOnOpen()
+                self.goLive()
             } catch {
                 guard let self, gen == self.generation else { return }
                 self.state = .closed(errorText(error))
@@ -128,13 +132,22 @@ final class RemoteTerminal {
             size = TerminalSize(cols, rows)
             if fit.onSnapshot(size) { resizedElsewhere = true }
             fitted = fit.fitted
-            state = .live
-            fitOnOpen()
+            pictured = true
+            goLive()
         case .output(let data):
             host.append(data)
         case .closed(let reason):
             state = .closed(reason)
         }
+    }
+
+    /// The first snapshot and the connection arrive in either order: the
+    /// snapshot can be here before the opening command has answered. Live,
+    /// and fitted, once both are here; until then keys would go nowhere.
+    private func goLive() {
+        guard pictured, conn != nil else { return }
+        if state == .connecting { state = .live }
+        fitOnOpen()
     }
 
     func send(_ data: Data) {
@@ -181,7 +194,6 @@ final class RemoteTerminal {
         if autoFit { Task { self.fitOnOpen() } }
     }
 
-    /// The first snapshot and the connection arrive in either order; fit once both are here.
     private func fitOnOpen() {
         if autoFit && fitToScreen() { autoFit = false }
     }

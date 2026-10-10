@@ -1,24 +1,49 @@
 import Foundation
-import RACore
 import RAProto
 import Testing
 
+@testable import RACore
 @testable import RemoteAgent
 
-/// The terminal's connection, with a stream whose opening command never
-/// answers: what its listener hears is what drives the screen (Android has
-/// no test of this).
+/// The terminal's connection, with a stream whose opening command answers
+/// when the test says, if at all: what its listener hears is what drives the
+/// screen (Android has no test of this).
 @MainActor
 @Suite struct RemoteTerminalTests {
-    private struct Unanswered: Error {}
-
-    /// The streams asked for, each with the listener it was given.
+    /// The streams asked for, each with the listener it was given, and what was sent on those that opened.
     private final class Streams: @unchecked Sendable {
         private let lock = NSLock()
         private var heard: [any TermListener] = []
+        private var answered: [Int: TermConn] = [:]
+        private var typed: [PBTerminalFrame] = []
+        /// Whether a stream's opening command answers at once, or when `answer` says.
+        private let answers: Bool
+        init(answers: Bool = true) { self.answers = answers }
         var count: Int { lock.withLock { heard.count } }
+        var sent: [PBTerminalFrame] { lock.withLock { typed } }
         func listener(_ i: Int) -> any TermListener { lock.withLock { heard[i] } }
-        func add(_ l: any TermListener) { lock.withLock { heard.append(l) } }
+        func add(_ l: any TermListener) -> Int {
+            let i = lock.withLock {
+                heard.append(l)
+                return heard.count - 1
+            }
+            if answers { answer(i) }
+            return i
+        }
+
+        func conn(_ i: Int) -> TermConn? { lock.withLock { answered[i] } }
+
+        /// The opening command of stream `i` answers. Its socket goes nowhere; what is sent is kept as it is sealed.
+        func answer(_ i: Int) {
+            let socket = Socket(http: HTTP(), url: URL(string: "ws://127.0.0.1:1/v1/term")!, hello: Data()) { _ in }
+            let conn = TermConn(
+                socket: socket,
+                seal: { [self] frame, _ in
+                    lock.withLock { typed.append(frame) }
+                    return Data()
+                }, finish: { _ in }, closeLocal: {})
+            lock.withLock { answered[i] = conn }
+        }
     }
 
     private final class Flag: @unchecked Sendable {
@@ -37,10 +62,12 @@ import Testing
         terminal.use(
             RemoteTerminal.Link(
                 open: { listener in
-                    streams.add(listener)
+                    let i = streams.add(listener)
                     if let fail { throw UserError(fail) }
-                    try await Task.sleep(for: .seconds(3600))
-                    throw Unanswered()
+                    while true {
+                        if let conn = streams.conn(i) { return conn }
+                        try await Task.sleep(for: .milliseconds(5))
+                    }
                 },
                 online: { online.on }, hold: { _ in UUID() }, release: { _ in }))
         return terminal
@@ -134,17 +161,42 @@ import Testing
         #expect(t.state == .closed("连不上终端"))
     }
 
-    /// A picture can come before the opening command answers: until then nothing is sent and no fit is claimed.
-    @Test func nothingIsSentBeforeTheStreamIsOpen() async {
-        let streams = Streams()
+    /// A picture can come before the opening command answers: it is shown, but the terminal is not live, so
+    /// the pane offers no keys that would go nowhere, and no fit is claimed.
+    @Test func theTerminalIsLiveOnceItHasAPictureAndCanSend() async {
+        let streams = Streams(answers: false)
         let t = terminal(streams)
         t.connect()
         await until { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("x"))
-        await until { t.state == .live }
+        await until { t.host.screenText == "x" }
+        #expect(t.host.screenText == "x")
+        #expect(t.state == .connecting)
         t.send(Data("ls".utf8))
         t.toggleFit()
-        #expect(!t.fitted)
+        #expect(!t.fitted && streams.sent.isEmpty)
+        // The command answered: live, fitted on its own, and what is typed goes out.
+        streams.answer(0)
+        await until { t.state == .live }
+        #expect(t.state == .live)
+        #expect(t.fitted && streams.sent.map(\.resize.fit) == [true])
+        t.send(Data("ls".utf8))
+        #expect(streams.sent.last?.input == Data("ls".utf8))
+        t.close()
+    }
+
+    /// The other order: the command answers first, and nothing is typed into a screen that shows nothing yet.
+    @Test func anOpenStreamWithoutAPictureIsNotLiveYet() async {
+        let streams = Streams(answers: false)
+        let t = terminal(streams)
+        t.connect()
+        await until { streams.count == 1 }
+        streams.answer(0)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(t.state == .connecting)
+        streams.listener(0).onFrame(snapshot("x"))
+        await until { t.state == .live }
+        #expect(t.state == .live && t.fitted)
         t.close()
     }
 }

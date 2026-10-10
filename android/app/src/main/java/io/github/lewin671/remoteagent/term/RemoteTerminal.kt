@@ -35,6 +35,7 @@ import java.io.ByteArrayOutputStream
 class RemoteTerminal(private val remote: Remote, private val sessionId: String, private val scope: CoroutineScope) {
     sealed interface State {
         data object Connecting : State
+        /** The screen shows the remote terminal and what is typed goes to it. */
         data object Live : State
         data class Closed(val reason: String) : State
     }
@@ -63,6 +64,9 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
 
     var view: TerminalView? = null
     private var conn: TermConn? = null
+
+    /** This connection's first snapshot is on the screen. */
+    private var pictured = false
     private var job: Job? = null
     private var generation = 0
 
@@ -99,6 +103,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
             }
         }
         _state.value = State.Connecting
+        pictured = false
         fit.reset()
         _fitted.value = false
         autoFit = !released
@@ -113,7 +118,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                         enqueue(TerminalFrame.newBuilder().setClosed(reason).build())
                     }
                 })
-                if (gen == generation) { conn = c; fitOnOpen() } else c.close()
+                if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
                 if (gen == generation) _state.value = State.Closed(errorText(e))
             }
@@ -144,8 +149,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 _size.value = s.cols to s.rows
                 if (fit.onSnapshot(s.cols to s.rows)) _resizedElsewhere.value = true
                 _fitted.value = fit.fitted
-                _state.value = State.Live
-                fitOnOpen()
+                pictured = true
+                goLive()
             }
             TerminalFrame.KindCase.OUTPUT -> {
                 val b = f.output.toByteArray()
@@ -178,7 +183,17 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         _fitted.value = fit.fitted
     }
 
-    /** The first snapshot and the connection arrive in either order; fit once both are here. */
+    /**
+     * The first snapshot and the connection arrive in either order: the
+     * snapshot can be here before the opening command has answered. Live,
+     * and fitted, once both are here; until then keys would go nowhere.
+     */
+    private fun goLive() {
+        if (!pictured || conn == null) return
+        if (_state.value == State.Connecting) _state.value = State.Live
+        fitOnOpen()
+    }
+
     private fun fitOnOpen() {
         if (autoFit && fitToScreen()) autoFit = false
     }
