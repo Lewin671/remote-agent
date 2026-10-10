@@ -414,13 +414,19 @@ func (s *session) readBatch() bool {
 		evs = s.confirmLate(evs)
 		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
 			slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
-			// Read this line and the rest of the batch again next time.
+			// Read this line and the rest of the batch again next time,
+			// with a parser that has not seen them: parsing changed its
+			// state (a turn it ended would not end again), so it is
+			// rebuilt from the log, as after a restart.
 			path, off := s.log.Checkpoint()
 			if path != r.Path {
 				off = 0
 			}
+			p := s.ag.NewParser()
+			s.log.Each(p.Replay)
 			s.mu.Lock()
 			s.reader = tail.NewReader(r.Path, off)
+			s.parser = p
 			s.mu.Unlock()
 			return false
 		}

@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
 )
 
 // Claude Code 2.1.284's input box and permission prompt (claude-code-notes §4, §6).
@@ -663,5 +664,39 @@ func TestClaudeModelAndCompactRecheckRunningUnderLock(t *testing.T) {
 		if err := <-errc; !errors.Is(err, errBusy) || len(h.term.written()) != 0 {
 			t.Fatalf("%s: %v %q", op, err, h.term.written())
 		}
+	}
+}
+
+// A line whose events could not be logged is read again, by a parser that
+// has not seen it: Claude Code's parser ends a turn only once, so the same
+// parser would read the turn's end again as nothing and leave the session
+// running forever.
+func TestFailedLogWriteDoesNotSwallowTheTurnEnd(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
+	h.s.bindRollout("cc-1", filepath.Join(h.dir, "rollout.jsonl"))
+	if !h.s.isRunningNoRead() {
+		t.Fatal("turn not started")
+	}
+	h.writeRollout(`{"type":"system","subtype":"turn_duration","durationMs":5}`)
+	h.s.log.Close()
+	h.s.readRollout() // fails to log
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	h.s.readRollout()
+	if h.s.isRunningNoRead() {
+		t.Fatal("the turn's end was lost")
+	}
+	ends := 0
+	for _, e := range h.events() {
+		if e.GetTurnEnded() != nil {
+			ends++
+		}
+	}
+	if ends != 1 {
+		t.Fatalf("%d turn ends", ends)
 	}
 }
