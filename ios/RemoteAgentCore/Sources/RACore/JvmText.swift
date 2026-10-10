@@ -29,20 +29,28 @@ func isJvmDigit(_ unit: UInt16) -> Bool {
     return u.properties.generalCategory == .decimalNumber
 }
 
-/// One UTF-16 unit's simple case mappings, as Character.toUpperCase and toLowerCase give them: half a surrogate pair maps to itself.
+/// One UTF-16 unit's simple case mappings, as Character.toUpperCase and
+/// toLowerCase give them: half a surrogate pair maps to itself. Swift has
+/// only the full mappings, which may be several characters where Java's is
+/// one or none.
 private func simpleCase(_ unit: UInt16) -> (upper: UInt16, lower: UInt16) {
     if unit < 0x80 {
         if unit >= 0x61 && unit <= 0x7A { return (unit - 0x20, unit) }
         if unit >= 0x41 && unit <= 0x5A { return (unit, unit + 0x20) }
         return (unit, unit)
     }
+    // İ: the one character whose full lower case is two (i and a combining dot) and whose simple one is i.
+    if unit == 0x130 { return (unit, 0x69) }
     guard let u = Unicode.Scalar(unit) else { return (unit, unit) }
-    func one(_ s: String) -> UInt16 {
-        // A mapping to several characters (ß to SS) is not a simple one: Java leaves the character.
+    func one(_ s: String, else other: UInt16) -> UInt16 {
         let units = Array(s.utf16)
-        return units.count == 1 ? units[0] : unit
+        return units.count == 1 ? units[0] : other
     }
-    return (one(u.properties.uppercaseMapping), one(u.properties.lowercaseMapping))
+    let p = u.properties
+    // A full upper case of several characters is not a simple one: Java
+    // leaves ß as it is. Greek with a iota subscript (ᾀ to ἈΙ) has a simple
+    // one besides, the same character as its title case (ᾈ).
+    return (one(p.uppercaseMapping, else: one(p.titlecaseMapping, else: unit)), one(p.lowercaseMapping, else: unit))
 }
 
 extension String {
@@ -144,8 +152,8 @@ extension String {
     func jvmEquals(_ other: String) -> Bool { utf8.elementsEqual(other.utf8) }
 
     /// Kotlin's contains(other, ignoreCase = true): unit by unit, equal when
-    /// their simple upper or lower case mappings are, with no locale and no
-    /// mapping to several characters.
+    /// their simple upper case mappings are or the lower case of those, with
+    /// no locale and no mapping to several characters.
     func jvmContainsIgnoringCase(_ needle: String) -> Bool {
         let n = Array(needle.utf16)
         if n.isEmpty { return true }
@@ -153,8 +161,8 @@ extension String {
         if n.count > h.count { return false }
         func same(_ a: UInt16, _ b: UInt16) -> Bool {
             if a == b { return true }
-            let x = simpleCase(a), y = simpleCase(b)
-            return x.upper == y.upper || x.lower == y.lower
+            let x = simpleCase(a).upper, y = simpleCase(b).upper
+            return x == y || simpleCase(x).lower == simpleCase(y).lower
         }
         outer: for start in 0...(h.count - n.count) {
             for i in 0..<n.count where !same(h[start + i], n[i]) { continue outer }

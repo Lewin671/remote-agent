@@ -308,6 +308,18 @@ import Testing
         #expect(!"e\u{301}cole".jvmContainsIgnoringCase("\u{e9}cole"))
     }
 
+    @Test func simpleCaseMappingsAreTheOnesJavaHas() {
+        // İ lowers to i for Java; its full mapping, i with a combining dot, is not the simple one.
+        #expect("İstanbul".jvmContainsIgnoringCase("istanbul"))
+        #expect("ISTANBUL".jvmContainsIgnoringCase("İstanbul"))
+        #expect("ırmak".jvmContainsIgnoringCase("İRMAK"))
+        // Compared as Java does, by the lower case of the upper case: ϑ and ϴ both come to θ.
+        #expect("\u{3D1}".jvmContainsIgnoringCase("\u{3F4}"))
+        // ᾀ has the simple upper case ᾈ besides the full one of two letters.
+        #expect("\u{1F80}".jvmContainsIgnoringCase("\u{1F88}"))
+        #expect(!"\u{1F80}".jvmContainsIgnoringCase("\u{1F08}\u{399}"))
+    }
+
     @Test func idsAndNamesAreCutByUtf16Units() {
         #expect(shortId("0123456789abcdef") == "cdef")
         #expect(machineName(MachineView(id: "0123456789abcdef", online: true, lastSeenMs: 0)) == "01234567")
