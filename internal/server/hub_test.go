@@ -39,3 +39,43 @@ func TestReadyPrecedesConcurrentBroadcasts(t *testing.T) {
 		ts.stream(t, token).ws.CloseNow()
 	}
 }
+
+// A PutMachine that read the machine as online must not broadcast that
+// after the disconnect was broadcast: clients take the flag as it comes.
+func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
+	ts := newTestServer(t)
+	_, mid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := ts.srv.hub
+	client := &peer{dev: &device{id: "client", kind: pb.DeviceKind_DEVICE_KIND_CLIENT}, out: make(chan *pb.ServerFrame, sendQueue), cancel: func() {}}
+	h.mu.Lock()
+	h.clients[client] = true
+	h.mu.Unlock()
+	for round := range 100 {
+		machine := &peer{dev: &device{id: mid, kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan *pb.ServerFrame, sendQueue), cancel: func() {}}
+		h.add(machine)
+		// Several PutMachine calls are under way as the stream drops.
+		var wg sync.WaitGroup
+		for range 16 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				h.machineChanged(mid)
+			}()
+		}
+		time.Sleep(time.Duration(round%10) * 50 * time.Microsecond)
+		h.remove(machine)
+		wg.Wait()
+		var last *pb.Machine
+		for len(client.out) > 0 {
+			if m := (<-client.out).GetMachineUpdated(); m != nil {
+				last = m.Machine
+			}
+		}
+		if last == nil || last.Online {
+			t.Fatalf("round %d: the last word on a disconnected machine was online: %v", round, last != nil)
+		}
+	}
+}

@@ -26,6 +26,11 @@ type hub struct {
 	machines map[string]*peer
 	nextCall uint64
 	calls    map[uint64]*call
+
+	// changeMu puts reading whether a machine is online and broadcasting
+	// it in one step, so that broadcasts leave in the order of the states
+	// they report.
+	changeMu sync.Mutex
 }
 
 type peer struct {
@@ -298,7 +303,13 @@ func splitEvents(ev *pb.EventsAppended) []*pb.EventsAppended {
 	return out
 }
 
+// machineChanged tells the clients about a machine as it is now. Every
+// connect and disconnect is followed by a call, and calls do not overlap:
+// the last broadcast is the machine's last state. Clients take the online
+// flag as it comes, so a stale one would stay until the next change.
 func (h *hub) machineChanged(id string) {
+	h.changeMu.Lock()
+	defer h.changeMu.Unlock()
 	m, err := h.s.store.machine(context.Background(), id)
 	if err != nil {
 		slog.Error("load machine", "machine", id, "err", err)
