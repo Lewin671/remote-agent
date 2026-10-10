@@ -704,6 +704,10 @@ func writeEnvFile(path string, env map[string]string) error {
 
 var errRunning = errors.New("the session is still running")
 
+// errUnsettled: the messages queued when the session exited have no
+// logged outcome yet (settleExited).
+var errUnsettled = errors.New("what became of the session's queued messages could not be recorded; it is not resumed until it can be")
+
 // resume starts the CLI again for an exited session, in its directory and
 // tmux session name, continuing the same conversation. The session keeps
 // its ID and history; the CLI appends to the same transcript, which is
@@ -725,8 +729,12 @@ func (d *Daemon) resume(id string) (*session, error) {
 	if d.cfg.Tmux.HasSession(m.Tmux) {
 		return nil, errRunning
 	}
-	// Nothing queued before it exited is sent now.
-	s.settleExited()
+	// Nothing queued before it exited is sent now. While their outcomes
+	// cannot be logged they stay queued, and a started session would be
+	// sent them.
+	if !s.settleExited() {
+		return nil, errUnsettled
+	}
 	if st, err := os.Stat(m.Cwd); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
 	}

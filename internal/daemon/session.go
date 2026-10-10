@@ -601,12 +601,13 @@ func (s *session) markExited(detail string) {
 
 // settleExited settles the messages an exited session still has queued:
 // they are not sent after a resume, and each is settled, never dropped
-// without a word. Nothing else touches the queue of an exited session.
-func (s *session) settleExited() {
+// without a word. Nothing else touches the queue of an exited session. It
+// reports whether none is left queued.
+func (s *session) settleExited() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.meta.Exited || len(s.queue.Queue) == 0 {
-		return
+		return true
 	}
 	var outcomes []*pb.Event
 	for _, in := range s.queue.Queue {
@@ -623,10 +624,11 @@ func (s *session) settleExited() {
 		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
 	}
 	if !s.logOutcomeLocked(outcomes...) {
-		return // they stay for the next start to settle
+		return false // they stay for the next start, or resume, to settle
 	}
 	s.queue.Queue = nil
 	s.saveSettledLocked()
+	return true
 }
 
 // Info summarizes the session.

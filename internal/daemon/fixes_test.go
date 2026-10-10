@@ -14,6 +14,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
 // Accepted input and request IDs survive a daemon restart.
@@ -620,6 +621,45 @@ func TestExitedQueueIsSettledOnTheNextStart(t *testing.T) {
 	h.s.log = log
 	h.reopen()
 	h.s.settleExited() // as restoring an exited session does
+	if st := inputStates(h, "r1"); st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_CANCELED || st[len(st)-1].Reason != "exited" {
+		t.Fatalf("states %v", st)
+	}
+	if q, _ := loadQueue(h.dir); len(q.Queue) != 0 {
+		t.Fatalf("still queued: %+v", q)
+	}
+}
+
+// A session that exited while the log could not be written is not resumed
+// until its queued messages are settled: started with them still queued,
+// it would be sent what was to be canceled.
+func TestResumeWaitsForTheExitedQueueToBeSettled(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.d.sessions[h.s.meta.ID] = h.s
+	// No tmux to ask or to start: a resume that got that far fails there.
+	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "no-tmux")}
+	h.term.setScreen(draftScreen)
+	if _, err := h.s.send("never written", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.log.Close() // the disk is full
+	h.s.markExited("stopped")
+	if _, err := h.d.resume(h.s.meta.ID); !errors.Is(err, errUnsettled) {
+		t.Fatalf("resumed with a message still queued: %v", err)
+	}
+	h.s.mu.Lock()
+	exited, queued := h.s.meta.Exited, len(h.s.queue.Queue)
+	h.s.mu.Unlock()
+	if !exited || queued != 1 {
+		t.Fatalf("exited %v, %d queued", exited, queued)
+	}
+	log, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = log
+	if _, err := h.d.resume(h.s.meta.ID); err == nil || errors.Is(err, errUnsettled) {
+		t.Fatalf("resume with the log back: %v", err)
+	}
 	if st := inputStates(h, "r1"); st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_CANCELED || st[len(st)-1].Reason != "exited" {
 		t.Fatalf("states %v", st)
 	}
