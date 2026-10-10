@@ -17,8 +17,11 @@ Put the relay and the web client under **the same registrable domain** (`ra.exam
 **You need:** a Linux VPS (arm64 or amd64) with Docker and its Compose plugin, ports 80 and 443 open, and a DNS record for your relay domain pointing at it. The relay itself is small: it is limited to 128 MB of memory.
 
 ```sh
+sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # not needed as root
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
 ```
+
+The installer itself never asks for root. Unless you run it as root, it ends by telling you to hand the `data` directory to the relay's unprivileged user: `sudo chown 65534:65534 /opt/remote-agent/data`. Do that once.
 
 This puts the relay's files in `/opt/remote-agent` and writes a `.env` with a new random setup token. Edit `.env`:
 
@@ -132,7 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main
 npx wrangler pages deploy remote-agent-web --project-name <your project> --branch main
 ```
 
-After deploying the web client, reload it once on each device: an open tab or installed app keeps running the copy it already has until then. The Android app offers the update itself in **Settings › Version**. To install a specific release everywhere, set `REMOTE_AGENT_VERSION=vX.Y.Z` before `sh`.
+After deploying the web client, reload it **twice** on each device: the first load still shows the copy the device already has while it fetches the new one in the background, and the second load runs it. **Settings** shows the version that is running. The Android app offers the update itself in **Settings › Version**. To install a specific release everywhere, set `REMOTE_AGENT_VERSION=vX.Y.Z` before `sh`.
 
 ## Troubleshooting
 

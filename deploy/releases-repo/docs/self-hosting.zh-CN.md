@@ -17,8 +17,11 @@
 **需要：** 一台 Linux VPS（arm64 或 amd64），装有 Docker 和 Compose 插件，开放 80 和 443 端口，中继域名已解析到它。中继本身很小，内存上限 128 MB。
 
 ```sh
+sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # 以 root 操作时不需要
 curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
 ```
+
+安装脚本本身不会要求 root。如果不是以 root 运行，它最后会提示你把 `data` 目录交给中继使用的非特权用户：`sudo chown 65534:65534 /opt/remote-agent/data`，执行一次即可。
 
 它把中继的文件放进 `/opt/remote-agent`，并生成带有随机 setup token 的 `.env`。编辑 `.env`：
 
@@ -132,7 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main
 npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --branch main
 ```
 
-网页部署后，在每台设备上重新加载一次：已经打开的标签页或已安装的应用在此之前仍然运行旧的那份。Android App 会在**设置 › 版本**里自己提示更新。要在各处安装某个指定版本，在 `sh` 前面设置 `REMOTE_AGENT_VERSION=vX.Y.Z`。
+网页部署后，在每台设备上重新加载**两次**：第一次加载显示的仍是设备上已有的那份，同时在后台取回新的；第二次加载才运行新的。**设置**里能看到正在运行的版本。Android App 会在**设置 › 版本**里自己提示更新。要在各处安装某个指定版本，在 `sh` 前面设置 `REMOTE_AGENT_VERSION=vX.Y.Z`。
 
 ## 常见问题
 

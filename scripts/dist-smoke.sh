@@ -13,7 +13,7 @@ work=$(mktemp -d)
 relay=
 cleanup() {
 	[ -z "$relay" ] || kill "$relay" 2>/dev/null || true
-	rm -rf "$work"
+	rm -rf "$work" 2>/dev/null || sudo rm -rf "$work"
 }
 trap cleanup EXIT
 
@@ -56,8 +56,12 @@ install server srv
 [ "$(stat -c %a "$work/srv/.env")" = 600 ]
 token=$(sed -n 's/^RA_SETUP_TOKEN=//p' "$work/srv/.env")
 [ ${#token} -ge 24 ]
-# An upgrade keeps what was edited.
+# An upgrade keeps what was edited, and works once the data directory has
+# been handed to the relay's user as the first run asks.
 echo '# mine' >>"$work/srv/compose.yaml"
+if sudo -n true 2>/dev/null; then
+	sudo chown 65534:65534 "$work/srv/data"
+fi
 install server srv
 grep -qx '# mine' "$work/srv/compose.yaml"
 [ "$(sed -n 's/^RA_SETUP_TOKEN=//p' "$work/srv/.env")" = "$token" ]

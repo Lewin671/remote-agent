@@ -118,7 +118,8 @@ install_server() {
 	name=remote-agent-server-$tag-linux-$arch
 	fetch "$name"
 	dir=${1:-remote-agent-server}
-	mkdir -p "$dir/data"
+	mkdir -p "$dir" || die "cannot create $dir; create it first and make it yours: sudo mkdir -p $dir && sudo chown \"\$(id -u)\" $dir"
+	[ -w "$dir" ] || die "$dir is not writable by you; make it yours: sudo chown \"\$(id -u)\" $dir"
 	dir=$(cd "$dir" && pwd)
 	put "$tmp/$name/remote-agent-server" "$dir/remote-agent-server"
 	# Yours to edit once they are there: an upgrade replaces the binary only.
@@ -126,9 +127,13 @@ install_server() {
 		[ -f "$dir/$f" ] || cp "$tmp/$name/$f" "$dir/$f"
 	done
 	cp "$tmp/$name/THIRD_PARTY_NOTICES.txt" "$dir/"
-	chmod 700 "$dir/data"
 	# The relay runs as an unprivileged user (65534) and writes only here.
-	chown 65534:65534 "$dir/data" 2>/dev/null || say "Could not hand $dir/data to user 65534; run: sudo chown 65534:65534 $dir/data"
+	# Set up once: afterwards the directory is that user's, not ours to change.
+	if [ ! -d "$dir/data" ]; then
+		mkdir "$dir/data"
+		chmod 700 "$dir/data"
+		chown 65534:65534 "$dir/data" 2>/dev/null || say "Could not hand $dir/data to user 65534; run: sudo chown 65534:65534 $dir/data"
+	fi
 	if [ -f "$dir/.env" ]; then
 		say "Upgraded the relay in $dir to $tag. Apply it with:"
 		say "  cd $dir && docker compose up -d --build"
