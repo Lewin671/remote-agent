@@ -240,7 +240,8 @@ func TestApprovalReplyRacingTimeout(t *testing.T) {
 			out <- b
 		}()
 		var id string
-		for id == "" {
+		timedOut := false
+		for id == "" && !timedOut {
 			h.s.mu.Lock()
 			for k, a := range h.s.approvals {
 				if !a.claimed {
@@ -249,8 +250,17 @@ func TestApprovalReplyRacingTimeout(t *testing.T) {
 			}
 			h.s.mu.Unlock()
 			if id == "" {
-				time.Sleep(50 * time.Microsecond)
+				select {
+				case <-out:
+					// On a busy machine the request timed out before it
+					// was seen here: nothing raced in this round.
+					timedOut = true
+				case <-time.After(50 * time.Microsecond):
+				}
 			}
+		}
+		if timedOut {
+			continue
 		}
 		time.Sleep(time.Duration(700+(i%12)*50) * time.Microsecond)
 		err := h.s.resolve(id, true, "")
