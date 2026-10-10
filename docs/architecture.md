@@ -1,6 +1,6 @@
 # 架构与技术决策
 
-项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。两个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，会话里的图片见 [session-images.md](session-images.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
+项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。几个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，iOS 客户端见 [ios-client.md](ios-client.md)，会话里的图片见 [session-images.md](session-images.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
 
 章节编号被代码注释引用（如 `architecture §13`），所以不重排、不改号。
 
@@ -23,6 +23,7 @@
 | `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，挂在子域名 `app.<域名>` 上，用 CNAME 指过去，域名不用迁到 Cloudflare |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
+| `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | 装到真机的渠道未定（[plan.md](plan.md)），目前只在模拟器上运行 |
 
 当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
@@ -30,7 +31,7 @@
 
 网页代码**不由 VPS 提供**：如果 VPS 被攻破后能替换网页的 JS，端到端加密就会被绕过。放在另一个平台上，攻击者必须同时攻破两处才行。Cloudflare 账号因此也成了关键资产，必须开启两步验证。
 
-代码放在同一个仓库：一个 Go module，外加 `web/` 和 `android/` 两个目录。
+代码放在同一个仓库：一个 Go module，外加 `web/`、`android/` 和 `ios/` 三个目录。
 
 ### 产品版本与发布
 
@@ -151,7 +152,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 - **历史和实时衔接**：server 先写库再推送；客户端按序号去重、补缺口
 - **终端积压**：终端帧设大小上限，缓冲队列有长度上限；客户端太慢时断开终端流，重新抓快照
 - **离线**：daemon 离线时，server 立即返回"不可用"，不替它排队
-- **版本**：不做跨版本兼容，版本不一致就拒绝并提示更新，不逐项降级（规则见 [AGENTS.md](../AGENTS.md)）。全项目只有一个协议版本号（`internal/protocol`，网页和 Android 各有一份同值常量），旧版本会误解的改动才提升它。daemon 把它写进机器元数据，客户端发现不一致就不向这台机器发指令，并说明该更新哪一端；客户端把它写进每条指令，daemon 发现不一致就拒绝执行。本机命令和 daemon 之间通过本地 socket 的请求头和响应头互相核对，覆盖更新后没重启的 daemon 和旧会话里还在运行的 MCP 进程。server 只转发密文，不参与核对；它不认识的接口按普通错误返回。信封格式另有自己的版本号（`Header.version`），已存的历史靠它继续可读，所以协议版本提升不影响读取旧会话
+- **版本**：不做跨版本兼容，版本不一致就拒绝并提示更新，不逐项降级（规则见 [AGENTS.md](../AGENTS.md)）。全项目只有一个协议版本号（`internal/protocol`，网页、Android 和 iOS 各有一份同值常量），旧版本会误解的改动才提升它。daemon 把它写进机器元数据，客户端发现不一致就不向这台机器发指令，并说明该更新哪一端；客户端把它写进每条指令，daemon 发现不一致就拒绝执行。本机命令和 daemon 之间通过本地 socket 的请求头和响应头互相核对，覆盖更新后没重启的 daemon 和旧会话里还在运行的 MCP 进程。server 只转发密文，不参与核对；它不认识的接口按普通错误返回。信封格式另有自己的版本号（`Header.version`），已存的历史靠它继续可读，所以协议版本提升不影响读取旧会话
 
 ## 5. 技术决策
 
@@ -159,7 +160,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 |---|---|---|
 | 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
 | 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
-| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 另做原生 App（[android-client.md](android-client.md)） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
+| 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 和 iOS 另做原生 App（[android-client.md](android-client.md)、[ios-client.md](ios-client.md)） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
 | 通信 | Protobuf 定义所有接口；一问一答走 ConnectRPC，实时推送和终端各用一条 WebSocket | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
@@ -424,6 +425,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 - **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush
 - **Web Push 出站限制**：订阅端点必须使用公网 HTTPS 的 443 端口；每次连接解析 DNS，拒绝非公网地址并直接连接核验过的 IP，防止 DNS rebinding。请求不用环境代理，也不跟随重定向；失败日志不写可能含订阅凭据的 URL。
 - **Android**：推送走 FCM，内容是 daemon 加密的密文，通知里可以直接审批，见 [android-client.md](android-client.md)
+- **iOS**：原生 App 还没有推送，只能打开 App 查看；要用 APNs，做不做未定，见 [ios-client.md](ios-client.md#还不能做的)
 
 ## 13. daemon 设置与远程新建会话
 
@@ -465,6 +467,8 @@ remote-agent 依赖 Codex 的屏幕和 rollout，Codex 升级可能改变它们�
 ## 15. Android 客户端
 
 见 [android-client.md](android-client.md)：选型、模块、同步和生命周期、密钥保管、原生终端、推送和在通知里审批。
+
+iOS 客户端见 [ios-client.md](ios-client.md)。
 
 ## 16. 接入 Claude Code
 

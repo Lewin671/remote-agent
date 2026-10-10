@@ -22,8 +22,8 @@ Android 原生 App 要把手机上的体验做到原生水平。本文写 App �
 
 | 方案 | 结论 | 理由 |
 |---|---|---|
-| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。`:core` 不依赖 `android.*`，以后做 iOS 再迁，业务规则和测试都能保留 |
-| gomobile 复用 Go | 暂不采用 | 能直接复用的只有 `internal/e2e`：`relay.JoinByPairing` 按机器登记并写 `account.json`，`remoteclient` 是测试用的客户端，不保存设备私钥；同步引擎和事件归约只有 TS 版，用 Go 也要新写。还要承担：Go 的 TLS 不走 Android 的网络安全策略，系统代理不自动生效，网络切换要由 Kotlin 通知，协程取消要桥接到 `context`，Go 和 JVM 两个堆，以及 NDK、R8、16 KB 页面的构建问题。做 iOS 时和 KMP 一起重新评估 |
+| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。iOS 最后也没有走这条路，写成了 Swift（[ios-client.md](ios-client.md#为什么是纯-swift)） |
+| gomobile 复用 Go | 暂不采用 | 能直接复用的只有 `internal/e2e`：`relay.JoinByPairing` 按机器登记并写 `account.json`，`remoteclient` 是测试用的客户端，不保存设备私钥；同步引擎和事件归约只有 TS 版，用 Go 也要新写。还要承担：Go 的 TLS 不走 Android 的网络安全策略，系统代理不自动生效，网络切换要由 Kotlin 通知，协程取消要桥接到 `context`，Go 和 JVM 两个堆，以及 NDK、R8、16 KB 页面的构建问题 |
 | 只把加密交给 Go | 不采用 | 绑定层的固定成本一样不少，复用最少 |
 | Flutter、React Native | 不采用 | 终端和系统交互仍要写原生模块；Flutter 多出一套 Dart；RN 也搬不动现有网页，它依赖 WebCrypto、IndexedDB、xterm.js 和 DOM |
 | 包装 PWA（TWA、Capacitor） | 不采用 | 界面仍是网页，终端输入、键盘和系统交互达不到原生 |

@@ -21,7 +21,8 @@
 ┌──────────── 每台电脑 ────────────┐        ┌──── VPS ────┐        ┌── 各端客户端 ──┐
 │ remote-agent（Go 单二进制）      │ HTTPS  │ remote-agent│ HTTPS  │ Web / PWA      │
 │  daemon + 本地 CLI 命令          │◄──────►│ -server（Go）│◄──────►│ Android App    │
-└──────────────────────────────────┘ + WSS  └─────────────┘ + WSS  └────────────────┘
+└──────────────────────────────────┘ + WSS  └─────────────┘ + WSS  │ iOS App        │
+                                                                   └────────────────┘
 ```
 
 通信方式、部署和技术决策见 [architecture.md](architecture.md)。
@@ -32,6 +33,7 @@
 | `remote-agent-server`（VPS） | 设备鉴权；按路由转发密文；存储会话事件的密文；发送推送 | 解密任何内容；理解消息语义；分组和搜索；替离线的 daemon 排队指令；提供网页代码（网页放在 Cloudflare Pages）或 App 安装包 |
 | `web`（PWA） | 配对设备；解密和渲染；按项目分组；聊天视图和终端视图；权限审批 | 直接连接 daemon（一律经 server 转发） |
 | `android`（原生 App） | 和 PWA 相同，另外在系统通知里显示审批并直接允许或拒绝 | 直接连接 daemon（一律经 server 转发） |
+| `ios`（原生 App） | 和 PWA 相同，终端用原生视图 | 直接连接 daemon（一律经 server 转发）；推送和在通知里审批（未定，见 [plan.md](plan.md)） |
 
 ## 4. 信任边界
 
@@ -80,6 +82,7 @@
 
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
 - **客户端界面**：支持 Codex / Claude Code 的统一输入区和能力差异；设备页按 CLI 展示可获取的账户额度及缺失、过期状态；项目管理支持添加项目、常用置顶和从列表移除（移除保留会话和历史，不移动或删除本地目录；要再用就重新添加这个目录）；连接检测按段显示到服务器和到每台电脑的往返延时；会话可以重命名，也可以分叉（用 CLI 自己的分叉从当前对话另开一个会话，原会话不动）；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密；显示会话里出现的图片（在电脑上粘贴的、Agent 查看或生成的），也能从客户端发图片给 Agent。界面见 [design/client-v38.html](design/client-v38.html)
+- **iOS 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；只给自己用，不上架应用商店。推送、在通知里审批和装到真机的渠道都要 Apple 开发者账号，还没定（[plan.md](plan.md) 的「待确认」），定下来之前靠打开 App 查看。选型见 [ios-client.md](ios-client.md)，进度见 [plan.md](plan.md)
 - **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店；App 自己检查新版本、下载并交给系统安装，安装包来自一个只发布 APK 的公开仓库，源码和其他各端不公开。选型见 [android-client.md](android-client.md)，进度见 [plan.md](plan.md)
 
 ### 不做（MVP 之后再评估）
@@ -88,7 +91,7 @@
 - 从客户端上传图片以外的附件（文档、压缩包等）
 - 显示 CLI 记录以外的文件：Agent 在回复里提到的本机文件，daemon 不去读
 - 接管不是由 `remote-agent` 启动的 CLI 进程
-- 原生 App（iOS、桌面端）
+- 桌面端原生 App
 - 语音、feed、artifacts、数据统计
 - 在客户端里浏览或编辑文件、查看 diff 面板
 - 全文搜索（server 无法搜密文，客户端本地搜索对话内容留到以后；按会话标题筛选不在此列，已经做）

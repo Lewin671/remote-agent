@@ -1,6 +1,6 @@
 # remote-agent
 
-在任何设备上远程操作跑在自己电脑 tmux 里的 AI 编程 CLI（Codex 和 Claude Code）。组成部分：Go 写的本地 daemon、Go 写的中继 server，以及 PWA 客户端和开发中的 Android 原生客户端。项目范围见 [docs/scope.md](docs/scope.md)，技术决策见 [docs/architecture.md](docs/architecture.md)，当前进度和下一步见 [docs/plan.md](docs/plan.md)。
+在任何设备上远程操作跑在自己电脑 tmux 里的 AI 编程 CLI（Codex 和 Claude Code）。组成部分：Go 写的本地 daemon、Go 写的中继 server，以及 PWA 客户端、Android 原生客户端和开发中的 iOS 原生客户端。项目范围见 [docs/scope.md](docs/scope.md)，技术决策见 [docs/architecture.md](docs/architecture.md)，当前进度和下一步见 [docs/plan.md](docs/plan.md)。
 
 有两件事是这个项目存在的理由，改动时请保住它们：
 
@@ -15,9 +15,9 @@
 
 - 两端能不能互通只看协议版本，不看产品版本。只改某一端自己的逻辑（界面、交互、本地状态）、不改变两端之间约定的改动，不提升协议版本，没升级的旧客户端继续可用
 - 不为旧版本的 daemon、server 或客户端写降级、推断分支，不保留废弃字段。字段或行为变了就直接改，旧的一并删掉
-- 改动会被旧版本的另一端误解时，提升协议版本号：Go 的 `internal/protocol`、网页的 `web/src/protocol.ts`、Android 的 `core/Version.kt` 三处同值。版本不一致的两端互相拒绝并提示更新，机制见 [docs/architecture.md](docs/architecture.md) 第 4 节的「版本」
+- 改动会被旧版本的另一端误解时，提升协议版本号：Go 的 `internal/protocol`、网页的 `web/src/protocol.ts`、Android 的 `core/Version.kt`、iOS 的 `RACore/Version.swift` 四处同值（iOS 的测试核对这四处一致）。版本不一致的两端互相拒绝并提示更新，机制见 [docs/architecture.md](docs/architecture.md) 第 4 节的「版本」
 - 不写数据迁移代码。存储格式要变时，一次性手动迁移或清掉重建，并在发布说明里写明升级要求
-- 这些不算兼容逻辑，照常保留：适配外部工具的不同版本（Codex、Claude Code、浏览器、Android 系统），以及当前版本自己也会出现的缺失值
+- 这些不算兼容逻辑，照常保留：适配外部工具的不同版本（Codex、Claude Code、浏览器、Android 和 iOS 系统），以及当前版本自己也会出现的缺失值
 - 有其他人开始使用或到 1.0 时，重新讨论这条规则
 
 改动或新建 `docs/` 下的文档前，先读 [docs/README.md](docs/README.md)，里面规定了每类内容写在哪。
