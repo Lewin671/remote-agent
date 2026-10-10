@@ -237,7 +237,7 @@ object Outbox {
         }
     }
 
-    private val watching = HashSet<String>()
+    private val watching = HashMap<String, kotlinx.coroutines.Job>()
 
     /**
      * Follows a session's events while messages with images wait here, and
@@ -245,17 +245,26 @@ object Outbox {
      * is on screen.
      */
     fun watch(remote: Remote, sid: String) {
-        if (!watching.add(sid)) return
-        io.github.lewin671.remoteagent.RaApp.instance.scope.launch {
+        if (sid in watching) return
+        lateinit var job: kotlinx.coroutines.Job
+        job = io.github.lewin671.remoteagent.RaApp.instance.scope.launch {
             try {
-                remote.events(sid).collect { ev ->
-                    settle(sid, inputStates(ev.events))
-                    if (of(sid).none { it.images.isNotEmpty() }) throw kotlinx.coroutines.CancellationException("nothing left to settle")
-                }
+                remote.events(sid).collect { ev -> settle(sid, inputStates(ev.events)) }
             } finally {
-                watching.remove(sid)
+                if (watching[sid] === job) watching.remove(sid)
             }
         }
+        watching[sid] = job
+    }
+
+    /**
+     * A session's last message with images is gone: its events are let go
+     * of too. Waiting for the next batch to notice would keep the whole
+     * history of a session that sends none, one that ended or whose
+     * computer is offline.
+     */
+    private fun unwatch(sid: String) {
+        if (bySession[sid]?.none { it.images.isNotEmpty() } != false) watching.remove(sid)?.cancel()
     }
 
     fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
@@ -278,6 +287,7 @@ object Outbox {
     fun remove(sid: String, o: Outgoing) {
         of(sid).remove(o)
         if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
+        unwatch(sid)
     }
 
     /**
@@ -288,6 +298,7 @@ object Outbox {
     fun takeBack(sid: String, o: Outgoing, draft: ImageDraft) {
         of(sid).remove(o)
         if (o.images.isNotEmpty()) draft.whenKept(o.images.map { it.id }) { runCatching { records.remove(sid, o.requestId) } }
+        unwatch(sid)
     }
 
     /**
@@ -319,6 +330,7 @@ object Outbox {
 
     fun clear() {
         bySession.clear()
+        watching.values.forEach { it.cancel() }
         watching.clear()
         prompts.clear()
         drafts.clear()

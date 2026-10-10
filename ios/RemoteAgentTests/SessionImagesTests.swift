@@ -193,6 +193,29 @@ import Testing
         #expect(try OutgoingRecords(files: files).load(sid: sid).count == 1)
     }
 
+    /// A session that ended, or whose computer is offline, sends no more events: its history is not kept
+    /// followed waiting for one after the last message with images is put back or removed.
+    @Test func aSessionIsFollowedOnlyWhileAMessageOfItWaits() async throws {
+        let c = center()
+        c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
+        let down = CommandError(CommandError.unavailable, "电脑不在线，指令没有发出")
+        computer.answer(down, down)
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("failed") { o.state == .failed }
+        #expect(remote.events(sid).followers == 1)
+        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        await eventually("let go of when put back") { remote.events(sid).followers == 0 }
+
+        // Sent again and followed again; then removed in the chat.
+        _ = await send(c, "再看")
+        let again = try #require(store.outgoing(sid).first)
+        await eventually("failed") { again.state == .failed }
+        #expect(remote.events(sid).followers == 1)
+        store.remove(sid, again)
+        await eventually("let go of when removed") { remote.events(sid).followers == 0 }
+    }
+
     @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() async {
         _ = center()
         await store.send(computer, sid: sid, text: "只有文字").value

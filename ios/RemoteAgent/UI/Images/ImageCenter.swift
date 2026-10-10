@@ -333,7 +333,7 @@ final class ImageCenter {
         if o.images.isEmpty { return true }
         let draft = draft(Self.sessionKey(sid))
         guard draft.attach(o.images, max: max, wereOriginal: o.original) else { return false }
-        kept[sid]?.removeAll { $0 === o }
+        letGo(sid, o)
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
         // only copy a reclaimed process would find.
         draft.whenKept(o.images.map(\.id)) { [weak self] in self?.dropRecord(sid, o.requestId) }
@@ -350,10 +350,20 @@ final class ImageCenter {
             for await events in feed.updates() {
                 guard let self, !Task.isCancelled else { return }
                 let inputs = await Task.detached { inputStates(events.events) }.value
+                if Task.isCancelled { return }
                 self.settle(sid, inputs, store)
-                if self.kept[sid]?.isEmpty != false { break }
             }
-            self?.watchers[sid] = nil
+        }
+    }
+
+    /// A message is no longer followed. With the session's last one its events are let go of too: waiting
+    /// for the next batch to notice would keep the whole history of a session that sends none, one that
+    /// ended or whose computer is offline.
+    private func letGo(_ sid: String, _ o: Outgoing) {
+        kept[sid]?.removeAll { $0 === o }
+        if kept[sid]?.isEmpty == true {
+            kept[sid] = nil
+            watchers.removeValue(forKey: sid)?.cancel()
         }
     }
 
@@ -380,7 +390,7 @@ final class ImageCenter {
     }
 
     private func release(_ sid: String, _ o: Outgoing) {
-        kept[sid]?.removeAll { $0 === o }
+        letGo(sid, o)
         dropRecord(sid, o.requestId)
         for img in o.images { img.release() }
         forget(o.images)
