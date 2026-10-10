@@ -49,6 +49,16 @@ class ReleaseTests(unittest.TestCase):
         self.commit()
         self.assertFalse(release.prepare('patch')['eligible'])
 
+    def test_release_tooling_and_public_pages_do_not_release(self):
+        for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
+                     'deploy/deploy.sh', 'deploy/releases-repo/install.sh', 'deploy/releases-repo/assets/architecture-light.svg', 'deploy/releases-repo/.github/workflows/publish.yml'):
+            self.assertFalse(release.product_change(path), path)
+
+    def test_what_is_packed_or_decides_the_build_releases(self):
+        for path in ('cmd/remote-agent/main.go', 'web/src/main.tsx', 'android/app/build.gradle.kts', 'go.mod', 'scripts/daemon.sh', 'scripts/build-go.sh',
+                     'scripts/build-dist.sh', 'scripts/notices.py', 'deploy/releases-repo/self-host/compose.yaml'):
+            self.assertTrue(release.product_change(path), path)
+
     def test_product_change_bumps_shared_version_and_code(self):
         self.write('cmd/app/main.go', 'package main\n// fix\n')
         self.commit()
