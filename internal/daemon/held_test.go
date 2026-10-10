@@ -181,3 +181,37 @@ func TestCancelHeldMismatch(t *testing.T) {
 		t.Fatalf("writes %q", w)
 	}
 }
+
+// The model got the message between the check that the CLI still held it
+// and the move to the held list: it is not held, or it would be reported
+// withdrawn in the terminal once the turn ends.
+func TestHoldAfterTheModelGotTheMessage(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	if _, err := h.s.send("steer", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
+	if err := h.s.markInflight(0, "r1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.mu.Lock()
+	in := h.s.queue.Queue[0] // as settle saw it, still held by the CLI
+	h.s.mu.Unlock()
+	// The transcript reader logs the CLI handing it to the model.
+	msg := &pb.UserMessage{Text: "steer"}
+	e := &pb.Event{Kind: &pb.Event_UserMessage{UserMessage: msg}}
+	annotateLogged(h.s, e)
+	h.s.emit(e)
+	h.s.received(msg.RequestId)
+
+	h.s.hold(in)
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
+	h.s.sweepHeld()
+	h.s.mu.Lock()
+	held, queue := len(h.s.queue.Held), len(h.s.queue.Queue)
+	h.s.mu.Unlock()
+	st := inputStates(h, "r1")
+	if held != 0 || queue != 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+		t.Fatalf("held %d, queued %d, states %v", held, queue, st)
+	}
+}

@@ -37,10 +37,12 @@ func (s *session) heldByCLI(in input) bool {
 	return running && !s.loggedUserMessage(in)
 }
 
-// hold moves a written message from the queue to the held list.
+// hold moves a written message from the queue to the held list, unless the
+// model got it meanwhile: the transcript reader may have logged that after
+// heldByCLI looked, and it settles only messages it finds held.
 func (s *session) hold(in input) {
 	s.mu.Lock()
-	ok := len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == in.RequestID
+	ok := len(s.queue.Queue) > 0 && s.queue.Queue[0].RequestID == in.RequestID && !s.queue.Queue[0].matched
 	if ok {
 		prevQueue, prevHeld := s.queue.Queue, s.queue.Held
 		s.rememberLocked(s.queue.Queue[0])
