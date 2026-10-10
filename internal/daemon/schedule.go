@@ -566,6 +566,14 @@ func (d *Daemon) tickSchedules(now time.Time) {
 			if late == 0 {
 				late = 86400
 			}
+			// Of an interval's occurrences missed while the machine slept
+			// or the daemon was down, only the most recent is caught up,
+			// and it is the one the time allowed for that is measured from.
+			if tr := t.Spec.Trigger; tr.Type == "interval" {
+				interval := time.Duration(tr.IntervalSeconds) * time.Second
+				latest := t.NextRunAt.Add(now.Sub(*t.NextRunAt) / interval * interval)
+				t.NextRunAt = &latest
+			}
 			if now.Sub(*t.NextRunAt) > time.Duration(late)*time.Second {
 				run := schedule.Run{ID: newID(8), ScheduledAt: *t.NextRunAt, StartedAt: now, EndedAt: &now, Status: "skipped", Reason: "catch_up_window_expired"}
 				t.Runs = appendRun(t.Runs, run)

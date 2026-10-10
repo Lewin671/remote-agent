@@ -224,19 +224,50 @@ func TestScheduleRunCompletionDoesNotMatchEarlierTurn(t *testing.T) {
 func TestScheduleLateCatchUpAndNoBacklog(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
-	old := time.Now().Add(-time.Hour)
+	now := time.Now().UTC()
+	old := now.Add(-time.Hour - 30*time.Second)
 	spec := taskSpec(schedule.Trigger{Type: "interval", At: &old, IntervalSeconds: 60})
 	spec.LateSeconds = 10
 	task := createTask(t, h, spec, "")
-	now := time.Now()
 	h.d.tickSchedules(now)
 	task = readTask(t, h.d, task.ID)
-	if task.Status != "scheduled" || !task.NextRunAt.After(now) || task.Dispatches != 0 || len(task.Runs) != 1 || task.Runs[0].Status != "skipped" {
+	// The most recent occurrence, 30 seconds ago, is the one that counts.
+	if task.Status != "scheduled" || !task.NextRunAt.Equal(now.Add(30*time.Second)) || task.Dispatches != 0 || len(task.Runs) != 1 ||
+		task.Runs[0].Status != "skipped" || !task.Runs[0].ScheduledAt.Equal(now.Add(-30*time.Second)) {
 		t.Fatalf("catch-up %+v", task)
 	}
 	h.d.tickSchedules(*task.NextRunAt)
 	if len(h.s.queue.Queue) != 1 {
 		t.Fatal("next interval did not dispatch once")
+	}
+}
+
+// After two days down, an hourly task runs once for its most recent
+// occurrence, which is well inside the day allowed for catching up; the
+// occurrences before it are not made up for.
+func TestScheduleCatchesUpTheMostRecentOccurrence(t *testing.T) {
+	h := scheduleHarness(t)
+	defer h.s.log.Close()
+	now := time.Now().UTC()
+	old := now.Add(-48*time.Hour - 5*time.Minute)
+	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", At: &old, IntervalSeconds: 3600}), "")
+	h.d.tickSchedules(now)
+	task = readTask(t, h.d, task.ID)
+	if task.Dispatches != 1 || task.Active == nil || !task.Active.ScheduledAt.Equal(now.Add(-5*time.Minute)) || len(task.Runs) != 0 || len(h.s.queue.Queue) != 1 {
+		t.Fatalf("catch-up %+v", task)
+	}
+	completeTask(h, task.Active, now)
+	h.d.tickSchedules(now.Add(time.Second))
+	task = readTask(t, h.d, task.ID)
+	if task.Status != "scheduled" || !task.NextRunAt.Equal(now.Add(55*time.Minute)) || task.Dispatches != 1 {
+		t.Fatalf("after the catch-up %+v", task)
+	}
+	// A one-time task that late is past it.
+	once := createTask(t, h, taskSpec(schedule.Trigger{Type: "at", At: &old}), "")
+	h.d.tickSchedules(now.Add(2 * time.Second))
+	once = readTask(t, h.d, once.ID)
+	if once.Dispatches != 0 || len(once.Runs) != 1 || once.Runs[0].Status != "skipped" || once.Status != "completed" {
+		t.Fatalf("one-time %+v", once)
 	}
 }
 
