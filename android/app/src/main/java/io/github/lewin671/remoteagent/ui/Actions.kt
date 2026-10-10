@@ -280,10 +280,14 @@ object Outbox {
         if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
     }
 
-    /** Takes a message back for the message box: its record goes, its images live on in the draft. */
-    fun takeBack(sid: String, o: Outgoing) {
+    /**
+     * Takes a message back for the message box: its images live on in
+     * [draft]. Its record goes once they are on disk there: until then it is
+     * the only copy a reclaimed process would find.
+     */
+    fun takeBack(sid: String, o: Outgoing, draft: ImageDraft) {
         of(sid).remove(o)
-        if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
+        if (o.images.isNotEmpty()) draft.whenKept(o.images.map { it.id }) { runCatching { records.remove(sid, o.requestId) } }
     }
 
     /**

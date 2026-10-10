@@ -636,7 +636,7 @@ internal fun putBack(remote: io.github.lewin671.remoteagent.core.Remote, sid: St
     if (o.images.isNotEmpty() && !d.attach(o.images, max, o.original)) return false
     val cur = Outbox.draft(sid).value
     Outbox.draft(sid).value = if (cur.isBlank()) o.text else cur.trimEnd() + "\n" + o.text
-    Outbox.takeBack(sid, o)
+    Outbox.takeBack(sid, o, d)
     s?.let { d.sendAllTo(remote, it.machineId) }
     return true
 }

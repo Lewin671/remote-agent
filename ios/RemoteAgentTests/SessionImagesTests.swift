@@ -131,6 +131,50 @@ import Testing
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
+    @Test func aMessagePutBackKeepsItsRecordUntilTheBoxHasItsImagesOnDisk() async throws {
+        /// A store with no room for one folder while `full` names it.
+        final class Cramped: RACore.SealedFiles, @unchecked Sendable {
+            let inner = VolatileFiles()
+            private let lock = NSLock()
+            private var refused: String?
+            var full: String? {
+                get { lock.withLock { refused } }
+                set { lock.withLock { refused = newValue } }
+            }
+
+            func put(folder: String, name: String, data: Data) throws {
+                if folder == full { throw UserError("手机待发图片空间不足，请发送或移除旧草稿") }
+                inner.put(folder: folder, name: name, data: data)
+            }
+            func get(folder: String, name: String) -> Data? { inner.get(folder: folder, name: name) }
+            func remove(folder: String, name: String) { inner.remove(folder: folder, name: name) }
+            func clearFolder(_ folder: String) { inner.clearFolder(folder) }
+        }
+        let files = Cramped()
+        ImageCenter.install(remote: remote, files: files)
+        let c = ImageCenter.of(remote)
+        let key = ImageCenter.sessionKey(sid)
+        let draft = c.draft(key)
+        draft.append([ready("a")])
+        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("failed") { o.state == .failed }
+
+        // The box cannot keep the image it gets back: the message's record is the only copy on disk.
+        files.full = key
+        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        await eventually("the box said so") { draft.notice.hasPrefix("这张图未保存到手机") }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
+        #expect(files.get(folder: key, name: "a.img") == nil)
+        // Room again: once the box has saved it the record goes.
+        files.full = nil
+        draft.persist()
+        await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
+        #expect(files.get(folder: key, name: "a.img") != nil)
+    }
+
     @Test func imagesThatDoNotFitNextToTheOnesInTheBoxStayWithTheirMessage() async throws {
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))

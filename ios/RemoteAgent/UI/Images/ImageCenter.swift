@@ -331,10 +331,12 @@ final class ImageCenter {
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
     func putBack(sid: String, max: Int, _ o: Outgoing) -> Bool {
         if o.images.isEmpty { return true }
-        guard draft(Self.sessionKey(sid)).attach(o.images, max: max, wereOriginal: o.original) else { return false }
-        // Its record goes; its images live on in the draft.
+        let draft = draft(Self.sessionKey(sid))
+        guard draft.attach(o.images, max: max, wereOriginal: o.original) else { return false }
         kept[sid]?.removeAll { $0 === o }
-        dropRecord(sid, o.requestId)
+        // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
+        // only copy a reclaimed process would find.
+        draft.whenKept(o.images.map(\.id)) { [weak self] in self?.dropRecord(sid, o.requestId) }
         return true
     }
 
