@@ -169,6 +169,9 @@ private struct SessionPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background((term ? Theme.Term.bg : Theme.card).ignoresSafeArea())
         .tint(Theme.blue)
+        // The page's to do, not the chat's or its message box's: it may open on the terminal, and an ended
+        // session or one on an offline computer has no box.
+        .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: context.sessionStore) }
         // The second line is the state and the mode, which is red only when it is full access.
         .navBar(
             titleOf(s), subtitle: subtitle.danger || subtitle.mode.isEmpty ? subtitle.status : "\(subtitle.status) · \(subtitle.mode)",

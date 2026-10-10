@@ -441,8 +441,6 @@ struct ChatPane: View {
             SheetHead("选择文字", action: "完成") { selecting = nil }
             SelectableText(text: picked.text)
         }
-        // Not the message box's to do: an ended session and one on an offline computer have none.
-        .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: store) }
         .onChange(of: d.inputs) { _, inputs in store.settleCancels(inputs: inputs) }
         .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock) }
         .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }
