@@ -229,6 +229,28 @@ class ProjectTest {
     }
 
     @Test
+    fun theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() {
+        val full = state(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_FULL_ACCESS)), emptyList(), host("mac", *both), host("vps", *both))
+        val draft = DraftConfig(projectConfig(full, path))
+        draft.follow(projectConfig(full, path), drafting = true)
+        // Written while the project said full access; another client then changes the project to ask.
+        val ask = state(saved("mac", Agent.AGENT_CODEX, set(Agent.AGENT_CODEX, "astra", mode = ApprovalMode.APPROVAL_MODE_ASK)), emptyList(), host("mac", *both), host("vps", *both))
+        val now = projectConfig(ask, path)!!
+        draft.follow(now, drafting = true)
+        assertEquals(Mode.ASK, now.mode)
+        assertEquals("the draft goes where it was going", Mode.FULL, draft.value?.mode)
+        val launch = launchConfig(draft.value, now, hidden = false)!!
+        assertEquals(draft.value, launch)
+        assertEquals("Codex · 完全放行 · mac · astra", projectSummary(ask, launch))
+        // A machine picked for this start only is the one named.
+        draft.choose(NewConfig("vps", path, Agent.AGENT_CODEX))
+        assertEquals("vps", launchConfig(draft.value, now, hidden = false)?.machineId)
+        // Without a draft, and on a page that has no message box, it is the project's.
+        assertEquals(now, launchConfig(null, now, hidden = false))
+        assertEquals(now, launchConfig(draft.value, now, hidden = true))
+    }
+
+    @Test
     fun aDraftWrittenOverAGuessTakesTheSettingsOnceTheyAreKnown() {
         val guess = NewConfig("mac", path, Agent.AGENT_CODEX)
         val inherited = NewConfig("mac", path, Agent.AGENT_CODEX, "astra", "low", Mode.ASK)

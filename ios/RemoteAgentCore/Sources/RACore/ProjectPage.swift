@@ -313,6 +313,17 @@ public struct DraftConfig: Equatable, Sendable {
     }
 }
 
+/// The configuration a project's page describes under its title: the one ↑
+/// starts the next session with. That is the draft's own (`DraftConfig`),
+/// which stops following the project once something is written or a machine
+/// is picked for this start, so what the page says and what it sends are
+/// one thing. `project` is what the project's settings say now; it stands
+/// in while there is no draft, and for a project removed from the list,
+/// whose page has no message box to keep a draft's configuration current.
+public func launchConfig(draft: NewConfig?, project: NewConfig?, hidden: Bool) -> NewConfig? {
+    hidden ? project : draft ?? project
+}
+
 /// Mode sent for a new session; unspecified lets the daemon use the CLI configuration.
 public enum LaunchMode: Equatable, Sendable {
     /// Start in this mode; unspecified leaves it to the CLI's default, which the daemon checks again in the folder.

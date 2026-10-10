@@ -244,6 +244,26 @@ import Testing
         #expect(projectStart(none, key: "/work/new", machine: "mac") == ProjectStart(config: config("mac", .codex, cwd: "/work/new"), settled: true))
     }
 
+    @Test func theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() throws {
+        let full = state(saved("mac", .codex, set(.codex, "astra", "", .fullAccess)), [], host("mac", both), host("vps", both))
+        var draft = DraftConfig(projectConfig(full, key: path))
+        draft.follow(projectConfig(full, key: path), drafting: true)
+        // Written while the project said full access; another client then changes the project to ask.
+        let ask = state(saved("mac", .codex, set(.codex, "astra", "", .ask)), [], host("mac", both), host("vps", both))
+        let now = try #require(projectConfig(ask, key: path))
+        draft.follow(now, drafting: true)
+        #expect(now.mode == .ask && draft.value?.mode == .full, "the draft goes where it was going")
+        let launch = try #require(launchConfig(draft: draft.value, project: now, hidden: false))
+        #expect(launch == draft.value)
+        #expect(projectSummary(ask, launch) == "Codex · 完全放行 · mac · astra" && isFullAccess(ask, launch))
+        // A machine picked for this start only is the one named.
+        draft.choose(config("vps", .codex))
+        #expect(launchConfig(draft: draft.value, project: now, hidden: false)?.machineId == "vps")
+        // Without a draft, and on a page that has no message box, it is the project's.
+        #expect(launchConfig(draft: nil, project: now, hidden: false) == now)
+        #expect(launchConfig(draft: draft.value, project: now, hidden: true) == now)
+    }
+
     @Test func aDraftWrittenOverAGuessTakesTheSettingsOnceTheyAreKnown() {
         let guess = config("mac", .codex)
         let inherited = config("mac", .codex, "astra", "low", .ask)

@@ -321,6 +321,17 @@ class DraftConfig(initial: NewConfig?, settled: Boolean = true) {
     }
 }
 
+/**
+ * The configuration a project's page describes under its title: the one ↑
+ * starts the next session with. That is the draft's own ([DraftConfig]),
+ * which stops following the project once something is written or a machine
+ * is picked for this start, so what the page says and what it sends are one
+ * thing. [project] is what the project's settings say now; it stands in
+ * while there is no draft, and for a project removed from the list, whose
+ * page has no message box to keep a draft's configuration current.
+ */
+fun launchConfig(draft: NewConfig?, project: NewConfig?, hidden: Boolean): NewConfig? = if (hidden) project else draft ?: project
+
 /** Mode sent for a new session; unspecified lets the daemon use the CLI configuration. */
 sealed interface LaunchMode {
     /** Start in this mode; UNSPECIFIED leaves it to the CLI's default, which the daemon checks again in the folder. */
@@ -376,15 +387,18 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val seed = projectStart(state, key)
     val entry = Drafts.newSession(key, seed?.config, seed?.settled != false)
     val start = projectStart(state, key, entry.agent.value)
-    // The summary describes the CLI selected next to the message box.
+    // 项目设置 is about the project: its machine and its set for the CLI selected next to the message box.
     val selected = projectConfig(state, key, draftPick(state, entry))
-    var summaryModels by remember(key, selected?.machineId, selected?.agent) { mutableStateOf<ListModelsResponse?>(null) }
-    LaunchedEffect(selected?.machineId, selected?.agent) {
-        val cfg = selected ?: return@LaunchedEffect
+    // The summary says what ↑ starts with: the draft's own configuration, which the project's settings no
+    // longer change once a draft is begun or a machine was picked for this start.
+    val launch = launchConfig(entry.config.value, selected, hidden)
+    var summaryModels by remember(key, launch?.machineId, launch?.agent) { mutableStateOf<ListModelsResponse?>(null) }
+    LaunchedEffect(launch?.machineId, launch?.agent) {
+        val cfg = launch ?: return@LaunchedEffect
         summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
     }
     Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
-        val folded = selected?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
+        val folded = launch?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
         NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
         LazyColumn(Modifier.weight(1f), state = list) {
             item {
@@ -397,9 +411,9 @@ fun ProjectScreen(key: String, focus: Boolean) {
                             Text("${active.size} 个进行中 · ", style = T.sm, color = p.muted)
                             Box(Modifier.clickable(enabled = endedTotal > 0) { showEnded = !showEnded }) { ArrowText("已结束 $endedTotal", p.blue, T.smB, down = showEnded) }
                         }
-                        if (selected != null) {
-                            val full = selected.mode == Mode.FULL || (selected.mode == null && defaultModeOf(state.machines[selected.machineId], selected.agent).mode == Mode.FULL)
-                            SummaryChip(projectSummary(state, selected, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = "" }
+                        if (launch != null) {
+                            val full = launch.mode == Mode.FULL || (launch.mode == null && defaultModeOf(state.machines[launch.machineId], launch.agent).mode == Mode.FULL)
+                            SummaryChip(projectSummary(state, launch, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = "" }
                         }
                     }
                 }

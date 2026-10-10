@@ -91,9 +91,12 @@ struct ProjectPageView: View {
         let draft = context.newSessionDrafts.of(key, initial: seed?.config, settled: seed?.settled != false)
         let start = projectStart(state, key: key, pick: draft.agent, machine: machine)
         let initial = start?.config ?? machine.map { NewConfig(machineId: $0, cwd: key) }
-        // The summary describes the CLI selected next to the message box.
+        // 项目设置 is about the project: its machine and its set for the CLI selected next to the message box.
         let selected = machine == nil ? projectConfig(state, key: key, pick: newSessionPick(state, draft)) : draft.config.value ?? initial
         let hidden = isHidden(state, key: key)
+        // The summary says what ↑ starts with: the draft's own configuration, which the project's settings no
+        // longer change once a draft is begun or a machine was picked for this start.
+        let launch = launchConfig(draft: draft.config.value, project: selected, hidden: hidden)
         // A folder just chosen that has no session yet: there is nothing to list, the page is its message box.
         let fresh = machine != nil && page.active.isEmpty && page.endedTotal == 0
         let folded = scrolledAway || fresh
@@ -104,9 +107,9 @@ struct ProjectPageView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if fresh {
-                            if let selected { chip(state, selected).padding(.horizontal, Theme.Space.page).padding(.vertical, 4) }
+                            if let launch { chip(state, launch).padding(.horizontal, Theme.Space.page).padding(.vertical, 4) }
                         } else {
-                            header(state, page, selected, name: name)
+                            header(state, page, launch, name: name)
                                 .background {
                                     GeometryReader { g in
                                         Color.clear.preference(key: HeaderEnd.self, value: g.frame(in: .named(Self.scroll)).maxY)
@@ -142,7 +145,7 @@ struct ProjectPageView: View {
             }
         }
         .navBar(
-            folded ? name : "", subtitle: !folded ? nil : fresh ? shortPath(key) : selected.map { foldedSummary(state, $0) } ?? shortPath(key),
+            folded ? name : "", subtitle: !folded ? nil : fresh ? shortPath(key) : launch.map { foldedSummary(state, $0) } ?? shortPath(key),
             onMore: selected == nil ? nil : { settings = ProjectSettingsRequest() }
         )
         .kitSheet(item: $settings) { request in
@@ -156,9 +159,9 @@ struct ProjectPageView: View {
                     onClose: { settings = nil })
             }
         }
-        .task(id: selected.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) {
+        .task(id: launch.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) {
             let remote = context.remote
-            await summaryModels.load(selected.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) { key in
+            await summaryModels.load(launch.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) { key in
                 await HomeLaunch.settled(model)
                 return try? await remote.listModels(key.machine, agent: key.agent)
             }
@@ -179,14 +182,14 @@ struct ProjectPageView: View {
         if let c = projectConfig(state, key: key, pick: draft.agent, machine: machine, saved: saved) { draft.config.choose(c) }
     }
 
-    private func chip(_ state: RemoteState, _ selected: NewConfig) -> some View {
-        ProjectSummaryChip(summary: projectSummary(state, selected, models: summaryModels.list), full: isFullAccess(state, selected)) {
+    private func chip(_ state: RemoteState, _ launch: NewConfig) -> some View {
+        ProjectSummaryChip(summary: projectSummary(state, launch, models: summaryModels.list), full: isFullAccess(state, launch)) {
             settings = ProjectSettingsRequest()
         }
     }
 
     /// The avatar, the name, where the project is, how many of its sessions go on and have ended, and the settings summary.
-    private func header(_ state: RemoteState, _ page: ProjectPage, _ selected: NewConfig?, name: String) -> some View {
+    private func header(_ state: RemoteState, _ page: ProjectPage, _ launch: NewConfig?, name: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Avatar(key, size: 52)
             VStack(alignment: .leading, spacing: 0) {
@@ -213,7 +216,7 @@ struct ProjectPageView: View {
                     .accessibilityValue(showEnded ? "已展开" : "已收起")
                 }
                 .padding(.top, 2)
-                if let selected { chip(state, selected).padding(.top, 6) }
+                if let launch { chip(state, launch).padding(.top, 6) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
