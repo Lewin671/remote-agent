@@ -78,3 +78,24 @@ func TestOrderingScreenAndExit(t *testing.T) {
 		t.Fatal("old lifecycle times retained")
 	}
 }
+
+// An approval can outlive its turn (Codex asks for an escalated command in
+// the background): it keeps the time it has waited since, until resolved.
+func TestOrderingApprovalOutlivesItsTurn(t *testing.T) {
+	at := func(ms int64) *timestamppb.Timestamp { return timestamppb.New(time.UnixMilli(ms)) }
+	var o sessionOrdering
+	o.observe(&pb.Event{Time: at(1000), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a"}}})
+	o.observe(&pb.Event{Time: at(1500), Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q"}}})
+	o.observe(&pb.Event{Time: at(2000), Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}})
+	if got := o.attentionSince(&pb.Session{PendingApprovals: 1}); got == nil || got.AsTime().UnixMilli() != 1000 {
+		t.Fatalf("wait after the turn ended = %v", got)
+	}
+	o.observe(&pb.Event{Time: at(3000), Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: "a"}}})
+	if got := o.attentionSince(&pb.Session{PendingApprovals: 1}); got != nil {
+		t.Fatalf("wait after it was resolved = %v", got)
+	}
+	// A question does end with its turn.
+	if got := o.attentionSince(&pb.Session{PendingQuestions: 1}); got != nil {
+		t.Fatalf("question wait = %v", got)
+	}
+}

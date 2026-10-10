@@ -37,7 +37,9 @@ func (o *sessionOrdering) observe(e *pb.Event) {
 	case *pb.Event_QuestionAnswered:
 		delete(o.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_TurnEnded:
-		clear(o.approvals)
+		// Questions end with their turn. An approval does not: Codex may
+		// still wait for one in the background, and each one that is over
+		// has its own ApprovalResolved.
 		clear(o.questions)
 	case *pb.Event_SessionState:
 		st := k.SessionState
