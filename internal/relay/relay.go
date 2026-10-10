@@ -77,11 +77,15 @@ type Relay struct {
 	// sentMeta is the metadata last put for each session, kept across
 	// connections: a reconnect then sends only what changed.
 	sentMeta map[string]*pb.Session
+	// owedNotify holds, per session, the events whose notification the
+	// server had no capacity for. Their upload is not repeated, so nothing
+	// else would bring them up again.
+	owedNotify map[string][]*pb.Event
 }
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, Retry: time.Second}
+	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.

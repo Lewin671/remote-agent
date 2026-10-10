@@ -1049,3 +1049,43 @@ func TestForkedHistoryIsNotNotified(t *testing.T) {
 		t.Fatalf("%d notifications for a fork with one turn of its own", n)
 	}
 }
+
+// The server refuses a notification while its pushes are at capacity, and
+// says to try again. The event is uploaded by then and is not gone over
+// again, so the relay has to remember that the notification is owed.
+func TestRefusedNotificationIsOfferedAgain(t *testing.T) {
+	var notifies atomic.Int32
+	e := setupWithHandler(t, countNotifies(&notifies, func(call int32) bool { return call == 1 }))
+	l := e.backend.add(t, "sess1")
+	e.startRelay()
+	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
+	// Once taken it is not offered a third time.
+	time.Sleep(6 * time.Second)
+	if n := notifies.Load(); n != 2 {
+		t.Fatalf("%d notify calls for one event refused once", n)
+	}
+}
+
+func TestRefusedNotificationSurvivesReconnect(t *testing.T) {
+	var notifies atomic.Int32
+	e := setupWithHandler(t, countNotifies(&notifies, func(call int32) bool { return call == 1 }))
+	l := e.backend.add(t, "sess1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	r := relay.New(e.backend)
+	r.Retry = 50 * time.Millisecond
+	done := make(chan struct{})
+	go func() { defer close(done); r.Run(ctx) }()
+	defer func() { cancel(); <-done }()
+	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the notification to be refused", func() bool { return notifies.Load() >= 1 })
+	// The stream drops before the next pass; the event is on the server,
+	// so the next connection uploads nothing for it.
+	e.http.CloseClientConnections()
+	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
+}

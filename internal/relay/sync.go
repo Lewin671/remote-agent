@@ -170,7 +170,10 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			return err
 		}
 		// Once stored, clients can load what the notification is about.
-		for _, e := range uploaded {
+		// Those the server had no room for come first, while they are
+		// still recent enough to notify about.
+		var owed []*pb.Event
+		for _, e := range append(c.r.takeOwedNotify(id), uploaded...) {
 			if e.Seq <= info.ForkedSeq {
 				continue // the source's history, copied into a fork
 			}
@@ -181,9 +184,15 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 				}
 				if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
 					slog.Warn("relay: notify", "session", id, "err", err)
+					// Refused for lack of capacity, which the server
+					// promises not to count as sent.
+					if connect.CodeOf(err) == connect.CodeResourceExhausted {
+						owed = append(owed, e)
+					}
 				}
 			}
 		}
+		c.r.oweNotify(id, owed)
 		release()
 		select {
 		case <-ctx.Done():
@@ -353,6 +362,30 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 		return nil, err
 	}
 	return &pb.NotifyRequest{SessionId: sessionID, Kind: kind, Content: env, DedupeKey: dedupe}, nil
+}
+
+// maxOwedNotify bounds the refused notifications kept for one session;
+// the latest are the ones worth sending.
+const maxOwedNotify = 16
+
+// takeOwedNotify returns the events of a session whose notification is
+// still owed, and forgets them.
+func (r *Relay) takeOwedNotify(id string) []*pb.Event {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	evs := r.owedNotify[id]
+	delete(r.owedNotify, id)
+	return evs
+}
+
+// oweNotify remembers events whose notification the server refused.
+func (r *Relay) oweNotify(id string, evs []*pb.Event) {
+	if len(evs) == 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.owedNotify[id] = evs[max(0, len(evs)-maxOwedNotify):]
 }
 
 // notifyAge keeps catching up after a reconnect from notifying about the
