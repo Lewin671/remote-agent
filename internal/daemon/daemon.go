@@ -260,7 +260,11 @@ func (d *Daemon) restore() error {
 			continue
 		}
 		s := newSession(d, dir, *m, d.terminal(m), log)
+		// Sessions restored before this one already run their loops, which
+		// read the list.
+		d.mu.Lock()
 		d.sessions[m.ID] = s
+		d.mu.Unlock()
 		d.uploads.restoreRefs(s)
 		s.cancelStaleApprovals()
 		if m.Exited && alive {
