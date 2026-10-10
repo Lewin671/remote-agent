@@ -156,6 +156,9 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	for _, in := range held {
 		want = append(want, in.Text)
 	}
+	if !l.holding() {
+		return errHeldChanged
+	}
 	if err := c.Write([]byte("\x1b[A")); err != nil {
 		return err
 	}
@@ -286,15 +289,15 @@ func (s *session) waitComposer(footer string) (string, bool) {
 // line, Backspace joins it to the one before.
 func (s *session) emptyBox(c control, l *lease, footer string, tries int) bool {
 	for range tries {
-		if !l.holding() {
-			return false
-		}
 		styled, err := s.term.Capture()
 		if err != nil {
 			return false
 		}
 		if s.ag.Analyze(styled).DraftEmpty {
 			return true
+		}
+		if !l.holding() {
+			return false
 		}
 		if err := c.Write(append(s.ag.ClearInput(), 0x7f)); err != nil {
 			return false

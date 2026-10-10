@@ -39,8 +39,12 @@ func TestClearLeavesMultilineDrafts(t *testing.T) {
 	imgs := imagesFor(t, h.dir, "a.png")
 	h.term.setScreen("\x1b[1m›\x1b[0m [Image #1]\n  my draft\n\n  GPT-6-Sol medium · /w\n")
 	c, _ := h.term.Control()
-	c.Hold(time.Second)
-	if h.s.clearPasted(c, input{Images: imgs}, []int32{1}, "GPT-6-Sol medium · /w", false, false) {
+	l, err := holdLease(c, injectBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.end()
+	if h.s.clearPasted(c, l, input{Images: imgs}, []int32{1}, "GPT-6-Sol medium · /w", false, false) {
 		t.Fatal("cleared a box holding a draft line")
 	}
 	if w := h.term.written(); len(w) != 0 {
@@ -350,5 +354,43 @@ func TestUnstartedCreationReturnsImages(t *testing.T) {
 	}
 	if loaded, _ := loadMeta(dir2); loaded.Starting {
 		t.Fatal("starting flag left")
+	}
+}
+
+// slowCaptureTerm is a terminal whose n-th screen capture takes a while,
+// and whose PTY host stops renewing holds.
+type slowCaptureTerm struct {
+	failingHoldTerm
+	n, slow int
+	delay   time.Duration
+}
+
+func (f *slowCaptureTerm) Capture() (string, error) {
+	f.n++
+	if f.n == f.slow {
+		time.Sleep(f.delay)
+	}
+	return f.fakeTerm.Capture()
+}
+
+// The hold is checked after the last look at the screen, not before it: a
+// capture that hangs until the hold has lapsed is followed by no write.
+func TestNoEnterAfterTheLastCaptureOutlivesTheHold(t *testing.T) {
+	h := newHarness(t, Config{})
+	// The second capture is the check right before the text and Enter.
+	h.s.term = &slowCaptureTerm{failingHoldTerm: failingHoldTerm{h.term}, slow: 2, delay: holdFor}
+	if _, err := h.s.send("late", "r1"); err != nil {
+		t.Fatal(err)
+	}
+	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+	outcome, err := h.s.inject(h.s.queue.Queue[0])
+	if err != nil || outcome != notWritten {
+		t.Fatalf("outcome %v, %v", outcome, err)
+	}
+	if w := h.term.written(); len(w) != 0 {
+		t.Fatalf("wrote %q after the hold lapsed", w)
+	}
+	if in := h.s.queue.Queue[0]; in.Inflight != nil || in.Stage != pb.InputStage_INPUT_STAGE_WAITING {
+		t.Fatalf("left marked as written: %+v", in)
 	}
 }

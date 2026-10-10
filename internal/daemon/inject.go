@@ -338,9 +338,11 @@ func (s *session) inject(in input) (inputOutcome, error) {
 		}
 		return notWritten, err
 	}
-	// Saving the mark may have taken a while: the hold and the input box
-	// are checked once more right before the Enter.
-	if !l.holding() || !s.boxHolds(got, footer) {
+	// Saving the mark may have taken a while: the input box and the hold
+	// are checked once more right before the Enter. The hold comes last:
+	// looking at the screen can itself outlast it, and the PTY host lets
+	// anyone write once nobody holds.
+	if !s.boxHolds(got, footer) || !l.holding() {
 		if len(got) > 0 {
 			s.unmarkInflight(in.RequestID, pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED)
 			return s.abandon(c, l, in, got, footer, false, "timeout"), nil
@@ -408,7 +410,7 @@ func (s *session) waitPlaceholder(before []int32, path, footer string) (int32, s
 // yet recorded (after a restart). The caller still holds local input.
 func (s *session) abandon(c control, l *lease, in input, got []int32, footer string, extra bool, reason string) inputOutcome {
 	status := pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
-	if l.holding() && s.clearPasted(c, in, got, footer, extra, reason == "timeout") {
+	if s.clearPasted(c, l, in, got, footer, extra, reason == "timeout") {
 		status = pb.InputStatus_INPUT_STATUS_FAILED
 	}
 	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", reason, "status", status.String())
@@ -419,8 +421,12 @@ func (s *session) abandon(c control, l *lease, in input, got []int32, footer str
 // clearPasted empties the input box if it holds only this message's image
 // placeholders and file paths, and reports whether it is verified empty
 // afterwards. After a timeout an empty box does not count: the CLI may
-// still be converting an image and add its placeholder later.
-func (s *session) clearPasted(c control, in input, got []int32, footer string, extra, timedOut bool) bool {
+// still be converting an image and add its placeholder later. Nothing is
+// written unless local keys are still held after the box was looked at.
+func (s *session) clearPasted(c control, l *lease, in input, got []int32, footer string, extra, timedOut bool) bool {
+	if !l.holding() {
+		return false
+	}
 	styled, err := s.term.Capture()
 	if err != nil {
 		return false
@@ -453,6 +459,9 @@ func (s *session) clearPasted(c control, in input, got []int32, footer string, e
 	}
 	if strings.TrimSpace(rest) != "" {
 		return false // something else is in the input box: not ours to delete
+	}
+	if !l.holding() {
+		return false
 	}
 	if err := c.Write(s.ag.ClearInput()); err != nil {
 		return false
