@@ -226,39 +226,65 @@ import Testing
 }
 
 @Suite struct TerminalStringFilterTests {
-    private func run(_ frames: [String]) -> String {
+    private func run(_ frames: [[UInt8]]) -> [UInt8] {
         var f = TerminalStringFilter()
-        return frames.map { String(decoding: f.take(Data($0.utf8)), as: UTF8.self) }.joined()
+        return frames.flatMap { [UInt8](f.take(Data($0))) }
     }
 
-    @Test func controlStringsAreTakenOutAndTheRestIsAsItWas() {
-        // Sixel is a DCS, Kitty graphics an APC; each ends with ST, in either form.
-        #expect(run(["a\u{1B}Pq#0~~\u{1B}\\b"]) == "ab")
-        #expect(run(["a\u{1B}_Gf=24;AAAA\u{1B}\\b"]) == "ab")
-        #expect(run(["a\u{90}q~~\u{9C}b\u{9F}G;AA\u{9C}c"]) == "abc")
+    private func run(_ text: String) -> String {
+        String(decoding: run([[UInt8](text.utf8)]), as: UTF8.self)
+    }
+
+    private let esc: UInt8 = 0x1B
+    private let sub: UInt8 = 0x1A
+
+    @Test func controlStringsAreLeftOutAndTheEmulatorIsTakenBackToText() {
+        // Sixel is a DCS, Kitty graphics an APC; each ends with ST. In the string's place the emulator gets SUB, after the ESC it already had.
+        #expect(run("a\u{1B}Pq#0~~\u{1B}\\b") == "a\u{1B}\u{1A}b")
+        #expect(run("a\u{1B}_Gf=24;AAAA\u{1B}\\b") == "a\u{1B}\u{1A}b")
         // An APC also ends at BEL, as the emulator reads it; a DCS does not.
-        #expect(run(["a\u{1B}_G;AA\u{07}b"]) == "ab")
-        #expect(run(["a\u{1B}Pq\u{07}~\u{1B}\\b"]) == "ab")
-        // CAN and SUB cancel either.
-        #expect(run(["a\u{1B}Pq~\u{18}b\u{1B}_G\u{1A}c"]) == "abc")
+        #expect(run("a\u{1B}_G;AA\u{07}b") == "a\u{1B}\u{1A}b")
+        #expect(run("a\u{1B}Pq\u{07}~\u{1B}\\b") == "a\u{1B}\u{1A}b")
+        // SUB cancels either; CAN only an APC, as the emulator reads them.
+        #expect(run("a\u{1B}Pq~\u{1A}b\u{1B}_G\u{18}c") == "a\u{1B}\u{1A}b\u{1B}\u{1A}c")
+        #expect(run("a\u{1B}Pq~\u{18}~\u{1B}\\b") == "a\u{1B}\u{1A}b")
+        // CAN does not take the emulator out of a sequence: what follows it can still begin a string.
+        #expect(run("a\u{1B}\u{18}Pq~\u{1B}\\b") == "a\u{1B}\u{18}\u{1A}b")
         // Other sequences, and text of more than one byte, pass through.
-        let plain = "\u{1B}[31m红\u{1B}]0;title\u{07}\u{1B}(B é\u{1B}[0m"
-        #expect(run([plain]) == plain)
+        let plain = "\u{1B}[31m红吐\u{1B}]0;吐槽 title\u{07}\u{1B}(B é\u{1B}[0m\u{1B}]8;;x\u{1B}\\吐"
+        #expect(run(plain) == plain)
     }
 
     @Test func aStringMayBeginInOneFrameAndEndInAnother() {
-        #expect(run(["a\u{1B}", "Pq#0~~", "~~\u{1B}", "\\b"]) == "ab")
-        // What only might begin a string is held, and comes with the next frame.
-        var f = TerminalStringFilter()
-        #expect(f.take(Data([0x61, 0x1B])) == Data([0x61]))
-        #expect(f.take(Data("[1m".utf8)) == Data("\u{1B}[1m".utf8))
-        #expect(f.take(Data([0xC2])) == Data())
-        #expect(f.take(Data([0xA9])) == Data([0xC2, 0xA9]))
+        #expect(run([[0x61, esc], [0x50, 0x71, 0x23], [0x7E, esc], [0x5C, 0x62]]) == [0x61, esc, sub, 0x62])
+        #expect(run([[esc, 0x5B, 0x31], [0x6D, 0x61]]) == [esc, 0x5B, 0x31, 0x6D, 0x61])
     }
 
     @Test func anEscapeSequenceInsideAStringEndsItAndIsRead() {
-        #expect(run(["a\u{1B}Pq~~\u{1B}[1mb"]) == "a\u{1B}[1mb")
+        #expect(run("a\u{1B}Pq~~\u{1B}[1mb") == "a\u{1B}\u{1A}\u{1B}[1mb")
         // Also another string.
-        #expect(run(["a\u{1B}Pq~~\u{1B}_G;AA\u{1B}\\b"]) == "ab")
+        #expect(run("a\u{1B}Pq~~\u{1B}_G;AA\u{1B}\\b") == "a\u{1B}\u{1A}\u{1B}\u{1A}b")
+    }
+
+    @Test func whatIsLeftOutCannotJoinWhatFollowsIntoAString() {
+        // ESC ESC P…ST Pq…: the first ESC must not meet the P that follows the string.
+        let out = run([[esc, esc, 0x50, 0x24, 0x71, 0x6D, esc, 0x5C, 0x50, 0x71, 0x7E, esc, 0x5C]])
+        #expect(out == [esc, esc, sub, 0x50, 0x71, 0x7E, esc, 0x5C])
+        // The same with a control the emulator runs without leaving its escape state.
+        #expect(run([[esc, 0x0A, 0x50, 0x71, 0x7E, esc, 0x5C, 0x62]]) == [esc, 0x0A, sub, 0x62])
+    }
+
+    @Test func theRawControlsBeginAStringOnlyInsideASequence() {
+        // In text 0x90 and 0x9F are part of a character, or printed as they are.
+        #expect(run([[0xE5, 0x90, 0x90, 0x9F, 0x61]]) == [0xE5, 0x90, 0x90, 0x9F, 0x61])
+        // Inside any sequence they begin a string.
+        #expect(run([[esc, 0x90, 0x71, 0x7E, esc, 0x5C, 0x62]]) == [esc, sub, 0x62])
+        #expect(run([[esc, 0x9F, 0x47, 0x3B, 0x41, 0x9C, 0x62]]) == [esc, sub, 0x62])
+        #expect(run([[esc, 0x5B, 0x31, 0x90, 0x71, 0x7E, 0x9C, 0x62]]) == [esc, 0x5B, 0x31, sub, 0x62])
+        #expect(run([[esc, 0x58, 0x61, 0x9F, 0x47, 0x07, 0x62]]) == [esc, 0x58, 0x61, sub, 0x62])
+        // An OSC takes them as its own once it has begun in this frame, and not as the first byte of one.
+        #expect(run([[esc, 0x5D, 0x30, 0x3B, 0xE5, 0x90, 0x90, 0x07, 0x62]]) == [esc, 0x5D, 0x30, 0x3B, 0xE5, 0x90, 0x90, 0x07, 0x62])
+        #expect(run([[esc, 0x5D, 0x90, 0x71, 0x7E, 0x9C, 0x62]]) == [esc, 0x5D, sub, 0x62])
+        #expect(run([[esc, 0x5D, 0x30, 0x3B, 0xE5], [0x90, 0x71, 0x7E, 0x9C, 0x62]]) == [esc, 0x5D, 0x30, 0x3B, 0xE5, sub, 0x62])
     }
 }

@@ -86,6 +86,79 @@ import UIKit
         #expect(text(host) == "fresh")
     }
 
+    /// How many images the emulator holds in its lines. SwiftTerm keeps them out of its public interface.
+    private func images(_ host: TerminalHostView) -> Int {
+        let emulator = host.terminal.getTerminal()
+        var n = 0
+        for row in 0..<emulator.rows {
+            guard let line = emulator.getLine(row: row) else { continue }
+            guard let held = Mirror(reflecting: line).children.first(where: { $0.label == "images" })?.value else { continue }
+            let some = Mirror(reflecting: held)
+            guard some.displayStyle == .optional, let list = some.children.first?.value else { continue }
+            n += Mirror(reflecting: list).children.count
+        }
+        return n
+    }
+
+    /// Every way of putting the pieces of a graphics sequence together, in one frame or several, draws no image.
+    @Test func noArrangementOfOutputDrawsAnImage() {
+        let sixel = [UInt8]("#0;2;100;0;0#0~~~~~~-~~~~~~".utf8)
+        let kitty = [UInt8]("f=24,s=1,v=1,a=T;/wAA".utf8)
+        // The emulator does draw them when asked directly: the count below means something.
+        let bare = host()
+        bare.snapshot(cols: 80, rows: 24, data: Data())
+        bare.terminal.feed(byteArray: ([0x1B, 0x50, 0x71] + sixel + [0x1B, 0x5C])[...])
+        #expect(images(bare) > 0)
+
+        // The pieces that matter, often; the rest of what moves the parser, now and then.
+        let core: [[UInt8]] = [
+            [0x1B], [0x50], [0x5F], [0x71], [0x47], sixel, kitty, [0x1B, 0x5C], [0x90], [0x9F], [0x18], [0x1A], [0x5D], [0xE5],
+        ]
+        let rest: [[UInt8]] = [
+            [0x9C], [0x07], [0x9B], [0x9D], [0x98], [0x9E], [0x5B], [0x58], [0x5E], [0x20], [0x24], [0x30], [0x3B], [0x3A], [0x3F],
+            [0x6D], [0x61], [0x5C], [0xC2], [0xE5, 0x90, 0x90], [0x0A], [0x7F], [0x19], [0x85],
+        ]
+        var seed: UInt64 = 0x9E37_79B9_7F4A_7C15
+        func next(_ n: Int) -> Int {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int((seed >> 33) % UInt64(n))
+        }
+        let host = host()
+        func drawn(_ stream: [UInt8], cut: Int) -> Bool {
+            host.snapshot(cols: 80, rows: 24, data: Data())
+            host.append(Data(stream[..<cut]))
+            if cut < stream.count { host.append(Data(stream[cut...])) }
+            guard images(host) > 0 else { return false }
+            Issue.record("an image was drawn by \(stream.map { String($0, radix: 16) }.joined(separator: " ")) cut at \(cut)")
+            return true
+        }
+        // Every order of up to five of the pieces a graphics sequence is made of, and of what ends or cancels one.
+        let few: [[UInt8]] = [
+            [0x1B], [0x50], [0x18], [0x1A], [0x1B, 0x5C], [0x50, 0x71] + sixel, [0x5F, 0x47] + kitty, [0x90, 0x71] + sixel,
+        ]
+        var order = [Int]()
+        func every(_ left: Int) -> Bool {
+            if !order.isEmpty {
+                let stream = order.flatMap { few[$0] }
+                if drawn(stream, cut: stream.count) { return true }
+            }
+            guard left > 0 else { return false }
+            for i in few.indices {
+                order.append(i)
+                defer { order.removeLast() }
+                if every(left - 1) { return true }
+            }
+            return false
+        }
+        if every(5) { return }
+        // And at random, with the rest of what moves the parser, in one frame or cut at a point of its own.
+        for round in 0..<4000 {
+            var stream: [UInt8] = []
+            for _ in 0..<(2 + next(8)) { stream += next(5) == 0 ? rest[next(rest.count)] : core[next(core.count)] }
+            if drawn(stream, cut: round % 2 == 0 ? stream.count : next(stream.count + 1)) { return }
+        }
+    }
+
     @Test func theEmulatorAnswersNothing() {
         let host = host()
         var sent: [Data] = []
