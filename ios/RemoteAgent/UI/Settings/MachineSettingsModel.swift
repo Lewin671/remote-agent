@@ -97,7 +97,9 @@ final class MachineSettingsModel {
         reading = false
         saveError = ""
         saveUnknown = false
-        defer { if mine == asked { saving = false } }
+        // Only one save runs at a time (the guard above), so this one ending is the end of saving,
+        // also when a read asked for meanwhile has made its answer one to drop.
+        defer { saving = false }
         do {
             let reply = try await calls.update(next, clean)
             guard mine == asked else { return }

@@ -84,6 +84,29 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         #expect(m.readError == "没有回应")
     }
 
+    @Test func aReadAskedForDuringASaveDoesNotLeaveThePageSaving() async {
+        let (held, release) = AsyncStream.makeStream(of: Void.self)
+        let m = MachineSettingsModel(calls: MachineSettingsCalls(
+            read: { [reads] in try reads.next() },
+            update: { s, _ in
+                for await _ in held { break }
+                return .with { $0.settings = s }
+            }))
+        reads.then(reply(settings()))
+        await m.read()
+        let saving = Task { await m.save(settings(timeout: 600)) }
+        while !m.saving { await Task.yield() }
+        // A pull to refresh, or the computer coming back, while the change is on its way.
+        reads.then(reply(settings(timeout: 900)))
+        await m.read()
+        #expect(m.saving)
+        release.yield()
+        await saving.value
+        #expect(!m.saving)
+        // What was read later is what is shown.
+        #expect(m.settings?.approvalTimeoutSeconds == 900)
+    }
+
     @Test func aSaveShowsWhatTheComputerAnswered() async {
         let m = model()
         reads.then(reply(settings()))
