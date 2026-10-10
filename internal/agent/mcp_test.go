@@ -43,3 +43,27 @@ func TestMCPConfigPreservesSourcesWithoutGlobalChanges(t *testing.T) {
 		t.Fatal("affected unmanaged launch")
 	}
 }
+
+// A relative --mcp-config is the user's, relative to the folder they ran
+// the CLI in. It is read by the daemon, whose own working directory is
+// somewhere else and may hold a file of the same name.
+func TestMCPConfigReadsRelativeSourcesFromTheSessionFolder(t *testing.T) {
+	project, elsewhere := t.TempDir(), t.TempDir()
+	os.WriteFile(filepath.Join(project, "tools.json"), []byte(`{"mcpServers":{"project":{"command":"p"}}}`), 0o600)
+	os.WriteFile(filepath.Join(elsewhere, "tools.json"), []byte(`{"mcpServers":{"other":{"command":"o"}}}`), 0o600)
+	t.Chdir(elsewhere)
+	l := &Launch{Dir: t.TempDir(), Cwd: project, Exe: "remote-agent", RemoteSession: "ours"}
+	for _, argv := range [][]string{{"--mcp-config", "./tools.json"}, {"--mcp-config=tools.json"}} {
+		args, err := MCPConfig(l, argv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			Servers map[string]json.RawMessage `json:"mcpServers"`
+		}
+		b, _ := os.ReadFile(args[len(args)-1])
+		if json.Unmarshal(b, &cfg) != nil || cfg.Servers["project"] == nil || cfg.Servers["other"] != nil {
+			t.Fatalf("%v read as %s", argv, b)
+		}
+	}
+}

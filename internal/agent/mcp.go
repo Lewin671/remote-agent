@@ -38,6 +38,11 @@ func MCPConfig(l *Launch, argv []string) ([]string, error) {
 		for _, source := range sources {
 			b := []byte(source)
 			if !strings.HasPrefix(strings.TrimSpace(source), "{") {
+				// The user gave it relative to the folder the CLI runs
+				// in, not to the daemon's.
+				if !filepath.IsAbs(source) {
+					source = filepath.Join(l.Cwd, source)
+				}
 				var err error
 				b, err = os.ReadFile(source)
 				if err != nil {
