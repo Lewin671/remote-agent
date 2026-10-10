@@ -215,3 +215,44 @@ func TestHoldAfterTheModelGotTheMessage(t *testing.T) {
 		t.Fatalf("held %d, queued %d, states %v", held, queue, st)
 	}
 }
+
+// A held message with images comes back into the input box with its
+// "[Image #N]" placeholders, which are part of what the box must hold.
+func TestCancelHeldMessageWithImages(t *testing.T) {
+	h := claudeHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png", "b.png")
+	h.s.mu.Lock()
+	h.s.queue.Held = []input{{RequestID: "a", Text: "what are these", Images: imgs, Indexes: []int32{3, 4}}}
+	h.s.mu.Unlock()
+	box := ""
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		switch b {
+		case "\x1b[A":
+			box = "[Image #3][Image #4]what are these"
+		case agent.KeyClearLine + "\x7f":
+			box = ""
+		}
+		if box == "" {
+			f.screen = ccIdle
+		} else {
+			f.screen = ccBox(box)
+		}
+	}
+	if err := h.s.cancelInputBy("a", originLocal); err != nil {
+		t.Fatal(err)
+	}
+	if st := inputStates(h, "a"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_CANCELED {
+		t.Fatalf("states %v", st)
+	}
+	if box != "" {
+		t.Fatalf("left %q in the input box", box)
+	}
+
+	// Placeholders that are not the message's are someone else's.
+	h.s.mu.Lock()
+	h.s.queue.Held = []input{{RequestID: "b", Text: "what are these", Images: imgs[:1], Indexes: []int32{3}}}
+	h.s.mu.Unlock()
+	if err := h.s.cancelInputBy("b", originLocal); err != errHeldChanged {
+		t.Fatalf("err %v", err)
+	}
+}

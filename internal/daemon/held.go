@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
 // Messages the CLI holds (architecture §6). During a turn Claude Code
@@ -168,7 +169,12 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	if !ok {
 		return errHeldChanged
 	}
-	if normalizeText(strings.ReplaceAll(text, "\n", " ")) != normalizeText(strings.Join(want, " ")) {
+	// A message's images show as the placeholders they became.
+	text = strings.ReplaceAll(text, "\n", " ")
+	for _, in := range held {
+		text, _ = agent.StripPlaceholders(text, in.Indexes)
+	}
+	if normalizeText(text) != normalizeText(strings.Join(want, " ")) {
 		// Something else was in the CLI's queue (typed at the computer):
 		// it is left in the input box for the user.
 		slog.Warn("held messages do not match the CLI's queue", "session", s.meta.ID)
