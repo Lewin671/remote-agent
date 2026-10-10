@@ -182,6 +182,29 @@ final class Navigator {
     func backToRoot() {
         path.removeAll()
     }
+
+    /// Whether `page` is what the user is looking at: the destination on
+    /// top of the stack, or for nil a first-level page.
+    func showing(_ page: Route?) -> Bool {
+        path.last == page
+    }
+
+    /// One step back for `page`, when a command it sent has ended. The
+    /// command outlives its page, so the user may have left it or opened
+    /// another over it meanwhile: the stack is theirs then, and stays as it is.
+    func back(from page: Route?) {
+        if showing(page) { back() }
+    }
+
+    /// Goes on to `route` from `page` when a command it sent has ended; nothing once the user has moved on.
+    func open(_ route: Route, from page: Route?) {
+        if showing(page) { open(route) }
+    }
+}
+
+extension EnvironmentValues {
+    /// The destination a view is drawn for (`Navigator.back(from:)`); nil on a first-level page.
+    @Entry var page: Route?
 }
 
 extension Route {
@@ -229,7 +252,7 @@ struct MainView: View {
         @Bindable var nav = nav
         NavigationStack(path: $nav.path) {
             FirstLevel()
-                .navigationDestination(for: Route.self) { $0.destination }
+                .navigationDestination(for: Route.self) { $0.destination.environment(\.page, $0) }
         }
         .tint(Theme.blue)
         .modifier(ClientNamePrompt(context: context, nav: nav))

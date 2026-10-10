@@ -32,6 +32,7 @@ struct NewSessionBox: View {
     var onMachine: () -> Void = {}
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @Environment(AccountContext.self) private var context
     @FocusState private var focused: Bool
 
@@ -140,7 +141,7 @@ struct NewSessionBox: View {
             context.sessionStore.rememberPrompt(sid, prompt)
             Haptics.confirm()
             focused = false
-            nav.open(.session(id: sid))
+            nav.open(.session(id: sid), from: page)
         }
     }
 

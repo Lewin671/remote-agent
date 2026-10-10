@@ -32,7 +32,7 @@ import { errorText, type MachineView, type Remote } from "../remote";
 
 type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
 type StartPayload = { machineId: string; req: CreateReq };
-import { Avatar, Banner, Dot, Sheet } from "../ui";
+import { Avatar, Banner, Dot, fromHere, Sheet } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
@@ -279,6 +279,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     if (changes(prompt, mode)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
     const { payload, slot } = current.next(payloadFor(prompt, mode));
+    const open = fromHere(go);
     setBusy(true);
     setError("");
     try {
@@ -306,7 +307,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       setLocal(undefined);
       setPicked(undefined);
       setLatched(undefined);
-      go("s/" + sid);
+      open("s/" + sid);
       return true;
     } catch (e) {
       current.settle(e);

@@ -84,6 +84,7 @@ private struct SessionPage: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @State private var chat = SessionModel()
     @State private var tab: Int
     @State private var menu = false
@@ -292,7 +293,7 @@ private struct SessionPage: View {
                 }, onDone: {
                     // The new session may not be in the list yet: its page waits for it, as after starting one.
                     menu = false
-                    if let forked { afterMenu { nav.open(.session(id: forked)) } }
+                    if let forked { afterMenu { nav.open(.session(id: forked), from: page) } }
                 })
             })
         }

@@ -8,6 +8,7 @@ struct ClientScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @State private var save = ActionRunner()
     @State private var remove = ActionRunner()
     @State private var editing = false
@@ -46,12 +47,12 @@ struct ClientScreen: View {
             isPresented: $confirming, title: "移除 \(clientName(d, id: id))？", text: RemovalText.clientConfirm,
             confirm: "移除", danger: true
         ) {
-            remove.run({ try await remote.removeDevice(id) }, onDone: nav.back)
+            remove.run({ try await remote.removeDevice(id) }, onDone: { nav.back(from: page) })
         }
         // What 保存 in the name dialog, 恢复默认名称 and 移除 in the confirmation do (debug builds).
         .debugSignal("client.rename") { save.run { try await remote.renameDevice(id, name: "设置页改的名字") } }
         .debugSignal("client.reset") { save.run { try await remote.renameDevice(id, name: "") } }
-        .debugSignal("client.remove") { remove.run({ try await remote.removeDevice(id) }, onDone: nav.back) }
+        .debugSignal("client.remove") { remove.run({ try await remote.removeDevice(id) }, onDone: { nav.back(from: page) }) }
         .onAppear {
             #if DEBUG
             if model.isDemo, SettingsDemo.state == "renaming" { editing = true }

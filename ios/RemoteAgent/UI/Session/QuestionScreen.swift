@@ -11,6 +11,7 @@ struct QuestionScreen: View {
 
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @State private var chat = SessionModel()
     @State private var finder = SessionFinder()
     @State private var act = ActionRunner()
@@ -28,7 +29,7 @@ struct QuestionScreen: View {
                     }
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            QuestionBody(session: s, question: q, part: .content, full: true, act: act, onAnswered: { nav.back() })
+                            QuestionBody(session: s, question: q, part: .content, full: true, act: act, onAnswered: { nav.back(from: page) })
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 14).padding(.bottom, 12)
@@ -37,7 +38,7 @@ struct QuestionScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         QuestionBody(
                             session: s, question: q, part: .actions, full: true, act: act, onTerminal: toTerminal,
-                            onAnswered: { nav.back() })
+                            onAnswered: { nav.back(from: page) })
                     }
                     .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
                     .readableColumn()

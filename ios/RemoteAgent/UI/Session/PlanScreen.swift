@@ -9,6 +9,7 @@ struct PlanScreen: View {
 
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @State private var chat = SessionModel()
     @State private var finder = SessionFinder()
 
@@ -26,7 +27,7 @@ struct PlanScreen: View {
                     // Answered already, here or elsewhere: the plan stays to be read, without its choices.
                     if s.info?.planOpen == true {
                         VStack(alignment: .leading, spacing: 0) {
-                            PlanButtons(session: s, full: true) { nav.back() }
+                            PlanButtons(session: s, full: true) { nav.back(from: page) }
                         }
                         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
                         .readableColumn()

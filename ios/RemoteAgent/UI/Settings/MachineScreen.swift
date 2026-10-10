@@ -11,6 +11,7 @@ struct MachineScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
+    @Environment(\.page) private var page
     @State private var settings: MachineSettingsModel?
     @State private var remove = ActionRunner()
     @State private var confirming = false
@@ -80,14 +81,14 @@ struct MachineScreen: View {
         }
         .debugSignal("machine.remove") {
             let remote = context.remote
-            remove.run({ try await remote.removeDevice(id) }, onDone: nav.back)
+            remove.run({ try await remote.removeDevice(id) }, onDone: { nav.back(from: page) })
         }
         .confirm(
             isPresented: $confirming, title: "移除 \(machineLabel(state, id: id))？", text: RemovalText.machineConfirm,
             confirm: "移除", danger: true
         ) {
             let remote = context.remote
-            remove.run({ try await remote.removeDevice(id) }, onDone: nav.back)
+            remove.run({ try await remote.removeDevice(id) }, onDone: { nav.back(from: page) })
         }
         .confirm(
             isPresented: $cleaning, title: "清理可回收图片？",

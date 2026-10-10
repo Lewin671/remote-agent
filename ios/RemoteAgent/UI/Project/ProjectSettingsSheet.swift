@@ -30,6 +30,8 @@ struct ProjectSettingsSheet: View {
     private let onClose: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    /// The destination the sheet is over.
+    @Environment(\.page) private var under
     @Environment(AccountContext.self) private var context
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft: ProjectSettingsDraft
@@ -80,7 +82,7 @@ struct ProjectSettingsSheet: View {
         .task(id: Load(machine: c.machineId, agent: c.agent, picking: page == .model)) { await load(c) }
         .removeProjectConfirm($removing) {
             onClose()
-            nav.open(.home)
+            nav.open(.home, from: under)
         }
         // Chooses what `-settingsEdit` names (full, auto, ask, standard, effort=<e>, model=<slug>) and saves, for a script (debug builds).
         .debugSignal("settings.apply") {

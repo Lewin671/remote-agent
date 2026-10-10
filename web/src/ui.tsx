@@ -224,3 +224,13 @@ export function usePageVisible() {
 export function Exp({ up }: { up?: boolean }) {
   return up ? <ChevronUp className="exp" /> : <ChevronDown className="exp" />;
 }
+
+/** What a command does to the route when it has ended, held to the page that
+ * sent it: the command outlives its page, so by then the user may be on
+ * another one, which is left as it is. Made when the command is sent. */
+export function fromHere<A extends unknown[]>(then: (...args: A) => void): (...args: A) => void {
+  const here = location.hash;
+  return (...args) => {
+    if (location.hash === here) then(...args);
+  };
+}

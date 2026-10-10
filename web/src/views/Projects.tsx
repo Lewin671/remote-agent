@@ -9,7 +9,7 @@ import { useState, type ReactNode } from "react";
 import { isHidden, isPinned, groupProjects } from "../prefs";
 import { exited, projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
-import { ActionSheet, Alert, Avatar, Banner, NavBar, useNow, useRemote } from "../ui";
+import { ActionSheet, Alert, Avatar, Banner, fromHere, NavBar, useNow, useRemote } from "../ui";
 import type { Go } from "./NewSession";
 import { NewProjectSheet } from "./NewSession";
 import { saveScope } from "../scope";
@@ -172,7 +172,8 @@ export function RemoveProjectAlert({ remote, path, onDone, onCancel }: { remote:
       onCancel={onCancel}
       onOk={() => {
         onCancel();
-        void remote.changePrefs("hide", path).then((ok) => ok && onDone?.());
+        const done = fromHere(() => onDone?.());
+        void remote.changePrefs("hide", path).then((ok) => ok && done());
       }}
     />
   );

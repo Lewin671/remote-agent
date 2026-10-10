@@ -118,6 +118,9 @@ extension StatusTone {
 
 /// One command with its progress: running, and the error of the last try.
 /// Keep one in `@State` per button; `run` does nothing while one is running.
+/// The command goes on when its page is left, and `onDone` is called all the
+/// same: what it does to the stack goes through `Navigator.back(from:)` or
+/// `open(_:from:)`, which leave a stack the user has moved on in alone.
 @MainActor
 @Observable
 final class ActionRunner {

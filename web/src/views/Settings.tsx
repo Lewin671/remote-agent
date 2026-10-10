@@ -7,7 +7,7 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
-import { Alert, Banner, Dot, NavBar, Sheet, useEscape, useNow, useRemote } from "../ui";
+import { Alert, Banner, Dot, fromHere, NavBar, Sheet, useEscape, useNow, useRemote } from "../ui";
 import { clientDetail, clientName, clientUsed, dayText, defaultClientName, lastUsed, shortId, sortClients, type DeviceInfo } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { Check, ChevronRight, Laptop, Plus } from "../icons";
@@ -450,9 +450,10 @@ export function ClientPage({ remote, id, go, onBack }: { remote: Remote; id: str
           onCancel={() => setRemoving(false)}
           onOk={async () => {
             setRemoving(false);
+            const leave = fromHere(go);
             try {
               await remote.removeDevice(id);
-              go("devices");
+              leave("devices");
             } catch (e) {
               setError(errorText(e));
             }
@@ -773,9 +774,10 @@ export function MachinePage({ remote, id, go, onBack }: { remote: Remote; id: st
           onCancel={() => setRemoving(false)}
           onOk={async () => {
             setRemoving(false);
+            const leave = fromHere(go);
             try {
               await remote.removeDevice(id);
-              go("settings");
+              leave("settings");
             } catch (e) {
               setError(errorText(e));
             }
