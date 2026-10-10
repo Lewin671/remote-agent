@@ -200,7 +200,7 @@ fun ManageProjectsScreen() {
             if (elsewhere) Banner("项目列表已在另一客户端更新", Modifier.padding(vertical = 4.dp), action = "知道了", onAction = { elsewhere = false })
             ProjectList(state, onNew = { adding = true }) { pr ->
                 // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
-                ProjectRow(state, pr, onClick = { HomeScopes.choose(context, HomeScope.Of(pr.key)); nav.home() }, clickLabel = "在主页看这个项目") {
+                ProjectRow(state, pr, onClick = { HomeScopes.choose(context, remote.account.root, HomeScope.Of(pr.key)); nav.home() }, clickLabel = "在主页看这个项目") {
                     Box(Modifier.size(44.dp).clickable(enabled = PrefsChanges.states[pr.key] != PrefsChanges.State.Saving) { menu = pr }, contentAlignment = Alignment.Center) {
                         Ic(Lucide.Ellipsis, 20.dp, p.blue, contentDescription = "管理 ${pr.name}")
                     }

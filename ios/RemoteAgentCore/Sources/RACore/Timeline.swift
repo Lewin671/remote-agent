@@ -60,20 +60,25 @@ public func resolveScope(remembered: HomeScope?, state: RemoteState) -> HomeScop
     }
 }
 
-/// The scope as this device's settings keep it.
-public func encodeScope(_ scope: HomeScope) -> String {
+/// The key the remembered scope's project is marked with: the account's, for this use alone.
+public func scopeKey(root: Data) -> Data { Keys.deriveKey(root: root, purpose: "home-scope") }
+
+/// The scope as this device's settings keep it. Those are plaintext on
+/// disk, so a project is written as a mark only the account's key makes
+/// (HMAC-SHA256 of its path under `key`), never as its path.
+public func encodeScope(_ scope: HomeScope, key: Data) -> String {
     switch scope {
     case .all: return "all"
-    case .of(let key): return "project:" + key
+    case .of(let path): return "project:" + hmacSha256(key: key, Data(path.utf8)).hex
     }
 }
 
-/// The scope read back; nil for nothing stored or something else.
-public func decodeScope(_ stored: String?) -> HomeScope? {
+/// The scope read back: the one of `listed` whose mark was stored. Nil for
+/// nothing stored, something else, and a project that is not listed.
+public func decodeScope(_ stored: String?, key: Data, listed: [Project]) -> HomeScope? {
     guard let stored else { return nil }
     if stored == "all" { return .all }
-    if stored.jvmStartsWith("project:") { return .of(key: stored.removingPrefix("project:")) }
-    return nil
+    return listed.first { encodeScope(.of(key: $0.key), key: key) == stored }.map { .of(key: $0.key) }
 }
 
 /// The scope's name where the page writes it: 全部项目, or the project's.

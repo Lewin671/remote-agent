@@ -86,10 +86,23 @@ import Testing
         #expect(resolveScope(remembered: .all, state: state(session("1", "/a"))) == .of(key: "/a"))
     }
 
-    @Test func theScopeSurvivesTheDeviceSettings() {
-        for s in [HomeScope.all, .of(key: "/Users/me/Code/foo"), .of(key: ""), .of(key: "/a:b/project:c")] { #expect(decodeScope(encodeScope(s)) == s) }
-        #expect(decodeScope(nil) == nil)
-        #expect(decodeScope("something else") == nil)
+    @Test func theScopeSurvivesTheDeviceSettingsWithoutItsPath() {
+        let key = scopeKey(root: Data(repeating: 7, count: 32))
+        let foo = "/Users/me/Code/foo"
+        let st = state(session("1", foo), session("2", "/a:b/project:c"), session("3", "/work/caf\u{e9}"))
+        let listed = listedProjects(st)
+        for s in [HomeScope.all, .of(key: foo), .of(key: "/a:b/project:c")] { #expect(decodeScope(encodeScope(s, key: key), key: key, listed: listed) == s) }
+        // What is stored is a mark made with the account's key, the same on Android: nothing of the path.
+        #expect(encodeScope(.all, key: key) == "all")
+        #expect(encodeScope(.of(key: foo), key: key) == "project:2ac624a27cda79e036f4a5327451f4852a8937737402d8fdc57fd5cd97e871b8")
+        #expect(encodeScope(.of(key: "/work/caf\u{e9}"), key: key) == "project:6ab514031182a854b288122c47d43faaf9a13a45f49c8f1d97b52cd1190e5220")
+        #expect(encodeScope(.of(key: "/work/cafe\u{301}"), key: key) != encodeScope(.of(key: "/work/caf\u{e9}"), key: key))
+        // Another account's key reads nothing out of it, and a project that is not listed is not remembered.
+        #expect(decodeScope(encodeScope(.of(key: foo), key: key), key: scopeKey(root: Data(repeating: 8, count: 32)), listed: listed) == nil)
+        #expect(decodeScope(encodeScope(.of(key: "/gone"), key: key), key: key, listed: listed) == nil)
+        #expect(decodeScope(nil, key: key, listed: listed) == nil)
+        #expect(decodeScope("something else", key: key, listed: listed) == nil)
+        #expect(decodeScope("project:" + foo, key: key, listed: listed) == nil)
     }
 
     @Test func endedSessionsGroupByLocalCalendarDay() {

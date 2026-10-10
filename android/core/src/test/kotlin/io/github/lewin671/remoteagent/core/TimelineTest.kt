@@ -65,10 +65,21 @@ class TimelineTest {
     }
 
     @Test
-    fun theScopeSurvivesTheDeviceSettings() {
-        for (s in listOf(HomeScope.All, HomeScope.Of("/Users/me/Code/foo"), HomeScope.Of(""), HomeScope.Of("/a:b/project:c"))) assertEquals(s, decodeScope(encodeScope(s)))
-        assertNull(decodeScope(null))
-        assertNull(decodeScope("something else"))
+    fun theScopeSurvivesTheDeviceSettingsWithoutItsPath() {
+        val key = scopeKey(ByteArray(32) { 7 })
+        val foo = "/Users/me/Code/foo"
+        val listed = listedProjects(state(session("1", foo), session("2", "/a:b/project:c"), session("3", "/work/caf\u00e9")))
+        for (s in listOf(HomeScope.All, HomeScope.Of(foo), HomeScope.Of("/a:b/project:c"))) assertEquals(s, decodeScope(encodeScope(s, key), key, listed))
+        // What is stored is a mark made with the account's key, the same on iOS: nothing of the path.
+        assertEquals("all", encodeScope(HomeScope.All, key))
+        assertEquals("project:2ac624a27cda79e036f4a5327451f4852a8937737402d8fdc57fd5cd97e871b8", encodeScope(HomeScope.Of(foo), key))
+        assertEquals("project:6ab514031182a854b288122c47d43faaf9a13a45f49c8f1d97b52cd1190e5220", encodeScope(HomeScope.Of("/work/caf\u00e9"), key))
+        // Another account's key reads nothing out of it, and a project that is not listed is not remembered.
+        assertNull(decodeScope(encodeScope(HomeScope.Of(foo), key), scopeKey(ByteArray(32) { 8 }), listed))
+        assertNull(decodeScope(encodeScope(HomeScope.Of("/gone"), key), key, listed))
+        assertNull(decodeScope(null, key, listed))
+        assertNull(decodeScope("something else", key, listed))
+        assertNull(decodeScope("project:$foo", key, listed))
     }
 
     @Test

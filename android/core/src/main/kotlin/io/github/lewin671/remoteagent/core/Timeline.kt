@@ -47,17 +47,27 @@ fun resolveScope(remembered: HomeScope?, state: RemoteState): HomeScope {
     }
 }
 
-/** The scope as this device's settings keep it. */
-fun encodeScope(scope: HomeScope): String = when (scope) {
+/** The key the remembered scope's project is marked with: the account's, for this use alone. */
+fun scopeKey(root: ByteArray): ByteArray = Keys.deriveKey(root, "home-scope")
+
+/**
+ * The scope as this device's settings keep it. Those are plaintext on disk,
+ * so a project is written as a mark only the account's key makes
+ * (HMAC-SHA256 of its path under [key]), never as its path.
+ */
+fun encodeScope(scope: HomeScope, key: ByteArray): String = when (scope) {
     HomeScope.All -> "all"
-    is HomeScope.Of -> "project:" + scope.key
+    is HomeScope.Of -> "project:" + hmacSha256(key, scope.key.toByteArray()).hex()
 }
 
-/** The scope read back; null for nothing stored or something else. */
-fun decodeScope(stored: String?): HomeScope? = when {
-    stored == "all" -> HomeScope.All
-    stored != null && stored.startsWith("project:") -> HomeScope.Of(stored.removePrefix("project:"))
-    else -> null
+/**
+ * The scope read back: the one of [listed] whose mark was stored. Null for
+ * nothing stored, something else, and a project that is not listed.
+ */
+fun decodeScope(stored: String?, key: ByteArray, listed: List<Project>): HomeScope? = when (stored) {
+    null -> null
+    "all" -> HomeScope.All
+    else -> listed.firstOrNull { encodeScope(HomeScope.Of(it.key), key) == stored }?.let { HomeScope.Of(it.key) }
 }
 
 /** Which of 项目, CLI and 机器 a row's third line writes: only what differs between the rows of its list. */

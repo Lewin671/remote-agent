@@ -83,6 +83,7 @@ import io.github.lewin671.remoteagent.core.previewOf
 import io.github.lewin671.remoteagent.core.projectKey
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.resolveScope
+import io.github.lewin671.remoteagent.core.scopeKey
 import io.github.lewin671.remoteagent.core.scopeRows
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.core.whenText
@@ -91,27 +92,32 @@ import io.github.lewin671.remoteagent.core.whenText
  * The home page's scope as this device remembers it (client-v27,
  * architecture §8): kept with the device's own settings and not in the
  * account's preferences, because different devices often look at different
- * projects. Null until the user chose one; what the page then uses is
- * resolveScope's answer.
+ * projects. Those settings are plaintext on disk, so a project is kept as a
+ * mark made with the account's key ([encodeScope]) and never as its path.
+ * Nothing is remembered until the user chose a scope; what the page then
+ * uses is resolveScope's answer. `root` is the account's root key.
  */
 object HomeScopes {
-    private var state: MutableState<HomeScope?>? = null
+    private var stored: MutableState<String?>? = null
 
     private fun store(context: Context) = context.applicationContext.getSharedPreferences("home-scope", Context.MODE_PRIVATE)
 
-    private fun state(context: Context): MutableState<HomeScope?> =
-        state ?: mutableStateOf(decodeScope(store(context).getString("scope", null))).also { state = it }
+    private fun stored(context: Context): MutableState<String?> =
+        stored ?: mutableStateOf(store(context).getString("scope", null)).also { stored = it }
 
-    fun remembered(context: Context): HomeScope? = state(context).value
+    /** The scope chosen, while the project it names is one of [state]'s lists. */
+    fun remembered(context: Context, root: ByteArray, state: RemoteState): HomeScope? =
+        decodeScope(stored(context).value, scopeKey(root), listedProjects(state))
 
-    fun choose(context: Context, scope: HomeScope) {
-        state(context).value = scope
-        store(context).edit().putString("scope", encodeScope(scope)).apply()
+    fun choose(context: Context, root: ByteArray, scope: HomeScope) {
+        val mark = encodeScope(scope, scopeKey(root))
+        stored(context).value = mark
+        store(context).edit().putString("scope", mark).apply()
     }
 
-    /** Forgotten with the account: the scope names one of its project paths. */
+    /** Forgotten with the account: the mark is one of its projects'. */
     fun clear(context: Context) {
-        state(context).value = null
+        stored(context).value = null
         store(context).edit().clear().apply()
     }
 }
@@ -129,15 +135,14 @@ fun HomeScreen() {
     val state by remote.state.collectAsState()
     val p = pal
     val t = now()
-    val scope = resolveScope(HomeScopes.remembered(context), state)
-    val scopeKey = encodeScope(scope)
+    val scope = resolveScope(HomeScopes.remembered(context, remote.account.root, state), state)
     // What is typed stays in memory: saved instance state is plaintext on disk (architecture §15).
-    var query by remember(scopeKey) { mutableStateOf("") }
+    var query by remember(scope) { mutableStateOf("") }
     val filtering = query.isNotBlank()
     val tl = remember(state, scope, query) { homeTimeline(state, scope, query) }
-    var showAll by remember(scopeKey) { mutableStateOf(false) }
-    var showRunning by remember(scopeKey) { mutableStateOf(false) }
-    var shownEnded by remember(scopeKey, query) { mutableIntStateOf(ENDED_PAGE) }
+    var showAll by remember(scope) { mutableStateOf(false) }
+    var showRunning by remember(scope) { mutableStateOf(false) }
+    var shownEnded by remember(scope, query) { mutableIntStateOf(ENDED_PAGE) }
     var pick by rememberSaveable { mutableStateOf(false) }
     var menu by rememberSaveable { mutableStateOf(false) }
     // Without any project, removed ones included, there is nothing to scope by.
@@ -210,7 +215,7 @@ fun HomeScreen() {
         item { Spacer(Modifier.height(24.dp)) }
     }
     if (pick) PickProjectSheet(state) { pick = false }
-    if (menu) ScopeSheet(state, scope, t, onPick = { HomeScopes.choose(context, it) }) { menu = false }
+    if (menu) ScopeSheet(state, scope, t, onPick = { HomeScopes.choose(context, remote.account.root, it) }) { menu = false }
 }
 
 /**

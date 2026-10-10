@@ -48,6 +48,10 @@ public func sha256(_ parts: Data...) -> Data {
     return Data(h.finalize())
 }
 
+public func hmacSha256(key: Data, _ message: Data) -> Data {
+    Data(HMAC<SHA256>.authenticationCode(for: message, using: SymmetricKey(data: key)))
+}
+
 /// HKDF-SHA256 with the given salt and info.
 public func hkdf(secret: Data, salt: Data?, info: Data, size: Int) -> Data {
     let key = HKDF<SHA256>.deriveKey(

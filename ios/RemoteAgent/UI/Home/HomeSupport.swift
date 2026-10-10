@@ -10,36 +10,46 @@ import SwiftUI
 /// The home page's scope as this device remembers it (architecture §8
 /// 「主页的范围」): kept with the device's own settings and not in the
 /// account's preferences, because different devices often look at
-/// different projects. Nil until the user chose one; what the page then
-/// uses is `resolveScope`'s answer.
+/// different projects. Those settings are plaintext on disk, so a project
+/// is kept as a mark made with the account's key (`encodeScope`) and never
+/// as its path. Nothing is remembered until the user chose a scope; what
+/// the page then uses is `resolveScope`'s answer.
 @MainActor
 @Observable
 final class HomeScopes {
-    /// Under the account's prefix, so it is forgotten with the account: the scope names one of its project paths.
+    /// Under the account's prefix, so it is forgotten with the account: the mark is one of its projects'.
     static let key = AccountDefaults.key("home-scope")
 
-    private(set) var remembered: HomeScope?
+    private var stored: String?
+    @ObservationIgnored private let mark: Data
     @ObservationIgnored private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    /// `root`: the account's root key.
+    init(root: Data, defaults: UserDefaults = .standard) {
+        mark = scopeKey(root: root)
         self.defaults = defaults
-        remembered = decodeScope(defaults.string(forKey: Self.key))
+        stored = defaults.string(forKey: Self.key)
+    }
+
+    /// The scope chosen, while the project it names is one of `state`'s lists.
+    func remembered(_ state: RemoteState) -> HomeScope? {
+        decodeScope(stored, key: mark, listed: listedProjects(state))
     }
 
     func choose(_ scope: HomeScope) {
-        remembered = scope
-        defaults.set(encodeScope(scope), forKey: Self.key)
+        stored = encodeScope(scope, key: mark)
+        defaults.set(stored, forKey: Self.key)
     }
 
     #if DEBUG
     /// A scope to look at with sample data, without storing it over the one the real account left.
-    func show(_ scope: HomeScope) { remembered = scope }
+    func show(_ scope: HomeScope) { stored = encodeScope(scope, key: mark) }
     #endif
 }
 
 extension AccountContext {
     /// The scope the home page was left on, for the pages that read or change it.
-    var homeScopes: HomeScopes { memory.value { HomeScopes() } }
+    var homeScopes: HomeScopes { memory.value { HomeScopes(root: account.root) } }
 }
 
 private struct FetchEarlier: ViewModifier {

@@ -25,7 +25,7 @@ struct HomeScreen: View {
     var body: some View {
         let state = model.state
         let scopes = context.homeScopes
-        let scope = resolveScope(remembered: scopes.remembered, state: state)
+        let scope = resolveScope(remembered: scopes.remembered(state), state: state)
         // Without any project, removed ones included, there is nothing to scope by.
         let anyProject = !projects(state).isEmpty
         Page {
@@ -37,7 +37,7 @@ struct HomeScreen: View {
                 .readableColumn()
                 ConnectionBar()
                 // What is typed and opened belongs to the scope: another scope starts over, at the top.
-                HomeTimeline(state: state, scope: scope).id(encodeScope(scope))
+                HomeTimeline(state: state, scope: scope).id(scope)
             }
         }
         // A folder's listing has no height to fit before it is read; the list of projects does.

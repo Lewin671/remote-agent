@@ -50,6 +50,9 @@ fun sha256(vararg parts: ByteArray): ByteArray {
     return md.digest()
 }
 
+fun hmacSha256(key: ByteArray, message: ByteArray): ByteArray =
+    javax.crypto.Mac.getInstance("HmacSHA256").apply { init(javax.crypto.spec.SecretKeySpec(key, "HmacSHA256")) }.doFinal(message)
+
 /** HKDF-SHA256 with the given salt and info. */
 fun hkdf(secret: ByteArray, salt: ByteArray?, info: ByteArray, size: Int): ByteArray {
     val gen = HKDFBytesGenerator(SHA256Digest())

@@ -22,16 +22,26 @@ import Testing
         for _ in 0..<200 where !done() { try? await Task.sleep(for: .milliseconds(10)) }
     }
 
-    @Test func theScopeIsRememberedOnThisDeviceAndForgottenWithTheAccount() {
+    @Test func theScopeIsRememberedOnThisDeviceAndForgottenWithTheAccount() throws {
         let d = defaults()
-        #expect(HomeScopes(defaults: d).remembered == nil)
-        HomeScopes(defaults: d).choose(.of(key: "/Users/me/Code/foo"))
-        #expect(HomeScopes(defaults: d).remembered == .of(key: "/Users/me/Code/foo"))
-        HomeScopes(defaults: d).choose(.all)
-        #expect(HomeScopes(defaults: d).remembered == .all)
-        // Logging out clears what is kept under the account's prefix: the scope names one of its paths.
+        let root = Demo.account.root
+        let foo = "/Users/me/Code/foo"
+        var state = RemoteState()
+        for path in [foo, "/Users/me/Code/bar"] { state.sessions[path] = SessionView(id: path, machineId: "m", info: .with { $0.cwd = path }) }
+        #expect(HomeScopes(root: root, defaults: d).remembered(state) == nil)
+        HomeScopes(root: root, defaults: d).choose(.of(key: foo))
+        #expect(HomeScopes(root: root, defaults: d).remembered(state) == .of(key: foo))
+        // The settings are plaintext on disk: they hold a mark made with the account's key, nothing of the path.
+        let stored = try #require(d.string(forKey: HomeScopes.key))
+        #expect(stored == encodeScope(.of(key: foo), key: scopeKey(root: root)))
+        #expect(!stored.contains("foo") && !stored.contains("/"))
+        // Another account's key does not read it.
+        #expect(HomeScopes(root: Data(repeating: 9, count: 32), defaults: d).remembered(state) == nil)
+        HomeScopes(root: root, defaults: d).choose(.all)
+        #expect(HomeScopes(root: root, defaults: d).remembered(state) == .all)
+        // Logging out clears what is kept under the account's prefix.
         AccountDefaults.clear(d)
-        #expect(HomeScopes(defaults: d).remembered == nil)
+        #expect(HomeScopes(root: root, defaults: d).remembered(state) == nil)
     }
 
     @Test func theScopeAndTheDraftsBelongToTheAccountInUse() {
