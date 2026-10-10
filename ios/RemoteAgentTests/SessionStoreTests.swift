@@ -106,6 +106,18 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
 
+    @Test func aMessageWhoseAnswerWasLostIsLetGoOnceTheCliRecordedIt() async {
+        computer.answer(unknown, offline)
+        await store.send(computer, sid: "s", text: "甲").value
+        await store.send(computer, sid: "s", text: "乙").value
+        #expect(store.outgoing("s").map(\.state) == [.unknown, .failed])
+        var inputs = OrderedMap<String, PBInputStatus>()
+        inputs[store.outgoing("s")[0].requestId] = .submitted
+        store.settle("s", inputs: inputs)
+        // The one the events say nothing of stays, with its retry.
+        #expect(store.outgoing("s").map(\.text) == ["乙"])
+    }
+
     // MARK: Drafts
 
     @Test func aDraftIsKeptPerSession() {

@@ -339,7 +339,7 @@ struct ChatPane: View {
             agent: session.agent, cwd: session.info?.cwd ?? "", home: state.machines[session.machineId]?.meta?.home ?? "",
             frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals, noResult: d.noResult)
         let pending = pendingInputs(d)
-        let outgoing = store.outgoing(sid).filter { outgoingShown(state: $0.state, input: d.inputs[$0.requestId]) }
+        let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
         let dock = dockItems(d)
         ScrollViewReader { proxy in
             ScrollView {
@@ -441,7 +441,11 @@ struct ChatPane: View {
             SheetHead("选择文字", action: "完成") { selecting = nil }
             SelectableText(text: picked.text)
         }
-        .onChange(of: d.inputs) { _, inputs in store.settleCancels(inputs: inputs) }
+        // Also when the pane comes back from the terminal with the events it already had.
+        .onChange(of: d.inputs, initial: true) { _, inputs in
+            store.settle(sid, inputs: inputs)
+            store.settleCancels(inputs: inputs)
+        }
         .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock) }
         .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }
         .debugSignal("session.focus") { typing = true }

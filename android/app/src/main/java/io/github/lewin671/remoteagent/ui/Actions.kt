@@ -198,6 +198,16 @@ fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<S
 fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputStatus>): List<Outgoing> =
     list.filter { inputs[it.requestId] == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED }
 
+/**
+ * Whether a message sent from here is still shown under the chat: until the
+ * daemon's events have it, and for as long as they say it did not go. The
+ * events are the truth: once they have the message queued, submitted or
+ * canceled, a try from here that failed or was left unknown did arrive.
+ */
+fun outgoingShown(input: io.github.lewin671.remoteagent.proto.InputStatus?): Boolean =
+    input == null || input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED ||
+        input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED || input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL
+
 /** Messages sent from this device, per session, for this run of the app (and those with images, from before it). */
 object Outbox {
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()

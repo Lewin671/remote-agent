@@ -286,6 +286,8 @@ private fun ChatPane(
     }
     val pendingInputs = pendingInputs(d)
     LaunchedEffect(d.inputs) {
+        // The messages the CLI has recorded are the chat's own rows from here on.
+        Outbox.settle(s.id, d.inputs)
         d.inputs.forEach { (id, status) ->
             if (status != InputStatus.INPUT_STATUS_QUEUED && status != InputStatus.INPUT_STATUS_HELD_BY_CLI) Cancels.states.remove(id)
         }
@@ -348,11 +350,7 @@ private fun ChatPane(
                     TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true })
                 }
                 // Messages from this device, until the chat shows them.
-                val pending = outbox.filter { o ->
-                    val st = d.inputs[o.requestId]
-                    st == null || o.state == Outgoing.State.FAILED || o.state == Outgoing.State.UNKNOWN || st == InputStatus.INPUT_STATUS_UNCONFIRMED ||
-                        st == InputStatus.INPUT_STATUS_FAILED || st == InputStatus.INPUT_STATUS_NEEDS_TERMINAL
-                }
+                val pending = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
                 items(pending, key = { "out" + it.requestId }) { o -> OutgoingView(s.id, o, d.inputs[o.requestId], d.failures[o.requestId], onTerminal) }
                 item { Spacer(Modifier.height(8.dp)) }
             }

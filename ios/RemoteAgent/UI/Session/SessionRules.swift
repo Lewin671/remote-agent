@@ -136,9 +136,11 @@ func outgoingNote(
 }
 
 /// Whether a message sent from here is still shown under the chat: until
-/// the daemon's events have it, and for as long as it did not go.
-func outgoingShown(state: Outgoing.State, input: PBInputStatus?) -> Bool {
-    input == nil || state == .failed || state == .unknown || input == .unconfirmed || input == .failed || input == .needsTerminal
+/// the daemon's events have it, and for as long as they say it did not go.
+/// The events are the truth: once they have the message queued, submitted
+/// or canceled, a try from here that failed or was left unknown did arrive.
+func outgoingShown(input: PBInputStatus?) -> Bool {
+    input == nil || input == .unconfirmed || input == .failed || input == .needsTerminal
 }
 
 // MARK: The message box

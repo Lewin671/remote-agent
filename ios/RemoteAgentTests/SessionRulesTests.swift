@@ -158,14 +158,15 @@ extension Ref<LiveAnnouncer> {
     }
 
     @Test func aMessageIsShownUnderTheChatUntilTheEventsHaveIt() {
-        #expect(outgoingShown(state: .sending, input: nil))
-        #expect(outgoingShown(state: .sent, input: nil))
-        #expect(!outgoingShown(state: .sent, input: .queued), "the pending bubble shows it from here")
-        #expect(!outgoingShown(state: .sent, input: .submitted))
-        #expect(outgoingShown(state: .sent, input: .failed))
-        #expect(outgoingShown(state: .sent, input: .needsTerminal))
-        #expect(outgoingShown(state: .sent, input: .unconfirmed))
-        #expect(outgoingShown(state: .unknown, input: .submitted))
+        #expect(outgoingShown(input: nil))
+        #expect(!outgoingShown(input: .queued), "the pending bubble shows it from here")
+        #expect(!outgoingShown(input: .heldByCli))
+        // Whatever the try from here ended with, lost answer included: the CLI recorded the message.
+        #expect(!outgoingShown(input: .submitted))
+        #expect(!outgoingShown(input: .canceled))
+        #expect(outgoingShown(input: .failed))
+        #expect(outgoingShown(input: .needsTerminal))
+        #expect(outgoingShown(input: .unconfirmed))
     }
 
     @Test func sendingNeedsTextAConnectionAndAComputerThatSpeaksTheSameProtocol() {
