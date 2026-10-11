@@ -1,7 +1,7 @@
 #!/bin/sh
 # Makes the public repository's main branch the content of
 # deploy/releases-repo/: its pages, the installer, the self-hosting
-# templates and its workflow. Run by the Public pages workflow whenever
+# templates. Run by the Public pages workflow whenever
 # that directory changes on main, so what people read and run there is what
 # was tested here; no release is needed for it.
 #

@@ -103,13 +103,13 @@ WEB_BUILT = {"index.html", "_headers", "licenses/THIRD_PARTY_NOTICES.txt"}
 WEB_ASSET = re.compile(r"assets/[\w.-]+-[\w-]{8}\.(js|css)")
 
 
-def web_files():
+def web_files(public=None):
     """The files every web archive holds: web/public as it is here, and what a build adds."""
-    public = Path(__file__).resolve().parents[1] / "web" / "public"
+    public = Path(public) if public is not None else Path(__file__).resolve().parents[1] / "web" / "public"
     return WEB_BUILT | {p.relative_to(public).as_posix() for p in public.rglob("*") if p.is_file() and p.name != ".DS_Store"}
 
 
-def release(tag, dist):
+def release(tag, dist, web_public=None):
     """What is wrong with a packaged release as a whole: its files are exactly
     the ones a release has, and each archive holds exactly what belongs in it."""
     daemon = {"remote-agent", "remote-agent-service", "THIRD_PARTY_NOTICES.txt"}
@@ -132,7 +132,7 @@ def release(tag, dist):
             continue
         inside = {m[len(name) + 1:] for m in inside}
         if contents is None:
-            fixed = web_files()
+            fixed = web_files(web_public)
             assets = {m for m in inside if WEB_ASSET.fullmatch(m)}
             wrong = sorted((inside - assets) ^ fixed) + ([] if assets else ["assets/"])
         else:

@@ -1,6 +1,6 @@
 name: Public pages
 
-# The public repository's pages, installer and workflow follow
+# The public repository's pages, installer and templates follow
 # deploy/releases-repo/ on main, without waiting for a release.
 on:
   push:

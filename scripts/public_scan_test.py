@@ -103,6 +103,20 @@ class PublicScanTests(unittest.TestCase):
     def test_a_complete_release_passes(self):
         self.assertEqual([], public_scan.release('v1.2.3', self.release_dir()))
 
+    def test_retry_uses_tagged_web_inventory_with_current_privacy_scan(self):
+        dist = self.release_dir()
+        tagged_public = self.root / 'tagged-public'
+        tagged_public.mkdir()
+        (tagged_public / 'older.txt').write_text('public asset')
+        name = 'remote-agent-web-v1.2.3'
+        with tarfile.open(dist / (name + '.tar.gz'), 'w:gz') as t:
+            for f in public_scan.WEB_BUILT | {'older.txt', 'assets/index-Ab_1cD-9.js'}:
+                t.addfile(tarfile.TarInfo(f'{name}/{f}'), io.BytesIO(b''))
+        self.assertNotEqual([], public_scan.release('v1.2.3', dist))
+        self.assertEqual([], public_scan.release('v1.2.3', dist, tagged_public))
+        (dist / 'latest.properties').write_text(HOST)
+        self.assertTrue(public_scan.scan([dist]))
+
     def test_a_release_with_other_or_missing_files_is_refused(self):
         dist = self.release_dir()
         (dist / 'notes.txt').write_text('x')
