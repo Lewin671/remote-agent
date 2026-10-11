@@ -64,8 +64,17 @@ def releases(repo):
     return [release for page in pages for release in page]
 
 
-def verify(repo, tag, files):
-    state = json.loads(gh("api", f"repos/{repo}/releases/tags/{tag}"))
+def release_by_id(repo, tag, release_id):
+    # The tag endpoint only returns published releases. Drafts are found
+    # in the authenticated release list and then read by their stable ID.
+    state = json.loads(gh("api", f"repos/{repo}/releases/{release_id}"))
+    if state["tag_name"] != tag:
+        raise ValueError("Release ID no longer identifies the expected tag")
+    return state
+
+
+def verify(repo, tag, files, release_id):
+    state = release_by_id(repo, tag, release_id)
     names = [asset["name"] for asset in state["assets"]]
     if len(names) != len(files) or set(names) != set(files):
         raise ValueError("The remote Release must contain exactly the expected assets")
@@ -85,7 +94,7 @@ def publish(tag, dist, notes, repo, dry_run=False, web_public=None):
     existing = releases(repo)
     state = next((r for r in existing if r["tag_name"] == tag), None)
     if state and not state["draft"]:
-        verified = verify(repo, tag, files)
+        verified = verify(repo, tag, files, state["id"])
         if verified["draft"] or verified["prerelease"]:
             raise ValueError("Expected a published stable Release")
         print(f"{tag} is already published with exactly these files; unchanged")
@@ -105,18 +114,21 @@ def publish(tag, dist, notes, repo, dry_run=False, web_public=None):
         if state is None:
             gh("release", "create", tag, "--repo", repo, "--target", "main", "--draft",
                "--title", tag, "--notes-file", public_notes)
+            state = next((r for r in releases(repo) if r["tag_name"] == tag), None)
+            if state is None:
+                raise ValueError("Created draft was not found in the release list")
         # Resume an interrupted draft, never change a published version.
-        draft = json.loads(gh("api", f"repos/{repo}/releases/tags/{tag}"))
+        draft = release_by_id(repo, tag, state["id"])
         if not draft["draft"]:
             raise ValueError("Release is no longer a draft; refusing to upload")
         if any(asset["name"] not in files for asset in draft["assets"]):
             raise ValueError("Draft contains unexpected assets; inspect it before retrying")
         gh("release", "upload", tag, *files.values(), "--repo", repo, "--clobber")
-        if not verify(repo, tag, files)["draft"]:
+        if not verify(repo, tag, files, state["id"])["draft"]:
             raise ValueError("Release became public before verification completed")
         gh("release", "edit", tag, "--repo", repo, "--draft=false", "--prerelease=false",
            f"--latest={str(latest).lower()}", "--title", tag, "--notes-file", public_notes)
-        final = json.loads(gh("api", f"repos/{repo}/releases/tags/{tag}"))
+        final = release_by_id(repo, tag, state["id"])
         if final["draft"] or final["prerelease"]:
             raise ValueError("Release was not published as stable")
     print(f"Published {tag} at https://github.com/{repo}/releases/tag/{tag}")

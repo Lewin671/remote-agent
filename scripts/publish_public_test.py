@@ -35,7 +35,7 @@ class PublishTests(unittest.TestCase):
         (self.dist / 'latest.properties').write_text(f'version={self.tag[1:]}\napk={apk.name}\nsha256={publisher.sha256(apk)}\nsize={apk.stat().st_size}\n')
 
     def state(self, tag=None, draft=True):
-        state = {'tag_name': tag or self.tag, 'draft': draft, 'prerelease': False, 'assets': []}
+        state = {'id': len(self.states) + 1, 'tag_name': tag or self.tag, 'draft': draft, 'prerelease': False, 'assets': []}
         self.states.append(state)
         return state
 
@@ -49,7 +49,12 @@ class PublishTests(unittest.TestCase):
         state = next((s for s in self.states if s['tag_name'] == self.tag), None)
         if args[0] == 'api':
             if '/tags/' in args[1]:
+                if state is None or state['draft']:
+                    raise subprocess.CalledProcessError(1, ['gh', 'api', args[1]])
                 return json.dumps(state)
+            if '?' not in args[1]:
+                release_id = int(args[1].rsplit('/', 1)[1])
+                return json.dumps(next(s for s in self.states if s['id'] == release_id))
             return json.dumps([self.states[:1], self.states[1:]])
         command = args[1]
         if command == 'create':
@@ -93,6 +98,12 @@ class PublishTests(unittest.TestCase):
         self.assertFalse(self.states[0]['draft'])
         self.assertEqual(1, sum(c[:2] == ('release', 'create') for c in self.calls))
         self.assertIn('--latest=true', self.writes()[-1])
+
+    def test_new_draft_can_be_verified_when_the_tag_endpoint_returns_404(self):
+        self.publish()
+        self.assertFalse(self.states[0]['draft'])
+        self.assertFalse(any('/tags/' in c[1] for c in self.calls if c[0] == 'api'))
+        self.assertTrue(any(c[:2] == ('api', f'repos/{self.repo}/releases/1') for c in self.calls))
 
     def test_same_published_release_is_read_only_but_different_files_fail(self):
         self.populate(self.state(draft=False))
