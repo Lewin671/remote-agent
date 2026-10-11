@@ -5,7 +5,9 @@ import UIKit
 
 @MainActor
 @Suite struct PrivacyShieldTests {
-    @Test func aSceneThatIsNotInUseIsCoveredAndUncoveredWhenItIsAgain() throws {
+    @Test func aSceneThatIsNotInUseIsCoveredAndUncoveredWhenItIsAgain() async throws {
+        await WindowTestGate.shared.acquire()
+        defer { WindowTestGate.shared.release() }
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let shield = PrivacyShield.shared
         shield.uncover(scene)
@@ -25,6 +27,8 @@ import UIKit
     }
 
     @Test func theSystemsNoticeOfLeavingCoversTheScene() async throws {
+        await WindowTestGate.shared.acquire()
+        defer { WindowTestGate.shared.release() }
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let shield = PrivacyShield.shared
         shield.install()

@@ -106,6 +106,7 @@
 //   session.rename.save saves debug.sessionText as the title
 //   session.top, session.back, session.end      the chat: to its start, away from its end, back to it
 //   session.focus, session.blur                 the keyboard up and down
+//   session.select                             选择文字 of the last agent reply
 //   session.stream, session.resolve             sample data: a turn plays into the session; its first approval
 //                       is answered as by another client
 //   client.rename, client.reset, client.remove  a client's page: a fixed new name, 恢复默认名称, 移除

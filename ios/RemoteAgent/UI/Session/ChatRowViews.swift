@@ -157,8 +157,13 @@ extension View {
             contextMenu {
                 Button("复制") { UIPasteboard.general.string = text }
                 Button("选择文字") { actions.select(text) }
+            } preview: {
+                // A full reply's snapshot can fill the screen and looks like
+                // selectable text, but is only the menu's inert preview.
+                MessageMenuPreview(text: text)
             }
             .accessibilityAction(named: "复制") { UIPasteboard.general.string = text }
+            .accessibilityAction(named: "选择文字") { actions.select(text) }
         }
     }
 }

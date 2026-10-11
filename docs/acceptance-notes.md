@@ -167,6 +167,20 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 ## 11. iOS
 
+### 消息文字选择（2026-10-10）
+
+Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。聊天长按菜单使用最多四行的预览；「选择文字」打开 large sheet，标题固定，单个只读 `UITextView` 同时负责选区和滚动，不套在 `kitSheet` 的外层 `ScrollView` 里。
+
+自动回归覆盖：320、390、744 pt 宽度下的长文视口与末段定位滚动；跨段落复制中文、组合字符、emoji 和 Markdown 原文；刷新颜色方案后保留选区和滚动位置；最大辅助字号；长回复的菜单预览高度。复制通过 UIKit 的 `copy` 实际读回模拟器剪贴板，不只是比较字符串。
+
+检查通过：Go 全量测试、Swift Package 409 项、App 271 项（含参数化共 304 次），生成的协议代码无差异。界面测试通过共享窗口门锁串行使用前台 scene，避免选字、布局和隐私遮挡测试互相干扰；刷新时允许 TextKit 不到一行的布局调整，但不允许丢选区或跳回顶部。
+
+隔离的本地 server、daemon 和真实 Codex（GPT-6-Luna low）：App 用 `session.draft` / `session.send` 发出消息，daemon 事件确认来自客户端，收到 20 段中文与 emoji 回复；用 `session.select` 触发和「选择文字」相同的函数，亮色、暗色截图确认回复内容与全高选字页面。测试结束退出临时账户，停止并清理隔离环境。
+
+未覆盖：真机、手指长按菜单、拖动选区手柄越过屏幕边缘时的自动滚动、系统复制菜单的位置，以及 iOS 17。调试信号打开选字页面和程序设置 `selectedRange` 的验证不能替代这些手势验收。
+
+### 客户端基础验收
+
 2026-10-09，Xcode 27.0，iOS 27 模拟器（iPhone 17、iPhone 18 Pro、iPhone Air），没有真机。每一块各用一套隔离的 server 和 daemon（`ios/scripts/dev-env.sh`），连真实的 Codex（0.162.0，daemon 提示这个版本没验证过）。**这台机器上没有往模拟器注入触摸的工具**：下面的操作都是用调试信号触发和按钮相同的函数（清单在 `ios/RemoteAgent/App/Launch.swift` 开头），不是手指点的。
 
 自动测试：`ios/scripts/check.sh` 通过。Swift Package 389 项（`RACore` 372 项，其中同步、配对、分页、指令和登录连本仓库构建的 Go server 跑；`RAMarkdown` 17 项，含共用的 `testdata/markdown/cases.json`），App 208 项。加密读 Go 和 Kotlin 写的三份向量。

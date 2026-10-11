@@ -17,6 +17,8 @@ import UIKit
 
     /// Lays `view` out in a window `width` wide and waits until `done` holds, or a second.
     private func show<V: View>(_ view: V, width: CGFloat, until done: @MainActor () -> Bool) async throws {
+        await WindowTestGate.shared.acquire()
+        defer { WindowTestGate.shared.release() }
         let host = UIHostingController(rootView: view)
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)

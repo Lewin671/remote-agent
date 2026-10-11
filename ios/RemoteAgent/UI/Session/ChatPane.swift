@@ -257,33 +257,6 @@ private struct SelectedText: Identifiable {
     var id: String { text }
 }
 
-private struct SelectableText: UIViewRepresentable {
-    let text: String
-
-    func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
-        view.isEditable = false
-        // The sheet scrolls; the text is as tall as it is.
-        view.isScrollEnabled = false
-        view.backgroundColor = .clear
-        view.adjustsFontForContentSizeCategory = true
-        view.font = .preferredFont(forTextStyle: .subheadline)
-        view.textContainerInset = .zero
-        view.textContainer.lineFragmentPadding = 0
-        return view
-    }
-
-    func updateUIView(_ view: UITextView, context: Context) {
-        if view.text != text { view.text = text }
-        view.textColor = UIColor(Theme.fg)
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let width = proposal.width ?? 320
-        return CGSize(width: width, height: uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height)
-    }
-}
-
 struct ChatPane: View {
     let session: SessionView
     let status: Status
@@ -304,6 +277,11 @@ struct ChatPane: View {
     @FocusState private var typing: Bool
 
     private static let end = "chat-end"
+
+    private func selectMessage(_ text: String) {
+        typing = false
+        selecting = SelectedText(text: text)
+    }
 
     private func toEnd(_ proxy: ScrollViewProxy, animated: Bool = false) {
         if animated && !reduceMotion {
@@ -436,10 +414,9 @@ struct ChatPane: View {
                     store.appendToDraft(sid, text)
                 }
             },
-            select: { selecting = SelectedText(text: $0) }))
-        .kitSheet(item: $selecting, size: .mediumOrLarge) { picked in
-            SheetHead("选择文字", action: "完成") { selecting = nil }
-            SelectableText(text: picked.text)
+            select: selectMessage))
+        .sheet(item: $selecting) { picked in
+            MessageTextSelection(text: picked.text) { selecting = nil }
         }
         // Also when the pane comes back from the terminal with the events it already had.
         .onChange(of: d.inputDetails, initial: true) { _, inputs in
@@ -450,6 +427,14 @@ struct ChatPane: View {
         .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }
         .debugSignal("session.focus") { typing = true }
         .debugSignal("session.blur") { typing = false }
+        .debugSignal("session.select") {
+            for row in chat.rows.reversed() {
+                if case .agent(let reply) = row.item {
+                    selectMessage(reply.text)
+                    break
+                }
+            }
+        }
     }
 
     private func announce(_ last: ChatItem?, _ dock: [DockItem]) {
