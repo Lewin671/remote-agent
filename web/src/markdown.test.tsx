@@ -154,8 +154,20 @@ it("keeps code pipes in one column and literal unmatched ticks do not swallow co
   expect(tableCells("| ``x`|y`` | z |")).toEqual(["``x`|y``", "z"]);
   expect(tableCells("| unfinished ` | z |")).toEqual(["unfinished `", "z"]);
 });
-it("does not render mismatched header and separator counts as a table", () => {
+it("does not render a separator missing header columns as a table", () => {
   expect(mdBlocks("| a | b |\n| --- |\n| 1 | 2 |").some((b) => b.kind === "table")).toBe(false);
+});
+it("renders the five-column CLI table with a surplus separator as a table", () => {
+  const out = html([
+    "| 技术路线 | 工作方式 | 优点 | 缺点与边界 | 代表方案 |",
+    "|---|---|---|---|---|---|",
+    "| **WebDriverAgent（WDA）** | XCTest runner | 控件树 | 需签名 | [文档](https://example.com) |",
+  ].join("\n"));
+  expect((out.match(/<th>/g) ?? []).length).toBe(5);
+  expect((out.match(/<td>/g) ?? []).length).toBe(5);
+  expect(out).toContain("<b>WebDriverAgent（WDA）</b>");
+  expect(out).toContain('href="https://example.com"');
+  expect(out).not.toContain("|---|");
 });
 it("keeps an empty or short row aligned to its header and preserves inline formatting", () => {
   const out = html("| label | value | empty |\n| --- | ---: | :---: |\n| long label | **74.33** |\n| `a\\|b` | [docs](https://example.com) | |");

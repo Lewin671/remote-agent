@@ -260,8 +260,9 @@ func blocks(_ lines: [Scalars], depth: Int) -> [MarkdownBlock] {
         if line.contains("|"), i + 1 < lines.count, tableSep(lines[i + 1]) {
             let head = cells(line)
             let sep = cells(lines[i + 1])
-            if head.count == sep.count {
-                let align: [MarkdownTableAlign?] = sep.map {
+            // The header owns the columns; ignore surplus separator cells in CLI replies.
+            if head.count <= sep.count {
+                let align: [MarkdownTableAlign?] = sep.prefix(head.count).map {
                     switch ($0.hasPrefix(":"), $0.hasSuffix(":")) {
                     case (true, true): .center
                     case (false, true): .right

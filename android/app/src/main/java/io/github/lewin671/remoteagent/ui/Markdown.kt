@@ -549,9 +549,10 @@ fun parseMarkdown(md: String, depth: Int = 0): List<Block> {
             i = j + 1
             continue
         }
-        if ('|' in line && i + 1 < lines.size && tableSep(lines[i + 1]) && tableCells(line).size == tableCells(lines[i + 1]).size) {
+        // The header owns the columns; ignore surplus separator cells in CLI replies.
+        if ('|' in line && i + 1 < lines.size && tableSep(lines[i + 1]) && tableCells(line).size <= tableCells(lines[i + 1]).size) {
             val head = tableCells(line)
-            val align = tableCells(lines[i + 1]).map {
+            val align = tableCells(lines[i + 1]).take(head.size).map {
                 when {
                     it.startsWith(":") && it.endsWith(":") -> TableAlign.CENTER
                     it.endsWith(":") -> TableAlign.RIGHT

@@ -1049,6 +1049,75 @@
      "text": "完。"
     }
    ]
+  },
+  {
+   "name": "five-column CLI table with a surplus separator",
+   "md": "| 技术路线 | 工作方式 | 优点 | 缺点与边界 | 代表方案 |\n|---|---|---|---|---|---|\n| **WDA** | XCTest runner | 控件树 | 需签名 | [文档](https://example.com) |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "技术路线",
+      "工作方式",
+      "优点",
+      "缺点与边界",
+      "代表方案"
+     ],
+     "align": [
+      null,
+      null,
+      null,
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "**WDA**",
+       "XCTest runner",
+       "控件树",
+       "需签名",
+       "[文档](https://example.com)"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "surplus separators keep alignment of header columns",
+   "md": "a | b\n:--- | ---: | :---: | ---\nx | 42\n\nafter",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "a",
+      "b"
+     ],
+     "align": [
+      "left",
+      "right"
+     ],
+     "rows": [
+      [
+       "x",
+       "42"
+      ]
+     ]
+    },
+    {
+     "kind": "text",
+     "text": "after"
+    }
+   ]
+  },
+  {
+   "name": "invalid surplus separator remains literal text",
+   "md": "| a | b |\n| --- | --- | invalid |\n| x | y |",
+   "want": [
+    {
+     "kind": "text",
+     "text": "| a | b |\n| --- | --- | invalid |\n| x | y |"
+    }
+   ]
   }
  ],
  "inline": [

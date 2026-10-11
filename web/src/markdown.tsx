@@ -414,9 +414,11 @@ export function mdBlocks(md: string, depth = 0): Block[] {
       i = j;
       continue;
     }
-    if (line.includes("|") && i + 1 < lines.length && tableSep(lines[i + 1]) && tableCells(line).length === tableCells(lines[i + 1]).length) {
+    // CLI replies sometimes add a separator cell. The header owns the
+    // columns; surplus separators carry no content and can be ignored.
+    if (line.includes("|") && i + 1 < lines.length && tableSep(lines[i + 1]) && tableCells(line).length <= tableCells(lines[i + 1]).length) {
       const head = tableCells(line);
-      const align = tableCells(lines[i + 1]).map((c) =>
+      const align = tableCells(lines[i + 1]).slice(0, head.length).map((c) =>
         c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : c.startsWith(":") ? "left" : undefined,
       );
       const rows: string[][] = [];
