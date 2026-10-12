@@ -22,8 +22,10 @@ class PublishTests(unittest.TestCase):
         self.states = []
         self.remote = {}
         self.calls = []
+        self.create_requests = []
         self.fail_upload = False
         self.corrupt_download = False
+        self.hide_created_release_from_list = False
         self.gh_patch = patch.object(publisher, 'gh', side_effect=self.gh)
         self.gh_patch.start()
         self.addCleanup(self.gh_patch.stop)
@@ -48,6 +50,10 @@ class PublishTests(unittest.TestCase):
         self.calls.append(args)
         state = next((s for s in self.states if s['tag_name'] == self.tag), None)
         if args[0] == 'api':
+            if '--method' in args and args[args.index('--method') + 1] == 'POST':
+                self.assertEqual(f'repos/{self.repo}/releases', args[1])
+                self.create_requests.append(json.loads(Path(args[args.index('--input') + 1]).read_text()))
+                return json.dumps(self.state())
             if '/tags/' in args[1]:
                 if state is None or state['draft']:
                     raise subprocess.CalledProcessError(1, ['gh', 'api', args[1]])
@@ -55,6 +61,8 @@ class PublishTests(unittest.TestCase):
             if '?' not in args[1]:
                 release_id = int(args[1].rsplit('/', 1)[1])
                 return json.dumps(next(s for s in self.states if s['id'] == release_id))
+            if self.hide_created_release_from_list:
+                return json.dumps([[]])
             return json.dumps([self.states[:1], self.states[1:]])
         command = args[1]
         if command == 'create':
@@ -86,7 +94,8 @@ class PublishTests(unittest.TestCase):
         publisher.publish(self.tag, self.dist, self.notes, self.repo, dry_run)
 
     def writes(self):
-        return [c for c in self.calls if c[:2] in (('release', 'create'), ('release', 'upload'), ('release', 'edit'))]
+        return [c for c in self.calls if c[:2] in (('release', 'create'), ('release', 'upload'), ('release', 'edit'))
+                or (c[0] == 'api' and '--method' in c and c[c.index('--method') + 1] == 'POST')]
 
     def test_upload_failure_stays_draft_and_retry_reuses_it(self):
         self.fail_upload = True
@@ -96,7 +105,7 @@ class PublishTests(unittest.TestCase):
         self.fail_upload = False
         self.publish()
         self.assertFalse(self.states[0]['draft'])
-        self.assertEqual(1, sum(c[:2] == ('release', 'create') for c in self.calls))
+        self.assertEqual(1, len(self.create_requests))
         self.assertIn('--latest=true', self.writes()[-1])
 
     def test_new_draft_can_be_verified_when_the_tag_endpoint_returns_404(self):
@@ -104,6 +113,36 @@ class PublishTests(unittest.TestCase):
         self.assertFalse(self.states[0]['draft'])
         self.assertFalse(any('/tags/' in c[1] for c in self.calls if c[0] == 'api'))
         self.assertTrue(any(c[:2] == ('api', f'repos/{self.repo}/releases/1') for c in self.calls))
+
+    def test_created_draft_is_used_even_when_the_release_list_never_shows_it(self):
+        self.hide_created_release_from_list = True
+        self.publish()
+        self.assertFalse(self.states[0]['draft'])
+        self.assertEqual(1, sum(c[:2] == ('api', f'repos/{self.repo}/releases?per_page=100') for c in self.calls))
+
+    def test_create_request_keeps_multiline_notes_as_json_and_stays_draft(self):
+        self.notes.write_text('Fix "quoted" text.\nKeep `$literal` and Unicode: 修复.\n')
+        self.publish()
+        self.assertEqual([{
+            'tag_name': self.tag, 'target_commitish': 'main', 'draft': True,
+            'name': self.tag,
+            'body': self.notes.read_text() + f'\n---\n\nInstall or upgrade: see the [README](https://github.com/{self.repo}#readme). Every payload is listed in `SHA256SUMS`.\n',
+        }], self.create_requests)
+
+    def test_invalid_create_response_stops_before_uploading(self):
+        for response in (None, {}, {'id': True, 'tag_name': self.tag, 'draft': True},
+                         {'id': 0, 'tag_name': self.tag, 'draft': True},
+                         {'id': 1, 'tag_name': 'v9.9.9', 'draft': True},
+                         {'id': 1, 'tag_name': self.tag, 'draft': False}):
+            with self.subTest(response=response):
+                def invalid_response(*args):
+                    if args[0] == 'api' and '--method' in args:
+                        return json.dumps(response)
+                    return self.gh(*args)
+                with patch.object(publisher, 'gh', side_effect=invalid_response):
+                    with self.assertRaisesRegex(ValueError, 'expected draft'):
+                        self.publish()
+                self.assertFalse(any(c[:2] == ('release', 'upload') for c in self.calls))
 
     def test_same_published_release_is_read_only_but_different_files_fail(self):
         self.populate(self.state(draft=False))

@@ -112,11 +112,18 @@ def publish(tag, dist, notes, repo, dry_run=False, web_public=None):
         if findings:
             raise ValueError("Public release notes failed the privacy scan")
         if state is None:
-            gh("release", "create", tag, "--repo", repo, "--target", "main", "--draft",
-               "--title", tag, "--notes-file", public_notes)
-            state = next((r for r in releases(repo) if r["tag_name"] == tag), None)
-            if state is None:
-                raise ValueError("Created draft was not found in the release list")
+            request = Path(tmp) / "release.json"
+            request.write_text(json.dumps({
+                "tag_name": tag, "target_commitish": "main", "draft": True,
+                "name": tag, "body": public_notes.read_text(),
+            }))
+            # Creation already returns the stable ID. A successful list
+            # request can still omit the new draft; do not rediscover it there.
+            state = json.loads(gh("api", f"repos/{repo}/releases", "--method", "POST", "--input", request))
+            if (not isinstance(state, dict) or state.get("tag_name") != tag
+                    or type(state.get("id")) is not int or state["id"] <= 0
+                    or state.get("draft") is not True):
+                raise ValueError("Create response must identify the expected draft Release")
         # Resume an interrupted draft, never change a published version.
         draft = release_by_id(repo, tag, state["id"])
         if not draft["draft"]:
