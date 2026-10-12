@@ -144,7 +144,13 @@ fun prefsBlocked(state: RemoteState): String? = when {
  */
 fun addProject(remote: Remote, state: RemoteState, machine: String, path: String) {
     if (isHidden(state, path)) PrefsChanges.run(remote, PrefsOp.Unhide(path))
-    else if (project(state, path) == null && savedSettings(state, path) == null) PrefsChanges.run(remote, PrefsOp.SetSettings(path, machine))
+    if (savedSettings(state, path)?.machineId != machine) PrefsChanges.run(remote, PrefsOp.SetSettings(path, machine, moved = true))
+    val start = projectStart(state, path, machine = machine)
+    val draft = Drafts.newSession(path, start?.config, start?.settled != false)
+    val current = draft.config.value
+    if (current != null && current.machineId != machine) {
+        draft.config.choose(switchMachine(current, machine, io.github.lewin671.remoteagent.core.machineAgents(state.machines[machine])))
+    }
 }
 
 /** One project in a list (client-v34): its mark, its name, and under it [projectDetail]; [end] at the right. */

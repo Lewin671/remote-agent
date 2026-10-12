@@ -207,16 +207,17 @@ data class ProjectStart(val config: NewConfig, val settled: Boolean)
 
 /**
  * What a project's next session starts with (architecture §13). The machine
- * is the stored one, else the latest session's, else the one whose summary
+ * is the explicitly chosen [machine], else the stored one, else the latest session's,
+ * else the one whose summary
  * has the project's newest session (its sessions may all be on pages not
- * fetched), else [machine]. The CLI is [wantedAgent], or the machine's first
+ * fetched). The CLI is [wantedAgent], or the machine's first
  * when it has none or lacks that one, with that CLI's own set. Null while no
  * machine is known.
  */
 fun projectStart(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): ProjectStart? {
     val from = Inheritance(state, key)
-    val machineId = saved?.machineId?.takeIf { it.isNotEmpty() } ?: from.first()?.machineId
-        ?: io.github.lewin671.remoteagent.core.project(state, key)?.machineIds?.firstOrNull() ?: machine ?: return null
+    val machineId = machine ?: saved?.machineId?.takeIf { it.isNotEmpty() } ?: from.first()?.machineId
+        ?: io.github.lewin671.remoteagent.core.project(state, key)?.machineIds?.firstOrNull() ?: return null
     val agents = machineAgents(state.machines[machineId])
     val agent = wantedAgent(from, pick, saved)?.takeIf { it in agents } ?: agents.first()
     return ProjectStart(agentConfig(machineId, key, agentSet(from, agent, saved)), !from.unsettled)
@@ -1129,7 +1130,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
     if (open != null) NewSettingsSheet(state, path, projectName(path), selected.machineId, selected.agent, open, onDone = { op ->
         if (op != null) {
             PrefsChanges.run(remote, op)
-            projectConfig(state, path, entry.agent.value, machine, applySettings(savedSettings(state, path), op, System.currentTimeMillis()))?.let { entry.config.choose(it) }
+            projectConfig(state, path, entry.agent.value, null, applySettings(savedSettings(state, path), op, System.currentTimeMillis()))?.let { entry.config.choose(it) }
         }
         settingsOpen = null
     }, onClose = { settingsOpen = null })

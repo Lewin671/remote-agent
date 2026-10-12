@@ -75,14 +75,15 @@ import Testing
         #expect(projectListing(st, search: "zzz").noMatch == "没有名字或路径里有「zzz」的项目")
     }
 
-    @Test func choosingAFolderAddsItUnhidesItOrChangesNothing() {
+    @Test func choosingAFolderStoresTheChosenMachine() {
         let st = state([session("a", "/p/foo"), session("h", "/p/old")], hidden: ["/p/old"])
-        #expect(addProjectOp(st, machine: "vps", path: "/p/new") == .setSettings(PrefsOp.SetSettings(path: "/p/new", machineId: "vps")))
-        #expect(addProjectOp(st, machine: "vps", path: "/p/old") == .unhide(path: "/p/old"))
-        // Already a project: its settings stay as they are.
-        #expect(addProjectOp(st, machine: "vps", path: "/p/foo") == nil)
+        #expect(addProjectOp(st, machine: "vps", path: "/p/new") == .setSettings(PrefsOp.SetSettings(path: "/p/new", machineId: "vps", moved: true)))
+        #expect(addProjectOp(st, machine: "vps", path: "/p/old") == .setSettings(PrefsOp.SetSettings(path: "/p/old", machineId: "vps", moved: true)))
+        // An existing path can be selected on another computer.
+        #expect(addProjectOp(st, machine: "vps", path: "/p/foo") == .setSettings(PrefsOp.SetSettings(path: "/p/foo", machineId: "vps", moved: true)))
         let added = state(settings: [.with { $0.path = "/p/new"; $0.machineID = "mac" }])
-        #expect(addProjectOp(added, machine: "vps", path: "/p/new") == nil)
+        #expect(addProjectOp(added, machine: "vps", path: "/p/new") == .setSettings(PrefsOp.SetSettings(path: "/p/new", machineId: "vps", moved: true)))
+        #expect(addProjectOp(added, machine: "mac", path: "/p/new") == nil)
     }
 
     @Test func aFolderIsWrittenPieceByPiece() {

@@ -48,12 +48,12 @@ public func projectListing(_ state: RemoteState, search: String = "") -> Project
 /// (client-v33): a folder removed from the list earlier is listed again;
 /// a new one is stored with the machine chosen, so it is listed before its
 /// first session, here and on the account's other clients; a folder that
-/// is a project already changes nothing.
+/// is a project already uses the machine just chosen.
 public func addProjectOp(_ state: RemoteState, machine: String, path: String) -> PrefsOp? {
-    if isHidden(state, key: path) { return .unhide(path: path) }
-    if project(state, key: path) == nil && savedSettings(state, key: path) == nil {
-        return .setSettings(PrefsOp.SetSettings(path: path, machineId: machine))
+    if savedSettings(state, key: path)?.machineID != machine {
+        return .setSettings(PrefsOp.SetSettings(path: path, machineId: machine, moved: true))
     }
+    if isHidden(state, key: path) { return .unhide(path: path) }
     return nil
 }
 

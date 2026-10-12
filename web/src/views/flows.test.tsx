@@ -21,7 +21,7 @@ import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
 import { NewFlow, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
-import { ManagePage } from "./Projects";
+import { addProject, ManagePage } from "./Projects";
 import { SessionPage } from "./Session";
 import { useRemote } from "../ui";
 
@@ -1012,6 +1012,25 @@ it("names a new project's default model as Codex does, even when /model hides it
   expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
 });
 
+it("uses the machine selected for an existing path and excludes its missing Claude", async () => {
+  const r = demo();
+  const path = "/Users/me/Code/foo";
+  await r.changePrefs("settings", path, { id: "old-machine", kind: "settings", path, at: Date.now(), settings: { machineId: "mac", agent: Agent.CLAUDE } });
+  r.machines.get("vps")!.meta = create(MachineMetaSchema, { hostname: "iMac", agents: [{ agent: Agent.CODEX }] });
+  act(() => addProject(r, "vps", path));
+  let ns: ReturnType<typeof useNewSession> | undefined;
+  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
+  mount(<Box />);
+  expect(ns!.cfg.machineId).toBe("vps");
+  expect(ns!.cfg.agent).toBe(Agent.CODEX);
+  expect(ns!.agents).toEqual([Agent.CODEX]);
+  await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === path)?.machineId).toBe("vps"));
+  r.draftMachines.clear();
+  act(() => root!.render(<Box />));
+  expect(ns!.cfg.machineId).toBe("vps");
+  expect(ns!.cfg.agent).toBe(Agent.CODEX);
+});
+
 it("keeps a project added with 新项目… in the lists before its first session", async () => {
   const r = demo();
   const opened: string[] = [];
@@ -1038,7 +1057,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   expect(row?.querySelector("b")?.textContent).toBe("Code");
   remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
   expect(host.textContent).toContain("这个项目还没有会话");
-  // Choosing a folder that is a project already leaves its settings as they are.
+  // Choosing an existing folder on its current machine keeps its settings.
   const foo = "/Users/me/Code/foo";
   const before = r.projectPrefs().settings.find((s) => s.path === foo);
   remount(<NewFlow remote={r} go={() => undefined} start="new" onClose={() => undefined} />);

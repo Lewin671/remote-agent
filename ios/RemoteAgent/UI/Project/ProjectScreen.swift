@@ -179,7 +179,7 @@ struct ProjectPageView: View {
         let state = model.state
         context.prefsChanges.run(context.remote, .setSettings(op))
         let saved = applySettings(stored: savedSettings(state, key: key), op: op, now: nowMs())
-        if let c = projectConfig(state, key: key, pick: draft.agent, machine: machine, saved: saved) { draft.config.choose(c) }
+        if let c = projectConfig(state, key: key, pick: draft.agent, machine: nil, saved: saved) { draft.config.choose(c) }
     }
 
     private func chip(_ state: RemoteState, _ launch: NewConfig) -> some View {

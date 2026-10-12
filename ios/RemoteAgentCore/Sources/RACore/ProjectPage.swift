@@ -163,9 +163,10 @@ public struct ProjectStart: Equatable, Sendable {
 }
 
 /// What a project's next session starts with (architecture §13). The machine
-/// is the stored one, else the latest session's, else the one whose summary
+/// is the explicitly chosen `machine`, else the stored one, else the latest session's,
+/// else the one whose summary
 /// has the project's newest session (its sessions may all be on pages not
-/// fetched), else `machine`. The CLI is `wantedAgent`, or the machine's first
+/// fetched). The CLI is `wantedAgent`, or the machine's first
 /// when it has none or lacks that one, with that CLI's own set. Nil while no
 /// machine is known.
 public func projectStart(_ state: RemoteState, key: String, pick: PBAgent? = nil, machine: String? = nil) -> ProjectStart? {
@@ -176,14 +177,14 @@ public func projectStart(_ state: RemoteState, key: String, pick: PBAgent? = nil
 public func projectStart(_ state: RemoteState, key: String, pick: PBAgent?, machine: String?, saved: PBProjectSettings?) -> ProjectStart? {
     let from = Inheritance(state, key: key)
     let machineId: String
-    if let stored = saved?.machineID, !stored.isEmpty {
+    if let machine {
+        machineId = machine
+    } else if let stored = saved?.machineID, !stored.isEmpty {
         machineId = stored
     } else if let latest = from.first()?.machineId {
         machineId = latest
     } else if let summed = project(state, key: key)?.machineIds.first {
         machineId = summed
-    } else if let machine {
-        machineId = machine
     } else {
         return nil
     }

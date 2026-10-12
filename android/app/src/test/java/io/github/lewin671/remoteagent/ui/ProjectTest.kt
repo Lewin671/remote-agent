@@ -68,6 +68,15 @@ class ProjectTest {
         sessions = sessions.associateBy { it.id }, machines = machines.associateBy { it.id })
 
     @Test
+    fun chosenFolderMachineWinsOverSavedMachineAndClaudeSession() {
+        val st = state(saved("mac", Agent.AGENT_CLAUDE), listOf(session("s", "mac", Agent.AGENT_CLAUDE, "sonnet", 999)), host("mac", *both), host("imac", Agent.AGENT_CODEX))
+        val config = projectStart(st, path, machine = "imac")!!.config
+        assertEquals("imac", config.machineId)
+        assertEquals(Agent.AGENT_CODEX, config.agent)
+        assertEquals(Agent.AGENT_CLAUDE, projectStart(st, path)!!.config.agent)
+    }
+
+    @Test
     fun savedSettingsWinOverLatestSessionAndStayOnOfflineMachine() {
         val stored = saved("old", Agent.AGENT_CLAUDE, set(Agent.AGENT_CLAUDE, "sonnet", "high", ApprovalMode.APPROVAL_MODE_FULL_ACCESS, standard = true))
         val st = state(stored, listOf(session("s", "new", Agent.AGENT_CODEX, "astra", 999)), host("old", *both, online = false), host("new", *both))

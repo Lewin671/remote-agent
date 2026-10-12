@@ -123,7 +123,13 @@ extension AccountContext {
     /// session, here and on the account's other clients; a folder removed
     /// from the list earlier is listed again (`addProjectOp`).
     func addProject(_ state: RemoteState, machine: String, path: String) {
-        if let op = addProjectOp(state, machine: machine, path: path) { prefsChanges.run(remote, op) }
+        if isHidden(state, key: path) { prefsChanges.run(remote, .unhide(path: path)) }
+        if let op = addProjectOp(state, machine: machine, path: path), case .setSettings = op { prefsChanges.run(remote, op) }
+        let start = projectStart(state, key: path, machine: machine)
+        let draft = newSessionDrafts.of(path, initial: start?.config, settled: start?.settled != false)
+        if let current = draft.config.value, current.machineId != machine {
+            draft.config.choose(switchMachine(current, machineId: machine, agents: machineAgents(state.machines[machine])))
+        }
     }
 }
 

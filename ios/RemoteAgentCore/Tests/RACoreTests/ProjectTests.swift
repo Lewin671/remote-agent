@@ -49,6 +49,13 @@ import Testing
         NewConfig(machineId: machine, cwd: cwd ?? path, agent: agent, model: model, effort: effort, mode: mode, standardContext: standard)
     }
 
+    @Test func chosenFolderMachineWinsOverSavedMachineAndClaudeSession() {
+        let st = state(saved("mac", .claude), [session("s", "mac", .claude, "sonnet", 999)], host("mac", [.codex, .claude]), host("imac", [.codex]))
+        let config = projectStart(st, key: path, machine: "imac")!.config
+        #expect(config.machineId == "imac" && config.agent == .codex)
+        #expect(projectStart(st, key: path)?.config.agent == .claude)
+    }
+
     @Test func savedSettingsWinOverLatestSessionAndStayOnOfflineMachine() throws {
         let stored = saved("old", .claude, set(.claude, "sonnet", "high", .fullAccess, standard: true))
         let st = state(stored, [session("s", "new", .codex, "astra", 999)], host("old", both, online: false), host("new", both))

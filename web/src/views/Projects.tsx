@@ -6,6 +6,7 @@
 // new project lists it again.
 
 import { useState, type ReactNode } from "react";
+import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { isHidden, isPinned, groupProjects } from "../prefs";
 import { exited, projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
@@ -148,10 +149,11 @@ export function ProjectList({ remote, item, first, onNew, children }: { remote: 
 export function addProject(remote: Remote, machineId: string, path: string) {
   remote.draftMachines.set(path, machineId);
   const prefs = remote.projectPrefs();
-  if (isHidden(prefs, path)) return void remote.changePrefs("unhide", path);
-  const listed = projects(remote.sessions.values(), remote.machines.values(), prefs.settings);
-  if (!listed.some((p) => p.key === path) && !prefs.settings.some((s) => s.path === path))
-    void remote.changePrefs("settings", path, { id: crypto.randomUUID(), kind: "settings", path, at: Date.now(), settings: { machineId } });
+  if (isHidden(prefs, path)) void remote.changePrefs("unhide", path);
+  if (prefs.settings.find((s) => s.path === path)?.machineId !== machineId) {
+    const sets = [Agent.CODEX, Agent.CLAUDE].map((agent) => ({ agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, standardContext: false }));
+    void remote.changePrefs("settings", path, { id: crypto.randomUUID(), kind: "settings", path, at: Date.now(), settings: { machineId, sets } });
+  }
 }
 
 /** What 设为常用 is called for the project at path now, and what it does. */

@@ -221,7 +221,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   // A project none of whose sessions are held starts on a machine that
   // has it, as its summary says, rather than on any machine.
   const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
-  const baseMachine = held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, remote.draftMachines.get(key) ?? known).machineId;
+  const baseMachine = remote.draftMachines.get(key) || held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, known).machineId;
   const machineId = pinned?.machineId ?? local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);
@@ -256,7 +256,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const configFor = (a: Agent, base = false): NewConfig => {
     const at = { machineId: base ? baseMachine : machineId, cwd: key, agent: a };
     if (!base && pinned?.req.agent === a) return { ...at, model: pinned.req.model, effort: pinned.req.effort, mode: pinned.req.mode, standardContext: pinned.req.standardContext };
-    const heldConfig = !base && held?.by[a];
+    if (remote.draftMachines.get(key) === at.machineId && at.machineId !== (saved?.machineId || first?.machineId))
+      return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
+    const heldConfig = !base && held?.machineId === at.machineId && held?.by[a];
     if (heldConfig && !local?.sets[a] && !local?.machineId) return { ...heldConfig, ...at };
     const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
     if (set) return { ...at, model: set.model, effort: set.effort, mode: set.mode, standardContext: set.standardContext };
@@ -286,6 +288,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
    * and defaults being its own. once: only for this start, nothing saved. */
   const setCfg = (config: NewConfig, once = false) => {
     if (config.machineId !== machineId) {
+      remote.draftMachines.delete(key);
       const sets = { [Agent.CODEX]: setOf({ ...config, agent: Agent.CODEX }), [Agent.CLAUDE]: setOf({ ...config, agent: Agent.CLAUDE }) };
       setLocal({ key, machineId: config.machineId, once, sets });
       if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
