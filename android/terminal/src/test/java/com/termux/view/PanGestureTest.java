@@ -39,4 +39,22 @@ public class PanGestureTest {
         assertEquals(0, TerminalView.clampedPan(300, 0));
         assertEquals(0, TerminalView.clampedPan(300, -10));
     }
+
+    /** A wheel pans sideways by its own axis; a vertical one is left for the rows. */
+    @Test public void aSidewaysWheelPansAndAVerticalOneDoesNot() {
+        // A sideways wheel pans by its own axis value, either way.
+        assertEquals(1f, TerminalView.horizontalWheel(1f, 0f, false), 0.001f);
+        assertEquals(-2f, TerminalView.horizontalWheel(-2f, 0f, false), 0.001f);
+        // A vertical wheel is not a pan: the rows take it, as before.
+        assertEquals(0f, TerminalView.horizontalWheel(0f, 1f, false), 0.001f);
+        assertEquals(0f, TerminalView.horizontalWheel(0f, -3f, false), 0.001f);
+        // A diagonal goes by its dominant axis, so a little cross-axis drift cannot steal it.
+        assertEquals(5f, TerminalView.horizontalWheel(5f, 2f, false), 0.001f);
+        assertEquals(0f, TerminalView.horizontalWheel(2f, 5f, false), 0.001f);
+        // Shift+vertical is sideways, the way the platform's own scroll views take it.
+        assertEquals(-1f, TerminalView.horizontalWheel(0f, 1f, true), 0.001f);
+        assertEquals(2f, TerminalView.horizontalWheel(0f, -2f, true), 0.001f);
+        // Shift with no wheel movement stays no pan.
+        assertEquals(0f, TerminalView.horizontalWheel(0f, 0f, true), 0.001f);
+    }
 }

@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.term
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.view.ViewConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,15 +43,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.PlatformTextStyle
@@ -167,6 +174,29 @@ internal fun flingStep(offset: Float, velocity: Float, dt: Float, maxOffset: Flo
 }
 
 /**
+ * The reader's sideways offset after a wheel or trackpad scroll: by the scroll's own amount
+ * in pixels, stopped at the pan's bounds. The axis value is the one the live view pans by, so
+ * a wheel towards the right end moves the content the way a sideways drag does.
+ */
+internal fun readerWheelOffset(offset: Float, scrollDeltaX: Float, pixelsPerUnit: Float, maxOffset: Float): Float =
+    (offset + scrollDeltaX * pixelsPerUnit).coerceIn(0f, maxOffset.coerceAtLeast(0f))
+
+/**
+ * The reader's own thin sideways bar: the thumb's left edge and width within a track of
+ * [trackPx], for content [extentPx] wide panned by [offsetPx] behind a [viewportPx]-wide view,
+ * in the platform's own proportions — the thumb reaches the track's right edge exactly at the
+ * end of the pan, and a fitted extent fills the whole track.
+ */
+internal fun scrollThumb(offsetPx: Int, viewportPx: Int, extentPx: Int, trackPx: Int): Pair<Float, Float> {
+    if (trackPx <= 0) return 0f to 0f
+    val track = trackPx.toFloat()
+    if (extentPx <= viewportPx) return 0f to track
+    val width = track * viewportPx / extentPx
+    val left = track * offsetPx / extentPx
+    return left.coerceIn(0f, track - width) to width
+}
+
+/**
  * The reader of client-v40 §terminal-history: a capture of the terminal as read-only text
  * over the live screen, which keeps running behind it. It is drawn in the live terminal's own
  * font, size, line height and colours, so that entering it looks like the same picture moving
@@ -198,6 +228,10 @@ internal fun TerminalHistoryReader(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    // The pixels one wheel or trackpad notch moves: the platform's own factor, the same amount
+    // the live view pans by, so a wheel moves both pictures alike.
+    val context = LocalContext.current
+    val wheelPixels = remember(context) { ViewConfiguration.get(context).getScaledHorizontalScrollFactor() }
     val family = remember(typeface) { FontFamily(typeface) }
     val text = remember(family, palette, fontPx, lineHeightPx, density) {
         TextStyle(
@@ -249,7 +283,30 @@ internal fun TerminalHistoryReader(
     val scope = rememberCoroutineScope()
     Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, panning, onLeave))) {
         Box(
-            Modifier.fillMaxSize().clipToBounds().pointerInput(widthPx, viewportWidthPx) {
+            Modifier.fillMaxSize().clipToBounds()
+                // A wheel or trackpad scroll sideways pans the reader like a drag, by the pan's
+                // own bounds. It is taken whole, so it reaches neither the list (the pull out of
+                // reading) nor the live screen behind it; a vertical wheel is left to the list,
+                // which scrolls and leaves as it always has.
+                .pointerInput(wheelPixels) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type != PointerEventType.Scroll) continue
+                            var dx = 0f
+                            var dy = 0f
+                            for (change in event.changes) {
+                                dx += change.scrollDelta.x
+                                dy += change.scrollDelta.y
+                            }
+                            if (dx == 0f || abs(dx) <= abs(dy)) continue
+                            fling.job?.cancel()
+                            event.changes.forEach { it.consume() }
+                            offset.floatValue = readerWheelOffset(offset.floatValue, dx, wheelPixels, bound.value)
+                        }
+                    }
+                }
+                .pointerInput(widthPx, viewportWidthPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     // A new touch takes the pan over from a fling still running.
@@ -320,8 +377,39 @@ internal fun TerminalHistoryReader(
                 }
             }
         }
+        // The capture is wider than the viewport: the reader's own thin sideways bar sits at the
+        // foot, in the platform's colours, showing how far along the pan is.
+        if (extentPx > viewportWidthPx) {
+            ReaderScrollbar({ offset.floatValue }, viewportWidthPx, extentPx, Modifier.align(Alignment.BottomStart))
+        }
     }
 }
+
+/**
+ * The reader's own thin sideways bar at the foot of the viewport, in the platform's own colours
+ * and shape: the track is inset at both ends as the design has it, and the thumb is the part of
+ * the wider capture that is in sight, at the pan's own position. [offset] is read when it draws,
+ * not when it composes, so a pan does not recompose the reader.
+ */
+@Composable
+private fun ReaderScrollbar(offset: () -> Float, viewportPx: Int, extentPx: Int, modifier: Modifier = Modifier) {
+    val trackPx = (viewportPx - with(LocalDensity.current) { SCROLLBAR_LEFT.dp.roundToPx() + SCROLLBAR_RIGHT.dp.roundToPx() }).coerceAtLeast(1)
+    Box(
+        modifier.padding(start = SCROLLBAR_LEFT.dp, end = SCROLLBAR_RIGHT.dp, bottom = 4.dp)
+            .fillMaxWidth()
+            .height(3.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .drawBehind {
+                val (thumbLeft, thumbWidth) = scrollThumb(offset().roundToInt(), viewportPx, extentPx, trackPx)
+                drawRect(TermColors.line)
+                drawRect(TermColors.tool, topLeft = Offset(thumbLeft, 0f), size = Size(thumbWidth, size.height))
+            },
+    )
+}
+
+/** The reader's bar insets, as the design draws them: clear on the left, clear of the pill on the right. */
+private const val SCROLLBAR_LEFT = 12
+private const val SCROLLBAR_RIGHT = 120
 
 /** The running sideways fling, so a new touch can take the pan back over. */
 private class Fling {

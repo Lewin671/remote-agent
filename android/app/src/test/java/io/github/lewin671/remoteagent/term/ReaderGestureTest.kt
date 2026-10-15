@@ -91,4 +91,34 @@ class ReaderGestureTest {
         assertEquals(416.0, next.toDouble(), 0.01)
         assertTrue(remaining in 800f..1000f)
     }
+
+    @Test fun aWheelPansTheReaderWithinItsBounds() {
+        val perUnit = 64f
+        // A wheel towards the right end moves the content as a drag does, by its own amount.
+        assertEquals(128.0, readerWheelOffset(0f, 2f, perUnit, 500f).toDouble(), 0.001)
+        assertEquals(32.0, readerWheelOffset(64f, -0.5f, perUnit, 500f).toDouble(), 0.001)
+        // It never runs past either end of the pan.
+        assertEquals(0.0, readerWheelOffset(0f, -3f, perUnit, 500f).toDouble(), 0.001)
+        assertEquals(500.0, readerWheelOffset(480f, 5f, perUnit, 500f).toDouble(), 0.001)
+        // A fitted grid has nowhere to pan: the offset stays put.
+        assertEquals(0.0, readerWheelOffset(0f, 4f, perUnit, 0f).toDouble(), 0.001)
+    }
+
+    @Test fun theScrollbarThumbTracksTheOffsetAndStopsAtBothEnds() {
+        val viewport = 1000
+        val extent = 2000
+        val track = 400
+        // Half the content is in sight: the thumb is half the track, at the start.
+        assertEquals(0f to 200f, scrollThumb(0, viewport, extent, track))
+        // At the very end the thumb's right edge is the track's own.
+        val (leftEnd, widthEnd) = scrollThumb(extent - viewport, viewport, extent, track)
+        assertEquals(200.0, leftEnd.toDouble(), 0.001)
+        assertEquals(400.0, (leftEnd + widthEnd).toDouble(), 0.001)
+        // Half way: it sits in the middle of the track.
+        assertEquals(100.0, scrollThumb(500, viewport, extent, track).first.toDouble(), 0.001)
+        // A fitted extent fills the whole track (never drawn, but consistent).
+        assertEquals(0f to 400f, scrollThumb(0, viewport, viewport, track))
+        // A collapsed track draws nothing.
+        assertEquals(0f to 0f, scrollThumb(0, viewport, extent, 0))
+    }
 }
