@@ -29,7 +29,7 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = tc.Run("kill-server") })
 	err := tc.NewSession(tmux.NewSessionOptions{Name: "history", Width: 80, Height: 10,
-		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; exec cat`}})
+		Argv: []string{"/bin/sh", "-c", `i=1; while [ "$i" -le 2500 ]; do printf 'history-%03d\n' "$i"; i=$((i+1)); done; printf '\033[31mcolored-tail\033[0m\n'; exec cat`}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(screen, "history-2500") {
+		if strings.Contains(screen, "colored-tail") {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -77,6 +77,10 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 	first, err := stream.History(&pb.TerminalHistoryRequest{RequestId: "first"})
 	if err != nil || first.Error != "" || first.NextCursor == "" {
 		t.Fatalf("capture failed: %v %v", first, err)
+	}
+	// History keeps colours so clients can draw it like the live screen.
+	if !strings.Contains(strings.Join(first.Lines, "\n"), "\x1b[31mcolored-tail") {
+		t.Errorf("history lost its SGR colours: %q", first.Lines[len(first.Lines)-3:])
 	}
 	file := stream.history.file
 	if _, err := os.Stat(file.Name()); !os.IsNotExist(err) {

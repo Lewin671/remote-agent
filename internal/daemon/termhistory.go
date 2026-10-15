@@ -72,7 +72,7 @@ func (t *TermStream) captureHistory() (*terminalHistory, error) {
 	}
 	ctx, cancel := context.WithTimeout(parent, 5*time.Second)
 	defer cancel()
-	argv := t.d.cfg.Tmux.Command("capture-pane", "-p", "-S", "-"+strconv.Itoa(tmux.HistoryLines), "-t", "="+t.name+":")
+	argv := t.d.cfg.Tmux.Command("capture-pane", "-p", "-e", "-S", "-"+strconv.Itoa(tmux.HistoryLines), "-t", "="+t.name+":")
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Stdout = h
 	if err = cmd.Run(); err != nil {
