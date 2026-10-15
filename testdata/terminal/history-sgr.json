@@ -1,0 +1,22 @@
+{
+  "about": "How one line of terminal history (tmux capture-pane -e) becomes styled runs. Shared by the web, Android and iOS readers. Each line is parsed on its own, starting from the default style. Only SGR (ESC [ ... m) is applied; every other escape or control sequence is dropped without printing it. Colours: null is the terminal default, an integer is a 256-colour palette index (0-15 are the basic and bright colours), a string is #rrggbb. Adjacent runs with the same style are merged; empty runs are omitted.",
+  "cases": [
+    { "name": "plain", "line": "plain text", "runs": [ { "text": "plain text" } ] },
+    { "name": "empty", "line": "", "runs": [] },
+    { "name": "basic foreground and default reset", "line": "\u001b[31mred\u001b[39m plain", "runs": [ { "text": "red", "fg": 1 }, { "text": " plain" } ] },
+    { "name": "bright and background", "line": "\u001b[92;44mok\u001b[0m", "runs": [ { "text": "ok", "fg": 10, "bg": 4 } ] },
+    { "name": "bright background", "line": "\u001b[103mx\u001b[49my", "runs": [ { "text": "x", "bg": 11 }, { "text": "y" } ] },
+    { "name": "256 colours as separate sequences", "line": "\u001b[1m\u001b[38;5;208mbold orange\u001b[0m", "runs": [ { "text": "bold orange", "fg": 208, "bold": true } ] },
+    { "name": "truecolor", "line": "\u001b[38;2;255;123;114mdiff\u001b[48;2;0;0;0m!", "runs": [ { "text": "diff", "fg": "#ff7b72" }, { "text": "!", "fg": "#ff7b72", "bg": "#000000" } ] },
+    { "name": "attributes and their resets", "line": "\u001b[1;2;3;4;7mA\u001b[22mB\u001b[23;24;27mC", "runs": [ { "text": "A", "bold": true, "dim": true, "italic": true, "underline": true, "inverse": true }, { "text": "B", "italic": true, "underline": true, "inverse": true }, { "text": "C" } ] },
+    { "name": "empty parameters reset", "line": "\u001b[31ma\u001b[mb", "runs": [ { "text": "a", "fg": 1 }, { "text": "b" } ] },
+    { "name": "same style merges", "line": "\u001b[32mab\u001b[32mcd", "runs": [ { "text": "abcd", "fg": 2 } ] },
+    { "name": "wide characters are kept as text", "line": "\u001b[36m中文\u001b[0m 宽", "runs": [ { "text": "中文", "fg": 6 }, { "text": " 宽" } ] },
+    { "name": "OSC hyperlink is dropped, its text kept", "line": "\u001b]8;;https://example.com\u001b\\link\u001b]8;;\u001b\\ end", "runs": [ { "text": "link end" } ] },
+    { "name": "OSC ended by BEL", "line": "a\u001b]0;title\u0007b", "runs": [ { "text": "ab" } ] },
+    { "name": "cursor movement and other CSI are dropped", "line": "a\u001b[2Kb\u001b[?25lc\u001b[10;5Hd", "runs": [ { "text": "abcd" } ] },
+    { "name": "other controls are dropped", "line": "a\rb\u0007c\u0008d\te", "runs": [ { "text": "abcd\te" } ] },
+    { "name": "unknown SGR codes are ignored", "line": "\u001b[5;31;53mx", "runs": [ { "text": "x", "fg": 1 } ] },
+    { "name": "truncated sequence at the end is dropped", "line": "ok\u001b[31", "runs": [ { "text": "ok" } ] }
+  ]
+}
