@@ -4,13 +4,16 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -73,7 +76,9 @@ internal fun historyItems(pages: List<TerminalHistory.Page>): List<Pair<String, 
  * over the live screen, which keeps running behind it. It is drawn in the live terminal's own
  * font, size, line height and colours, so that entering it looks like the same picture moving
  * up. Lines come from the pane already at its width, so none of them wrap; each line is one
- * item, so an earlier page only ever adds items where the reader is not looking.
+ * item, so an earlier page only ever adds items where the reader is not looking. A window wider
+ * than the screen ([contentWidthPx]) is panned sideways, opening at the live screen's own
+ * [entryX] and clipping nothing.
  */
 @Composable
 internal fun TerminalHistoryReader(
@@ -84,6 +89,8 @@ internal fun TerminalHistoryReader(
     lineHeightPx: Int,
     cellWidth: Float,
     viewportPx: Int,
+    contentWidthPx: Int,
+    entryX: Int,
     entryRows: Int,
     onLoadOlder: () -> Unit,
     onRetry: () -> Unit,
@@ -119,20 +126,25 @@ internal fun TerminalHistoryReader(
     val rows = (viewportPx / lineHeightPx.coerceAtLeast(1)).coerceAtLeast(1)
     LaunchedEffect(Unit) { list.scrollToItem(entryRows.coerceIn(0, rows).coerceAtMost(last.coerceAtLeast(0)), 0) }
 
+    // The capture is as wide as the live grid; a window wider than the screen pans sideways here,
+    // with no line wrapped or clipped.
+    val contentWidth = with(density) { contentWidthPx.toDp() }
+    val pan = rememberScrollState(initial = entryX)
     Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, onLeave))) {
-        SelectionContainer(Modifier.fillMaxSize()) {
-            LazyColumn(Modifier.fillMaxSize(), state = list, reverseLayout = true) {
-                items(items, key = { it.first }) { (_, line) ->
-                    Text(
-                        sgrText(line, paint, cellWidth, fontPx, palette),
-                        style = text,
-                        softWrap = false,
-                        maxLines = 1,
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
+        Box(Modifier.fillMaxSize().horizontalScroll(pan)) {
+            SelectionContainer(Modifier.width(contentWidth).fillMaxHeight()) {
+                LazyColumn(Modifier.fillMaxSize(), state = list, reverseLayout = true) {
+                    items(items, key = { it.first }) { (_, line) ->
+                        Text(
+                            sgrText(line, paint, cellWidth, fontPx, palette),
+                            style = text,
+                            softWrap = false,
+                            maxLines = 1,
+                        )
+                    }
+                    // Last here is the top of the screen: the one line about what the reader is doing.
+                    item(key = "status") { HistoryStatusLine(history, waiting = false, onRetry = onRetry) }
                 }
-                // Last here is the top of the screen: the one line about what the reader is doing.
-                item(key = "status") { HistoryStatusLine(history, waiting = false, onRetry = onRetry) }
             }
         }
     }

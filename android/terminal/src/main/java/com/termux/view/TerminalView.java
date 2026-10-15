@@ -97,6 +97,9 @@ public final class TerminalView extends View {
 
     final Scroller mScroller;
 
+    /** Keeps a sideways flick going when the terminal is wider than the view. */
+    private final Scroller mHorizontalScroller;
+
     /** What was left in from scrolling movement. */
     float mScrollRemainder;
 
@@ -149,10 +152,16 @@ public final class TerminalView extends View {
         mGestureRecognizer = new GestureAndScaleRecognizer(context, new GestureAndScaleRecognizer.Listener() {
 
             boolean scrolledWithFinger;
+            /** The current gesture pans sideways instead of scrolling rows. */
+            boolean panning;
+            /** Its axis was decided; the gesture's own direction does not change once set. */
+            boolean axisDecided;
 
             @Override
             public boolean onUp(MotionEvent event) {
                 mScrollRemainder = 0.0f;
+                panning = false;
+                axisDecided = false;
                 if (mEmulator != null && mEmulator.isMouseTrackingActive() && !event.isFromSource(InputDevice.SOURCE_MOUSE) && !isSelectingText() && !scrolledWithFinger) {
                     // Quick event processing when mouse tracking is active - do not wait for check of double tapping
                     // for zooming.
@@ -186,6 +195,16 @@ public final class TerminalView extends View {
                     // since we cannot just start sending these events without a starting press event,
                     // which we do not do for touch input, only mouse in onTouchEvent().
                     sendMouseEventCode(e, TerminalEmulator.MOUSE_LEFT_BUTTON_MOVED, true);
+                    return true;
+                }
+                // The gesture's direction is decided once, at its start, by the dominant axis: a
+                // sideways drag pans the terminal and must reach neither the program nor the reader.
+                if (!axisDecided) {
+                    axisDecided = true;
+                    panning = horizontalDrag(distanceX, distanceY);
+                }
+                if (panning) {
+                    panBy(distanceX);
                 } else {
                     scrolledWithFinger = true;
                     distanceY += mScrollRemainder;
@@ -207,7 +226,14 @@ public final class TerminalView extends View {
             @Override
             public boolean onFling(final MotionEvent e2, float velocityX, float velocityY) {
                 if (mEmulator == null) return true;
+                // A sideways flick keeps the terminal panning; it reaches neither the program nor
+                // the reader. Without a decided axis (a flick with no reported drag) the faster
+                // direction decides it.
                 float SCALE = 0.25f;
+                if (axisDecided ? panning : horizontalDrag(velocityX, velocityY)) {
+                    flingPanBy(velocityX);
+                    return true;
+                }
                 if (mScrollListener != null) {
                     // A flick is a scroll gesture as well: report the rows it would have covered.
                     mScrollListener.onScroll((int) -(velocityY * SCALE / mRenderer.mFontLineSpacing));
@@ -253,6 +279,9 @@ public final class TerminalView extends View {
                 // ViewDragHelper: Ignoring pointerId=0 because ACTION_DOWN was not received for this pointer before ACTION_MOVE
                 // Commenting out the call to mGestureDetector.onTouchEvent(event) in GestureAndScaleRecognizer#onTouchEvent() removes
                 // the error logging, so issue is related to GestureDetector
+                panning = false;
+                axisDecided = false;
+                mHorizontalScroller.abortAnimation();
                 return false;
             }
 
@@ -273,6 +302,9 @@ public final class TerminalView extends View {
             }
         });
         mScroller = new Scroller(context);
+        mHorizontalScroller = new Scroller(context);
+        // The terminal may be wider than the view: the horizontal bar shows how far it is panned.
+        setHorizontalScrollBarEnabled(true);
         AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
         mAccessibilityEnabled = am.isEnabled();
     }
@@ -315,6 +347,7 @@ public final class TerminalView extends View {
 
         // Wait with enabling the scrollbar until we have a terminal to get scroll position from.
         setVerticalScrollBarEnabled(true);
+        setHorizontalScrollBarEnabled(true);
 
         return true;
     }
@@ -464,6 +497,71 @@ public final class TerminalView extends View {
     @Override
     protected int computeVerticalScrollOffset() {
         return mEmulator == null ? 1 : mEmulator.getScreen().getActiveRows() + mTopRow - mEmulator.mRows;
+    }
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return Math.max(contentWidth(), getWidth());
+    }
+
+    @Override
+    protected int computeHorizontalScrollExtent() {
+        return Math.max(1, getWidth());
+    }
+
+    @Override
+    protected int computeHorizontalScrollOffset() {
+        return getScrollX();
+    }
+
+    /** The terminal's width in pixels, whatever the view's own width is. */
+    private int contentWidth() {
+        if (mEmulator == null || mRenderer == null) return 0;
+        return Math.round(mEmulator.mColumns * mRenderer.mFontWidth);
+    }
+
+    /** How far the terminal can be panned sideways: a grid wider than the view, else zero. */
+    private int maxPan() {
+        return Math.max(0, contentWidth() - getWidth());
+    }
+
+    /**
+     * A drag whose dominant axis is horizontal pans the terminal sideways instead of scrolling
+     * rows; decided at the start of the gesture, so it does not change under the finger.
+     */
+    public static boolean horizontalDrag(float distanceX, float distanceY) {
+        return Math.abs(distanceX) > Math.abs(distanceY);
+    }
+
+    /** Pans by a sideways drag distance, clamped to the terminal's width. */
+    private void panBy(float distanceX) {
+        int max = maxPan();
+        if (max <= 0) return;
+        int next = Math.max(0, Math.min(max, Math.round(getScrollX() + distanceX)));
+        if (next != getScrollX()) scrollTo(next, 0);
+    }
+
+    /** Keeps a sideways flick going to the end of the terminal. */
+    private void flingPanBy(float velocityX) {
+        int max = maxPan();
+        if (max <= 0) return;
+        // A drag's distanceX is the negative of the flick's velocityX; the fling follows the drag.
+        mHorizontalScroller.fling(getScrollX(), 0, Math.round(-velocityX), 0, 0, max, 0, 0);
+        postInvalidateOnAnimation();
+    }
+
+    /** Carries on a sideways flick; the fling itself never touches the remote program. */
+    @Override
+    public void computeScroll() {
+        if (mHorizontalScroller.computeScrollOffset()) {
+            scrollTo(mHorizontalScroller.getCurrX(), 0);
+            postInvalidateOnAnimation();
+        }
+    }
+
+    /** How far the live screen is panned sideways, for the reader to open at the same column. */
+    public int getPanOffset() {
+        return getScrollX();
     }
 
     public void onScreenUpdated() {

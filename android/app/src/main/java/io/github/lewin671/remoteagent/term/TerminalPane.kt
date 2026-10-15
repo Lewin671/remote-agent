@@ -60,6 +60,7 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * The key bar's keys (client-v2): the arrows and Enter on the first row with
@@ -90,6 +91,14 @@ internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
 
 /** How far a pull on the live screen goes before it asks for a capture; the reader opens that far up. */
 private const val ENTER_ROWS = 3
+
+/** The 字号 (A−/A+) range in dp: the smallest doubles as the floor a wide terminal shrinks to (client-v41 §比屏幕宽的终端). */
+internal const val FONT_MIN_DP = 6
+internal const val FONT_MAX_DP = 22
+internal const val FONT_DEFAULT_DP = 14
+
+/** Clamps a stored or chosen font size into the A−/A+ range. */
+internal fun clampFontDp(dp: Int): Int = dp.coerceIn(FONT_MIN_DP, FONT_MAX_DP)
 
 /** Where the terminal view hands over the scroll gestures it does not apply itself. */
 private class ScrollInbox {
@@ -188,10 +197,10 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val context = LocalContext.current
     val typeface = remember(context) { terminalTypeface(context) }
     val preferences = remember(context) { context.getSharedPreferences("terminal-display", android.content.Context.MODE_PRIVATE) }
-    var fontDp by remember { mutableIntStateOf(preferences.getInt("font-dp", 14).coerceIn(10, 22)) }
+    var fontDp by remember { mutableIntStateOf(clampFontDp(preferences.getInt("font-dp", FONT_DEFAULT_DP))) }
     var refitAfterFontChange by remember { mutableStateOf(false) }
     fun changeFont(delta: Int) {
-        fontDp = (fontDp + delta).coerceIn(10, 22)
+        fontDp = clampFontDp(fontDp + delta)
         preferences.edit().putInt("font-dp", fontDp).apply()
         refitAfterFontChange = true
     }
@@ -248,9 +257,9 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text("字号", style = ts(14.sp), color = TermColors.dim, modifier = Modifier.weight(1f))
-            FontButton("A−", fontDp > 10) { changeFont(-1) }
+            FontButton("A−", fontDp > FONT_MIN_DP) { changeFont(-1) }
             Text("$fontDp", style = ts(14.sp), color = TermColors.dim)
-            FontButton("A+", fontDp < 22) { changeFont(1) }
+            FontButton("A+", fontDp < FONT_MAX_DP) { changeFont(1) }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(TermColors.bg)) {
             val widthPx = constraints.maxWidth
@@ -266,10 +275,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             val sizingHeight = fullHeightPx
             val pad = with(density) { 8.dp.roundToPx() }
             val preferredPx = with(density) { fontDp.dp.roundToPx() }
+            // The smallest 字号, in pixels: a wide terminal shrinks to this and then pans.
+            val minFontPx = with(density) { FONT_MIN_DP.dp.roundToPx() }
             val preferredGeometry = remember(typeface, preferredPx) { terminalGeometry(typeface, preferredPx) }
             term.fitSize = preferredGeometry.capacity(widthPx - pad, sizingHeight - pad)
-            val fontPx = remember(typeface, preferredPx, widthPx, sizingHeight, cols, rows, pad) {
-                terminalFontPixels(typeface, preferredPx, widthPx - pad, sizingHeight - pad, cols, rows)
+            val fontPx = remember(typeface, preferredPx, widthPx, sizingHeight, cols, rows, pad, minFontPx) {
+                terminalFontPixels(typeface, preferredPx, widthPx - pad, sizingHeight - pad, cols, rows, minFontPx)
             }
             LaunchedEffect(fontDp, refitAfterFontChange) {
                 if (refitAfterFontChange) {
@@ -327,9 +338,13 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
             if (history.entered) {
                 val palette = term.session.emulator?.mColors?.mCurrentColors ?: TerminalColors.COLOR_SCHEME.mDefaultColors
+                // The reader pans sideways like the live screen: its content is the whole grid, and
+                // it opens at the column the live screen is panned to.
+                val contentWidthPx = (cols.coerceAtLeast(1) * geometry.cellWidth).roundToInt()
                 TerminalHistoryReader(
                     history = history, typeface = typeface, palette = palette, fontPx = fontPx,
                     lineHeightPx = lineHeightPx, cellWidth = geometry.cellWidth, viewportPx = heightPx,
+                    contentWidthPx = contentWidthPx, entryX = term.view?.panOffset ?: 0,
                     entryRows = pull.rows, onLoadOlder = { term.loadHistory() }, onRetry = { term.loadHistory() },
                     onLeave = { leaveReading() }, modifier = Modifier.fillMaxSize(),
                 )

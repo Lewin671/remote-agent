@@ -41,10 +41,19 @@ internal fun terminalGeometry(typeface: Typeface, pixels: Int): TerminalGeometry
     return TerminalGeometry(paint.measureText("X"), spacing, spacing + ceil(paint.ascent()).toInt())
 }
 
-/** Keep the remote grid intact; only the explicit fit action changes its size. */
-internal fun terminalFontPixels(typeface: Typeface, preferred: Int, width: Int, height: Int, cols: Int, rows: Int): Int {
+/**
+ * Keep the remote grid intact; only the explicit fit action changes its size. A window wider than
+ * the screen shrinks the font to fit, but never below [minPx]: at that size the terminal is panned
+ * sideways instead (architecture §11).
+ */
+internal fun terminalFontPixels(typeface: Typeface, preferred: Int, width: Int, height: Int, cols: Int, rows: Int, minPx: Int): Int {
     if (cols <= 0 || rows <= 0) return preferred
-    return (preferred downTo 5).firstOrNull {
-        terminalGeometry(typeface, it).contains(width, height, cols, rows)
-    } ?: 5
+    return fitFontPixels(preferred, minPx) { terminalGeometry(typeface, it).contains(width, height, cols, rows) }
 }
+
+/**
+ * The largest font from [preferred] down to [minPx] that [fits], or [minPx] when even that does not
+ * fit: past the floor the terminal is panned, not shrunk further.
+ */
+internal fun fitFontPixels(preferred: Int, minPx: Int, fits: (Int) -> Boolean): Int =
+    (preferred downTo minPx).firstOrNull(fits) ?: minPx
