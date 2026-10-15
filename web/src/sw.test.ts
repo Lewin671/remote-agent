@@ -16,12 +16,20 @@ function load(answers: Record<string, Answer[]>) {
     delete: async (key: { url: string }) => stored.delete(new URL(key.url).pathname),
   };
   const asked: string[] = [];
+  // Stalled fetches as they are made: the clock moves on only after them,
+  // as on a slow machine they come later than the test's own steps.
+  let stalls = 0;
+  const waiting: [number, () => void][] = [];
+  const stalled = (n: number) => new Promise<void>((resolve) => (stalls >= n ? resolve() : waiting.push([n, resolve])));
   const fetch = vi.fn((path: string, init?: { signal?: AbortSignal }) => {
     asked.push(path);
     const a = answers[path]?.shift() ?? "fail";
     if (a === "fail") return Promise.reject(new TypeError("network"));
-    if (a === "stall")
+    if (a === "stall") {
+      stalls++;
+      for (const [n, resolve] of waiting) if (stalls >= n) resolve();
       return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+    }
     return Promise.resolve(a);
   });
   const told: unknown[] = [];
@@ -39,7 +47,7 @@ function load(answers: Record<string, Answer[]>) {
       const work: Promise<unknown>[] = [];
       handlers.message({ data: { type: "refresh" }, ports: [{ postMessage: resolve }], waitUntil: (p: Promise<unknown>) => work.push(p) });
     });
-  return { stored, asked, told, ask };
+  return { stored, asked, told, ask, stalled };
 }
 
 const html = () => new Response(PAGE, { headers: { "content-type": "text/html" } });
@@ -48,9 +56,10 @@ const js = () => new Response("x", { headers: { "content-type": "text/javascript
 afterEach(() => vi.useRealTimers());
 
 it("gives a stalled file up after a while and tries it again", async () => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const sw = load({ "/": [html()], "/assets/index-new.js": ["stall", js()], "/assets/index-new.css": [js()] });
   const answer = sw.ask();
+  await sw.stalled(1);
   await vi.advanceTimersByTimeAsync(30_000);
   expect(await answer).toEqual({ ok: true });
   expect(sw.stored.has("/")).toBe(true);
@@ -65,9 +74,10 @@ it("keeps the old page when one of the new one's files cannot be had", async () 
 });
 
 it("fetches the files side by side, and once for checks asked together", async () => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const sw = load({ "/": [html()], "/assets/index-new.js": ["stall", js()], "/assets/index-new.css": ["stall", js()] });
   const answers = [sw.ask(), sw.ask()];
+  await sw.stalled(2);
   await vi.advanceTimersByTimeAsync(30_000);
   expect(await Promise.all(answers)).toEqual([{ ok: true }, { ok: true }]);
   expect(sw.asked.filter((p) => p === "/")).toHaveLength(1);
