@@ -206,3 +206,14 @@ Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。
 - 切换审批模式在 Codex 0.162.0 上超时没切成（见 [plan.md](plan.md) 的「待确认 › iOS」）
 - VoiceOver 实际朗读、减弱动态效果、iPad 横屏、iOS 17（部署目标）上的表现
 - 真机：没有签名身份，没有装过
+
+
+### 终端历史回看（2026-10-14）
+
+- 真实 tmux、隔离 socket：进入终端前输出 2500 行，初次快照和改变尺寸后的快照均保留首尾行。
+- 本地临时 server、账户、会话和真实 shell/cat：Go 客户端经加密中继打开 daemon 终端，读取旧历史，发送输入并收到进程输出，重连后仍能读到这些内容（`TestTerminalHistoryThroughRelay`）。没有连接日常账户。
+- Chrome 扩展、本地 `?demo&term=history`：示例的 150 行历史可通过终端翻页操作回到 `history-001`；这是演示数据，不代表真实 CLI 的界面验收。
+- iOS 27、iPhone 18 Pro 模拟器：`TerminalHostTests` 通过，组件加载超过一屏的历史后，程序设置回看位置并继续喂输出，位置保持；重新加载快照回到实时画面。没有验证手指滑动和真机。
+- Android 11、Pixel 3：独立 `.termhistory` 测试应用的 `TerminalHistoryTest` 通过，组件回看时保留同一段文字，实时位置继续跟随输出。位置由测试代码设置，没有验证手指滑动。
+
+边界：只恢复 tmux 仍保留且在快照预算内的输出，不是完整对话存档。Codex 的 inline 参数只影响之后启动或恢复的进程。

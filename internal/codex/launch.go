@@ -2,6 +2,7 @@ package codex
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -36,6 +37,10 @@ func Args(userArgs []string) []string {
 		"-c", "hooks.SessionStart=[{hooks=[{type=\"command\",command=" + cmd + ",timeout=30}]}]",
 		"-c", "check_for_update_on_startup=false",
 		"-c", "notice.hide_rate_limit_model_nudge=true",
+	}
+	// Inline rendering leaves conversation output in tmux scrollback.
+	if !slices.Contains(userArgs, "--no-alt-screen") {
+		args = append(args, "--no-alt-screen")
 	}
 	return append(args, userArgs...)
 }

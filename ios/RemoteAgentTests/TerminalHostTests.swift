@@ -18,6 +18,20 @@ import UIKit
 
     private func text(_ host: TerminalHostView) -> String { host.screenText }
 
+    @Test func historyCanBeReadWhileOutputContinues() {
+        let view = host()
+        let history = (1...100).map { "history-\($0)" }.joined(separator: "\r\n")
+        view.snapshot(cols: 80, rows: 10, data: Data(history.utf8))
+        let terminal = view.terminal
+        #expect(terminal.contentSize.height > terminal.bounds.height)
+        terminal.contentOffset = .zero
+        view.append(Data("\r\nnew output".utf8))
+        #expect(terminal.contentOffset.y == 0)
+        // A fresh snapshot intentionally starts at the live screen again.
+        view.snapshot(cols: 80, rows: 10, data: Data(history.utf8))
+        #expect(terminal.contentOffset.y > 0)
+    }
+
     /// Android's term/TerminalBatchParsingTest: bytes fed one at a time and all at once draw the same screen.
     @Test func batchingPreservesSplitUtf8AndControlSequences() {
         let bytes = Data("hello 中😀\r\nworld\u{1b}[1;1HOK\u{1b}[2;5Hdone".utf8)

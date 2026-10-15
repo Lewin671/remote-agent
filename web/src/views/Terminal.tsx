@@ -79,7 +79,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       fontFamily: font,
       fontSize: 12,
       cursorBlink: true,
-      scrollback: 2000,
+      scrollback: 10000,
       theme: { background: "#0d1117", foreground: "#c9d1d9", cursor: "#c9d1d9" },
       allowProposedApi: false,
     });

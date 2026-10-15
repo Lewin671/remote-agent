@@ -49,6 +49,16 @@ import UIKit
 /// SwiftTerm's view with the emulator's own voice cut off.
 final class RemoteTerminalView: TerminalView {
     override func send(source: Terminal, data: ArraySlice<UInt8>) {}
+    override func scrolled(source terminal: Terminal, yDisp: Int) {
+        // SwiftTerm updates the content size and jumps to the bottom here.
+        // Preserve the user's position when they are reading earlier output.
+        let previous = contentOffset
+        let browsing = previous.y < max(0, contentSize.height - bounds.height) - 1
+        super.scrolled(source: terminal, yDisp: yDisp)
+        if browsing {
+            contentOffset = CGPoint(x: previous.x, y: min(previous.y, max(0, contentSize.height - bounds.height)))
+        }
+    }
     override func bell(source: Terminal) {}
     override func setTerminalTitle(source: Terminal, title: String) {}
     override func setTerminalIconTitle(source: Terminal, title: String) {}
@@ -123,7 +133,7 @@ final class TerminalHostView: UIView {
         terminal.allowMouseReporting = false
         let emulator = terminal.getTerminal()
         emulator.silentLog = true
-        emulator.changeHistorySize(2000)
+        emulator.changeHistorySize(10000)
         emulator.registerOscHandler(code: 1337) { _ in }
         terminal.isHidden = true
         addSubview(terminal)
@@ -151,6 +161,7 @@ final class TerminalHostView: UIView {
         // RIS: full reset and clear, as a fresh terminal would be.
         strings = TerminalStringFilter()
         terminal.feed(byteArray: ([0x1b, 0x63] + [UInt8](strings.take(data)))[...])
+        terminal.contentOffset = CGPoint(x: 0, y: max(0, terminal.contentSize.height - terminal.bounds.height))
         followCursor()
     }
 

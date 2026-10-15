@@ -18,6 +18,9 @@ import (
 // MinVersion is the oldest tmux release remote-agent supports.
 const MinVersion = "3.2"
 
+// HistoryLines is the retained output available to remote terminal clients.
+const HistoryLines = 10000
+
 // Client talks to one tmux server, selected with -L.
 type Client struct {
 	Bin    string // tmux binary; "tmux" when empty
@@ -111,6 +114,9 @@ func (c *Client) NewSession(opts NewSessionOptions) error {
 	}
 	args = append(args, "--")
 	args = append(args, opts.Argv...)
+	// Set the dedicated server default before creating the pane: tmux
+	// applies history-limit at pane creation, not to existing buffers.
+	args = append([]string{"start-server", ";", "set-option", "-g", "history-limit", strconv.Itoa(HistoryLines), ";"}, args...)
 	_, err := c.run(args...)
 	return err
 }

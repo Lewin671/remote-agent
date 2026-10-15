@@ -75,7 +75,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     private var released = false
     private var frames = TerminalFrames(MAX_BACKLOG)
 
-    val session = TerminalSession(2000, SessionClient(), object : TerminalSession.Sink {
+    val session = TerminalSession(10000, SessionClient(), object : TerminalSession.Sink {
         override fun onInput(data: ByteArray) = send(data)
         override fun onViewSize(columns: Int, rows: Int) {}
     })

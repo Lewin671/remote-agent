@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
 // TermStream is a live view of a session's terminal: a tmux control-mode
@@ -148,14 +149,28 @@ func (t *TermStream) Snapshot() (*pb.TerminalSnapshot, error) {
 	t.mu.Lock()
 	t.live = true
 	t.mu.Unlock()
-	screen, err := tc.Capture(t.name, true)
+	// Include retained tmux history when opening or replacing the screen.
+	// A snapshot is also used after resizing and reconnecting.
+	screen, err := tc.Run("capture-pane", "-p", "-e", "-S", "-"+strconv.Itoa(tmux.HistoryLines), "-t", "="+t.name+":")
 	if err != nil {
 		return nil, err
 	}
 	lines := strings.Split(strings.TrimSuffix(screen, "\n"), "\n")
-	if len(lines) > rows {
-		lines = lines[len(lines)-rows:]
+	// Keep the encrypted frame comfortably below the 1 MiB transport limit.
+	// Drop whole oldest lines, so UTF-8 and SGR sequences stay intact. The
+	// visible screen is always kept, even when a single row is very large.
+	const historyBytes = 512 << 10
+	bytes := 0
+	start := len(lines)
+	for start > 0 {
+		n := len(lines[start-1]) + 2
+		if len(lines)-start >= rows && bytes+n > historyBytes {
+			break
+		}
+		bytes += n
+		start--
 	}
+	lines = lines[start:]
 	var b strings.Builder
 	b.WriteString("\x1b[0m\x1b[H\x1b[2J")
 	for i, l := range lines {

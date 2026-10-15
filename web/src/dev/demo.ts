@@ -2,6 +2,7 @@
 // state docs/design/client-v8.html draws, and no server. Opened with ?demo
 // on the dev server; builds leave this file out. Options:
 //   ?demo&conn=connecting|reconnecting|nonetwork|noserver|fail|removed   the server link's states
+//   ?demo&term=history                       retained terminal output
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
@@ -940,7 +941,8 @@ export class DemoRemote extends Remote {
     const own = { cols: popup ? 42 : 120, rows: popup ? 30 : 40 };
     const snapshot = (size: { cols: number; rows: number }) => {
       if (!open) return;
-      const data = new TextEncoder().encode(popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? ""));
+      const history = this.opts.get("term") === "history" ? Array.from({ length: 150 }, (_, i) => `history-${String(i + 1).padStart(3, "0")} 中文`).join("\r\n") + "\r\n" : "";
+      const data = new TextEncoder().encode(history + (popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? "")));
       onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "snapshot", value: { $typeName: "remoteagent.v1.TerminalSnapshot", data, ...size } } });
     };
     setTimeout(() => {

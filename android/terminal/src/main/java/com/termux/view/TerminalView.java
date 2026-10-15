@@ -465,15 +465,9 @@ public final class TerminalView extends View {
             }
         }
 
-        if (!skipScrolling && mTopRow != 0) {
-            // Scroll down if not already there.
-            if (mTopRow < -3) {
-                // Awaken scroll bars only if scrolling a noticeable amount
-                // - we do not want visible scroll bars during normal typing
-                // of one row at a time.
-                awakenScrollBars();
-            }
-            mTopRow = 0;
+        if (!skipScrolling && mTopRow < 0) {
+            // Keep the same history in sight while new output scrolls below it.
+            mTopRow = Math.max(-rowsInHistory, mTopRow - mEmulator.getScrollCounter());
         }
 
         mEmulator.clearScrollCounter();
