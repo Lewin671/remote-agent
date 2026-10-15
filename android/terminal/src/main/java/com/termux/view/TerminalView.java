@@ -570,7 +570,7 @@ public final class TerminalView extends View {
      */
     public void clampPan() {
         int max = maxPan();
-        if (!mHorizontalScroller.isFinished() && mHorizontalScroller.getFinalX() > max) {
+        if (!mHorizontalScroller.isFinished() && (mHorizontalScroller.getFinalX() > max || mHorizontalScroller.getCurrX() > max)) {
             mHorizontalScroller.abortAnimation();
         }
         int next = clampedPan(getScrollX(), max);
@@ -590,8 +590,12 @@ public final class TerminalView extends View {
     @Override
     public void computeScroll() {
         if (mHorizontalScroller.computeScrollOffset()) {
-            scrollTo(mHorizontalScroller.getCurrX(), 0);
-            postInvalidateOnAnimation();
+            // The range can shrink mid-flick (a resize, a rotation): every frame stays inside it.
+            int max = maxPan();
+            int x = clampedPan(mHorizontalScroller.getCurrX(), max);
+            scrollTo(x, 0);
+            if (x != mHorizontalScroller.getCurrX()) mHorizontalScroller.abortAnimation();
+            else postInvalidateOnAnimation();
         }
     }
 
