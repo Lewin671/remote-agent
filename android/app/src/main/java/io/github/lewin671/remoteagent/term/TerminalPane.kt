@@ -337,11 +337,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
             if (history.entered) {
                 val palette = term.session.emulator?.mColors?.mCurrentColors ?: TerminalColors.COLOR_SCHEME.mDefaultColors
-                // The reader pans sideways like the live screen: its grid width and cell width are the
-                // live view's own, so both stop at the same right edge, and it opens at the column the
-                // live screen is panned to.
-                val cellWidth = term.view?.cellWidth?.takeIf { it > 0f } ?: geometry.cellWidth
-                val liveGridWidthPx = term.view?.gridWidth?.takeIf { it > 0 } ?: gridWidthPx(cols.coerceAtLeast(1), cellWidth)
+                // The reader pans sideways like the live screen: its cell width is the one the live view
+                // draws at this font (measured the same way), so both stop at the same right edge, and it
+                // opens at the column the live screen is panned to. Taken from the font being applied, not
+                // the view, which only takes a new size after this composition.
+                val cellWidth = geometry.cellWidth
+                val liveGridWidthPx = gridWidthPx(cols.coerceAtLeast(1), cellWidth)
                 TerminalHistoryReader(
                     history = history, typeface = typeface, palette = palette, fontPx = fontPx,
                     lineHeightPx = lineHeightPx, cellWidth = cellWidth, viewportPx = heightPx,
