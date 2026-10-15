@@ -187,8 +187,10 @@ public class TextSelectionCursorController implements CursorController {
 
             @Override
             public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
-                int x1 = Math.round(mSelX1 * terminalView.mRenderer.getFontWidth());
-                int x2 = Math.round(mSelX2 * terminalView.mRenderer.getFontWidth());
+                // The rect is in the terminal view's own coordinates, which the horizontal pan does
+                // not shift, so hand it the viewport x of each column.
+                int x1 = TerminalView.viewportX(mSelX1, terminalView.getScrollX(), terminalView.mRenderer.getFontWidth());
+                int x2 = TerminalView.viewportX(mSelX2, terminalView.getScrollX(), terminalView.mRenderer.getFontWidth());
                 int y1 = Math.round((mSelY1 - 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
                 int y2 = Math.round((mSelY2 + 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
 

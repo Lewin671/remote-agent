@@ -204,6 +204,9 @@ public final class TerminalView extends View {
                     panning = horizontalDrag(distanceX, distanceY);
                 }
                 if (panning) {
+                    // A pan is a scroll gesture too: onUp must not turn it into a mouse click
+                    // when the program has mouse tracking on.
+                    scrolledWithFinger = true;
                     panBy(distanceX);
                 } else {
                     scrolledWithFinger = true;
@@ -231,6 +234,8 @@ public final class TerminalView extends View {
                 // direction decides it.
                 float SCALE = 0.25f;
                 if (axisDecided ? panning : horizontalDrag(velocityX, velocityY)) {
+                    // A flick is a scroll gesture too: no click on release.
+                    scrolledWithFinger = true;
                     flingPanBy(velocityX);
                     return true;
                 }
@@ -533,11 +538,42 @@ public final class TerminalView extends View {
         return Math.abs(distanceX) > Math.abs(distanceY);
     }
 
+    /**
+     * The content column a viewport x is over, with the terminal panned sideways by
+     * {@code panOffset}. Touches arrive in viewport coordinates, which the pan does not change, so
+     * the offset has to be added back.
+     */
+    public static int columnAt(float x, int panOffset, float fontWidth) {
+        return (int) ((x + panOffset) / fontWidth);
+    }
+
+    /** The viewport x a content column is drawn at, with the terminal panned by {@code panOffset}. */
+    public static int viewportX(int column, int panOffset, float fontWidth) {
+        return Math.round(column * fontWidth) - panOffset;
+    }
+
+    /** A pan offset kept inside the terminal: never past the end of a grid that may have shrunk. */
+    public static int clampedPan(int offset, int max) {
+        return Math.max(0, Math.min(Math.max(0, max), offset));
+    }
+
     /** Pans by a sideways drag distance, clamped to the terminal's width. */
     private void panBy(float distanceX) {
+        int next = clampedPan(Math.round(getScrollX() + distanceX), maxPan());
+        if (next != getScrollX()) scrollTo(next, 0);
+    }
+
+    /**
+     * Keeps the pan inside the terminal after its grid or the view's width changed: a remote window
+     * that got narrower must not leave the screen parked past the end, and a fling bounded to an
+     * older width is stopped (its own scroller would otherwise scroll to the old end).
+     */
+    public void clampPan() {
         int max = maxPan();
-        if (max <= 0) return;
-        int next = Math.max(0, Math.min(max, Math.round(getScrollX() + distanceX)));
+        if (!mHorizontalScroller.isFinished() && mHorizontalScroller.getFinalX() > max) {
+            mHorizontalScroller.abortAnimation();
+        }
+        int next = clampedPan(getScrollX(), max);
         if (next != getScrollX()) scrollTo(next, 0);
     }
 
@@ -592,6 +628,9 @@ public final class TerminalView extends View {
 
         mEmulator.clearScrollCounter();
 
+        // A remote window that got narrower shrinks the grid under the pan: keep it inside.
+        clampPan();
+
         invalidate();
         if (mAccessibilityEnabled) setContentDescription(getText());
     }
@@ -642,7 +681,7 @@ public final class TerminalView extends View {
      * @return Array with the column and row.
      */
     public int[] getColumnAndRow(MotionEvent event, boolean relativeToScroll) {
-        int column = (int) (event.getX() / mRenderer.mFontWidth);
+        int column = columnAt(event.getX(), getScrollX(), mRenderer.mFontWidth);
         int row = (int) ((event.getY() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
         if (relativeToScroll) {
             row += mTopRow;
@@ -1100,6 +1139,9 @@ public final class TerminalView extends View {
             scrollTo(0, 0);
             invalidate();
         }
+
+        // The view's width or the grid's width may have changed: keep the pan inside it.
+        clampPan();
     }
 
     @Override
@@ -1129,7 +1171,7 @@ public final class TerminalView extends View {
     }
 
     public int getCursorX(float x) {
-        return (int) (x / mRenderer.mFontWidth);
+        return columnAt(x, getScrollX(), mRenderer.mFontWidth);
     }
 
     public int getCursorY(float y) {
@@ -1140,7 +1182,7 @@ public final class TerminalView extends View {
         if (cx > mEmulator.mColumns) {
             cx = mEmulator.mColumns;
         }
-        return Math.round(cx * mRenderer.mFontWidth);
+        return viewportX(cx, getScrollX(), mRenderer.mFontWidth);
     }
 
     public int getPointY(int cy) {

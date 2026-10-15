@@ -1,6 +1,7 @@
 package com.termux.view;
 
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -14,5 +15,28 @@ public class PanGestureTest {
         // A tie keeps the vertical meaning, so the pull into reading still works.
         assertFalse(TerminalView.horizontalDrag(20f, 20f));
         assertFalse(TerminalView.horizontalDrag(0f, 0f));
+    }
+
+    /** A panned terminal: touches are viewport x, cells are content columns, and vice versa. */
+    @Test public void touchColumnsAccountForThePanOffset() {
+        // Panned 100px with 10px cells, a touch at the left edge is content column 10.
+        assertEquals(10, TerminalView.columnAt(0f, 100, 10f));
+        assertEquals(15, TerminalView.columnAt(50f, 100, 10f));
+        // Not panned: unchanged.
+        assertEquals(5, TerminalView.columnAt(50f, 0, 10f));
+        // The inverse: a column sits further left as the terminal is panned right.
+        assertEquals(-100, TerminalView.viewportX(0, 100, 10f));
+        assertEquals(0, TerminalView.viewportX(10, 100, 10f));
+        assertEquals(150, TerminalView.viewportX(15, 0, 10f));
+    }
+
+    /** The pan never parks past the end of the grid, however the grid width changes. */
+    @Test public void thePanStaysInsideTheTerminal() {
+        assertEquals(0, TerminalView.clampedPan(-5, 200));
+        assertEquals(200, TerminalView.clampedPan(500, 200));
+        assertEquals(120, TerminalView.clampedPan(120, 200));
+        // A grid that shrank to fit (or is narrower than the view): the only offset is zero.
+        assertEquals(0, TerminalView.clampedPan(300, 0));
+        assertEquals(0, TerminalView.clampedPan(300, -10));
     }
 }
