@@ -78,6 +78,23 @@ public final class TerminalView extends View {
     /** Keep track of the time when a touch event leading to sending mouse scroll events started. */
     private long mMouseStartDownTime = -1;
 
+    /**
+     * Receives scroll gestures over the terminal, which the live screen has no use for: it
+     * keeps no scrollback of its own, so a scroll must not move the transcript nor reach the
+     * program as a mouse event or an arrow key.
+     */
+    public interface ScrollListener {
+        /** A scroll in whole rows; negative is upward, as {@link #doScroll(MotionEvent, int)} has it. */
+        void onScroll(int rowsDown);
+    }
+
+    private ScrollListener mScrollListener;
+
+    /** When set, scroll gestures go here instead of the transcript, the mouse or arrow keys. */
+    public void setScrollListener(ScrollListener listener) {
+        mScrollListener = listener;
+    }
+
     final Scroller mScroller;
 
     /** What was left in from scrolling movement. */
@@ -190,11 +207,16 @@ public final class TerminalView extends View {
             @Override
             public boolean onFling(final MotionEvent e2, float velocityX, float velocityY) {
                 if (mEmulator == null) return true;
+                float SCALE = 0.25f;
+                if (mScrollListener != null) {
+                    // A flick is a scroll gesture as well: report the rows it would have covered.
+                    mScrollListener.onScroll((int) -(velocityY * SCALE / mRenderer.mFontLineSpacing));
+                    return true;
+                }
                 // Do not start scrolling until last fling has been taken care of:
                 if (!mScroller.isFinished()) return true;
 
                 final boolean mouseTrackingAtStartOfFling = mEmulator.isMouseTrackingActive();
-                float SCALE = 0.25f;
                 if (mouseTrackingAtStartOfFling) {
                     mScroller.fling(0, 0, 0, -(int) (velocityY * SCALE), 0, 0, -mEmulator.mRows / 2, mEmulator.mRows / 2);
                 } else {
@@ -550,6 +572,10 @@ public final class TerminalView extends View {
 
     /** Perform a scroll, either from dragging the screen or by scrolling a mouse wheel. */
     void doScroll(MotionEvent event, int rowsDown) {
+        if (mScrollListener != null) {
+            mScrollListener.onScroll(rowsDown);
+            return;
+        }
         boolean up = rowsDown < 0;
         int amount = Math.abs(rowsDown);
         for (int i = 0; i < amount; i++) {

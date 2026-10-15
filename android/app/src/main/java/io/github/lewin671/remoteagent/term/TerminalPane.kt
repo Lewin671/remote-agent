@@ -32,13 +32,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,16 +47,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.termux.terminal.TerminalColors
 import com.termux.view.TerminalView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
@@ -94,11 +88,74 @@ internal fun keySequence(k: Key, appCursor: Boolean): String = when (k) {
     is Key.Arrow -> (if (appCursor) "\u001bO" else "\u001b[") + k.letter
 }
 
+/** How far a pull on the live screen goes before it asks for a capture; the reader opens that far up. */
+private const val ENTER_ROWS = 3
+
+/** Where the terminal view hands over the scroll gestures it does not apply itself. */
+private class ScrollInbox {
+    var onRows: (Int) -> Unit = {}
+}
+
+/**
+ * The pull on the live screen that opens the reader (client-v40): how far it has gathered, and
+ * whether it now asks for a fresh capture. It counts whole terminal rows, negative upward, as
+ * the terminal view reports them, so a small drag that never reaches [ENTER_ROWS] leaves the
+ * screen alone.
+ */
+internal class ReadingPull {
+    /** Where the reader opens: that many rows above the newest line. */
+    var rows = 0
+        private set
+
+    /** Forgets the pull: on leaving reading, and once a capture has failed. */
+    fun reset() {
+        rows = 0
+    }
+
+    /** Reads a scroll of [rowsDown]; true when a fresh capture should be asked for now. */
+    fun onScroll(reading: TerminalHistory.State, rowsDown: Int): Boolean {
+        // The reader is on screen: it scrolls itself, and nothing here opens one or asks for a capture.
+        if (reading.visible && reading.entered) return false
+        rows = (rows - rowsDown).coerceAtLeast(0)
+        if (rows < ENTER_ROWS) return false
+        // The pull opened the reader: it keeps its distance, which is where the reader opens.
+        if (!reading.visible) return true
+        // The first page is on its way, and pulling further only sizes the reader. A capture that
+        // failed is the one case that is asked for again, by a pull of its own.
+        if (!reading.failed || reading.pending.isNotEmpty()) return false
+        reset()
+        return true
+    }
+}
+
+/** The terminal toolbar's left text, and whether it offers the fit button. */
+internal data class TerminalToolbar(val text: String, val fit: Boolean)
+
+/**
+ * The toolbar of the live terminal. It only says 回看中 once the reader is on screen, and only
+ * then does the fit button go away: while the first page is on its way, or after it failed, the
+ * screen behind the grey line is still the live one.
+ */
+internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHistory.State, fitted: Boolean, resized: Boolean, cols: Int, rows: Int) =
+    TerminalToolbar(
+        text = when {
+            reading.entered -> "回看中 · 只读"
+            state != RemoteTerminal.State.Live -> "终端"
+            resized -> "远端尺寸已变化 · ${cols}×$rows"
+            fitted -> "已适配这块屏幕 · ${cols}×$rows"
+            else -> "电脑上 ${cols}×$rows"
+        },
+        fit = state == RemoteTerminal.State.Live && !reading.entered,
+    )
+
 /**
  * The live terminal of a session with its toolbar and key bar. The font is
  * scaled so the whole tmux window fits. Opening it fits the remote window to
  * this screen; the keyboard and rotation never resize it. Font changes refit
  * only an already fitted window.
+ *
+ * The screen keeps no scrollback of its own: pulling up on it opens the reader
+ * over it (client-v40 §terminal-history), which is where history is read.
  */
 @Composable
 fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier) {
@@ -143,6 +200,35 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     val p = pal
 
+    // Reading: the pull that opens the reader, and the output that has arrived since it opened.
+    // The live screen keeps running behind the reader, which never follows it.
+    val pull = remember { ReadingPull() }
+    var newOutput by remember { mutableStateOf(false) }
+    val gestures = remember { ScrollInbox() }
+    gestures.onRows = { rowsDown ->
+        if (pull.onScroll(term.history.state.value, rowsDown)) {
+            newOutput = false
+            term.loadHistory(fresh = true)
+        }
+    }
+    fun leaveReading() {
+        pull.reset()
+        newOutput = false
+        term.history.close()
+    }
+    // A capture that came back empty, or failed, starts the pull over: asking again takes a fresh
+    // pull, not the distance this one had already gathered.
+    LaunchedEffect(history.visible, history.failed, history.entered) {
+        if (!history.visible || (history.failed && !history.entered)) pull.reset()
+    }
+    // Reading is read-only, and the keyboard belongs to the live screen.
+    LaunchedEffect(history.entered) {
+        if (!history.entered) return@LaunchedEffect
+        val v = term.view ?: return@LaunchedEffect
+        v.clearFocus()
+        (v.context.getSystemService(InputMethodManager::class.java)).hideSoftInputFromWindow(v.windowToken, 0)
+    }
+
     Column(modifier) {
         // The toolbar says the size, and that it changed; nothing pops up over the screen.
         Row(
@@ -150,20 +236,9 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val (cols, rows) = size
-            Text(
-                when {
-                    state != RemoteTerminal.State.Live -> "终端"
-                    resized -> "远端尺寸已变化 · ${cols}×$rows"
-                    fitted -> "已适配这块屏幕 · ${cols}×$rows"
-                    else -> "电脑上 ${cols}×$rows"
-                },
-                style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f),
-            )
-            Text(if (history.visible) "返回实时终端" else "历史", style = T.metaB, color = TermColors.link,
-                modifier = Modifier.heightIn(min = 44.dp).clickable(enabled = history.visible || state == RemoteTerminal.State.Live) {
-                    if (history.visible) term.history.close() else { term.view?.let { v -> (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(v.windowToken, 0); v.clearFocus() }; term.loadHistory(true) }
-                }.padding(horizontal = 8.dp))
-            if (state == RemoteTerminal.State.Live && !history.visible) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
+            val toolbar = terminalToolbar(state, history, fitted, resized, cols, rows)
+            Text(toolbar.text, style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f))
+            if (toolbar.fit) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
                 if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.metaB, color = TermColors.link)
                 else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.metaB)
             }
@@ -213,7 +288,10 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 if (bottom > scroll.value + heightPx || em.cursorRow * lineHeightPx < scroll.value) scope.launch { scroll.scrollTo(target) }
             }
             LaunchedEffect(imeVisible, heightPx) { followCursor() }
-            term.onScreen = { followCursor() }
+            term.onScreen = {
+                followCursor()
+                if (term.history.state.value.entered) newOutput = true
+            }
             Box(Modifier.fillMaxSize().verticalScroll(scroll, enabled = false)) {
                 AndroidView(
                     factory = { ctx ->
@@ -223,6 +301,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                                 v.requestFocus()
                                 ctx.getSystemService(InputMethodManager::class.java).showSoftInput(v, 0)
                             })
+                            setScrollListener { rowsDown -> gestures.onRows(rowsDown) }
                             isFocusable = true
                             isFocusableInTouchMode = true
                             setTextSize(fontPx)
@@ -241,7 +320,21 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                     modifier = Modifier.fillMaxWidth().height(with(density) { contentPx.toDp() }),
                 )
             }
-            if (history.visible) TerminalHistoryPanel(history, state == RemoteTerminal.State.Live, fontDp) { term.loadHistory() }
+            if (history.visible && !history.entered) {
+                // The first page is on its way, or failed: the live screen stays, with one grey
+                // line over it, and its retry captures the terminal again from scratch.
+                HistoryStatusLine(history, waiting = true, onRetry = { term.loadHistory(fresh = true) }, modifier = Modifier.align(Alignment.TopStart))
+            }
+            if (history.entered) {
+                val palette = term.session.emulator?.mColors?.mCurrentColors ?: TerminalColors.COLOR_SCHEME.mDefaultColors
+                TerminalHistoryReader(
+                    history = history, typeface = typeface, palette = palette, fontPx = fontPx,
+                    lineHeightPx = lineHeightPx, cellWidth = geometry.cellWidth, viewportPx = heightPx,
+                    entryRows = pull.rows, onLoadOlder = { term.loadHistory() }, onRetry = { term.loadHistory() },
+                    onLeave = { leaveReading() }, modifier = Modifier.fillMaxSize(),
+                )
+                HistoryPill(newOutput, { leaveReading() }, Modifier.align(Alignment.BottomEnd).padding(12.dp))
+            }
             if (state != RemoteTerminal.State.Live && !history.visible) {
                 Column(
                     Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.SM).background(TermColors.bar)
@@ -267,14 +360,25 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 }
             }
         }
-        if (!history.visible) KeyBar(enabled = state == RemoteTerminal.State.Live, onKey = { term.sendText(keySequence(it, term.session.emulator?.isCursorKeysApplicationMode == true)) }, onKeyboard = {
-            val v = term.view ?: return@KeyBar
-            val imm = v.context.getSystemService(InputMethodManager::class.java)
-            if (imeVisible) imm.hideSoftInputFromWindow(v.windowToken, 0) else {
-                v.requestFocus()
-                imm.showSoftInput(v, 0)
-            }
-        })
+        KeyBar(
+            enabled = state == RemoteTerminal.State.Live,
+            onKey = { key ->
+                if (term.history.state.value.visible) leaveReading()
+                term.sendText(keySequence(key, term.session.emulator?.isCursorKeysApplicationMode == true))
+            },
+            onKeyboard = {
+                val v = term.view ?: return@KeyBar
+                val reading = term.history.state.value.visible
+                if (reading) leaveReading()
+                val imm = v.context.getSystemService(InputMethodManager::class.java)
+                // Leaving reading opens the keyboard; otherwise the key goes on toggling it.
+                if (imeVisible && !reading) imm.hideSoftInputFromWindow(v.windowToken, 0)
+                else {
+                    v.requestFocus()
+                    imm.showSoftInput(v, 0)
+                }
+            },
+        )
     }
 }
 

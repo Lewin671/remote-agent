@@ -112,9 +112,10 @@ kotlin {
     jvmToolchain(17)
 }
 
-// The Markdown cases both clients read by live outside this build.
+// The Markdown and terminal history cases the clients read by live outside this build.
 tasks.withType<Test>().configureEach {
     inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
+    inputs.file(rootProject.file("../testdata/terminal/history-sgr.json")).withPathSensitivity(PathSensitivity.NONE)
 }
 
 ksp {
