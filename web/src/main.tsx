@@ -4,11 +4,13 @@ import { App } from "./App";
 import "./styles.css";
 import { registerWorker } from "./push";
 import { applyFonts, applyTheme } from "./theme";
+import { watchUpdates } from "./update";
 
 // Before the first paint, so a dark page does not flash light.
 applyTheme();
 applyFonts();
 registerWorker();
+watchUpdates();
 
 // A chunk that fails to load belongs to a build the server has replaced.
 // The kept copy of the page is dropped, so that the service worker does

@@ -1,0 +1,77 @@
+// The service worker's keeping of the page (public/sw.js), run against a
+// made-up cache, network and set of open pages.
+import { readFileSync } from "node:fs";
+import { afterEach, expect, it, vi } from "vitest";
+
+const source = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+
+const PAGE = '<script type="module" src="/assets/index-new.js"></script><link rel="stylesheet" href="/assets/index-new.css">';
+
+type Answer = Response | "stall" | "fail";
+
+function load(answers: Record<string, Answer[]>) {
+  const stored = new Map<string, Response>();
+  const cache = {
+    match: async (key: string) => stored.get(key)?.clone(),
+    put: async (key: string, res: Response) => void stored.set(key, res),
+    keys: async () => [...stored.keys()].map((k) => ({ url: "https://app.example.com" + k })),
+    delete: async (key: { url: string }) => stored.delete(new URL(key.url).pathname),
+  };
+  const asked: string[] = [];
+  const fetch = vi.fn((path: string, init?: { signal?: AbortSignal }) => {
+    asked.push(path);
+    const a = answers[path]?.shift() ?? "fail";
+    if (a === "fail") return Promise.reject(new TypeError("network"));
+    if (a === "stall")
+      return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+    return Promise.resolve(a);
+  });
+  const told: unknown[] = [];
+  const handlers: Record<string, (e: unknown) => void> = {};
+  const self = {
+    addEventListener: (type: string, fn: (e: unknown) => void) => (handlers[type] = fn),
+    clients: { matchAll: async () => [{ postMessage: (m: unknown) => told.push(m) }] },
+    location: { origin: "https://app.example.com" },
+  };
+  const caches = { open: async () => cache };
+  new Function("self", "caches", "fetch", source)(self, caches, fetch);
+  // A page asks for the newest build; the answer comes on the port.
+  const ask = () =>
+    new Promise<unknown>((resolve) => {
+      const work: Promise<unknown>[] = [];
+      handlers.message({ data: { type: "refresh" }, ports: [{ postMessage: resolve }], waitUntil: (p: Promise<unknown>) => work.push(p) });
+    });
+  return { stored, asked, told, ask };
+}
+
+const html = () => new Response(PAGE, { headers: { "content-type": "text/html" } });
+const js = () => new Response("x", { headers: { "content-type": "text/javascript" } });
+
+afterEach(() => vi.useRealTimers());
+
+it("gives a stalled file up after a while and tries it again", async () => {
+  vi.useFakeTimers();
+  const sw = load({ "/": [html()], "/assets/index-new.js": ["stall", js()], "/assets/index-new.css": [js()] });
+  const answer = sw.ask();
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(await answer).toEqual({ ok: true });
+  expect(sw.stored.has("/")).toBe(true);
+  expect(sw.told).toEqual([{ type: "shell" }]);
+});
+
+it("keeps the old page when one of the new one's files cannot be had", async () => {
+  const sw = load({ "/": [html()], "/assets/index-new.js": [js()], "/assets/index-new.css": ["fail", "fail", "fail"] });
+  expect(await sw.ask()).toEqual({ ok: false });
+  expect(sw.stored.has("/")).toBe(false);
+  expect(sw.told).toEqual([]);
+});
+
+it("fetches the files side by side, and once for checks asked together", async () => {
+  vi.useFakeTimers();
+  const sw = load({ "/": [html()], "/assets/index-new.js": ["stall", js()], "/assets/index-new.css": ["stall", js()] });
+  const answers = [sw.ask(), sw.ask()];
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(await Promise.all(answers)).toEqual([{ ok: true }, { ok: true }]);
+  expect(sw.asked.filter((p) => p === "/")).toHaveLength(1);
+  expect(sw.asked.filter((p) => p.startsWith("/assets/"))).toHaveLength(4);
+});

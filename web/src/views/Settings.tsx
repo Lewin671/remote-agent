@@ -7,10 +7,11 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { forgetAccount } from "../storage";
 import { getTheme, setTheme, type Theme } from "../theme";
+import { applyUpdate, checkUpdate, useUpdate } from "../update";
 import { Alert, Banner, Dot, fromHere, NavBar, Sheet, useEscape, useNow, useRemote } from "../ui";
 import { clientDetail, clientName, clientUsed, dayText, defaultClientName, lastUsed, shortId, sortClients, type DeviceInfo } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { Check, ChevronRight, Laptop, Plus } from "../icons";
+import { Check, ChevronRight, Laptop, LoaderCircle, Plus } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
 
@@ -105,6 +106,7 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       <div className="glabel">版本</div>
       <div className="grp">
         <div className="row">remote-agent<span className="v">{versionText(import.meta.env.VITE_PRODUCT_VERSION, import.meta.env.VITE_BUILD_COMMIT)}</span></div>
+        <UpdateRow />
       </div>
       <div className="glabel">账户</div>
       <div className="grp">
@@ -126,6 +128,26 @@ export function Settings({ remote, go }: { remote: Remote; go: (r: string) => vo
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
       {checking && <ConnCheck remote={remote} onClose={() => setChecking(false)} />}
     </div>
+  );
+}
+
+/** Checking for a newer build of this page, and moving on to it. */
+function UpdateRow() {
+  const update = useUpdate();
+  if (update === "ready")
+    return (
+      <button className="row" onClick={applyUpdate}>
+        新版本已下载
+        <span className="v">重新加载<ChevronRight /></span>
+      </button>
+    );
+  return (
+    <button className="row" disabled={update === "checking"} onClick={() => void checkUpdate(true)}>
+      检查更新
+      <span className="v">
+        {update === "checking" ? <><LoaderCircle /> 正在检查…</> : update === "latest" ? "已是最新" : update === "failed" ? "没能下载，稍后再试" : null}
+      </span>
+    </button>
   );
 }
 

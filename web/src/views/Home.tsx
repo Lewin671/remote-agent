@@ -38,6 +38,7 @@ import { ApprovalActions, approvalText, approvalTitle } from "./Dock";
 import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { ConnCheck, connWord } from "./ConnCheck";
 import { PrefsBanner, ProjectItem, ProjectList, RemovedNotice, useProjectGroups } from "./Projects";
+import { applyUpdate, useUpdate } from "../update";
 import { Check, ChevronDown, ChevronRight, CloudOff, LoaderCircle, Search, Settings, SquarePen, WifiOff, X } from "../icons";
 
 export type { Go };
@@ -446,6 +447,18 @@ function Empty({ remote, go, onStart }: { remote: Remote; go: Go; onStart: () =>
   );
 }
 
+/** A newer build is downloaded: offered until the page is reloaded. */
+function UpdateBanner() {
+  if (useUpdate() !== "ready") return null;
+  return (
+    <div className="pad">
+      <Banner action="重新加载" onAction={applyUpdate}>
+        新版本已下载
+      </Banner>
+    </div>
+  );
+}
+
 /** Listing sessions failed while connected: say so, offer a retry. */
 function ListError({ remote }: { remote: Remote }) {
   if (!remote.listError) return null;
@@ -487,6 +500,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
           <SquarePen className="compose-icon" />
         </button>
       </div>
+      <UpdateBanner />
       <ListError remote={remote} />
       {!remote.listed && none ? (
         !remote.listError && (
@@ -534,6 +548,7 @@ export function Sidebar({ remote, go, selected, project }: { remote: Remote; go:
         </button>
       </div>
       <div className="scroll">
+        <UpdateBanner />
         <ListError remote={remote} />
         {!remote.listed && !remote.listError && remote.sessions.size === 0 && (
           <div className="pad">

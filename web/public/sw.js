@@ -43,31 +43,74 @@ async function prune(cache) {
   for (const a of assets.slice(ASSETS)) await cache.delete(a.req);
 }
 
+// How long one file may take and how many tries it gets: the way to the
+// host is slow and now and then stalls, and a fetch that never ends would
+// hold the new page back for good.
+const WAIT = 30_000;
+const TRIES = 3;
+
+// A file read in full within the time allowed, or an error.
+async function get(path, init) {
+  for (let i = 1; ; i++) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), WAIT);
+    try {
+      const res = await fetch(path, { ...init, signal: ctl.signal });
+      const body = await res.blob();
+      return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+    } catch (err) {
+      if (i >= TRIES) throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
 // Keeps a newly fetched page, but only together with the scripts and
 // styles it names: a release may replace them on the server before the
 // page is next opened, and a kept page without its scripts is a blank one.
+// They are fetched side by side, and the page is kept once all are in.
 async function adopt(cache, res) {
-  if (!found(res, "/")) return;
+  if (!found(res, "/")) return false;
   const html = await res.clone().text();
-  for (const path of new Set(html.match(/\/assets\/[\w.-]+/g) || [])) {
-    const got = (await cache.match(path, any)) || (await fetch(path));
-    if (!found(got, path)) return;
-    await keep(cache, path, got);
-  }
+  const files = await Promise.all(
+    [...new Set(html.match(/\/assets\/[\w.-]+/g) || [])].map(async (path) => {
+      const got = (await cache.match(path, any)) || (await get(path));
+      if (!found(got, path)) throw new Error("not found: " + path);
+      return [path, got];
+    }),
+  );
+  for (const [path, got] of files) await keep(cache, path, got);
   await keep(cache, "/", res);
   await prune(cache);
+  return true;
+}
+
+// Fetches the page again and keeps it for next time; one at a time.
+// The open pages are told when it is in, so that they can offer it.
+let refreshing = null;
+function refresh() {
+  refreshing ||= (async () => {
+    try {
+      const cache = await caches.open(SHELL);
+      if (!(await adopt(cache, await get("/", { cache: "no-cache" })))) return false;
+      for (const w of await self.clients.matchAll({ type: "window" })) w.postMessage({ type: "shell" });
+      return true;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
 }
 
 async function shell(e) {
   const url = new URL(e.request.url);
   const cache = await caches.open(SHELL);
   if (e.request.mode === "navigate") {
-    // Every route is the one page; the route is in the fragment.
-    const kept = await cache.match("/", any);
-    const fresh = fetch(new Request("/", { cache: "no-cache" }));
-    // Answered from the copy kept, which is fetched again for next time.
-    e.waitUntil(fresh.then((res) => adopt(cache, res.clone())).catch(() => undefined));
-    return kept || fresh.then((res) => res.clone());
+    // Every route is the one page; the route is in the fragment. It is
+    // answered from the copy kept, which is fetched again for next time.
+    e.waitUntil(refresh().catch(() => undefined));
+    return (await cache.match("/", any)) || fetch(new Request("/", { cache: "no-cache" }));
   }
   const kept = await cache.match(url.pathname, any);
   const hashed = url.pathname.startsWith("/assets/");
@@ -91,6 +134,13 @@ self.addEventListener("fetch", (e) => {
   if (!kept) return;
   // Whatever goes wrong here, the network still answers.
   e.respondWith(shell(e).catch(() => fetch(e.request)));
+});
+
+// A page asks for the newest build now: the answer says whether it is kept.
+self.addEventListener("message", (e) => {
+  if (e.data?.type !== "refresh" || !e.ports[0]) return;
+  const port = e.ports[0];
+  e.waitUntil(refresh().then((ok) => port.postMessage({ ok }), () => port.postMessage({ ok: false })));
 });
 
 self.addEventListener("push", (e) => {
