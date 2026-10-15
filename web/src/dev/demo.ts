@@ -521,6 +521,21 @@ const screen = (title: string) =>
 
 const trust = ["\x1b[33m  Folder access\x1b[0m", "  ~/Code/billing", "", "  Trust this folder? Codex can", "  read, edit, and run files here.", "", "\x1b[34m› 1. Trust and continue\x1b[0m", "  2. Quit", "", "  enter continue · esc quit"].join("\r\n");
 
+// One coloured line of ?demo&term=history: a diff's red and green, bold, a
+// 256-colour line, and one mixing CJK with ASCII.
+const historyLine = (n: number) => {
+  const tag = `history-${String(n).padStart(4, "0")}`;
+  switch (n % 20) {
+    case 0: return `\x1b[2m• Explored\x1b[0m ${tag}`;
+    case 5: return `  \x1b[33m-  old ${tag}\x1b[0m`;
+    case 6: return `  \x1b[32m+  new ${tag}\x1b[0m`;
+    case 10: return `\x1b[1m${tag}\x1b[0m 加粗的中文和 ASCII`;
+    case 15: return `\x1b[38;5;208m${tag} 256 色\x1b[0m`;
+    case 18: return `\x1b[4m${tag}\x1b[0m 下划线 \x1b[7m反显\x1b[0m`;
+    default: return `${tag} 中文 mixed text`;
+  }
+};
+
 export class DemoRemote extends Remote {
   override demoFlag(name: string): boolean { return this.opts.has(name); }
   private evs = new Map<string, Event[]>();
@@ -941,13 +956,16 @@ export class DemoRemote extends Remote {
     const own = { cols: popup ? 42 : 120, rows: popup ? 30 : 40 };
     const snapshot = (size: { cols: number; rows: number }) => {
       if (!open) return;
-      const history = this.opts.get("term") === "history" ? Array.from({ length: 150 }, (_, i) => `history-${String(i + 1).padStart(3, "0")} 中文`).join("\r\n") + "\r\n" : "";
-      const data = new TextEncoder().encode(history + (popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? "")));
+      const data = new TextEncoder().encode(popup ? trust : screen(this.sessions.get(sid)?.info?.title ?? ""));
       onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "snapshot", value: { $typeName: "remoteagent.v1.TerminalSnapshot", data, ...size } } });
     };
     setTimeout(() => {
       snapshot(own);
       if (this.opts.get("term") === "closed") setTimeout(() => open && onClose("stream closed: output backlog"), 800);
+      // New live output while reading, so the "有新输出" pill shows.
+      if (this.opts.get("term") === "history") for (const at of [3000, 6000]) setTimeout(() => {
+        if (open) onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "output", value: new TextEncoder().encode(`\r\n\x1b[32mnew output after ${at / 1000}s\x1b[0m\r\n`) } });
+      }, at);
     }, 200);
     return {
       // Like the daemon: a resize is answered with a snapshot at the new size.
@@ -956,7 +974,7 @@ export class DemoRemote extends Remote {
           const req = f.kind.value;
           const end = req.cursor ? Number(req.cursor) : 1200;
           const start = Math.max(0, end - 200);
-          const lines = Array.from({ length: end - start }, (_, i) => `history-${String(start + i + 1).padStart(4, "0")} 中文`);
+          const lines = Array.from({ length: end - start }, (_, i) => historyLine(start + i + 1));
           setTimeout(() => open && onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "historyPage", value: { $typeName: "remoteagent.v1.TerminalHistoryPage", requestId: req.requestId ?? "", lines, nextCursor: start ? String(start) : "", error: "" } } }), 200);
           return;
         }

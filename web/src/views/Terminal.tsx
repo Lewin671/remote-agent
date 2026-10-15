@@ -1,5 +1,5 @@
 import { TerminalHistory } from "../terminal-history";
-import { TerminalHistoryPanel } from "./TerminalHistory";
+import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
 import { usePageVisible, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -7,15 +7,21 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
-const font = 'ui-monospace, Menlo, "SF Mono", monospace';
 const enc = new TextEncoder();
 
 /** Width of a monospace character as a fraction of the font size. */
 function charRatio(): number {
   const ctx = document.createElement("canvas").getContext("2d");
   if (!ctx) return 0.6;
-  ctx.font = `100px ${font}`;
+  ctx.font = `100px ${TERM_FONT}`;
   return ctx.measureText("M").width / 100;
+}
+
+/** The height of one terminal row, as the live terminal lays it out. */
+function cellHeight(t: XTerm): number {
+  const screen = t.element?.querySelector<HTMLElement>(".xterm-screen");
+  if (screen && screen.clientHeight > 0 && t.rows > 0) return screen.clientHeight / t.rows;
+  return (t.options.fontSize ?? 12) * 1.2;
 }
 
 // Special keys for phones, in two rows as in the mockup: the arrows and
@@ -34,7 +40,8 @@ const keys2: [ReactNode, string, string][] = [
 ];
 
 /** The session's terminal, streamed live. Typing goes to the session like
- * the local keyboard. Opening it fits the tmux window to this screen. */
+ * the local keyboard. Opening it fits the tmux window to this screen.
+ * Scrolling up opens the read-only reader over the same area. */
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.conn === "online";
@@ -54,6 +61,25 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   if (!historyRef.current) historyRef.current = new TerminalHistory(() => refreshHistory(n => n + 1));
   const history = historyRef.current;
   const loadHistory = (fresh = false) => history.request((requestId, cursor) => conn.current?.send({ kind: { case: "historyRequest", value: { requestId, cursor } } }), fresh);
+  // How the reader shows text, and how far up the first page opens: taken
+  // from the live terminal at the moment the gesture opened it.
+  const [reader, setReader] = useState<{ font: number; height: number; offset: number }>();
+  const [newOutput, setNewOutput] = useState(false);
+  const beginReading = (distance: number) => {
+    const t = term.current;
+    if (history.phase === "reading" || history.pending || !conn.current || !t) return;
+    setNewOutput(false);
+    setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance });
+    // Reading is passive: any open keyboard goes away.
+    t.blur();
+    loadHistory(true);
+  };
+  const beginRef = useRef(beginReading);
+  beginRef.current = beginReading;
+  const leaveReading = () => {
+    history.close();
+    setNewOutput(false);
+  };
   const [fitted, setFitted] = useState(false);
   // The window is shared: the size this screen was fitted to, as the first
   // snapshot after fitting showed it. A later snapshot of another size
@@ -83,14 +109,17 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
 
   useEffect(() => {
     const t = new XTerm({
-      fontFamily: font,
+      fontFamily: TERM_FONT,
       fontSize: 12,
       cursorBlink: true,
-      scrollback: 10000,
+      // The reader owns scrolling; the live screen keeps no local scrollback
+      // that a wheel could turn into arrow keys.
+      scrollback: 0,
       theme: { background: "#0d1117", foreground: "#c9d1d9", cursor: "#c9d1d9" },
       allowProposedApi: false,
     });
     term.current = t;
+    t.attachCustomWheelEventHandler(() => false);
     t.open(host.current!);
     const typed = t.onData((d) => !history.visible && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
     // A fitted window follows the width of its pane: the browser window, or
@@ -100,6 +129,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     let refit: ReturnType<typeof setTimeout> | undefined;
     const sized = new ResizeObserver(() => {
       scale();
+      // A screen taller than the pane (a shorter pane than the window, or
+      // an open keyboard) shows its bottom rows, where the prompt is.
+      const pane = box.current, screen = host.current;
+      if (pane && screen) screen.style.marginTop = `${Math.min(0, pane.clientHeight - 12 - screen.offsetHeight)}px`;
       const now = box.current?.clientWidth ?? width;
       if (now === width) return;
       width = now;
@@ -107,12 +140,57 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       refit = setTimeout(() => fittedTo.current && fitNow.current(), 200);
     });
     sized.observe(box.current!);
+    sized.observe(host.current!);
     return () => {
       typed.dispose();
       sized.disconnect();
       clearTimeout(refit);
       t.dispose();
       term.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A scroll-up gesture on the live terminal opens the reader. It never
+  // reaches the CLI: the wheel handler above already stops xterm, and a
+  // touch that turns into a scroll is swallowed here.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    let startY = 0;
+    let tracking = false;
+    const onWheel = (e: WheelEvent) => {
+      if (history.phase === "reading") return;
+      if (e.deltaY < 0) {
+        e.preventDefault();
+        beginRef.current(-e.deltaY);
+      }
+    };
+    const onStart = (e: TouchEvent) => {
+      if (history.phase === "reading" || e.touches.length !== 1) return;
+      tracking = true;
+      startY = e.touches[0].clientY;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 12) {
+        e.preventDefault();
+        tracking = false;
+        beginRef.current(dy);
+      } else if (dy < -12) {
+        tracking = false;
+      }
+    };
+    const onEnd = () => { tracking = false; };
+    el.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel, { capture: true });
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -143,6 +221,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               history.receive(f.kind.value);
               return;
             case "snapshot": {
+              if (history.visible) setNewOutput(true);
               const next = { cols: f.kind.value.cols, rows: f.kind.value.rows };
               const was = size.current;
               const target = fittedTo.current;
@@ -169,6 +248,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               return written;
             }
             case "output": {
+              if (history.visible) setNewOutput(true);
               const data = f.kind.value;
               return new Promise<void>((resolve) => t.write(data, resolve));
             }
@@ -209,6 +289,15 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   }, [remote, session.id, attempt, visible, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
+  // Any key leaves the reader first, then goes to the session as before.
+  const press = (s: string) => {
+    if (history.phase !== "idle") leaveReading();
+    send(s);
+  };
+  const openKeyboard = () => {
+    if (history.phase !== "idle") leaveReading();
+    term.current?.focus();
+  };
 
   const fit = () => {
     const el = box.current;
@@ -247,19 +336,21 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   }, [state, linked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const live = state === "live";
+  const reading = history.phase === "reading";
   return (
     <div className={"termview" + (compact ? " compact" : "")}>
       <div className="ttool">
         <span>
-          {!live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
+          {reading ? "回看中 · 只读" : !live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
         </span>
-        <button disabled={!live && !history.visible} onClick={() => history.visible ? history.close() : loadHistory(true)}>{history.visible ? "返回实时终端" : "历史"}</button>
-        {live && !history.visible && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
+        {live && !reading && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
       </div>
-      <div className={"term" + (history.visible ? " reading-history" : "")} ref={box} onClick={() => !history.visible && term.current?.focus()}>
+      <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
         <div ref={host} className={state === "closed" ? "stale" : ""} />
-        {history.visible && <TerminalHistoryPanel history={history} load={() => loadHistory()} online={live} />}
-        {changed && state === "live" && !history.visible && (
+        {history.phase === "loading" && <div className="thint">{history.error ? <>读取失败<button onClick={() => beginRef.current(0)}>重试</button></> : "读取记录…"}</div>}
+        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} onLeave={leaveReading} />}
+        {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
+        {changed && state === "live" && !reading && (
           <div className="tstate">
             <b>远端尺寸已变化</b>
             <p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
@@ -290,22 +381,22 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           </div>
         )}
       </div>
-      {!compact && !history.visible && (
+      {!compact && (
         <div className={"keys" + (live ? "" : " off")}>
           <div className="keyrow">
             {keys.map(([label, seq, name]) => (
-              <button key={name} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+              <button key={name} onClick={() => press(seq)} disabled={!live} aria-label={name}>
                 {label}
               </button>
             ))}
           </div>
           <div className="keyrow">
             {keys2.map(([label, seq, name]) => (
-              <button key={name} onClick={() => send(seq)} disabled={!live} aria-label={name}>
+              <button key={name} onClick={() => press(seq)} disabled={!live} aria-label={name}>
                 {label}
               </button>
             ))}
-            <button onClick={() => term.current?.focus()} disabled={!live} aria-label="键盘">
+            <button onClick={openKeyboard} disabled={!live} aria-label="键盘">
               <Keyboard /> 键盘
             </button>
           </div>
