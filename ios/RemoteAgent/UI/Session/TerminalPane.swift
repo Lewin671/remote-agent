@@ -58,6 +58,7 @@ struct TerminalPane: View {
                         pages: history.pages, status: history.status, online: state == .live, entry: history.entryPull,
                         metrics: { (terminal.host.shownPoints, terminal.host.shownCell) },
                         offset: { terminal.host.horizontalOffset },
+                        gridWidth: { terminal.host.gridWidth },
                         loadEarlier: { terminal.loadEarlier() }, retry: { terminal.retryHistory() },
                         leave: { terminal.leaveReading() }
                     )

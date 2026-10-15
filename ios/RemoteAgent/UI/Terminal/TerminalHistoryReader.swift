@@ -8,8 +8,10 @@
 //
 // A line is already the pane's width, so nothing wraps: a line wider than the
 // area is panned sideways, as the live screen is, and the reader opens at the
-// live screen's own sideways offset. The live screen keeps its offset when
-// reading is left and is asked for it again on the next open.
+// live screen's own sideways offset. It pans over at least the live grid's
+// width, so that offset is not lost when the captured lines are shorter than
+// the window. The live screen keeps its offset when reading is left and is
+// asked for it again on the next open.
 //
 // The size is asked for again whenever the area is laid out: a rotation moves
 // the live screen to another size, and the reader moves with it.
@@ -27,6 +29,8 @@ struct TerminalHistoryReader: UIViewRepresentable {
     let metrics: () -> (points: CGFloat, cell: CGSize)
     /// How far the live screen is panned sideways, so the reader opens there.
     let offset: () -> CGFloat
+    /// The width the live grid is shown at: the reader pans over at least this much.
+    let gridWidth: () -> CGFloat
     let loadEarlier: () -> Void
     let retry: () -> Void
     let leave: () -> Void
@@ -42,6 +46,7 @@ struct TerminalHistoryReader: UIViewRepresentable {
         view.content = TerminalHistoryTextView.Content(pages: pages, status: status, online: online, entry: entry)
         view.metrics = metrics
         view.liveOffsetX = offset()
+        view.liveGridWidth = gridWidth()
         view.show()
     }
 
@@ -69,6 +74,9 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     var metrics: () -> (points: CGFloat, cell: CGSize) = { (14, CGSize(width: 8.4, height: 17)) }
     /// How far the live screen is panned sideways: the reader opens at the same offset.
     var liveOffsetX: CGFloat = 0
+    /// The width the live grid is shown at: the reader pans over at least this much,
+    /// so the offset survives even when the captured lines are shorter than the window.
+    var liveGridWidth: CGFloat = 0
 
     /// What is on screen, so a redraw that changes nothing re-lays out nothing.
     private var shown = ""
@@ -115,7 +123,7 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     func show() {
         let (points, cell) = metrics()
         let pages = content.pages
-        let key = pages.map(\.id).joined(separator: "|") + "#\(content.status)#\(content.online)#\(points)/\(cell.height)/\(Int(bounds.width))x\(Int(bounds.height))"
+        let key = pages.map(\.id).joined(separator: "|") + "#\(content.status)#\(content.online)#\(points)/\(cell.height)/\(Int(bounds.width))x\(Int(bounds.height))/\(Int(liveGridWidth))"
         guard key != shown else { return }
         // Not laid out yet: place nothing, and mark nothing done, so the first
         // real layout places the entry pull and the live offset.
@@ -165,11 +173,15 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     }
 
     /// The size the laid-out text needs, margins included: what can be scrolled to.
+    /// Never narrower than the live grid, or the entry offset would be clamped to
+    /// less than the live screen's own when the captured lines are shorter.
     private func setScrollableSize() {
         let insets = textContainerInset
         layoutManager.ensureLayout(for: textContainer)
         let used = layoutManager.usedRect(for: textContainer)
-        contentSize = CGSize(width: used.width + insets.left + insets.right, height: used.height + insets.top + insets.bottom)
+        contentSize = CGSize(
+            width: max(used.width, liveGridWidth) + insets.left + insets.right,
+            height: used.height + insets.top + insets.bottom)
     }
 
     /// The line at the top of what is in sight, as where it starts from the end of the text.

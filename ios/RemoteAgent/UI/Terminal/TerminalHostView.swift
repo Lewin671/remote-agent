@@ -278,6 +278,10 @@ final class TerminalHostView: UIView {
     /// The size shown, in points.
     var shownPoints: CGFloat { CGFloat(pixels) / fontScale }
 
+    /// The width the remote grid is shown at: the extent the live screen pans
+    /// over, and the least the reader pans over too, so its offset lands the same.
+    var gridWidth: CGFloat { CGFloat(grid.cols) * shownCell.width }
+
     /// The cell the live screen is drawing at, in points: the reader's column
     /// width and line height, so a line lands where it was.
     var shownCell: CGSize {

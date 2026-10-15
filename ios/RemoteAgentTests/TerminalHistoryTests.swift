@@ -230,6 +230,28 @@ private typealias Phase = TerminalHistory.Phase
         #expect(narrow.contentOffset.x == 0)
     }
 
+    /// The reader pans over at least the live grid's width, so opening at the live
+    /// screen's offset is not clamped away when the captured lines are shorter
+    /// (architecture §11 「尺寸」).
+    @Test func theReaderPansOverAtLeastTheLiveGridWidth() {
+        let cell = CGSize(width: 8.4, height: 17)
+        let page = TerminalHistory.Page(id: "p", lines: ["short", "lines"])
+        // The live grid is 600 pt wide and panned to 120; the captured lines are short.
+        let view = TerminalHistoryTextView()
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        view.liveOffsetX = 120
+        show(view, [page], status: Status.none, cell: cell, entry: 0, gridWidth: 600)
+        #expect(view.contentSize.width >= 600)
+        #expect(abs(view.contentOffset.x - 120) < 1)
+        // Without the live grid, the same view opens no further than the text needs.
+        let narrow = TerminalHistoryTextView()
+        narrow.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        narrow.liveOffsetX = 120
+        show(narrow, [page], status: Status.none, cell: cell, entry: 0, gridWidth: 0)
+        #expect(narrow.contentSize.width <= narrow.bounds.width)
+        #expect(narrow.contentOffset.x == 0)
+    }
+
     /// The reader is shown before it has a size: it places nothing then, and once it
     /// is laid out places the entry pull and the live screen's sideways offset.
     @Test func theReaderWaitsForUsableBoundsBeforePlacing() {
@@ -283,10 +305,11 @@ private typealias Phase = TerminalHistory.Phase
     /// What the pane's representable does, without SwiftUI.
     private func show(
         _ view: TerminalHistoryTextView, _ pages: [TerminalHistory.Page], status: Status, online: Bool = true, cell: CGSize,
-        entry: CGFloat
+        entry: CGFloat, gridWidth: CGFloat = 0
     ) {
         view.content = TerminalHistoryTextView.Content(pages: pages, status: status, online: online, entry: entry)
         view.metrics = { (14, cell) }
+        view.liveGridWidth = gridWidth
         view.show()
     }
 }

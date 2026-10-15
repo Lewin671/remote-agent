@@ -74,6 +74,7 @@ import UIKit
         #expect(view.terminal.font.pointSize == 14)
         // The picture is wider than the area, and there it can be panned to the right edge.
         #expect(view.maxHorizontalOffset > 0)
+        #expect(view.gridWidth > view.bounds.width)
         #expect(view.horizontalOffset == 0)
         var sent: [Data] = []
         view.onInput = { sent.append($0) }
