@@ -341,11 +341,11 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 // live view's own, so both stop at the same right edge, and it opens at the column the
                 // live screen is panned to.
                 val cellWidth = term.view?.cellWidth?.takeIf { it > 0f } ?: geometry.cellWidth
-                val contentWidthPx = term.view?.gridWidth?.takeIf { it > 0 } ?: gridWidthPx(cols.coerceAtLeast(1), cellWidth)
+                val liveGridWidthPx = term.view?.gridWidth?.takeIf { it > 0 } ?: gridWidthPx(cols.coerceAtLeast(1), cellWidth)
                 TerminalHistoryReader(
                     history = history, typeface = typeface, palette = palette, fontPx = fontPx,
                     lineHeightPx = lineHeightPx, cellWidth = cellWidth, viewportPx = heightPx,
-                    viewportWidthPx = widthPx, contentWidthPx = contentWidthPx, entryX = term.view?.panOffset ?: 0,
+                    viewportWidthPx = widthPx, liveGridWidthPx = liveGridWidthPx, entryX = term.view?.panOffset ?: 0,
                     entryRows = pull.rows, onLoadOlder = { term.loadHistory() }, onRetry = { term.loadHistory() },
                     onLeave = { leaveReading() }, modifier = Modifier.fillMaxSize(),
                 )

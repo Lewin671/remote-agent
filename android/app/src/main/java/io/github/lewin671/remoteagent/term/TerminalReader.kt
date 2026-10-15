@@ -122,6 +122,31 @@ internal fun readerWidth(viewportWidthPx: Int, gridWidthPx: Int): Int =
 internal fun gridColumnX(column: Int, offset: Int, cellWidth: Float): Int =
     (column * cellWidth).roundToInt() - offset
 
+/** The cells one captured line takes, by the same wide-character rule the reader draws it with. */
+internal fun lineCells(line: List<SgrRun>): Int {
+    var cells = 0
+    for (run in line) {
+        var i = 0
+        while (i < run.text.length) {
+            val codePoint = run.text.codePointAt(i)
+            cells += WcWidth.width(codePoint)
+            i += Character.charCount(codePoint)
+        }
+    }
+    return cells
+}
+
+/** The cells of the widest captured line; 0 when nothing has been captured. */
+internal fun widestLineCells(pages: List<TerminalHistory.Page>): Int =
+    pages.maxOfOrNull { page -> page.lines.maxOfOrNull { lineCells(it) } ?: 0 } ?: 0
+
+/**
+ * The reader's horizontal extent: wide enough for the captured lines, and never narrower than the
+ * live grid. A terminal that got narrower since the capture must not clip what was captured wider.
+ */
+internal fun readerExtentPx(liveGridWidthPx: Int, capturedCells: Int, cellWidth: Float): Int =
+    maxOf(liveGridWidthPx, gridWidthPx(capturedCells, cellWidth))
+
 /**
  * Whether the reader takes a drag for its own sideways pan: a horizontal drag that has somewhere to
  * pan and crossed the touch slop before a long press could take it for text selection ([heldMillis]
@@ -146,9 +171,9 @@ internal fun flingStep(offset: Float, velocity: Float, dt: Float, maxOffset: Flo
  * over the live screen, which keeps running behind it. It is drawn in the live terminal's own
  * font, size, line height and colours, so that entering it looks like the same picture moving
  * up. Lines come from the pane already at its width, so none of them wrap; each line is one
- * item, so an earlier page only ever adds items where the reader is not looking. A window wider
- * than the screen ([contentWidthPx]) is panned sideways, opening at the live screen's own
- * [entryX] and clipping nothing.
+ * item, so an earlier page only ever adds items where the reader is not looking. Content wider
+ * than the screen — the captured lines, never narrower than the live grid ([liveGridWidthPx]) — is
+ * panned sideways, opening at the live screen's own [entryX] and clipping nothing.
  *
  * One gesture has one axis, decided the way the live terminal decides it: the first move past the
  * touch slop sets it, and a sideways drag is taken whole so the vertical list never claims it. The
@@ -164,7 +189,7 @@ internal fun TerminalHistoryReader(
     cellWidth: Float,
     viewportPx: Int,
     viewportWidthPx: Int,
-    contentWidthPx: Int,
+    liveGridWidthPx: Int,
     entryX: Int,
     entryRows: Int,
     onLoadOlder: () -> Unit,
@@ -201,12 +226,15 @@ internal fun TerminalHistoryReader(
     val rows = (viewportPx / lineHeightPx.coerceAtLeast(1)).coerceAtLeast(1)
     LaunchedEffect(Unit) { list.scrollToItem(entryRows.coerceIn(0, rows).coerceAtMost(last.coerceAtLeast(0)), 0) }
 
-    // At least as wide as the screen, and the whole grid when it is wider; only the part past the
-    // viewport is panned, so a fitted grid still fills the width for a vertical drag.
-    val widthPx = readerWidth(viewportWidthPx, contentWidthPx)
+    // The capture may have been taken when the terminal was wider than it is now: the extent covers
+    // the widest captured line, with the live grid only as a minimum, so a narrower window never
+    // clips lines that are already on screen. It is also at least the viewport, so a fitted grid
+    // still fills the width for a vertical drag.
+    val capturedCells = remember(history.pages) { widestLineCells(history.pages) }
+    val extentPx = readerExtentPx(liveGridWidthPx, capturedCells, cellWidth)
+    val widthPx = readerWidth(viewportWidthPx, extentPx)
     val width = with(density) { widthPx.toDp() }
-    // The same offset the live view stops at: the part of its grid past this viewport.
-    val maxOffset = maxPanPx(viewportWidthPx, contentWidthPx).toFloat()
+    val maxOffset = maxPanPx(viewportWidthPx, extentPx).toFloat()
     val offset = remember { mutableFloatStateOf(entryX.toFloat().coerceIn(0f, maxOffset)) }
     // A viewport change (rotation) can leave the pan past the end of the grid, and must take a
     // running fling with it instead of letting it write past the new end.

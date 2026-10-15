@@ -65,6 +65,21 @@ class ReaderGestureTest {
         assertFalse(claimsPan(DragAxis.Vertical, 554f, 100L, timeout))
     }
 
+    @Test fun theExtentCoversACaptureWiderThanAShrunkenLiveGrid() {
+        // A wide-character line counts its cells the way the reader draws them.
+        assertEquals(3, lineCells(listOf(SgrRun("a中"))))
+        // Captured when the terminal was 20 cells wide; the live grid has since shrunk to 12.
+        val captured = widestLineCells(listOf(TerminalHistory.Page("p", listOf(listOf(SgrRun("x".repeat(20)))))))
+        assertEquals(20, captured)
+        val shrunkenGrid = gridWidthPx(12, 10f)
+        // The live grid is only a minimum: the extent keeps the captured 20 cells reachable.
+        assertEquals(200, readerExtentPx(shrunkenGrid, captured, 10f))
+        // So the offset follows the captured extent, not the shrunken grid, and the lines stay whole.
+        assertEquals(100, maxPanPx(100, readerExtentPx(shrunkenGrid, captured, 10f)))
+        // A live grid wider than the capture still wins.
+        assertEquals(300, readerExtentPx(gridWidthPx(30, 10f), captured, 10f))
+    }
+
     @Test fun aFlingStopsAtTheBoundOfEveryFrame() {
         // At the end, the next frame clamps to the bound and leaves no speed.
         assertEquals(500f to 0f, flingStep(490f, 1000f, 0.016f, 500f))
