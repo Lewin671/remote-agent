@@ -1,9 +1,7 @@
 // The service worker's keeping of the page (public/sw.js), run against a
 // made-up cache, network and set of open pages.
-import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
-
-const source = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+import source from "../public/sw.js?raw";
 
 const PAGE = '<script type="module" src="/assets/index-new.js"></script><link rel="stylesheet" href="/assets/index-new.css">';
 
