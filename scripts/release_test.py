@@ -102,6 +102,36 @@ class ReleaseTests(unittest.TestCase):
             'notes=项目列表统一。\\n路径 C:\\\\tmp = 不变\\n协议版本不变 #1\n'
         ).replace('3b8c56b5c5f3b4a4f4c2a4a1a4b0d6d3e0a3d4a5c7b8e9f0a1b2c3d4e5f60718', __import__('hashlib').sha256(b'apk bytes').hexdigest()))
 
+    def test_daemon_manifest_uses_checked_release_payloads(self):
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst Version = 6\n')
+        self.write('internal/updater/policy.json', '{"state":1,"automatic":true}')
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit()
+        self.git('tag', '-a', 'v0.1.1', '-m', 'Safe daemon updates')
+        import hashlib
+        dist = self.root / 'dist'
+        dist.mkdir()
+        apk = dist / 'remote-agent-v0.1.1.apk'
+        apk.write_bytes(b'apk')
+        payloads = [apk]
+        for target in ('darwin-arm64', 'darwin-amd64', 'linux-arm64', 'linux-amd64'):
+            archive = dist / f'remote-agent-v0.1.1-{target}.tar.gz'
+            archive.write_bytes(target.encode())
+            payloads.append(archive)
+        sums = dist / 'SHA256SUMS'
+        sums.write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in payloads))
+        manifest = dict(line.split('=', 1) for line in release.manifest('v0.1.1', apk).splitlines())
+        self.assertEqual(manifest['daemonUpdate'], '1')
+        self.assertEqual(manifest['daemonState'], '1')
+        self.assertEqual(manifest['daemonAutomatic'], 'true')
+        for p in payloads[1:]:
+            target = p.name.removeprefix('remote-agent-v0.1.1-').removesuffix('.tar.gz')
+            self.assertEqual(manifest[f'daemon.{target}.sha256'], hashlib.sha256(p.read_bytes()).hexdigest())
+            self.assertEqual(manifest[f'daemon.{target}.size'], str(p.stat().st_size))
+        payloads[-1].write_bytes(b'corrupt')
+        with self.assertRaises(ValueError):
+            release.manifest('v0.1.1', apk)
+
     def test_non_increasing_android_code_rejected(self):
         self.write('version.properties', 'version=0.1.1\nandroidVersionCode=1\n')
         self.commit()

@@ -30,6 +30,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
+	"github.com/Lewin671/remote-agent/internal/updater"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -89,9 +90,11 @@ func (c *Config) defaults() {
 
 // Daemon owns all sessions.
 type Daemon struct {
-	cfg    Config
-	ctx    context.Context
-	agents map[pb.Agent]agent.Adapter
+	updateMu        sync.Mutex
+	updateIdleSince time.Time
+	cfg             Config
+	ctx             context.Context
+	agents          map[pb.Agent]agent.Adapter
 
 	// uploads are images clients sent for messages.
 	uploads *uploads
@@ -173,6 +176,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return errors.New("another remote-agent daemon is already running")
 	}
 
+	if err := updater.EnsureState(paths.Dir()); err != nil {
+		return err
+	}
 	d.ctx = ctx
 	d.loadQuotas()
 	d.uploads.reconcile()
@@ -209,7 +215,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	defer os.Remove(sock)
 
+	go d.watchUpdateIdle(ctx)
 	mux := http.NewServeMux()
+	mux.HandleFunc("/update/health", d.updateHealth)
 	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: d}, connect.WithInterceptors(protocol.Local())))
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {

@@ -54,6 +54,17 @@ def validate(tag, dist, notes, web_public=None):
             or manifest.get("sha256") != checksums[apk]
             or manifest.get("size") != str(files[apk].stat().st_size)):
         raise ValueError("Manifest must describe this version and APK exactly")
+    if "daemonUpdate" in manifest:
+        if (manifest["daemonUpdate"] != "1" or manifest.get("daemonAutomatic") not in ("true", "false")
+                or not re.fullmatch(r"[1-9][0-9]*", manifest.get("daemonState", ""))
+                or not re.fullmatch(r"[1-9][0-9]*", manifest.get("protocol", ""))):
+            raise ValueError("Invalid daemon update policy")
+        for target in public_scan.TARGETS:
+            name = f"remote-agent-{tag}-{target}.tar.gz"
+            prefix = f"daemon.{target}."
+            if (manifest.get(prefix + "sha256") != checksums[name]
+                    or manifest.get(prefix + "size") != str(files[name].stat().st_size)):
+                raise ValueError("Daemon manifest disagrees with checked release payloads")
     return files
 
 

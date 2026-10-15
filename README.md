@@ -36,6 +36,7 @@ remote-agent events <id> -f    # 持续查看事件
 - CLI 需要的代理等环境变量写进 `~/.remote-agent/agent.env`（旧的 `codex.env` 仍然有效），一行一个 `KEY=VALUE`，daemon 启动每个会话时都会带上
 - 后台服务的日常操作：`scripts/daemon.sh restart|stop|start|status|log`，日志在 `~/.remote-agent/daemon.log`。重启 daemon 不影响正在 tmux 里运行的会话。服务用的是安装时 shell 的 `PATH`，codex 或 tmux 换了位置就重新 `install` 一次
 - 第一次在某个目录启动时，Codex 会问是否信任这个目录、是否信任 hook，需要在终端里回答
+- 正式 Release 安装支持 `remote-agent update check`、`remote-agent update` 和 `remote-agent update status`。自动更新默认关闭；`remote-agent update auto enable --time 04:00` 开启本机每日检查，`remote-agent update auto disable` 关闭。需要先用 Release 安装器升级一次以获得这些命令；源码构建不自更新。限制和恢复方式见 [daemon 更新](docs/architecture.md#daemon-更新)。
 - **升级 Codex 后运行 `remote-agent doctor`**：它用一个临时会话（GPT-6-Luna，低档位）检查 remote-agent 依赖的各项行为，并记下这个版本已验证
 
 ## 连接 server 和网页

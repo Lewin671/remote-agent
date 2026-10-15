@@ -7,11 +7,14 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/buildinfo"
+	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/internal/updater"
 )
 
 const usage = `remote-agent: operate native AI coding CLIs running in tmux
 
 Usage:
+  remote-agent update [check|status|auto]  update the daemon; update help for options
   remote-agent --version                  show product version and source revision
   remote-agent schedule <operation>       manage persistent timed Agent messages (schedule help)
   remote-agent mcp [--session ID]          serve scheduling tools over stdio
@@ -59,7 +62,17 @@ func main() {
 	}
 	cmd, args := os.Args[1], os.Args[2:]
 	var err error
+	if cmd != "update" && cmd != "update-build-info" && cmd != "help" && cmd != "-h" && cmd != "--help" {
+		if err = updater.EnsureState(paths.Dir()); err != nil {
+			fmt.Fprintln(os.Stderr, "remote-agent:", err)
+			os.Exit(1)
+		}
+	}
 	switch cmd {
+	case "update":
+		err = runUpdate(args)
+	case "update-build-info":
+		err = printUpdateJSON(updater.Build())
 	case "schedule":
 		err = runSchedule(args)
 	case "mcp":

@@ -33,7 +33,7 @@ for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
 	arch=${target#*/}
 	name=remote-agent-$tag-$os-$arch
 	mkdir "$stage/$name"
-	CGO_ENABLED=0 GOOS=$os GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent" ./cmd/remote-agent
+	RA_BUILD_CHANNEL=release CGO_ENABLED=0 GOOS=$os GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent" ./cmd/remote-agent
 	cp scripts/daemon.sh "$stage/$name/remote-agent-service"
 	chmod 755 "$stage/$name/remote-agent-service"
 	GOOS=$os GOARCH=$arch scripts/notices.py go ./cmd/remote-agent >"$stage/$name/THIRD_PARTY_NOTICES.txt"
@@ -43,7 +43,7 @@ done
 for arch in arm64 amd64; do
 	name=remote-agent-server-$tag-linux-$arch
 	mkdir "$stage/$name"
-	CGO_ENABLED=0 GOOS=linux GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent-server" ./cmd/remote-agent-server
+	RA_BUILD_CHANNEL=release CGO_ENABLED=0 GOOS=linux GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent-server" ./cmd/remote-agent-server
 	for f in Dockerfile .dockerignore compose.yaml Caddyfile env.example; do
 		cp "deploy/releases-repo/self-host/$f" "$stage/$name/"
 	done

@@ -15,4 +15,4 @@ cd "$ROOT"
 # The version and revision above are the build's identity. What Go would add
 # by itself comes from whichever repository encloses the directory, which
 # for a worktree inside another repository is not this one.
-go build -trimpath -buildvcs=false -ldflags="-s -w -X github.com/Lewin671/remote-agent/internal/buildinfo.Version=$version -X github.com/Lewin671/remote-agent/internal/buildinfo.Commit=$commit" -o "$1" "$2"
+go build -trimpath -buildvcs=false -ldflags="-s -w -X github.com/Lewin671/remote-agent/internal/buildinfo.Version=$version -X github.com/Lewin671/remote-agent/internal/buildinfo.Commit=$commit -X github.com/Lewin671/remote-agent/internal/buildinfo.Channel=${RA_BUILD_CHANNEL:-source}" -o "$1" "$2"

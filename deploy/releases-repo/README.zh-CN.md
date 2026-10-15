@@ -113,3 +113,9 @@ App 从这个仓库自己更新：**设置 › 版本**。
 ## 许可
 
 本仓库 Release 中的文件免费提供给个人使用，按现状提供，不附带任何形式的担保。其中包含的开源软件，许可证全文见各压缩包里的 `THIRD_PARTY_NOTICES.txt`。
+
+## daemon 更新
+
+首次用安装器升级到支持更新命令的正式版本后，可运行 `remote-agent update check`、`remote-agent update`、`remote-agent update status`。自动更新默认关闭，每台电脑分别运行 `remote-agent update auto enable --time 04:00` 开启，`remote-agent update auto disable` 关闭；时间按本机时区。需要标准 daemon 后台服务正在运行。
+
+只允许正式产物、相同协议和存储代数且明确许可的版本自更新。电脑忙时推迟到下次；破坏性升级仍按发布说明使用安装器。更新进程通过 HTTPS 获取并核对附件大小与 SHA-256，原子替换并验证重启结果，启动失败恢复旧版。tmux 会话保留，远程连接短暂重连；更新中断后的下次调用先恢复事务。完整命令见 `remote-agent update help`。

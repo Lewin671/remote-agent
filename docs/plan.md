@@ -17,6 +17,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；v9 以后的改动只过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 当前界面稿的手机画面；原生终端；从 App 发图和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器上的真实 CLI，操作由调试信号触发而不是手指（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 没有签名身份，没装过真机；所有手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
+| daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
 
 代码按界面稿 [client-v41](design/client-v41.html) 实现。它相对 v34 加了 Android 的 App 更新（v35、v36）（[android-client · 更新](android-client.md#更新)）；v37 让终端进入时自动适配屏幕；v38 让项目页在键盘弹出时保持不动；v39 加了终端只读历史和向上滚动分段读取，v40 把它改成在终端里往上滑就进入带颜色的回看；v34 把三处项目列表统一成一种、移除改成确认后不可撤销，并加了连接检测。验证到哪见 [acceptance-notes](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。

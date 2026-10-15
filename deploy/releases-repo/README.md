@@ -113,3 +113,9 @@ The web client is deliberately **not** served by the relay: a compromised relay 
 ## License
 
 The files in this repository's releases are provided free of charge for personal use, as is, without warranty of any kind. They include open-source software whose license texts are in `THIRD_PARTY_NOTICES.txt` inside each archive.
+
+## Daemon updates
+
+After installing a release with update support, run `remote-agent update check`, `remote-agent update`, or `remote-agent update status`. Automatic updates are off by default. Enable them per computer with `remote-agent update auto enable --time 04:00`; disable with `remote-agent update auto disable`. The time is local to that computer. This requires the standard daemon background service to be running.
+
+Only official release builds with matching protocol and storage generations, and explicit release permission, can update themselves. Busy computers defer the attempt. Breaking upgrades still use the installer and release notes. The updater checks archive size and SHA-256 over HTTPS, replaces the binary atomically, verifies the restarted daemon and rolls back on startup failure. It preserves tmux sessions; remote connections briefly reconnect. An interrupted transaction is recovered at the next update invocation. See `remote-agent update help` for commands.

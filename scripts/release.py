@@ -127,6 +127,29 @@ def manifest(tag, apk):
         # The tag's message is written for users: what changed and what upgrading needs.
         "notes": git("tag", "--list", tag, "--format=%(contents)"),
     }
+    policy_file = ROOT / "internal/updater/policy.json"
+    if policy_file.exists():
+        policy = json.loads(policy_file.read_text())
+        if type(policy.get("state")) is not int or policy["state"] < 1 or type(policy.get("automatic")) is not bool:
+            raise ValueError("Invalid daemon update policy")
+        dist = Path(apk).parent
+        sums = {}
+        for line in (dist / "SHA256SUMS").read_text().splitlines():
+            match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9.-]+)", line)
+            if not match or match[2] in sums:
+                raise ValueError("Malformed or duplicate release checksum")
+            sums[match[2]] = match[1]
+        if sums.get(fields["apk"]) != fields["sha256"]:
+            raise ValueError("APK checksum disagrees with SHA256SUMS")
+        fields.update(daemonUpdate=1, daemonState=policy["state"], daemonAutomatic=str(policy["automatic"]).lower())
+        for target in ("darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64"):
+            name = f"remote-agent-{tag}-{target}.tar.gz"
+            archive = dist / name
+            digest = sums.get(name)
+            if not digest or hashlib.sha256(archive.read_bytes()).hexdigest() != digest:
+                raise ValueError("Daemon checksum disagrees with SHA256SUMS")
+            fields[f"daemon.{target}.sha256"] = digest
+            fields[f"daemon.{target}.size"] = archive.stat().st_size
     return "".join(f"{k}={property_value(str(v))}\n" for k, v in fields.items())
 
 
