@@ -1141,6 +1141,8 @@ public final class TerminalView extends View {
         int newRows = Math.max(4, (viewHeight - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
 
         if (mEmulator == null || (newColumns != mEmulator.mColumns || newRows != mEmulator.mRows)) {
+            // A new layout of the same screen (the keyboard showing or hiding) keeps its sideways pan.
+            boolean sameScreen = mEmulator != null;
             mTermSession.updateSize(newColumns, newRows, (int) mRenderer.getFontWidth(), mRenderer.getFontLineSpacing());
             mEmulator = mTermSession.getEmulator();
             mClient.onEmulatorSet();
@@ -1150,7 +1152,7 @@ public final class TerminalView extends View {
                 mTerminalCursorBlinkerRunnable.setEmulator(mEmulator);
 
             mTopRow = 0;
-            scrollTo(0, 0);
+            scrollTo(sameScreen ? getScrollX() : 0, 0);
             invalidate();
         }
 
