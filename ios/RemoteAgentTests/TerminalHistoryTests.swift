@@ -230,6 +230,39 @@ private typealias Phase = TerminalHistory.Phase
         #expect(narrow.contentOffset.x == 0)
     }
 
+    /// The reader is shown before it has a size: it places nothing then, and once it
+    /// is laid out places the entry pull and the live screen's sideways offset.
+    @Test func theReaderWaitsForUsableBoundsBeforePlacing() {
+        let view = TerminalHistoryTextView()
+        view.liveOffsetX = 100
+        let cell = CGSize(width: 8.4, height: 17)
+        let page = TerminalHistory.Page(id: "p", lines: (1...400).map { _ in String(repeating: "x", count: 200) })
+        view.content = TerminalHistoryTextView.Content(pages: [page], status: Status.none, online: true, entry: 60)
+        view.metrics = { (14, cell) }
+        view.show()
+        // No area yet: nothing placed, so the offset is not clamped against nothing.
+        #expect(view.contentOffset == .zero)
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        view.layoutIfNeeded()
+        view.show()
+        // Laid out now: the entry pull is applied and the live offset is kept.
+        #expect(view.contentOffset.y > 0)
+        #expect(view.contentSize.width > view.bounds.width)
+        #expect(abs(view.contentOffset.x - 100) < 1)
+    }
+
+    /// Only a vertical gesture leaves past the bottom (architecture §11 「尺寸」):
+    /// a sideways pan only looks along a wide line.
+    @Test func onlyAVerticalGestureLeavesPastTheBottom() {
+        #expect(TerminalHistoryTextView.leavesReading(offsetY: 700, bottom: 640, lineHeight: 17, sideways: false))
+        // The same overscroll from a sideways pan does not leave.
+        #expect(!TerminalHistoryTextView.leavesReading(offsetY: 700, bottom: 640, lineHeight: 17, sideways: true))
+        // At the bottom, or only a little past it, does not leave either.
+        #expect(!TerminalHistoryTextView.leavesReading(offsetY: 640, bottom: 640, lineHeight: 17, sideways: false))
+        #expect(!TerminalHistoryTextView.leavesReading(offsetY: 660, bottom: 640, lineHeight: 17, sideways: false))
+        #expect(TerminalHistoryTextView.leavesReading(offsetY: 665, bottom: 640, lineHeight: 17, sideways: false))
+    }
+
     /// The reader opens above the newest line, by the entry pull at least three lines,
     /// so the gesture that opened it does not leave again at once.
     @Test func theReaderOpensTheEntryPullAboveTheNewestLine() {

@@ -1,7 +1,8 @@
 // The reader: the history lines as selectable text at the live screen's font,
 // line height and colours (architecture §11 「回看历史」). It only reads — a
 // tap never opens the keyboard, and output arriving never moves it. Reaching
-// the top asks for the page before; carrying on past the very bottom leaves.
+// the top asks for the page before; carrying on past the very bottom leaves,
+// by a vertical gesture (a sideways pan only looks along a line).
 // Prepending keeps the line in sight fixed, by the distance from the end of
 // the text, which is what a page and the status line above are prepended to.
 //
@@ -76,6 +77,9 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     private var leaving = false
     private var lineHeight: CGFloat = 16
     private var lastBounds = CGSize.zero
+    /// Which way the drag in hand goes, decided once, so a sideways pan with a
+    /// little drift is not read as a pull past the bottom.
+    private var dragAxis: TerminalDrag?
 
     init() {
         super.init(frame: .zero, textContainer: nil)
@@ -89,6 +93,8 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
         textContainer.lineBreakMode = .byClipping
         showsHorizontalScrollIndicator = true
         alwaysBounceHorizontal = false
+        // A drag that has begun one way keeps to it, so a sideways pan does not also move up and down.
+        isDirectionalLockEnabled = true
         contentInsetAdjustmentBehavior = .never
         delegate = self
     }
@@ -109,8 +115,11 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     func show() {
         let (points, cell) = metrics()
         let pages = content.pages
-        let key = pages.map(\.id).joined(separator: "|") + "#\(content.status)#\(content.online)#\(points)/\(cell.height)/\(Int(bounds.width))"
+        let key = pages.map(\.id).joined(separator: "|") + "#\(content.status)#\(content.online)#\(points)/\(cell.height)/\(Int(bounds.width))x\(Int(bounds.height))"
         guard key != shown else { return }
+        // Not laid out yet: place nothing, and mark nothing done, so the first
+        // real layout places the entry pull and the live offset.
+        guard bounds.width > 0, bounds.height > 0 else { return }
         lineHeight = max(1, cell.height)
         let anchor = placed ? topAnchor() : nil
         let text = TerminalHistoryText.document(
@@ -195,13 +204,33 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
 
     // MARK: Reading on and leaving
 
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        dragAxis = nil
+    }
+
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard !updating, !leaving, scrollView.isDragging || scrollView.isDecelerating else { return }
+        // Which way this drag goes, once it has moved enough to say.
+        if dragAxis == nil, scrollView.isDragging {
+            let moved = scrollView.panGestureRecognizer.translation(in: scrollView)
+            dragAxis = terminalDrag(dx: moved.x, dy: moved.y)
+        }
         // Near the top: the page before, which keeps the line in sight in place.
         if scrollView.contentOffset.y < 80 { onLoadEarlier() }
-        // Carried on down past the very bottom: back to the live screen.
+        // Carried on down past the very bottom: back to the live screen — which a
+        // sideways pan is not, it only came here to look along a wide line.
         let bottom = max(0, scrollView.contentSize.height - scrollView.bounds.height)
-        if scrollView.contentOffset.y - bottom > max(24, lineHeight) { leave() }
+        if Self.leavesReading(
+            offsetY: scrollView.contentOffset.y, bottom: bottom, lineHeight: lineHeight, sideways: dragAxis == .pan)
+        {
+            leave()
+        }
+    }
+
+    /// Whether being past the bottom is a wish to leave: by a vertical gesture
+    /// only, and only well past the last line.
+    static func leavesReading(offsetY: CGFloat, bottom: CGFloat, lineHeight: CGFloat, sideways: Bool) -> Bool {
+        !sideways && offsetY - bottom > max(24, lineHeight)
     }
 
     private func leave() {

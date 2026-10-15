@@ -254,9 +254,10 @@ import Testing
         #expect(terminalDrag(dx: 30, dy: 30) == .pan)
         // Downwards: the record is read.
         #expect(terminalDrag(dx: 3, dy: 40) == .read)
-        // Upwards: nothing, as a live screen always has.
-        #expect(terminalDrag(dx: 3, dy: -40) == .none)
-        #expect(terminalDrag(dx: -3, dy: -40) == .none)
+        // Upwards: nothing, as a live screen always has. `.ignore`, and not `nil`.
+        #expect(terminalDrag(dx: 3, dy: -40) == .ignore)
+        #expect(terminalDrag(dx: -3, dy: -40) == .ignore)
+        #expect(terminalDrag(dx: 3, dy: -40) != nil)
     }
 
     @Test func tooShortADragSaysNothing() {
@@ -265,7 +266,7 @@ import Testing
         // Once either axis reaches the threshold it is decided.
         #expect(terminalDrag(dx: 8, dy: 0) == .pan)
         #expect(terminalDrag(dx: 0, dy: 8) == .read)
-        #expect(terminalDrag(dx: 0, dy: -8) == .none)
+        #expect(terminalDrag(dx: 0, dy: -8) == .ignore)
     }
 }
 

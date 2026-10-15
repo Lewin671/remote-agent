@@ -12,14 +12,16 @@ public enum TerminalDrag: Sendable, Equatable {
     case pan
     /// Downwards: the record is read, as a pull always has.
     case read
-    /// Upwards: nothing.
-    case none
+    /// Upwards: nothing. Named so a result is never confused with `nil`.
+    case ignore
 }
 
 /// The direction a drag has taken from how far it has gone, or `nil` while
-/// it is still too short to say. A tie goes to the sideways pan.
+/// it is still too short to say. A tie goes to the sideways pan. Once it
+/// says something the caller keeps it: a drag that starts upwards stays
+/// `.ignore` and never turns into a downwards read.
 public func terminalDrag(dx: CGFloat, dy: CGFloat, threshold: CGFloat = 8) -> TerminalDrag? {
     guard abs(dx) >= threshold || abs(dy) >= threshold else { return nil }
     if abs(dx) >= abs(dy) { return .pan }
-    return dy > 0 ? .read : .none
+    return dy > 0 ? .read : .ignore
 }
