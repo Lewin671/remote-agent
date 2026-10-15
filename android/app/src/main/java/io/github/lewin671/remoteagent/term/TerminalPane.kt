@@ -60,7 +60,6 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
 import kotlinx.coroutines.launch
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 /**
  * The key bar's keys (client-v2): the arrows and Enter on the first row with
@@ -338,13 +337,15 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
             if (history.entered) {
                 val palette = term.session.emulator?.mColors?.mCurrentColors ?: TerminalColors.COLOR_SCHEME.mDefaultColors
-                // The reader pans sideways like the live screen: its content is the whole grid, and
-                // it opens at the column the live screen is panned to.
-                val contentWidthPx = (cols.coerceAtLeast(1) * geometry.cellWidth).roundToInt()
+                // The reader pans sideways like the live screen: its grid width and cell width are the
+                // live view's own, so both stop at the same right edge, and it opens at the column the
+                // live screen is panned to.
+                val cellWidth = term.view?.cellWidth?.takeIf { it > 0f } ?: geometry.cellWidth
+                val contentWidthPx = term.view?.gridWidth?.takeIf { it > 0 } ?: gridWidthPx(cols.coerceAtLeast(1), cellWidth)
                 TerminalHistoryReader(
                     history = history, typeface = typeface, palette = palette, fontPx = fontPx,
-                    lineHeightPx = lineHeightPx, cellWidth = geometry.cellWidth, viewportPx = heightPx,
-                    contentWidthPx = contentWidthPx, entryX = term.view?.panOffset ?: 0,
+                    lineHeightPx = lineHeightPx, cellWidth = cellWidth, viewportPx = heightPx,
+                    viewportWidthPx = widthPx, contentWidthPx = contentWidthPx, entryX = term.view?.panOffset ?: 0,
                     entryRows = pull.rows, onLoadOlder = { term.loadHistory() }, onRetry = { term.loadHistory() },
                     onLeave = { leaveReading() }, modifier = Modifier.fillMaxSize(),
                 )

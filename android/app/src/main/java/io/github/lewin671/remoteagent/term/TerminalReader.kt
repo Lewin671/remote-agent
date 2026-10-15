@@ -4,16 +4,18 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -24,19 +26,29 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.PlatformTextStyle
@@ -49,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -59,7 +72,11 @@ import io.github.lewin671.remoteagent.ui.Lucide
 import io.github.lewin671.remoteagent.ui.T
 import io.github.lewin671.remoteagent.ui.TermColors
 import io.github.lewin671.remoteagent.ui.ts
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.roundToInt
 
 /**
  * The reader's items in the order its reverse list draws them: item 0 is the bottom of the
@@ -71,6 +88,40 @@ import kotlin.math.abs
 internal fun historyItems(pages: List<TerminalHistory.Page>): List<Pair<String, List<SgrRun>>> =
     pages.flatMap { page -> page.lines.indices.reversed().map { i -> "${page.id}:$i" to page.lines[i] } }
 
+/** The axis a reader drag is on. */
+internal enum class DragAxis { Horizontal, Vertical }
+
+/**
+ * The axis of a drag, decided by the dominant one. The same rule as the live terminal
+ * (TerminalView.horizontalDrag): a tie keeps the vertical meaning, so the pull into reading works.
+ */
+internal fun dragAxis(dx: Float, dy: Float): DragAxis =
+    if (abs(dx) > abs(dy)) DragAxis.Horizontal else DragAxis.Vertical
+
+/**
+ * The grid's drawn width: columns times the cell width. The live view's horizontal scroll range
+ * uses the same product, so reading it from there makes both stop at the same right edge.
+ */
+internal fun gridWidthPx(cols: Int, cellWidth: Float): Int = (cols * cellWidth).roundToInt()
+
+/** How far a viewport can be panned over a grid: the part of it past the viewport, never negative. */
+internal fun maxPanPx(viewportWidthPx: Int, gridWidthPx: Int): Int = (gridWidthPx - viewportWidthPx).coerceAtLeast(0)
+
+/**
+ * The reader's content width: at least as wide as the viewport, and the whole grid when that is
+ * wider. Only the part past the viewport is panned, so a fitted grid leaves the whole width as the
+ * vertical list's own drag target.
+ */
+internal fun readerWidth(viewportWidthPx: Int, gridWidthPx: Int): Int =
+    viewportWidthPx.coerceAtLeast(gridWidthPx)
+
+/**
+ * Where a grid column's left edge is drawn in the viewport: the grid is placed at the start and the
+ * content is panned left by [offset]. Mirrors the reader's [wrapContentWidth] + offset placement.
+ */
+internal fun gridColumnX(column: Int, offset: Int, cellWidth: Float): Int =
+    (column * cellWidth).roundToInt() - offset
+
 /**
  * The reader of client-v40 §terminal-history: a capture of the terminal as read-only text
  * over the live screen, which keeps running behind it. It is drawn in the live terminal's own
@@ -79,6 +130,10 @@ internal fun historyItems(pages: List<TerminalHistory.Page>): List<Pair<String, 
  * item, so an earlier page only ever adds items where the reader is not looking. A window wider
  * than the screen ([contentWidthPx]) is panned sideways, opening at the live screen's own
  * [entryX] and clipping nothing.
+ *
+ * One gesture has one axis, decided the way the live terminal decides it: the first move past the
+ * touch slop sets it, and a sideways drag is taken whole so the vertical list never claims it. The
+ * bottom exit is a vertical gesture.
  */
 @Composable
 internal fun TerminalHistoryReader(
@@ -89,6 +144,7 @@ internal fun TerminalHistoryReader(
     lineHeightPx: Int,
     cellWidth: Float,
     viewportPx: Int,
+    viewportWidthPx: Int,
     contentWidthPx: Int,
     entryX: Int,
     entryRows: Int,
@@ -126,13 +182,71 @@ internal fun TerminalHistoryReader(
     val rows = (viewportPx / lineHeightPx.coerceAtLeast(1)).coerceAtLeast(1)
     LaunchedEffect(Unit) { list.scrollToItem(entryRows.coerceIn(0, rows).coerceAtMost(last.coerceAtLeast(0)), 0) }
 
-    // The capture is as wide as the live grid; a window wider than the screen pans sideways here,
-    // with no line wrapped or clipped.
-    val contentWidth = with(density) { contentWidthPx.toDp() }
-    val pan = rememberScrollState(initial = entryX)
-    Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, onLeave))) {
-        Box(Modifier.fillMaxSize().horizontalScroll(pan)) {
-            SelectionContainer(Modifier.width(contentWidth).fillMaxHeight()) {
+    // At least as wide as the screen, and the whole grid when it is wider; only the part past the
+    // viewport is panned, so a fitted grid still fills the width for a vertical drag.
+    val widthPx = readerWidth(viewportWidthPx, contentWidthPx)
+    val width = with(density) { widthPx.toDp() }
+    // The same offset the live view stops at: the part of its grid past this viewport.
+    val maxOffset = maxPanPx(viewportWidthPx, contentWidthPx).toFloat()
+    val offset = remember { mutableFloatStateOf(entryX.toFloat().coerceIn(0f, maxOffset)) }
+    // A viewport change (rotation) can leave the pan past the end of the grid.
+    LaunchedEffect(maxOffset) { offset.floatValue = offset.floatValue.coerceIn(0f, maxOffset) }
+    // The one axis of the gesture in progress; null until the first move past the slop decides it.
+    val axis = remember { mutableStateOf<DragAxis?>(null) }
+    val scope = rememberCoroutineScope()
+    val fling = remember { Fling() }
+    Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, axis, onLeave))) {
+        Box(
+            Modifier.fillMaxSize().clipToBounds().pointerInput(widthPx, viewportWidthPx) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // A new touch takes the pan over from a fling still running.
+                    fling.job?.cancel()
+                    axis.value = null
+                    var decided: DragAxis? = null
+                    val tracker = VelocityTracker()
+                    tracker.addPosition(down.uptimeMillis, down.position)
+                    while (true) {
+                        // Read before the list's own scrollable: a sideways gesture is taken here
+                        // whole, so it can neither scroll rows nor leave reading.
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        if (decided == null) {
+                            val total = change.position - down.position
+                            if (total.getDistance() > viewConfiguration.touchSlop) {
+                                decided = dragAxis(total.x, total.y)
+                                axis.value = decided
+                            }
+                        }
+                        if (decided == DragAxis.Horizontal) {
+                            change.consume()
+                            val delta = change.position - change.previousPosition
+                            offset.floatValue = (offset.floatValue - delta.x).coerceIn(0f, maxOffset)
+                        }
+                    }
+                    // The gesture is over: a wheel or trackpad scroll is not on either axis of it.
+                    axis.value = null
+                    if (decided == DragAxis.Horizontal) {
+                        val velocity = tracker.calculateVelocity().x
+                        fling.job = scope.launch { flingPan(offset, velocity, maxOffset) }
+                    }
+                }
+            },
+        ) {
+            // Measured at the whole grid width but reported as the viewport and placed at its start:
+            // width() alone is clamped by the viewport-sized box (every line laid out short), and
+            // requiredWidth is centered by the layout system when it overflows (shifting the grid by
+            // (width - viewport)/2, so column 0 sits off the left edge and the pan overruns). The
+            // outer box clips the part past the viewport.
+            SelectionContainer(
+                Modifier
+                    .offset { IntOffset(-offset.floatValue.roundToInt(), 0) }
+                    .wrapContentWidth(Alignment.Start, unbounded = true)
+                    .width(width)
+                    .fillMaxHeight(),
+            ) {
                 LazyColumn(Modifier.fillMaxSize(), state = list, reverseLayout = true) {
                     items(items, key = { it.first }) { (_, line) ->
                         Text(
@@ -149,6 +263,38 @@ internal fun TerminalHistoryReader(
         }
     }
 }
+
+/** The running sideways fling, so a new touch can take the pan back over. */
+private class Fling {
+    var job: Job? = null
+}
+
+/**
+ * Carries a sideways pan on with the finger's momentum, losing speed to friction and stopping at
+ * the ends of the grid. The offset moves opposite the finger, so the fling runs opposite its x
+ * velocity.
+ */
+private suspend fun flingPan(offset: MutableFloatState, velocityX: Float, maxOffset: Float) {
+    var velocity = -velocityX
+    if (maxOffset <= 0f || abs(velocity) < FLING_STOP_VELOCITY) return
+    var last = withFrameNanos { it }
+    while (abs(velocity) > FLING_STOP_VELOCITY) {
+        val now = withFrameNanos { it }
+        val dt = ((now - last) / 1_000_000_000f).coerceIn(0f, 0.05f)
+        last = now
+        val next = (offset.floatValue + velocity * dt).coerceIn(0f, maxOffset)
+        val atEnd = (next <= 0f && velocity < 0f) || (next >= maxOffset && velocity > 0f)
+        offset.floatValue = next
+        if (atEnd) return
+        velocity *= exp(-FLING_FRICTION * dt)
+    }
+}
+
+/** Below this speed the fling has stopped; a slower flick is just a drag that ended. */
+private const val FLING_STOP_VELOCITY = 50f
+
+/** How fast a fling loses speed, per second: its velocity e-folds in about a sixth of one. */
+private const val FLING_FRICTION = 6f
 
 /** The grey line at the top of the reader's content, with a retry after a failure. */
 @Composable
@@ -209,17 +355,18 @@ private val pillText = ts(13.sp, FontWeight.SemiBold)
 /**
  * Leaves reading when the scroll goes past the newest line, which is what a wheel down or a
  * drag up along the bottom edge is: the reverse list has nothing to take it, so the whole
- * delta is left to us and one line's worth of it is enough.
+ * delta is left to us and one line's worth of it is enough. Only a vertical gesture counts: a
+ * sideways pan must never leave reading.
  */
 @Composable
-private fun leaveAtBottom(list: LazyListState, lineHeightPx: Int, onLeave: () -> Unit): NestedScrollConnection {
+private fun leaveAtBottom(list: LazyListState, lineHeightPx: Int, axis: MutableState<DragAxis?>, onLeave: () -> Unit): NestedScrollConnection {
     val leave = rememberUpdatedState(onLeave)
     val threshold = lineHeightPx.coerceAtLeast(1).toFloat()
     val past = remember { Past() }
     return remember(list, threshold) {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < 0f && !list.canScrollBackward) {
+                if (available.y < 0f && !list.canScrollBackward && axis.value != DragAxis.Horizontal) {
                     past.pixels += available.y
                     if (-past.pixels >= threshold) leave.value()
                 } else {

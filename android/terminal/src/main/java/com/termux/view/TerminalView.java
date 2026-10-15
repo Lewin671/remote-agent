@@ -600,6 +600,16 @@ public final class TerminalView extends View {
         return getScrollX();
     }
 
+    /** The terminal's drawn width in pixels: the same value the horizontal scroll range uses. */
+    public int getGridWidth() {
+        return contentWidth();
+    }
+
+    /** The width of one cell as the renderer draws it; the grid a reader must line up with. */
+    public float getCellWidth() {
+        return mRenderer == null ? 0f : mRenderer.getFontWidth();
+    }
+
     public void onScreenUpdated() {
         if (mEmulator == null) return;
 
