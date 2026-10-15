@@ -1,6 +1,8 @@
 package io.github.lewin671.remoteagent.term
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The reader's start-of-gesture axis rule and the width it lays its content out at. */
@@ -48,5 +50,30 @@ class ReaderGestureTest {
         assertEquals(0, gridColumnX(0, 0, cellWidth))
         // At the maximum offset the grid's right edge (past the last column) is at the right edge.
         assertEquals(viewportWidthPx, gridColumnX(cols, maxOffset, cellWidth))
+    }
+
+    @Test fun aLongPressOrAFittedGridKeepsTheDragForSelection() {
+        val timeout = 400L
+        // A horizontal drag with somewhere to pan, started before a long press: ours to pan.
+        assertTrue(claimsPan(DragAxis.Horizontal, 554f, 100L, timeout))
+        // Held past the long press before moving: the selection's gesture, not ours.
+        assertFalse(claimsPan(DragAxis.Horizontal, 554f, 500L, timeout))
+        assertFalse(claimsPan(DragAxis.Horizontal, 554f, timeout, timeout))
+        // A grid that fits has nowhere to pan, so a sideways drag is never taken.
+        assertFalse(claimsPan(DragAxis.Horizontal, 0f, 100L, timeout))
+        // Vertical drags belong to the list.
+        assertFalse(claimsPan(DragAxis.Vertical, 554f, 100L, timeout))
+    }
+
+    @Test fun aFlingStopsAtTheBoundOfEveryFrame() {
+        // At the end, the next frame clamps to the bound and leaves no speed.
+        assertEquals(500f to 0f, flingStep(490f, 1000f, 0.016f, 500f))
+        assertEquals(0f to 0f, flingStep(5f, -1000f, 0.016f, 500f))
+        // A bound that shrank below the offset clamps it right away.
+        assertEquals(120f to 0f, flingStep(300f, 900f, 0.016f, 120f))
+        // Inside, it moves a frame's worth and keeps most of its speed.
+        val (next, remaining) = flingStep(400f, 1000f, 0.016f, 500f)
+        assertEquals(416.0, next.toDouble(), 0.01)
+        assertTrue(remaining in 800f..1000f)
     }
 }

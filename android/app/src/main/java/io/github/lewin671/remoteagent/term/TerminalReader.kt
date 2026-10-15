@@ -123,6 +123,25 @@ internal fun gridColumnX(column: Int, offset: Int, cellWidth: Float): Int =
     (column * cellWidth).roundToInt() - offset
 
 /**
+ * Whether the reader takes a drag for its own sideways pan: a horizontal drag that has somewhere to
+ * pan and crossed the touch slop before a long press could take it for text selection ([heldMillis]
+ * under the long-press timeout). A drag the selection already owns is left to it.
+ */
+internal fun claimsPan(axis: DragAxis, maxOffsetPx: Float, heldMillis: Long, longPressTimeoutMillis: Long): Boolean =
+    axis == DragAxis.Horizontal && maxOffsetPx > 0f && heldMillis < longPressTimeoutMillis
+
+/**
+ * One frame of a sideways fling: where it moves next, and the speed left. It stops at either end of
+ * [maxOffset], which is read every frame, so a bound that shrank cannot be run past.
+ */
+internal fun flingStep(offset: Float, velocity: Float, dt: Float, maxOffset: Float): Pair<Float, Float> {
+    val bound = maxOffset.coerceAtLeast(0f)
+    val next = (offset + velocity * dt).coerceIn(0f, bound)
+    val stopped = (next <= 0f && velocity < 0f) || (next >= bound && velocity > 0f)
+    return next to if (stopped) 0f else velocity * exp(-FLING_FRICTION * dt)
+}
+
+/**
  * The reader of client-v40 §terminal-history: a capture of the terminal as read-only text
  * over the live screen, which keeps running behind it. It is drawn in the live terminal's own
  * font, size, line height and colours, so that entering it looks like the same picture moving
@@ -189,21 +208,27 @@ internal fun TerminalHistoryReader(
     // The same offset the live view stops at: the part of its grid past this viewport.
     val maxOffset = maxPanPx(viewportWidthPx, contentWidthPx).toFloat()
     val offset = remember { mutableFloatStateOf(entryX.toFloat().coerceIn(0f, maxOffset)) }
-    // A viewport change (rotation) can leave the pan past the end of the grid.
-    LaunchedEffect(maxOffset) { offset.floatValue = offset.floatValue.coerceIn(0f, maxOffset) }
-    // The one axis of the gesture in progress; null until the first move past the slop decides it.
-    val axis = remember { mutableStateOf<DragAxis?>(null) }
-    val scope = rememberCoroutineScope()
+    // A viewport change (rotation) can leave the pan past the end of the grid, and must take a
+    // running fling with it instead of letting it write past the new end.
     val fling = remember { Fling() }
-    Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, axis, onLeave))) {
+    LaunchedEffect(maxOffset) {
+        fling.job?.cancel()
+        offset.floatValue = offset.floatValue.coerceIn(0f, maxOffset)
+    }
+    // The bound the fling reads every frame, so a viewport change re-bounds it mid-flight.
+    val bound = rememberUpdatedState(maxOffset)
+    val panning = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Box(modifier.background(TermColors.bg).nestedScroll(leaveAtBottom(list, lineHeightPx, panning, onLeave))) {
         Box(
             Modifier.fillMaxSize().clipToBounds().pointerInput(widthPx, viewportWidthPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     // A new touch takes the pan over from a fling still running.
                     fling.job?.cancel()
-                    axis.value = null
-                    var decided: DragAxis? = null
+                    panning.value = false
+                    var decided = false
+                    var claimed = false
                     val tracker = VelocityTracker()
                     tracker.addPosition(down.uptimeMillis, down.position)
                     while (true) {
@@ -213,24 +238,30 @@ internal fun TerminalHistoryReader(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
                         tracker.addPosition(change.uptimeMillis, change.position)
-                        if (decided == null) {
+                        if (!decided) {
                             val total = change.position - down.position
                             if (total.getDistance() > viewConfiguration.touchSlop) {
-                                decided = dragAxis(total.x, total.y)
-                                axis.value = decided
+                                decided = true
+                                // A long press (or a grid with nowhere to pan) owns the drag: leave
+                                // it to text selection rather than taking it for a pan.
+                                claimed = claimsPan(
+                                    dragAxis(total.x, total.y), maxOffset,
+                                    change.uptimeMillis - down.uptimeMillis, viewConfiguration.longPressTimeoutMillis,
+                                )
+                                panning.value = claimed
                             }
                         }
-                        if (decided == DragAxis.Horizontal) {
+                        if (claimed) {
                             change.consume()
                             val delta = change.position - change.previousPosition
                             offset.floatValue = (offset.floatValue - delta.x).coerceIn(0f, maxOffset)
                         }
                     }
                     // The gesture is over: a wheel or trackpad scroll is not on either axis of it.
-                    axis.value = null
-                    if (decided == DragAxis.Horizontal) {
+                    panning.value = false
+                    if (claimed) {
                         val velocity = tracker.calculateVelocity().x
-                        fling.job = scope.launch { flingPan(offset, velocity, maxOffset) }
+                        fling.job = scope.launch { flingPan(offset, velocity) { bound.value } }
                     }
                 }
             },
@@ -274,19 +305,17 @@ private class Fling {
  * the ends of the grid. The offset moves opposite the finger, so the fling runs opposite its x
  * velocity.
  */
-private suspend fun flingPan(offset: MutableFloatState, velocityX: Float, maxOffset: Float) {
+private suspend fun flingPan(offset: MutableFloatState, velocityX: Float, maxOffset: () -> Float) {
     var velocity = -velocityX
-    if (maxOffset <= 0f || abs(velocity) < FLING_STOP_VELOCITY) return
+    if (abs(velocity) < FLING_STOP_VELOCITY) return
     var last = withFrameNanos { it }
     while (abs(velocity) > FLING_STOP_VELOCITY) {
         val now = withFrameNanos { it }
         val dt = ((now - last) / 1_000_000_000f).coerceIn(0f, 0.05f)
         last = now
-        val next = (offset.floatValue + velocity * dt).coerceIn(0f, maxOffset)
-        val atEnd = (next <= 0f && velocity < 0f) || (next >= maxOffset && velocity > 0f)
+        val (next, remaining) = flingStep(offset.floatValue, velocity, dt, maxOffset())
         offset.floatValue = next
-        if (atEnd) return
-        velocity *= exp(-FLING_FRICTION * dt)
+        velocity = remaining
     }
 }
 
@@ -355,18 +384,18 @@ private val pillText = ts(13.sp, FontWeight.SemiBold)
 /**
  * Leaves reading when the scroll goes past the newest line, which is what a wheel down or a
  * drag up along the bottom edge is: the reverse list has nothing to take it, so the whole
- * delta is left to us and one line's worth of it is enough. Only a vertical gesture counts: a
- * sideways pan must never leave reading.
+ * delta is left to us and one line's worth of it is enough. Only a vertical gesture counts: while
+ * the reader is panning sideways it must never leave reading.
  */
 @Composable
-private fun leaveAtBottom(list: LazyListState, lineHeightPx: Int, axis: MutableState<DragAxis?>, onLeave: () -> Unit): NestedScrollConnection {
+private fun leaveAtBottom(list: LazyListState, lineHeightPx: Int, panning: MutableState<Boolean>, onLeave: () -> Unit): NestedScrollConnection {
     val leave = rememberUpdatedState(onLeave)
     val threshold = lineHeightPx.coerceAtLeast(1).toFloat()
     val past = remember { Past() }
     return remember(list, threshold) {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < 0f && !list.canScrollBackward && axis.value != DragAxis.Horizontal) {
+                if (available.y < 0f && !list.canScrollBackward && !panning.value) {
                     past.pixels += available.y
                     if (-past.pixels >= threshold) leave.value()
                 } else {
