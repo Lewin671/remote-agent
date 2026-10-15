@@ -3,6 +3,7 @@ import type { TerminalHistory } from "../terminal-history";
 import { parseSgrLine, widthSegments, type Run } from "../sgr";
 import { DEFAULT_BG, DEFAULT_FG, ansiColor } from "../ansi";
 import { ArrowDown } from "../icons";
+import { wheelAxis } from "../wheel";
 
 /** The monospace stack the live xterm is opened with; the reader uses it
  * too, so the two show the same picture. */
@@ -56,7 +57,7 @@ function status(history: TerminalHistory, online: boolean, load: () => void) {
 /** The read-only reader over the live terminal: a fresh capture, scrolled
  * natively, coloured like the live screen and never focused (so a tap does
  * not open the keyboard). */
-export function TerminalReader({ history, load, online, font, height, offset, left, onLeave }: {
+export function TerminalReader({ history, load, online, font, height, offset, left, grid, onLeave }: {
   history: TerminalHistory;
   load: () => void;
   online: boolean;
@@ -65,10 +66,13 @@ export function TerminalReader({ history, load, online, font, height, offset, le
   offset: number;
   /** The live screen's sideways position, where a wide reader opens. */
   left: number;
+  /** The live screen's width: the reader is at least this wide, so its sideways position holds even over short lines. */
+  grid: number;
   onLeave: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const seen = useRef({ pages: 0, height: 0 });
+  const wheel = useRef(wheelAxis()).current;
   const touch = useRef<{ x: number; y: number; axis: "" | "x" | "y" }>({ x: 0, y: 0, axis: "" });
   const readEarlier = () => {
     const el = box.current!;
@@ -100,7 +104,7 @@ export function TerminalReader({ history, load, online, font, height, offset, le
       aria-label="终端记录"
       style={{ fontFamily: TERM_FONT, fontSize: font, lineHeight: `${height}px`, color: DEFAULT_FG }}
       onScroll={readEarlier}
-      onWheel={(e) => e.deltaY > Math.abs(e.deltaX) && atBottom() && onLeave()}
+      onWheel={(e) => wheel(e) === "y" && e.deltaY > 0 && atBottom() && onLeave()}
       onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, axis: "" })}
       onTouchMove={(e) => {
         // The first clear direction holds for the whole gesture: a sideways
@@ -111,8 +115,10 @@ export function TerminalReader({ history, load, online, font, height, offset, le
         if (t.axis === "y" && dy < -12 && atBottom()) onLeave();
       }}
     >
-      <div className="thstat" style={{ minHeight: height }}>{status(history, online, load)}</div>
-      {history.pages.flatMap((page) => page.lines.map((line, i) => <Line key={page.id + ":" + i} text={line} height={height} />))}
+      <div style={{ minWidth: grid }}>
+        <div className="thstat" style={{ minHeight: height }}>{status(history, online, load)}</div>
+        {history.pages.flatMap((page) => page.lines.map((line, i) => <Line key={page.id + ":" + i} text={line} height={height} />))}
+      </div>
     </div>
   );
 }

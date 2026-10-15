@@ -1,4 +1,5 @@
 import { TerminalHistory } from "../terminal-history";
+import { wheelAxis } from "../wheel";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
 import { usePageVisible, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
@@ -65,13 +66,13 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const loadHistory = (fresh = false) => history.request((requestId, cursor) => conn.current?.send({ kind: { case: "historyRequest", value: { requestId, cursor } } }), fresh);
   // How the reader shows text, and how far up the first page opens: taken
   // from the live terminal at the moment the gesture opened it.
-  const [reader, setReader] = useState<{ font: number; height: number; offset: number; left: number }>();
+  const [reader, setReader] = useState<{ font: number; height: number; offset: number; left: number; grid: number }>();
   const [newOutput, setNewOutput] = useState(false);
   const beginReading = (distance: number) => {
     const t = term.current;
     if (history.phase === "reading" || history.pending || !conn.current || !t) return;
     setNewOutput(false);
-    setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance, left: pan.current?.scrollLeft ?? 0 });
+    setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance, left: pan.current?.scrollLeft ?? 0, grid: host.current?.offsetWidth ?? 0 });
     // Reading is passive: any open keyboard goes away.
     t.blur();
     loadHistory(true);
@@ -162,10 +163,12 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     let startX = 0;
     let startY = 0;
     let tracking = false;
+    const axisOf = wheelAxis();
     const onWheel = (e: WheelEvent) => {
-      if (history.phase === "reading") return;
       // A sideways scroll pans a wide screen natively; only an upward one reads.
-      if (e.deltaY < 0 && -e.deltaY > Math.abs(e.deltaX)) {
+      const axis = axisOf(e);
+      if (history.phase === "reading") return;
+      if (axis === "y" && e.deltaY < 0) {
         e.preventDefault();
         beginRef.current(-e.deltaY);
       }
@@ -360,7 +363,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           <div ref={host} className={state === "closed" ? "stale" : ""} />
         </div>
         {history.phase === "loading" && <div className="thint">{history.error ? <>读取失败<button onClick={() => beginRef.current(0)}>重试</button></> : "读取记录…"}</div>}
-        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} onLeave={leaveReading} />}
+        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
         {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
         {changed && state === "live" && !reading && (
           <div className="tstate">
