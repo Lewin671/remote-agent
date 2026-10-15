@@ -927,17 +927,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v39 · 2026-10-14 · 上一版 v38 在 git 历史里（<code>git log -- docs/design/client-v38.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v40 · 2026-10-14 · 上一版 v39 在 git 历史里（<code>git log -- docs/design/client-v39.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v38 的改动</h4><ul><li>终端增加「历史」入口：历史只读，向上滚动分段加载；阅读时隐藏输入按键，保留实时连接，可返回实时终端。</li><li>补充历史为空、读取中、失败重试、保留历史到头四种状态。其余画面保留。</li></ul>
+  <h4>相对 v39 的改动</h4><ul><li>终端去掉「历史」按钮和单独的历史页：在终端里往上滑（滚轮、触控板同理）就是往回看，滑到已读内容的顶端自动接上更早的一段。</li><li>回看的内容带颜色、字号和实时画面一致；回看时画面不跟着新输出跳动，右下角「回到实时」（有新输出时写「有新输出」）一点回到底部，滑到最底、按任意按键也回到实时。按键栏不再隐藏。其余画面保留。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端历史</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1345,7 +1345,7 @@ git status --short gen/</pre>
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中 · 询问</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
-      <div class="ttool">电脑上 120×40<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配我的屏幕</b></div>
+      <div class="ttool">电脑上 120×40<b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配我的屏幕</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
       <div class="term tiny"><span class="d">• Explored</span>
   <span class="d">└</span> Search func Login in auth · Read login.go, redis.go
@@ -1378,7 +1378,7 @@ git status --short gen/</pre>
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">billing · 11:25</span></b><span style="color:#9da7b3"><span class="dot wait"></span>终端里有弹窗 · 询问</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
-      <div class="ttool">已适配这块屏幕 · 42×30<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b>还原</b></div>
+      <div class="ttool">已适配这块屏幕 · 42×30<b>还原</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
       <div class="term"><span class="y">  Folder access</span>
   ~/Code/billing
@@ -3777,7 +3777,7 @@ git status --short gen/</pre>
 </span>
 <span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
 </div>
-<div class="ttool">远端尺寸已变化 · 80×30<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><span style="margin-left:auto;color:#79c0ff">适配</span>
+<div class="ttool">远端尺寸已变化 · 80×30<span style="margin-left:auto;color:#79c0ff">适配</span>
 </div>
 <div class="term">
 <span class="b">❯</span> 正在执行测试…
@@ -4093,7 +4093,7 @@ git status --short gen/</pre>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         </div>
         <div class="tcol">
-          <div class="ttool">已适配这块屏幕 · 96×40<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b>还原</b></div>
+          <div class="ttool">已适配这块屏幕 · 96×40<b>还原</b></div>
           <div class="term" style="font-size:11px"><span class="d">• Edited</span> 5 files (+84 -61)
 <span class="d">• Ran</span> mkdir -p internal/handler
 
@@ -4250,23 +4250,143 @@ git status --short gen/</pre>
 </script>
 
 <section id="terminal-history" style="margin:40px 0">
-<h2>终端 · 分段读取历史</h2>
-<div class="grid">
-<div><div class="phone" style="background:#0d1117;color:#c9d1d9">
-<div class="navbar"><span class="title"><b>修复登录超时</b><span>终端历史</span></span><span style="color:#79c0ff">返回实时终端</span></div>
-<div style="padding:12px;color:#8b949e;font-size:12px">读取更早历史</div>
-<pre style="padding:12px;white-space:pre-wrap">history-0801 中文
-history-0802 中文
-…
-history-1000 中文
-history-1001 中文
-history-1002 中文</pre>
-</div><div class="cap">历史正文只读；向上滚动时补前一段，当前文字留在原位。也可点顶部入口取前一段。宽屏沿用相同布局并撑满终端列。</div></div>
-<div><div class="phone" style="background:#0d1117;color:#c9d1d9;padding:12px">
-<h3>边界状态</h3><p>读取历史…</p><p>历史读取失败，请重试；若历史已过期，请返回终端后重新打开 <span style="color:#79c0ff">重试</span></p>
-<p>已到保留历史的开头</p><p>暂无历史</p><p>终端连接已断开，请返回终端并重新连接</p>
-</div><div class="cap">失败不清空已经读到的内容；不自动反复重试。断线后原游标失效，重连后重新打开历史。</div></div>
-</div></section>
+<h2>终端 · 往上滑就是回看</h2>
+<div class="note" style="margin-bottom:16px">终端只有一个画面，没有「历史」按钮和单独的历史页。实时画面往上滑（手指往下拖，滚轮或触控板向上）就进入回看：同一块区域换成这一刻抓下来的整段记录，颜色、字号、列宽和实时画面一样，看起来是同一块画面在往上走。回看是只读的，新输出不会把画面拽走；滑到已读内容的顶端自动接上更早的一段，当前文字留在原位。回到实时有三种方式：点右下角的胶囊、滑到最底再往下滑、按按键栏上任意一个键（键照常发出去）。</div>
+<style>
+  .tpill { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:#2d333b; color:#e6edf3; border-radius:999px; padding:9px 14px; font:600 13px/1 -apple-system, system-ui, sans-serif; box-shadow:0 4px 14px rgba(0,0,0,.45); white-space:nowrap; }
+  .tpill .ic { font-size:15px; }
+  .tpill i { width:7px; height:7px; border-radius:50%; background:#79c0ff; display:inline-block; }
+  .tstat { color:#8b949e; font:12px/1.4 -apple-system, system-ui, sans-serif; padding:4px 0 10px; white-space:normal; }
+  .tstat b { color:#79c0ff; font-weight:600; margin-left:8px; }
+  .term .r { color:#ff7b72; } .term .w { color:#e6edf3; font-weight:700; }
+  .gesture { position:absolute; left:50%; top:38%; width:34px; height:34px; margin-left:-17px; border-radius:50%; background:rgba(121,192,255,.25); border:2px solid rgba(121,192,255,.7); }
+  .gesture::after { content:""; position:absolute; left:15px; top:36px; width:2px; height:60px; background:linear-gradient(rgba(121,192,255,.7), transparent); }
+  .ipad { width:900px; height:560px; border-radius:24px; border:8px solid var(--frame); background:#0d1117; overflow:hidden; display:flex; flex-direction:column; }
+  .ipad .head { display:flex; align-items:center; gap:14px; padding:12px 18px; color:#e6edf3; border-bottom:1px solid #21262d; font-size:15px; }
+  .ipad .head .tabs { margin-left:auto; display:flex; gap:28px; color:#9da7b3; font-size:14px; }
+  .ipad .head .tabs b { color:#e6edf3; border-bottom:2px solid #e6edf3; padding-bottom:10px; margin-bottom:-13px; }
+  .ipad .term { font-size:11px; }
+  .ipad .keys span { height:38px; }
+</style>
+<div class="screens">
+  <div>
+    <div class="phone" style="background:#0d1117">
+      <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
+      <div class="ttool">已适配这块屏幕 · 42×30<b>还原</b></div>
+      <div class="term"><span class="d">• Ran</span> go test ./auth/...
+  <span class="d">└</span> <span class="g">ok</span>  foo/auth 1.8s
+
+• 登录超时修好了：连接池
+  替换了每次新建的连接，
+  并加了 2 秒超时。
+
+<span class="d">• Ran</span> git diff --stat
+  <span class="d">└</span> auth/login.go | 20 +++-
+
+<span class="b">◦ Working (12s • esc to interrupt)</span>
+
+› <span class="cur"> </span>
+
+  <span class="d">gpt-6.1-sol low · ~/Code/foo</span><span class="gesture"></span></div>
+      <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
+    </div>
+    <div class="cap">实时：工具条只有尺寸和「还原 / 适配」。手指往下拖就开始回看，不需要先找按钮；滚轮和触控板同理。往上滑不会变成方向键发给 CLI</div>
+  </div>
+
+  <div>
+    <div class="phone" style="background:#0d1117">
+      <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
+      <div class="ttool">回看中 · 只读</div>
+      <div class="term"><div class="tstat">读取更早的记录…</div><span class="d">• Explored</span>
+  <span class="d">└</span> Read login.go, redis.go
+
+<span class="d">• Edited</span> auth/login.go (+14 -6)
+  57 <span class="r">-  conn, err := redis.Dial(</span>
+  58 <span class="g">+  conn := pool.Get()</span>
+  59 <span class="g">+  ctx, cancel := context.</span>
+  60 <span class="g">+  defer cancel()</span>
+
+<span class="d">• Ran</span> go test ./auth/...
+  <span class="d">└</span> <span class="g">ok</span>  foo/auth 1.8s
+
+• 登录超时修好了：连接池<span class="tpill"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg>回到实时</span></div>
+      <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
+    </div>
+    <div class="cap">回看中：画面换成整段记录，带颜色，字号和列宽不变。工具条写「回看中 · 只读」，收起尺寸按钮。滑近顶端时自动读取前一段，顶端只有一行灰字。按键栏保留，按任意键先回到实时再发出去</div>
+  </div>
+
+  <div>
+    <div class="phone" style="background:#0d1117">
+      <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
+      <div class="ttool">回看中 · 只读</div>
+      <div class="term"><div class="tstat">已经是保留的最早记录</div><span class="w">╭───────────────────────────╮</span>
+<span class="w">│ &gt;_ OpenAI Codex (v0.160) │</span>
+<span class="w">╰───────────────────────────╯</span>
+
+› 登录偶尔超时，帮我看看
+
+<span class="d">• Explored</span>
+  <span class="d">└</span> Search func Login in auth
+
+<span class="d">• Ran</span> go test ./auth/...
+  <span class="d">└</span> <span class="r">FAIL</span> TestLoginTimeout
+     login_test.go:41: timed
+     out after 5s<span class="tpill"><i></i>有新输出<svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span></div>
+      <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
+    </div>
+    <div class="cap">到顶 + 有新输出：顶端写「已经是保留的最早记录」。回看期间电脑上有了新输出，胶囊变成蓝点加「有新输出」；画面不动，等你自己回去</div>
+  </div>
+
+  <div>
+    <div class="phone" style="background:#0d1117;color:#c9d1d9">
+      <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div style="padding:16px 18px;font-size:13px;line-height:1.55">
+        <h3 style="margin:0 0 12px;color:#e6edf3">回看顶端那一行的状态</h3>
+        <p class="tstat" style="padding:0">读取更早的记录…</p>
+        <p class="tstat" style="padding:0">读取失败<b>重试</b></p>
+        <p class="tstat" style="padding:0">记录已过期，回到实时后重新往上滑</p>
+        <p class="tstat" style="padding:0">已经是保留的最早记录</p>
+        <p class="tstat" style="padding:0">终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的</p>
+        <h3 style="margin:20px 0 12px;color:#e6edf3">其他</h3>
+        <p style="margin:0 0 8px">· 一开始往上滑时记录还没到：先在原画面顶端显示「读取记录…」，到了以后接着手指的位置换过去，不跳回顶部或底部</p>
+        <p style="margin:0 0 8px">· 一段都没有（新会话）：往上滑没有反应，不进入回看</p>
+        <p style="margin:0 0 8px">· 失败不清空已读内容，不自动反复重试</p>
+        <p style="margin:0 0 8px">· 回看里可以长按 / 拖选复制文字；轻点不弹键盘</p>
+        <p style="margin:0">· 「键盘」键：回到实时并弹出键盘</p>
+      </div>
+    </div>
+    <div class="cap">状态集：都只占回看顶端一行灰字，没有卡片和弹窗</div>
+  </div>
+</div>
+
+<h3 style="margin:32px 0 12px">宽屏（iPad 横屏 / 桌面）</h3>
+<div class="ipad">
+  <div class="head"><span class="dot run"></span><b>remote-agent 的终端页面</b><span style="color:#9da7b3;font-size:13px">运行中 · 完全放行</span><span class="tabs"><span>聊天</span><b>终端</b><span>并排</span><span>···</span></span></div>
+  <div class="ttool">回看中 · 只读</div>
+  <div class="term"><div class="tstat">读取更早的记录…</div><span class="d">•</span> <span class="w">Ran</span> <span class="b">python3</span> - &lt;&lt;'PY' …
+  <span class="d">└</span> {'Id': 'c4090dc5', 'Environment': 'Production', 'Branch': 'main', 'Source': '147dcd2'}
+    Verified production deployment, source commit and embedded version 0.33.0
+
+<span class="d">•</span> <span class="w">Ran</span> <span class="b">git</span> -C projects/remote-agent status --short
+  <span class="d">└</span> /Users/example/Code/projects/remote-agent                 147dcd22 [main]
+    /Users/example/Code/worktrees/remote-agent/android-fix    56697703 [wt/android-fix]
+
+<span class="d">•</span> 已发布并部署 <span class="w">v0.33.0</span>：daemon、网页、中继和 App 均已更新，检查通过。
+
+  网页请刷新；旧 MCP 进程需在对应会话内重载。
+
+  <span class="d">Worked for 36m 38s • 21:09</span><span class="tpill"><i></i>有新输出<svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span></div>
+  <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
+</div>
+<div class="cap" style="width:900px;text-align:left">宽屏相同：工具条不再有居中的「历史」，回看时整块终端区域可滚，胶囊固定在右下角。桌面上滚轮、触控板回看，选中文字可复制</div>
+</section>
+
 
 </body>
 </html>
