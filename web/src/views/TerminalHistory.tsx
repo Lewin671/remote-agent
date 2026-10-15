@@ -56,18 +56,20 @@ function status(history: TerminalHistory, online: boolean, load: () => void) {
 /** The read-only reader over the live terminal: a fresh capture, scrolled
  * natively, coloured like the live screen and never focused (so a tap does
  * not open the keyboard). */
-export function TerminalReader({ history, load, online, font, height, offset, onLeave }: {
+export function TerminalReader({ history, load, online, font, height, offset, left, onLeave }: {
   history: TerminalHistory;
   load: () => void;
   online: boolean;
   font: number;
   height: number;
   offset: number;
+  /** The live screen's sideways position, where a wide reader opens. */
+  left: number;
   onLeave: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const seen = useRef({ pages: 0, height: 0 });
-  const touch = useRef(0);
+  const touch = useRef({ x: 0, y: 0 });
   const readEarlier = () => {
     const el = box.current!;
     if (el.scrollTop < 80 && online && !history.pending && !history.error && !history.closed && history.cursor) load();
@@ -78,6 +80,7 @@ export function TerminalReader({ history, load, online, font, height, offset, on
       // Opens at the newest line, then up by the gesture, so it looks like
       // the live screen kept moving and there is room to scroll down.
       el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight - offset);
+      el.scrollLeft = left;
     } else if (seen.current.height && el.scrollHeight !== seen.current.height) {
       // Prepended pages and a taller status line keep the visible text still.
       el.scrollTop += el.scrollHeight - seen.current.height;
@@ -97,9 +100,13 @@ export function TerminalReader({ history, load, online, font, height, offset, on
       aria-label="终端记录"
       style={{ fontFamily: TERM_FONT, fontSize: font, lineHeight: `${height}px`, color: DEFAULT_FG }}
       onScroll={readEarlier}
-      onWheel={(e) => e.deltaY > 0 && atBottom() && onLeave()}
-      onTouchStart={(e) => (touch.current = e.touches[0].clientY)}
-      onTouchMove={(e) => e.touches[0].clientY - touch.current < -12 && atBottom() && onLeave()}
+      onWheel={(e) => e.deltaY > Math.abs(e.deltaX) && atBottom() && onLeave()}
+      onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
+      onTouchMove={(e) => {
+        // Only a mainly upward drag at the bottom leaves; a sideways one pans.
+        const dx = e.touches[0].clientX - touch.current.x, dy = e.touches[0].clientY - touch.current.y;
+        if (dy < -12 && -dy > Math.abs(dx) && atBottom()) onLeave();
+      }}
     >
       <div className="thstat" style={{ minHeight: height }}>{status(history, online, load)}</div>
       {history.pages.flatMap((page) => page.lines.map((line, i) => <Line key={page.id + ":" + i} text={line} height={height} />))}

@@ -419,6 +419,8 @@ b, strong, th, h1, h2, h3, h4, h5, h6 { font-weight: var(--w7); }
 .ttool button { margin-left: auto; color: #79c0ff; font-weight: var(--w6); min-width: 44px; min-height: 44px; }
 .term { flex: 1; min-height: 0; position: relative; padding: 6px; overflow: hidden; }
 .term .xterm { height: auto; }
+.tpan { height: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.tpan > div { width: max-content; min-width: 100%; }
 .term .xterm-viewport { background: #0d1117 !important; }
 .term .stale { opacity: .55; }
 .tstate { position: absolute; left: 12px; right: 12px; top: 12px; background: #161b22; border: 1px solid #30363d; border-radius: var(--r-sm); padding: 12px; text-align: left; z-index: 3; }
@@ -958,7 +960,7 @@ input.field { margin: 0; }
 .terminal-history { position: absolute; inset: 0; overflow: auto; padding: 6px; background: #0d1117; color: #c9d1d9; overscroll-behavior: contain; overflow-anchor: none; -webkit-overflow-scrolling: touch; user-select: text; }
 .terminal-history .thline { white-space: pre; }
 .terminal-history .wide { display: inline-block; width: 2ch; text-align: center; }
-.terminal-history .thstat { color: #8b949e; white-space: pre-wrap; }
+.terminal-history .thstat { color: #8b949e; white-space: pre-wrap; position: sticky; left: 0; }
 .terminal-history .thstat button { color: #79c0ff; padding: 0 4px; }
 .terminal-history .thstat button:disabled { color: #6e7681; }
 /* The one-line status while the first capture is on its way. */

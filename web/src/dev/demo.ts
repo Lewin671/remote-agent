@@ -522,7 +522,7 @@ const screen = (title: string) =>
 const trust = ["\x1b[33m  Folder access\x1b[0m", "  ~/Code/billing", "", "  Trust this folder? Codex can", "  read, edit, and run files here.", "", "\x1b[34m› 1. Trust and continue\x1b[0m", "  2. Quit", "", "  enter continue · esc quit"].join("\r\n");
 
 // One coloured line of ?demo&term=history: a diff's red and green, bold, a
-// 256-colour line, and one mixing CJK with ASCII.
+// 256-colour line, one mixing CJK with ASCII, and one wider than a phone.
 const historyLine = (n: number) => {
   const tag = `history-${String(n).padStart(4, "0")}`;
   switch (n % 20) {
@@ -532,6 +532,7 @@ const historyLine = (n: number) => {
     case 10: return `\x1b[1m${tag}\x1b[0m 加粗的中文和 ASCII`;
     case 15: return `\x1b[38;5;208m${tag} 256 色\x1b[0m`;
     case 18: return `\x1b[4m${tag}\x1b[0m 下划线 \x1b[7m反显\x1b[0m`;
+    case 3: return `${tag} ${"wide-line ".repeat(11)}| 第 120 列附近`;
     default: return `${tag} 中文 mixed text`;
   }
 };

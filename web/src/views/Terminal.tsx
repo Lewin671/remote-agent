@@ -48,6 +48,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const visible = usePageVisible();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
+  // Scrolls the live screen sideways when it is wider than the pane even at the smallest size.
+  const pan = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm>(null);
   const conn = useRef<TermConn | null>(null);
   const size = useRef({ cols: 80, rows: 24 });
@@ -63,13 +65,13 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const loadHistory = (fresh = false) => history.request((requestId, cursor) => conn.current?.send({ kind: { case: "historyRequest", value: { requestId, cursor } } }), fresh);
   // How the reader shows text, and how far up the first page opens: taken
   // from the live terminal at the moment the gesture opened it.
-  const [reader, setReader] = useState<{ font: number; height: number; offset: number }>();
+  const [reader, setReader] = useState<{ font: number; height: number; offset: number; left: number }>();
   const [newOutput, setNewOutput] = useState(false);
   const beginReading = (distance: number) => {
     const t = term.current;
     if (history.phase === "reading" || history.pending || !conn.current || !t) return;
     setNewOutput(false);
-    setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance });
+    setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance, left: pan.current?.scrollLeft ?? 0 });
     // Reading is passive: any open keyboard goes away.
     t.blur();
     loadHistory(true);
@@ -103,7 +105,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const el = box.current;
     if (!t || !el) return;
     const width = el.clientWidth - 12;
-    const fs = Math.max(5, Math.min(fittedTo.current ? 12 : 14, Math.floor((10 * width) / (size.current.cols * charRatio())) / 10));
+    const fs = Math.max(6, Math.min(fittedTo.current ? 12 : 14, Math.floor((10 * width) / (size.current.cols * charRatio())) / 10));
     if (t.options.fontSize !== fs) t.options.fontSize = fs;
   };
 
@@ -131,8 +133,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       scale();
       // A screen taller than the pane (a shorter pane than the window, or
       // an open keyboard) shows its bottom rows, where the prompt is.
-      const pane = box.current, screen = host.current;
-      if (pane && screen) screen.style.marginTop = `${Math.min(0, pane.clientHeight - 12 - screen.offsetHeight)}px`;
+      const pane = pan.current, screen = host.current;
+      if (pane && screen) screen.style.marginTop = `${Math.min(0, pane.clientHeight - screen.offsetHeight)}px`;
       const now = box.current?.clientWidth ?? width;
       if (now === width) return;
       width = now;
@@ -141,6 +143,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     });
     sized.observe(box.current!);
     sized.observe(host.current!);
+    sized.observe(pan.current!);
     return () => {
       typed.dispose();
       sized.disconnect();
@@ -156,11 +159,13 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   useEffect(() => {
     const el = box.current;
     if (!el) return;
+    let startX = 0;
     let startY = 0;
     let tracking = false;
     const onWheel = (e: WheelEvent) => {
       if (history.phase === "reading") return;
-      if (e.deltaY < 0) {
+      // A sideways scroll pans a wide screen natively; only an upward one reads.
+      if (e.deltaY < 0 && -e.deltaY > Math.abs(e.deltaX)) {
         e.preventDefault();
         beginRef.current(-e.deltaY);
       }
@@ -168,12 +173,17 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const onStart = (e: TouchEvent) => {
       if (history.phase === "reading" || e.touches.length !== 1) return;
       tracking = true;
+      startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
     };
     const onMove = (e: TouchEvent) => {
       if (!tracking) return;
+      const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
-      if (dy > 12) {
+      // The first clear direction decides: sideways is left to the pan.
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+        tracking = false;
+      } else if (dy > 12) {
         e.preventDefault();
         tracking = false;
         beginRef.current(dy);
@@ -346,9 +356,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         {live && !reading && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
       </div>
       <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
-        <div ref={host} className={state === "closed" ? "stale" : ""} />
+        <div className="tpan" ref={pan}>
+          <div ref={host} className={state === "closed" ? "stale" : ""} />
+        </div>
         {history.phase === "loading" && <div className="thint">{history.error ? <>读取失败<button onClick={() => beginRef.current(0)}>重试</button></> : "读取记录…"}</div>}
-        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} onLeave={leaveReading} />}
+        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} onLeave={leaveReading} />}
         {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
         {changed && state === "live" && !reading && (
           <div className="tstate">
