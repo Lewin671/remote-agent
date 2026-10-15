@@ -167,6 +167,12 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const onWheel = (e: WheelEvent) => {
       // A sideways scroll pans a wide screen natively; only an upward one reads.
       const axis = axisOf(e);
+      // xterm cancels every wheel event while the program reports the mouse, which
+      // would stop the native sideways scroll: a sideways one never reaches it.
+      if (axis === "x") {
+        e.stopPropagation();
+        return;
+      }
       if (history.phase === "reading") return;
       if (axis === "y" && e.deltaY < 0) {
         e.preventDefault();
