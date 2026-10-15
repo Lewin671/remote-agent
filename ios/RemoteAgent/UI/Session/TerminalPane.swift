@@ -4,6 +4,12 @@
 // keyboard and rotation never resize it. Font changes refit only an already
 // fitted window.
 //
+// There is no history button: pulling the screen down (or a wheel up) is
+// what reads back, and the same area becomes the reader, which is read-only
+// and never moves for output (`architecture §11 「回看历史」`; the reader is
+// `UI/Terminal/TerminalHistoryReader`). The key bar stays put, and any key
+// leaves reading before it is sent.
+//
 // The pane is under the session screen's tabs and fills what is left, down
 // to the keyboard. It is connected only while the main connection is up
 // and the app is in front (architecture §10 「后台和内存」): going to the
@@ -35,16 +41,32 @@ struct TerminalPane: View {
 
     var body: some View {
         let state = terminal.state
+        let history = terminal.history
         VStack(spacing: 0) {
             toolbar(state)
             fontRow
-            TerminalScreen(terminal: terminal)
-                .overlay(alignment: .top) {
-                    // At the largest text sizes, or under the keyboard, the notice can be taller than the area.
-                    if state != .live && !terminal.history.visible { ScrollView { notice(state) }.scrollBounceBehavior(.basedOnSize) }
+            ZStack(alignment: .top) {
+                TerminalScreen(terminal: terminal)
+                    .overlay(alignment: .top) {
+                        // At the largest text sizes, or under the keyboard, the notice can be taller than the area.
+                        if state != .live && !history.reading {
+                            ScrollView { notice(state) }.scrollBounceBehavior(.basedOnSize)
+                        }
+                    }
+                if history.open {
+                    TerminalHistoryReader(
+                        pages: history.pages, status: history.status, online: state == .live, entry: history.entryPull,
+                        metrics: { (terminal.host.shownPoints, terminal.host.shownCell) },
+                        loadEarlier: { terminal.loadEarlier() }, retry: { terminal.retryHistory() },
+                        leave: { terminal.leaveReading() }
+                    )
+                    .overlay(alignment: .bottomTrailing) { pill }
+                } else if let opening = history.opening {
+                    // Only the line: the live screen stays, and so does the live toolbar.
+                    openingLine(opening)
                 }
-                .overlay { if terminal.history.visible { TerminalHistoryPanel(history: terminal.history, online: state == .live, font: font, load: { terminal.loadHistory() }) } }
-            if !terminal.history.visible { TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: { terminal.host.toggleKeyboard() }) }
+            }
+            TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: keyboard)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.Term.bg)
@@ -79,13 +101,21 @@ struct TerminalPane: View {
         terminal.connect()
     }
 
+    /// The 键盘 key: reading first, then the keyboard, which reading keeps away.
+    private func keyboard() {
+        terminal.leaveReading()
+        terminal.host.toggleKeyboard()
+    }
+
     // MARK: The toolbar
 
-    /// Says the size, and that it changed.
+    /// Says the size, and that it changed; only with the reader on screen, that it is reading.
     private func toolbar(_ state: RemoteTerminal.State) -> some View {
+        let open = terminal.history.open
         let size = "\(terminal.size.cols)×\(terminal.size.rows)"
         let text =
-            if state != .live { "终端" }
+            if open { "回看中 · 只读" }
+            else if state != .live { "终端" }
             else if terminal.resizedElsewhere { "远端尺寸已变化 · \(size)" }
             else if terminal.fitted { "已适配这块屏幕 · \(size)" }
             else { "电脑上 \(size)" }
@@ -93,14 +123,7 @@ struct TerminalPane: View {
             Text(text).type(T.meta, Theme.Term.tool)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button(terminal.history.visible ? "返回实时终端" : "历史") {
-                if terminal.history.visible { terminal.history.close() }
-                else { terminal.host.hideKeyboard(); terminal.loadHistory(fresh: true) }
-            }
-            .type(T.metaB, Theme.Term.link)
-            .frame(minHeight: Theme.minHit)
-            .disabled(state != .live && !terminal.history.visible)
-            if state == .live && !terminal.history.visible {
+            if state == .live && !open {
                 Button {
                     terminal.toggleFit()
                 } label: {
@@ -126,6 +149,62 @@ struct TerminalPane: View {
         .bottomLine(Theme.Term.rule)
         // The two bars keep the screen its room: their words stop growing at the first of the largest sizes.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+    }
+
+    /// The one line over the live screen while the first page is on its way, or that
+    /// it could not be read, when 重试 asks for it again (or another pull up does).
+    private func openingLine(_ opening: TerminalHistory.Opening) -> some View {
+        HStack(spacing: 8) {
+            if opening == .failed {
+                Text("读取失败").type(T.meta, Theme.Term.tool)
+                Button {
+                    terminal.retryHistory()
+                } label: {
+                    Text("重试").type(T.metaB, Theme.Term.link)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityHint("再读一次这台终端的记录")
+            } else {
+                Text("读取记录…").type(T.meta, Theme.Term.tool)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 26)
+        .background(Theme.Term.bar)
+        .bottomLine(Theme.Term.rule)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+    }
+
+    /// What came in while reading, or only the way back; either way it leaves reading.
+    private var pill: some View {
+        Button {
+            terminal.leaveReading()
+        } label: {
+            Group {
+                if terminal.history.hasNewOutput {
+                    HStack(spacing: 6) {
+                        Circle().fill(Theme.Term.link).frame(width: 7, height: 7)
+                        Text("有新输出").type(T.smB, Theme.Term.fg)
+                        Ic(Lucide.arrowDown, size: 15, color: Theme.Term.fg)
+                    }
+                } else {
+                    IconText(Lucide.arrowDown, "回到实时", color: Theme.Term.fg, style: T.smB)
+                }
+            }
+            .lineLimit(1)
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(Theme.Term.key, in: Capsule())
+            .overlay { Capsule().strokeBorder(Theme.Term.line, lineWidth: 1) }
+            .compositingGroup()
+            .shadow(color: .black.opacity(0.45), radius: 14, y: 4)
+        }
+        .buttonStyle(PressStyle())
+        .padding(12)
+        .accessibilityLabel(terminal.history.hasNewOutput ? "有新输出，回到实时" : "回到实时")
+        .accessibilityHint("离开回看，回到实时画面")
     }
 
     private var fontRow: some View {

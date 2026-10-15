@@ -68,6 +68,8 @@
 //   -demo -demoRoute terminal/<session>   the terminal on a sample screen
 //   -termState <live|connecting|closed|offline|ended>   the pane in that state
 //   -termSize <cols>x<rows>          the sample screen as a window of that size, not fitted
+//   -termRead                        the reader over the sample, with sample history
+//   -termOpening <reading|failed>    the live sample under the opening line
 //
 // Images (UI/Images/ImageDebug.swift)
 //   -imageAdd <path[,path…]>         once a message box is up: these files through what the picker's results go through

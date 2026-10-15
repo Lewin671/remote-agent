@@ -18,18 +18,41 @@ import UIKit
 
     private func text(_ host: TerminalHostView) -> String { host.screenText }
 
-    @Test func historyCanBeReadWhileOutputContinues() {
+    /// The live screen keeps no scrollback of its own, so there is nothing to
+    /// scroll and no second scroll system beside the reader
+    /// (architecture §11 「回看历史」).
+    @Test func theLiveScreenHasNoScrollbackOfItsOwn() {
         let view = host()
         let history = (1...100).map { "history-\($0)" }.joined(separator: "\r\n")
         view.snapshot(cols: 80, rows: 10, data: Data(history.utf8))
         let terminal = view.terminal
-        #expect(terminal.contentSize.height > terminal.bounds.height)
-        terminal.contentOffset = .zero
+        #expect(!terminal.isScrollEnabled)
+        // Only the window's lines are held, so the view cannot move on its own.
+        #expect(terminal.contentSize.height <= terminal.bounds.height + 1)
+        // What is above the window went nowhere: only the live rows are on the screen.
+        #expect(text(view) == (91...100).map { "history-\($0)" }.joined(separator: "\n"))
+        // Output carries on at the bottom of the screen the remote sized.
         view.append(Data("\r\nnew output".utf8))
-        #expect(terminal.contentOffset.y == 0)
-        // A fresh snapshot intentionally starts at the live screen again.
-        view.snapshot(cols: 80, rows: 10, data: Data(history.utf8))
-        #expect(terminal.contentOffset.y > 0)
+        #expect(terminal.contentOffset.y <= 1)
+        #expect(text(view).hasSuffix("new output"))
+    }
+
+    /// A pull down is a wish to read: it is reported, and nothing goes to the remote.
+    @Test func aPullDownIsReportedAndSendsNothing() {
+        let view = host()
+        view.snapshot(cols: 80, rows: 24, data: Data("live".utf8))
+        var pulls: [CGFloat] = []
+        var sent: [Data] = []
+        view.onReadUp = { pulls.append($0) }
+        view.onInput = { sent.append($0) }
+        // The gesture that would enter reading, as the host hands it on.
+        view.reportPull(30)
+        view.reportPull(48)
+        #expect(pulls == [30, 48])
+        #expect(sent.isEmpty)
+        // It is the pan recognizer that carries a wheel or a trackpad, and not the scroll view.
+        let pans = (view.terminal.gestureRecognizers ?? []).compactMap { $0 as? UIPanGestureRecognizer }
+        #expect(pans.contains { $0.allowedScrollTypesMask == .all })
     }
 
     /// Android's term/TerminalBatchParsingTest: bytes fed one at a time and all at once draw the same screen.

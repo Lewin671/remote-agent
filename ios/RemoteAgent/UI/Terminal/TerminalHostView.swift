@@ -49,16 +49,6 @@ import UIKit
 /// SwiftTerm's view with the emulator's own voice cut off.
 final class RemoteTerminalView: TerminalView {
     override func send(source: Terminal, data: ArraySlice<UInt8>) {}
-    override func scrolled(source terminal: Terminal, yDisp: Int) {
-        // SwiftTerm updates the content size and jumps to the bottom here.
-        // Preserve the user's position when they are reading earlier output.
-        let previous = contentOffset
-        let browsing = previous.y < max(0, contentSize.height - bounds.height) - 1
-        super.scrolled(source: terminal, yDisp: yDisp)
-        if browsing {
-            contentOffset = CGPoint(x: previous.x, y: min(previous.y, max(0, contentSize.height - bounds.height)))
-        }
-    }
     override func bell(source: Terminal) {}
     override func setTerminalTitle(source: Terminal, title: String) {}
     override func setTerminalIconTitle(source: Terminal, title: String) {}
@@ -79,6 +69,9 @@ final class TerminalHostView: UIView {
     var onCapacity: ((TerminalSize) -> Void)?
     /// The keyboard came up or went away.
     var onKeyboard: ((Bool) -> Void)?
+    /// The screen was pulled down, by however many points so far: a wish to
+    /// read the record, which the pane opens (`architecture §11 「回看历史」`).
+    var onReadUp: ((CGFloat) -> Void)?
 
     /// The height of what the pane has under this view, down to the bottom inset: the key bar.
     var below: CGFloat = 0 {
@@ -133,9 +126,21 @@ final class TerminalHostView: UIView {
         terminal.allowMouseReporting = false
         let emulator = terminal.getTerminal()
         emulator.silentLog = true
-        emulator.changeHistorySize(10000)
+        // The live screen keeps no scrollback of its own: with none the view
+        // cannot scroll, so the only way to what came before is the reader
+        // (and no second scroll system competes with it). The emulator still
+        // writes its screen as tmux sized it.
+        emulator.changeHistorySize(0)
         emulator.registerOscHandler(code: 1337) { _ in }
         terminal.isHidden = true
+        // Nor does the scroll view move on its own: a pull is for reading,
+        // below, and nothing of it goes to the remote.
+        terminal.isScrollEnabled = false
+        terminal.bounces = false
+        let pull = UIPanGestureRecognizer(target: self, action: #selector(pulled(_:)))
+        // A trackpad or a mouse wheel comes to the same recognizer (iOS 13.4).
+        pull.allowedScrollTypesMask = .all
+        terminal.addGestureRecognizer(pull)
         addSubview(terminal)
 
         isAccessibilityElement = true
@@ -229,6 +234,28 @@ final class TerminalHostView: UIView {
 
     /// The size shown, in points.
     var shownPoints: CGFloat { CGFloat(pixels) / fontScale }
+
+    /// The cell the live screen is drawing at, in points: the reader's column
+    /// width and line height, so a line lands where it was.
+    var shownCell: CGSize {
+        let cell = TerminalFont.cell(points: base)
+        return CGSize(width: cell.width * zoom, height: cell.height * zoom)
+    }
+
+    /// A pull down: the pane opens the reader. A wheel that a terminal would
+    /// turn into arrow keys sends nothing here — the remote is untouched.
+    @objc private func pulled(_ gesture: UIPanGestureRecognizer) {
+        guard gesture.state == .changed else { return }
+        let translation = gesture.translation(in: self)
+        // Downwards only, and not while a selection is being dragged out.
+        guard translation.y > 0, !terminal.selectionActive else { return }
+        reportPull(translation.y)
+    }
+
+    /// How far the screen has been pulled down, as the gesture reports it.
+    func reportPull(_ distance: CGFloat) {
+        onReadUp?(distance)
+    }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()

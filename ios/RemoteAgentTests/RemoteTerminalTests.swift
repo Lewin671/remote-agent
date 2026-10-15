@@ -83,27 +83,107 @@ import Testing
         for _ in 0..<300 where !what() { try? await Task.sleep(for: .milliseconds(10)) }
     }
 
-    @Test func historyPagesStaySeparateFromTheLiveEmulatorAndInput() async {
+    /// A pull down reads the record; the live screen keeps being written to behind the
+    /// reader and never moves it, and a key leaves reading before it is sent
+    /// (architecture §11 「回看历史」).
+    @Test func aPullReadsTheRecordApartFromTheLiveScreenAndAKeyLeavesIt() async {
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
         await until { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("live"))
         await until { t.state == .live }
-        t.loadHistory(fresh: true)
+
+        t.readUp(40)
+        #expect(t.reading && t.history.phase == .opening && t.history.entryPull == 40)
         let request = streams.sent.last!.historyRequest
-        #expect(!request.requestID.isEmpty)
-        let count = streams.sent.count
-        t.send(Data("must not type".utf8))
-        #expect(streams.sent.count == count)
-        streams.listener(0).onFrame(.with { $0.historyPage = .with { $0.requestID = request.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
+        #expect(!request.requestID.isEmpty && request.cursor.isEmpty)
+
+        streams.listener(0).onFrame(
+            .with { $0.historyPage = .with { $0.requestID = request.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
         streams.listener(0).onFrame(output(" output"))
         await until { t.history.pending.isEmpty }
-        #expect(t.history.pages.first?.text == "older")
+        #expect(t.history.open && t.history.pages.first?.lines == ["older"])
+        // Output arrived while reading: the pill says so, and the live screen behind has it.
+        #expect(t.history.hasNewOutput)
         #expect(t.host.screenText == "live output")
-        t.history.close()
+        #expect(t.state == .live)
+
+        // A key leaves reading first, and then goes as it always did.
         t.send(Data("input".utf8))
+        #expect(!t.reading)
         #expect(streams.sent.last?.input == Data("input".utf8))
+        t.close()
+    }
+
+    /// Reading the record needs a live stream: before one there is nothing to capture.
+    @Test func aPullWithoutALiveStreamDoesNothing() {
+        let streams = Streams()
+        let t = terminal(streams)
+        t.readUp(40)
+        #expect(!t.reading && streams.sent.isEmpty)
+    }
+
+    /// A pull has to be worth something: an accidental small drag asks for nothing
+    /// (client-v40 · 终端 · 「往上滑不会变成方向键发给 CLI」).
+    @Test func aSmallPullIsNotAWishToRead() async {
+        let streams = Streams()
+        let t = terminal(streams)
+        t.connect()
+        await until { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("live"))
+        await until { t.state == .live }
+        let before = streams.sent.count
+        t.readUp(RemoteTerminal.readPull - 1)
+        #expect(!t.reading && streams.sent.count == before)
+        t.readUp(RemoteTerminal.readPull)
+        #expect(t.history.phase == .opening && streams.sent.count == before + 1)
+        t.close()
+    }
+
+    /// A first page that failed does not open the reader: the live screen and its toolbar
+    /// stay, a key clears it before going, and the next pull up is the retry.
+    @Test func aFailedFirstPageStaysLiveAndAKeyOrAnotherPullClearsIt() async {
+        let streams = Streams()
+        let t = terminal(streams)
+        t.connect()
+        await until { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("live"))
+        await until { t.state == .live }
+
+        t.readUp(40)
+        let first = streams.sent.last!.historyRequest
+        streams.listener(0).onFrame(
+            .with { $0.historyPage = .with { $0.requestID = first.requestID; $0.error = "cannot capture terminal history; retry" } })
+        await until { t.history.phase == .openingFailed }
+        #expect(!t.history.open && t.history.opening == TerminalHistory.Opening.failed && t.state == .live)
+        // The live screen behind the line is untouched.
+        #expect(t.host.screenText == "live")
+
+        // A key-bar key clears it first, and then goes as it always did.
+        t.send(Data("x".utf8))
+        #expect(!t.reading && t.history.opening == nil)
+        #expect(streams.sent.last?.input == Data("x".utf8))
+
+        // The 键盘 key does the same before it acts.
+        t.readUp(40)
+        let asked = streams.sent.last!.historyRequest
+        streams.listener(0).onFrame(
+            .with { $0.historyPage = .with { $0.requestID = asked.requestID; $0.error = "cannot capture terminal history; retry" } })
+        await until { t.history.phase == .openingFailed }
+        t.leaveReading()
+        #expect(!t.reading)
+
+        // Another pull up asks for the capture again, with no cursor.
+        let before = streams.sent.count
+        t.readUp(40)
+        #expect(t.history.phase == .opening && streams.sent.count == before + 1)
+        let second = streams.sent.last!.historyRequest
+        #expect(second.cursor.isEmpty && second.requestID != first.requestID)
+        streams.listener(0).onFrame(
+            .with { $0.historyPage = .with { $0.requestID = second.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
+        await until { t.history.open }
+        #expect(t.history.pages.first?.lines == ["older"])
         t.close()
     }
 

@@ -40,14 +40,50 @@ final class RemoteTerminal {
     private nonisolated static let frameInterval = 0.033
 
     let history = TerminalHistory()
-    func loadHistory(fresh: Bool = false) {
-        guard state == .live, let conn else { return }
-        history.request(fresh: fresh) { id, cursor in
-            var frame = PBTerminalFrame()
-            frame.historyRequest.requestID = id
-            frame.historyRequest.cursor = cursor
-            conn.send(frame)
+    /// Reading the record: the reader is opening or on screen.
+    var reading: Bool { history.reading }
+
+    /// How far the live screen has to be pulled before the record is read: a small
+    /// drag is not a wish to read (the web asks for 12 CSS px, Android for three rows).
+    static let readPull: CGFloat = 12
+
+    /// The live screen was pulled down: read the record from now. A first page that
+    /// failed is retried by the same pull; anything else while one is on its way only
+    /// moves the reader's opening.
+    func readUp(_ distance: CGFloat) {
+        guard distance >= Self.readPull, state == .live, let conn else { return }
+        // A pull that carries on while the first page is on its way opens the reader further up.
+        history.pulled(distance)
+        if history.phase == .openingFailed {
+            history.retry { [self] id, cursor in historyRequest(id, cursor, conn) }
+            return
         }
+        guard history.phase == .idle else { return }
+        // The reader is read-only, so the keyboard has no business staying up.
+        host.hideKeyboard()
+        history.begin(pull: distance) { [self] id, cursor in historyRequest(id, cursor, conn) }
+    }
+
+    /// The reader reached the top: read the page before the oldest held.
+    func loadEarlier() {
+        guard state == .live, let conn else { return }
+        history.earlier { [self] id, cursor in historyRequest(id, cursor, conn) }
+    }
+
+    /// The reader's 重试.
+    func retryHistory() {
+        guard state == .live, let conn else { return }
+        history.retry { [self] id, cursor in historyRequest(id, cursor, conn) }
+    }
+
+    /// Leaves reading, if reading; the live screen is what is left.
+    func leaveReading() { history.end() }
+
+    private func historyRequest(_ id: String, _ cursor: String, _ conn: TermConn) {
+        var frame = PBTerminalFrame()
+        frame.historyRequest.requestID = id
+        frame.historyRequest.cursor = cursor
+        conn.send(frame)
     }
 
     private(set) var state = State.connecting
@@ -65,6 +101,7 @@ final class RemoteTerminal {
         host.onInput = { [weak self] in self?.send($0) }
         host.onCapacity = { [weak self] in self?.roomChanged($0) }
         host.onKeyboard = { [weak self] in self?.keyboard = $0 }
+        host.onReadUp = { [weak self] in self?.readUp($0) }
         return host
     }()
 
@@ -88,7 +125,7 @@ final class RemoteTerminal {
     }
 
     func connect() {
-        history.close()
+        history.end()
         guard let link else { return }
         guard link.online() else {
             close()
@@ -148,6 +185,8 @@ final class RemoteTerminal {
             pictured = true
             goLive()
         case .output(let data):
+            // The live screen keeps being written to while reading; the reader never moves for it.
+            history.markOutput()
             host.append(data)
         case .closed(let reason):
             history.disconnected()
@@ -167,7 +206,9 @@ final class RemoteTerminal {
     }
 
     func send(_ data: Data) {
-        guard state == .live, !history.visible, let conn else { return }
+        guard state == .live, let conn else { return }
+        // A key leaves reading first, and then goes as it always did.
+        leaveReading()
         var frame = PBTerminalFrame()
         frame.input = data
         conn.send(frame)
@@ -231,7 +272,7 @@ final class RemoteTerminal {
     }
 
     func close() {
-        history.disconnected()
+        history.end()
         generation += 1
         frames.close()
         state = .closed(Self.paused)
@@ -257,6 +298,16 @@ final class RemoteTerminal {
 
     func show(_ state: State) {
         self.state = state
+    }
+
+    /// The reader over sample history, with no connection behind it.
+    func showHistory(_ lines: [String]) {
+        history.seed(lines)
+    }
+
+    /// The live screen under the opening line, with no connection behind it.
+    func showOpening(failed: Bool) {
+        history.seedOpening(failed: failed)
     }
     #endif
 }

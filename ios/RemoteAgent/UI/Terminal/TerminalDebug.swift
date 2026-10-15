@@ -15,15 +15,20 @@
 //   term.keyboard    the key bar's 键盘
 //   term.fit         the toolbar's 适配 / 还原
 //   term.fontUp, term.fontDown                    字号
+//   term.read        a pull down on the live screen, as reading begins
+//   term.earlier     the reader asking for the page before
+//   term.leave       the reader's 回到实时
 //   term.reconnect   重新连接
 //   term.details     查看详情
-//   term.dump        writes what the pane shows (state, sizes, the screen's
-//                    text) to `term-dump` in the tmp directory
+//   term.dump        writes what the pane shows (state, sizes, reading, the
+//                    screen's text) to `term-dump` in the tmp directory
 //
 // Launch arguments, with -demo -demoRoute terminal/<session>:
 //
 //   -termState <live|connecting|closed|offline|ended>   the pane in that state
 //   -termSize <cols>x<rows>     the sample screen as a window of that size, not fitted
+//   -termRead                   the reader over the sample, with sample history
+//   -termOpening <reading|failed>   the live sample under the opening line
 import RACore
 import SwiftUI
 
@@ -51,7 +56,30 @@ enum TerminalDebug {
             screen(terminal, then: .closed("终端连接断开：NSURLErrorDomain -1005"))
         default: screen(terminal)
         }
+        if args.contains("-termRead") { terminal.showHistory(history()) }
+        if let state = value("-termOpening") { terminal.showOpening(failed: state == "failed") }
         return true
+    }
+
+    /// Sample history for the reader: colours, Chinese beside ASCII under a ruler, a wide line.
+    private static func history() -> [String] {
+        let e = "\u{1b}["
+        return [
+            "\(e)2m• Explored\(e)0m",
+            "  \(e)2m└\(e)0m Read login.go, redis.go",
+            "",
+            "\(e)2m• Edited\(e)0m auth/login.go (+14 -6)",
+            "  57 \(e)31m-  conn, err := redis.Dial(\(e)0m",
+            "  58 \(e)32m+  conn := pool.Get()\(e)0m",
+            "",
+            "\(e)1m>_ OpenAI Codex\(e)0m \(e)2m(v0.160)\(e)0m",
+            "  中文和 ASCII 对齐：信任这个目录吗？",
+            "  |12345678|  ｆｕｌｌ 宽 😀 ✻ ⏵ ⎿ ⠋",
+            "  |中文中文|  \(e)32m✓ passed\(e)0m \(e)31m✕ failed\(e)0m",
+            "",
+            "\(e)94m› 1. Trust and continue\(e)0m",
+            "\(e)7m \(e)0m 第 42×30 屏",
+        ]
     }
 
     private static func screen(_ terminal: RemoteTerminal, then state: RemoteTerminal.State? = nil) {
@@ -109,6 +137,7 @@ enum TerminalDebug {
             room: \(host.capacity.cols)x\(host.capacity.rows) font=\(font) drawn=\(host.terminal.font.pointSize)
             view: \(Int(host.bounds.width))x\(Int(host.bounds.height)) grid=\(host.terminal.frame.integral.debugDescription)
             keyboard: \(terminal.keyboard) responder=\(host.keyboardShown)
+            reading: \(terminal.history.phase) status=\(terminal.history.status) pages=\(terminal.history.pages.count) new=\(terminal.history.hasNewOutput)
             ---
             \(host.screenText)
 
@@ -156,6 +185,9 @@ private struct TerminalDebugSignals: ViewModifier {
             .debugSignal("term.fit") { terminal.toggleFit() }
             .debugSignal("term.fontUp") { setFont(font + 1) }
             .debugSignal("term.fontDown") { setFont(font - 1) }
+            .debugSignal("term.read") { terminal.readUp(60) }
+            .debugSignal("term.earlier") { terminal.loadEarlier() }
+            .debugSignal("term.leave") { terminal.leaveReading() }
             .debugSignal("term.reconnect") { reconnect() }
             .debugSignal("term.details") { details.toggle() }
             .debugSignal("term.dump") { TerminalDebug.dump(terminal, font: font) }
