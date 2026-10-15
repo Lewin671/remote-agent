@@ -209,6 +209,27 @@ private typealias Phase = TerminalHistory.Phase
         #expect(view.contentOffset.y > 70)
     }
 
+    /// A line wider than the area is panned to, not wrapped or clipped, and the
+    /// reader opens at the live screen's own sideways offset (architecture §11 「尺寸」).
+    @Test func wideLinesArePannedToAndTheReaderOpensAtTheLiveOffset() {
+        let view = TerminalHistoryTextView()
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        let cell = CGSize(width: 8.4, height: 17)
+        let page = TerminalHistory.Page(id: "wide", lines: (1...40).map { _ in String(repeating: "x", count: 200) })
+        view.liveOffsetX = 120
+        show(view, [page], status: Status.none, cell: cell, entry: 0)
+        // 200 columns are wider than the area: the reader scrolls sideways to them.
+        #expect(view.contentSize.width > view.bounds.width)
+        #expect(abs(view.contentOffset.x - 120) < 1)
+        // A line that fits is not scrolled to, and the offset starts at the left.
+        let narrow = TerminalHistoryTextView()
+        narrow.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        narrow.liveOffsetX = 120
+        show(narrow, [TerminalHistory.Page(id: "narrow", lines: ["short", "中文"] )], status: Status.none, cell: cell, entry: 0)
+        #expect(narrow.contentSize.width <= narrow.bounds.width)
+        #expect(narrow.contentOffset.x == 0)
+    }
+
     /// The reader opens above the newest line, by the entry pull at least three lines,
     /// so the gesture that opened it does not leave again at once.
     @Test func theReaderOpensTheEntryPullAboveTheNewestLine() {

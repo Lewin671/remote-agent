@@ -57,6 +57,7 @@ struct TerminalPane: View {
                     TerminalHistoryReader(
                         pages: history.pages, status: history.status, online: state == .live, entry: history.entryPull,
                         metrics: { (terminal.host.shownPoints, terminal.host.shownCell) },
+                        offset: { terminal.host.horizontalOffset },
                         loadEarlier: { terminal.loadEarlier() }, retry: { terminal.retryHistory() },
                         leave: { terminal.leaveReading() }
                     )

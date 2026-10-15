@@ -55,6 +55,51 @@ import UIKit
         #expect(pans.contains { $0.allowedScrollTypesMask == .all })
     }
 
+    /// 字号 offers 6 to 22 (architecture §11 「尺寸」), and opens at 14.
+    @Test func theFontSizesGoFromSixToTwentyTwo() {
+        #expect(TerminalFont.sizes == 6...22)
+        #expect(TerminalFont.standard == 14)
+        #expect(TerminalFont.sizes.contains(TerminalFont.standard))
+        #expect(TerminalFont.sizes.lowerBound == terminalFontFloor)
+        #expect(TerminalFont.cell(points: CGFloat(TerminalFont.sizes.lowerBound)).width > 0)
+    }
+
+    /// A window wider than the area at the floor is kept at 6, not shrunk below,
+    /// and the rest of each line is reached by panning sideways (architecture §11 「尺寸」).
+    @Test func aWindowTooWideForTheAreaIsKeptAtTheFloorAndPanned() {
+        let view = host(width: 400, height: 500)
+        view.snapshot(cols: 165, rows: 48, data: Data("wide sample".utf8))
+        // 165 columns cannot fit 400 pt at the floor, so the floor is what is shown.
+        #expect(view.shownPoints == CGFloat(terminalFontFloor))
+        #expect(view.terminal.font.pointSize == 14)
+        // The picture is wider than the area, and there it can be panned to the right edge.
+        #expect(view.maxHorizontalOffset > 0)
+        #expect(view.horizontalOffset == 0)
+        var sent: [Data] = []
+        view.onInput = { sent.append($0) }
+        view.pan(by: 10_000)
+        // The scroll view lands on the pixel grid, so within a point of the edge.
+        #expect(abs(view.horizontalOffset - view.maxHorizontalOffset) < 1)
+        view.pan(by: -10_000)
+        #expect(view.horizontalOffset == 0)
+        // Panning is the phone looking around; nothing goes to the remote.
+        #expect(sent.isEmpty)
+    }
+
+    /// A window that fits has nothing to pan, at any size.
+    @Test func aWindowThatFitsHasNothingToPan() {
+        let view = host(width: 400, height: 500)
+        view.snapshot(cols: 40, rows: 20, data: Data("fits".utf8))
+        #expect(view.shownPoints == 14)
+        #expect(view.maxHorizontalOffset == 0)
+        view.pan(by: 500)
+        #expect(view.horizontalOffset == 0)
+        // A smaller 字号 gives more columns, and still nothing to pan.
+        view.preferred = TerminalFont.sizes.lowerBound
+        #expect(view.shownPoints == CGFloat(terminalFontFloor))
+        #expect(view.maxHorizontalOffset == 0)
+    }
+
     /// Android's term/TerminalBatchParsingTest: bytes fed one at a time and all at once draw the same screen.
     @Test func batchingPreservesSplitUtf8AndControlSequences() {
         let bytes = Data("hello 中😀\r\nworld\u{1b}[1;1HOK\u{1b}[2;5Hdone".utf8)
@@ -275,9 +320,10 @@ import UIKit
         host.snapshot(cols: 120, rows: 40, data: Data("wide".utf8))
         let emulator = host.terminal.getTerminal()
         #expect((emulator.cols, emulator.rows) == (120, 40))
-        // The whole window fits the area, at a smaller font than the one chosen.
-        #expect(host.terminal.frame.maxX <= 400 && host.terminal.frame.maxY <= 500)
-        #expect(host.shownPoints < 14)
+        // 120 columns do not fit 400 pt at the floor: the font stops there and the
+        // rest of each line is panned to (architecture §11 「尺寸」).
+        #expect(host.shownPoints == CGFloat(terminalFontFloor))
+        #expect(host.terminal.frame.maxX > 400)
         // A shorter area, as under the keyboard, and a turned one: the grid stays.
         for size in [CGSize(width: 400, height: 200), CGSize(width: 800, height: 300), CGSize(width: 400, height: 500)] {
             host.frame.size = size
@@ -296,7 +342,7 @@ import UIKit
     /// it set, since the remote does not say it again: the view is scaled, and its font left alone.
     @Test func showingAtAnotherSizeKeepsWhatTheProgramSet() {
         let host = host(width: 400, height: 500)
-        host.snapshot(cols: 120, rows: 40, data: Data("wide".utf8))
+        host.snapshot(cols: 90, rows: 40, data: Data("wide".utf8))
         let emulator = host.terminal.getTerminal()
         // Application cursor keys, a scroll region, and bold for what comes next.
         host.append(Data("\u{1B}[?1h\u{1B}[5;20r\u{1B}[1m".utf8))
@@ -312,7 +358,7 @@ import UIKit
         shown.append(host.shownPoints)
         #expect(Set(shown).count == 3 && shown[2] == 10)
         #expect(host.terminal.frame.maxX <= 1200 && host.terminal.frame.maxY <= 900)
-        #expect((emulator.cols, emulator.rows) == (120, 40))
+        #expect((emulator.cols, emulator.rows) == (90, 40))
 
         #expect(host.appCursor)
         #expect(emulator.buffer.scrollTop == 4 && emulator.buffer.scrollBottom == 19)
@@ -321,9 +367,9 @@ import UIKit
         #expect(text(host) == "wide\nbold")
         // The size chosen becomes the font with the next snapshot, which resets the terminal itself.
         #expect(host.terminal.font.pointSize == 14)
-        host.snapshot(cols: 120, rows: 40, data: Data("again".utf8))
+        host.snapshot(cols: 90, rows: 40, data: Data("again".utf8))
         #expect(host.terminal.font.pointSize == 10 && host.shownPoints == 10)
-        #expect((emulator.cols, emulator.rows) == (120, 40))
+        #expect((emulator.cols, emulator.rows) == (90, 40))
         #expect(!host.appCursor && text(host) == "again")
     }
 

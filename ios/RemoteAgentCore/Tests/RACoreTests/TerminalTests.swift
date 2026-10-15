@@ -222,14 +222,50 @@ import Testing
 
     @Test func theFontShrinksUntilTheRemoteGridFits() {
         // 80 columns in 600: 0.6 × 12 × 80 = 576 fits, 13 does not.
-        #expect(terminalFontSize(preferred: 42, width: 600, height: 4000, cols: 80, rows: 24, measure: cell) == 12)
+        #expect(terminalFontSize(preferred: 42, smallest: 5, width: 600, height: 4000, cols: 80, rows: 24, measure: cell) == 12)
         // The height limits it too.
-        #expect(terminalFontSize(preferred: 42, width: 6000, height: 240, cols: 80, rows: 10, measure: cell) == 20)
+        #expect(terminalFontSize(preferred: 42, smallest: 5, width: 6000, height: 240, cols: 80, rows: 10, measure: cell) == 20)
         // A grid that fits keeps the size asked for; one that never fits stops at the smallest.
-        #expect(terminalFontSize(preferred: 42, width: 6000, height: 4000, cols: 80, rows: 24, measure: cell) == 42)
-        #expect(terminalFontSize(preferred: 42, width: 100, height: 4000, cols: 300, rows: 24, measure: cell) == 5)
+        #expect(terminalFontSize(preferred: 42, smallest: 5, width: 6000, height: 4000, cols: 80, rows: 24, measure: cell) == 42)
+        #expect(terminalFontSize(preferred: 42, smallest: 5, width: 100, height: 4000, cols: 300, rows: 24, measure: cell) == 5)
         // No snapshot yet.
-        #expect(terminalFontSize(preferred: 42, width: 100, height: 100, cols: 0, rows: 0, measure: cell) == 42)
+        #expect(terminalFontSize(preferred: 42, smallest: 5, width: 100, height: 100, cols: 0, rows: 0, measure: cell) == 42)
+    }
+
+    /// The floor is 6 (architecture §11 「尺寸」): below that a window is
+    /// unreadable, so it is kept and panned instead.
+    @Test func theFontNeverGoesBelowSix() {
+        #expect(terminalFontFloor == 6)
+        // A window far wider than the area still stops at the floor, whatever it is asked for.
+        let floor = terminalFontSize(
+            preferred: 22, smallest: terminalFontFloor, width: 1, height: 1, cols: 1000, rows: 1000, measure: cell)
+        #expect(floor == terminalFontFloor && floor == 6)
+    }
+}
+
+/// The direction of a drag on the live screen (architecture §11 「尺寸」): the
+/// dominant axis decides, a downward pull reads, an upward one does nothing.
+@Suite struct TerminalDragTests {
+    @Test func theDominantAxisDecides() {
+        // Sideways, either way: the screen is panned, and the remote is untouched.
+        #expect(terminalDrag(dx: 40, dy: 3) == .pan)
+        #expect(terminalDrag(dx: -40, dy: 3) == .pan)
+        // A tie goes to the sideways pan.
+        #expect(terminalDrag(dx: 30, dy: 30) == .pan)
+        // Downwards: the record is read.
+        #expect(terminalDrag(dx: 3, dy: 40) == .read)
+        // Upwards: nothing, as a live screen always has.
+        #expect(terminalDrag(dx: 3, dy: -40) == .none)
+        #expect(terminalDrag(dx: -3, dy: -40) == .none)
+    }
+
+    @Test func tooShortADragSaysNothing() {
+        #expect(terminalDrag(dx: 2, dy: 2) == nil)
+        #expect(terminalDrag(dx: 7, dy: 7) == nil)
+        // Once either axis reaches the threshold it is decided.
+        #expect(terminalDrag(dx: 8, dy: 0) == .pan)
+        #expect(terminalDrag(dx: 0, dy: 8) == .read)
+        #expect(terminalDrag(dx: 0, dy: -8) == .none)
     }
 }
 

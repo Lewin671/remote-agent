@@ -15,6 +15,7 @@
 //   term.keyboard    the key bar's 键盘
 //   term.fit         the toolbar's 适配 / 还原
 //   term.fontUp, term.fontDown                    字号
+//   term.panLeft, term.panRight   a sideways pan of the live screen
 //   term.read        a pull down on the live screen, as reading begins
 //   term.earlier     the reader asking for the page before
 //   term.leave       the reader's 回到实时
@@ -35,6 +36,9 @@ import SwiftUI
 #if DEBUG
 @MainActor
 enum TerminalDebug {
+    /// How far the demo's pan signals move the live screen, in points.
+    static let panStep: CGFloat = 120
+
     private static let args = ProcessInfo.processInfo.arguments
 
     private static func value(_ name: String) -> String? {
@@ -135,6 +139,7 @@ enum TerminalDebug {
             remote: \(terminal.size.cols)x\(terminal.size.rows) fitted=\(terminal.fitted) resized=\(terminal.resizedElsewhere)
             emulator: \(emulator.cols)x\(emulator.rows)
             room: \(host.capacity.cols)x\(host.capacity.rows) font=\(font) drawn=\(host.terminal.font.pointSize)
+            pan: \(Int(host.horizontalOffset))/\(Int(host.maxHorizontalOffset))
             view: \(Int(host.bounds.width))x\(Int(host.bounds.height)) grid=\(host.terminal.frame.integral.debugDescription)
             keyboard: \(terminal.keyboard) responder=\(host.keyboardShown)
             reading: \(terminal.history.phase) status=\(terminal.history.status) pages=\(terminal.history.pages.count) new=\(terminal.history.hasNewOutput)
@@ -185,6 +190,8 @@ private struct TerminalDebugSignals: ViewModifier {
             .debugSignal("term.fit") { terminal.toggleFit() }
             .debugSignal("term.fontUp") { setFont(font + 1) }
             .debugSignal("term.fontDown") { setFont(font - 1) }
+            .debugSignal("term.panLeft") { terminal.host.pan(by: -TerminalDebug.panStep) }
+            .debugSignal("term.panRight") { terminal.host.pan(by: TerminalDebug.panStep) }
             .debugSignal("term.read") { terminal.readUp(60) }
             .debugSignal("term.earlier") { terminal.loadEarlier() }
             .debugSignal("term.leave") { terminal.leaveReading() }

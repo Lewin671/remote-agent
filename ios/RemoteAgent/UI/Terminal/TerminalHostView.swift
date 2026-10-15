@@ -10,6 +10,14 @@
 // keyboard up the area is shorter than the grid, and the view is moved up
 // so that the cursor's line stays in sight, as Android scrolls its own.
 //
+// The size never goes below `terminalFontFloor` (6 pt), so a window wider
+// than the area at that size keeps its 6 and is panned rather than shrunk
+// further. The view sits in a horizontal panner (a scroll view): a
+// sideways drag moves it, with the system's momentum and scroll bar, and
+// nothing of it goes to the remote. The panner is only sideways — its
+// content is no taller than the area — so the vertical pull that reads the
+// record is left to the pane's own recognizer.
+//
 // The size shown is not always the emulator's font. SwiftTerm 1.11.2
 // soft-resets the terminal whenever its font is set (`font` → `resetFont`
 // → `TerminalView.resize` → `Terminal.softReset`): the program's
@@ -56,6 +64,18 @@ final class RemoteTerminalView: TerminalView {
     override func isProcessTrusted(source: Terminal) -> Bool { false }
 }
 
+/// The panner: a scroll view that does not begin a pan while a text selection
+/// is being dragged out, so the same drag does not also move the screen. The
+/// scroll view is its own pan's delegate, so the decision is made here.
+private final class PanScrollView: UIScrollView {
+    var selectionActive: () -> Bool = { false }
+
+    override func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
+        guard gesture === panGestureRecognizer, selectionActive() else { return super.gestureRecognizerShouldBegin(gesture) }
+        return false
+    }
+}
+
 final class TerminalHostView: UIView {
     /// Space kept free around the grid, in all: Android's 8 dp.
     private static let pad: CGFloat = 8
@@ -63,6 +83,8 @@ final class TerminalHostView: UIView {
     private static let slack: CGFloat = 0.25
 
     let terminal: RemoteTerminalView
+    /// Holds the view when the window is wider than the area; scrolling it is the sideways pan.
+    private let panner = PanScrollView()
     /// What the user typed, pasted or chose, to send to the remote.
     var onInput: ((Data) -> Void)?
     /// The columns and rows there is room for at the chosen size changed.
@@ -97,6 +119,10 @@ final class TerminalHostView: UIView {
     private var strings = TerminalStringFilter()
     /// How far the grid is moved up to keep the cursor above the keyboard.
     private var scrolled: CGFloat = 0
+    /// The pane's pull down, kept so the panner and it may run together.
+    private var pullGesture: UIPanGestureRecognizer?
+    /// What the drag in hand is for, decided once by its dominant axis.
+    private var dragAxis: TerminalDrag?
 
     init(preferred: Int = TerminalFont.preferred) {
         self.preferred = preferred
@@ -127,21 +153,37 @@ final class TerminalHostView: UIView {
         let emulator = terminal.getTerminal()
         emulator.silentLog = true
         // The live screen keeps no scrollback of its own: with none the view
-        // cannot scroll, so the only way to what came before is the reader
-        // (and no second scroll system competes with it). The emulator still
-        // writes its screen as tmux sized it.
+        // cannot scroll vertically, so the only way to what came before is the
+        // reader. The emulator still writes its screen as tmux sized it.
         emulator.changeHistorySize(0)
         emulator.registerOscHandler(code: 1337) { _ in }
         terminal.isHidden = true
-        // Nor does the scroll view move on its own: a pull is for reading,
-        // below, and nothing of it goes to the remote.
+        // The view's own scrolling stays off: the panner around it is the only
+        // scroll system, and sideways only.
         terminal.isScrollEnabled = false
         terminal.bounces = false
+        // The panner holds the view and pans it sideways when the window is
+        // wider than the area. Its content is no taller than the area, so it
+        // never scrolls vertically and never competes with the pull down.
+        panner.backgroundColor = .clear
+        panner.contentInsetAdjustmentBehavior = .never
+        panner.showsHorizontalScrollIndicator = true
+        panner.indicatorStyle = .white
+        panner.isDirectionalLockEnabled = true
+        panner.alwaysBounceHorizontal = false
+        // A tap is the keyboard's, at once, and not delayed for a scroll that may not come.
+        panner.delaysContentTouches = false
+        panner.selectionActive = { [weak self] in self?.terminal.selectionActive ?? false }
+        addSubview(panner)
+        panner.addSubview(terminal)
+        // The pane's pull down: a drag whose dominant axis is vertical reads the
+        // record; a sideways one is the panner's. The two run together.
         let pull = UIPanGestureRecognizer(target: self, action: #selector(pulled(_:)))
         // A trackpad or a mouse wheel comes to the same recognizer (iOS 13.4).
         pull.allowedScrollTypesMask = .all
+        pull.delegate = self
+        pullGesture = pull
         terminal.addGestureRecognizer(pull)
-        addSubview(terminal)
 
         isAccessibilityElement = true
         accessibilityLabel = "终端画面"
@@ -215,6 +257,7 @@ final class TerminalHostView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        panner.frame = bounds
         refit()
     }
 
@@ -242,19 +285,39 @@ final class TerminalHostView: UIView {
         return CGSize(width: cell.width * zoom, height: cell.height * zoom)
     }
 
-    /// A pull down: the pane opens the reader. A wheel that a terminal would
-    /// turn into arrow keys sends nothing here — the remote is untouched.
+    /// A pull down: the pane opens the reader. The dominant axis decides what
+    /// the drag is — sideways is the panner's, downwards reads, upwards nothing
+    /// — and a pull never sends anything: the remote is untouched.
     @objc private func pulled(_ gesture: UIPanGestureRecognizer) {
-        guard gesture.state == .changed else { return }
-        let translation = gesture.translation(in: self)
-        // Downwards only, and not while a selection is being dragged out.
-        guard translation.y > 0, !terminal.selectionActive else { return }
-        reportPull(translation.y)
+        switch gesture.state {
+        case .began:
+            dragAxis = nil
+        case .changed:
+            let translation = gesture.translation(in: self)
+            if dragAxis == nil { dragAxis = terminalDrag(dx: translation.x, dy: translation.y) }
+            // Only a dominant downward drag reads, and not while a selection is being dragged out.
+            guard dragAxis == .read, !terminal.selectionActive else { return }
+            reportPull(translation.y)
+        default:
+            break
+        }
     }
 
     /// How far the screen has been pulled down, as the gesture reports it.
     func reportPull(_ distance: CGFloat) {
         onReadUp?(distance)
+    }
+
+    /// How far the live screen is panned sideways, and how far it can be. The
+    /// picture is wider than the area exactly when there is room to pan.
+    var horizontalOffset: CGFloat { panner.contentOffset.x }
+    var maxHorizontalOffset: CGFloat { max(0, panner.contentSize.width - panner.bounds.width) }
+
+    /// Pans the live screen sideways by `distance`, as a drag would (the demo's own signal).
+    func pan(by distance: CGFloat) {
+        let x = min(max(0, panner.contentOffset.x + distance), maxHorizontalOffset)
+        panner.setContentOffset(CGPoint(x: x, y: 0), animated: false)
+        panner.flashScrollIndicators()
     }
 
     override func didMoveToWindow() {
@@ -306,7 +369,10 @@ final class TerminalHostView: UIView {
         }
         guard grid.cols > 0 else { return }
         let base = base
-        let size = terminalFontSize(preferred: wanted, width: width, height: height, cols: grid.cols, rows: grid.rows) {
+        // The floor is the smallest 字号 in points, counted here in the pixel
+        // unit the search works in, so the shown size never drops below it.
+        let floor = Int((CGFloat(terminalFontFloor) * scale).rounded())
+        let size = terminalFontSize(preferred: wanted, smallest: floor, width: width, height: height, cols: grid.cols, rows: grid.rows) {
             TerminalFont.geometry(pixels: $0, scale: scale, base: base)
         }
         pixels = size
@@ -321,6 +387,12 @@ final class TerminalHostView: UIView {
             terminal.contentScaleFactor = scale * zoom
             terminal.setNeedsDisplay()
         }
+        // What the panner holds: the view at the size it is shown plus the margin,
+        // so a window wider than the area can be panned over the whole of a line.
+        let content = CGSize(width: terminal.bounds.width * zoom + Self.pad, height: bounds.height)
+        if panner.contentSize != content { panner.contentSize = content }
+        panner.alwaysBounceHorizontal = content.width > bounds.width
+        if panner.contentOffset.x > maxHorizontalOffset { panner.contentOffset.x = maxHorizontalOffset }
         followCursor()
     }
 
@@ -381,4 +453,14 @@ extension TerminalHostView: @preconcurrency TerminalViewDelegate {
     func clipboardCopy(source: TerminalView, content: Data) {}
     func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) {}
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
+}
+
+extension TerminalHostView: UIGestureRecognizerDelegate {
+    /// The sideways pan is the panner's, the pull down is the pane's: the two
+    /// run together, and neither waits for the other to fail.
+    func gestureRecognizer(_ gesture: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        guard let pull = pullGesture else { return false }
+        return (gesture === pull && other === panner.panGestureRecognizer)
+            || (gesture === panner.panGestureRecognizer && other === pull)
+    }
 }

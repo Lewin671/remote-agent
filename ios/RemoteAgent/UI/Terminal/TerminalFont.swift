@@ -18,8 +18,10 @@ import UIKit
 @MainActor
 enum TerminalFont {
     /// The size in points a terminal opens at, and what 字号 can be set to.
+    /// The smallest size is the floor the fitting search stops at, so a size
+    /// 字号 offers is always a size the screen can be shown at.
     static let standard = 14
-    static let sizes = 10...22
+    static let sizes = terminalFontFloor...22
     /// The size last chosen on this device.
     static let key = "terminal-display.font"
 

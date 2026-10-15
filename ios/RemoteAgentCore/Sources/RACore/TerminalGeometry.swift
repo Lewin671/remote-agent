@@ -28,11 +28,20 @@ public struct TerminalGeometry: Sendable, Equatable {
     }
 }
 
+/// The size the font is never shown below, and the smallest 字号 there is
+/// (architecture §11 「尺寸」): at 6 an unfitted window stays on the screen,
+/// and what is still cut off is reached by panning sideways. In points (dp on
+/// Android); a caller measuring in another unit converts it.
+public let terminalFontFloor = 6
+
 /// Keep the remote grid intact; only the explicit fit action changes its
 /// size. The largest size from `preferred` down to `smallest` whose grid of
-/// `cols` by `rows` fits; `measure` gives a size's geometry.
+/// `cols` by `rows` fits; `measure` gives a size's geometry. `smallest` is in
+/// the same unit as `preferred` — the screen's floor in that unit, e.g. the
+/// floor in points times the display scale. At `smallest` it stays, even if
+/// the grid is wider: the rest is panned into view.
 public func terminalFontSize(
-    preferred: Int, smallest: Int = 5, width: Int, height: Int, cols: Int, rows: Int, measure: (Int) -> TerminalGeometry
+    preferred: Int, smallest: Int, width: Int, height: Int, cols: Int, rows: Int, measure: (Int) -> TerminalGeometry
 ) -> Int {
     if cols <= 0 || rows <= 0 { return preferred }
     var size = preferred
