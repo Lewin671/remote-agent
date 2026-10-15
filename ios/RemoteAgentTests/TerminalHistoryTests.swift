@@ -252,6 +252,19 @@ private typealias Phase = TerminalHistory.Phase
         #expect(narrow.contentOffset.x == 0)
     }
 
+    /// Every loaded line is laid out, however many there are: history can hold
+    /// 100,000 tmux rows, well past a million points, and a measurement capped
+    /// there would leave the newest rows unreachable (architecture §11 「回看历史」).
+    @Test func everyLoadedLineIsLaidOutPastAMillionPoints() {
+        let view = TerminalHistoryTextView()
+        view.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
+        // 100 pt lines: 12,000 of them is 1,200,000 pt, past the old 1,000,000 pt cap.
+        let cell = CGSize(width: 8.4, height: 100)
+        let lines = (1...12_000).map { "history-\($0)" }
+        show(view, [TerminalHistory.Page(id: "p", lines: lines)], status: Status.none, cell: cell, entry: 0)
+        #expect(view.contentSize.height >= CGFloat(lines.count) * cell.height)
+    }
+
     /// The reader is shown before it has a size: it places nothing then, and once it
     /// is laid out places the entry pull and the live screen's sideways offset.
     @Test func theReaderWaitsForUsableBoundsBeforePlacing() {

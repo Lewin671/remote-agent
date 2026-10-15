@@ -295,16 +295,28 @@ final class TerminalHostView: UIView {
     @objc private func pulled(_ gesture: UIPanGestureRecognizer) {
         switch gesture.state {
         case .began:
+            // A new gesture, decided at the start: one that began sideways does not
+            // turn into a downwards read because it curved before the next callback.
             dragAxis = nil
+            classify(gesture)
         case .changed:
+            // Only if the start was too short to say; then the first movement past
+            // the threshold decides it, and it stays decided.
+            classify(gesture)
             let translation = gesture.translation(in: self)
-            if dragAxis == nil { dragAxis = terminalDrag(dx: translation.x, dy: translation.y) }
-            // Only a dominant downward drag reads, and not while a selection is being dragged out.
             guard dragAxis == .read, !terminal.selectionActive else { return }
             reportPull(translation.y)
         default:
             break
         }
+    }
+
+    /// Notes the direction of the drag from how far it has come, once it is long
+    /// enough to say; a direction already noted stays.
+    private func classify(_ gesture: UIPanGestureRecognizer) {
+        guard dragAxis == nil else { return }
+        let translation = gesture.translation(in: self)
+        dragAxis = terminalDrag(dx: translation.x, dy: translation.y)
     }
 
     /// How far the screen has been pulled down, as the gesture reports it.

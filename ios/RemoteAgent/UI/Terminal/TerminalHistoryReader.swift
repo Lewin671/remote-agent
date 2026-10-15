@@ -163,8 +163,14 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
         guard bounds.width > 0 else { return }
         let insets = textContainerInset
         let room = max(1, bounds.width - insets.left - insets.right)
-        // Measured with no width to break at: a line is drawn as long as it is.
-        let drawn = text.boundingRect(with: CGSize(width: 1_000_000, height: 1_000_000), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).size
+        // Measured with no bound on either axis: a line is drawn as long as it is,
+        // and every line is laid out however many there are (100,000 tmux rows is
+        // well past a million points, and a cap there would leave the newest of
+        // them unreachable).
+        let drawn = text.boundingRect(
+            with: CGSize(width: 1_000_000, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil
+        ).size
         let padding = textContainer.lineFragmentPadding
         textContainer.widthTracksTextView = false
         textContainer.size = CGSize(
