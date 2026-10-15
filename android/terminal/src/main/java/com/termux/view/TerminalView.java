@@ -100,6 +100,9 @@ public final class TerminalView extends View {
     /** Keeps a sideways flick going when the terminal is wider than the view. */
     private final Scroller mHorizontalScroller;
 
+    /** Which way the current wheel or trackpad scroll goes; kept until the scroll pauses. */
+    private final WheelAxis mWheelAxis = new WheelAxis();
+
     /** What was left in from scrolling movement. */
     float mScrollRemainder;
 
@@ -564,20 +567,6 @@ public final class TerminalView extends View {
     }
 
     /**
-     * How far a wheel or trackpad scroll pans a terminal sideways, in axis units: its
-     * horizontal axis, with shift+vertical taken as horizontal the way the platform's own
-     * scroll views take it. A vertical-dominant scroll is left at zero, for the rows to
-     * take as before; a pan reaches neither the program nor the reader.
-     */
-    public static float horizontalWheel(float hscroll, float vscroll, boolean shift) {
-        if (shift && vscroll != 0f) {
-            hscroll = -vscroll;
-            vscroll = 0f;
-        }
-        return Math.abs(hscroll) > Math.abs(vscroll) ? hscroll : 0f;
-    }
-
-    /**
      * Keeps the pan inside the terminal after its grid or the view's width changed: a remote window
      * that got narrower must not leave the screen parked past the end, and a fling bounded to an
      * older width is stopped (its own scroller would otherwise scroll to the old end).
@@ -761,18 +750,21 @@ public final class TerminalView extends View {
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
         if (mEmulator != null && event.isFromSource(InputDevice.SOURCE_MOUSE) && event.getAction() == MotionEvent.ACTION_SCROLL) {
-            // A sideways wheel pans a terminal wider than the view, by the platform's own
-            // sideways amount, the way a sideways drag does; the pan sends nothing to the
-            // program and never reads. A vertical wheel scrolls rows, as it always has.
-            boolean shift = (event.getMetaState() & KeyEvent.META_SHIFT_ON) != 0;
-            float pan = horizontalWheel(
-                event.getAxisValue(MotionEvent.AXIS_HSCROLL), event.getAxisValue(MotionEvent.AXIS_VSCROLL), shift);
-            if (pan != 0f) {
-                panBy(pan * ViewConfiguration.get(getContext()).getScaledHorizontalScrollFactor());
+            float vscroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+            // Shift+vertical is a sideways scroll, the way the platform's own scroll views take
+            // it, so it joins the sideways axis before the gesture's own axis is decided.
+            boolean shifted = (event.getMetaState() & KeyEvent.META_SHIFT_ON) != 0 && vscroll != 0f;
+            float axisX = shifted ? -vscroll : event.getAxisValue(MotionEvent.AXIS_HSCROLL);
+            // A scroll keeps the axis it started on until it pauses: a sideways pan that drifts
+            // up never becomes a vertical scroll, so it reaches neither the program nor the
+            // reader. A pan sends nothing to the program and never reads; a vertical wheel
+            // scrolls rows, as it always has.
+            if (mWheelAxis.axis(axisX, shifted ? 0f : vscroll, event.getEventTime()) == WheelAxis.Axis.HORIZONTAL) {
+                panBy(axisX * ViewConfiguration.get(getContext()).getScaledHorizontalScrollFactor());
                 return true;
             }
             // Handle mouse wheel scrolling.
-            boolean up = event.getAxisValue(MotionEvent.AXIS_VSCROLL) > 0.0f;
+            boolean up = vscroll > 0.0f;
             doScroll(event, up ? -3 : 3);
             return true;
         }

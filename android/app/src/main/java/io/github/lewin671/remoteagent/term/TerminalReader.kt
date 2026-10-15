@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.termux.terminal.TextStyle as TermStyle
 import com.termux.terminal.WcWidth
+import com.termux.view.WheelAxis
 import io.github.lewin671.remoteagent.ui.Ic
 import io.github.lewin671.remoteagent.ui.Lucide
 import io.github.lewin671.remoteagent.ui.T
@@ -232,6 +233,8 @@ internal fun TerminalHistoryReader(
     // the live view pans by, so a wheel moves both pictures alike.
     val context = LocalContext.current
     val wheelPixels = remember(context) { ViewConfiguration.get(context).getScaledHorizontalScrollFactor() }
+    // The scroll's own axis, kept across the events of one gesture until it pauses.
+    val wheelAxis = remember { WheelAxis() }
     val family = remember(typeface) { FontFamily(typeface) }
     val text = remember(family, palette, fontPx, lineHeightPx, density) {
         TextStyle(
@@ -286,7 +289,7 @@ internal fun TerminalHistoryReader(
             Modifier.fillMaxSize().clipToBounds()
                 // A wheel or trackpad scroll sideways pans the reader like a drag, by the pan's
                 // own bounds. It is taken whole, so it reaches neither the list (the pull out of
-                // reading) nor the live screen behind it; a vertical wheel is left to the list,
+                // reading) nor the live screen behind it; a vertical scroll is left to the list,
                 // which scrolls and leaves as it always has.
                 .pointerInput(wheelPixels) {
                     awaitPointerEventScope {
@@ -295,11 +298,16 @@ internal fun TerminalHistoryReader(
                             if (event.type != PointerEventType.Scroll) continue
                             var dx = 0f
                             var dy = 0f
+                            var time = 0L
                             for (change in event.changes) {
                                 dx += change.scrollDelta.x
                                 dy += change.scrollDelta.y
+                                time = change.uptimeMillis
                             }
-                            if (dx == 0f || abs(dx) <= abs(dy)) continue
+                            // The scroll keeps the axis it started on until it pauses: a pan that
+                            // drifts vertically is still taken whole, so it can never scroll the
+                            // list or leave reading; a vertical scroll is never taken for a pan.
+                            if (wheelAxis.axis(dx, dy, time) != WheelAxis.Axis.HORIZONTAL) continue
                             fling.job?.cancel()
                             event.changes.forEach { it.consume() }
                             offset.floatValue = readerWheelOffset(offset.floatValue, dx, wheelPixels, bound.value)
