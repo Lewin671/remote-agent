@@ -40,6 +40,14 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         data class Closed(val reason: String) : State
     }
 
+    val history = TerminalHistory(scope)
+    fun loadHistory(fresh: Boolean = false) {
+        if (_state.value != State.Live) return
+        history.request(fresh) { id, cursor ->
+            conn?.send(TerminalFrame.newBuilder().setHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.newBuilder().setRequestId(id).setCursor(cursor)).build())
+        }
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private val _state = MutableStateFlow<State>(State.Connecting)
     val state: StateFlow<State> = _state
@@ -81,6 +89,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     })
 
     fun connect() {
+        history.close()
         if (remote.state.value.conn != io.github.lewin671.remoteagent.core.ConnState.ONLINE) { close(); return }
         job?.cancel()
         conn?.close()
@@ -143,6 +152,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
 
     private fun apply(f: TerminalFrame) {
         when (f.kindCase) {
+            TerminalFrame.KindCase.HISTORY_PAGE -> history.receive(f.historyPage)
             TerminalFrame.KindCase.SNAPSHOT -> {
                 val s = f.snapshot
                 session.snapshot(s.cols, s.rows, s.data.toByteArray())
@@ -157,13 +167,13 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 session.append(b, b.size)
             }
             // The daemon says why before it hangs up; the end of the connection that follows says less.
-            TerminalFrame.KindCase.CLOSED -> if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.ifEmpty { "终端已关闭" })
+            TerminalFrame.KindCase.CLOSED -> { history.disconnected(); if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.ifEmpty { "终端已关闭" }) }
             else -> {}
         }
     }
 
     fun send(data: ByteArray) {
-        if (_state.value != State.Live) return
+        if (_state.value != State.Live || history.state.value.visible) return
         conn?.send(TerminalFrame.newBuilder().setInput(ByteString.copyFrom(data)).build())
     }
 
@@ -213,6 +223,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     }
 
     fun close() {
+        history.disconnected()
         generation++
         frames.close()
         _state.value = State.Closed("终端已暂停，连接恢复后会重新获取画面")

@@ -937,6 +937,14 @@ public struct PBTerminalFrame: Sendable {
     set {kind = .output(newValue)}
   }
 
+  public var historyPage: PBTerminalHistoryPage {
+    get {
+      if case .historyPage(let v)? = kind {return v}
+      return PBTerminalHistoryPage()
+    }
+    set {kind = .historyPage(newValue)}
+  }
+
   /// Why the daemon ended the stream.
   public var closed: String {
     get {
@@ -963,17 +971,27 @@ public struct PBTerminalFrame: Sendable {
     set {kind = .resize(newValue)}
   }
 
+  public var historyRequest: PBTerminalHistoryRequest {
+    get {
+      if case .historyRequest(let v)? = kind {return v}
+      return PBTerminalHistoryRequest()
+    }
+    set {kind = .historyRequest(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
     /// Daemon to client.
     case snapshot(PBTerminalSnapshot)
     case output(Data)
+    case historyPage(PBTerminalHistoryPage)
     /// Why the daemon ended the stream.
     case closed(String)
     /// Client to daemon: bytes typed, as if on the local keyboard.
     case input(Data)
     case resize(PBTerminalResize)
+    case historyRequest(PBTerminalHistoryRequest)
 
   }
 
@@ -991,6 +1009,40 @@ public struct PBTerminalSnapshot: Sendable {
   public var cols: Int32 = 0
 
   public var rows: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// History cursors refer to one immutable, per-stream capture on the daemon.
+/// An empty cursor starts a new capture; output continues independently.
+public struct PBTerminalHistoryRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: String = String()
+
+  public var cursor: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBTerminalHistoryPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var requestID: String = String()
+
+  public var lines: [String] = []
+
+  public var nextCursor: String = String()
+
+  public var error: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2630,7 +2682,7 @@ extension PBOpenTerminalResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBTerminalFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalFrame"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}snapshot\0\u{1}output\0\u{1}closed\0\u{2}\u{7}input\0\u{1}resize\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}snapshot\0\u{1}output\0\u{1}closed\0\u{3}history_page\0\u{2}\u{6}input\0\u{1}resize\0\u{3}history_request\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2667,6 +2719,19 @@ extension PBTerminalFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.kind = .closed(v)
         }
       }()
+      case 4: try {
+        var v: PBTerminalHistoryPage?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .historyPage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .historyPage(v)
+        }
+      }()
       case 10: try {
         var v: Data?
         try decoder.decodeSingularBytesField(value: &v)
@@ -2686,6 +2751,19 @@ extension PBTerminalFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.kind = .resize(v)
+        }
+      }()
+      case 12: try {
+        var v: PBTerminalHistoryRequest?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .historyRequest(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .historyRequest(v)
         }
       }()
       default: break
@@ -2711,6 +2789,10 @@ extension PBTerminalFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       guard case .closed(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularStringField(value: v, fieldNumber: 3)
     }()
+    case .historyPage?: try {
+      guard case .historyPage(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    }()
     case .input?: try {
       guard case .input(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularBytesField(value: v, fieldNumber: 10)
@@ -2718,6 +2800,10 @@ extension PBTerminalFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .resize?: try {
       guard case .resize(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
+    case .historyRequest?: try {
+      guard case .historyRequest(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
     }()
     case nil: break
     }
@@ -2766,6 +2852,86 @@ extension PBTerminalSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     if lhs.data != rhs.data {return false}
     if lhs.cols != rhs.cols {return false}
     if lhs.rows != rhs.rows {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalHistoryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}cursor\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.cursor) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.cursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.cursor, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalHistoryRequest, rhs: PBTerminalHistoryRequest) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.cursor != rhs.cursor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBTerminalHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}lines\0\u{3}next_cursor\0\u{1}error\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.lines) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.requestID.isEmpty {
+      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
+    }
+    if !self.lines.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.lines, fieldNumber: 2)
+    }
+    if !self.nextCursor.isEmpty {
+      try visitor.visitSingularStringField(value: self.nextCursor, fieldNumber: 3)
+    }
+    if !self.error.isEmpty {
+      try visitor.visitSingularStringField(value: self.error, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBTerminalHistoryPage, rhs: PBTerminalHistoryPage) -> Bool {
+    if lhs.requestID != rhs.requestID {return false}
+    if lhs.lines != rhs.lines {return false}
+    if lhs.nextCursor != rhs.nextCursor {return false}
+    if lhs.error != rhs.error {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

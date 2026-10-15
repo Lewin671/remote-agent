@@ -244,11 +244,13 @@ message TerminalFrame {
     // Daemon to client.
     TerminalSnapshot snapshot = 1;
     bytes output = 2;
+    TerminalHistoryPage history_page = 4;
     // Why the daemon ended the stream.
     string closed = 3;
     // Client to daemon: bytes typed, as if on the local keyboard.
     bytes input = 10;
     TerminalResize resize = 11;
+    TerminalHistoryRequest history_request = 12;
   }
 }
 
@@ -257,6 +259,19 @@ message TerminalSnapshot {
   bytes data = 1;
   int32 cols = 2;
   int32 rows = 3;
+}
+
+// History cursors refer to one immutable, per-stream capture on the daemon.
+// An empty cursor starts a new capture; output continues independently.
+message TerminalHistoryRequest {
+  string request_id = 1;
+  string cursor = 2;
+}
+message TerminalHistoryPage {
+  string request_id = 1;
+  repeated string lines = 2;
+  string next_cursor = 3;
+  string error = 4;
 }
 
 // TerminalResize with fit set resizes the tmux window to the client's

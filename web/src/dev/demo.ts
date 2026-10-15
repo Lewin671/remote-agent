@@ -2,7 +2,7 @@
 // state docs/design/client-v8.html draws, and no server. Opened with ?demo
 // on the dev server; builds leave this file out. Options:
 //   ?demo&conn=connecting|reconnecting|nonetwork|noserver|fail|removed   the server link's states
-//   ?demo&term=history                       retained terminal output
+//   ?demo&term=history                       paged terminal history
 //   ?demo&term=closed                        terminals that drop at once
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
@@ -952,6 +952,14 @@ export class DemoRemote extends Remote {
     return {
       // Like the daemon: a resize is answered with a snapshot at the new size.
       send: (f) => {
+        if (f.kind?.case === "historyRequest") {
+          const req = f.kind.value;
+          const end = req.cursor ? Number(req.cursor) : 1200;
+          const start = Math.max(0, end - 200);
+          const lines = Array.from({ length: end - start }, (_, i) => `history-${String(start + i + 1).padStart(4, "0")} 中文`);
+          setTimeout(() => open && onFrame({ $typeName: "remoteagent.v1.TerminalFrame", kind: { case: "historyPage", value: { $typeName: "remoteagent.v1.TerminalHistoryPage", requestId: req.requestId ?? "", lines, nextCursor: start ? String(start) : "", error: "" } } }), 200);
+          return;
+        }
         if (f.kind?.case !== "resize") return;
         const r = f.kind.value;
         setTimeout(() => snapshot(r.fit ? { cols: r.cols ?? 0, rows: r.rows ?? 0 } : own), 150);

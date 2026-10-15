@@ -41,6 +41,17 @@ public interface TerminalFrameOrBuilder extends
   com.google.protobuf.ByteString getOutput();
 
   /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   * @return Whether the historyPage field is set.
+   */
+  boolean hasHistoryPage();
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   * @return The historyPage.
+   */
+  io.github.lewin671.remoteagent.proto.TerminalHistoryPage getHistoryPage();
+
+  /**
    * <pre>
    * Why the daemon ended the stream.
    * </pre>
@@ -98,6 +109,17 @@ public interface TerminalFrameOrBuilder extends
    * @return The resize.
    */
   io.github.lewin671.remoteagent.proto.TerminalResize getResize();
+
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   * @return Whether the historyRequest field is set.
+   */
+  boolean hasHistoryRequest();
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   * @return The historyRequest.
+   */
+  io.github.lewin671.remoteagent.proto.TerminalHistoryRequest getHistoryRequest();
 
   public io.github.lewin671.remoteagent.proto.TerminalFrame.KindCase getKindCase();
 }

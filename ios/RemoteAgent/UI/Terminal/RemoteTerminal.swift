@@ -39,6 +39,17 @@ final class RemoteTerminal {
     static let paused = "终端已暂停，连接恢复后会重新获取画面"
     private nonisolated static let frameInterval = 0.033
 
+    let history = TerminalHistory()
+    func loadHistory(fresh: Bool = false) {
+        guard state == .live, let conn else { return }
+        history.request(fresh: fresh) { id, cursor in
+            var frame = PBTerminalFrame()
+            frame.historyRequest.requestID = id
+            frame.historyRequest.cursor = cursor
+            conn.send(frame)
+        }
+    }
+
     private(set) var state = State.connecting
     /// The tmux window's size, from the latest snapshot.
     private(set) var size = TerminalSize(0, 0)
@@ -77,6 +88,7 @@ final class RemoteTerminal {
     }
 
     func connect() {
+        history.close()
         guard let link else { return }
         guard link.online() else {
             close()
@@ -127,6 +139,7 @@ final class RemoteTerminal {
 
     private func apply(_ step: TerminalStep) {
         switch step {
+        case .history(let page): history.receive(page)
         case .snapshot(let cols, let rows, let data):
             host.snapshot(cols: cols, rows: rows, data: data)
             size = TerminalSize(cols, rows)
@@ -137,6 +150,7 @@ final class RemoteTerminal {
         case .output(let data):
             host.append(data)
         case .closed(let reason):
+            history.disconnected()
             // The daemon says why before it hangs up; the end of the connection that follows says less.
             if case .closed = state { return }
             state = .closed(reason)
@@ -153,7 +167,7 @@ final class RemoteTerminal {
     }
 
     func send(_ data: Data) {
-        guard state == .live, let conn else { return }
+        guard state == .live, !history.visible, let conn else { return }
         var frame = PBTerminalFrame()
         frame.input = data
         conn.send(frame)
@@ -217,6 +231,7 @@ final class RemoteTerminal {
     }
 
     func close() {
+        history.disconnected()
         generation += 1
         frames.close()
         state = .closed(Self.paused)

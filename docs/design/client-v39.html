@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v38</title>
+<title>remote-agent 客户端设计稿 v39</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,17 +927,17 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v38 · 2026-10-09 · 上一版 v37 在 git 历史里（<code>git log -- docs/design/client-v37.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v39 · 2026-10-14 · 上一版 v38 在 git 历史里（<code>git log -- docs/design/client-v38.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v37 的改动</h4><ul><li>项目页：键盘弹出时画面不变，只是列表变矮；项目标题和设置摘要在滚出屏幕后才收进导航栏，不再跟着键盘折叠，会话行也不再去掉预览、「最近结束」不再隐藏。手机和 Android 相同。</li><li>其余画面不变。</li></ul>
+  <h4>相对 v38 的改动</h4><ul><li>终端增加「历史」入口：历史只读，向上滚动分段加载；阅读时隐藏输入按键，保留实时连接，可返回实时终端。</li><li>补充历史为空、读取中、失败重试、保留历史到头四种状态。其余画面保留。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
-  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a>
+  <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端历史</a>
 </nav>
 <!-- ============================= -->
 <h2 id="home">主页</h2>
@@ -1345,7 +1345,7 @@ git status --short gen/</pre>
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中 · 询问</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
-      <div class="ttool">电脑上 120×40<b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配我的屏幕</b></div>
+      <div class="ttool">电脑上 120×40<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配我的屏幕</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
       <div class="term tiny"><span class="d">• Explored</span>
   <span class="d">└</span> Search func Login in auth · Read login.go, redis.go
@@ -1378,7 +1378,7 @@ git status --short gen/</pre>
       <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">billing · 11:25</span></b><span style="color:#9da7b3"><span class="dot wait"></span>终端里有弹窗 · 询问</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
-      <div class="ttool">已适配这块屏幕 · 42×30<b>还原</b></div>
+      <div class="ttool">已适配这块屏幕 · 42×30<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b>还原</b></div>
       <div class="tfont"><span>字号</span><b>A−</b><span>14</span><b>A+</b></div>
       <div class="term"><span class="y">  Folder access</span>
   ~/Code/billing
@@ -3777,7 +3777,7 @@ git status --short gen/</pre>
 </span>
 <span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
 </div>
-<div class="ttool">远端尺寸已变化 · 80×30<span style="margin-left:auto;color:#79c0ff">适配</span>
+<div class="ttool">远端尺寸已变化 · 80×30<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><span style="margin-left:auto;color:#79c0ff">适配</span>
 </div>
 <div class="term">
 <span class="b">❯</span> 正在执行测试…
@@ -4093,7 +4093,7 @@ git status --short gen/</pre>
           <div class="compose-card"><div class="draft">消息 · ⌘↵ 发送</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
         </div>
         <div class="tcol">
-          <div class="ttool">已适配这块屏幕 · 96×40<b>还原</b></div>
+          <div class="ttool">已适配这块屏幕 · 96×40<span style="color:#79c0ff;margin-left:auto;padding:0 12px">历史</span><b>还原</b></div>
           <div class="term" style="font-size:11px"><span class="d">• Edited</span> 5 files (+84 -61)
 <span class="d">• Ran</span> mkdir -p internal/handler
 
@@ -4248,5 +4248,25 @@ git status --short gen/</pre>
     document.querySelectorAll(".compose-menu[open]").forEach((menu) => { menu.open = false; });
   });
 </script>
+
+<section id="terminal-history" style="margin:40px 0">
+<h2>终端 · 分段读取历史</h2>
+<div class="grid">
+<div><div class="phone" style="background:#0d1117;color:#c9d1d9">
+<div class="navbar"><span class="title"><b>修复登录超时</b><span>终端历史</span></span><span style="color:#79c0ff">返回实时终端</span></div>
+<div style="padding:12px;color:#8b949e;font-size:12px">读取更早历史</div>
+<pre style="padding:12px;white-space:pre-wrap">history-0801 中文
+history-0802 中文
+…
+history-1000 中文
+history-1001 中文
+history-1002 中文</pre>
+</div><div class="cap">历史正文只读；向上滚动时补前一段，当前文字留在原位。也可点顶部入口取前一段。宽屏沿用相同布局并撑满终端列。</div></div>
+<div><div class="phone" style="background:#0d1117;color:#c9d1d9;padding:12px">
+<h3>边界状态</h3><p>读取历史…</p><p>历史读取失败，请重试；若历史已过期，请返回终端后重新打开 <span style="color:#79c0ff">重试</span></p>
+<p>已到保留历史的开头</p><p>暂无历史</p><p>终端连接已断开，请返回终端并重新连接</p>
+</div><div class="cap">失败不清空已经读到的内容；不自动反复重试。断线后原游标失效，重连后重新打开历史。</div></div>
+</div></section>
+
 </body>
 </html>

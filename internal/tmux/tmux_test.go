@@ -44,6 +44,9 @@ func TestSessionCommands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if limit, err := c.Display("ra-x", "#{history_limit}"); err != nil || limit != strconv.Itoa(HistoryLines) {
+		t.Fatalf("history limit = %q: %v", limit, err)
+	}
 	// A second session whose name has ra-x as a prefix must not be hit by
 	// commands aimed at ra-x.
 	if err := c.NewSession(NewSessionOptions{Name: "ra-xy", Argv: []string{"sleep", "30"}}); err != nil {

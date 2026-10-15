@@ -19,7 +19,7 @@ import (
 const MinVersion = "3.2"
 
 // HistoryLines is the retained output available to remote terminal clients.
-const HistoryLines = 10000
+const HistoryLines = 100000
 
 // Client talks to one tmux server, selected with -L.
 type Client struct {

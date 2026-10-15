@@ -41,6 +41,7 @@ internal class TerminalFrames(private val maxBytes: Long = 2L * 1024 * 1024, pri
     private fun size(f: TerminalFrame): Long = when (f.kindCase) {
         TerminalFrame.KindCase.OUTPUT -> f.output.size().toLong()
         TerminalFrame.KindCase.SNAPSHOT -> f.snapshot.data.size().toLong()
+        TerminalFrame.KindCase.HISTORY_PAGE -> f.historyPage.serializedSize.toLong()
         else -> 0
     }
 }

@@ -41,9 +41,10 @@ struct TerminalPane: View {
             TerminalScreen(terminal: terminal)
                 .overlay(alignment: .top) {
                     // At the largest text sizes, or under the keyboard, the notice can be taller than the area.
-                    if state != .live { ScrollView { notice(state) }.scrollBounceBehavior(.basedOnSize) }
+                    if state != .live && !terminal.history.visible { ScrollView { notice(state) }.scrollBounceBehavior(.basedOnSize) }
                 }
-            TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: { terminal.host.toggleKeyboard() })
+                .overlay { if terminal.history.visible { TerminalHistoryPanel(history: terminal.history, online: state == .live, font: font, load: { terminal.loadHistory() }) } }
+            if !terminal.history.visible { TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: { terminal.host.toggleKeyboard() }) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.Term.bg)
@@ -92,7 +93,14 @@ struct TerminalPane: View {
             Text(text).type(T.meta, Theme.Term.tool)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if state == .live {
+            Button(terminal.history.visible ? "返回实时终端" : "历史") {
+                if terminal.history.visible { terminal.history.close() }
+                else { terminal.host.hideKeyboard(); terminal.loadHistory(fresh: true) }
+            }
+            .type(T.metaB, Theme.Term.link)
+            .frame(minHeight: Theme.minHit)
+            .disabled(state != .live && !terminal.history.visible)
+            if state == .live && !terminal.history.visible {
                 Button {
                     terminal.toggleFit()
                 } label: {

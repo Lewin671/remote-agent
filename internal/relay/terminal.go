@@ -17,6 +17,7 @@ import (
 // Terminal is a live view of a session's terminal; see daemon.TermStream.
 type Terminal interface {
 	Snapshot() (*pb.TerminalSnapshot, error)
+	History(*pb.TerminalHistoryRequest) (*pb.TerminalHistoryPage, error)
 	Output() <-chan []byte
 	SizeChanged() <-chan struct{}
 	Done() <-chan struct{}
@@ -92,9 +93,29 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 	if err := send(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Snapshot{Snapshot: snap}}); err != nil {
 		return
 	}
+	historyRequests := make(chan *pb.TerminalHistoryRequest, 1)
+	historyPages := make(chan *pb.TerminalHistoryPage, 1)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case req := <-historyRequests:
+				page, err := t.History(req)
+				if err != nil {
+					page = &pb.TerminalHistoryPage{RequestId: req.RequestId, Error: "cannot read terminal history"}
+				}
+				select {
+				case historyPages <- page:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
 	go func() {
 		defer cancel()
-		c.readTerminal(ctx, ws, t, key, sessionID, streamID)
+		c.readTerminal(ctx, ws, t, key, sessionID, streamID, historyRequests)
 	}()
 	for {
 		select {
@@ -104,6 +125,10 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 			_ = send(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Closed{Closed: t.Reason()}})
 			ws.Close(websocket.StatusNormalClosure, "")
 			return
+		case page := <-historyPages:
+			if err := send(&pb.TerminalFrame{Kind: &pb.TerminalFrame_HistoryPage{HistoryPage: page}}); err != nil {
+				return
+			}
 		case <-t.SizeChanged():
 			snap, err := t.Snapshot()
 			if err != nil {
@@ -130,7 +155,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 }
 
 // readTerminal applies the client's sealed input frames in order.
-func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal, key []byte, sessionID, streamID string) {
+func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal, key []byte, sessionID, streamID string, historyRequests chan<- *pb.TerminalHistoryRequest) {
 	var last uint64
 	for {
 		typ, b, err := ws.Read(ctx)
@@ -153,6 +178,17 @@ func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal,
 		switch k := f.Kind.(type) {
 		case *pb.TerminalFrame_Input:
 			err = t.Input(k.Input)
+		case *pb.TerminalFrame_HistoryRequest:
+			if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
+				return
+			}
+			// Bound queued work. A flooding client closes its own stream instead of
+			// starving input or accumulating captures on the daemon.
+			select {
+			case historyRequests <- k.HistoryRequest:
+			default:
+				return
+			}
 		case *pb.TerminalFrame_Resize:
 			err = t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
 		}

@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
 // TermStream is a live view of a session's terminal: a tmux control-mode
@@ -35,6 +35,11 @@ type TermStream struct {
 	fitted bool
 	live   bool // output is passed on; before the snapshot it is dropped
 	reason string
+
+	historyMu sync.Mutex
+	history   *terminalHistory
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // termQueue is how many output chunks may wait for a slow reader before
@@ -72,6 +77,7 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 		return nil, err
 	}
 	t := &TermStream{d: d, name: name, pane: strings.TrimSpace(pane), cmd: cmd, stdin: stdin, out: make(chan []byte, termQueue), resize: make(chan struct{}, 1), done: make(chan struct{})}
+	t.ctx, t.cancel = context.WithCancel(context.Background())
 	go t.read(stdout)
 	return t, nil
 }
@@ -151,7 +157,7 @@ func (t *TermStream) Snapshot() (*pb.TerminalSnapshot, error) {
 	t.mu.Unlock()
 	// Include retained tmux history when opening or replacing the screen.
 	// A snapshot is also used after resizing and reconnecting.
-	screen, err := tc.Run("capture-pane", "-p", "-e", "-S", "-"+strconv.Itoa(tmux.HistoryLines), "-t", "="+t.name+":")
+	screen, err := tc.Run("capture-pane", "-p", "-e", "-S", "-200", "-t", "="+t.name+":")
 	if err != nil {
 		return nil, err
 	}
@@ -247,6 +253,15 @@ func (t *TermStream) Close() error {
 
 func (t *TermStream) end(reason string) {
 	t.closed.Do(func() {
+		if t.cancel != nil {
+			t.cancel()
+		}
+		t.historyMu.Lock()
+		if t.history != nil {
+			t.history.file.Close()
+			t.history = nil
+		}
+		t.historyMu.Unlock()
 		t.mu.Lock()
 		t.reason = reason
 		fitted := t.fitted

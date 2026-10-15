@@ -119,6 +119,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     }
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()
+    val history by term.history.state.collectAsState()
     val fitted by term.fitted.collectAsState()
     val resized by term.resizedElsewhere.collectAsState()
     LaunchedEffect(resized) {
@@ -158,7 +159,11 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 },
                 style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f),
             )
-            if (state == RemoteTerminal.State.Live) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
+            Text(if (history.visible) "返回实时终端" else "历史", style = T.metaB, color = TermColors.link,
+                modifier = Modifier.heightIn(min = 44.dp).clickable(enabled = history.visible || state == RemoteTerminal.State.Live) {
+                    if (history.visible) term.history.close() else { term.view?.let { v -> (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(v.windowToken, 0); v.clearFocus() }; term.loadHistory(true) }
+                }.padding(horizontal = 8.dp))
+            if (state == RemoteTerminal.State.Live && !history.visible) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
                 if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.metaB, color = TermColors.link)
                 else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.metaB)
             }
@@ -236,7 +241,8 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                     modifier = Modifier.fillMaxWidth().height(with(density) { contentPx.toDp() }),
                 )
             }
-            if (state != RemoteTerminal.State.Live) {
+            if (history.visible) TerminalHistoryPanel(history, state == RemoteTerminal.State.Live, fontDp) { term.loadHistory() }
+            if (state != RemoteTerminal.State.Live && !history.visible) {
                 Column(
                     Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.SM).background(TermColors.bar)
                         .border(1.dp, TermColors.line, Radii.SM).padding(12.dp),
@@ -261,7 +267,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 }
             }
         }
-        KeyBar(enabled = state == RemoteTerminal.State.Live, onKey = { term.sendText(keySequence(it, term.session.emulator?.isCursorKeysApplicationMode == true)) }, onKeyboard = {
+        if (!history.visible) KeyBar(enabled = state == RemoteTerminal.State.Live, onKey = { term.sendText(keySequence(it, term.session.emulator?.isCursorKeysApplicationMode == true)) }, onKeyboard = {
             val v = term.view ?: return@KeyBar
             val imm = v.context.getSystemService(InputMethodManager::class.java)
             if (imeVisible) imm.hideSoftInputFromWindow(v.windowToken, 0) else {

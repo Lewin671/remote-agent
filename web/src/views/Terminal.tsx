@@ -1,3 +1,5 @@
+import { TerminalHistory } from "../terminal-history";
+import { TerminalHistoryPanel } from "./TerminalHistory";
 import { usePageVisible, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -47,6 +49,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState(false);
+  const [, refreshHistory] = useState(0);
+  const historyRef = useRef<TerminalHistory>(null);
+  if (!historyRef.current) historyRef.current = new TerminalHistory(() => refreshHistory(n => n + 1));
+  const history = historyRef.current;
+  const loadHistory = (fresh = false) => history.request((requestId, cursor) => conn.current?.send({ kind: { case: "historyRequest", value: { requestId, cursor } } }), fresh);
   const [fitted, setFitted] = useState(false);
   // The window is shared: the size this screen was fitted to, as the first
   // snapshot after fitting showed it. A later snapshot of another size
@@ -85,7 +92,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     });
     term.current = t;
     t.open(host.current!);
-    const typed = t.onData((d) => conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
+    const typed = t.onData((d) => !history.visible && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
     // A fitted window follows the width of its pane: the browser window, or
     // the switch between the terminal alone and side by side. Height is left
     // alone, so a phone's keyboard never resizes the remote window.
@@ -113,6 +120,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     if (!visible || !online) return;
     let alive = true;
     const opening = new AbortController();
+    history.close();
     setState("connecting");
     setReason("");
     setDetails(false);
@@ -131,6 +139,9 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           const t = term.current;
           if (!t) return;
           switch (f.kind.case) {
+            case "historyPage":
+              history.receive(f.kind.value);
+              return;
             case "snapshot": {
               const next = { cols: f.kind.value.cols, rows: f.kind.value.rows };
               const was = size.current;
@@ -168,6 +179,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         },
         (why) => {
           if (!alive) return;
+          history.disconnected();
           setState("closed");
           setReason((r) => r || why);
         },
@@ -192,6 +204,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       opening.abort();
       conn.current?.close();
       conn.current = null;
+      history.close();
     };
   }, [remote, session.id, attempt, visible, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -240,11 +253,13 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         <span>
           {!live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
         </span>
-        {live && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
+        <button disabled={!live && !history.visible} onClick={() => history.visible ? history.close() : loadHistory(true)}>{history.visible ? "返回实时终端" : "历史"}</button>
+        {live && !history.visible && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
       </div>
-      <div className="term" ref={box} onClick={() => term.current?.focus()}>
+      <div className={"term" + (history.visible ? " reading-history" : "")} ref={box} onClick={() => !history.visible && term.current?.focus()}>
         <div ref={host} className={state === "closed" ? "stale" : ""} />
-        {changed && state === "live" && (
+        {history.visible && <TerminalHistoryPanel history={history} load={() => loadHistory()} online={live} />}
+        {changed && state === "live" && !history.visible && (
           <div className="tstate">
             <b>远端尺寸已变化</b>
             <p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
@@ -275,7 +290,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           </div>
         )}
       </div>
-      {!compact && (
+      {!compact && !history.visible && (
         <div className={"keys" + (live ? "" : " off")}>
           <div className="keyrow">
             {keys.map(([label, seq, name]) => (

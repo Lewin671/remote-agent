@@ -87,6 +87,14 @@ import Testing
         .with { $0.output = Data(text.utf8) }
     }
 
+    @Test func historyPagesCountTowardsBacklogAndKeepOrder() {
+        let frame = PBTerminalFrame.with { $0.historyPage = .with { $0.requestID = "r"; $0.lines = ["中文中文"] } }
+        let q = TerminalFrames(maxBytes: 3)
+        #expect(q.offer(frame) == .overflow)
+        let steps = terminalSteps([output("before"), frame, output("after")])
+        #expect(steps == [.output(Data("before".utf8)), .history(frame.historyPage), .output(Data("after".utf8))])
+    }
+
     @Test func preservesSnapshotOutputAndCloseOrderAcrossBoundedDrains() {
         let q = TerminalFrames()
         let snapshot = PBTerminalFrame.with { $0.snapshot = .with { $0.cols = 80 } }

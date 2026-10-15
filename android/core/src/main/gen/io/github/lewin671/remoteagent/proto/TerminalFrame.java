@@ -26,9 +26,11 @@ public  final class TerminalFrame extends
   public enum KindCase {
     SNAPSHOT(1),
     OUTPUT(2),
+    HISTORY_PAGE(4),
     CLOSED(3),
     INPUT(10),
     RESIZE(11),
+    HISTORY_REQUEST(12),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -46,9 +48,11 @@ public  final class TerminalFrame extends
       switch (value) {
         case 1: return SNAPSHOT;
         case 2: return OUTPUT;
+        case 4: return HISTORY_PAGE;
         case 3: return CLOSED;
         case 10: return INPUT;
         case 11: return RESIZE;
+        case 12: return HISTORY_REQUEST;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -176,6 +180,58 @@ public  final class TerminalFrame extends
    */
   private void clearOutput() {
     if (kindCase_ == 2) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int HISTORY_PAGE_FIELD_NUMBER = 4;
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHistoryPage() {
+    return kindCase_ == 4;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.TerminalHistoryPage getHistoryPage() {
+    if (kindCase_ == 4) {
+       return (io.github.lewin671.remoteagent.proto.TerminalHistoryPage) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.TerminalHistoryPage.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHistoryPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 4;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHistoryPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 4 &&
+        kind_ != io.github.lewin671.remoteagent.proto.TerminalHistoryPage.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.TerminalHistoryPage.newBuilder((io.github.lewin671.remoteagent.proto.TerminalHistoryPage) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 4;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+   */
+  private void clearHistoryPage() {
+    if (kindCase_ == 4) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -372,6 +428,58 @@ public  final class TerminalFrame extends
    */
   private void clearResize() {
     if (kindCase_ == 11) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int HISTORY_REQUEST_FIELD_NUMBER = 12;
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHistoryRequest() {
+    return kindCase_ == 12;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.TerminalHistoryRequest getHistoryRequest() {
+    if (kindCase_ == 12) {
+       return (io.github.lewin671.remoteagent.proto.TerminalHistoryRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 12 &&
+        kind_ != io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.newBuilder((io.github.lewin671.remoteagent.proto.TerminalHistoryRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+   */
+  private void clearHistoryRequest() {
+    if (kindCase_ == 12) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -600,6 +708,54 @@ public  final class TerminalFrame extends
     }
 
     /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHistoryPage() {
+      return instance.hasHistoryPage();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.TerminalHistoryPage getHistoryPage() {
+      return instance.getHistoryPage();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    public Builder setHistoryPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+      copyOnWrite();
+      instance.setHistoryPage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    public Builder setHistoryPage(
+        io.github.lewin671.remoteagent.proto.TerminalHistoryPage.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHistoryPage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    public Builder mergeHistoryPage(io.github.lewin671.remoteagent.proto.TerminalHistoryPage value) {
+      copyOnWrite();
+      instance.mergeHistoryPage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryPage history_page = 4 [json_name = "historyPage"];</code>
+     */
+    public Builder clearHistoryPage() {
+      copyOnWrite();
+      instance.clearHistoryPage();
+      return this;
+    }
+
+    /**
      * <pre>
      * Why the daemon ended the stream.
      * </pre>
@@ -780,6 +936,54 @@ public  final class TerminalFrame extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHistoryRequest() {
+      return instance.hasHistoryRequest();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.TerminalHistoryRequest getHistoryRequest() {
+      return instance.getHistoryRequest();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    public Builder setHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest value) {
+      copyOnWrite();
+      instance.setHistoryRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    public Builder setHistoryRequest(
+        io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHistoryRequest(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    public Builder mergeHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest value) {
+      copyOnWrite();
+      instance.mergeHistoryRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryRequest history_request = 12 [json_name = "historyRequest"];</code>
+     */
+    public Builder clearHistoryRequest() {
+      copyOnWrite();
+      instance.clearHistoryRequest();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.TerminalFrame)
   }
   @java.lang.Override
@@ -799,11 +1003,13 @@ public  final class TerminalFrame extends
             "kind_",
             "kindCase_",
             io.github.lewin671.remoteagent.proto.TerminalSnapshot.class,
+            io.github.lewin671.remoteagent.proto.TerminalHistoryPage.class,
             io.github.lewin671.remoteagent.proto.TerminalResize.class,
+            io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0001\u0000\u0001\u000b\u0005\u0000\u0000\u0000\u0001<\u0000\u0002=" +
-              "\u0000\u0003\u023b\u0000\n=\u0000\u000b<\u0000";
+              "\u0000\u0007\u0001\u0000\u0001\f\u0007\u0000\u0000\u0000\u0001<\u0000\u0002=\u0000" +
+              "\u0003\u023b\u0000\u0004<\u0000\n=\u0000\u000b<\u0000\f<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

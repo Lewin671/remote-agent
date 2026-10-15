@@ -83,6 +83,30 @@ import Testing
         for _ in 0..<300 where !what() { try? await Task.sleep(for: .milliseconds(10)) }
     }
 
+    @Test func historyPagesStaySeparateFromTheLiveEmulatorAndInput() async {
+        let streams = Streams()
+        let t = terminal(streams)
+        t.connect()
+        await until { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("live"))
+        await until { t.state == .live }
+        t.loadHistory(fresh: true)
+        let request = streams.sent.last!.historyRequest
+        #expect(!request.requestID.isEmpty)
+        let count = streams.sent.count
+        t.send(Data("must not type".utf8))
+        #expect(streams.sent.count == count)
+        streams.listener(0).onFrame(.with { $0.historyPage = .with { $0.requestID = request.requestID; $0.lines = ["older"]; $0.nextCursor = "capture:200" } })
+        streams.listener(0).onFrame(output(" output"))
+        await until { t.history.pending.isEmpty }
+        #expect(t.history.pages.first?.text == "older")
+        #expect(t.host.screenText == "live output")
+        t.history.close()
+        t.send(Data("input".utf8))
+        #expect(streams.sent.last?.input == Data("input".utf8))
+        t.close()
+    }
+
     @Test func aSnapshotThenOutputIsTheScreen() async {
         let streams = Streams()
         let t = terminal(streams)

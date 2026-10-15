@@ -81,6 +81,7 @@ public final class TerminalFrames: Sendable {
         switch f.kind {
         case .output(let d)?: d.count
         case .snapshot(let s)?: s.data.count
+        case .historyPage(let p)?: p.lines.reduce(0) { $0 + $1.utf8.count } + p.nextCursor.utf8.count + p.error.utf8.count + p.requestID.utf8.count
         default: 0
         }
     }
@@ -91,6 +92,7 @@ public enum TerminalStep: Sendable, Equatable {
     case output(Data)
     case snapshot(cols: Int, rows: Int, data: Data)
     case closed(String)
+    case history(PBTerminalHistoryPage)
 }
 
 /// Joins adjacent output so that the emulator is fed once per run of it; snapshots and closes keep their place.
@@ -108,6 +110,9 @@ public func terminalSteps(_ batch: [PBTerminalFrame]) -> [TerminalStep] {
         case .snapshot(let s)?:
             flush()
             steps.append(.snapshot(cols: Int(s.cols), rows: Int(s.rows), data: s.data))
+        case .historyPage(let p)?:
+            flush()
+            steps.append(.history(p))
         case .closed(let reason)?:
             flush()
             steps.append(.closed(reason.isEmpty ? "终端已关闭" : reason))

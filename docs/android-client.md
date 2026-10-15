@@ -60,7 +60,7 @@ Android 终端的字体依次是 JetBrains Mono、Sarasa Fixed SC 的符号子�
 
 ## 更新
 
-App 是侧载的，没有应用商店替它更新，所以自己做：发现新版本、下载、交给系统安装。清单和 APK 从哪里来见 [architecture · 产品版本与发布](architecture.md#产品版本与发布)，界面见 [client-v38 · App 更新](design/client-v38.html#update)。
+App 是侧载的，没有应用商店替它更新，所以自己做：发现新版本、下载、交给系统安装。清单和 APK 从哪里来见 [architecture · 产品版本与发布](architecture.md#产品版本与发布)，界面见 [client-v38 · App 更新](design/client-v39.html#update)。
 
 - **什么时候看**：回到前台时，距上次超过 6 小时才看；设置里可以手动看。自动看失败不提示，手动看失败才写原因。只比较 versionCode，和系统判断能不能覆盖安装用的是同一个数
 - **不自动下载**：看到新版本只提示，点了才下载。发版很频繁，每版都在后台下 6 MiB 不值得，而且装不装本来就要人确认

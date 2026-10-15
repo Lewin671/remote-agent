@@ -139,6 +139,9 @@ type fakeTerminal struct {
 	once    sync.Once
 }
 
+func (t *fakeTerminal) History(req *pb.TerminalHistoryRequest) (*pb.TerminalHistoryPage, error) {
+	return &pb.TerminalHistoryPage{RequestId: req.RequestId, Lines: []string{"history " + marker}}, nil
+}
 func (t *fakeTerminal) Snapshot() (*pb.TerminalSnapshot, error) {
 	return &pb.TerminalSnapshot{Data: []byte("screen " + marker), Cols: 80, Rows: 24}, nil
 }

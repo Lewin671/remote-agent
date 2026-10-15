@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ import (
 
 // A real pane, not a canned snapshot: opening and resizing must recover
 // output produced before any terminal client connected.
-func TestTerminalSnapshotIncludesTmuxHistory(t *testing.T) {
+func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-%d", time.Now().UnixNano())}
 	if _, err := tc.CheckVersion(); err != nil {
 		t.Skip(err)
@@ -46,7 +47,13 @@ func TestTerminalSnapshotIncludesTmuxHistory(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	stream := &TermStream{d: New(Config{Tmux: tc}), name: "history"}
+	d := New(Config{Tmux: tc})
+	d.sessions["history"] = &session{meta: meta{Tmux: "history"}}
+	stream, err := d.OpenTerminal("history")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { stream.Close() })
 	for _, rows := range []int{10, 15} {
 		if _, err := tc.Run("resize-window", "-t", "=history:", "-y", fmt.Sprint(rows)); err != nil {
 			t.Fatal(err)
@@ -55,15 +62,47 @@ func TestTerminalSnapshotIncludesTmuxHistory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, want := range []string{"history-001", "history-050", "history-2500"} {
+		for _, want := range []string{"history-2490", "history-2500"} {
 			if !strings.Contains(string(snapshot.Data), want) {
 				t.Errorf("%d rows: missing %s", rows, want)
 			}
+		}
+		if strings.Contains(string(snapshot.Data), "history-001") {
+			t.Error("opening sent old history eagerly")
 		}
 		if snapshot.Rows != int32(rows) {
 			t.Errorf("rows = %d", snapshot.Rows)
 		}
 	}
+	first, err := stream.History(&pb.TerminalHistoryRequest{RequestId: "first"})
+	if err != nil || first.Error != "" || first.NextCursor == "" {
+		t.Fatalf("capture failed: %v %v", first, err)
+	}
+	file := stream.history.file
+	if _, err := os.Stat(file.Name()); !os.IsNotExist(err) {
+		t.Fatal("history plaintext file is still linked")
+	}
+	stat, err := file.Stat()
+	if err != nil || stat.Mode().Perm() != 0600 {
+		t.Fatalf("history file permissions: %v %v", stat, err)
+	}
+	next, err := stream.History(&pb.TerminalHistoryRequest{RequestId: "new"})
+	if err != nil || next.Error != "" {
+		t.Fatalf("recapture failed: %v %v", next, err)
+	}
+	if _, err := file.Stat(); err == nil {
+		t.Fatal("recapture leaked the old file")
+	}
+	stale, _ := stream.History(&pb.TerminalHistoryRequest{RequestId: "stale", Cursor: first.NextCursor})
+	if stale.Error == "" {
+		t.Fatal("old capture cursor accepted")
+	}
+	file = stream.history.file
+	stream.Close()
+	if _, err := file.Stat(); err == nil {
+		t.Fatal("closing the stream leaked its history file")
+	}
+
 }
 
 // The same snapshot crosses a local encrypted relay. Input travels back to
@@ -131,10 +170,60 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 			t.Fatal(err)
 		}
 		data := string(frame.GetSnapshot().GetData())
-		if !strings.Contains(data, "history-001") || !strings.Contains(data, "history-2500") {
+		if !strings.Contains(data, "history-2500") || strings.Contains(data, "history-001") {
 			terminal.Close()
 			t.Fatalf("history missing from encrypted snapshot: %q", data)
 		}
+		var all []string
+		cursor := ""
+		for pageNumber := 0; ; pageNumber++ {
+			id := fmt.Sprintf("page-%d", pageNumber)
+			if err := terminal.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_HistoryRequest{HistoryRequest: &pb.TerminalHistoryRequest{RequestId: id, Cursor: cursor}}}); err != nil {
+				t.Fatal(err)
+			}
+			var page *pb.TerminalHistoryPage
+			for page == nil {
+				frame, err := terminal.Read(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				page = frame.GetHistoryPage()
+			}
+			if page.RequestId != id || page.Error != "" || len(page.Lines) > historyPageLines {
+				t.Fatalf("invalid page: %v", page)
+			}
+			all = append(append([]string{}, page.Lines...), all...)
+			if attempt == 0 && pageNumber == 0 {
+				if err := terminal.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("live-history-check\r")}}); err != nil {
+					t.Fatal(err)
+				}
+				var live strings.Builder
+				for !strings.Contains(live.String(), "live-history-check") {
+					next, err := terminal.Read(ctx)
+					if err != nil {
+						t.Fatal(err)
+					}
+					live.Write(next.GetOutput())
+				}
+				if err := terminal.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 70, Rows: 12, Fit: true}}}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cursor = page.NextCursor
+			if cursor == "" {
+				break
+			}
+		}
+		numbered := make([]string, 0)
+		for _, line := range all {
+			if strings.HasPrefix(line, "history-") {
+				numbered = append(numbered, line)
+			}
+		}
+		if len(numbered) != 2500 || numbered[0] != "history-001" || numbered[2499] != "history-2500" {
+			t.Fatalf("paged history missing, duplicated, or out of order: %d lines", len(numbered))
+		}
+
 		if attempt == 0 {
 			err = terminal.Send(ctx, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("live-history-check\r")}})
 			if err != nil {
