@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v40 · 2026-10-14 · 上一版 v39 在 git 历史里（<code>git log -- docs/design/client-v39.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v41 · 2026-10-15 · 上一版 v40 在 git 历史里（<code>git log -- docs/design/client-v40.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v39 的改动</h4><ul><li>终端去掉「历史」按钮和单独的历史页：在终端里往上滑（滚轮、触控板同理）就是往回看，滑到已读内容的顶端自动接上更早的一段。</li><li>回看的内容带颜色、字号和实时画面一致；回看时画面不跟着新输出跳动，右下角「回到实时」（有新输出时写「有新输出」）一点回到底部，滑到最底、按任意按键也回到实时。按键栏不再隐藏。其余画面保留。</li></ul>
+  <h4>相对 v40 的改动</h4><ul><li>电脑上的终端比手机宽时，字最小缩到 6；再放不下就保持 6，实时画面和回看都能左右滑动，底部出现横向滚动条。回看打开时停在当前的横向位置。</li><li>「字号」可选范围从 10–22 改为 6–22。其余画面保留。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -4385,6 +4385,31 @@ git status --short gen/</pre>
   <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
 </div>
 <div class="cap" style="width:900px;text-align:left">宽屏相同：工具条不再有居中的「历史」，回看时整块终端区域可滚，胶囊固定在右下角。桌面上滚轮、触控板回看，选中文字可复制</div>
+
+<h3 style="margin:32px 0 12px">比屏幕宽的终端</h3>
+<div class="screens">
+  <div>
+    <div class="phone" style="background:#0d1117">
+      <div class="sb" style="color:#e6edf3"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar" style="color:#e6edf3"><span class="back" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">修复登录超时</span></b><span style="color:#9da7b3"><span class="dot run"></span>运行中</span></span><span class="more" style="color:#79c0ff"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+      <div class="pad" style="padding-bottom:6px;flex:none"><div class="seg dark"><div>聊天</div><div class="on">终端</div></div></div>
+      <div class="ttool">电脑上 165×48<b><svg class="ic" aria-hidden="true"><use href="#lu-maximize-2"/></svg> 适配我的屏幕</b></div>
+      <div class="tfont"><span>字号</span><b>A−</b><span>6</span><b>A+</b></div>
+      <div class="term" style="font-size:8px;line-height:1.4"><span class="d">• Ran</span> git -C projects/remote-agent status --short; git -C worktrees/remote-agent/terminal-history-pages status --short
+  <span class="d">└</span> /Users/example/Code/projects/remote-agent                         147dcd22 [main]
+    /Users/example/Code/worktrees/remote-agent/android-cli-switch-fix  56697703 [wt/android-cli-switch-fix]
+
+<span class="d">•</span> 已发布并部署 v0.33.0：daemon、网页、中继和 App 均已更新，检查通过，现有 tmux 会话保留。
+
+› <span class="cur"> </span>
+
+  <span class="d">gpt-6.1-sol low · ~/Code/co-work-space</span>
+<span style="position:absolute;left:12px;right:120px;bottom:4px;height:3px;border-radius:2px;background:#30363d"></span><span style="position:absolute;left:12px;width:90px;bottom:4px;height:3px;border-radius:2px;background:#8b949e"></span></div>
+      <div class="keys"><div class="keyrow"><span>Esc</span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" aria-hidden="true"><use href="#lu-corner-down-left"/></svg></span></div><div class="keyrow"><span>Tab</span><span>Ctrl+C</span><span><svg class="ic" aria-hidden="true"><use href="#lu-keyboard"/></svg> 键盘</span></div></div>
+    </div>
+    <div class="cap">没适配、电脑上的窗口比手机宽：字先缩小，最小到 6；仍放不下就保持 6，左右滑动看整行，底部是系统的横向滚动条。往下拖仍是进入回看，回看里同样能左右滑。点「适配我的屏幕」则按手机宽度重排，不需要横向滑动</div>
+  </div>
+</div>
 </section>
 
 
