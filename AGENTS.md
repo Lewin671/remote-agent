@@ -42,7 +42,7 @@
 
 用户已授权 agent 在合适的开发节点自动更新版本并发布，不需要逐次确认，不使用定时任务。
 
-- 一个用户任务的完整功能或一批相关修复完成、本地验收通过后，自动发布一次；不要给任务中间的小提交逐一发版。只有文档、界面稿或测试变化时不发产品版本；只改发布和把关工具（`release.py`、`public_scan.py`、`publish-public.sh`、`publish_public.py`、流水线文件）或公开仓库页面时也不发，它们不进产物。产物由什么组成以 `scripts/release.py` 的 `PRODUCT_PATHS` 和 `PRODUCT_FILES` 为准，新增会被打进包里或决定构建方式的文件时把它加进去
+- 一个用户任务的完整功能或一批相关修复完成、本地验收通过后，自动发布一次；不要给任务中间的小提交逐一发版。只有文档、界面稿或测试变化时不发产品版本（`web/src` 下的测试除外：网页构建会对它们做类型检查，写错一样会让发布失败）；只改发布和把关工具（`release.py`、`public_scan.py`、`publish-public.sh`、`publish_public.py`、流水线文件）或公开仓库页面时也不发，它们不进产物。产物由什么组成以 `scripts/release.py` 的 `PRODUCT_PATHS` 和 `PRODUCT_FILES` 为准，新增会被打进包里或决定构建方式的文件时把它加进去
 - 新功能升 minor，修复升 patch；1.0 以前的不兼容变化升 minor，1.0 起不兼容变化升 major。只有需要实际发布时才改 `version.properties`；各端共用产品版本，协议版本独立
 - 在独立 worktree 中提交任务代码并完成验收后，自动执行 `scripts/release-task.sh patch|minor|major "变化与升级要求"`。它会 fetch/rebase、检查是否有产品变化、递增共享版本与 Android code、提交版本文件、跑检查、创建 tag 并原子推送。没有产品变化会跳过；需要单步处理时用 `python3 scripts/release.py prepare patch|minor|major`
 - 版本提交 rebase 到最新 main 后重新跑 `go test ./...` 和改动涉及的检查。若别人已发布使版本不再适用，重新计算版本；冲突仍按下文规则停下报告

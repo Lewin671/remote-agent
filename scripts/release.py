@@ -38,6 +38,10 @@ def release_tags():
 
 
 def product_change(path):
+    # The web build type-checks all of web/src, its tests included, so a
+    # broken test there fails the release as surely as broken code.
+    if path.startswith("web/src/"):
+        return True
     tests = path.endswith(("_test.go", "_test.py", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")) or any(part in path for part in ("/src/test/", "/src/androidTest/", "/tests/", "/testdata/"))
     return not tests and not path.endswith(".md") and (path in PRODUCT_FILES or path.startswith(PRODUCT_PATHS))
 

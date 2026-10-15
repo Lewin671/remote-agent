@@ -44,10 +44,13 @@ class ReleaseTests(unittest.TestCase):
         self.git('commit', '-qm', 'Test commit')
 
     def test_docs_and_tests_do_not_release(self):
-        for path in ('docs/plan.md', 'AGENTS.md', 'internal/a_test.go', 'web/src/a.test.ts', 'android/core/src/test/kotlin/Test.kt', 'android/app/src/androidTest/Test.kt', 'scripts/release_test.py'):
+        for path in ('docs/plan.md', 'AGENTS.md', 'internal/a_test.go', 'android/core/src/test/kotlin/Test.kt', 'android/app/src/androidTest/Test.kt', 'scripts/release_test.py'):
             self.write(path, 'test')
         self.commit()
         self.assertFalse(release.prepare('patch')['eligible'])
+
+    def test_web_tests_release_since_the_build_type_checks_them(self):
+        self.assertTrue(release.product_change('web/src/a.test.ts'))
 
     def test_release_tooling_and_public_pages_do_not_release(self):
         for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
