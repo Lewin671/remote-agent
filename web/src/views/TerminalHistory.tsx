@@ -69,7 +69,7 @@ export function TerminalReader({ history, load, online, font, height, offset, le
 }) {
   const box = useRef<HTMLDivElement>(null);
   const seen = useRef({ pages: 0, height: 0 });
-  const touch = useRef({ x: 0, y: 0 });
+  const touch = useRef<{ x: number; y: number; axis: "" | "x" | "y" }>({ x: 0, y: 0, axis: "" });
   const readEarlier = () => {
     const el = box.current!;
     if (el.scrollTop < 80 && online && !history.pending && !history.error && !history.closed && history.cursor) load();
@@ -101,11 +101,14 @@ export function TerminalReader({ history, load, online, font, height, offset, le
       style={{ fontFamily: TERM_FONT, fontSize: font, lineHeight: `${height}px`, color: DEFAULT_FG }}
       onScroll={readEarlier}
       onWheel={(e) => e.deltaY > Math.abs(e.deltaX) && atBottom() && onLeave()}
-      onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
+      onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, axis: "" })}
       onTouchMove={(e) => {
-        // Only a mainly upward drag at the bottom leaves; a sideways one pans.
-        const dx = e.touches[0].clientX - touch.current.x, dy = e.touches[0].clientY - touch.current.y;
-        if (dy < -12 && -dy > Math.abs(dx) && atBottom()) onLeave();
+        // The first clear direction holds for the whole gesture: a sideways
+        // one only pans, and only an upward one at the bottom leaves.
+        const t = touch.current;
+        const dx = e.touches[0].clientX - t.x, dy = e.touches[0].clientY - t.y;
+        if (!t.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 12) t.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        if (t.axis === "y" && dy < -12 && atBottom()) onLeave();
       }}
     >
       <div className="thstat" style={{ minHeight: height }}>{status(history, online, load)}</div>
