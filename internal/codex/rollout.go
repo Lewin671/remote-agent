@@ -20,11 +20,37 @@ import (
 // MaxOutput bounds tool output copied into events.
 const MaxOutput = 16 * 1024
 
+// parserSeenLimit bounds IDs remembered to suppress duplicate question and
+// generated-image records while retaining a useful late-record window.
+const parserSeenLimit = 512
+
+type idWindow struct {
+	set   map[string]bool
+	order []string
+}
+
+func newIDWindow() idWindow { return idWindow{set: map[string]bool{}} }
+
+func (w *idWindow) Has(id string) bool { return w.set[id] }
+
+func (w *idWindow) Add(id string) {
+	if w.set[id] {
+		return
+	}
+	w.set[id] = true
+	w.order = append(w.order, id)
+	if len(w.order) > parserSeenLimit {
+		delete(w.set, w.order[0])
+		copy(w.order, w.order[1:])
+		w.order = w.order[:parserSeenLimit]
+	}
+}
+
 // Parser turns rollout lines into unified events. It keeps a little state
 // to drop duplicates and to pair calls; Replay and Restore rebuild that
 // after a restart.
 type Parser struct {
-	questions map[string]bool // call IDs of request_user_input calls
+	questions idWindow // call IDs of request_user_input calls
 	// userImages are the images of the user message just recorded as a
 	// response item; the UserMessage item that follows takes them.
 	userImages []agent.FoundImage
@@ -32,7 +58,7 @@ type Parser struct {
 	// its image.
 	views []*pb.ToolCall
 	// generated are image generation calls already reported.
-	generated map[string]bool
+	generated idWindow
 	// found are the images of the last Parse.
 	found []agent.FoundImage
 	// calls are tool calls started and not yet ended, by call ID; cells
@@ -56,7 +82,7 @@ type openCall struct {
 
 // NewParser returns a Parser.
 func NewParser() *Parser {
-	return &Parser{questions: map[string]bool{}, generated: map[string]bool{}, calls: map[string]*openCall{}, cells: map[string]string{}, waits: map[string]string{}}
+	return &Parser{questions: newIDWindow(), generated: newIDWindow(), calls: map[string]*openCall{}, cells: map[string]string{}, waits: map[string]string{}}
 }
 
 // Images returns the images found by the last Parse.
@@ -72,7 +98,7 @@ var imageTagRE = regexp.MustCompile(`^<image name=\[Image #(\d+)\](?: path="(.*)
 
 // RememberQuestion restores, after a restart, that callID is a question
 // whose rendering as an agent message must be dropped.
-func (p *Parser) RememberQuestion(callID string) { p.questions[callID] = true }
+func (p *Parser) RememberQuestion(callID string) { p.questions.Add(callID) }
 
 // Reported: Codex has no hook events.
 func (p *Parser) Reported(*pb.Event) bool { return false }
@@ -83,7 +109,7 @@ func (p *Parser) Replay(e *pb.Event) {
 		p.RememberQuestion(q.QuestionId)
 	}
 	if g := e.GetImageGenerated(); g != nil && g.CallId != "" {
-		p.generated[g.CallId] = true
+		p.generated.Add(g.CallId)
 	}
 	if t := e.GetToolStarted(); t != nil && t.CallId != "" {
 		p.calls[t.CallId] = &openCall{title: t.Title, exec: t.ItemType == "exec"}
@@ -384,7 +410,7 @@ func (p *Parser) itemCompleted(raw json.RawMessage) ([]*pb.Event, error) {
 	case "AgentMessage":
 		// request_user_input_async is also rendered as an agent message
 		// whose ID is the tool call ID; the question event already has it.
-		if p.questions[head.ID] {
+		if p.questions.Has(head.ID) {
 			return nil, nil
 		}
 		var it struct {
@@ -616,7 +642,7 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 	case "image_generation_call":
 		// Older versions record the generation only here; newer ones
 		// first as an Extension item with the same ID.
-		if m.Result == "" || p.generated[m.ID] {
+		if m.Result == "" || p.generated.Has(m.ID) {
 			return nil, nil
 		}
 		return one("", p.generatedImage(m.ID, m.RevisedPrompt, m.Result, "")), nil
@@ -634,7 +660,7 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 		if err != nil {
 			return nil, err
 		}
-		p.questions[m.CallID] = true
+		p.questions.Add(m.CallID)
 		return one("", &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}), nil
 	case "function_call_output":
 		answers, ok := parseAnswers(m.Output)
@@ -760,7 +786,7 @@ func truncate(s string) (string, bool) {
 	for cut > 0 && !utf8Start(s[cut]) {
 		cut--
 	}
-	return s[:cut], true
+	return strings.Clone(s[:cut]), true
 }
 
 func utf8Start(b byte) bool { return b&0xC0 != 0x80 }
@@ -902,7 +928,7 @@ func (p *Parser) flushView() []*pb.Event {
 
 func (p *Parser) generatedImage(id, prompt, result, path string) *pb.Event {
 	if id != "" {
-		p.generated[id] = true
+		p.generated.Add(id)
 	}
 	ref := p.found1(&pb.ImageRef{Source: pb.ImageSource_IMAGE_SOURCE_GENERATED, Path: path}, result)
 	return &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: id, RevisedPrompt: prompt, Images: []*pb.ImageRef{ref}}}}

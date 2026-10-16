@@ -142,7 +142,10 @@ func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := r.session(id)
-	evs, _ := s.log.Since(0)
+	evs, _, err := s.log.Since(0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var kinds []string
 	for _, e := range evs {
 		switch {

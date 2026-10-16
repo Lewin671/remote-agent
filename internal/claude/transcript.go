@@ -889,7 +889,7 @@ func truncate(s string) (string, bool) {
 	for cut > 0 && s[cut]&0xC0 == 0x80 {
 		cut--
 	}
-	return s[:cut], true
+	return strings.Clone(s[:cut]), true
 }
 
 // background tells from a tool's structured result whether it went on in

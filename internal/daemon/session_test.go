@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -145,11 +146,26 @@ func (h *harness) open(m meta) {
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	h.s = newSession(h.d, h.dir, m, h.term, log)
+	h.s, err = newSession(h.d, h.dir, m, h.term, log)
+	if err != nil {
+		_ = log.Close()
+		h.t.Fatal(err)
+	}
 }
 
 func (h *harness) events() []*pb.Event {
-	evs, _ := h.s.log.Since(0)
+	evs, _, err := h.s.log.Since(0)
+	if errors.Is(err, eventlog.ErrClosed) {
+		log, openErr := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+		if openErr != nil {
+			h.t.Fatal(openErr)
+		}
+		defer log.Close()
+		evs, _, err = log.Since(0)
+	}
+	if err != nil {
+		h.t.Fatal(err)
+	}
 	return evs
 }
 
@@ -463,7 +479,10 @@ func TestInfoSummarizesTheSession(t *testing.T) {
 func TestRenameOverridesTheAutomaticTitle(t *testing.T) {
 	h := newHarness(t, Config{})
 	h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "修复登录超时"}}})
-	_, changed := h.s.log.Since(0)
+	_, changed, err := h.s.log.Since(0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := h.s.rename("  登录超时：\n限流和重试 "); err != nil {
 		t.Fatal(err)
 	}
@@ -498,6 +517,17 @@ func TestRenameOverridesTheAutomaticTitle(t *testing.T) {
 	}
 	if got := h.s.info().Title; got != "修复登录超时" {
 		t.Fatalf("title after clearing %q", got)
+	}
+}
+
+func TestSummaryDoesNotRetainLargeMessageBody(t *testing.T) {
+	text := "short title\n" + strings.Repeat("x", 4<<20)
+	got := summary(text, 60)
+	if got != "short title" {
+		t.Fatalf("summary = %q", got)
+	}
+	if unsafe.StringData(got) == unsafe.StringData(text) {
+		t.Fatal("short summary aliases the full message body")
 	}
 }
 

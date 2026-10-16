@@ -162,12 +162,15 @@ func (h *handler) WatchEvents(ctx context.Context, req *connect.Request[pb.Watch
 	}
 	after := req.Msg.AfterSeq
 	for {
-		evs, changed := s.log.Since(after)
-		for _, e := range evs {
+		changed, err := s.log.EachSince(after, func(e *pb.Event) error {
 			if err := stream.Send(&pb.WatchEventsResponse{Event: e}); err != nil {
 				return err
 			}
 			after = e.Seq
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 		if !req.Msg.Follow {
 			return nil

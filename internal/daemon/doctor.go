@@ -109,11 +109,18 @@ func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.W
 		deadline := time.Now().Add(limit)
 		for time.Now().Before(deadline) {
 			s.readRollout()
-			evs, _ := s.log.Since(after)
-			for _, e := range evs {
+			var found *pb.Event
+			if err := scanEventsSince(s.log, after, func(e *pb.Event) bool {
 				if match(e) {
-					return e, nil
+					found = e
+					return false
 				}
+				return true
+			}); err != nil {
+				return nil, err
+			}
+			if found != nil {
+				return found, nil
 			}
 			time.Sleep(300 * time.Millisecond)
 		}

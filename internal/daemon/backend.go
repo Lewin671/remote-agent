@@ -27,15 +27,14 @@ func (d *Daemon) SessionInfo(id string) (*pb.Session, error) {
 	return s.info(), nil
 }
 
-// Events returns the session's events after seq and a channel closed when
-// more are appended.
-func (d *Daemon) Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error) {
+// EachEvents streams the session's events after seq from one stable
+// snapshot and returns the channel closed when a later append occurs.
+func (d *Daemon) EachEvents(id string, after uint64, fn func(*pb.Event) error) (<-chan struct{}, error) {
 	s, err := d.exact(id)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	evs, changed := s.log.Since(after)
-	return evs, changed, nil
+	return s.log.EachSince(after, fn)
 }
 
 // SessionDir is the session's state directory.

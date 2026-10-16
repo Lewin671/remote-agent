@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -27,9 +28,10 @@ const (
 	uploadBytes  = 1 << 20
 )
 
-// syncLoop uploads every session, starting sessions as they appear, and
-// the machine's metadata when it differs from sentMeta, the one the server
-// was given on connecting.
+// syncLoop uploads sessions and reconciles completed sessions periodically.
+// Only live sessions keep a worker; an exited session's worker stops once it
+// catches up, while this single scheduler notices later resumes and metadata
+// edits.
 func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	res, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
 	if err != nil {
@@ -39,12 +41,30 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	for _, h := range res.Msg.Sessions {
 		heads[h.SessionId] = h
 	}
-	started := map[string]bool{}
-	errc := make(chan error, 1)
+	type slot struct {
+		running   bool
+		synced    bool
+		completed bool
+		onServer  bool
+		ended     bool
+		after     uint64
+		meta      *pb.Session
+		nextCheck time.Time
+	}
+	type finished struct {
+		id      string
+		after   uint64
+		info    *pb.Session
+		skipped bool
+		err     error
+	}
+	slots := map[string]*slot{}
+	blocked := map[string]bool{}
+	done := make(chan finished, 16)
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
+	endedRunning := 0
 	for {
-		// Usage limits change as sessions report them.
 		if meta := c.r.backend.MachineMeta(); !proto.Equal(meta, sentMeta) {
 			if err := c.putMachine(ctx, meta); err != nil {
 				return fmt.Errorf("put machine: %w", err)
@@ -52,61 +72,130 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			sentMeta = meta
 		}
 		for _, id := range c.r.backend.SessionIDs() {
-			if started[id] {
+			state := slots[id]
+			if state != nil && state.running || blocked[id] {
 				continue
 			}
-			started[id] = true
-			go func() {
-				if err := c.syncSession(ctx, id, heads[id]); err != nil && ctx.Err() == nil {
-					select {
-					case errc <- fmt.Errorf("session %s: %w", id, err):
-					default:
-					}
+			if state == nil {
+				state = &slot{}
+				if head := heads[id]; head != nil {
+					state.after, state.onServer = head.LastSeq, true
 				}
-			}()
+				slots[id] = state
+			}
+			now := time.Now()
+			if state.synced && now.Before(state.nextCheck) {
+				continue
+			}
+			info, err := c.r.backend.SessionInfo(id)
+			if err != nil {
+				return fmt.Errorf("session %s: read metadata: %w", id, err)
+			}
+			changed := !state.synced || info.LastSeq > state.after || !proto.Equal(syncMeta(info), state.meta)
+			if state.synced && !changed && !c.r.hasOwedNotify(id) {
+				state.nextCheck = now.Add(5 * time.Second)
+				continue
+			}
+			isEnded := info.Status == pb.SessionStatus_SESSION_STATUS_EXITED
+			if isEnded {
+				if endedRunning > 0 {
+					continue
+				}
+				endedRunning++
+			}
+			state.running = true
+			state.ended = isEnded
+			head := heads[id]
+			if state.completed || head == nil && state.onServer {
+				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta)}
+			}
+			go func(id string, head *pb.SessionHead) {
+				after, info, skipped, err := c.syncSession(ctx, id, head)
+				select {
+				case done <- finished{id: id, after: after, info: info, skipped: skipped, err: err}:
+				case <-ctx.Done():
+				}
+			}(id, head)
 		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case err := <-errc:
-			return err
+		case result := <-done:
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			state := slots[result.id]
+			state.running = false
+			if state.ended {
+				endedRunning--
+				state.ended = false
+			}
+			if result.err != nil {
+				return fmt.Errorf("session %s: %w", result.id, result.err)
+			}
+			if result.skipped {
+				blocked[result.id] = true
+				continue
+			}
+			state.synced, state.onServer, state.completed = true, true, true
+			state.after, state.meta = result.after, syncMeta(result.info)
+			state.nextCheck = time.Now().Add(5 * time.Second)
+			// Re-read completed snapshots before sleeping: an event or
+			// metadata edit which landed while the worker was in flight must
+			// schedule an immediate follow-up.
+			latest, err := c.r.backend.SessionInfo(result.id)
+			if err != nil {
+				return fmt.Errorf("session %s: read metadata: %w", result.id, err)
+			}
+			if latest.LastSeq > state.after || !proto.Equal(syncMeta(latest), state.meta) {
+				state.synced = false
+				state.nextCheck = time.Time{}
+			}
+			continue
 		case <-t.C:
 		}
 	}
 }
 
-// syncSession keeps one session's metadata and events on the server.
-func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead) error {
-	key, err := c.sessionKey(id, head != nil)
-	if errors.Is(err, errKeyLost) {
-		// Other sessions keep syncing; this one needs its key back.
-		slog.Error("relay: not syncing session", "session", id, "err", err)
+func syncMeta(info *pb.Session) *pb.Session {
+	if info == nil {
 		return nil
 	}
+	out := proto.Clone(info).(*pb.Session)
+	out.LastSeq = 0
+	return out
+}
+
+// syncSession keeps one session's metadata and events on the server.
+func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead) (uint64, *pb.Session, bool, error) {
+	key, err := c.sessionKey(id, head != nil)
+	if errors.Is(err, errKeyLost) {
+		slog.Error("relay: not syncing session", "session", id, "err", err)
+		var after uint64
+		if head != nil {
+			after = head.LastSeq
+		}
+		return after, nil, true, nil
+	}
 	if err != nil {
-		return err
+		return 0, nil, false, err
 	}
 	var after uint64
 	var sent *pb.Session
 	if head != nil {
 		after = head.LastSeq
 		sent = c.sentMeta(id, key, head.MetaRevision)
-		// The server pages its listing by when a session ended; if it
-		// holds another time than the metadata says, it gets it again.
 		if sent != nil && head.EndedMs != EndedMs(sent) {
 			sent = nil
 		}
 	}
-	// An ended session has nothing urgent: its first pass, which after a
-	// daemon restart is one request per session, takes turns with the
-	// others' so that live sessions are not queued behind them.
 	release := func() {}
 	if info, err := c.r.backend.SessionInfo(id); err == nil && info.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
 		select {
 		case c.r.backlog <- struct{}{}:
 			release = sync.OnceFunc(func() { <-c.r.backlog })
 		case <-ctx.Done():
-			return nil
+			return after, nil, false, nil
 		}
 	}
 	defer release()
@@ -115,93 +204,148 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 		if err != nil {
 			return nil, err
 		}
-		info.LastSeq = 0 // the server tracks it; leaving it out saves updates
-		if sent == nil || !proto.Equal(info, sent) {
-			rev, err := c.putSession(ctx, id, key, info)
+		meta := syncMeta(info)
+		if sent == nil || !proto.Equal(meta, sent) {
+			rev, err := c.putSession(ctx, id, key, meta)
 			if err != nil {
 				return nil, err
 			}
-			sent = info
-			c.noteSentMeta(id, key, info, rev)
+			sent = meta
+			c.noteSentMeta(id, key, meta, rev)
 		}
 		return info, nil
 	}
 	for {
-		// The server needs the session, with its key, before it takes
-		// events. Once it has it, events go first: they are what a client
-		// is waiting for, and the metadata follows in the same pass.
 		if sent == nil {
 			if _, err := put(); err != nil {
-				return err
+				return after, nil, false, err
 			}
 		}
-		evs, changed, err := c.r.backend.Events(id, after)
-		if err != nil {
-			return err
-		}
-		var uploaded []*pb.Event
-		for len(evs) > 0 {
-			n, size := 0, 0
-			var batch []*pb.StoredEvent
-			for n < len(evs) && n < uploadEvents && size < uploadBytes {
-				// Images first: a client that sees the event can open them.
-				if err := c.uploadImages(ctx, key, id, evs[n:n+1]); err != nil {
-					return err
-				}
-				env, err := c.sealEvent(key, id, c.withImageStates(id, evs[n]))
-				if err != nil {
-					return err
-				}
-				batch = append(batch, &pb.StoredEvent{Seq: evs[n].Seq, Envelope: env})
-				size += proto.Size(env)
-				n++
+		owed := c.r.takeOwedNotify(id)
+		attemptedOwed := false
+		var batch []*pb.StoredEvent
+		var notifyBatch []*pb.Event
+		batchBytes := 0
+		flush := func() error {
+			if len(batch) == 0 {
+				return nil
 			}
 			res, err := c.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: id, Events: batch}))
 			if err != nil {
 				return fmt.Errorf("upload events: %w", err)
 			}
 			after = res.Msg.LastSeq
-			uploaded = append(uploaded, evs[:n]...)
-			evs = evs[n:]
+			batch, batchBytes = nil, 0
+			info, err := put()
+			if err != nil {
+				owed = boundedOwed(append(owed, notifyBatch...))
+				return err
+			}
+			pending := notifyBatch
+			if !attemptedOwed {
+				pending = append(owed, pending...)
+				owed = nil
+				attemptedOwed = true
+			}
+			newOwed, err := c.sendNotifications(ctx, id, info, pending)
+			owed = boundedOwed(append(owed, newOwed...))
+			notifyBatch = nil
+			if err != nil {
+				c.r.oweNotify(id, owed)
+				return err
+			}
+			return nil
 		}
-		// Read after the events, so it is at least as new as they are.
+		changed, err := c.r.backend.EachEvents(id, after, func(e *pb.Event) error {
+			// Images first: a client that sees the event can open them.
+			if err := c.uploadImages(ctx, key, id, []*pb.Event{e}); err != nil {
+				return err
+			}
+			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
+			if err != nil {
+				return err
+			}
+			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
+			batchBytes += proto.Size(env)
+			if notifyKind(e) != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+				notifyBatch = append(notifyBatch, e)
+			}
+			if len(batch) >= uploadEvents || batchBytes >= uploadBytes {
+				return flush()
+			}
+			return nil
+		})
+		if err != nil {
+			c.r.oweNotify(id, owed)
+			return after, nil, false, err
+		}
+		if err := flush(); err != nil {
+			c.r.oweNotify(id, owed)
+			return after, nil, false, err
+		}
 		info, err := put()
 		if err != nil {
-			return err
+			c.r.oweNotify(id, owed)
+			return after, nil, false, err
 		}
-		// Once stored, clients can load what the notification is about.
-		// Those the server had no room for come first, while they are
-		// still recent enough to notify about.
-		var owed []*pb.Event
-		pending := append(c.r.takeOwedNotify(id), uploaded...)
-		for i, e := range pending {
-			if e.Seq <= info.ForkedSeq {
-				continue // the source's history, copied into a fork
-			}
-			if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-				req, err := c.notifyRequest(id, info, kind, e)
-				if err != nil {
-					// Those not offered yet are owed still.
-					c.r.oweNotify(id, append(owed, pending[i:]...))
-					return err
-				}
-				if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
-					slog.Warn("relay: notify", "session", id, "err", err)
-					if notifyOwed(err) {
-						owed = append(owed, e)
-					}
-				}
+		if !attemptedOwed {
+			newOwed, err := c.sendNotifications(ctx, id, info, owed)
+			owed = boundedOwed(newOwed)
+			if err != nil {
+				c.r.oweNotify(id, owed)
+				return after, nil, false, err
 			}
 		}
 		c.r.oweNotify(id, owed)
-		release()
+		latest, err := c.r.backend.SessionInfo(id)
+		if err != nil {
+			return after, nil, false, err
+		}
+		if latest.LastSeq > after || !proto.Equal(syncMeta(latest), syncMeta(info)) {
+			continue
+		}
+		if latest.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
+			return after, latest, false, nil
+		}
+		select {
+		case <-changed:
+			continue
+		default:
+		}
 		select {
 		case <-ctx.Done():
-			return nil
+			return after, nil, false, nil
 		case <-changed:
 		case <-time.After(5 * time.Second):
 		}
 	}
+}
+
+func boundedOwed(evs []*pb.Event) []*pb.Event {
+	return slices.Clone(evs[max(0, len(evs)-maxOwedNotify):])
+}
+
+func (c *conn) sendNotifications(ctx context.Context, id string, info *pb.Session, pending []*pb.Event) ([]*pb.Event, error) {
+	var owed []*pb.Event
+	for i, e := range pending {
+		if e.Seq <= info.ForkedSeq {
+			continue
+		}
+		if kind := notifyKind(e); kind != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+			req, err := c.notifyRequest(id, info, kind, e)
+			if err != nil {
+				owed = append(owed, pending[i:]...)
+				return boundedOwed(owed), err
+			}
+			if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
+				slog.Warn("relay: notify", "session", id, "err", err)
+				if notifyOwed(err) {
+					owed = append(owed, e)
+				}
+			}
+		}
+	}
+	return boundedOwed(owed), nil
 }
 
 // sentMeta returns the metadata the server is known to hold for a
@@ -224,6 +368,13 @@ func (c *conn) sentMeta(id string, key []byte, revision uint64) *pb.Session {
 	if err != nil || !bytes.Equal(mark, metaDigest(c.acct.Server, key, info, revision)) {
 		return nil
 	}
+	c.r.mu.Lock()
+	if cached := c.r.sentMeta[id]; cached != nil {
+		info = cached
+	} else {
+		c.r.sentMeta[id] = info
+	}
+	c.r.mu.Unlock()
 	return info
 }
 
@@ -397,6 +548,12 @@ func (r *Relay) takeOwedNotify(id string) []*pb.Event {
 	return evs
 }
 
+func (r *Relay) hasOwedNotify(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.owedNotify[id]) > 0
+}
+
 // oweNotify remembers events whose notification is still owed.
 func (r *Relay) oweNotify(id string, evs []*pb.Event) {
 	if len(evs) == 0 {
@@ -404,7 +561,7 @@ func (r *Relay) oweNotify(id string, evs []*pb.Event) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.owedNotify[id] = evs[max(0, len(evs)-maxOwedNotify):]
+	r.owedNotify[id] = boundedOwed(evs)
 }
 
 // notifyAge keeps catching up after a reconnect from notifying about the

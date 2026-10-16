@@ -673,13 +673,17 @@ func (in input) pairImages(m *pb.UserMessage) map[int]*pb.ImageRef {
 // loggedUserMessage reports whether the message was logged as a user
 // message after it was written.
 func (s *session) loggedUserMessage(in input) bool {
-	evs, _ := s.log.Since(in.InflightSeq)
-	for _, e := range evs {
+	found := false
+	if err := scanEventsSince(s.log, in.InflightSeq, func(e *pb.Event) bool {
 		if m := e.GetUserMessage(); m != nil && in.matchesMessage(m) {
-			return true
+			found = true
+			return false
 		}
+		return true
+	}); err != nil {
+		slog.Warn("scan events for submitted input", "request", in.RequestID, "err", errClass(err))
 	}
-	return false
+	return found
 }
 
 // annotateUserMessage ties a parsed user message to the message that was

@@ -17,16 +17,27 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
+
+const (
+	cacheEvents = 256
+	cacheBytes  = 1 << 20
+	indexStride = 128
+	indexLimit  = 256
+	pageLimit   = 512
+)
+
+var ErrClosed = errors.New("event log is closed")
 
 type record struct {
 	Rollout string `json:"rollout,omitempty"`
@@ -36,30 +47,37 @@ type record struct {
 	Event json.RawMessage `json:"event"`
 }
 
-// Log is an open event log. It is safe for concurrent use.
-//
-// The events are kept in memory only while something reads them: Release
-// lets go of a log that has not been read for a while, and the next reader
-// loads the file again. Appending and asking for events after the last one,
-// which is all an idle session's watchers do, need only the count.
+type anchor struct {
+	seq    uint64
+	offset int64
+}
+
+// Log is an append-only event log. Reads use a bounded tail cache and a
+// bounded sparse index; full history remains on disk and can be streamed.
+// It is safe for concurrent use.
 type Log struct {
 	mu   sync.Mutex
 	f    file
 	path string
 	// size is where the whole records end and the next one goes. dirty
 	// says a failed append may have left bytes after it.
-	size  int64
-	dirty bool
-	// events is nil while released; n is how many the file holds.
-	events  []*pb.Event
-	n       uint64
-	usedAt  time.Time
-	rollout string
-	offset  int64
-	changed chan struct{} // closed and replaced on every append
+	size   int64
+	dirty  bool
+	closed bool
+
+	events     []*pb.Event // contiguous tail starting at cacheStart
+	cacheStart uint64
+	cacheBytes int
+	cacheOn    bool
+	index      []anchor // recent offsets, one per indexStride events
+	n          uint64
+	usedAt     time.Time
+	rollout    string
+	offset     int64
+	changed    chan struct{} // closed and replaced on every append
 }
 
-// file is what the log needs of its file.
+// file is what the log needs of its append handle.
 type file interface {
 	io.WriterAt
 	Sync() error
@@ -67,77 +85,175 @@ type file interface {
 	Close() error
 }
 
-// Open loads the log at path, creating it if needed. A torn last line from
-// a crash is cut off, with the records of its batch before it; a log with
-// a damaged record is refused and left as it is.
+type snapshot struct {
+	path    string
+	size    int64
+	n       uint64
+	index   []anchor
+	events  []*pb.Event
+	start   uint64
+	changed <-chan struct{}
+}
+
+// Open validates the log at path, creating it if needed. A torn last line
+// from a crash is cut off, with the records of its batch before it; a log
+// with a damaged record is refused and left as it is. Validation is
+// streaming: opening a long session does not retain its events in memory.
 func Open(path string) (*Log, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		return nil, err
 	}
-	l := &Log{f: f, path: path, changed: make(chan struct{}), usedAt: time.Now()}
+	l := &Log{f: f, path: path, changed: make(chan struct{}), usedAt: time.Now(), cacheStart: 1, cacheOn: true}
 	good, err := l.load(f)
-	if err == nil {
-		l.n = uint64(len(l.events))
-	}
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("load %s: %w", path, err)
 	}
 	if err := f.Truncate(good); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 	l.size = good
 	return l, nil
 }
 
-// load reads the events and the checkpoint from f, and returns how many
-// bytes of it are whole batches.
-func (l *Log) load(f io.Reader) (int64, error) {
-	r := bufio.NewReader(f)
-	l.events = nil
-	// good is where the whole records end; whole and n are where the last
-	// complete batch ends and how many events there are up to it.
+// load checks sequence numbers and damaged records while building only the
+// bounded cache and index for complete batches. It returns the end of the
+// last complete batch so Open can discard any torn tail.
+func (l *Log) load(f *os.File) (int64, error) {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return 0, err
+	}
+	b := bufio.NewReader(f)
 	var good, whole int64
-	n := 0
+	var seq uint64
+	var rollout, wholeRollout string
+	var offset, wholeOffset int64
+	var pending []*pb.Event
+	var pendingBytes int
+	pendingDropped := false
+	var pendingIndex []anchor
 	for {
-		line, err := r.ReadBytes('\n')
+		line, err := b.ReadBytes('\n')
 		if err == io.EOF {
-			// A line without newline is torn; it is dropped, and so are
-			// the records before it that still wait for the rest of their
-			// batch.
-			l.events = l.events[:n]
+			// A line without newline is torn; drop it and any complete
+			// records still waiting for the rest of their batch.
+			l.rollout, l.offset = wholeRollout, wholeOffset
 			return whole, nil
 		}
 		if err != nil {
 			return 0, err
 		}
-		// A torn write ends without a newline. A whole line that does not
-		// parse is damage: cutting the file there would delete the events
-		// after it, and reuse sequence numbers the server already holds.
-		// The error names the place only, never the line.
 		var rec record
 		e := &pb.Event{}
 		if json.Unmarshal(bytes.TrimSpace(line), &rec) != nil || protojson.Unmarshal(rec.Event, e) != nil {
 			return 0, fmt.Errorf("damaged record at byte %d", good)
 		}
-		if want := uint64(len(l.events) + 1); e.Seq != want {
-			return 0, fmt.Errorf("seq %d at position %d", e.Seq, want)
+		seq++
+		if e.Seq != seq {
+			return 0, fmt.Errorf("seq %d at position %d", e.Seq, seq)
 		}
-		l.events = append(l.events, e)
 		if rec.Rollout != "" {
-			l.rollout, l.offset = rec.Rollout, rec.Offset
+			rollout, offset = rec.Rollout, rec.Offset
+		}
+		if (seq-1)%indexStride == 0 {
+			pendingIndex = append(pendingIndex, anchor{seq: seq, offset: good})
+			if len(pendingIndex) > indexLimit {
+				copy(pendingIndex, pendingIndex[len(pendingIndex)-indexLimit:])
+				pendingIndex = pendingIndex[:indexLimit]
+			}
+		}
+		if size := proto.Size(e); size > cacheBytes {
+			pending = nil
+			pendingBytes = 0
+			pendingDropped = true
+		} else {
+			pending = append(pending, e)
+			pendingBytes += proto.Size(e)
+			for len(pending) > cacheEvents || pendingBytes > cacheBytes {
+				pendingBytes -= proto.Size(pending[0])
+				pending[0] = nil
+				pending = pending[1:]
+				pendingDropped = true
+			}
 		}
 		good += int64(len(line))
 		if !rec.More {
-			whole, n = good, len(l.events)
+			whole = good
+			l.n = seq
+			wholeRollout, wholeOffset = rollout, offset
+			if pendingDropped {
+				l.events = nil
+				l.cacheBytes = 0
+				l.cacheStart = seq + 1
+			}
+			for _, e := range pending {
+				l.addCache(e)
+			}
+			for _, a := range pendingIndex {
+				l.addIndex(a.seq, a.offset)
+			}
+			pending = nil
+			pendingBytes = 0
+			pendingDropped = false
+			pendingIndex = nil
 		}
 	}
 }
 
-// Close closes the file.
-func (l *Log) Close() error { return l.f.Close() }
+// addIndex retains one anchor every indexStride sequences. The finite
+// window makes recent relay and watcher reads cheap while old history can
+// still be scanned from the start.
+func (l *Log) addIndex(seq uint64, offset int64) {
+	if (seq-1)%indexStride != 0 {
+		return
+	}
+	l.index = append(l.index, anchor{seq: seq, offset: offset})
+	if len(l.index) > indexLimit {
+		copy(l.index, l.index[len(l.index)-indexLimit:])
+		l.index = l.index[:indexLimit]
+	}
+}
+
+func (l *Log) addCache(e *pb.Event) {
+	sz := proto.Size(e)
+	if sz > cacheBytes {
+		l.events = nil
+		l.cacheBytes = 0
+		l.cacheStart = e.Seq + 1
+		return
+	}
+	if len(l.events) == 0 {
+		l.cacheStart = e.Seq
+	}
+	l.events = append(l.events, e)
+	l.cacheBytes += sz
+	for len(l.events) > cacheEvents || l.cacheBytes > cacheBytes {
+		l.cacheBytes -= proto.Size(l.events[0])
+		l.events[0] = nil
+		l.events = l.events[1:]
+		l.cacheStart++
+	}
+}
+
+// Close permanently closes the log. Release, by contrast, only closes an
+// idle append handle and can be followed by reads or appends.
+func (l *Log) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		return nil
+	}
+	l.closed = true
+	close(l.changed)
+	if l.f == nil {
+		return nil
+	}
+	err := l.f.Close()
+	l.f = nil
+	return err
+}
 
 // Checkpoint returns the rollout path and offset recorded last.
 func (l *Log) Checkpoint() (string, int64) {
@@ -153,41 +269,51 @@ func (l *Log) LastSeq() uint64 {
 	return l.n
 }
 
-// Release drops the in-memory events if nothing has read them for idle.
-// The file keeps them; the next reader loads it again.
+// Release drops the in-memory event cache and closes the append handle if
+// nothing has read or appended to the log for idle. The file and sparse
+// index remain, and future operations can reopen it.
 func (l *Log) Release(idle time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.events != nil && time.Since(l.usedAt) >= idle {
-		l.events = nil
+	if l.closed || time.Since(l.usedAt) < idle {
+		return
+	}
+	l.events = nil
+	l.cacheBytes = 0
+	l.cacheStart = l.n + 1
+	l.cacheOn = false
+	if l.f != nil {
+		_ = l.f.Close()
+		l.f = nil
 	}
 }
 
-// loaded makes the events available again after a Release. On failure it
-// reports false and the caller sees no events: the file was readable when
-// the log was opened, and nothing else writes it.
-func (l *Log) loaded() bool {
-	l.usedAt = time.Now()
-	if l.events != nil || l.n == 0 {
-		return true
+func (l *Log) touchLocked() { l.usedAt = time.Now() }
+
+func (l *Log) snapshotLocked() (snapshot, error) {
+	if l.closed {
+		return snapshot{}, ErrClosed
 	}
-	f, err := os.Open(l.path)
-	if err == nil {
-		// The checkpoint in memory may be ahead of the file's.
-		rollout, offset := l.rollout, l.offset
-		_, err = l.load(f)
-		l.rollout, l.offset = rollout, offset
-		f.Close()
+	l.touchLocked()
+	s := snapshot{path: l.path, size: l.size, n: l.n, index: append([]anchor(nil), l.index...),
+		start: l.cacheStart, changed: l.changed}
+	s.events = append([]*pb.Event(nil), l.events...)
+	return s, nil
+}
+
+func (l *Log) ensureOpenLocked() error {
+	if l.closed {
+		return ErrClosed
 	}
-	if err == nil && uint64(len(l.events)) != l.n {
-		err = fmt.Errorf("%d events on disk, %d expected", len(l.events), l.n)
+	if l.f != nil {
+		return nil
 	}
+	f, err := os.OpenFile(l.path, os.O_RDWR, 0o600)
 	if err != nil {
-		slog.Error("reload event log", "path", l.path, "err", err)
-		l.events = nil
-		return false
+		return err
 	}
-	return true
+	l.f = f
+	return nil
 }
 
 // Append assigns sequence numbers to evs, writes them in one write, and
@@ -197,10 +323,15 @@ func (l *Log) loaded() bool {
 func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset int64) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.closed {
+		return ErrClosed
+	}
+	l.touchLocked()
 	if len(evs) == 0 && rollout == "" {
 		return nil
 	}
 	var buf bytes.Buffer
+	var added []anchor
 	seq := l.n
 	for i, e := range evs {
 		seq++
@@ -220,6 +351,9 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		if err != nil {
 			return err
 		}
+		if (seq-1)%indexStride == 0 {
+			added = append(added, anchor{seq: seq, offset: l.size + int64(buf.Len())})
+		}
 		buf.Write(line)
 		buf.WriteByte('\n')
 	}
@@ -230,6 +364,9 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 		// produce no events.
 		l.rollout, l.offset = rollout, offset
 		return nil
+	}
+	if err := l.ensureOpenLocked(); err != nil {
+		return err
 	}
 	// A failed append must leave no bytes behind: the next one would
 	// follow them, and write the same sequence numbers a second time.
@@ -247,8 +384,17 @@ func (l *Log) Append(sessionID string, evs []*pb.Event, rollout string, offset i
 	}
 	l.dirty = false
 	l.size += int64(buf.Len())
-	if l.events != nil || l.n == 0 {
-		l.events = append(l.events, evs...)
+	for _, a := range added {
+		l.index = append(l.index, a)
+	}
+	if len(l.index) > indexLimit {
+		copy(l.index, l.index[len(l.index)-indexLimit:])
+		l.index = l.index[:indexLimit]
+	}
+	if l.cacheOn {
+		for _, e := range evs {
+			l.addCache(e)
+		}
 	}
 	l.n = seq
 	if rollout != "" {
@@ -272,16 +418,93 @@ func (l *Log) rollback() error {
 	return nil
 }
 
-// Since returns events with seq > after and a channel that is closed when
-// more events are appended.
-func (l *Log) Since(after uint64) ([]*pb.Event, <-chan struct{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	var out []*pb.Event
-	if after < l.n && l.loaded() {
-		out = append(out, l.events[after:]...)
+// PageSince returns at most limit events after after, the append notification
+// channel observed with that page, and any read error. The maximum page is
+// fixed so callers cannot accidentally materialize unbounded history.
+func (l *Log) PageSince(after uint64, limit int) ([]*pb.Event, <-chan struct{}, error) {
+	if limit <= 0 {
+		return nil, nil, errors.New("event page limit must be positive")
 	}
-	return out, l.changed
+	limit = min(limit, pageLimit)
+	l.mu.Lock()
+	s, err := l.snapshotLocked()
+	l.mu.Unlock()
+	if err != nil {
+		return nil, nil, err
+	}
+	if after >= s.n {
+		return nil, s.changed, nil
+	}
+	first := after + 1
+	last := min(s.n, after+uint64(limit))
+	if s.start <= first && uint64(len(s.events)) >= last-s.start+1 && last <= s.start+uint64(len(s.events))-1 {
+		from := first - s.start
+		to := last - s.start + 1
+		return append([]*pb.Event(nil), s.events[from:to]...), s.changed, nil
+	}
+	var out []*pb.Event
+	err = scanRange(s, after, last, func(e *pb.Event) error {
+		out = append(out, e)
+		return nil
+	})
+	return out, s.changed, err
+}
+
+// Since returns every event with seq > after. It is intended only for
+// explicit full-history operations; streaming consumers should use EachSince
+// or PageSince. The returned events are independent of the bounded cache.
+func (l *Log) Since(after uint64) ([]*pb.Event, <-chan struct{}, error) {
+	l.mu.Lock()
+	s, err := l.snapshotLocked()
+	l.mu.Unlock()
+	if err != nil {
+		return nil, nil, err
+	}
+	var out []*pb.Event
+	err = scanRange(s, after, s.n, func(e *pb.Event) error {
+		out = append(out, e)
+		return nil
+	})
+	return out, s.changed, err
+}
+
+// EachSince visits events after after in order using one file scan and a fixed
+// memory window. It returns the append notification channel observed with the
+// snapshot. The snapshot is fixed when the call starts; events appended while
+// fn runs are left for the next call, and close that channel. fn runs without
+// the log mutex and may stop the scan by returning an error.
+func (l *Log) EachSince(after uint64, fn func(*pb.Event) error) (<-chan struct{}, error) {
+	l.mu.Lock()
+	s, err := l.snapshotLocked()
+	l.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	err = scanRange(s, after, s.n, fn)
+	return s.changed, err
+}
+
+// EachRange visits events in (after, through] from one stable snapshot.
+// It is useful when a caller must make more than one streaming pass over
+// the same history. If through is beyond the current log, it is clamped to
+// the snapshot's last sequence.
+func (l *Log) EachRange(after, through uint64, fn func(*pb.Event) error) error {
+	l.mu.Lock()
+	s, err := l.snapshotLocked()
+	l.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return scanRange(s, after, min(through, s.n), fn)
+}
+
+// Each visits every event in sequence order with bounded memory.
+func (l *Log) Each(fn func(*pb.Event)) error {
+	_, err := l.EachSince(0, func(e *pb.Event) error {
+		fn(e)
+		return nil
+	})
+	return err
 }
 
 // Poke wakes those waiting on Since without an event: something they
@@ -289,18 +512,65 @@ func (l *Log) Since(after uint64) ([]*pb.Event, <-chan struct{}) {
 func (l *Log) Poke() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.closed {
+		return
+	}
 	close(l.changed)
 	l.changed = make(chan struct{})
 }
 
-// Each calls fn for every event in order, under the lock.
-func (l *Log) Each(fn func(*pb.Event)) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if !l.loaded() {
-		return
+// scanRange reads (after, through] from a snapshot. It starts at the nearest
+// retained anchor at or before the first wanted sequence, so a single full
+// history walk does not allocate a result slice or re-read prior pages.
+func scanRange(s snapshot, after, through uint64, fn func(*pb.Event) error) error {
+	if after >= through {
+		return nil
 	}
-	for _, e := range l.events {
-		fn(e)
+	first := after + 1
+	if s.start <= first && len(s.events) > 0 {
+		cacheEnd := s.start + uint64(len(s.events)) - 1
+		if first >= s.start && through <= cacheEnd {
+			for seq := first; seq <= through; seq++ {
+				if err := fn(s.events[seq-s.start]); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 	}
+	startOffset := int64(0)
+	startSeq := uint64(1)
+	for _, a := range s.index {
+		if a.seq <= first && a.seq >= startSeq {
+			startSeq, startOffset = a.seq, a.offset
+		}
+	}
+	f, err := os.Open(s.path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
+		return err
+	}
+	r := bufio.NewReader(io.LimitReader(f, s.size-startOffset))
+	seq := startSeq
+	for seq <= through {
+		line, err := r.ReadBytes('\n')
+		if err != nil {
+			return fmt.Errorf("event %d ended during read: %w", seq, err)
+		}
+		var rec record
+		e := &pb.Event{}
+		if json.Unmarshal(bytes.TrimSpace(line), &rec) != nil || protojson.Unmarshal(rec.Event, e) != nil || e.Seq != seq {
+			return fmt.Errorf("damaged record at event %d", seq)
+		}
+		if seq > after {
+			if err := fn(e); err != nil {
+				return err
+			}
+		}
+		seq++
+	}
+	return nil
 }

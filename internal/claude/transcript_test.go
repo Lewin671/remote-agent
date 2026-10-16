@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unsafe"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -33,6 +34,14 @@ func parseFile(t *testing.T, p *Parser, path string) []*pb.Event {
 		all = append(all, evs...)
 	}
 	return all
+}
+
+func TestTruncateDoesNotRetainLargeInput(t *testing.T) {
+	large := strings.Repeat("x", 4<<20)
+	got, cut := truncate(large)
+	if !cut || len(got) != MaxOutput || unsafe.StringData(got) == unsafe.StringData(large) {
+		t.Fatal("truncating a large output retained its full backing string")
+	}
 }
 
 func kind(e *pb.Event) string {

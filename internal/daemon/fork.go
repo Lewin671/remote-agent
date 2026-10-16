@@ -54,8 +54,8 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	if src.reader != nil {
 		offset = src.reader.Offset()
 	}
+	through := src.log.LastSeq()
 	src.mu.Unlock()
-	evs, _ := src.log.Since(0)
 	src.readMu.Unlock()
 	if busy {
 		return nil, errForkBusy
@@ -74,10 +74,9 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	}
 
 	nid := newID(8)
-	history := forkHistory(evs)
 	nm := meta{ID: nid, Agent: m.Agent, Cwd: m.Cwd, Tmux: "ra-" + nid[:8], Args: m.Args, CreatedAt: time.Now().UTC(),
 		Title: m.Title, NoFullAccess: m.NoFullAccess, StandardContext: m.StandardContext, Starting: true,
-		ForkedFrom: m.ID, ForkedSeq: uint64(len(history)) + 1}
+		ForkedFrom: m.ID}
 	dir := paths.SessionDir(nid)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
@@ -124,7 +123,14 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	forked := withOrigin(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionForked{SessionForked: &pb.SessionForked{
 		SourceSessionId: m.ID, SourceTitle: title,
 	}}}, origin)
-	if err := log.Append(nid, append(history, forked), "", 0); err != nil {
+	if err := copyForkHistory(src.log, through, log, nid); err != nil {
+		return fail(err)
+	}
+	nm.ForkedSeq = log.LastSeq() + 1
+	if err := nm.save(dir); err != nil {
+		return fail(err)
+	}
+	if err := log.Append(nid, []*pb.Event{forked}, "", 0); err != nil {
 		return fail(err)
 	}
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(nid), "--env-file", envFile, "--", src.ag.Bin()}
@@ -141,7 +147,11 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	}
 	_ = d.cfg.Tmux.SetSessionOption(nm.Tmux, "status", "off")
 
-	s := newSession(d, dir, nm, d.terminal(&nm), log)
+	s, err := newSession(d, dir, nm, d.terminal(&nm), log)
+	if err != nil {
+		_ = d.cfg.Tmux.KillSession(nm.Tmux)
+		return fail(err)
+	}
 	s.mu.Lock()
 	s.meta.Starting = false
 	started := s.meta
@@ -170,46 +180,20 @@ func forkHistory(evs []*pb.Event) []*pb.Event {
 	resolved := map[string]bool{}
 	answered := map[string]bool{}
 	for _, e := range evs {
-		switch k := e.Kind.(type) {
-		case *pb.Event_ApprovalResolved:
-			resolved[k.ApprovalResolved.ApprovalId] = true
-		case *pb.Event_QuestionAnswered:
-			answered[k.QuestionAnswered.QuestionId] = true
-		}
+		rememberForkResolution(resolved, answered, e)
 	}
 	var out []*pb.Event
 	running := false
 	for _, e := range evs {
-		switch k := e.Kind.(type) {
-		case *pb.Event_SessionState, *pb.Event_InputState:
-			continue
-		case *pb.Event_ApprovalRequested:
-			if !resolved[k.ApprovalRequested.ApprovalId] {
-				continue
-			}
-		case *pb.Event_QuestionAsked:
-			if !k.QuestionAsked.Async && !answered[k.QuestionAsked.QuestionId] {
-				continue
-			}
-		case *pb.Event_TurnStarted:
+		if e.GetTurnStarted() != nil {
 			running = true
-		case *pb.Event_TurnEnded:
+		}
+		if e.GetTurnEnded() != nil {
 			running = false
 		}
-		c := proto.CloneOf(e)
-		c.Seq, c.SessionId = 0, ""
-		for _, ref := range agent.EventImages(c) {
-			ref.UploadId = ""
-			if ref.Sync != pb.ImageSync_IMAGE_SYNC_SYNCED {
-				continue
-			}
-			ref.DisplayWidth, ref.DisplayHeight = 0, 0
-			ref.Sync = pb.ImageSync_IMAGE_SYNC_PREVIEW_ONLY
-			if len(ref.Preview) == 0 {
-				ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
-			}
+		if c := forkEvent(e, resolved, answered); c != nil {
+			out = append(out, c)
 		}
-		out = append(out, c)
 	}
 	if running {
 		end := &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED}}}
@@ -219,4 +203,96 @@ func forkHistory(evs []*pb.Event) []*pb.Event {
 		out = append(out, end)
 	}
 	return out
+}
+
+func rememberForkResolution(resolved, answered map[string]bool, e *pb.Event) {
+	switch k := e.Kind.(type) {
+	case *pb.Event_ApprovalResolved:
+		resolved[k.ApprovalResolved.ApprovalId] = true
+	case *pb.Event_QuestionAnswered:
+		answered[k.QuestionAnswered.QuestionId] = true
+	}
+}
+
+func forkEvent(e *pb.Event, resolved, answered map[string]bool) *pb.Event {
+	switch k := e.Kind.(type) {
+	case *pb.Event_SessionState, *pb.Event_InputState:
+		return nil
+	case *pb.Event_ApprovalRequested:
+		if !resolved[k.ApprovalRequested.ApprovalId] {
+			return nil
+		}
+	case *pb.Event_QuestionAsked:
+		if !k.QuestionAsked.Async && !answered[k.QuestionAsked.QuestionId] {
+			return nil
+		}
+	}
+	c := proto.CloneOf(e)
+	c.Seq, c.SessionId = 0, ""
+	for _, ref := range agent.EventImages(c) {
+		ref.UploadId = ""
+		if ref.Sync != pb.ImageSync_IMAGE_SYNC_SYNCED {
+			continue
+		}
+		ref.DisplayWidth, ref.DisplayHeight = 0, 0
+		ref.Sync = pb.ImageSync_IMAGE_SYNC_PREVIEW_ONLY
+		if len(ref.Preview) == 0 {
+			ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
+		}
+	}
+	return c
+}
+
+// copyForkHistory makes two passes over the source snapshot without retaining
+// event payloads: one to resolve the IDs which are copied, then one to append
+// the transformed events in durable batches. The resolution sets grow only
+// with approval and question IDs.
+func copyForkHistory(src *eventlog.Log, through uint64, dst *eventlog.Log, sessionID string) error {
+	resolved, answered := map[string]bool{}, map[string]bool{}
+	if err := src.EachRange(0, through, func(e *pb.Event) error {
+		rememberForkResolution(resolved, answered, e)
+		return nil
+	}); err != nil {
+		return err
+	}
+	const batchLimit = 200
+	var batch []*pb.Event
+	running := false
+	var last *pb.Event
+	flush := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+		if err := dst.Append(sessionID, batch, "", 0); err != nil {
+			return err
+		}
+		batch = nil
+		return nil
+	}
+	if err := src.EachRange(0, through, func(e *pb.Event) error {
+		if e.GetTurnStarted() != nil {
+			running = true
+		}
+		if e.GetTurnEnded() != nil {
+			running = false
+		}
+		if copy := forkEvent(e, resolved, answered); copy != nil {
+			batch = append(batch, copy)
+			last = copy
+			if len(batch) == batchLimit {
+				return flush()
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if running {
+		end := &pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED}}}
+		if last != nil {
+			end.Time, end.TurnId = last.Time, last.TurnId
+		}
+		batch = append(batch, end)
+	}
+	return flush()
 }

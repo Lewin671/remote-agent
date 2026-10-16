@@ -102,7 +102,12 @@ func TestForkSkipsCopiedTranscriptRecords(t *testing.T) {
 	}
 	m := h.s.meta
 	m.ForkedFrom, m.ForkedSeq = "src", 2
-	h.s = newSession(h.d, h.dir, m, h.term, log)
+	s, err := newSession(h.d, h.dir, m, h.term, log)
+	if err != nil {
+		log.Close()
+		t.Fatal(err)
+	}
+	h.s = s
 	if info := h.s.info(); info.ForkedFrom != "src" || info.ForkedSeq != 2 || info.Title != "from the source" {
 		t.Fatalf("info %v", info)
 	}

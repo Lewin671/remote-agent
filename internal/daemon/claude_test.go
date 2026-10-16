@@ -325,7 +325,10 @@ func TestClaudeContextsAfterModelThenModeSwitch(t *testing.T) {
 	h.writeRollout(`{"type":"user","promptId":"p2","origin":{"kind":"human"},"permissionMode":"auto","message":{"role":"user","content":"go"}}`,
 		`{"type":"assistant","message":{"id":"m2","model":"claude-sonnet-5-5","stop_reason":"end_turn","content":[{"type":"text","text":"y"}]},"perTurnEffort":"low"}`)
 	h.s.readRollout()
-	evs, _ := h.s.log.Since(mark)
+	evs, _, err := h.s.log.Since(mark)
+	if err != nil {
+		t.Fatal(err)
+	}
 	n := 0
 	for _, e := range evs {
 		if c := e.GetTurnContext(); c != nil {

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
 
 // A retry canceled while it still waited for its turn among the machine's
@@ -30,5 +31,21 @@ func TestNotificationCanceledBeforeItWasSentIsStillOwed(t *testing.T) {
 		if notifyOwed(err) {
 			t.Errorf("%v: still owed", err)
 		}
+	}
+}
+
+func TestOwedNotifyCopiesBoundedTail(t *testing.T) {
+	r := &Relay{owedNotify: map[string][]*pb.Event{}}
+	original := make([]*pb.Event, maxOwedNotify+3)
+	for i := range original {
+		original[i] = &pb.Event{Seq: uint64(i + 1)}
+	}
+	r.oweNotify("session", original)
+	// Replacing entries in the caller's backing array must not alter the
+	// retained tail, which is what keeps the 16-event memory cap real.
+	original[3], original[len(original)-1] = nil, nil
+	got := r.takeOwedNotify("session")
+	if len(got) != maxOwedNotify || got[0].Seq != 4 || got[len(got)-1].Seq != uint64(maxOwedNotify+3) {
+		t.Fatalf("owed notification tail = %v", got)
 	}
 }

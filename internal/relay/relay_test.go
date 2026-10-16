@@ -109,13 +109,12 @@ func (b *fakeBackend) SessionInfo(id string) (*pb.Session, error) {
 	return &pb.Session{Id: id, Cwd: "/work/" + marker, Status: status, LastSeq: l.LastSeq(), Title: b.titles[id], ForkedSeq: b.forked[id]}, nil
 }
 
-func (b *fakeBackend) Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error) {
+func (b *fakeBackend) EachEvents(id string, after uint64, fn func(*pb.Event) error) (<-chan struct{}, error) {
 	l, err := b.log(id)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	evs, ch := l.Since(after)
-	return evs, ch, nil
+	return l.EachSince(after, fn)
 }
 
 func (b *fakeBackend) SessionDir(id string) string { return filepath.Join(b.dir, id) }
@@ -1069,6 +1068,94 @@ func TestRefusedNotificationIsOfferedAgain(t *testing.T) {
 	time.Sleep(6 * time.Second)
 	if n := notifies.Load(); n != 2 {
 		t.Fatalf("%d notify calls for one event refused once", n)
+	}
+}
+
+func TestExitedSessionRetriesOwedNotificationOnScheduler(t *testing.T) {
+	var notifies atomic.Int32
+	var mu sync.Mutex
+	var at []time.Time
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/remoteagent.v1.MachineService/Notify" {
+				call := notifies.Add(1)
+				mu.Lock()
+				at = append(at, time.Now())
+				mu.Unlock()
+				if call == 1 {
+					connect.NewErrorWriter().Write(w, r, connect.NewError(connect.CodeResourceExhausted, errors.New("push capacity exhausted; try again later")))
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	l := e.backend.add(t, "ended-notify")
+	e.backend.mu.Lock()
+	e.backend.exited["ended-notify"] = true
+	e.backend.mu.Unlock()
+	e.startRelay()
+	if err := l.Append("ended-notify", []*pb.Event{turnEnded()}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the first refused notification", func() bool { return notifies.Load() >= 1 })
+	waitFor(t, "the ended session's owed notification", func() bool { return notifies.Load() >= 2 })
+	mu.Lock()
+	delay := at[1].Sub(at[0])
+	mu.Unlock()
+	if delay < 4*time.Second || delay > 8*time.Second {
+		t.Fatalf("ended-session notification retry took %v, want a paced retry near five seconds", delay)
+	}
+	time.Sleep(time.Second)
+	if n := notifies.Load(); n != 2 {
+		t.Fatalf("%d notify calls after the owed event was accepted", n)
+	}
+}
+
+func TestExitedMetadataChangeDoesNotResendSyncedEvents(t *testing.T) {
+	var uploads atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/remoteagent.v1.MachineService/UploadEvents" {
+				uploads.Add(1)
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	l := e.backend.add(t, "ended-meta")
+	e.backend.mu.Lock()
+	e.backend.exited["ended-meta"] = true
+	e.backend.mu.Unlock()
+	appendText(t, l, "ended-meta", "first")
+	e.startRelay()
+	e.session(t, "ended-meta", 1)
+	e.stopRelay()
+	e.startRelay()
+	e.online(t, true)
+	appendText(t, l, "ended-meta", "second")
+	e.session(t, "ended-meta", 2)
+	waitFor(t, "both event batches uploaded", func() bool { return uploads.Load() >= 2 })
+	// Let the exited worker finish and leave only the scheduler's completed
+	// snapshot before changing metadata.
+	time.Sleep(5 * time.Second)
+	e.backend.mu.Lock()
+	e.backend.titles["ended-meta"] = "renamed"
+	e.backend.mu.Unlock()
+	waitFor(t, "the ended session's renamed metadata", func() bool {
+		ss, err := e.client.Sessions(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, s := range ss {
+			if s.ID == "ended-meta" && s.Info.GetTitle() == "renamed" {
+				return true
+			}
+		}
+		return false
+	})
+	time.Sleep(250 * time.Millisecond)
+	if n := uploads.Load(); n != 2 {
+		t.Fatalf("metadata-only update triggered %d event uploads, want 2 total", n)
 	}
 }
 

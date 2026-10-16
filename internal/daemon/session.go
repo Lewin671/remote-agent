@@ -60,6 +60,12 @@ type session struct {
 	ctlMu  sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
 	parser agent.Parser
 	reader *tail.Reader
+	// parserReplayPending keeps a failed rollout append from reusing the
+	// parser that already consumed its line. It is rebuilt from the event
+	// log before that line is tried again.
+	parserReplayPending bool
+	parserReplayPath    string
+	parserReplayOffset  int64
 	// copied tells the lines of a fork's transcript that repeat its
 	// source's records, which the fork has as events already; nil if none.
 	copied func(line []byte) bool
@@ -91,13 +97,14 @@ type session struct {
 	// model family in use then: which modes are on offer depends on it.
 	seenModes map[string]map[string]bool
 	// Why queued input is not being written, and since when.
-	waitReason string
-	waitSince  time.Time
-	warned     bool
-	status     pb.SessionStatus
-	detail     string
-	approvals  map[string]*approval
-	questions  map[string]*pb.QuestionAsked
+	waitReason     string
+	waitSince      time.Time
+	warned         bool
+	status         pb.SessionStatus
+	detail         string
+	approvals      map[string]*approval
+	staleApprovals []string
+	questions      map[string]*pb.QuestionAsked
 	// answeredBy and interruptedBy remember who answered a question or
 	// interrupted the turn through remote-agent, for the transcript
 	// record that follows.
@@ -147,7 +154,7 @@ type decision struct {
 	origin *pb.Origin
 }
 
-func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) *session {
+func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) (*session, error) {
 	q, err := loadQueue(dir)
 	if err != nil {
 		slog.Error("load input queue; the session accepts no input until it can be read", "session", m.ID, "err", errClass(err))
@@ -177,16 +184,23 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		s.copied = ag.Copied(dir)
 	}
 	// Rebuild derived state from the events already logged.
-	var seen logged
-	log.Each(func(e *pb.Event) {
+	recentIDs, err := recentWrittenIDs(log)
+	if err != nil {
+		return nil, fmt.Errorf("find recent submitted inputs: %w", err)
+	}
+	seen := newLogged(q, recentIDs)
+	if err := log.Each(func(e *pb.Event) {
 		s.observe(e)
 		s.parser.Replay(e)
 		seen.note(e)
-	})
-	s.dropSettled(&seen)
-	s.restorePause(&seen)
-	s.restoreReceived(&seen)
-	s.restoreRecent(&seen)
+	}); err != nil {
+		return nil, fmt.Errorf("restore session events: %w", err)
+	}
+	s.staleApprovals = slices.Clone(seen.approvalOrder)
+	s.dropSettled(seen)
+	s.restorePause(seen)
+	s.restoreReceived(seen)
+	s.restoreRecent(seen)
 	if m.Exited {
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
@@ -202,7 +216,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		}
 		s.reader = tail.NewReader(m.RolloutPath, off)
 	}
-	return s
+	return s, nil
 }
 
 // observe updates derived state from an event. Callers hold s.mu or are
@@ -389,7 +403,28 @@ func (s *session) readRollout() {
 func (s *session) readBatch() bool {
 	s.mu.Lock()
 	r := s.reader
+	pending, replayPath, replayOffset := s.parserReplayPending, s.parserReplayPath, s.parserReplayOffset
 	s.mu.Unlock()
+	if pending {
+		p := s.ag.NewParser()
+		if err := s.log.Each(p.Replay); err != nil {
+			slog.Error("replay session events after append failure", "session", s.meta.ID, "err", errClass(err))
+			return false
+		}
+		if replayOffset > 0 {
+			if err := p.Restore(replayPath, replayOffset); err != nil {
+				slog.Warn("restore parser after append failure", "session", s.meta.ID, "err", errClass(err))
+				return false
+			}
+		}
+		s.mu.Lock()
+		s.parser = p
+		s.reader = tail.NewReader(replayPath, replayOffset)
+		s.parserReplayPending = false
+		s.parserReplayPath, s.parserReplayOffset = "", 0
+		r = s.reader
+		s.mu.Unlock()
+	}
 	if r == nil {
 		return false
 	}
@@ -433,16 +468,11 @@ func (s *session) readBatch() bool {
 			if path != r.Path {
 				off = 0
 			}
-			p := s.ag.NewParser()
-			s.log.Each(p.Replay)
-			if off > 0 {
-				if err := p.Restore(r.Path, off); err != nil {
-					slog.Warn("restore the parser from the rollout", "session", s.meta.ID, "err", errClass(err))
-				}
-			}
 			s.mu.Lock()
 			s.reader = tail.NewReader(r.Path, off)
-			s.parser = p
+			s.parserReplayPending = true
+			s.parserReplayPath = r.Path
+			s.parserReplayOffset = off
 			s.mu.Unlock()
 			return false
 		}
@@ -697,7 +727,7 @@ func summary(text string, n int) string {
 			if r := []rune(line); len(r) > n {
 				return string(r[:n-1]) + "…"
 			}
-			return line
+			return strings.Clone(line)
 		}
 	}
 	return ""
@@ -1035,15 +1065,23 @@ func (s *session) bindRollout(cliSessionID, path string) {
 		s.readMu.Unlock()
 		return
 	}
+	s.mu.Unlock()
+	p := s.ag.NewParser()
+	// It needs what is known so far, such as a model switched to before
+	// the transcript was found.
+	if err := s.log.Each(p.Replay); err != nil {
+		slog.Error("replay session events", "session", s.meta.ID, "err", errClass(err))
+		s.readMu.Unlock()
+		return
+	}
+	s.mu.Lock()
 	s.meta.RolloutPath = path
 	if cliSessionID != "" {
 		s.meta.CodexSessionID = cliSessionID
 	}
 	s.reader = tail.NewReader(path, 0)
-	p := s.ag.NewParser()
-	// It needs what is known so far, such as a model switched to before
-	// the transcript was found.
-	s.log.Each(p.Replay)
+	s.parserReplayPending = false
+	s.parserReplayPath, s.parserReplayOffset = "", 0
 	s.parser = p
 	m := s.meta
 	s.mu.Unlock()

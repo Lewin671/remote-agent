@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,233 @@ import (
 
 func msg(text string) *pb.Event {
 	return &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: text}}}
+}
+
+func TestLongHistoryHasBoundedCacheAndPagedReads(t *testing.T) {
+	l, err := Open(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	const count = 4096
+	batch := make([]*pb.Event, count)
+	for i := range batch {
+		batch[i] = msg(strings.Repeat("x", 2048))
+	}
+	if err := l.Append("s1", batch, "/r.jsonl", 10); err != nil {
+		t.Fatal(err)
+	}
+	if len(l.events) > cacheEvents || l.cacheBytes > cacheBytes || len(l.index) > indexLimit {
+		t.Fatalf("unbounded cache/index: events=%d bytes=%d anchors=%d", len(l.events), l.cacheBytes, len(l.index))
+	}
+	if len(l.events) != cacheEvents || l.events[0].Seq != count-cacheEvents+1 {
+		t.Fatalf("tail cache starts at %d with %d events", l.cacheStart, len(l.events))
+	}
+	if l.n != count || l.events[len(l.events)-1].Seq != count {
+		t.Fatalf("last sequence %d, cached tail %d", l.n, l.events[len(l.events)-1].Seq)
+	}
+
+	// Pages cover all history in order while each individual read stays
+	// bounded. The old implementation returned all 4,096 events at once.
+	var next uint64
+	for next < count {
+		page, _, err := l.PageSince(next, 127)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 || len(page) > 127 {
+			t.Fatalf("page after %d has %d events", next, len(page))
+		}
+		for _, e := range page {
+			next++
+			if e.Seq != next || e.GetAgentMessage().Text != strings.Repeat("x", 2048) {
+				t.Fatalf("event %d has seq %d or lost payload", next, e.Seq)
+			}
+		}
+	}
+
+	// Release closes the append handle and discards even the bounded cache;
+	// a streaming scan still sees the complete history.
+	l.Release(0)
+	if l.f != nil || l.events != nil {
+		t.Fatal("release kept the file handle or event cache")
+	}
+	seen := uint64(0)
+	_, err = l.EachSince(0, func(e *pb.Event) error {
+		seen++
+		if e.Seq != seen {
+			t.Fatalf("stream event %d has seq %d", seen, e.Seq)
+		}
+		return nil
+	})
+	if err != nil || seen != count {
+		t.Fatalf("stream saw %d events, err=%v", seen, err)
+	}
+	if len(l.events) != 0 {
+		t.Fatalf("streaming full history retained %d events", len(l.events))
+	}
+
+	// Since keeps its explicit full-result semantics for callers that really
+	// request a materialized history.
+	all, _, err := l.Since(0)
+	if err != nil || len(all) != count || all[len(all)-1].Seq != count {
+		t.Fatalf("Since returned %d events, err=%v", len(all), err)
+	}
+}
+
+func TestSparseIndexRollsOverAndOldHistoryStillStreams(t *testing.T) {
+	l, err := Open(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	const count = indexStride*indexLimit + 1
+	batch := make([]*pb.Event, count)
+	for i := range batch {
+		batch[i] = msg("x")
+	}
+	if err := l.Append("s1", batch, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if len(l.index) != indexLimit || l.index[0].seq != 129 || l.index[len(l.index)-1].seq != count {
+		t.Fatalf("sparse index window = %d entries from %d to %d", len(l.index), l.index[0].seq, l.index[len(l.index)-1].seq)
+	}
+	seen := uint64(0)
+	if _, err := l.EachSince(0, func(e *pb.Event) error {
+		seen++
+		if e.Seq != seen {
+			t.Fatalf("old-history sequence %d, want %d", e.Seq, seen)
+		}
+		return nil
+	}); err != nil || seen != count {
+		t.Fatalf("EachSince scanned %d events, err=%v", seen, err)
+	}
+	var tail []uint64
+	if err := l.EachRange(count-20, count, func(e *pb.Event) error {
+		tail = append(tail, e.Seq)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(tail) != 20 || tail[0] != count-19 || tail[19] != count {
+		t.Fatalf("tail range = %v", tail)
+	}
+}
+
+func TestEachSinceSnapshotDoesNotHoldLockOrMissConcurrentAppend(t *testing.T) {
+	l, err := Open(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	if err := l.Append("s1", []*pb.Event{msg("a"), msg("b"), msg("c")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	started, resume := make(chan struct{}), make(chan struct{})
+	var got []uint64
+	result := make(chan struct {
+		changed <-chan struct{}
+		err     error
+	}, 1)
+	go func() {
+		changed, err := l.EachSince(0, func(e *pb.Event) error {
+			got = append(got, e.Seq)
+			if e.Seq == 1 {
+				close(started)
+				<-resume
+			}
+			return nil
+		})
+		result <- struct {
+			changed <-chan struct{}
+			err     error
+		}{changed, err}
+	}()
+	<-started
+	// This would deadlock if EachSince held the append lock while invoking
+	// its callback.
+	if err := l.Append("s1", []*pb.Event{msg("d")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	close(resume)
+	out := <-result
+	if out.err != nil {
+		t.Fatal(out.err)
+	}
+	if len(got) != 3 || got[0] != 1 || got[2] != 3 {
+		t.Fatalf("snapshot included or missed events: %v", got)
+	}
+	select {
+	case <-out.changed:
+	default:
+		t.Fatal("append during scan did not close the captured change channel")
+	}
+	_, err = l.EachSince(3, func(e *pb.Event) error {
+		if e.Seq != 4 {
+			t.Fatalf("tail seq %d", e.Seq)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReleaseReopensButCloseIsFinal(t *testing.T) {
+	l, err := Open(filepath.Join(t.TempDir(), "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("a")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	l.Release(0)
+	if l.f != nil {
+		t.Fatal("release left an append handle open")
+	}
+	if err := l.Append("s1", []*pb.Event{msg("b")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if l.LastSeq() != 2 || l.f == nil {
+		t.Fatalf("append did not reopen the log: seq=%d open=%v", l.LastSeq(), l.f != nil)
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("c")}, "", 0); !errors.Is(err, ErrClosed) {
+		t.Fatalf("append after close: %v", err)
+	}
+	if _, _, err := l.PageSince(0, 1); !errors.Is(err, ErrClosed) {
+		t.Fatalf("read after release and close: %v", err)
+	}
+}
+
+func TestPageReadErrorIsNotEmptyHistory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	l, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Append("s1", []*pb.Event{msg("a"), msg("b")}, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	l.Release(0)
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if page, _, err := l.PageSince(0, 1); err == nil || len(page) != 0 {
+		t.Fatalf("missing file returned page %v, err=%v", page, err)
+	}
+	_ = l.Close()
+}
+
+func since(t *testing.T, l *Log, after uint64) ([]*pb.Event, <-chan struct{}) {
+	t.Helper()
+	evs, changed, err := l.Since(after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return evs, changed
 }
 
 func TestAppendReopen(t *testing.T) {
@@ -27,7 +255,7 @@ func TestAppendReopen(t *testing.T) {
 	if err := l.Append("s1", []*pb.Event{msg("approval")}, "", 0); err != nil {
 		t.Fatal(err)
 	}
-	ch := func() <-chan struct{} { _, c := l.Since(0); return c }()
+	_, ch := since(t, l, 0)
 	if err := l.Append("s1", []*pb.Event{msg("c")}, "/r.jsonl", 200); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +287,7 @@ func TestAppendReopen(t *testing.T) {
 	if r, off := l.Checkpoint(); r != "/r.jsonl" || off != 200 {
 		t.Fatalf("checkpoint after reopen %s %d", r, off)
 	}
-	evs, _ := l.Since(2)
+	evs, _ := since(t, l, 2)
 	if len(evs) != 2 || evs[0].GetAgentMessage().Text != "approval" || evs[0].Seq != 3 || evs[0].SessionId != "s1" {
 		t.Fatalf("since: %v", evs)
 	}
@@ -90,7 +318,7 @@ func TestReleasedLogReadsItsFileAgain(t *testing.T) {
 		t.Fatal("not released")
 	}
 	// Watching for more and appending need no events in memory.
-	if evs, _ := l.Since(2); len(evs) != 0 || l.events != nil {
+	if evs, _ := since(t, l, 2); len(evs) != 0 || l.events != nil {
 		t.Fatalf("waiting for more loaded the log: %v", evs)
 	}
 	if err := l.Append("s1", []*pb.Event{msg("c")}, "", 0); err != nil {
@@ -99,7 +327,7 @@ func TestReleasedLogReadsItsFileAgain(t *testing.T) {
 	if l.events != nil || l.LastSeq() != 3 {
 		t.Fatalf("append to a released log: loaded=%v last=%d", l.events != nil, l.LastSeq())
 	}
-	evs, _ := l.Since(1)
+	evs, _ := since(t, l, 1)
 	if len(evs) != 2 || evs[0].GetAgentMessage().Text != "b" || evs[1].Seq != 3 || evs[1].GetAgentMessage().Text != "c" {
 		t.Fatalf("events after reload: %v", evs)
 	}
@@ -115,7 +343,7 @@ func TestReleasedLogReadsItsFileAgain(t *testing.T) {
 	if err := l.Append("s1", []*pb.Event{msg("d")}, "", 0); err != nil {
 		t.Fatal(err)
 	}
-	if evs, _ := l.Since(0); len(evs) != 4 || evs[3].Seq != 4 {
+	if evs, _ := since(t, l, 0); len(evs) != 4 || evs[3].Seq != 4 {
 		t.Fatalf("append to a loaded log: %v", evs)
 	}
 }
@@ -183,7 +411,7 @@ func reopened(t *testing.T, l *Log, path string, texts ...string) {
 		t.Fatalf("the log does not load after a failed append: %v", err)
 	}
 	defer l.Close()
-	evs, _ := l.Since(0)
+	evs, _ := since(t, l, 0)
 	if len(evs) != len(texts) {
 		t.Fatalf("%d events on disk, want %d", len(evs), len(texts))
 	}
@@ -215,7 +443,7 @@ func TestFailedAppendLeavesNoBytesBehind(t *testing.T) {
 			if err := l.Append("s1", []*pb.Event{msg("b"), msg("c")}, "/r.jsonl", 200); err != nil {
 				t.Fatal(err)
 			}
-			if evs, _ := l.Since(0); len(evs) != 4 || evs[3].Seq != 4 {
+			if evs, _ := since(t, l, 0); len(evs) != 4 || evs[3].Seq != 4 {
 				t.Fatalf("events in memory: %v", evs)
 			}
 			reopened(t, l, path, "a", "approval", "b", "c")
@@ -368,7 +596,7 @@ func TestTornFirstBatchLeavesAnEmptyLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer l.Close()
-	if evs, _ := l.Since(0); l.LastSeq() != 0 || len(evs) != 0 {
+	if evs, _ := since(t, l, 0); l.LastSeq() != 0 || len(evs) != 0 {
 		t.Fatalf("last seq %d, events %v", l.LastSeq(), evs)
 	}
 	if st, _ := os.Stat(path); st.Size() != 0 {
@@ -388,7 +616,7 @@ func TestCompleteBatchIsKept(t *testing.T) {
 		t.Fatal(err)
 	}
 	l.Release(0)
-	if evs, _ := l.Since(0); len(evs) != 3 {
+	if evs, _ := since(t, l, 0); len(evs) != 3 {
 		t.Fatalf("%d events read again from the file", len(evs))
 	}
 	reopened(t, l, path, "a", "b", "c")

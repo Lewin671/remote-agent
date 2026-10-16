@@ -2,10 +2,12 @@ package codex
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unsafe"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -103,6 +105,54 @@ func TestTruncate(t *testing.T) {
 	out, cut := truncate(s)
 	if !cut || len(out) > MaxOutput || !strings.HasPrefix(s, out) || len(out)%2 != 0 {
 		t.Fatalf("truncate: len %d cut %v", len(out), cut)
+	}
+	large := strings.Repeat("x", 4<<20)
+	out, cut = truncate(large)
+	if !cut || len(out) != MaxOutput || unsafe.StringData(out) == unsafe.StringData(large) {
+		t.Fatal("truncating a large output retained its full backing string")
+	}
+}
+
+func TestParserSeenWindowsAreBoundedAndIndependent(t *testing.T) {
+	p := NewParser()
+	question := &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "question-late"}}}
+	p.Replay(question)
+	history := make([]*pb.Event, 0, parserSeenLimit+1)
+	history = append(history, question)
+	for i := 0; i < parserSeenLimit+1; i++ {
+		id := fmt.Sprintf("generated-%04d", i)
+		e := &pb.Event{Kind: &pb.Event_ImageGenerated{ImageGenerated: &pb.ImageGenerated{CallId: id}}}
+		p.Replay(e)
+		history = append(history, e)
+	}
+	if len(p.generated.set) != parserSeenLimit || len(p.questions.set) != 1 || !p.questions.Has("question-late") {
+		t.Fatalf("dedupe windows grew or crossed: generated=%d questions=%d", len(p.generated.set), len(p.questions.set))
+	}
+
+	// Replay after a restart reconstructs the same recent dedupe window.
+	restored := NewParser()
+	for _, e := range history {
+		restored.Replay(e)
+	}
+	latest := fmt.Sprintf("generated-%04d", parserSeenLimit)
+	line := []byte(fmt.Sprintf(`{"type":"response_item","payload":{"type":"image_generation_call","id":%q,"status":"completed","result":"iVBO"}}`, latest))
+	if evs, err := restored.Parse(line); err != nil || len(evs) != 0 {
+		t.Fatalf("replayed duplicate image: events=%v err=%v", evs, err)
+	}
+	if evs, err := restored.Parse([]byte(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t","item":{"type":"AgentMessage","id":"question-late","content":[{"text":"question"}]}}}`)); err != nil || len(evs) != 0 {
+		t.Fatalf("replayed question leaked as an agent message: events=%v err=%v", evs, err)
+	}
+	oldest := []byte(`{"type":"response_item","payload":{"type":"image_generation_call","id":"generated-0000","status":"completed","result":"iVBO"}}`)
+	if evs, err := restored.Parse(oldest); err != nil || len(evs) != 1 || evs[0].GetImageGenerated() == nil {
+		t.Fatalf("expired ID was not evicted from the bounded window: events=%v err=%v", evs, err)
+	}
+
+	questions := NewParser()
+	for i := 0; i < parserSeenLimit*2; i++ {
+		questions.RememberQuestion(fmt.Sprintf("q-%04d", i))
+	}
+	if len(questions.questions.set) != parserSeenLimit || !questions.questions.Has(fmt.Sprintf("q-%04d", parserSeenLimit*2-1)) {
+		t.Fatalf("question window has %d IDs or lost its newest ID", len(questions.questions.set))
 	}
 }
 

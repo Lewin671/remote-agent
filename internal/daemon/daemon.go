@@ -273,7 +273,12 @@ func (d *Daemon) restore() error {
 			log.Close()
 			continue
 		}
-		s := newSession(d, dir, *m, d.terminal(m), log)
+		s, err := newSession(d, dir, *m, d.terminal(m), log)
+		if err != nil {
+			slog.Warn("skip session with unreadable history", "session", m.ID, "err", errClass(err))
+			_ = log.Close()
+			continue
+		}
 		// Sessions restored before this one already run their loops, which
 		// read the list.
 		d.mu.Lock()
@@ -318,23 +323,12 @@ func (d *Daemon) terminal(m *meta) terminal {
 // cancelStaleApprovals resolves approvals that were pending when a previous
 // daemon stopped; their hooks have given up on that daemon.
 func (s *session) cancelStaleApprovals() {
-	pending := map[string]bool{}
-	var order []string
-	s.log.Each(func(e *pb.Event) {
-		switch k := e.Kind.(type) {
-		case *pb.Event_ApprovalRequested:
-			pending[k.ApprovalRequested.ApprovalId] = true
-			order = append(order, k.ApprovalRequested.ApprovalId)
-		case *pb.Event_ApprovalResolved:
-			delete(pending, k.ApprovalResolved.ApprovalId)
-		}
-	})
+	order := s.staleApprovals
+	s.staleApprovals = nil
 	for _, id := range order {
-		if pending[id] {
-			s.emit(&pb.Event{Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
-				ApprovalId: id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, Message: "daemon restarted",
-			}}})
-		}
+		s.emit(&pb.Event{Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
+			ApprovalId: id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, Message: "daemon restarted",
+		}}})
 	}
 }
 
@@ -501,7 +495,11 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	// The tmux status line is not part of the CLI's experience.
 	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
 
-	s := newSession(d, dir, m, d.terminal(&m), log)
+	s, err := newSession(d, dir, m, d.terminal(&m), log)
+	if err != nil {
+		_ = d.cfg.Tmux.KillSession(m.Tmux)
+		return fail(err)
+	}
 	s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
 	}}})

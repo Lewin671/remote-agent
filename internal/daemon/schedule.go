@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -481,8 +482,7 @@ func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 		exited := s.meta.Exited
 		s.mu.Unlock()
 		running := false
-		evs, _ := s.log.Since(0)
-		for _, e := range evs {
+		if err := s.log.Each(func(e *pb.Event) {
 			t.AnchorSeq = e.Seq
 			if e.GetTurnStarted() != nil {
 				t.AnchorTurn = e.TurnId
@@ -491,6 +491,8 @@ func (d *Daemon) prepareSchedule(t *schedule.Task, now time.Time) error {
 			if e.GetTurnEnded() != nil {
 				running = false
 			}
+		}); err != nil {
+			return fmt.Errorf("read source session events: %w", err)
 		}
 		if running && !exited {
 			t.Status = "waiting_turn"
@@ -534,8 +536,8 @@ func (d *Daemon) tickSchedules(now time.Time) {
 				t.Status = "failed"
 				t.Reason = "source_session_missing"
 			} else {
-				evs, _ := s.log.Since(t.AnchorSeq)
-				for _, e := range evs {
+				err := scanEventsSince(s.log, t.AnchorSeq, func(e *pb.Event) bool {
+					t.AnchorSeq = e.Seq
 					if end := e.GetTurnEnded(); end != nil && (t.AnchorTurn == "" || e.TurnId == "" || e.TurnId == t.AnchorTurn) {
 						if end.Outcome == pb.TurnOutcome_TURN_OUTCOME_ABORTED {
 							t.Status = "paused"
@@ -549,8 +551,12 @@ func (d *Daemon) tickSchedules(now time.Time) {
 							t.NextRunAt = &at
 							t.Status = "scheduled"
 						}
-						break
+						return false
 					}
+					return true
+				})
+				if err != nil {
+					slog.Warn("scan scheduled source events", "session", t.AnchorSession, "err", errClass(err))
 				}
 				s.mu.Lock()
 				exited := s.meta.Exited
@@ -702,8 +708,7 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 		d.endScheduledRun(t, now, "failed", "execution_session_missing")
 		return
 	}
-	evs, _ := s.log.Since(run.AfterSeq)
-	for _, e := range evs {
+	err = scanEventsSince(s.log, run.AfterSeq, func(e *pb.Event) bool {
 		run.AfterSeq = e.Seq
 		if in := e.GetInputState(); in != nil && in.RequestId == run.RequestID {
 			run.InputPaused = in.Paused
@@ -718,13 +723,13 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 				}
 				d.lateRuns[t.ID] = run.ID
 				d.endScheduledRun(t, now, "uncertain", unconfirmedRun)
-				return
+				return false
 			case pb.InputStatus_INPUT_STATUS_CANCELED:
 				d.endScheduledRun(t, now, "cancelled", "message_cancelled")
-				return
+				return false
 			case pb.InputStatus_INPUT_STATUS_FAILED, pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL:
 				d.endScheduledRun(t, now, "failed", "message_delivery_failed")
-				return
+				return false
 			}
 		}
 		if msg := e.GetUserMessage(); msg != nil && msg.RequestId == run.RequestID {
@@ -744,8 +749,15 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {
 				endedAt = e.Time.AsTime()
 			}
 			d.endScheduledRun(t, endedAt, status, reason)
-			return
+			return false
 		}
+		return true
+	})
+	if err != nil {
+		slog.Warn("scan scheduled execution events", "session", run.SessionID, "err", errClass(err))
+	}
+	if t.Active != run {
+		return
 	}
 	// Cursor and message/turn identity are persisted together. Replaying after
 	// restart cannot mistake an unrelated earlier turn for this execution.
@@ -793,10 +805,11 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 	if err != nil {
 		return false
 	}
-	evs, _ := s.log.Since(last.AfterSeq)
-	for _, e := range evs {
+	found := false
+	err = scanEventsSince(s.log, last.AfterSeq, func(e *pb.Event) bool {
 		last.AfterSeq = e.Seq
 		if in := e.GetInputState(); in != nil && in.RequestId == last.RequestID && in.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED {
+			found = true
 			run := *last
 			run.Status, run.Reason, run.EndedAt = "submitted", "", nil
 			t.Runs = t.Runs[:len(t.Runs)-1]
@@ -806,10 +819,14 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 			}
 			delete(d.lateRuns, t.ID)
 			d.watchScheduledRun(t, now)
-			return true
+			return false
 		}
+		return true
+	})
+	if err != nil {
+		slog.Warn("scan uncertain scheduled execution events", "session", last.SessionID, "err", errClass(err))
 	}
-	return false
+	return found
 }
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
 	t.Active.Status = status

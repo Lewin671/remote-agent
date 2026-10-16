@@ -27,9 +27,9 @@ type Backend interface {
 	SessionIDs() []string
 	// SessionInfo describes a session.
 	SessionInfo(id string) (*pb.Session, error)
-	// Events returns the session's events after seq and a channel that is
-	// closed when more are appended.
-	Events(id string, after uint64) ([]*pb.Event, <-chan struct{}, error)
+	// EachEvents streams one stable snapshot after seq and returns the
+	// channel closed when a later event is appended.
+	EachEvents(id string, after uint64, fn func(*pb.Event) error) (<-chan struct{}, error)
 	// SessionDir is the session's state directory.
 	SessionDir(id string) string
 	// Local serves the commands.

@@ -366,22 +366,32 @@ func (d *Daemon) imageGCLoop(stop <-chan struct{}) {
 
 // On startup the saved queue, not an interrupted reference update, wins.
 func (u *uploads) restoreRefs(s *session) {
+	records, err := u.records()
+	if err != nil {
+		slog.Error("list image references", "session", s.meta.ID, "err", errClass(err))
+		return
+	}
+	wanted := map[string]bool{}
+	for _, t := range records {
+		if t.Session == s.meta.ID && t.ImageID != "" {
+			wanted[t.ImageID] = true
+		}
+	}
 	witness := map[string]bool{}
-	s.log.Each(func(e *pb.Event) {
+	if err := s.log.Each(func(e *pb.Event) {
 		if m := e.GetUserMessage(); m != nil {
 			for _, ref := range m.Images {
-				if ref.UploadId != "" && ref.ImageId != "" {
+				if ref.UploadId != "" && ref.ImageId != "" && wanted[ref.UploadId] {
 					witness[ref.UploadId] = true
 				}
 			}
 		}
-	})
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	records, err := u.records()
-	if err != nil {
+	}); err != nil {
+		slog.Error("restore image references", "session", s.meta.ID, "err", errClass(err))
 		return
 	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
 	for _, t := range records {
 		if t.Session != s.meta.ID {
 			continue
