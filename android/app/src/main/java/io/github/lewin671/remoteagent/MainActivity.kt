@@ -44,6 +44,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.IntOffset
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -120,7 +132,10 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Main(remote: Remote) {
         val nav = rememberNavController()
-        val actions = remember(nav)
+        val focus = LocalFocusManager.current
+        // Every page change drops the keyboard first, so the page that leaves
+        // does not shrink back under it halfway through the slide.
+        val actions = remember(nav) { focus.clearFocus() }
         val target by openSession
         LaunchedEffect(target) {
             target?.let { (sid, approval) ->
@@ -157,73 +172,88 @@ class MainActivity : ComponentActivity() {
                     text = "其他客户端的设备列表里靠它认出这一个，以后可以在「设置 › 设备」里改",
                 ) { name -> if (name.isNotBlank()) scope.launch { runCatching { remote.renameDevice(me.id, name.trim()) } } }
             }
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                NavHost(nav, "home", Modifier.weight(1f)) {
-                    composable("home") { HomeScreen() }
-                    composable("settings") { SettingsScreen() }
-                    composable("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
-                    composable("project/{key}?focus={focus}") {
-                        ProjectScreen(routeValue(it.arguments?.getString("key")), it.arguments?.getString("focus") == "1")
-                    }
-                    composable("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
-                    composable("pair") { PairScreen() }
-                    composable("approval/{sid}/{aid}") { ApprovalPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("aid").orEmpty()) }
-                    composable("plan/{sid}") { PlanPage(it.arguments?.getString("sid").orEmpty()) }
-                    composable("newproject") { NewProjectScreen() }
-                    composable("newproject/{machine}/{path}") {
-                        io.github.lewin671.remoteagent.ui.NewProjectAtScreen(it.arguments?.getString("machine").orEmpty(), routeValue(it.arguments?.getString("path")))
-                    }
-                    composable("pick") { PickProjectScreen() }
-                    composable("projects") { ManageProjectsScreen() }
-                    composable("quota/{id}") { io.github.lewin671.remoteagent.ui.QuotaScreen(it.arguments?.getString("id").orEmpty()) }
-                    composable("question/{sid}/{qid}") { io.github.lewin671.remoteagent.ui.QuestionPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("qid").orEmpty()) }
-                    composable("image/{sid}/{seq}/{i}") {
-                        io.github.lewin671.remoteagent.ui.ImageViewer(
-                            it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0, it.arguments?.getString("i")?.toIntOrNull() ?: 0,
-                        )
-                    }
-                    composable("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
-                    composable("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
+            NavHost(
+                nav, "home", Modifier.fillMaxSize().safeDrawingPadding(),
+                enterTransition = { pageEnter(initialState, targetState) },
+                exitTransition = { pageExit(initialState, targetState) },
+                popEnterTransition = { pagePopEnter(initialState, targetState) },
+                popExitTransition = { pagePopExit(initialState, targetState) },
+            ) {
+                composable("home") { Tab(remote, nav, "home") { HomeScreen() } }
+                composable("settings") { Tab(remote, nav, "settings") { SettingsScreen() } }
+                page("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
+                page("project/{key}?focus={focus}") {
+                    ProjectScreen(routeValue(it.arguments?.getString("key")), it.arguments?.getString("focus") == "1")
                 }
-                if (tabs) BottomBar(remote, route, nav)
+                page("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
+                page("pair") { PairScreen() }
+                page("approval/{sid}/{aid}") { ApprovalPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("aid").orEmpty()) }
+                page("plan/{sid}") { PlanPage(it.arguments?.getString("sid").orEmpty()) }
+                page("newproject") { NewProjectScreen() }
+                page("newproject/{machine}/{path}") {
+                    io.github.lewin671.remoteagent.ui.NewProjectAtScreen(it.arguments?.getString("machine").orEmpty(), routeValue(it.arguments?.getString("path")))
+                }
+                page("pick") { PickProjectScreen() }
+                page("projects") { ManageProjectsScreen() }
+                page("quota/{id}") { io.github.lewin671.remoteagent.ui.QuotaScreen(it.arguments?.getString("id").orEmpty()) }
+                page("question/{sid}/{qid}") { io.github.lewin671.remoteagent.ui.QuestionPage(it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("qid").orEmpty()) }
+                page("image/{sid}/{seq}/{i}") {
+                    io.github.lewin671.remoteagent.ui.ImageViewer(
+                        it.arguments?.getString("sid").orEmpty(), it.arguments?.getString("seq")?.toLongOrNull() ?: 0, it.arguments?.getString("i")?.toIntOrNull() ?: 0,
+                    )
+                }
+                page("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
+                page("client/{id}") { io.github.lewin671.remoteagent.ui.ClientScreen(it.arguments?.getString("id").orEmpty()) }
             }
         }
     }
 
+    /** A tab page with the tab bar under it, so the bar comes and goes with the page rather than ahead of it. */
     @Composable
-    private fun BottomBar(remote: Remote, route: String?, nav: NavHostController) {
+    private fun Tab(remote: Remote, nav: NavHostController, route: String, content: @Composable () -> Unit) {
         val state by remote.state.collectAsState()
         val waiting = state.sessions.values.count { io.github.lewin671.remoteagent.core.statusOf(it, state.machines[it.machineId]).tone == Tone.WAIT }
-        io.github.lewin671.remoteagent.ui.TabBar(route, waiting) { r ->
-            if (r == "home") nav.navigate("home") { popUpTo("home") { inclusive = true } } else nav.navigate("settings") { popUpTo("home") }
+        Column(Modifier.fillMaxSize().background(pal.card)) {
+            Box(Modifier.weight(1f)) { content() }
+            io.github.lewin671.remoteagent.ui.TabBar(route, waiting) { r ->
+                if (r == "home") { if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home") }
+                else nav.navigate("settings") { popUpTo("home") }
+            }
         }
     }
 
-    private fun remember(nav: NavHostController) = Nav(
-        back = { if (!nav.popBackStack()) finish() },
-        session = { nav.navigate("session/$it") { launchSingleTop = true } },
-        project = { nav.navigate("project/${routeArg(it)}") },
-        projectNew = { nav.navigate("project/${routeArg(it)}?focus=1") },
-        home = { nav.navigate("home") { popUpTo("home") { inclusive = true } } },
-        settings = { nav.navigate("settings") },
-        device = { nav.navigate("device/$it") },
-        pair = { nav.navigate("pair") },
-        approval = { sid, aid -> nav.navigate("approval/$sid/$aid") },
-        plan = { nav.navigate("plan/$it") },
-        newProject = { nav.navigate("newproject") },
-        pickProject = { nav.navigate("pick") },
-        manageProjects = { nav.navigate("projects") },
-        devices = { nav.navigate("devices") },
-        quota = { nav.navigate("quota/$it") },
-        question = { sid, qid -> nav.navigate("question/$sid/${routeArg(qid)}") },
-        image = { sid, seq, i -> nav.navigate("image/$sid/$seq/$i") },
-        client = { nav.navigate("client/$it") },
-        newProjectAt = { machine, path -> nav.navigate("newproject/$machine/${routeArg(path)}") },
-        sessionTerminal = { sid ->
-            OpenTerminal.requested[sid] = true
-            nav.navigate("session/$sid") { launchSingleTop = true }
-        },
-    )
+    private fun remember(nav: NavHostController, leave: () -> Unit): Nav {
+        fun go(route: String, single: Boolean = false) {
+            leave()
+            nav.navigate(route) { launchSingleTop = single }
+        }
+        return Nav(
+            back = { leave(); if (!nav.popBackStack()) finish() },
+            session = { go("session/$it", single = true) },
+            project = { go("project/${routeArg(it)}") },
+            projectNew = { go("project/${routeArg(it)}?focus=1") },
+            // Home is the root: going there is going back, and it keeps its place.
+            home = { leave(); if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home") },
+            settings = { go("settings") },
+            device = { go("device/$it") },
+            pair = { go("pair") },
+            approval = { sid, aid -> go("approval/$sid/$aid") },
+            plan = { go("plan/$it") },
+            newProject = { go("newproject") },
+            pickProject = { go("pick") },
+            manageProjects = { go("projects") },
+            devices = { go("devices") },
+            quota = { go("quota/$it") },
+            question = { sid, qid -> go("question/$sid/${routeArg(qid)}") },
+            image = { sid, seq, i -> go("image/$sid/$seq/$i") },
+            client = { go("client/$it") },
+            newProjectAt = { machine, path -> go("newproject/$machine/${routeArg(path)}") },
+            sessionTerminal = { sid ->
+                OpenTerminal.requested[sid] = true
+                go("session/$sid", single = true)
+            },
+        )
+    }
 
     companion object {
         const val EXTRA_SESSION = "session"
@@ -246,3 +276,45 @@ fun routeArg(s: String): String = buildString {
 
 /** The key back from a route argument, which Navigation has already decoded once. */
 fun routeValue(arg: String?): String = arg.orEmpty()
+
+// Page transitions. A page slides in from the right over the one it covers,
+// which drifts a quarter of the way left; back plays it in reverse. Pages are
+// opaque, so two never show through each other. Switching tabs swaps in place,
+// and the image viewer fades over the page it opens from.
+private const val PAGE_MS = 300
+private val pageSlide = tween<IntOffset>(PAGE_MS, easing = FastOutSlowInEasing)
+private val viewerFade = tween<Float>(200)
+private val tabRoutes = setOf("home", "settings")
+
+private fun tabSwitch(from: NavBackStackEntry, to: NavBackStackEntry) =
+    from.destination.route in tabRoutes && to.destination.route in tabRoutes
+
+/** Every page is drawn on the app's background, so one never shows through another as they slide. */
+private fun NavGraphBuilder.page(route: String, content: @Composable (NavBackStackEntry) -> Unit) =
+    composable(route) { Box(Modifier.fillMaxSize().background(pal.card)) { content(it) } }
+
+private fun viewer(e: NavBackStackEntry) = e.destination.route?.startsWith("image/") == true
+
+private fun pageEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition = when {
+    tabSwitch(from, to) -> EnterTransition.None
+    viewer(to) -> fadeIn(viewerFade)
+    else -> slideInHorizontally(pageSlide) { it }
+}
+
+private fun pageExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransition = when {
+    tabSwitch(from, to) -> ExitTransition.None
+    // Stays as it is under the viewer fading in.
+    viewer(to) -> fadeOut(viewerFade, targetAlpha = 1f)
+    else -> slideOutHorizontally(pageSlide) { -it / 4 }
+}
+
+private fun pagePopEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition = when {
+    tabSwitch(from, to) || viewer(from) -> EnterTransition.None
+    else -> slideInHorizontally(pageSlide) { -it / 4 }
+}
+
+private fun pagePopExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransition = when {
+    tabSwitch(from, to) -> ExitTransition.None
+    viewer(from) -> fadeOut(viewerFade)
+    else -> slideOutHorizontally(pageSlide) { it }
+}

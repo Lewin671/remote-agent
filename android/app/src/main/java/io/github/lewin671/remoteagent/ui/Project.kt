@@ -605,7 +605,9 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     val fr = remember { FocusRequester() }
     val drafting = text.isNotBlank() || images.images.isNotEmpty()
     LaunchedEffect(initial, drafting, settled) { draft.follow(initial, drafting, settled) }
-    LaunchedEffect(focus) { if (focus) runCatching { fr.requestFocus() } }
+    // Focused when the page opens, not again when coming back to it from the session it started.
+    var focused by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(focus) { if (focus && !focused) { focused = true; runCatching { fr.requestFocus() } } }
     val machine = config?.machineId
     val online = state.conn == ConnState.ONLINE
     val machineOnline = machine != null && online && state.machines[machine]?.online == true
