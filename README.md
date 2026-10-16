@@ -62,3 +62,4 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - `scripts/acceptance.sh`：用真实的 Codex 跑 P0 验收
 - `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量
 - 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/` 和 `web/src/gen/`，一并提交
+- Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
