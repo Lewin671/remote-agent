@@ -1,6 +1,10 @@
 package daemon
 
 import (
+	"context"
+	"errors"
+	"net"
+	"syscall"
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/ptyhost"
@@ -14,6 +18,8 @@ type terminal interface {
 	Capture() (string, error)
 	// Alive reports whether the tmux session still exists.
 	Alive() bool
+	// HostAlive reports whether the PTY-host control socket still accepts connections.
+	HostAlive(context.Context) (bool, error)
 	// Kill ends the session.
 	Kill() error
 	// Control opens a connection to the PTY host.
@@ -37,6 +43,23 @@ type tmuxTerminal struct {
 func (t *tmuxTerminal) Capture() (string, error) { return t.tmux.Capture(t.name, true) }
 func (t *tmuxTerminal) Alive() bool              { return t.tmux.HasSession(t.name) }
 func (t *tmuxTerminal) Kill() error              { return t.tmux.KillSession(t.name) }
+
+func (t *tmuxTerminal) HostAlive(ctx context.Context) (bool, error) {
+	var d net.Dialer
+	c, err := d.DialContext(ctx, "unix", t.socket)
+	if err == nil {
+		_ = c.Close()
+		return true, nil
+	}
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+	if errors.Is(err, syscall.ENOENT) || errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ENOTSOCK) ||
+		errors.Is(err, syscall.EINVAL) || errors.Is(err, syscall.ENAMETOOLONG) {
+		return false, nil
+	}
+	return false, err
+}
 
 func (t *tmuxTerminal) Control() (control, error) {
 	c, err := ptyhost.Dial(t.socket)

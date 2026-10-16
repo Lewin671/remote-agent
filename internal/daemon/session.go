@@ -46,6 +46,14 @@ const holdFor = 3 * time.Second
 // hold, so that the screen check sees them.
 const settle = 80 * time.Millisecond
 
+const (
+	// pty-host allows the CLI 5s after SIGHUP/SIGTERM and its process group
+	// another 2s after SIGTERM. The extra second allows for scheduling and
+	// socket teardown without approaching the 60s remote-command deadline.
+	ptyHostExitTimeout  = 8 * time.Second
+	ptyHostPollInterval = 50 * time.Millisecond
+)
+
 // session is one CLI session managed by the daemon.
 type session struct {
 	d    *Daemon
@@ -373,7 +381,9 @@ func (s *session) pollLoop(ctx context.Context) {
 	defer rollout.Stop()
 	screen := time.NewTicker(s.d.cfg.ScreenInterval)
 	defer screen.Stop()
-	s.checkScreen()
+	if !s.checkScreenContext(ctx) {
+		return
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -381,7 +391,7 @@ func (s *session) pollLoop(ctx context.Context) {
 		case <-rollout.C:
 			s.readRollout()
 		case <-screen.C:
-			if !s.checkScreen() {
+			if !s.checkScreenContext(ctx) {
 				s.readRollout()
 				return
 			}
@@ -525,7 +535,17 @@ func (s *session) readBatch() bool {
 // checkScreen updates the session status from the screen. It returns false
 // once the session has exited.
 func (s *session) checkScreen() bool {
+	return s.checkScreenContext(context.Background())
+}
+
+func (s *session) checkScreenContext(ctx context.Context) bool {
 	if !s.term.Alive() {
+		if err := s.waitForPTYHostGone(ctx); err != nil {
+			if ctx.Err() != nil {
+				return false
+			}
+			slog.Warn("pty-host still running after its tmux session ended", "session", s.meta.ID, "err", errClass(err))
+		}
 		s.markExited("")
 		return false
 	}
@@ -1040,6 +1060,10 @@ func (s *session) annotate(evs []*pb.Event) (consume func()) {
 }
 
 func (s *session) kill() error {
+	return s.killContext(context.Background())
+}
+
+func (s *session) killContext(ctx context.Context) error {
 	s.mu.Lock()
 	exited := s.meta.Exited
 	s.mu.Unlock()
@@ -1049,8 +1073,47 @@ func (s *session) kill() error {
 	if err := s.term.Kill(); err != nil && s.term.Alive() {
 		return err
 	}
+	// The session is marked exited once the CLI is gone, so the last read
+	// of its transcript sees everything. A host that outlives the wait (one
+	// from an older version never exits) does not keep it running.
+	if err := s.waitForPTYHostGone(ctx); err != nil {
+		if ctx.Err() != nil {
+			return err
+		}
+		slog.Warn("pty-host still running after stop", "session", s.meta.ID, "err", errClass(err))
+	}
 	s.markExited("stopped")
 	return nil
+}
+
+func (s *session) waitForPTYHostGone(parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, ptyHostExitTimeout)
+	defer cancel()
+	ticker := time.NewTicker(ptyHostPollInterval)
+	defer ticker.Stop()
+	for {
+		alive, err := s.term.HostAlive(ctx)
+		if err != nil {
+			if parent.Err() != nil {
+				return parent.Err()
+			}
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				return fmt.Errorf("pty-host is still alive after %s", ptyHostExitTimeout)
+			}
+			return fmt.Errorf("check whether pty-host exited: %w", err)
+		}
+		if !alive {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			if parent.Err() != nil {
+				return parent.Err()
+			}
+			return fmt.Errorf("pty-host is still alive after %s", ptyHostExitTimeout)
+		case <-ticker.C:
+		}
+	}
 }
 
 // bindRollout records where the CLI writes the session's transcript.

@@ -669,6 +669,86 @@ func TestResumeWaitsForTheExitedQueueToBeSettled(t *testing.T) {
 	}
 }
 
+func TestStopWaitsForPTYHostBeforeReadingFinalTranscript(t *testing.T) {
+	h := newHarness(t, Config{})
+	rollout := filepath.Join(h.dir, "rollout.jsonl")
+	h.s.bindRollout("codex-1", rollout)
+	h.term.setHostAlive(true)
+
+	done := make(chan error, 1)
+	go func() { done <- h.s.kill() }()
+	eventually(t, "tmux session to be killed", func() bool { return !h.term.Alive() })
+	time.Sleep(100 * time.Millisecond)
+	h.s.mu.Lock()
+	exited := h.s.meta.Exited
+	h.s.mu.Unlock()
+	if exited {
+		t.Fatal("session was marked exited while its pty-host was still alive")
+	}
+	for _, e := range h.events() {
+		if e.GetSessionState().GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED {
+			t.Fatal("EXITED was emitted while the pty-host was still alive")
+		}
+	}
+
+	h.writeRollout(
+		taskStarted,
+		`{"timestamp":"2026-09-29T10:00:01Z","type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m1","content":[{"text":"written before pty-host exit"}]}}}`,
+		`{"timestamp":"2026-09-29T10:00:02Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1"}}`,
+	)
+	h.term.setHostAlive(false)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+
+	messageAt, exitedAt := -1, -1
+	for i, e := range h.events() {
+		if m := e.GetAgentMessage(); m != nil && m.Text == "written before pty-host exit" {
+			messageAt = i
+		}
+		if e.GetSessionState().GetStatus() == pb.SessionStatus_SESSION_STATUS_EXITED {
+			exitedAt = i
+		}
+	}
+	if messageAt < 0 {
+		t.Fatal("final transcript record was not read before stop returned")
+	}
+	if exitedAt <= messageAt {
+		t.Fatalf("EXITED event index %d did not follow final transcript record index %d", exitedAt, messageAt)
+	}
+}
+
+func TestResumeWaitsForPreviousPTYHost(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.d.mu.Lock()
+	h.d.sessions[h.s.meta.ID] = h.s
+	h.d.mu.Unlock()
+	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux"), Socket: "ra-test"}
+	h.term.setHostAlive(true)
+	h.s.markExited("stopped")
+
+	started := time.Now()
+	done := make(chan error, 1)
+	go func() { _, err := h.d.resume(h.s.meta.ID); done <- err }()
+	select {
+	case err := <-done:
+		t.Fatalf("resume returned while the previous pty-host was alive: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	h.term.setHostAlive(false)
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("resume unexpectedly started with the missing tmux executable")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("resume did not continue after the previous pty-host exited")
+	}
+	if elapsed := time.Since(started); elapsed < 100*time.Millisecond {
+		t.Fatalf("resume waited only %s for the previous pty-host", elapsed)
+	}
+}
+
 // Codex may confirm a message in history.jsonl and record the user message
 // only later. A daemon restarted in between still ties the record to the
 // message it wrote: its request ID is what a scheduled run waits for.

@@ -307,6 +307,12 @@ func (d *Daemon) restore() error {
 			continue
 		}
 		if !alive {
+			if err := s.waitForPTYHostGone(d.ctx); err != nil {
+				if d.ctx.Err() != nil {
+					return d.ctx.Err()
+				}
+				slog.Warn("pty-host still running after its tmux session ended", "session", m.ID, "err", errClass(err))
+			}
 			s.markExited("tmux session gone")
 			continue
 		}
@@ -719,15 +725,38 @@ var errUnsettled = errors.New("what became of the session's queued messages coul
 // its ID and history; the CLI appends to the same transcript, which is
 // read on from where it stopped.
 func (d *Daemon) resume(id string) (*session, error) {
-	d.resumeMu.Lock()
-	defer d.resumeMu.Unlock()
+	return d.resumeContext(context.Background(), id)
+}
+
+func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error) {
 	s, err := d.exact(id)
 	if err != nil {
 		return nil, err
 	}
 	s.mu.Lock()
 	m := s.meta
-	ctx := s.context
+	turnContext := s.context
+	s.mu.Unlock()
+	if !m.Exited {
+		return nil, errRunning
+	}
+	if d.cfg.Tmux.HasSession(m.Tmux) {
+		return nil, errRunning
+	}
+	if err := s.waitForPTYHostGone(ctx); err != nil {
+		return nil, fmt.Errorf("cannot resume while the previous pty-host may still be running: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	d.resumeMu.Lock()
+	defer d.resumeMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	m = s.meta
+	turnContext = s.context
 	s.mu.Unlock()
 	if !m.Exited {
 		return nil, errRunning
@@ -748,7 +777,7 @@ func (d *Daemon) resume(id string) (*session, error) {
 		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
 	cliArgs, err := s.ag.Argv(&agent.Launch{
-		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: ctx, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: id,
+		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: turnContext, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: id,
 	})
 	if err != nil {
 		return nil, err

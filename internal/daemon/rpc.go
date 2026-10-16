@@ -123,7 +123,7 @@ func (h *handler) StopSession(ctx context.Context, req *connect.Request[pb.StopS
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.kill(); err != nil {
+	if err := s.killContext(ctx); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.StopSessionResponse{}), nil
@@ -312,7 +312,7 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if _, err := h.d.resume(s.meta.ID); err != nil {
+	if _, err := h.d.resumeContext(ctx, s.meta.ID); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil

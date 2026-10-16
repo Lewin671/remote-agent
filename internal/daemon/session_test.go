@@ -30,13 +30,14 @@ const (
 // fakeTerm stands in for tmux and the PTY host. Writes of pasted text are
 // recorded and, like Codex, appended to history.jsonl.
 type fakeTerm struct {
-	mu      sync.Mutex
-	screen  string
-	alive   bool
-	writes  []string
-	held    bool
-	history string
-	ops     []string // hold, release and write, in order
+	mu        sync.Mutex
+	screen    string
+	alive     bool
+	hostAlive bool
+	writes    []string
+	held      bool
+	history   string
+	ops       []string // hold, release and write, in order
 	// failWrites records a write but reports an error, like a lost reply.
 	failWrites bool
 	// onWrite, if set, lets a test react to keys like Codex would; it runs
@@ -51,10 +52,16 @@ func (f *fakeTerm) Capture() (string, error) {
 }
 func (f *fakeTerm) Alive() bool { f.mu.Lock(); defer f.mu.Unlock(); return f.alive }
 func (f *fakeTerm) Kill() error { f.mu.Lock(); defer f.mu.Unlock(); f.alive = false; return nil }
+func (f *fakeTerm) HostAlive(context.Context) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.hostAlive, nil
+}
 func (f *fakeTerm) Control() (control, error) {
 	return &fakeControl{f}, nil
 }
-func (f *fakeTerm) setScreen(s string) { f.mu.Lock(); f.screen = s; f.mu.Unlock() }
+func (f *fakeTerm) setScreen(s string)      { f.mu.Lock(); f.screen = s; f.mu.Unlock() }
+func (f *fakeTerm) setHostAlive(alive bool) { f.mu.Lock(); f.hostAlive = alive; f.mu.Unlock() }
 func (f *fakeTerm) written() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

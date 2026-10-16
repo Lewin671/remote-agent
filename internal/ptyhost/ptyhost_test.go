@@ -1,10 +1,15 @@
 package ptyhost
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -47,7 +52,7 @@ func TestHoldBuffersLocalInput(t *testing.T) {
 
 	done := make(chan int, 1)
 	go func() {
-		code, err := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 12 > " + out}, stdinR, io.Discard)
+		code, err := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 12 > " + out}, stdinR, io.Discard, runOptions{})
 		if err != nil {
 			t.Error(err)
 		}
@@ -99,7 +104,7 @@ func TestDisconnectReleasesHold(t *testing.T) {
 	defer stdinW.Close()
 	done := make(chan int, 1)
 	go func() {
-		code, _ := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 3 > " + out}, stdinR, io.Discard)
+		code, _ := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 3 > " + out}, stdinR, io.Discard, runOptions{})
 		done <- code
 	}()
 	c := waitForSocket(t, sock)
@@ -127,7 +132,7 @@ func TestHoldIsExclusive(t *testing.T) {
 	sock := filepath.Join(dir, "c.sock")
 	stdinR, stdinW, _ := os.Pipe()
 	defer stdinW.Close()
-	go run(sock, []string{"/bin/sh", "-c", "sleep 5"}, stdinR, io.Discard)
+	go run(sock, []string{"/bin/sh", "-c", "sleep 5"}, stdinR, io.Discard, runOptions{})
 	a := waitForSocket(t, sock)
 	defer a.Close()
 	b := waitForSocket(t, sock)
@@ -178,6 +183,38 @@ func TestListenMakesControlDirectoryPrivate(t *testing.T) {
 	}
 }
 
+func TestExitedHostDoesNotRemoveReplacedSocket(t *testing.T) {
+	h := startRunHelper(t, "prompt-hup")
+	replacement, err := listen(h.socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer replacement.Close()
+	want, err := os.Stat(h.socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := h.cmd.Process.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.wait(3 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.Stat(h.socket)
+	if err != nil {
+		t.Fatalf("new listener's socket was removed when the old host exited: %v", err)
+	}
+	if !os.SameFile(want, got) {
+		t.Fatal("socket path no longer refers to the replacement listener")
+	}
+	c, err := Dial(h.socket)
+	if err != nil {
+		t.Fatalf("replacement socket no longer accepts connections: %v", err)
+	}
+	_ = c.Close()
+}
+
 // An expiry callback can already be running when renewal calls Timer.Stop.
 // Reproduce its eventual arrival directly: an old callback must not release
 // a renewed hold, or local keystrokes can enter a checked remote draft.
@@ -226,4 +263,295 @@ func TestExpiredCallbackCannotReleaseReacquiredHold(t *testing.T) {
 	if !h.status().Held {
 		t.Fatal("expired callback released reacquired hold")
 	}
+}
+
+type failingWriter struct{ marker string }
+
+func (w failingWriter) Write([]byte) (int, error) {
+	_ = os.WriteFile(w.marker, []byte("failed"), 0o600)
+	return 0, errors.New("stdout closed")
+}
+
+type runHelper struct {
+	cmd        *exec.Cmd
+	done       chan struct{}
+	waitErr    error
+	childPID   int
+	socket     string
+	result     string
+	marker     string
+	complete   string
+	term       string
+	child      string
+	grandchild string
+}
+
+func startRunHelper(t *testing.T, mode string) *runHelper {
+	t.Helper()
+	dir := shortTempDir(t)
+	h := &runHelper{
+		socket:     filepath.Join(dir, "control.sock"),
+		result:     filepath.Join(dir, "result"),
+		marker:     filepath.Join(dir, "marker"),
+		complete:   filepath.Join(dir, "complete"),
+		term:       filepath.Join(dir, "term"),
+		child:      filepath.Join(dir, "child.pid"),
+		grandchild: filepath.Join(dir, "grandchild.pid"),
+	}
+	h.cmd = exec.Command(os.Args[0], "-test.run=^TestPtyhostRunHelper$")
+	h.cmd.Env = append(os.Environ(),
+		"PTYHOST_TEST_MODE="+mode,
+		"PTYHOST_TEST_SOCKET="+h.socket,
+		"PTYHOST_TEST_RESULT="+h.result,
+		"PTYHOST_TEST_MARKER="+h.marker,
+		"PTYHOST_TEST_COMPLETE="+h.complete,
+		"PTYHOST_TEST_TERM="+h.term,
+		"PTYHOST_TEST_CHILD="+h.child,
+		"PTYHOST_TEST_GRANDCHILD="+h.grandchild,
+	)
+	h.cmd.Stdout, h.cmd.Stderr = io.Discard, io.Discard
+	if err := h.cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	h.done = make(chan struct{})
+	go func() {
+		h.waitErr = h.cmd.Wait()
+		close(h.done)
+	}()
+	t.Cleanup(func() { h.stop() })
+	c := waitForHelperSocket(t, h)
+	status, err := c.Status()
+	_ = c.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.childPID = status.PID
+	return h
+}
+
+func waitForHelperSocket(t *testing.T, h *runHelper) *Conn {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case <-h.done:
+			t.Fatalf("pty-host helper exited before socket appeared: %v", h.waitErr)
+		default:
+		}
+		if c, err := Dial(h.socket); err == nil {
+			return c
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("socket %s never came up", h.socket)
+	return nil
+}
+
+func (h *runHelper) stop() {
+	select {
+	case <-h.done:
+		return
+	default:
+	}
+	if h.childPID > 0 {
+		_ = syscall.Kill(-h.childPID, syscall.SIGKILL)
+	}
+	if h.cmd.Process != nil {
+		_ = h.cmd.Process.Kill()
+	}
+	select {
+	case <-h.done:
+	case <-time.After(3 * time.Second):
+	}
+	if h.childPID > 0 {
+		_ = syscall.Kill(-h.childPID, syscall.SIGKILL)
+	}
+}
+
+func (h *runHelper) wait(d time.Duration) error {
+	select {
+	case <-h.done:
+		return h.waitErr
+	case <-time.After(d):
+		return fmt.Errorf("pty-host helper did not exit within %s", d)
+	}
+}
+
+func (h *runHelper) exitCode(t *testing.T) int {
+	t.Helper()
+	b, err := os.ReadFile(h.result)
+	if err != nil {
+		t.Fatalf("read helper result: %v", err)
+	}
+	code, err := strconv.Atoi(string(b))
+	if err != nil {
+		t.Fatalf("helper result %q: %v", b, err)
+	}
+	return code
+}
+
+// TestPtyhostRunHelper runs run() in an isolated process so its signals and
+// PTY lifetime can be controlled without affecting the test process.
+func TestPtyhostRunHelper(t *testing.T) {
+	mode := os.Getenv("PTYHOST_TEST_MODE")
+	if mode == "" {
+		return
+	}
+	socket := os.Getenv("PTYHOST_TEST_SOCKET")
+	result := os.Getenv("PTYHOST_TEST_RESULT")
+	marker := os.Getenv("PTYHOST_TEST_MARKER")
+	complete := os.Getenv("PTYHOST_TEST_COMPLETE")
+	grandchild := os.Getenv("PTYHOST_TEST_GRANDCHILD")
+	child := os.Getenv("PTYHOST_TEST_CHILD")
+	defer func() {
+		if _, err := os.Stat(result); err == nil {
+			return
+		}
+		if b, err := os.ReadFile(child); err == nil {
+			if pid, err := strconv.Atoi(string(b)); err == nil {
+				_ = syscall.Kill(-pid, syscall.SIGKILL)
+			}
+		}
+	}()
+	var script string
+	var stdout io.Writer = io.Discard
+	switch mode {
+	case "failed-stdout":
+		stdout = failingWriter{marker: marker}
+		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete) + "; sleep 1"
+	case "ignore-signals":
+		grandchildScript := "trap '' HUP TERM; printf '%s' \"$$\" > " + shellQuote(grandchild) + "; while :; do sleep 1; done"
+		script = "trap '' HUP TERM; sh -c " + shellQuote(grandchildScript) + " & wait"
+	case "prompt-hup":
+		stdout = failingWriter{marker: marker}
+		script = `trap 'dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf hup > "$PTYHOST_TEST_COMPLETE"; exit 23' HUP; trap 'printf term > "$PTYHOST_TEST_TERM"; exit 99' TERM; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while :; do sleep 0.01; done`
+	default:
+		t.Fatalf("unknown helper mode %q", mode)
+	}
+	script = `printf '%s' "$$" > "$PTYHOST_TEST_CHILD"; ` + script
+	shutdown := runOptions{childSignalGrace: 150 * time.Millisecond, groupTermGrace: 150 * time.Millisecond}
+	if mode == "prompt-hup" {
+		shutdown.childSignalGrace = time.Second
+	}
+	code, err := run(socket, []string{"/bin/sh", "-c", script}, os.Stdin, stdout, shutdown)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if err := os.WriteFile(result, []byte(strconv.Itoa(code)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+func TestRunDrainsOutputAfterStdoutFails(t *testing.T) {
+	h := startRunHelper(t, "failed-stdout")
+	if err := waitForFile(h.marker, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.wait(8 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if code := h.exitCode(t); code != 0 {
+		t.Fatalf("child exit code %d, want 0", code)
+	}
+	if b, err := os.ReadFile(h.marker); err != nil || string(b) != "failed" {
+		t.Fatalf("failing stdout marker = %q, err = %v", b, err)
+	}
+	if b, err := os.ReadFile(h.complete); err != nil || string(b) != "complete" {
+		t.Fatalf("child completion marker = %q, err = %v", b, err)
+	}
+}
+
+func TestRunSignalEscalatesToWholeProcessGroup(t *testing.T) {
+	h := startRunHelper(t, "ignore-signals")
+	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(h.grandchild)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grandchildPID, err := strconv.Atoi(string(b))
+	if err != nil {
+		t.Fatalf("grandchild PID %q: %v", b, err)
+	}
+	started := time.Now()
+	if err := h.cmd.Process.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.wait(3 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		t.Fatalf("shutdown took %s, want under 2s", elapsed)
+	}
+	if code := h.exitCode(t); code != 128+int(syscall.SIGKILL) {
+		t.Fatalf("child exit code %d, want %d after SIGKILL", code, 128+int(syscall.SIGKILL))
+	}
+	if processRunning(h.childPID) {
+		t.Fatalf("child process %d is still running", h.childPID)
+	}
+	if err := waitForProcessExit(grandchildPID, 2*time.Second); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRunDoesNotEscalatePromptSIGHUPExit(t *testing.T) {
+	h := startRunHelper(t, "prompt-hup")
+	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	if err := h.cmd.Process.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.wait(3 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		t.Fatalf("shutdown took %s, want under 2s", elapsed)
+	}
+	if code := h.exitCode(t); code != 23 {
+		t.Fatalf("child exit code %d, want 23 from SIGHUP handler", code)
+	}
+	if b, err := os.ReadFile(h.marker); err != nil || string(b) != "failed" {
+		t.Fatalf("failing stdout marker = %q, err = %v", b, err)
+	}
+	if b, err := os.ReadFile(h.complete); err != nil || string(b) != "hup" {
+		t.Fatalf("signal handler marker = %q, err = %v", b, err)
+	}
+	if _, err := os.Stat(h.term); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("TERM handler ran, stat error = %v", err)
+	}
+}
+
+func waitForFile(path string, d time.Duration) error {
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		// Shell redirections create the file before writing to it.
+		if st, err := os.Stat(path); err == nil && st.Size() > 0 {
+			return nil
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return fmt.Errorf("file %s was not written within %s", path, d)
+}
+
+func processRunning(pid int) bool {
+	err := syscall.Kill(pid, 0)
+	return !errors.Is(err, syscall.ESRCH)
+}
+
+func waitForProcessExit(pid int, d time.Duration) error {
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		if !processRunning(pid) {
+			return nil
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return fmt.Errorf("process %d is still running", pid)
 }

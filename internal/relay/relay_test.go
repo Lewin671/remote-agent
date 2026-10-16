@@ -37,15 +37,16 @@ const marker = "SECRET-MARKER-7f3a"
 type fakeBackend struct {
 	dir string
 
-	mu        sync.Mutex
-	sessions  map[string]*eventlog.Log
-	titles    map[string]string
-	exited    map[string]bool
-	forked    map[string]uint64 // the seq of a fork's SessionForked event
-	sends     []*pb.SendRequest
-	schedules []*pb.ScheduleRequest
-	term      *fakeTerminal
-	resolved  []*pb.ResolveApprovalRequest
+	mu            sync.Mutex
+	sessions      map[string]*eventlog.Log
+	titles        map[string]string
+	exited        map[string]bool
+	forked        map[string]uint64 // the seq of a fork's SessionForked event
+	sends         []*pb.SendRequest
+	schedules     []*pb.ScheduleRequest
+	term          *fakeTerminal
+	resolved      []*pb.ResolveApprovalRequest
+	stopDeadlines chan time.Time
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
 	origins []*pb.Origin
@@ -56,7 +57,7 @@ type fakeBackend struct {
 }
 
 func newFakeBackend(t *testing.T) *fakeBackend {
-	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, exited: map[string]bool{}, forked: map[string]uint64{}, images: map[string]relay.ImageUpload{}}
+	return &fakeBackend{dir: t.TempDir(), sessions: map[string]*eventlog.Log{}, titles: map[string]string{}, exited: map[string]bool{}, forked: map[string]uint64{}, images: map[string]relay.ImageUpload{}, stopDeadlines: make(chan time.Time, 1)}
 }
 
 func (b *fakeBackend) add(t *testing.T, id string) *eventlog.Log {
@@ -225,6 +226,16 @@ func (f *fakeLocal) ResolveApproval(ctx context.Context, req *connect.Request[pb
 	}
 	f.b.resolved = append(f.b.resolved, req.Msg)
 	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
+}
+
+func (f *fakeLocal) StopSession(ctx context.Context, _ *connect.Request[pb.StopSessionRequest]) (*connect.Response[pb.StopSessionResponse], error) {
+	deadline, _ := ctx.Deadline()
+	select {
+	case f.b.stopDeadlines <- deadline:
+	default:
+	}
+	<-ctx.Done()
+	return nil, connect.NewError(connect.CodeDeadlineExceeded, errors.New("stop reached its command deadline"))
 }
 
 func (b *fakeBackend) sendCount() int {
@@ -620,6 +631,40 @@ func TestRenameReachesTheClients(t *testing.T) {
 		}
 		return len(ss) == 1 && ss[0].Info.GetTitle() == "登录超时"
 	})
+}
+
+func TestStopUsesTheSealedCommandDeadline(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+
+	deadline := time.UnixMilli(time.Now().Add(350 * time.Millisecond).UnixMilli())
+	cmd, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), deadline,
+		&pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: s.ID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	started := time.Now()
+	_, err = e.client.Forward(ctx, s.MachineID, cmd)
+	var commandErr *remoteclient.CommandError
+	if !errors.As(err, &commandErr) || commandErr.Code != connect.CodeDeadlineExceeded.String() {
+		t.Fatalf("stop result = %v, want command deadline exceeded", err)
+	}
+	select {
+	case got := <-e.backend.stopDeadlines:
+		if got.IsZero() || got.UnixMilli() != deadline.UnixMilli() {
+			t.Fatalf("local stop deadline = %v, want %v", got, deadline)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("local stop did not receive the command deadline")
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("stop took %s past its 350ms command deadline", elapsed)
+	}
 }
 
 func TestCommandsRejected(t *testing.T) {

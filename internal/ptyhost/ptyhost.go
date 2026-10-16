@@ -30,6 +30,19 @@ import (
 // never locks the user out of their own terminal.
 const MaxHold = 10 * time.Second
 
+const (
+	// Both CLIs persist history as they work; allow time for orderly hangup
+	// handling and a final flush before treating the process as stuck.
+	childSignalGrace = 5 * time.Second
+	// Give helpers time to exit after the process group receives SIGTERM.
+	groupTermGrace = 2 * time.Second
+)
+
+type runOptions struct {
+	childSignalGrace time.Duration
+	groupTermGrace   time.Duration
+}
+
 // Request is one control message, sent as a JSON line.
 type Request struct {
 	Op     string `json:"op"` // "hold", "release", "write", "status"
@@ -65,10 +78,13 @@ type Host struct {
 // Run starts argv in a PTY attached to the process's own terminal, serves
 // the control socket at socketPath, and returns the child's exit code.
 func Run(socketPath string, argv []string) (int, error) {
-	return run(socketPath, argv, os.Stdin, os.Stdout)
+	return run(socketPath, argv, os.Stdin, os.Stdout, runOptions{
+		childSignalGrace: childSignalGrace,
+		groupTermGrace:   groupTermGrace,
+	})
 }
 
-func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer) (int, error) {
+func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer, shutdown runOptions) (int, error) {
 	if len(argv) == 0 {
 		return 2, errors.New("pty-host: no command")
 	}
@@ -107,11 +123,7 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer) (in
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGTERM)
 	defer signal.Stop(sigs)
-	go func() {
-		for s := range sigs {
-			_ = cmd.Process.Signal(s)
-		}
-	}()
+	go drainOutput(stdout, ptmx)
 
 	ln, err := listen(socketPath)
 	if err != nil {
@@ -119,14 +131,12 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer) (in
 		_ = cmd.Wait()
 		return 1, err
 	}
-	defer os.Remove(socketPath)
 	defer ln.Close()
 	go h.serve(ln)
 
-	go func() { _, _ = io.Copy(stdout, ptmx) }()
 	go h.pumpStdin(stdin)
 
-	err = cmd.Wait()
+	err = waitForChild(cmd, sigs, shutdown)
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
@@ -140,6 +150,77 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer) (in
 	return 0, nil
 }
 
+// drainOutput copies the CLI's output to the pane. Once the pane is gone it
+// keeps reading and drops the output: a CLI whose terminal fills up blocks
+// in its writes and never gets to exit.
+func drainOutput(stdout io.Writer, ptmx io.Reader) {
+	if _, err := io.Copy(stdout, ptmx); err != nil {
+		_, _ = io.Copy(io.Discard, ptmx)
+	}
+}
+
+// waitForChild waits for the CLI to exit. A hangup or termination is passed
+// on; if the CLI is still running after the grace period, its process group
+// is terminated and then killed, so a stopped session leaves nothing behind.
+func waitForChild(cmd *exec.Cmd, sigs <-chan os.Signal, options runOptions) error {
+	wait := make(chan error, 1)
+	go func() { wait <- cmd.Wait() }()
+
+	select {
+	case err := <-wait:
+		return err
+	case sig := <-sigs:
+		_ = cmd.Process.Signal(sig)
+	}
+
+	if err, exited := waitForExit(wait, sigs, cmd, options.childSignalGrace); exited {
+		return err
+	}
+	if err, exited := waitForExit(wait, sigs, cmd, 0); exited {
+		return err
+	}
+	if err := signalProcessGroup(cmd, syscall.SIGTERM); err != nil {
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+	}
+	if err, exited := waitForExit(wait, sigs, cmd, options.groupTermGrace); exited {
+		return err
+	}
+	if err, exited := waitForExit(wait, sigs, cmd, 0); exited {
+		return err
+	}
+	if err := signalProcessGroup(cmd, syscall.SIGKILL); err != nil {
+		_ = cmd.Process.Kill()
+	}
+	return <-wait
+}
+
+func waitForExit(wait <-chan error, sigs <-chan os.Signal, cmd *exec.Cmd, d time.Duration) (error, bool) {
+	if d <= 0 {
+		select {
+		case err := <-wait:
+			return err, true
+		default:
+			return nil, false
+		}
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	for {
+		select {
+		case err := <-wait:
+			return err, true
+		case sig := <-sigs:
+			_ = cmd.Process.Signal(sig)
+		case <-timer.C:
+			return nil, false
+		}
+	}
+}
+
+func signalProcessGroup(cmd *exec.Cmd, sig syscall.Signal) error {
+	return syscall.Kill(-cmd.Process.Pid, sig)
+}
+
 func listen(path string) (net.Listener, error) {
 	if err := paths.EnsureDir(dirOf(path)); err != nil {
 		return nil, err
@@ -149,12 +230,49 @@ func listen(path string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.Chmod(path, 0o600); err != nil {
-		ln.Close()
-		os.Remove(path)
+	unixLn, ok := ln.(*net.UnixListener)
+	if !ok {
+		_ = ln.Close()
+		return nil, errors.New("pty-host: control listener is not a Unix socket")
+	}
+	unixLn.SetUnlinkOnClose(false)
+	bound, err := os.Lstat(path)
+	if err != nil {
+		_ = unixLn.Close()
 		return nil, err
 	}
-	return ln, nil
+	owned := &socketListener{UnixListener: unixLn, path: path, bound: bound}
+	if err := os.Chmod(path, 0o600); err != nil {
+		_ = owned.Close()
+		return nil, err
+	}
+	return owned, nil
+}
+
+// socketListener disables net.UnixListener's path-based unlink on close.
+// A newer pty-host may already have replaced path while this listener was
+// serving, so only unlink the socket inode this listener originally bound.
+type socketListener struct {
+	*net.UnixListener
+	path  string
+	bound os.FileInfo
+}
+
+func (l *socketListener) Close() error {
+	err := l.UnixListener.Close()
+	removeSocketIfSame(l.path, l.bound)
+	return err
+}
+
+func removeSocketIfSame(path string, bound os.FileInfo) {
+	if bound == nil {
+		return
+	}
+	current, err := os.Lstat(path)
+	if err != nil || !os.SameFile(bound, current) {
+		return
+	}
+	_ = os.Remove(path)
 }
 
 func dirOf(path string) string {

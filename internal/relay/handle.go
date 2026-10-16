@@ -65,7 +65,17 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		if cmd.ProtocolVersion != protocol.Version {
 			return &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
 		}
-		return c.execute(ctx, h.SessionId, cmd)
+		callCtx := ctx
+		cancel := func() {}
+		switch cmd.Kind.(type) {
+		case *pb.Command_StopSession, *pb.Command_ResumeSession:
+			// These synchronous calls can wait for a pty-host to exit.
+			// Other commands, such as OpenTerminal, start background work
+			// that must outlive the command RPC.
+			callCtx, cancel = context.WithDeadline(ctx, time.UnixMilli(h.DeadlineMs))
+		}
+		defer cancel()
+		return c.execute(callCtx, h.SessionId, cmd)
 	})
 	env, err := e2e.SealMessage(c.keys.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: h.SessionId,
