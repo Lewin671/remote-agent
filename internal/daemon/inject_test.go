@@ -248,3 +248,26 @@ func TestExitWhileWritingDoesNotSettleTwice(t *testing.T) {
 		t.Fatalf("states %v", st)
 	}
 }
+
+func TestSendWithImagesAfterTerminalResize(t *testing.T) {
+	h := newHarness(t, Config{})
+	imgs := imagesFor(t, h.dir, "a.png")
+	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})
+	inner := h.term.onWrite
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		inner(f, b)
+		// The terminal narrows after the path is pasted; the draft stays intact.
+		f.screen = strings.ReplaceAll(f.screen, "GPT-6-Sol medium · /w", "GPT-6-Sol medium · /…")
+	}
+	h.s.enqueue("look", "resize", imgs, originLocal)
+	runInjector(t, h)
+	eventually(t, "submitted despite resize", func() bool {
+		st := inputStates(h, "resize")
+		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_SUBMITTED
+	})
+	for _, b := range h.term.written() {
+		if b == "\x15" {
+			t.Fatal("cleared a recognized image")
+		}
+	}
+}

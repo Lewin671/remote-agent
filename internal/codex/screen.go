@@ -195,7 +195,7 @@ func startsDim(s string) bool {
 // is the status line as seen while the input box was empty, which is the
 // only safe way to tell where a draft of several lines ends: its lines are
 // indented like the status line, and may be blank. ok is false when no
-// input box shows, a popup covers it, or the status line is not found.
+// input box shows, a popup covers it, or the status line is not found (allowing resize elision and spacing).
 func ComposerText(styled, footer string) (string, bool) {
 	lines := strings.Split(strings.TrimRight(styled, "\n"), "\n")
 	for len(lines) > 0 && strings.TrimSpace(StripANSI(lines[len(lines)-1])) == "" {
@@ -224,14 +224,51 @@ func ComposerText(styled, footer string) (string, bool) {
 	if composer < 0 {
 		return "", false
 	}
+	// Search from the bottom: a local multiline draft can itself contain
+	// the old status line. Never truncate that draft at its first match.
+	end := -1
+	for i := len(lines) - 1; i > composer; i-- {
+		t := strings.TrimSpace(StripANSI(lines[i]))
+		if sameFooter(t, footer) {
+			end = i
+			break
+		}
+		// Below the status row Codex may draw its shortcut/warning row.
+		// Any other visible text means we cannot prove the box's boundary.
+		if t != "" && !footerHintRE.MatchString(t) {
+			return "", false
+		}
+	}
+	if end < 0 {
+		return "", false
+	}
 	_, rest := leadingStyle(lines[composer], false)
 	parts := []string{strings.TrimSpace(StripANSI(strings.TrimPrefix(rest, promptMark)))}
-	for _, l := range lines[composer+1:] {
-		t := strings.TrimSpace(StripANSI(l))
-		if t == footer {
-			return strings.TrimSpace(strings.Join(parts, "\n")), true
-		}
-		parts = append(parts, t)
+	for _, l := range lines[composer+1 : end] {
+		parts = append(parts, strings.TrimSpace(StripANSI(l)))
 	}
-	return "", false
+	return strings.TrimSpace(strings.Join(parts, "\n")), true
+}
+
+// These are UI chrome, not a second part of the composer. Keep this
+// narrow: unknown trailing text must never be silently dropped.
+var footerHintRE = regexp.MustCompile(`^(?:\? for shortcuts(?:\s+⚠ \d+ warnings? · f2 to view)?|⚠ \d+ warnings? · f2 to view)$`)
+
+// sameFooter recognizes only spacing and terminal-width elision changes.
+// In particular, an ellipsis cannot consume another status field or the
+// warning badge. A changed model/effort or warning count is not accepted.
+func sameFooter(a, b string) bool {
+	a = strings.Join(strings.Fields(a), " ")
+	b = strings.Join(strings.Fields(b), " ")
+	if a == b {
+		return true
+	}
+	matches := func(short, full string) bool {
+		if !strings.Contains(short, "…") {
+			return false
+		}
+		pattern := strings.ReplaceAll(regexp.QuoteMeta(short), "…", `[^·⚠]+`)
+		return regexp.MustCompile("^" + pattern + "$").MatchString(full)
+	}
+	return matches(a, b) || matches(b, a)
 }

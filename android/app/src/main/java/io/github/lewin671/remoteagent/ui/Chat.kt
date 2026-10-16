@@ -55,11 +55,12 @@ import io.github.lewin671.remoteagent.proto.TurnOutcome
 data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false)
 
 /** A new session's acknowledged prompt until history records it; never resend it here. */
-fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>): StartPrompt? {
+fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: io.github.lewin671.remoteagent.proto.Agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX): StartPrompt? {
     if (prompt.isNullOrEmpty() || events.any { it.hasUserMessage() }) return null
     val first = d.inputs.keys.firstOrNull { it !in localIds }
     val status = first?.let { d.inputs[it] }
-    val error = first?.let { d.failures[it] }.orEmpty()
+    val reason = first?.let { d.failures[it] }.orEmpty()
+    val error = if (reason.isEmpty()) "" else io.github.lewin671.remoteagent.core.failureText(reason, agent)
     return when (status) {
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED -> null
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED -> StartPrompt(prompt, "没能发送" + if (error.isEmpty()) "" else "：$error", true)

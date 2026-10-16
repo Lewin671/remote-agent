@@ -277,7 +277,7 @@ private fun ChatPane(
     val devices = state.devices
     val initialPrompt = Outbox.prompt(s.id)
     val initialId = if (initialPrompt != null) d.inputs.keys.firstOrNull { id -> outbox.none { it.requestId == id } } else null
-    val startPrompt = pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet())
+    val startPrompt = pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet(), s.agent())
     val projection = remember(remote, s.id, s.agent(), machine, cwd, home, outbox.size, devices, initialPrompt, initialId) { ChatProjection() }
     val items = remember(events, d, projection) {
         projection.update(events, d, machine, cwd, home, s.agent(), { Outbox.text(s.id, it) ?: initialPrompt?.takeIf { _ -> it == initialId } }) { o ->

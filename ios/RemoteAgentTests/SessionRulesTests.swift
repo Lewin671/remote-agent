@@ -147,7 +147,7 @@ extension Ref<LiveAnnouncer> {
         #expect(note(.failed) == OutgoingNote(caption: "没能送达：原因", tone: .error, failed: true, actions: [.retry, .remove]))
         #expect(note(.unknown) == OutgoingNote(caption: "没能确认送达：原因", tone: .error, failed: true, actions: [.retry, .remove]))
         #expect(note(.sent, .failed, failure: "input_changed") == OutgoingNote(
-            caption: "没能发送：终端输入框里有别的内容。电脑的输入框已恢复原样", tone: .error, failed: true, actions: [.putBack]))
+            caption: "没能发送：无法确认终端输入框的内容。电脑的输入框已恢复原样", tone: .error, failed: true, actions: [.putBack]))
         #expect(note(.sent, .needsTerminal, failure: "write_failed") == OutgoingNote(
             caption: "没能发送：写入终端失败。电脑的输入框里可能还留着一部分，不会自动重发", tone: .error, failed: true,
             actions: [.terminal, .putBack]))

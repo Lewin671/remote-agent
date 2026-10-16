@@ -441,7 +441,7 @@ public func optionLabel(_ label: String) -> (label: String, recommended: Bool) {
 public func failureText(reason: String, agent: PBAgent) -> String {
     switch reason {
     case "image_not_recognized": return "\(agentName(agent)) 没认出图片"
-    case "input_changed": return "终端输入框里有别的内容"
+    case "input_changed": return "无法确认终端输入框的内容"
     case "timeout": return "等待超时"
     case "restarted": return "电脑上的 remote-agent 重启了"
     case "write_failed": return "写入终端失败"

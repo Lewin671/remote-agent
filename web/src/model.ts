@@ -1071,7 +1071,7 @@ export function inputFailure(reason: string, agent: Agent): string {
     case "image_not_recognized":
       return `${agentName(agent)} 没认出图片`;
     case "input_changed":
-      return "终端输入框里有别的内容";
+      return "无法确认终端输入框的内容";
     case "timeout":
       return "等终端就绪超时";
     case "restarted":

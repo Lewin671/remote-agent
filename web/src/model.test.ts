@@ -855,7 +855,7 @@ describe("messages the computer accepted (v2)", () => {
     const rows = timeline(list, d).map((i) => (i.kind === "event" && i.event.kind.case === "inputState" ? `${i.event.kind.value.requestId}:${i.event.kind.value.status}` : i.kind));
     expect(rows).toEqual([`a:${InputStatus.FAILED}`, `b:${InputStatus.NEEDS_TERMINAL}`]);
     expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe("Claude Code 没认出图片");
-    expect(inputFailure("input_changed", Agent.CODEX)).toBe("终端输入框里有别的内容");
+    expect(inputFailure("input_changed", Agent.CODEX)).toBe("无法确认终端输入框的内容");
     expect(inputFailure("", Agent.CODEX)).toBe("没有写进终端");
   });
 

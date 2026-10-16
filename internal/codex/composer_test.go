@@ -44,3 +44,27 @@ func TestComposerTextMultiline(t *testing.T) {
 		t.Fatal("read without finding the status line")
 	}
 }
+
+func TestComposerTextResizedFooter(t *testing.T) {
+	const wide = "GPT-6.1-Sol medium · ~/Code/co-work-space                   ⚠ 1 warning · f2 to view"
+	const narrow = "GPT-6.1-Sol medium · ~/Cod…  ⚠ 1 warning · f2 to view"
+	screen := func(body, footer string) string { return "\x1b[1m›\x1b[0m " + body + "\n\n  " + footer + "\n" }
+	for _, pair := range [][2]string{{wide, narrow}, {narrow, wide}} {
+		got, ok := ComposerText(screen("[Image #1]", pair[1]), pair[0])
+		if !ok || got != "[Image #1]" {
+			t.Errorf("resized: %q %v", got, ok)
+		}
+		// A footer-like line in a local draft must not hide the rest of it.
+		draft := "[Image #1]\n" + pair[0] + "\nforeign text"
+		got, ok = ComposerText(screen(draft, pair[1]), pair[0])
+		if !ok || got != draft {
+			t.Errorf("local draft lost: %q %v", got, ok)
+		}
+	}
+	// Elision must not swallow unrelated status fields or arbitrary trailing text.
+	for _, footer := range []string{"GPT-6.1-Sol medium · ~/Cod…  ⚠ 2 warnings · f2 to view", narrow + "\n  foreign text"} {
+		if _, ok := ComposerText(screen("[Image #1]", footer), wide); ok {
+			t.Errorf("accepted unrelated footer: %q", footer)
+		}
+	}
+}
