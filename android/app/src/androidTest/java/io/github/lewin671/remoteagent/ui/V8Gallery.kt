@@ -446,8 +446,13 @@ class V8Gallery {
         "项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。",
     )
 
-    private fun update(name: String, state: io.github.lewin671.remoteagent.update.UpdateState, home: Boolean = false) {
-        io.github.lewin671.remoteagent.update.Updater.showForTest(state)
+    private fun update(
+        name: String,
+        state: io.github.lewin671.remoteagent.update.UpdateState,
+        check: io.github.lewin671.remoteagent.update.UpdateCheck = io.github.lewin671.remoteagent.update.UpdateCheck(),
+        home: Boolean = false,
+    ) {
+        io.github.lewin671.remoteagent.update.Updater.showForTest(state, check)
         try {
             if (home) shoot(name, homeState(false)) { HomeScreen() }
             else shoot(name, accountState()) { UpdateSheet {} }
@@ -465,6 +470,27 @@ class V8Gallery {
     @Test fun updateFailed() = update("40-update-failed", io.github.lewin671.remoteagent.update.UpdateState.DownloadFailed(newer.copy(protocol = 99), "连接超时"))
 
     @Test fun updateLatest() = update("40-update-latest", io.github.lewin671.remoteagent.update.UpdateState.Latest(0))
+
+    // Rechecking while a release is already known (client-v42, #update-recheck). The one where the look
+    // finds a newer release is updateAvailable with another version on it, so it has no screen of its own.
+
+    @Test fun updateRechecking() = update(
+        "41-update-rechecking",
+        io.github.lewin671.remoteagent.update.UpdateState.Available(newer),
+        check = io.github.lewin671.remoteagent.update.UpdateCheck(running = true),
+    )
+
+    @Test fun updateUpToDate() = update(
+        "41-update-uptodate",
+        io.github.lewin671.remoteagent.update.UpdateState.Ready(newer, File("remote-agent-v0.29.0.apk")),
+        check = io.github.lewin671.remoteagent.update.UpdateCheck(upToDate = true),
+    )
+
+    @Test fun updateRecheckFailed() = update(
+        "41-update-recheck-failed",
+        io.github.lewin671.remoteagent.update.UpdateState.Available(newer),
+        check = io.github.lewin671.remoteagent.update.UpdateCheck(error = "连不上发布地址"),
+    )
 
     @Test fun pair() {
         shoot("36-join", RemoteState()) { JoinScreen(io.github.lewin671.remoteagent.RaApp.instance) }

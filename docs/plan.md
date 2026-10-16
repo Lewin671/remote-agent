@@ -13,14 +13,14 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor` | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集 | 真实 CLI，手动（[记录](acceptance-notes.md#3-claude-code)） | 没有 Claude Code 版的 `scripts/acceptance.sh` |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收 |
-| 网页 | 当前界面稿 [client-v39](design/client-v41.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
+| 网页 | 当前界面稿 [client-v39](design/client-v42.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；v9 以后的改动只过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 当前界面稿的手机画面；原生终端；从 App 发图和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器上的真实 CLI，操作由调试信号触发而不是手指（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 没有签名身份，没装过真机；所有手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon、本地 `schedule` 命令、托管会话的 MCP 工具、加密的机器管理指令 | 自动测试，加两个 CLI 上的执行验收 | 客户端完全没做；日历周期（当地时间、时区、夏令时）没做 |
 
-代码按界面稿 [client-v41](design/client-v41.html) 实现。它相对 v34 加了 Android 的 App 更新（v35、v36）（[android-client · 更新](android-client.md#更新)）；v37 让终端进入时自动适配屏幕；v38 让项目页在键盘弹出时保持不动；v39 加了终端只读历史和向上滚动分段读取，v40 把它改成在终端里往上滑就进入带颜色的回看；v34 把三处项目列表统一成一种、移除改成确认后不可撤销，并加了连接检测。验证到哪见 [acceptance-notes](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。
+代码按界面稿 [client-v42](design/client-v42.html) 实现：v42 让 Android 在已有更新或已下载时仍能再次检查。它相对 v34 加了 Android 的 App 更新（v35、v36）（[android-client · 更新](android-client.md#更新)）；v37 让终端进入时自动适配屏幕；v38 让项目页在键盘弹出时保持不动；v39 加了终端只读历史和向上滚动分段读取，v40 把它改成在终端里往上滑就进入带颜色的回看；v34 把三处项目列表统一成一种、移除改成确认后不可撤销，并加了连接检测。验证到哪见 [acceptance-notes](acceptance-notes.md#8-v9-以后的界面改动)。之前各版留下的缺口见上表和「下一步」。
 
 ## 下一步
 

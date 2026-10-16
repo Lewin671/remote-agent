@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v39</title>
+<title>remote-agent 客户端设计稿 v42 · 2026-10-16</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -927,14 +927,14 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android 设计稿 · v41 · 2026-10-15 · 上一版 v40 在 git 历史里（<code>git log -- docs/design/client-v40.html</code>）</div>
+    <div class="sub">PWA / Android 设计稿 · v42 · 2026-10-16 · 上一版 v41 在 git 历史里（<code>git log -- docs/design/client-v41.html</code>）</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v40 的改动</h4><ul><li>电脑上的终端比手机宽时，字最小缩到 6；再放不下就保持 6，实时画面和回看都能左右滑动，底部出现横向滚动条。回看打开时停在当前的横向位置。</li><li>「字号」可选范围从 10–22 改为 6–22。其余画面保留。</li></ul>
+  <h4>相对 v41 的改动</h4><ul><li>Android 已发现新版本或已下载时，更新弹层仍保留「检查更新」。</li><li>补齐再次检查中、找到更新版本、没有更新版本和检查失败四种状态；下载中暂时禁用检查。</li></ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节">
   <a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
@@ -2083,7 +2083,7 @@ git status --short gen/</pre>
 </div>
 </div>
 <h2 id="update">App 更新</h2>
-<div class="note" style="margin:0 0 20px">只有 Android：网页部署后自己就是新的。App 回到前台时看一眼有没有新版本，最多几小时一次，看不到（没网、发布地址连不上）就什么都不说。有新版本时在两处说：主页标题下的一行提示，和设置 › 账户的「版本」一行；两处点开是同一个弹层。弹层只有一个主按钮，它就是下一步：下载并安装、正在下载、安装（已下载但系统的确认框被关掉时）、重新下载。下载完，弹层还开着就接着打开系统的安装确认，已经关掉或切到别的应用就留着，回来点「安装」；安装本身由系统完成，装之前先看系统是否允许 remote-agent 安装应用。「以后再说」之后主页不再提这一版，设置里那一行还在；再有更新的版本时主页重新提示。开发版（另一个包名）不检查更新，「版本」一行不能点。</div>
+<div class="note" style="margin:0 0 20px">只有 Android：网页部署后自己就是新的。App 回到前台时看一眼有没有新版本，最多几小时一次，看不到（没网、发布地址连不上）就什么都不说。有新版本时在两处说：主页标题下的一行提示，和设置 › 账户的「版本」一行；两处点开是同一个弹层。弹层保留一个主按钮，下面另放轻量的「检查更新」操作；已有更新或已下载也能主动刷新，不受自动检查间隔限制。检查时保留已有版本和说明，暂时禁用下载、安装和再次检查；找到更新版本后替换版本号、说明与下载大小，没有更新版本则提示「已是最新发布版本」，原来的安装包仍可安装；失败保留原信息并显示原因，可以重试。正在下载时暂时禁用检查。主按钮就是下一步：下载并安装、正在下载、安装（已下载但系统的确认框被关掉时）、重新下载。下载完，弹层还开着就接着打开系统的安装确认，已经关掉或切到别的应用就留着，回来点「安装」；安装本身由系统完成，装之前先看系统是否允许 remote-agent 安装应用。「以后再说」之后主页不再提这一版，设置里那一行还在；再有更新的版本时主页重新提示。开发版（另一个包名）不检查更新，「版本」一行不能点。</div>
 <div class="screens">
 <div>
 <div class="phone">
@@ -2118,14 +2118,14 @@ git status --short gen/</pre>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">有新版本：标题是新版本号，下面是当前版本和这一版的说明（发版时写的「变化与升级要求」）。主按钮写出大小</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="opacity:.4">正在下载 2.0 MiB / 5.7 MiB</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="opacity:.4">正在下载 2.0 MiB / 5.7 MiB</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button disabled class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--muted);opacity:.5;border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">下载中：按钮写进度，按禁用显示；关掉弹层下载继续，「版本」一行写「正在下载 0.29.0」</div>
 </div>
@@ -2134,42 +2134,42 @@ git status --short gen/</pre>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">已下载：系统的安装确认被关掉后回来，按钮是「安装」，不用再下载。「版本」一行写「0.29.0 已下载」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">先在系统设置里允许 remote-agent 安装应用，回来后继续。</div><div class="btns" style="margin-top:14px"><div class="btn pri">去允许</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">先在系统设置里允许 remote-agent 安装应用，回来后继续。</div><div class="btns" style="margin-top:14px"><div class="btn pri">去允许</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">还没允许 remote-agent 安装应用：点「安装」先打开系统的「安装未知应用」那一页，允许后回来自动接着装；没允许就停在这里，按钮是「去允许」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">安装没有完成，可以再装一次。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--orange-ink);margin-top:10px">安装没有完成，可以再装一次。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">系统的安装确认被取消：安装包还在，按钮仍是「安装」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">系统没能安装这个包。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">系统没能安装这个包。</div><div class="btns" style="margin-top:14px"><div class="btn pri">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">系统没装上（比如空间不够）：红字，可以再试；打不开系统的安装器时写「打不开系统的安装器。」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">没能下载：连接超时</div><div class="btns" style="margin-top:14px"><div class="btn pri">重新下载</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="small" style="color:var(--red);margin-top:10px">没能下载：连接超时</div><div class="btns" style="margin-top:14px"><div class="btn pri">重新下载</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">下载失败，或下载的文件和发布信息对不上：原因用红字写在按钮上面，按钮是「重新下载」</div>
 </div>
 <div>
 <div class="phone gray">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">会话列表改成分页读取。</div><div class="banner" style="margin-top:10px;color:var(--orange-ink)">这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div></div>
+<div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">会话列表改成分页读取。</div><div class="banner" style="margin-top:10px;color:var(--orange-ink)">这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。</div><div class="btns" style="margin-top:14px"><div class="btn pri">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="btns" style="margin-top:8px"><button class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit">检查更新</button></div></div>
 </div>
 <div class="cap">这一版换了协议版本：橙字提示装好后电脑上的 remote-agent 也要升级，不然连不上。仍然可以装</div>
 </div>
@@ -2190,6 +2190,7 @@ git status --short gen/</pre>
 <div class="cap">手动检查没成功：红字写原因。自动检查失败不出这一行</div>
 </div>
 </div>
+<h3 id="update-recheck" style="font-size:17px;margin:32px 0 16px">已有更新 · 再次检查</h3><div class="screens"><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="opacity:.4;">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px"></div><div class="btns" style="margin-top:8px"><button disabled class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;opacity:.4;">正在检查更新…</button></div></div></div><div class="cap">再次检查中：保留已发现的版本与说明，两个操作暂时禁用。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.30.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">下载并安装（6.1 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px"></div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">检查完成：直接展示最新的 0.30.0，可跨过原来提示的 0.29.0。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px">已是最新发布版本</div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">仍是同一发布版：已下载的包继续可安装；这里的“最新”指发布版，当前安装的仍是 0.28.0。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--red);margin-top:6px">没能检查更新：连不上发布地址</div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">检查失败：保留原来的更新，检查按钮可再次点击，也可以继续下载已知版本。</div></div></div>
 <h2 id="states">状态集</h2>
 <div class="stgrid">
 

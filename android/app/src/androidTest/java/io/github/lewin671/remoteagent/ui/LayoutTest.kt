@@ -17,6 +17,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.*
+import io.github.lewin671.remoteagent.update.UpdateCheck
+import io.github.lewin671.remoteagent.update.UpdateState
+import io.github.lewin671.remoteagent.update.Updater
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.After
@@ -26,6 +29,76 @@ import java.io.File
 
 /** Real Compose layout and hit regions on an isolated emulator app; no live account. */
 class LayoutTest {
+    /** The release the update sheet tests are about, as the manifest would describe it. */
+    private val newer = Release("0.36.2", 100, PROTOCOL_VERSION, "remote-agent-v0.36.2.apk", "0".repeat(64), 5_976_883, "更新说明")
+    private var updaterBefore: Pair<UpdateState, UpdateCheck>? = null
+
+    /** The update sheet as it looks in [state] with [check] as the last look; [close] puts the updater back. */
+    private fun showUpdate(state: UpdateState, check: UpdateCheck = UpdateCheck(), dark: Boolean = false, fontScale: Float = 1f) {
+        if (updaterBefore == null) updaterBefore = Updater.state.value to Updater.checking.value
+        Updater.showForTest(state, check)
+        ui.setContent {
+            val base = LocalDensity.current
+            RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) { UpdateSheet {} }
+            }
+        }
+    }
+
+    @Test fun aKnownUpdateKeepsItsStepAndOffersALightweightCheck() {
+        showUpdate(UpdateState.Available(newer))
+        ui.onNodeWithText("新版本 0.36.2").assertIsDisplayed()
+        ui.onNodeWithText("下载并安装（5.7 MiB）").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+        // Downloaded and verified: the step is the install, and the check is still there.
+        ui.runOnIdle { Updater.showForTest(UpdateState.Ready(newer, File("update.apk"))) }
+        ui.onNodeWithText("安装").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+    }
+
+    @Test fun downloadingLeavesNeitherTheStepNorTheCheckUsable() {
+        showUpdate(UpdateState.Downloading(newer, 2_097_152))
+        ui.onNodeWithText("正在下载 2.0 MiB / 5.7 MiB").assertIsDisplayed().assertIsNotEnabled()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsNotEnabled()
+    }
+
+    @Test fun aLookInFlightKeepsTheReleaseOnScreenAndLocksBothActions() {
+        showUpdate(UpdateState.Available(newer), UpdateCheck(running = true))
+        ui.onNodeWithText("新版本 0.36.2").assertIsDisplayed()
+        ui.onNodeWithText("更新说明").assertIsDisplayed()
+        ui.onNodeWithText("下载并安装（5.7 MiB）").assertIsDisplayed().assertIsNotEnabled()
+        ui.onNodeWithText("正在检查更新…").assertIsDisplayed().assertIsNotEnabled()
+    }
+
+    @Test fun aLookThatFindsTheSameReleaseSaysSoAndKeepsTheApkReady() {
+        showUpdate(UpdateState.Ready(newer, File("update.apk")), UpdateCheck(upToDate = true))
+        ui.onNodeWithText("已是最新发布版本").assertIsDisplayed()
+        ui.onNodeWithText("安装").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+    }
+
+    @Test fun aLookThatFailsShowsWhyAndCanBeTriedAgain() {
+        showUpdate(UpdateState.Available(newer), UpdateCheck(error = "连不上发布地址"))
+        ui.onNodeWithText("没能检查更新：连不上发布地址").assertIsDisplayed()
+        ui.onNodeWithText("下载并安装（5.7 MiB）").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+    }
+
+    @Test fun theLongestLineAndTheCheckStillFitAtTwoHundredPercentFontInDark() {
+        showUpdate(UpdateState.Ready(newer, File("update.apk")), UpdateCheck(error = "连不上发布地址"), dark = true, fontScale = 2f)
+        ui.onNodeWithText("没能检查更新：连不上发布地址").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("安装").performScrollTo().assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("检查更新").performScrollTo().assertIsDisplayed().assertIsEnabled()
+    }
+
+    @Test fun theVersionSheetKeepsItsOneCheckButtonWhileLooking() {
+        showUpdate(UpdateState.Unknown, UpdateCheck(running = true))
+        ui.onNodeWithText("正在检查更新…").assertIsDisplayed().assertIsNotEnabled()
+        ui.runOnIdle { Updater.showForTest(UpdateState.Latest(0)) }
+        ui.onNodeWithText("已是最新版本").assertIsDisplayed()
+        ui.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+    }
+
     @Test fun optionalPushNoticeFitsLargeFontAndKeepsRetryUsableInBothThemes() {
         var dark by mutableStateOf(false)
         var retries = 0
@@ -71,7 +144,11 @@ class LayoutTest {
         val img = ui.onNodeWithTag("frame").captureToImage().asAndroidBitmap()
         File(context.cacheDir, "$name.png").outputStream().use { img.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
-    @After fun close() { remote.close() }
+    @After fun close() {
+        remote.close()
+        updaterBefore?.let { Updater.showForTest(it.first, it.second) }
+        updaterBefore = null
+    }
     @Test fun largeFontModeSheetCanScrollToAllOptions() {
         ui.setContent {
             val base = LocalDensity.current

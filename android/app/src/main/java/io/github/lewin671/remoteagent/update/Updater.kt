@@ -27,19 +27,31 @@ const val UPDATES_DIR = "updates"
 
 /** What is known of a newer release, and how far getting it is. */
 sealed interface UpdateState {
-    /** Nothing looked up yet in this run. */
+    /** Nothing known about a newer release: not looked up yet in this run, or the last look said nothing. */
     data object Unknown : UpdateState
-    data object Checking : UpdateState
     /** This build is the latest, as read at [atMs]. */
     data class Latest(val atMs: Long) : UpdateState
-    /** The lookup failed; nothing is known. */
-    data class CheckFailed(val error: String) : UpdateState
     data class Available(val release: Release) : UpdateState
     data class Downloading(val release: Release, val done: Long) : UpdateState
     /** Downloaded and verified: only the system's confirmation is left. */
     data class Ready(val release: Release, val file: File) : UpdateState
     data class DownloadFailed(val release: Release, val error: String) : UpdateState
 }
+
+/**
+ * How the look for a newer release is going, or how the last one went. Kept apart from
+ * [UpdateState] because a release that was already found stays on screen, and stays
+ * usable, while a new look runs and afterwards too, whether that look failed or came
+ * back with the same release.
+ */
+data class UpdateCheck(
+    /** A look is in flight: nothing that depends on what is known should be acted on. */
+    val running: Boolean = false,
+    /** Why the last look the user asked for failed; one nobody asked for says nothing. */
+    val error: String? = null,
+    /** The last look found the release already known to be the latest published one. */
+    val upToDate: Boolean = false,
+)
 
 /** The newer release a state is about, if it is about one. */
 val UpdateState.release: Release?
@@ -52,11 +64,12 @@ val UpdateState.release: Release?
     }
 
 /**
- * The app updating itself (client-v35): it looks for a newer release when
- * it comes to the foreground, at most every few hours, and on request;
- * downloading starts only when the user asks, and installing is the
- * system's dialog. Android installs the file only if it carries this
- * app's signature, whatever was downloaded.
+ * The app updating itself (client-v35, rechecking as in client-v42): it looks
+ * for a newer release when it comes to the foreground, at most every few hours,
+ * and on request; a look never takes away a release already found unless a
+ * newer one takes its place. Downloading starts only when the user asks, and
+ * installing is the system's dialog. Android installs the file only if it
+ * carries this app's signature, whatever was downloaded.
  *
  * The installer is opened by the screen that is in front, never from
  * here: an activity started from the background is dropped by Android 10
@@ -68,15 +81,18 @@ object Updater {
 
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Unknown)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
+    private val _checking = MutableStateFlow(UpdateCheck())
+    val checking: StateFlow<UpdateCheck> = _checking.asStateFlow()
     private var checkedAt = 0L
 
     /** The user asked to install what is being downloaded: the screen in front opens the installer once it is here. */
     @Volatile var installWhenReady = false
     private var job: Job? = null
 
-    /** Shows a state as if it had been reached, for rendering it in tests. */
-    fun showForTest(state: UpdateState) {
+    /** Shows a state and a look as if they had been reached, for rendering them in tests. */
+    fun showForTest(state: UpdateState, check: UpdateCheck = UpdateCheck()) {
         _state.value = state
+        _checking.value = check
     }
 
     /** Only the released app updates itself: a development copy has another signature and its own version. */
@@ -84,27 +100,59 @@ object Updater {
 
     fun installedCode(app: RaApp): Long = PackageInfoCompat.getLongVersionCode(app.packageManager.getPackageInfo(app.packageName, 0))
 
-    /** Looks for a newer release. Without [manual] only when the last look is a while ago, and failures stay silent. */
+    /** Whether a look is due: the user asked for one, or the last took place a while ago. */
+    internal fun due(manual: Boolean, now: Long, lastAtMs: Long = checkedAt): Boolean =
+        manual || now - lastAtMs >= CHECK_EVERY_MS
+
+    /**
+     * Looks for a newer release. A look the user asked for happens whatever [due] says and
+     * reports why it failed; one nobody asked for keeps quiet. Either way a release already
+     * found stays on screen and installable, and a look already under way is not joined.
+     */
     fun check(app: RaApp, manual: Boolean = false) {
         if (!enabled(app) || job?.isActive == true) return
-        val now = System.currentTimeMillis()
-        if (!manual && now - checkedAt < CHECK_EVERY_MS) return
-        // A release already found stays as it is until a newer look says otherwise.
-        val before = _state.value
-        if (before.release == null) _state.value = UpdateState.Checking
+        if (!due(manual, System.currentTimeMillis())) return
+        // Set before the coroutine starts: until the answer is in, the sheet must not offer to download.
+        _checking.value = UpdateCheck(running = true)
         job = app.scope.launch {
-            try {
-                val latest = Updates(app.http).latest()
-                checkedAt = System.currentTimeMillis()
-                if (!isNewer(latest, installedCode(app))) {
-                    _state.value = UpdateState.Latest(checkedAt)
-                    // What an earlier update left behind.
-                    File(app.filesDir, UPDATES_DIR).deleteRecursively()
-                } else if (before.release != latest) _state.value = UpdateState.Available(latest)
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                if (before.release == null) _state.value = if (manual) UpdateState.CheckFailed(errorText(e).ifEmpty { "连不上发布地址" }) else UpdateState.Unknown
+            refresh(manual, installedCode(app), { Updates(app.http).latest() }) {
+                File(app.filesDir, UPDATES_DIR).deleteRecursively()
             }
+        }
+    }
+
+    /** One look. A release already on screen is left alone unless a newer one takes its place. */
+    internal suspend fun refresh(manual: Boolean, installedCode: Long, latest: suspend () -> Release, clearDownloads: () -> Unit) {
+        val before = _state.value
+        _checking.value = UpdateCheck(running = true)
+        try {
+            val found = latest()
+            checkedAt = System.currentTimeMillis()
+            when {
+                // This build is the latest: nothing downloaded for an older one is worth keeping.
+                !isNewer(found, installedCode) -> {
+                    _checking.value = UpdateCheck()
+                    _state.value = UpdateState.Latest(checkedAt)
+                    clearDownloads()
+                }
+                // The release already on screen is still the latest published one: its verified APK stays.
+                found == before.release -> _checking.value = UpdateCheck(upToDate = true)
+                else -> {
+                    _checking.value = UpdateCheck()
+                    // Another release takes its place: what was offered or downloaded is not what would be installed now.
+                    // The system installer may still be reading a previously handed-off APK.
+                    // Leave files until this app is installed and a check finds it current.
+                    _state.value = UpdateState.Available(found)
+                }
+            }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val error = errorText(e).ifEmpty { "连不上发布地址" }
+            // A failure says nothing about what is already known, and only a look the user asked for says why.
+            _checking.value = UpdateCheck(error = error.takeIf { manual })
+        } finally {
+            // A look the app was taken out of leaves nothing running behind it.
+            if (_checking.value.running) _checking.value = _checking.value.copy(running = false)
         }
     }
 
@@ -113,6 +161,8 @@ object Updater {
         val release = _state.value.release ?: return
         if (job?.isActive == true) return
         installWhenReady = true
+        // What a look failed at says nothing about getting this release.
+        _checking.value = _checking.value.copy(error = null)
         _state.value = UpdateState.Downloading(release, 0)
         job = app.scope.launch {
             try {
