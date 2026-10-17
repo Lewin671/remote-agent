@@ -12,15 +12,15 @@ function setUp(ok: boolean, kept?: string) {
   const active = {
     postMessage: (_: unknown, [port]: MessagePort[]) => port.postMessage({ ok }),
   };
-  Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ active }), addEventListener: () => undefined } });
+  Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { register: async () => ({ active }), ready: Promise.resolve({ active }), addEventListener: () => undefined } });
   const page = kept && new Response(`<script type="module" crossorigin src="${kept}"></script>`);
   vi.stubGlobal("caches", { open: async () => ({ match: async () => page }) });
 }
 
 beforeEach(() => vi.resetModules());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-async function check() {
+async function check(advance = false) {
   const update = await import("./update");
   let state = "";
   const { createElement } = await import("react");
@@ -32,7 +32,11 @@ async function check() {
   }
   const root = createRoot(document.createElement("div"));
   await act(async () => root.render(createElement(Probe)));
-  await act(() => update.checkUpdate(true));
+  await act(async () => {
+    const pending = update.checkUpdate(true);
+    if (advance) await vi.advanceTimersByTimeAsync(200_001);
+    await pending;
+  });
   root.unmount();
   return state;
 }
@@ -50,4 +54,32 @@ it("says this is the newest when the kept page runs this build", async () => {
 it("says the check failed when the newest could not be kept", async () => {
   setUp(false, "/assets/index-old.js");
   expect(await check()).toBe("failed");
+});
+
+
+it.each(["registration", "activation", "reply", "cache"])("times out the whole update check while waiting for %s and allows retry", async (stage) => {
+  setUp(true, "/assets/index-old.js");
+  vi.useFakeTimers();
+  const sw = navigator.serviceWorker;
+  if (stage === "registration") sw.register = () => new Promise(() => undefined);
+  if (stage === "activation") {
+    sw.register = async () => ({ active: null } as ServiceWorkerRegistration);
+    Object.defineProperty(sw, "ready", { configurable: true, value: new Promise(() => undefined) });
+  }
+  if (stage === "reply") sw.register = async () => ({ active: { postMessage: () => undefined } } as unknown as ServiceWorkerRegistration);
+  if (stage === "cache") vi.stubGlobal("caches", { open: () => new Promise(() => undefined) });
+  expect(await check(true)).toBe("failed");
+  expect(vi.getTimerCount()).toBe(0);
+  vi.useRealTimers();
+  setUp(true, "/assets/index-old.js");
+  expect(await check()).toBe("latest");
+});
+
+it("reports registration failure immediately and retries registration on the next check", async () => {
+  setUp(true, "/assets/index-old.js");
+  navigator.serviceWorker.register = vi.fn().mockRejectedValue(new TypeError("registration failed"));
+  expect(await check()).toBe("failed");
+  expect(navigator.serviceWorker.register).toHaveBeenCalledOnce();
+  setUp(true, "/assets/index-old.js");
+  expect(await check()).toBe("latest");
 });

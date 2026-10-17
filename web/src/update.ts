@@ -3,6 +3,7 @@
 // kept page runs another script than this one. Then reloading starts it.
 
 import { useSyncExternalStore } from "react";
+import { registerWorker } from "./push";
 
 export type UpdateState = "idle" | "checking" | "latest" | "ready" | "failed";
 
@@ -50,28 +51,58 @@ async function newer(): Promise<boolean> {
 const ANSWER = 200_000;
 
 /** Asks the service worker to fetch the newest build now. */
-async function refresh(): Promise<boolean> {
-  const worker = (await navigator.serviceWorker.ready).active;
-  if (!worker) return false;
+async function refresh(signal: AbortSignal): Promise<boolean> {
+  // A failed registration is an answer, unlike serviceWorker.ready which
+  // can wait forever. Register again so the next check can recover.
+  const registration = await registerWorker();
+  if (!registration || signal.aborted) return false;
+  const worker = registration.active ?? (await navigator.serviceWorker.ready).active;
+  if (!worker || signal.aborted) return false;
   return new Promise((resolve) => {
     const ch = new MessageChannel();
-    const timer = setTimeout(() => resolve(false), ANSWER);
-    ch.port1.onmessage = (e) => {
-      clearTimeout(timer);
-      resolve(e.data?.ok === true);
+    const finish = (ok: boolean) => {
+      signal.removeEventListener("abort", abort);
+      ch.port1.close();
+      ch.port2.close();
+      resolve(ok);
     };
-    worker.postMessage({ type: "refresh" }, [ch.port2]);
+    const abort = () => finish(false);
+    signal.addEventListener("abort", abort, { once: true });
+    ch.port1.onmessage = (e) => finish(e.data?.ok === true);
+    try {
+      worker.postMessage({ type: "refresh" }, [ch.port2]);
+    } catch {
+      finish(false);
+    }
   });
 }
 
-/** Checks for a newer build. Asked for, the outcome is shown either way;
- * otherwise only one found. */
+let checking = false;
+
+/** Checks for a newer build. The deadline covers registration, activation,
+ * the worker reply and reading the kept page. Late results cannot change
+ * the outcome of a timed out check or a subsequent retry. */
 export async function checkUpdate(asked = false): Promise<void> {
-  if (state === "ready" || state === "checking" || !("serviceWorker" in navigator)) return;
+  if (state === "ready" || checking || !("serviceWorker" in navigator)) return;
+  checking = true;
   if (asked) set("checking");
-  const ok = await refresh().catch(() => false);
-  if (await newer()) set("ready");
-  else if (asked) set(ok ? "latest" : "failed");
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      (async (): Promise<UpdateState> => {
+        const ok = await refresh(controller.signal);
+        return await newer() ? "ready" : ok ? "latest" : "failed";
+      })().catch(() => "failed" as const),
+      new Promise<UpdateState>((resolve) => { timer = setTimeout(() => resolve("failed"), ANSWER); }),
+    ]);
+    // A shell message may already have found an update during the check.
+    if ((state as UpdateState) !== "ready" && (asked || result === "ready")) set(result);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+    checking = false;
+  }
 }
 
 export function applyUpdate() {

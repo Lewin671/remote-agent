@@ -36,7 +36,7 @@ export function pushPrefs(): PushPrefs {
 }
 
 export function registerWorker() {
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  if ("serviceWorker" in navigator) return navigator.serviceWorker.register("/sw.js").catch(() => undefined);
 }
 
 function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
