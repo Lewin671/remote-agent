@@ -324,8 +324,8 @@ export class Remote {
   created = new Set<string>();
   // Sessions started here with 只打开终端: they open on the terminal.
   termFirst = new Set<string>();
-  // What the user has typed and not sent, by session. Once sent, the
-  // message is in the outbox.
+  // What the user has typed and not sent, by session ID or "new:" +
+  // project path, just like the image trays. Sent messages leave the draft.
   drafts = new Map<string, string>();
   approvalReasons = new Map<string, string>();
   // The account's devices, machines and clients (ListDevices); names of

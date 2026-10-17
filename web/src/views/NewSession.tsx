@@ -51,8 +51,6 @@ class Start {
   readonly spent = new WeakSet<Local | Picked | Latched>();
   /** How many sessions it has started. */
   count = 0;
-  /** The first message of the session it started last. */
-  prompt?: string;
 }
 const starts = new WeakMap<Remote, Map<string, Start>>();
 /** One start per project: an unknown start in one project must never be
@@ -183,6 +181,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
   const saved = remote.projectPrefs().settings.find((s) => s.path === key);
   const start = startOf(remote, key);
   const current = start.attempt;
+  const draftKey = "new:" + key;
+  const text = remote.drafts.get(draftKey) ?? current.payload?.req.prompt ?? "";
+  const setText = (value: string) => {
+    remote.drafts.set(draftKey, value);
+    remote.touch();
+  };
   // What a page chose is for one draft, of this project: once a session
   // has started with it, it is no longer held.
   const own = <T extends Local | Picked | Latched>(x: T | undefined) => (x?.key === key && !start.spent.has(x) ? x : undefined);
@@ -355,7 +359,12 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
-      if (!terminal) tray.clear();
+      if (!terminal) {
+        tray.clear();
+        // A different message typed while this request was pending belongs
+        // to the next session, even if its page has since been left.
+        if (remote.drafts.get(draftKey)?.trim() === payload.req.prompt) remote.drafts.delete(draftKey);
+      }
       if (terminal) remote.termFirst.add(sid);
       remote.draftMachines.delete(key);
       // The first session establishes the project's settings, and each
@@ -372,7 +381,6 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
       }
       // The draft went with it, on every page that shows this project.
       for (const x of Object.values(start.page ?? {})) if (x) start.spent.add(x);
-      start.prompt = payload.req.prompt;
       start.count++;
       open("s/" + sid);
       return true;
@@ -452,10 +460,9 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     create,
     busy,
     error: error || (current.frozen && !busy ? "上次的启动结果还没有确认" : ""),
-    pendingPrompt: current.payload?.req.prompt,
+    text,
+    setText,
     key,
-    started: start.count,
-    startedPrompt: start.prompt,
     configError,
     blocked,
   };
@@ -481,7 +488,7 @@ export function NewBox({
   lead?: ReactNode;
   onDraft?: () => void;
 }) {
-  const [text, setText] = useState(() => ns.pendingPrompt ?? "");
+  const { text, setText } = ns;
   const [config, setConfig] = useState<"" | "main" | Pick>("");
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, 132);
@@ -498,17 +505,8 @@ export function NewBox({
     if (cannot || (ns.expired && !ns.changes(prompt))) return;
     if (ns.tray.items.length ? !ns.tray.ready() : !prompt.trim()) return;
     // Retrying an unknown start sends it as it was.
-    const ok = await ns.create(prompt.trim());
-    if (ok) setText("");
+    await ns.create(prompt.trim());
   };
-  // A session started by a request sent from another page (this one was
-  // opened while it was on its way) took the message shown here with it.
-  const seen = useRef({ key: ns.key, started: ns.started });
-  useEffect(() => {
-    const was = seen.current;
-    seen.current = { key: ns.key, started: ns.started };
-    if (was.key === ns.key && was.started !== ns.started && text.trim() === ns.startedPrompt) setText("");
-  });
   const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const placeholder = {
     box: "描述任务…",

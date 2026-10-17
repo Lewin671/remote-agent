@@ -19,7 +19,7 @@ import { Dock, PlanPage, QuestionPage } from "./Dock";
 import { Home, Sidebar, todoList, WideHome } from "./Home";
 import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
-import { NewFlow, ProjectPicker, useNewSession } from "./NewSession";
+import { NewBox, NewFlow, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { addProject, ManagePage } from "./Projects";
 import { SessionPage } from "./Session";
@@ -2738,4 +2738,52 @@ it("shows the pending start and its original message when returning to the proje
   await click(button("重试"));
   expect(slots).toHaveLength(2);
   expect(slots[1]).toBe(slots[0]);
+});
+
+it("keeps unsent new-session text by project across navigation and layout changes", async () => {
+  const r = demo();
+  const a = "/Users/me/Code/foo";
+  const b = "/Users/me/Code/shop";
+  const input = () => host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!;
+  const page = (p: string) => <WideHome remote={r} go={() => undefined} project={p} />;
+  mount(<ProjectPage remote={r} pkey={a} go={() => undefined} onBack={() => undefined} />);
+  await reviewType(input(), "  尚未发送的需求 A  ");
+  act(() => root!.render(<p>设置</p>));
+  act(() => root!.render(page(a)));
+  expect(input().value).toBe("  尚未发送的需求 A  ");
+  // WideHome reuses NewBox when its project changes.
+  act(() => root!.render(page(b)));
+  expect(input().value).toBe("");
+  await reviewType(input(), "需求 B");
+  act(() => root!.render(page(a)));
+  expect(input().value).toBe("  尚未发送的需求 A  ");
+  act(() => root!.render(<ProjectPage remote={r} pkey={b} go={() => undefined} onBack={() => undefined} />));
+  expect(input().value).toBe("需求 B");
+});
+
+it("consumes only the new-session text sent by a successful start while its page is gone", async () => {
+  const r = demo();
+  const path = "/Users/me/Code/foo";
+  let ns!: ReturnType<typeof useNewSession>;
+  function Box() { useRemote(r); ns = useNewSession(r, path, () => undefined); return <NewBox ns={ns} name="foo" />; }
+  const input = () => host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!;
+  let finish!: (result: CommandResult) => void;
+  const original = r.machineCommand.bind(r);
+  r.machineCommand = async (machine, cmd) => cmd?.case === "createSession"
+    ? new Promise<CommandResult>(resolve => { finish = resolve; }) : original(machine, cmd);
+  mount(<Box />);
+  await reviewType(input(), "  first task  ");
+  let start!: Promise<boolean>;
+  act(() => { start = ns.create("first task"); });
+  // A later draft must survive the first request's success, even unmounted.
+  await reviewType(input(), "next task");
+  act(() => root!.render(null));
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-1" } } } })); await start; });
+  act(() => root!.render(<Box />));
+  expect(input().value).toBe("next task");
+  act(() => { start = ns.create("next task"); });
+  act(() => root!.render(null));
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-2" } } } })); await start; });
+  act(() => root!.render(<Box />));
+  expect(input().value).toBe("");
 });
