@@ -1,6 +1,7 @@
 package tmux
 
 import (
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -72,7 +73,8 @@ func TestSessionCommands(t *testing.T) {
 		t.Fatalf("ra-x not listed with its option: %+v", infos)
 	}
 	var screen string
-	for i := 0; i < 50; i++ {
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
 		screen, _ = c.Capture("ra-x", false)
 		if strings.Contains(screen, "hello world") {
 			break
@@ -91,5 +93,8 @@ func TestSessionCommands(t *testing.T) {
 }
 
 func randSuffix() string {
-	return strconv.FormatInt(time.Now().UnixNano()%1e9, 36)
+	// Tests of several packages (and checkouts) run at the same time on one
+	// machine; the PID keeps their private tmux servers apart even when two
+	// processes start in the same nanosecond.
+	return strconv.Itoa(os.Getpid()) + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 }

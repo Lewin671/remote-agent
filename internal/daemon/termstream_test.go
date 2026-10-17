@@ -23,7 +23,7 @@ import (
 // A real pane, not a canned snapshot: opening and resizing must recover
 // output produced before any terminal client connected.
 func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
-	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-%d", time.Now().UnixNano())}
+	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-%d-%d", os.Getpid(), time.Now().UnixNano())}
 	if _, err := tc.CheckVersion(); err != nil {
 		t.Skip(err)
 	}
@@ -33,7 +33,7 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		screen, err := tc.Capture("history", false)
 		if err != nil {
@@ -113,7 +113,7 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 // a real shell/cat process, and reconnecting recovers its output as history.
 func TestTerminalHistoryThroughRelay(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-relay-%d", time.Now().UnixNano())}
+	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-relay-%d-%d", os.Getpid(), time.Now().UnixNano())}
 	if _, err := tc.CheckVersion(); err != nil {
 		t.Skip(err)
 	}

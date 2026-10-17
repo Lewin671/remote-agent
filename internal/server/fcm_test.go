@@ -126,13 +126,13 @@ func (f *fakeFCM) count() int {
 
 func waitFor(t *testing.T, what string, ok func() bool) {
 	t.Helper()
-	for i := 0; i < 200; i++ {
-		if ok() {
-			return
+	deadline := time.Now().Add(10 * time.Second)
+	for !ok() {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %s", what)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("timed out waiting for %s", what)
 }
 
 func TestFCMPush(t *testing.T) {

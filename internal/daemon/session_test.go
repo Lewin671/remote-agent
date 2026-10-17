@@ -138,9 +138,26 @@ func newHarness(t *testing.T, cfg Config) *harness {
 	h.open(meta{ID: "0123456789abcdef", Cwd: dir, Tmux: "ra-01234567", CreatedAt: time.Now()})
 	// A started session's loops are done before the test's directories
 	// are removed: they may still be saving when the test has seen what
-	// it waited for.
+	// it waited for. The harness's own session is not always in the
+	// daemon's map, and a test can add more (a fork starts its own loops),
+	// so both are stopped here.
 	t.Cleanup(func() {
-		if s := h.s; s.stop != nil {
+		h.d.mu.Lock()
+		sessions := make([]*session, 0, len(h.d.sessions)+1)
+		for _, s := range h.d.sessions {
+			sessions = append(sessions, s)
+		}
+		h.d.mu.Unlock()
+		sessions = append(sessions, h.s)
+		stopped := map[*session]bool{}
+		for _, s := range sessions {
+			if s == nil || stopped[s] {
+				continue
+			}
+			stopped[s] = true
+			if s.stop == nil {
+				continue
+			}
 			s.stop()
 			<-s.done
 		}

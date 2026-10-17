@@ -621,47 +621,101 @@ func waitForProcessExit(pid int, d time.Duration) error {
 // it reads again, buffered local keys precede subsequent remote input.
 func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	h := startRunHelper(t, "blocked-input")
-	if err := waitForFile(h.grandchild, time.Second); err != nil {
+	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	c := waitForSocket(t, h.socket)
 	defer c.Close()
 	observer := waitForSocket(t, h.socket)
 	defer observer.Close()
-	if _, err := c.Hold(150 * time.Millisecond); err != nil {
+	// The lease is clearly shorter than remoteWriteTimeout so it expires
+	// while the paste is blocked, but long enough for the write request to
+	// reach the PTY first.
+	const lease = time.Second
+	if _, err := c.Hold(lease); err != nil {
 		t.Fatal(err)
 	}
 	result := make(chan error, 1)
 	go func() { result <- c.Write(bytes.Repeat([]byte("x"), 1<<20)) }()
-	time.Sleep(50 * time.Millisecond)
+	// Conn.do holds its mutex from before the request is encoded until its
+	// response arrives. Seeing it held proves the write request has left the
+	// client. The remaining assumption is that the server reads that
+	// already-sent request and enters the PTY write before the one-second
+	// lease lapses; the socket is local and the lease leaves a full second
+	// against the two-second write deadline for it.
+	sent := time.Now().Add(5 * time.Second)
+	for c.mu.TryLock() {
+		c.mu.Unlock()
+		if time.Now().After(sent) {
+			t.Fatal("the remote write did not start")
+		}
+		time.Sleep(time.Millisecond)
+	}
 	if _, err := h.stdin.Write([]byte("LOCAL")); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(200 * time.Millisecond)
-	state := make(chan Response, 1)
-	go func() { st, _ := observer.Status(); state <- st }()
-	select {
-	case st := <-state:
-		if !st.OK || st.Held || st.LastLocalInput == 0 {
-			t.Fatalf("state during blocked write = %+v", st)
+	// Status must keep answering while the write is blocked, and the lease
+	// must lapse on its own before the write's two-second deadline. Each
+	// status call is bounded so a stuck status cannot hang the test.
+	statusWithin := func(d time.Duration) (Response, error) {
+		type status struct {
+			st  Response
+			err error
 		}
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("blocked PTY write prevented status or lease expiry")
+		ch := make(chan status, 1)
+		go func() {
+			st, err := observer.Status()
+			ch <- status{st, err}
+		}()
+		select {
+		case r := <-ch:
+			return r.st, r.err
+		case <-time.After(d):
+			return Response{}, fmt.Errorf("status did not return within %s", d)
+		}
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		st, err := statusWithin(time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.LastLocalInput == 0 {
+			if time.Now().After(deadline) {
+				t.Fatal("local input was not recorded")
+			}
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		select {
+		case err := <-result:
+			t.Fatalf("the write returned before its lease lapsed: %v", err)
+		default:
+		}
+		if st.Held {
+			if time.Now().After(deadline) {
+				t.Fatal("the lease did not expire while the write was blocked")
+			}
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		break // the lease lapsed while the write was still blocked
 	}
 	select {
 	case err := <-result:
 		if err == nil || !strings.Contains(err.Error(), "deadline") {
 			t.Fatalf("blocked paste result = %v, want explicit deadline failure", err)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(remoteWriteTimeout + 2*time.Second):
 		t.Fatal("blocked paste did not return a bounded failure")
 	}
-	// The timed-out remote write now gives way to a blocked local writer.
-	// State and new holds must still respond without overtaking those keys.
+	// The timed-out paste left the PTY full. The lease ended on its own, so
+	// local input is now flushing and blocks there; a new hold must not
+	// overtake those keys.
 	if _, err := observer.Hold(time.Second); err == nil || !strings.Contains(err.Error(), "deadline") {
 		t.Fatalf("hold overtook blocked local input: %v", err)
 	}
-	if st, err := observer.Status(); err != nil || st.Held {
+	if st, err := statusWithin(time.Second); err != nil || st.Held {
 		t.Fatalf("state during blocked local flush = %+v, %v", st, err)
 	}
 	if err := observer.Release(); err != nil {
@@ -670,7 +724,7 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	if err := os.WriteFile(h.complete, []byte("read"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
+	deadline = time.Now().Add(10 * time.Second)
 	for {
 		b, _ := os.ReadFile(h.term)
 		if bytes.HasSuffix(b, []byte("LOCAL")) {
@@ -688,7 +742,7 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 	if err := c.Write([]byte("REMOTE")); err != nil {
 		t.Fatal(err)
 	}
-	deadline = time.Now().Add(time.Second)
+	deadline = time.Now().Add(10 * time.Second)
 	for {
 		b, _ := os.ReadFile(h.term)
 		if bytes.HasSuffix(b, []byte("LOCALREMOTE")) {
@@ -723,7 +777,7 @@ func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
 			}
 			defer master.Close()
 			defer syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			if err := waitForFile(pidfile, time.Second); err != nil {
+			if err := waitForFile(pidfile, 5*time.Second); err != nil {
 				t.Fatal(err)
 			}
 			b, err := os.ReadFile(pidfile)

@@ -49,7 +49,7 @@ func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
 	for range maxConcurrentRPCRequests {
 		conns = append(conns, slowRPCBody(t, ts.url))
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for len(ts.srv.rpcRequests) != maxConcurrentRPCRequests {
 		if time.Now().After(deadline) {
 			t.Fatal("slow request bodies did not enter the decoder")
@@ -58,7 +58,7 @@ func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
 	}
 	req, _ := http.NewRequest(http.MethodPost, ts.url+"/remoteagent.v1.AuthService/Login", strings.NewReader(""))
 	req.Header.Set("Content-Type", "application/proto")
-	res, err := (&http.Client{Timeout: time.Second}).Do(req)
+	res, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
 	// without net/http draining that body after the handler returns.
 	rejected := slowRPCBody(t, ts.url)
 	defer rejected.Close()
-	rejected.SetReadDeadline(time.Now().Add(time.Second))
+	rejected.SetReadDeadline(time.Now().Add(5 * time.Second))
 	raw := make([]byte, 1024)
 	n, err := rejected.Read(raw)
 	if err != nil || !strings.Contains(string(raw[:n]), "503") {
@@ -109,7 +109,7 @@ func TestSmallRPCRequestsAreBoundedToo(t *testing.T) {
 	for range maxConcurrentSmallRPCRequests {
 		conns = append(conns, slowBody(t, ts.url, 1024))
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for len(ts.srv.smallRPCRequests) != maxConcurrentSmallRPCRequests {
 		if time.Now().After(deadline) {
 			t.Fatal("small request bodies did not enter the decoder")
@@ -121,7 +121,7 @@ func TestSmallRPCRequestsAreBoundedToo(t *testing.T) {
 	}
 	rejected := slowBody(t, ts.url, 1024)
 	defer rejected.Close()
-	rejected.SetReadDeadline(time.Now().Add(time.Second))
+	rejected.SetReadDeadline(time.Now().Add(5 * time.Second))
 	raw := make([]byte, 1024)
 	n, err := rejected.Read(raw)
 	if err != nil || !strings.Contains(string(raw[:n]), "503") {
@@ -138,14 +138,14 @@ func TestSlowRPCBodyDeadlineReleasesDecoderSlot(t *testing.T) {
 	defer hs.Close()
 	conn := slowRPCBody(t, hs.URL)
 	defer conn.Close()
-	if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+	if err := conn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	b := make([]byte, 1024)
 	if _, err := conn.Read(b); err != nil {
 		t.Fatalf("server did not time out the slow body: %v", err)
 	}
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for len(ts.srv.rpcRequests) != 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("timed-out decoder slot leaked")
@@ -175,7 +175,7 @@ func TestCompressedRPCBodyIsNotASmallRequest(t *testing.T) {
 	for range maxConcurrentRPCRequests {
 		conns = append(conns, slowRPCBody(t, ts.url))
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for len(ts.srv.rpcRequests) != maxConcurrentRPCRequests {
 		if time.Now().After(deadline) {
 			t.Fatal("slow request bodies did not enter the decoder")

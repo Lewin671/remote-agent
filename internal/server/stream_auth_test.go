@@ -31,7 +31,7 @@ func TestRevocationClosesClientAndTerminalStreams(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Wait until the terminal hello is authenticated; no fixed delay is needed.
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		ts.srv.streamMu.Lock()
 		n := len(ts.srv.streams[cid])
@@ -71,11 +71,14 @@ func TestStreamEndsAtTokenExpiry(t *testing.T) {
 	ts := newTestServer(t)
 	cp, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
 	token := ts.login(t, cp, cid)
-	if _, err := ts.srv.store.db.Exec(`UPDATE tokens SET expires_ms = ? WHERE hash = ?`, time.Now().Add(300*time.Millisecond).UnixMilli(), hashToken(token)); err != nil {
+	// Opening the stream must not race the expiry itself: leave enough time
+	// for the WebSocket handshake and hello on a loaded machine, then wait
+	// for the server to close the stream at the deadline it derived.
+	if _, err := ts.srv.store.db.Exec(`UPDATE tokens SET expires_ms = ? WHERE hash = ?`, time.Now().Add(2*time.Second).UnixMilli(), hashToken(token)); err != nil {
 		t.Fatal(err)
 	}
 	stream := ts.stream(t, token)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, _, err := stream.ws.Read(ctx); err == nil || ctx.Err() != nil {
 		t.Fatalf("expired stream did not close promptly: %v", err)

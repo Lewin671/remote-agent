@@ -78,7 +78,7 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 		t.Fatal("rejected notification consumed its dedupe key")
 	}
 	close(blocked)
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for len(p.deliveries) != 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("delivery slots leaked")

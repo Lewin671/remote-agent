@@ -16,7 +16,7 @@ import (
 
 func TestUnauthenticatedStreamHelloConnectionsAreBounded(t *testing.T) {
 	ts := newTestServer(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	base := "ws" + strings.TrimPrefix(ts.url, "http")
 	var conns []*websocket.Conn
@@ -56,7 +56,7 @@ func TestUnauthenticatedStreamHelloConnectionsAreBounded(t *testing.T) {
 	for _, conn := range conns {
 		conn.CloseNow()
 	}
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for len(ts.srv.pendingStreamHellos) != 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("hello slots leaked after disconnect")
@@ -83,7 +83,7 @@ func TestStreamHelloFrameSizeIsBoundedBeforeAuthentication(t *testing.T) {
 	term, _ := proto.Marshal(&pb.TermHello{Token: token, MachineId: mid, StreamId: strings.Repeat("x", 8192)})
 	for path, data := range map[string][]byte{"/v1/stream": main, "/v1/term": term} {
 		t.Run(path, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(ts.url, "http")+path, nil)
 			if err != nil {

@@ -33,10 +33,26 @@ func TestRetryingCommitFailureUsesOnlyRateLimitedStorageLog(t *testing.T) {
 			old := slog.Default()
 			slog.SetDefault(slog.New(sink))
 			defer slog.SetDefault(old)
-			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-			defer cancel()
+			ctx, cancel := context.WithCancel(context.Background())
 			done := make(chan struct{})
 			go func() { h.s.injectLoop(ctx); close(done) }()
+			defer func() { cancel(); <-done }()
+			// Wait for the first failed attempt instead of running for a
+			// fixed slice of wall time: a loaded machine may not schedule
+			// the loop before a short fixed deadline ends.
+			eventually(t, "the storage fault to be logged", func() bool {
+				sink.mu.Lock()
+				defer sink.mu.Unlock()
+				for _, msg := range sink.messages {
+					if msg == "session storage failure" {
+						return true
+					}
+				}
+				return false
+			})
+			// Let several more 1 ms retries fail: none may log again.
+			time.Sleep(50 * time.Millisecond)
+			cancel()
 			<-done
 			sink.mu.Lock()
 			defer sink.mu.Unlock()
