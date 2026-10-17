@@ -723,6 +723,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
   // a model.
   let expected: { model: string; effort: string } | undefined;
   const queuedAt = new Map<string, bigint>();
+  const unfinishedById = new Map<string, RunningTool>();
   // A plan was proposed since entering plan mode: leaving it is the plan's
   // answer, however given, not a mode switch made in the terminal.
   let planned = false;
@@ -756,7 +757,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
       case "turnEnded":
         d.running = false;
         d.questions.clear();
-        settle(d, k.value.outcome === TurnOutcome.ABORTED);
+        settle(d, k.value.outcome === TurnOutcome.ABORTED, unfinishedById);
         break;
       case "inputState": {
         const late = d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
@@ -824,6 +825,13 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
         if (i >= 0) {
           d.toolEnds.set(d.tools[i].seq, e.seq);
           d.tools.splice(i, 1);
+        } else if (id) {
+          const t = unfinishedById.get(id);
+          if (t && d.toolEnds.get(t.seq) === "unsettled") {
+            d.toolEnds.set(t.seq, e.seq);
+            d.abortedTools.delete(t.seq);
+            d.unsettled = d.unsettled.filter((u) => u.seq !== t.seq);
+          }
         }
         if (isBackground(k.value)) d.background.push(k.value);
         break;
@@ -895,9 +903,10 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
 
 /** Ends the turn for the tools still running: no result came for them,
  * so their state is unknown from here (architecture §13, 工具执行反馈). */
-function settle(d: Derived, aborted: boolean) {
+function settle(d: Derived, aborted: boolean, unfinishedById?: Map<string, RunningTool>) {
   for (const t of d.tools) {
     d.toolEnds.set(t.seq, "unsettled");
+    if (t.callId) unfinishedById?.set(t.callId, t);
     if (aborted) d.abortedTools.add(t.seq);
   }
   d.unsettled = d.tools;
