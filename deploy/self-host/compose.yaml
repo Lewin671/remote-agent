@@ -12,14 +12,26 @@ services:
     restart: unless-stopped
     environment:
       RA_SETUP_TOKEN: ${RA_SETUP_TOKEN:?set RA_SETUP_TOKEN in .env}
+      RA_SIGNUP: ${RA_SIGNUP:-token}
+      RA_MAX_ACCOUNTS: ${RA_MAX_ACCOUNTS:-0}
+      # Caddy below is the only proxy in front of the relay; its address is
+      # on the relay network, so what it says of the client is believed.
+      RA_TRUSTED_PROXIES: ${RA_TRUSTED_PROXIES:-172.29.83.0/24}
     command: ["--allowed-origins", "${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS in .env}"]
     volumes:
       - ./data:/data
-    mem_limit: 128m
+    mem_limit: 256m
     pids_limit: 128
-    read_only: true # the relay writes only to /data
+    read_only: true # the relay writes only to /data, and SQLite's temporary files to /tmp
+    tmpfs: ["/tmp:size=64m,mode=1777"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/remote-agent-server", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
@@ -40,6 +52,14 @@ services:
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
+
+# A fixed subnet, so that RA_TRUSTED_PROXIES can name Caddy's address.
+# Change both if it collides with a network of yours.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.83.0/24
 
 volumes:
   caddy_data:

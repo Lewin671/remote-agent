@@ -6,15 +6,22 @@ services:
     image: remote-agent-server:local
     container_name: remote-agent-server
     restart: unless-stopped
-    env_file: .env # RA_SETUP_TOKEN, ALLOWED_ORIGINS, RA_FCM_SERVICE_ACCOUNT (optional)
+    env_file: .env # RA_SETUP_TOKEN, ALLOWED_ORIGINS; optional RA_SIGNUP, RA_MAX_ACCOUNTS, RA_TRUSTED_PROXIES, RA_FCM_SERVICE_ACCOUNT
     command: ["--allowed-origins", "${ALLOWED_ORIGINS:-}"]
     volumes:
       - ./data:/data
-    mem_limit: 128m
+    mem_limit: 256m
     pids_limit: 128
-    read_only: true # the binary writes only to /data
+    read_only: true # the relay writes only to /data, and SQLite's temporary files to /tmp
+    tmpfs: ["/tmp:size=64m,mode=1777"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/remote-agent-server", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }

@@ -28,7 +28,7 @@ remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电
 |---|---|
 | **原生 CLI** | agent 以自己的交互形态跑在 tmux 里，不经过 SDK，也不是另做的聊天界面。桌上的终端和手里的客户端操作的是同一个会话。 |
 | **端到端加密** | 消息、工具调用、终端输出、图片、项目名和路径都在你的设备上加密。中继只存储和转发密文，从不持有密钥。 |
-| **自部署** | 中继跑在你自己的服务器上，网页也由你自己托管。不需要第三方账户，中间也没有聊天平台。 |
+| **自部署** | 中继跑在你自己的服务器上，网页也由你自己托管。不需要第三方账户，中间也没有聊天平台。想先试试，可以用[公共中继](#在公共中继上试用)。 |
 | **多台电脑，一处查看** | 每台电脑跑一个 daemon，客户端按项目汇总所有会话。 |
 
 > [!NOTE]
@@ -44,6 +44,20 @@ remote-agent 让你离开电脑时，编程 agent 不用停下。你照常在电
 | **Android App** | Android 8.0 及以上 | 原生客户端，带原生终端，可在通知里直接审批。 |
 
 账户密钥只在各台设备上，中继上没有。新设备通过扫二维码或输入配对码加入账户，双方核对一串相同的 emoji 后才交换密钥。
+
+## 在公共中继上试用
+
+维护者运营着公共中继 `ra.remote-agent.top` 和网页 `https://remote-agent.top`，方便你在自己部署之前先试用。在一台装有 tmux 3.2+、已登录 `codex` 或 `claude` 的 macOS 或 Linux 电脑上：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
+remote-agent-service install                                     # 在后台运行 daemon
+remote-agent account init --server https://ra.remote-agent.top   # 创建你的账户，不需要 token
+remote-agent account pair --web https://remote-agent.top         # 显示给手机扫的二维码
+remote-agent codex                                               # 或：remote-agent claude
+```
+
+和在别处一样，你的会话在这里也是端到端加密的：中继只看得到[安全模型](#安全模型)里列出的元数据，看不到内容。不过 `remote-agent.top` 上的网页由维护者提供，用它就意味着信任这份客户端；命令行和 Android App 不依赖它。这是试用服务：每个账户最多 8 台设备、2 台电脑、200 个会话，不保证可用性，滥用的账户可能被暂停。日常使用请照下文自己部署；迁移时在你自己的中继上新建账户即可。
 
 ## 快速开始
 
@@ -106,6 +120,7 @@ remote-agent codex                                          # 或：remote-agent
 | 账户密钥和会话密钥 | 不能 |
 | 设备、机器和会话 ID，时间戳，密文大小 | 能，路由需要 |
 | 会话是否结束、何时结束 | 能 |
+| 你的设备的 IP 地址 | 能，和任何服务器一样 |
 
 网页刻意**不**由中继提供：否则被攻破的中继可以替换页面里的 JavaScript，绕过加密。请把网页托管在别处，例如 Cloudflare Pages。安全漏洞请通过 [GitHub security advisories](https://github.com/Lewin671/remote-agent/security/advisories/new) 私下报告，不要发在公开的 issue 里。
 
@@ -142,7 +157,7 @@ Android App 始终用同一把密钥签名，证书的 SHA-256 指纹是：
 ## 现状与限制
 
 - **尚未到 1.0。** 不同版本的组件不保证互通，版本之间可能需要重建存储的数据。daemon、中继、网页和 App 请一起升级，升级前先读发布说明。
-- **一台中继只服务一个人。** 一台中继只服务一个账户的设备，没有团队、共享或多账户。
+- **一个账户就是一个人。** 账户内没有团队、共享或权限分级：账户里的每台设备都持有同一把密钥。一台中继可以承载多个互相看不见的账户；你自己的中继默认只有你的账户，除非你[向他人开放](docs/self-hosting.zh-CN.md#向他人开放中继)。
 - **自部署的中继上 Android 没有推送。** 发布的 App 只能通过维护者的 Firebase 项目接收推送。App 打开时一切正常；要在自己的中继上收到通知，请用支持 Web Push 的网页。想用自己的 Firebase 项目，需要从源码构建 App。
 - **还没有 iOS App。** 原生客户端正在开发；在那之前，用 Safari 打开网页并添加到主屏幕。
 - **不保证支持。** 欢迎在 [Issues](https://github.com/Lewin671/remote-agent/issues) 里报告问题。不要贴出账户密钥、setup token、配对链接或未脱敏的日志。

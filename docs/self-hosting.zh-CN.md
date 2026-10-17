@@ -14,7 +14,7 @@
 
 ## 1. 中继
 
-**需要：** 一台 Linux VPS（arm64 或 amd64），装有 Docker 和 Compose 插件，开放 80 和 443 端口，中继域名已解析到它。中继本身很小，内存上限 128 MB。
+**需要：** 一台 Linux VPS（arm64 或 amd64），装有 Docker 和 Compose 插件，开放 80 和 443 端口，中继域名已解析到它。中继本身很小，内存上限 256 MB。
 
 ```sh
 sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # 以 root 操作时不需要
@@ -40,8 +40,30 @@ docker compose logs -f        # 第一次启动时 Caddy 会申请 HTTPS 证书
 
 - **中继的地址**就是 `https://ra.example.com` 这样不带路径的地址，中继不能放在子路径下。
 - **已经有反向代理？** 删掉 `compose.yaml` 里的 `caddy` 服务，把中继域名反代到 `remote-agent-server` 容器的 8080 端口，注意要放行 WebSocket。
-- **setup token** 只用来创建账户，一次。账户建好以后中继不再接受别的账户，token 也不再使用。但 `.env` 仍然要保密。
+- **setup token** 用来创建你的账户。默认情况下中继只容纳这一个账户，拒绝其他账户；`.env` 仍然要保密。想让别人也在你的中继上建账户，见[向他人开放中继](#向他人开放中继)。
 - **数据**在 `/opt/remote-agent/data`：一个存密文的 SQLite 数据库。备份方式是停掉中继后复制这个目录。解密它的密钥不在这里，在你自己的设备上（见第 3 步）。
+
+### 向他人开放中继
+
+一台中继可以容纳多个账户，账户之间互不相知：每个账户只看得到自己的设备、会话和设置；和你的一样，它们的内容也是中继读不了的密文。在 `.env` 里写：
+
+```sh
+RA_SIGNUP=open          # 任何人都能建账户，需要完成一次工作量证明
+RA_MAX_ACCOUNTS=100     # 这台中继最多容纳的账户数
+```
+
+然后执行 `docker compose up -d`。开放注册后，`remote-agent account init` 不需要 setup token 就能建账户：电脑花一秒左右完成工作量证明，同一个地址每小时只能建几个账户。这样建的账户使用试用额度：8 台设备、2 台电脑、200 个会话、256 MB 事件；用 setup token 建的账户可以有 32 台设备、16 台电脑。磁盘剩余空间不足 2 GB 时，所有账户都暂停增长，直到腾出空间。
+
+中继按 Caddy 报告的地址计数，自带的 `compose.yaml` 已经用 `RA_TRUSTED_PROXIES` 配好。如果放在你自己的反向代理后面，把 `RA_TRUSTED_PROXIES` 设成代理所在的地址段，否则所有账户看起来都来自代理这一个地址。
+
+中继运行时查看和管理账户：
+
+```sh
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db suspend <账户>   # 另有 resume、delete、plan <账户> owner|trial
+```
+
+`delete` 会立即、永久删除一个账户以及中继为它存的所有数据。中继自己从不删除账户。
 
 ## 2. 网页
 
@@ -138,6 +160,64 @@ npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --br
 
 网页部署后，在每台设备上重新加载**两次**：第一次加载显示的仍是设备上已有的那份，同时在后台取回新的；第二次加载才运行新的。**设置**里能看到正在运行的版本。Android App 会在**设置 › 版本**里自己提示更新。要在各处安装某个指定版本，在 `sh` 前面设置 `REMOTE_AGENT_VERSION=vX.Y.Z`。
 
+### 升级到 v0.41.0
+
+v0.41.0 换了中继数据的存储格式，以便容纳多个账户；它不会在旧版本的数据库上启动，而是提示原因后退出。在中继所在的机器上迁移一次数据库：
+
+```sh
+cd /opt/remote-agent
+docker compose stop remote-agent-server
+cp -a data data.before-v0.41.0                    # 出问题时用来回退
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_VERSION=v0.41.0 sh -s -- server /opt/remote-agent
+docker compose build remote-agent-server
+# 新格式的空数据库
+docker compose run --rm --no-deps --entrypoint /remote-agent-server remote-agent-server admin -db /data/new.db accounts
+# 把你的账户和它存的全部数据搬进去
+docker run --rm -i -v "$PWD/data:/data" alpine:3 sh -eu <<'EOF'
+apk add -q sqlite
+cd /data
+test -f new.db
+# Out of WAL mode, so that each database is one file, complete in itself.
+sqlite3 remote-agent.db "PRAGMA journal_mode = DELETE" >/dev/null
+sqlite3 new.db "PRAGMA journal_mode = DELETE" >/dev/null
+sqlite3 remote-agent.db "SELECT writefile('/tmp/account-key', public_key) FROM account" >/dev/null
+ACCT=$(sha256sum /tmp/account-key | cut -c1-32)
+sqlite3 -bail new.db >/dev/null <<SQL
+ATTACH 'remote-agent.db' AS old;
+BEGIN;
+INSERT INTO accounts (id, public_key, plan, created_ms, last_active_ms, registration_floor_ms)
+  SELECT '$ACCT', public_key, 'owner', created_ms, created_ms,
+    COALESCE((SELECT freshness_floor_ms FROM old.registration_policy), 0) FROM old.account;
+INSERT INTO devices (id, account_id, public_key, kind, registration, signature, created_ms, meta, meta_revision, last_seen_ms)
+  SELECT id, '$ACCT', public_key, kind, registration, signature, created_ms, meta, meta_revision, last_seen_ms FROM old.devices;
+INSERT INTO revoked_devices (id, account_id, revoked_ms) SELECT id, '$ACCT', revoked_ms FROM old.revoked_devices;
+INSERT INTO tokens (hash, account_id, device_id, expires_ms) SELECT hash, '$ACCT', device_id, expires_ms FROM old.tokens;
+INSERT INTO machines (id, account_id, meta, meta_revision, last_seen_ms) SELECT id, '$ACCT', meta, meta_revision, last_seen_ms FROM old.machines;
+INSERT INTO sessions (account_id, session_id, machine_id, key, meta, meta_revision, last_seq, updated_ms, ended_ms)
+  SELECT '$ACCT', session_id, machine_id, key, meta, meta_revision, last_seq, updated_ms, ended_ms FROM old.sessions;
+INSERT INTO events (account_id, session_id, seq, envelope) SELECT '$ACCT', session_id, seq, envelope FROM old.events;
+INSERT INTO images (account_id, session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms)
+  SELECT '$ACCT', session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms FROM old.images;
+INSERT INTO account_prefs (account_id, object_id, revision, envelope, updated_ms) SELECT '$ACCT', object_id, revision, envelope, updated_ms FROM old.account_prefs;
+INSERT INTO push_subs (device_id, account_id, subscription, kinds) SELECT device_id, '$ACCT', subscription, kinds FROM old.push_subs;
+INSERT INTO fcm_targets (device_id, account_id, token, kinds) SELECT device_id, '$ACCT', token, kinds FROM old.fcm_targets;
+INSERT OR REPLACE INTO kv (key, value) SELECT key, value FROM old.kv;
+UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events);
+COMMIT;
+PRAGMA journal_mode = DELETE;
+SQL
+rm -f remote-agent.db-shm new.db-shm
+mv remote-agent.db old-layout.db
+mv new.db remote-agent.db
+chown 65534:65534 remote-agent.db old-layout.db
+echo "moved account $ACCT"
+EOF
+docker compose up -d
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
+```
+
+最后一条命令会列出你的账户及其设备和会话数，所有设备保持登录。确认没问题后，删掉 `data/old-layout.db` 和 `data.before-v0.41.0`。如果要回退：停掉中继，把 `data.before-v0.41.0` 改回 `data`，再用同样的方式安装 v0.40.0。
+
 ## 常见问题
 
 | 现象 | 可能的原因 |
@@ -145,6 +225,7 @@ npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --br
 | 网页能登录但一直「未连接」 | 广告拦截扩展挡住了 WebSocket。把网页和中继放在同一个注册域名下，或在扩展里放行中继的域名。 |
 | 网页完全连不上中继 | 网页地址没有写进 `ALLOWED_ORIGINS`，或者改完 `.env` 后没有重启中继。 |
 | `account init` 提示需要有效的 setup token | 输入的 token 和中继 `.env` 里的 `RA_SETUP_TOKEN` 不一致。 |
-| `account init` 提示设备属于另一个账户 | 这台中继已经有账户了。用 `account pair` / `account join` 加入它，或者停掉中继、删除 `data` 目录后重新开始。 |
+| 中继启动后退出，提示数据库是单账户中继的格式 | 按[升级到 v0.41.0](#升级到-v0410) 迁移数据库。 |
+| `account init` 提示中继没有空间容纳另一个账户 | 这台中继已经有它的账户了。用 `account pair` / `account join` 加入它，或者让它容纳更多账户（见[向他人开放中继](#向他人开放中继)）。 |
 | 客户端提示需要更新 | 它的协议版本和 daemon 的不一样。把所有部分升级到同一个版本。 |
 | Android App 收不到通知 | 在自己的中继上是预期行为，见 [README](../README.zh-CN.md#现状与限制) 里的限制。 |

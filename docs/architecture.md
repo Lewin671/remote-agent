@@ -25,7 +25,7 @@
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
 | `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | 装到真机的渠道未定（[plan.md](plan.md)），目前只在模拟器上运行 |
 
-当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，内存上限 128 MiB。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
+当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。镜像基于 `scratch`，以 nobody 运行，根文件系统只读（SQLite 的临时文件写在 64 MiB 的 tmpfs `/tmp`），内存上限 256 MiB，健康检查由二进制自己的 `healthcheck` 子命令请求 `/healthz`。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
 网页部署在 Cloudflare Pages 的项目 `remote-agent` 上（`remote-agent.pages.dev`），绑定根域名 `remote-agent.top`。Pages 绑定根域名要求域名的 DNS 托管在 Cloudflare，所以 `remote-agent.top` 的 NS 指向 Cloudflare：根域名由 Pages 自动解析，`ra` 是指向 VPS 的 A 记录，只做 DNS、不经 Cloudflare 代理（Caddy 自己签证书，WebSocket 直连）。绑子域名时 Pages 也接受外部 DNS 用 CNAME 接入，那样域名不用迁。新版 wrangler 默认把 `pages project create` 转成 Workers，所以创建项目时要加 `--force`，之后的部署不用。构建时会生成 `_headers`，让 Pages 在响应头里带上和页面里一致的 CSP，外加 `frame-ancestors 'none'` 等只能靠响应头生效的限制。server 的 `ALLOWED_ORIGINS` 要包含网页的地址。
 
@@ -365,7 +365,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 ## 9. 账户、设备和密钥
 
-一个账户对应一个随机的 32 字节**根密钥**。第一台电脑用 `remote-agent account init` 生成它；server 上只有一个账户，第一次登记设备时必须带上 server 配置里的一次性 setup token，账户建好后 token 就不再起作用。
+一个账户对应一个随机的 32 字节**根密钥**。第一台电脑用 `remote-agent account init` 生成它，并在 server 上建账户；一台 server 可以承载多个账户，怎么建、怎么隔离见下文「一台中继上的多个账户」。
 
 所有密钥都从根密钥派生，一个用途一把（HKDF-SHA256，info 为 `remote-agent/v1/<用途>`）：
 
@@ -402,6 +402,27 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 账户密钥串 `ra1.<根密钥>.<server 地址>`（`remote-agent account secret`）仍可作为备用方式粘贴，它不放进 URL，以免留在浏览历史里。
 
 **浏览器怎么存**：设备私钥存成不可导出的 `CryptoKey`（IndexedDB）；根密钥除了不可导出的 HKDF 密钥，还存一份原始字节，因为配对时要把它交给新设备（WebCrypto 的不可导出密钥取不回原始字节）。代价是页面一旦被注入脚本，根密钥能被带走；不过那种情况下脚本本来就能通过页面解密全部内容，差别在于带走后长期有效。配对上线前加入的浏览器没有原始字节，不能发起配对，要重新加入一次。不同的网页来源（如 localhost 和 `app.<域名>`）各有各的存储，换了地址要重新加入。App 怎么存见 [android-client.md](android-client.md)。
+
+### 一台中继上的多个账户
+
+范围见 [scope.md](scope.md) 第 2 节：账户之间看不见、改不动对方的任何东西。实现在 `internal/server/accounts.go`、`signup.go` 和 `store.go`。
+
+**账户 ID 由 server 推出**：账户 ID 是账户公钥 SHA-256 的前 16 字节（和设备 ID 一样的算法），登记时从签名验证过的登记原文里取，客户端不能自己报。设备 ID 由设备公钥推出、全局唯一，一台设备只属于一个账户；被删除的设备在所有账户里都不能再登记。
+
+**隔离靠 tenant**：所有账户数据放在同一个 SQLite 里，每张账户表都带 `account_id`，主键和索引都以它开头。登录后的每个请求从 token 找到设备、再找到它的账户，处理函数只拿得到这个账户的 `tstore`（每条 SQL 都带账户条件）和 `accountHub`（只广播给这个账户的流、只找这个账户的机器）。处理函数里没有能指定别的账户的参数，所以漏掉检查也不会跨账户。终端流按「账户/流 ID」配对；推送的去重键、配对、流和推送并发都按账户另有上限，一个账户占不满全局的份额。同一个会话 ID 在不同账户里互不相干。
+
+**建账户的两种方式**（`--signup`）：
+
+| 方式 | 谁能建 | 额度 |
+|---|---|---|
+| `token`（默认） | 带 server 配置里的 setup token | owner：32 台设备、16 台机器 |
+| `open` | 任何人，先完成工作量证明：`GetSignupChallenge` 给一个 5 分钟有效的随机 challenge，客户端找一个 nonce 让 SHA-256(challenge‖nonce) 有足够多的前导零位（默认 20 位，普通电脑一秒内） | trial：8 台设备、2 台机器、200 个会话、256 MiB 事件、64 MiB 图片 |
+
+open 模式下带对 setup token 的照样建 owner 账户。工作量证明挡批量脚本，另有每个地址每分钟 10 个 challenge、每小时 3 个新账户，全局每小时 30 个新账户；地址只认 `--trusted-proxies` 里的反向代理写进 `X-Forwarded-For` 的最后一跳，IPv6 按 /64 计。全中继最多 `--max-accounts` 个账户（token 模式默认 1，open 默认 100），磁盘剩余不足 `--min-free-bytes`（默认 2 GiB）时所有账户都不再增长。没有协议版本变化：server 用错误码告诉客户端缺什么（缺 token 回 PermissionDenied，要工作量证明回 FailedPrecondition），daemon 照着补上再试。
+
+**运维**：`remote-agent-server admin` 直接打开数据库，列出账户（只有 server 本来就看得到的计数和大小），暂停、恢复、换额度或删除账户。暂停的账户不能登录和登记，数据保留；运行中的 server 每 30 秒扫一遍在线的流，断开被暂停、删除的账户的设备。server 不会自动删除闲置账户。
+
+**存储格式**：数据库带 `PRAGMA user_version`。单账户时代的数据库（没有版本号但有表）server 拒绝打开并提示迁移，不写迁移代码；迁移步骤在 [self-hosting.md](self-hosting.md#upgrading-to-v0410)。
 
 ### 多客户端的界面状态
 

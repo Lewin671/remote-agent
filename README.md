@@ -28,7 +28,7 @@ remote-agent lets you leave your desk without leaving your coding agent. You sta
 |---|---|
 | **The real CLI** | Agents run in their own interactive form inside tmux — not through an SDK or a reimplemented chat. The terminal on your desk and the client in your hand operate one and the same session. |
 | **End-to-end encrypted** | Messages, tool calls, terminal output, images, project names and paths are encrypted on your devices. The relay only stores and forwards ciphertext and never holds a key. |
-| **Self-hosted** | You run the relay on your own server and host the web client yourself. There is no account with a third party and no chat platform in between. |
+| **Self-hosted** | You run the relay on your own server and host the web client yourself. There is no account with a third party and no chat platform in between. To try it first, use the [public relay](#try-it-on-the-public-relay). |
 | **Several computers, one view** | Run a daemon on each machine; clients group every session by project. |
 
 > [!NOTE]
@@ -44,6 +44,20 @@ remote-agent lets you leave your desk without leaving your coding agent. You sta
 | **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification. |
 
 Every device holds the account key; the relay holds none. Devices join an account by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
+
+## Try it on the public relay
+
+The maintainer runs a public relay at `ra.remote-agent.top` and the web client at `https://remote-agent.top`, so that you can try remote-agent before setting up your own. On a computer with macOS or Linux, tmux 3.2+ and a signed-in `codex` or `claude`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
+remote-agent-service install                                     # run the daemon in the background
+remote-agent account init --server https://ra.remote-agent.top   # creates your account; no token needed
+remote-agent account pair --web https://remote-agent.top         # shows a QR code for your phone
+remote-agent codex                                               # or: remote-agent claude
+```
+
+Your sessions are end-to-end encrypted there as everywhere: the relay sees the metadata listed under [Security model](#security-model), never content. The page at `remote-agent.top` is served by the maintainer, though, so using it means trusting that copy of the client; the CLI and the Android app do not depend on it. It is a trial service: an account has room for 8 devices, 2 computers and 200 sessions, there is no uptime promise, and accounts that abuse it may be suspended. For everyday use, host your own as below; to move, create a new account on your relay.
 
 ## Quick start
 
@@ -106,6 +120,7 @@ The relay is treated as untrusted. If your server is compromised, what leaks is 
 | Account and session keys | No |
 | Device, machine and session IDs, timestamps, ciphertext sizes | Yes — needed for routing |
 | Whether and when a session ended | Yes |
+| Your devices' IP addresses | Yes — as to any server |
 
 The web client is deliberately **not** served by the relay: a compromised relay could otherwise replace the page's JavaScript and defeat the encryption. Host it elsewhere, such as Cloudflare Pages. Report vulnerabilities privately through [GitHub security advisories](https://github.com/Lewin671/remote-agent/security/advisories/new), not in public issues.
 
@@ -142,7 +157,7 @@ The Android app is always signed with the same key. Its certificate's SHA-256 fi
 ## Status and limitations
 
 - **Pre-1.0.** Components of different versions are not guaranteed to interoperate, and stored data may have to be recreated between releases. Upgrade the daemon, relay, web client and app together, and read the release notes first.
-- **One person per relay.** A relay serves the devices of a single account. There are no teams, sharing, or multiple accounts.
+- **One person per account.** An account has no teams, sharing or roles: every device in it holds the same key. A relay can host many accounts, which see nothing of each other; your own relay holds just yours unless you [open it to others](docs/self-hosting.md#opening-the-relay-to-others).
 - **No Android push notifications on a self-hosted relay.** The published app receives pushes only through the maintainer's Firebase project. It works normally while open; for notifications on your own relay, use the web client, which supports Web Push everywhere. To use your own Firebase project, build the app from source.
 - **No iOS app yet.** A native client is in development; until then, open the web client in Safari and add it to the Home Screen.
 - **No support guarantee.** Bug reports are welcome in [Issues](https://github.com/Lewin671/remote-agent/issues). Never paste account secrets, setup tokens, pairing links, or unredacted logs.

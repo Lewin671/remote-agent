@@ -14,7 +14,7 @@ Put the relay and the web client under **the same registrable domain** (`ra.exam
 
 ## 1. The relay
 
-**You need:** a Linux VPS (arm64 or amd64) with Docker and its Compose plugin, ports 80 and 443 open, and a DNS record for your relay domain pointing at it. The relay itself is small: it is limited to 128 MB of memory.
+**You need:** a Linux VPS (arm64 or amd64) with Docker and its Compose plugin, ports 80 and 443 open, and a DNS record for your relay domain pointing at it. The relay itself is small: it is limited to 256 MB of memory.
 
 ```sh
 sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # not needed as root
@@ -40,8 +40,30 @@ docker compose logs -f        # Caddy obtains the HTTPS certificate on first sta
 
 - **The relay's address** is the bare origin, `https://ra.example.com`, with no path after it; the relay cannot live under a subpath.
 - **Already running a reverse proxy?** Remove the `caddy` service from `compose.yaml` and proxy your relay domain to the `remote-agent-server` container on port 8080. WebSockets must pass through.
-- **The setup token** creates the account, once. After the account exists the relay accepts no other account, and the token is no longer used. Keep `.env` private all the same.
+- **The setup token** creates your account. By default the relay holds that one account and refuses any other; keep `.env` private all the same. To let other people create accounts on your relay, see [Opening the relay to others](#opening-the-relay-to-others).
 - **Your data** is in `/opt/remote-agent/data`: a SQLite database of ciphertext. Back it up by stopping the relay and copying the directory. The keys that decrypt it are not there: they are on your devices (see step 3).
+
+### Opening the relay to others
+
+A relay can hold many accounts, which know nothing of each other: each sees only its own devices, sessions and settings, and like yours, their content is ciphertext the relay cannot read. In `.env`:
+
+```sh
+RA_SIGNUP=open          # anyone may create an account, with a proof of work
+RA_MAX_ACCOUNTS=100     # at most this many accounts on the relay
+```
+
+then `docker compose up -d`. With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. When the disk has less than 2 GB free, no account can grow until there is room again.
+
+The relay counts addresses as Caddy reports them, which the bundled `compose.yaml` arranges with `RA_TRUSTED_PROXIES`. Behind a proxy of your own, set `RA_TRUSTED_PROXIES` to the proxy's address range, or every account looks as if it comes from the proxy.
+
+See and manage the accounts while the relay runs:
+
+```sh
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db suspend <account>   # resume, delete, plan <account> owner|trial
+```
+
+`delete` removes an account and everything the relay stored for it, at once and for good. The relay never deletes accounts by itself.
 
 ## 2. The web client
 
@@ -138,6 +160,64 @@ npx wrangler pages deploy remote-agent-web --project-name <your project> --branc
 
 After deploying the web client, reload it **twice** on each device: the first load still shows the copy the device already has while it fetches the new one in the background, and the second load runs it. **Settings** shows the version that is running. The Android app offers the update itself in **Settings › Version**. To install a specific release everywhere, set `REMOTE_AGENT_VERSION=vX.Y.Z` before `sh`.
 
+### Upgrading to v0.41.0
+
+v0.41.0 stores the relay's data in a new layout, one that holds many accounts, and does not start on the database of an earlier release: it says so and exits. Move the database once, on the relay's machine:
+
+```sh
+cd /opt/remote-agent
+docker compose stop remote-agent-server
+cp -a data data.before-v0.41.0                    # to go back to, if anything goes wrong
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | REMOTE_AGENT_VERSION=v0.41.0 sh -s -- server /opt/remote-agent
+docker compose build remote-agent-server
+# an empty database in the new layout
+docker compose run --rm --no-deps --entrypoint /remote-agent-server remote-agent-server admin -db /data/new.db accounts
+# your account and everything it stored, moved into it
+docker run --rm -i -v "$PWD/data:/data" alpine:3 sh -eu <<'EOF'
+apk add -q sqlite
+cd /data
+test -f new.db
+# Out of WAL mode, so that each database is one file, complete in itself.
+sqlite3 remote-agent.db "PRAGMA journal_mode = DELETE" >/dev/null
+sqlite3 new.db "PRAGMA journal_mode = DELETE" >/dev/null
+sqlite3 remote-agent.db "SELECT writefile('/tmp/account-key', public_key) FROM account" >/dev/null
+ACCT=$(sha256sum /tmp/account-key | cut -c1-32)
+sqlite3 -bail new.db >/dev/null <<SQL
+ATTACH 'remote-agent.db' AS old;
+BEGIN;
+INSERT INTO accounts (id, public_key, plan, created_ms, last_active_ms, registration_floor_ms)
+  SELECT '$ACCT', public_key, 'owner', created_ms, created_ms,
+    COALESCE((SELECT freshness_floor_ms FROM old.registration_policy), 0) FROM old.account;
+INSERT INTO devices (id, account_id, public_key, kind, registration, signature, created_ms, meta, meta_revision, last_seen_ms)
+  SELECT id, '$ACCT', public_key, kind, registration, signature, created_ms, meta, meta_revision, last_seen_ms FROM old.devices;
+INSERT INTO revoked_devices (id, account_id, revoked_ms) SELECT id, '$ACCT', revoked_ms FROM old.revoked_devices;
+INSERT INTO tokens (hash, account_id, device_id, expires_ms) SELECT hash, '$ACCT', device_id, expires_ms FROM old.tokens;
+INSERT INTO machines (id, account_id, meta, meta_revision, last_seen_ms) SELECT id, '$ACCT', meta, meta_revision, last_seen_ms FROM old.machines;
+INSERT INTO sessions (account_id, session_id, machine_id, key, meta, meta_revision, last_seq, updated_ms, ended_ms)
+  SELECT '$ACCT', session_id, machine_id, key, meta, meta_revision, last_seq, updated_ms, ended_ms FROM old.sessions;
+INSERT INTO events (account_id, session_id, seq, envelope) SELECT '$ACCT', session_id, seq, envelope FROM old.events;
+INSERT INTO images (account_id, session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms)
+  SELECT '$ACCT', session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms FROM old.images;
+INSERT INTO account_prefs (account_id, object_id, revision, envelope, updated_ms) SELECT '$ACCT', object_id, revision, envelope, updated_ms FROM old.account_prefs;
+INSERT INTO push_subs (device_id, account_id, subscription, kinds) SELECT device_id, '$ACCT', subscription, kinds FROM old.push_subs;
+INSERT INTO fcm_targets (device_id, account_id, token, kinds) SELECT device_id, '$ACCT', token, kinds FROM old.fcm_targets;
+INSERT OR REPLACE INTO kv (key, value) SELECT key, value FROM old.kv;
+UPDATE accounts SET event_bytes = (SELECT COALESCE(SUM(LENGTH(envelope)), 0) FROM events);
+COMMIT;
+PRAGMA journal_mode = DELETE;
+SQL
+rm -f remote-agent.db-shm new.db-shm
+mv remote-agent.db old-layout.db
+mv new.db remote-agent.db
+chown 65534:65534 remote-agent.db old-layout.db
+echo "moved account $ACCT"
+EOF
+docker compose up -d
+docker compose exec remote-agent-server /remote-agent-server admin -db /data/remote-agent.db accounts
+```
+
+The last command lists your account, with its devices and sessions. Every device stays signed in. Once all is well, remove `data/old-layout.db` and `data.before-v0.41.0`. To go back instead: stop the relay, put `data.before-v0.41.0` back as `data`, and install v0.40.0 the same way.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -145,6 +225,7 @@ After deploying the web client, reload it **twice** on each device: the first lo
 | The web client signs in but stays "not connected" | A content blocker is stopping the WebSocket. Host the web client and relay under the same registrable domain, or allow your relay's domain in the blocker. |
 | The web client cannot reach the relay at all | Its address is missing from `ALLOWED_ORIGINS`, or the relay was not restarted after editing `.env`. |
 | `account init` says a valid setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
-| `account init` says the device belongs to another account | This relay already has an account. Join it with `account pair` / `account join`, or start over by stopping the relay and removing its `data` directory. |
+| The relay exits saying the database has the layout of a relay with a single account | Move the database as described in [Upgrading to v0.41.0](#upgrading-to-v0410). |
+| `account init` says the relay has no room for another account | This relay already has its account. Join it with `account pair` / `account join`, or let it hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
 | A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limits). |

@@ -150,8 +150,16 @@ class PublicScanTests(unittest.TestCase):
 
     def test_the_user_facing_pages_are_clean(self):
         root = Path(__file__).resolve().parents[1]
-        pages = ['README.md', 'README.zh-CN.md', 'install.sh', 'docs/self-hosting.md', 'docs/self-hosting.zh-CN.md', 'deploy/self-host']
+        pages = ['install.sh', 'docs/self-hosting.md', 'docs/self-hosting.zh-CN.md', 'deploy/self-host']
         self.assertEqual([], public_scan.scan([root / p for p in pages]))
+        # The README names the official site and public relay in the section
+        # on trying them, and nowhere else.
+        for name, section in (('README.md', '## Try it on the public relay'), ('README.zh-CN.md', '## 在公共中继上试用')):
+            text = (root / name).read_text()
+            start = text.index(section)
+            end = text.index('\n## ', start + len(section))
+            (self.root / name).write_text(text[:start] + text[end:])
+            self.assertEqual([], public_scan.scan([self.root / name]), name)
 
 
 if __name__ == '__main__':
