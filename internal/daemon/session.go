@@ -199,7 +199,10 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		images:     openImageStore(dir),
 	}
 	if h, err := loadParseHealth(dir); err != nil {
-		return nil, fmt.Errorf("load parse diagnostics: %w", err)
+		// Diagnostics are not recovery state. A damaged or unreadable file
+		// must not hide a live CLI whose metadata, events and queue are valid.
+		// Keep the zero value; the next diagnostic save replaces a bad file.
+		slog.Warn("cannot load parse diagnostics; starting with empty diagnostics", "session", m.ID, "category", parseErrorCategory(err))
 	} else {
 		s.parseHealth = h
 	}
