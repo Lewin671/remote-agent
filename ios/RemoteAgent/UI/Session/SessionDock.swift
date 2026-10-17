@@ -259,7 +259,10 @@ struct ApprovalDock: View {
     @Environment(\.onSoft) private var onSoft
 
     var body: some View {
-        let a = approval
+        if isSkeleton(approval) { Text(skeletonMessage).type(T.sm, Theme.muted) } else { dock(approval) }
+    }
+
+    private func dock(_ a: PBApprovalRequested) -> some View {
         PendingDock(.approval(a), agent: agentName(session.agent), more: more, startOpen: startOpen, onOpen: onOpen) {
             Ticking(every: 15) { now in
                 let left = ApprovalDeadline(a, now: now)
@@ -313,7 +316,7 @@ struct ApprovalButtons: View {
     @State private var started = false
 
     private func resolve(_ allow: Bool, message: String = "", always: Bool = false) {
-        guard !allow || !approvalTruncated(approval) else { return }
+        guard !isSkeleton(approval), !allow || !approvalTruncated(approval) else { return }
         if allow { SessionHaptics.decide() } else { Haptics.destructive() }
         let sent = context.sessionStore.decide(
             context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
@@ -323,7 +326,7 @@ struct ApprovalButtons: View {
     }
 
     private func retry() {
-        guard !approvalTruncated(approval) || !context.sessionStore.resolve(approval.approvalID).allow else { return }
+        guard !isSkeleton(approval), !approvalTruncated(approval) || !context.sessionStore.resolve(approval.approvalID).allow else { return }
         context.sessionStore.retryDecision(
             context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID)
     }
@@ -336,50 +339,54 @@ struct ApprovalButtons: View {
         let surface: Color? = onCard ? Theme.card : nil
         let truncated = approvalTruncated(approval)
         VStack(alignment: .leading, spacing: 0) {
-            if truncated { Text(approvalTruncatedMessage).type(T.sm, Theme.red) }
-            if r.running || r.frozen || r.decided {
-                if r.running || (r.error.isEmpty && !r.frozen) {
-                    Text(r.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
-                        .frame(minHeight: 28)
-                        .accessibilityAddTraits(.updatesFrequently)
-                }
-            } else if reasonOpen || (startReason && !started) {
-                InputField(
-                    text: Binding(get: { store.reason(id) }, set: { store.setReason(id, $0) }), placeholder: "拒绝理由（可选）",
-                    lines: 1...4, background: surface, focusOnAppear: !startReason
-                )
-                .padding(.bottom, 8)
-                Btns {
-                    Btn("取消", background: surface) {
-                        reasonOpen = false
-                        started = true
-                    }
-                    Btn("不允许", kind: .negative, background: surface) {
-                        resolve(false, message: store.reason(id).jvmTrim())
-                    }
-                }
+            if isSkeleton(approval) {
+                Text(skeletonMessage).type(T.sm, Theme.muted)
             } else {
-                Btns {
-                    Btn("不允许", kind: .negative, background: surface) { reasonOpen = true }
-                    Btn("允许", kind: .primary, enabled: !truncated) { resolve(true) }
+                if truncated { Text(approvalTruncatedMessage).type(T.sm, Theme.red) }
+                if r.running || r.frozen || r.decided {
+                    if r.running || (r.error.isEmpty && !r.frozen) {
+                        Text(r.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
+                            .frame(minHeight: 28)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
+                } else if reasonOpen || (startReason && !started) {
+                    InputField(
+                        text: Binding(get: { store.reason(id) }, set: { store.setReason(id, $0) }), placeholder: "拒绝理由（可选）",
+                        lines: 1...4, background: surface, focusOnAppear: !startReason
+                    )
+                    .padding(.bottom, 8)
+                    Btns {
+                        Btn("取消", background: surface) {
+                            reasonOpen = false
+                            started = true
+                        }
+                        Btn("不允许", kind: .negative, background: surface) {
+                            resolve(false, message: store.reason(id).jvmTrim())
+                        }
+                    }
+                } else {
+                    Btns {
+                        Btn("不允许", kind: .negative, background: surface) { reasonOpen = true }
+                        Btn("允许", kind: .primary, enabled: !truncated) { resolve(true) }
+                    }
+                    if always && !truncated {
+                        TextAction("允许，这类请求以后不再问", alignment: .center) { resolve(true, always: true) }
+                            .frame(maxWidth: .infinity)
+                            // On a card its 44 pt to the finger reach into the card's own padding.
+                            .padding(.bottom, onCard ? -8 : 0)
+                    }
                 }
-                if always && !truncated {
-                    TextAction("允许，这类请求以后不再问", alignment: .center) { resolve(true, always: true) }
-                        .frame(maxWidth: .infinity)
-                        // On a card its 44 pt to the finger reach into the card's own padding.
-                        .padding(.bottom, onCard ? -8 : 0)
+                if !r.running && r.frozen {
+                    Banner(
+                        r.expired
+                            ? "不确定「\(r.allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
+                            : "没送到电脑：\(r.error.isEmpty ? "结果未知" : r.error)",
+                        tone: .error, action: r.expired ? nil : "重试", onAction: retry
+                    )
+                    .padding(.top, 8)
+                } else if !r.running && !r.error.isEmpty {
+                    Banner("没送到电脑：\(r.error)", tone: .error, action: "重试", onAction: retry).padding(.top, 8)
                 }
-            }
-            if !r.running && r.frozen {
-                Banner(
-                    r.expired
-                        ? "不确定「\(r.allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-                        : "没送到电脑：\(r.error.isEmpty ? "结果未知" : r.error)",
-                    tone: .error, action: r.expired ? nil : "重试", onAction: retry
-                )
-                .padding(.top, 8)
-            } else if !r.running && !r.error.isEmpty {
-                Banner("没送到电脑：\(r.error)", tone: .error, action: "重试", onAction: retry).padding(.top, 8)
             }
         }
         .debugSignal("session.allow") { resolve(true) }
@@ -431,6 +438,7 @@ struct QuestionBody: View {
     }
 
     private func submit(_ options: [Int], _ cur: PBQuestion) {
+        guard !isSkeleton(question) else { return }
         let (qi, multi, count) = (index, cur.multiSelect, question.questions.count)
         let (store, remote, s, qid) = (store, context.remote, session, qid)
         let answer = store.answer(qid, qi)
@@ -455,7 +463,9 @@ struct QuestionBody: View {
     }
 
     var body: some View {
-        if let cur = current {
+        if isSkeleton(question) {
+            if part == .content { Text(skeletonMessage).type(T.sm, Theme.muted) }
+        } else if let cur = current {
             switch part {
             case .content: content(cur)
             case .actions: actions(cur)
@@ -614,6 +624,10 @@ struct PlanDock: View {
     let onFull: () -> Void
 
     var body: some View {
+        if isSkeleton(text) { Text(skeletonMessage).type(T.sm, Theme.muted) } else { dock }
+    }
+
+    private var dock: some View {
         PendingDock(.plan(text: text), agent: agentName(session.agent), more: more, startOpen: startOpen, onOpen: onOpen) {
             DockHead("计划待批准", right: "展开全文", onRight: onFull)
             Text(planPreview(text, lines: 4)).type(T.sm.with(lineHeight: 1.6), Theme.fg).lineLimit(4)
@@ -623,7 +637,7 @@ struct PlanDock: View {
                 .padding(.vertical, 8)
             if session.agent == .claude { Text("批准后使用询问模式").type(T.meta, Theme.muted) }
         } actions: {
-            PlanButtons(session: session, full: false)
+            PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
         }
     }
 }
@@ -632,11 +646,13 @@ struct PlanDock: View {
 struct PlanButtons: View {
     let session: SessionView
     let full: Bool
+    var terminalOnly = false
     var onDone: () -> Void = {}
     @Environment(AccountContext.self) private var context
     @State private var act = ActionRunner()
 
     private func answer(_ choice: PBPlanChoice) {
+        guard !terminalOnly else { return }
         let (remote, sid) = (context.remote, session.id)
         SessionHaptics.decide()
         act.run({
@@ -650,6 +666,10 @@ struct PlanButtons: View {
     }
 
     var body: some View {
+        if terminalOnly { Text(skeletonMessage).type(T.sm, Theme.muted) } else { choices }
+    }
+
+    @ViewBuilder private var choices: some View {
         Btns {
             Btn("继续规划…", enabled: !act.running) { answer(.keepPlanning) }
             Btn(act.running ? "提交中…" : "批准执行", kind: .primary, enabled: !act.running) { answer(.implement) }

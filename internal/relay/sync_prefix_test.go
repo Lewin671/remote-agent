@@ -29,7 +29,7 @@ func (b *prefixBackend) SessionInfo(id string) (*pb.Session, error) {
 	if b.reads >= 3 {
 		title = "after"
 	}
-	return &pb.Session{Id: id, Title: title, LastSeq: uint64(len(b.events))}, nil
+	return &pb.Session{Id: id, Title: title, LastSeq: uint64(len(b.events)), Status: pb.SessionStatus_SESSION_STATUS_EXITED}, nil
 }
 func (b *prefixBackend) EachEvents(_ string, after uint64, fn func(*pb.Event) error) (<-chan struct{}, error) {
 	for _, e := range b.events {
@@ -76,18 +76,18 @@ func (m *prefixMachine) Notify(context.Context, *connect.Request[pb.NotifyReques
 	return connect.NewResponse(&pb.NotifyResponse{}), nil
 }
 
-func TestOversizedEventCommitsPrefixAndReturnsFlushFailure(t *testing.T) {
+func TestSkeletonUploadAndPrefixFailure(t *testing.T) {
 	for _, tc := range []struct {
 		stage, category string
 		code            connect.Code
 		after           uint64
 		connection      bool
 	}{
-		{category: "event_size", after: 2},
+		{after: 3},
 		{stage: "read", after: 2},
 		{stage: "upload_events", category: "upload_events/permission_denied", code: connect.CodePermissionDenied},
-		{stage: "put_session", category: "put_session/failed_precondition", code: connect.CodeFailedPrecondition, after: 2},
-		{stage: "notify", category: "notify/unavailable", code: connect.CodeUnavailable, after: 2, connection: true},
+		{stage: "put_session", category: "put_session/failed_precondition", code: connect.CodeFailedPrecondition, after: 3},
+		{stage: "notify", category: "notify/unavailable", code: connect.CodeUnavailable, after: 3, connection: true},
 	} {
 		name := tc.stage
 		if name == "" {
@@ -114,7 +114,7 @@ func TestOversizedEventCommitsPrefixAndReturnsFlushFailure(t *testing.T) {
 			after, _, skipped, err := c.syncSession(context.Background(), "session", nil, nil)
 			var se *syncError
 			classified := errors.As(err, &se)
-			if (tc.stage != "read" && (!classified || se.category != tc.category || se.connection != tc.connection)) || (tc.stage == "read" && classified) || skipped || after != tc.after {
+			if (tc.stage == "" && err != nil) || (tc.stage != "" && tc.stage != "read" && (!classified || se.category != tc.category || se.connection != tc.connection)) || (tc.stage == "read" && classified) || skipped || after != tc.after {
 				t.Fatalf("after=%d skipped=%v error=%v", after, skipped, err)
 			}
 			if tc.stage != "" && !errors.Is(err, m.cause) {
@@ -129,7 +129,7 @@ func TestOversizedEventCommitsPrefixAndReturnsFlushFailure(t *testing.T) {
 				}
 				return
 			}
-			if len(m.events) != 2 || m.events[0].Seq != 1 || m.events[1].Seq != 2 {
+			if len(m.events) != int(tc.after) || m.events[0].Seq != 1 || m.events[1].Seq != 2 {
 				t.Fatal("prefix missing or oversized event uploaded")
 			}
 			if (tc.stage == "" || tc.stage == "read") && m.notifies != 2 {
@@ -139,12 +139,12 @@ func TestOversizedEventCommitsPrefixAndReturnsFlushFailure(t *testing.T) {
 				if !r.hasOwedNotify("session") {
 					t.Fatal("uploaded prefix notifications not retained after failure")
 				}
-				// The next pass starts immediately at the oversized event:
+				// The next pass starts after the successfully uploaded skeleton:
 				// retry notification debt even with no events left to flush.
 				m.fail = ""
 				before := m.notifies
 				after, _, _, err = c.syncSession(context.Background(), "session", &pb.SessionHead{LastSeq: after}, nil)
-				if !errors.As(err, &se) || se.category != "event_size" || after != 2 || m.uploads != 1 || m.notifies-before != 2 || r.hasOwedNotify("session") {
+				if err != nil || after != 3 || m.uploads != 1 || m.notifies-before != 2 || r.hasOwedNotify("session") {
 					t.Fatalf("notification debt blocked: after=%d uploads=%d notifies=%d error=%v", after, m.uploads, m.notifies-before, err)
 				}
 			}

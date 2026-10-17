@@ -2,7 +2,6 @@ package relay
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -17,7 +16,7 @@ import (
 )
 
 // The table explicitly covers every kind in the current descriptor. All values
-// except the selected display strings must survive byte for byte, including
+// except the selected display strings and explicitly oversized IDs survive, including
 // IDs, choice labels, state codes, timestamps, sequence and origin metadata.
 func TestFitEventEveryKind(t *testing.T) {
 	huge := strings.Repeat("正文🙂", 160000)
@@ -63,12 +62,13 @@ func TestFitEventEveryKind(t *testing.T) {
 			}
 			before := proto.CloneOf(e)
 			// Kinds with no display text can only be oversized by protected fields.
-			// They must fail, never silently disappear or mutate their semantics.
+			// Their skeleton must keep the kind and shorten only the abnormal ID.
 			if !strings.Contains(texts[name], "%s") {
 				e.TurnId = huge
 				before = proto.CloneOf(e)
-				if got, err := fitEvent(e); err == nil || got != nil {
-					t.Fatal("oversized protected structure accepted")
+				got := fitEvent(e)
+				if proto.Size(got) > maxEventBytes || reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || got.Seq != e.Seq || got.SessionId != e.SessionId || !eventSkeleton(got) || got.TurnId != shortSkeletonID(huge) {
+					t.Fatal("oversized identity skeleton lost")
 				}
 			} else {
 				got := mustFitEvent(t, e)
@@ -133,21 +133,25 @@ func TestFitEventRetainsAllOptionLabels(t *testing.T) {
 	}
 }
 
-func TestSealEventRejectsIrreducibleStructure(t *testing.T) {
+func TestSealEventFitsIrreducibleStructure(t *testing.T) {
 	q := &pb.Question{Id: "q"}
 	for range 4000 {
 		q.Options = append(q.Options, &pb.QuestionOption{Label: strings.Repeat("private-label", 30)})
 	}
-	e := &pb.Event{Seq: 7, Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{q}}}}
+	e := &pb.Event{Seq: 7, SessionId: "session", Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{q}}}}
 	before := proto.CloneOf(e)
 	c := &conn{acct: &Account{DeviceID: "machine"}}
-	env, err := c.sealEvent(make([]byte, 32), "session", e)
-	var failure *syncError
-	if env != nil || !errors.As(err, &failure) || failure.category != "event_size" || failure.connection {
-		t.Fatalf("expected session-local size failure; got %v", err)
+	key := make([]byte, 32)
+	env, err := c.sealEvent(key, "session", e)
+	if err != nil || proto.Size(env) > 1<<20 {
+		t.Fatalf("skeleton upload: %v", err)
 	}
-	if strings.Contains(err.Error(), "private-label") || !proto.Equal(e, before) {
-		t.Fatal("content leaked or original changed")
+	got := &pb.Event{}
+	if _, err := e2e.OpenMessage(key, env, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, SessionId: "session", Seq: 7}, got); err != nil {
+		t.Fatal(err)
+	}
+	if got.GetQuestionAsked() == nil || got.GetQuestionAsked().QuestionId != "call" || !eventSkeleton(got) || !proto.Equal(e, before) {
+		t.Fatal("skeleton lost identity, marker or original log")
 	}
 }
 

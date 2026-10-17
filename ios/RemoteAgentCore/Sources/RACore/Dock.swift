@@ -23,9 +23,12 @@ public enum DockItem: Equatable, Sendable, Identifiable {
 public func dockSummary(_ item: DockItem, agent: String) -> (label: String, brief: String) {
     switch item {
     case .approval(let a):
+        if isSkeleton(a) { return (skeletonMessage, "") }
         return (a.command.isEmpty ? "请求权限" : "请求执行", approvalDisplay(a.command.ifEmpty(a.toolName)).jvmLines()[0])
-    case .question(let q): return ("\(agent) 在问你", q.questions.first?.text.jvmLines()[0] ?? "")
-    case .plan: return ("计划待批准", "")
+    case .question(let q):
+        if isSkeleton(q) { return (skeletonMessage, "") }
+        return ("\(agent) 在问你", q.questions.first?.text.jvmLines()[0] ?? "")
+    case .plan(let text): return (isSkeleton(text) ? skeletonMessage : "计划待批准", "")
     case .popup(let title): return ("终端里有弹窗", title)
     }
 }

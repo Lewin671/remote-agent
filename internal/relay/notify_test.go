@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // A retry canceled while it still waited for its turn among the machine's
@@ -83,5 +84,34 @@ func TestApprovalNotificationMarksAnyShortenedContent(t *testing.T) {
 				t.Fatal("notification truncation not marked")
 			}
 		})
+	}
+}
+
+func TestSkeletonNotificationHasNoApprovalActions(t *testing.T) {
+	keys, err := e2e.Derive(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &conn{acct: &Account{DeviceID: "machine"}, keys: keys}
+	for _, e := range []*pb.Event{
+		{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "private-prefix…#0123456789abcdef" + skeletonNote, Description: skeletonNote}}},
+		{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "question", Questions: []*pb.Question{{Text: skeletonNote}}}}},
+		{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: skeletonNote}}},
+	} {
+		e.Seq = 7
+		req, err := c.notifyRequest("session", &pb.Session{}, pb.NotifyKind_NOTIFY_KIND_ATTENTION, e)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := &pb.NotifyContent{}
+		if _, err := e2e.OpenMessage(keys.Notify, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, got); err != nil {
+			t.Fatal(err)
+		}
+		if req.DedupeKey != "skeleton:7" || strings.Contains(string(req.Content.Header), "private-prefix") {
+			t.Fatal("skeleton identity leaked into clear notification metadata")
+		}
+		if got.Approval != nil || got.Text != "内容过大，请在终端查看/回答" || proto.Size(req.Content) > 4096 {
+			t.Fatal("skeleton notification reintroduced an approval action")
+		}
 	}
 }

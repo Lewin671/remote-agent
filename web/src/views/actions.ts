@@ -1,3 +1,4 @@
+import { isSkeleton } from "../skeleton";
 // Actions on what a session waits for. Each keeps the request slot of its
 // last attempt, so "重试" repeats the same command and the daemon answers
 // it once.
@@ -64,7 +65,7 @@ function useCommand(remote: Remote, sid: string) {
 export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
   const c = useCommand(remote, sid);
   const resolve = (allow: boolean, message = "", always = false) =>
-    allow && approvalTruncated(a) ? Promise.resolve(false) : c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
+    (isSkeleton(a) || (allow && approvalTruncated(a))) ? Promise.resolve(false) : c.run(`${allow ? "allow" : "deny"}:${always ? "always" : "once"}:${message}`, { case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow, message, always } });
   const retry = () => {
     const key = c.retry();
     if (!key) return;
@@ -82,11 +83,12 @@ export function useApproval(remote: Remote, sid: string, a: ApprovalRequested) {
  * so the docked card and the question page are one: moving between them
  * keeps the ticks, the question reached, and a pending answer's request
  * slot, which a retry must reuse. */
-export function useAnswer(remote: Remote, sid: string, questionId: string) {
+export function useAnswer(remote: Remote, sid: string, questionId: string, terminalOnly = false) {
   useRemote(remote);
   const st = remote.answerState(questionId);
   const set = (p: Partial<AnswerState>) => remote.patchAnswer(questionId, p);
   const answer = async (index: number, options: number[], multi = false): Promise<boolean> => {
+    if (terminalOnly) return false;
     const key = `${index}:${options.join(",")}`;
     const cur = remote.answerState(questionId);
     const retrying = cur.last?.key === key;
@@ -131,9 +133,9 @@ export function useAnswer(remote: Remote, sid: string, questionId: string) {
   };
 }
 
-export function usePlan(remote: Remote, sid: string) {
+export function usePlan(remote: Remote, sid: string, terminalOnly = false) {
   const c = useCommand(remote, sid);
-  const answer = (choice: PlanChoice) => c.run(String(choice), { case: "answerPlan", value: { sessionId: sid, choice } });
+  const answer = (choice: PlanChoice) => terminalOnly ? Promise.resolve(false) : c.run(String(choice), { case: "answerPlan", value: { sessionId: sid, choice } });
   const retry = () => {
     const key = c.retry();
     if (key) void answer(Number(key) as PlanChoice);

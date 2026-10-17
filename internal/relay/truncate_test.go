@@ -106,9 +106,5 @@ func TestFitEventKeepsInputState(t *testing.T) {
 
 func mustFitEvent(t *testing.T, e *pb.Event) *pb.Event {
 	t.Helper()
-	got, err := fitEvent(e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return got
+	return fitEvent(e)
 }

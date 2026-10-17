@@ -29,7 +29,9 @@ struct ApprovalScreen: View {
             Page {
                 VStack(spacing: 0) {
                     ConnectionBar()
-                    if let s, let a {
+                    if let a, isSkeleton(a) {
+                        PageNote(skeletonMessage)
+                    } else if let s, let a {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
                                 if !a.toolName.isEmpty && a.command.isEmpty {

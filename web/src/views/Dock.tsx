@@ -1,3 +1,4 @@
+import { isSkeleton, skeletonMessage } from "../skeleton";
 // What a session waits for, docked above the input: approvals, questions,
 // plans and terminal popups (client-v7 停靠区). Only the first item is
 // docked, as one line that opens in place; long content opens a full page,
@@ -92,6 +93,7 @@ export function ApprovalActions({
     setReasonOpen(v);
     onReasonOpen?.(v);
   };
+  if (isSkeleton(a)) return <div className="approval-status muted">{skeletonMessage}</div>;
   const error = ap.error && <div className="approval-status red">没送到电脑 <button className="link" onClick={ap.retry}>重试</button></div>;
   if (ap.busy && !ap.error) return <div className="approval-status muted">正在提交…</div>;
   if (ap.error) return error;
@@ -217,6 +219,7 @@ function ApprovalDock({
   const deadline = deadlineOf(a);
   const left = deadline ? minutesLeft(deadline, now) : "";
   const title = approvalTitle(a);
+  if (isSkeleton(a)) return <div className="dock muted">{skeletonMessage}</div>;
   return (
     <Pending
       frame={frame}
@@ -252,9 +255,10 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
   // Which question to answer. The daemon only enters the option while the
   // terminal shows this very question, so a stale choice is refused rather
   // than answering another question.
-  const ans = useAnswer(remote, sid, q.questionId);
+  const ans = useAnswer(remote, sid, q.questionId, isSkeleton(q));
   const ticked = ans.ticked;
   const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
+  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage, busy: false, steps: null, progress: "", answers: null, actions: (_page: boolean) => null };
   const n = q.questions.length;
   const index = Math.min(ans.index, n - 1);
   const item = q.questions[index];
@@ -390,11 +394,12 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
   );
 }
 
-export function PlanButtons({ remote, sid, full, shared }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan> }) {
+export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan>; terminalOnly?: boolean }) {
   // Claude Code has no "clear the context, then implement".
-  const own = usePlan(remote, sid);
+  const own = usePlan(remote, sid, terminalOnly);
   const plan = shared ?? own;
   const b = plan.busy;
+  if (terminalOnly) return <div className="muted">{skeletonMessage}</div>;
   return (
     <>
       <div className="btns">
@@ -422,7 +427,8 @@ export function PlanButtons({ remote, sid, full, shared }: { remote: Remote; sid
 }
 
 function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: string; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
-  const state = usePlan(remote, sid);
+  const state = usePlan(remote, sid, isSkeleton(plan));
+  if (isSkeleton(plan)) return <div className="dock muted">{skeletonMessage}</div>;
   return (
     <Pending
       frame={frame}
@@ -445,9 +451,9 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
       body={<div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>}
       actions={
         <>
-          <PlanButtons remote={remote} sid={sid} shared={state} />
+          <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
           {/* Claude Code leaves plan mode for manual approval of edits. */}
-          {agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
+          {!isSkeleton(plan) && agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
             <div className="foot">
               <span>批准后使用询问模式</span>
             </div>
@@ -621,6 +627,7 @@ export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote:
   const now = useNow(1000);
   const [reasoning, setReasoning] = useState(false);
   const deadline = deadlineOf(a);
+  if (isSkeleton(a)) return <div className="page"><NavBar onBack={onBack} title="审批" sub={title} /><div className="body detail muted">{skeletonMessage}</div></div>;
   return (
     <div className="page">
       <NavBar onBack={onBack} title="审批详情" sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
@@ -639,6 +646,7 @@ export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote:
 
 /** The whole plan, with every choice. */
 export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote; sid: string; plan: PlanProposed; title: string; onBack: () => void }) {
+  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title="计划" sub={title} /><div className="body detail muted">{skeletonMessage}</div></div>;
   return (
     <div className="page">
       <NavBar onBack={onBack} title="计划" sub={title} />
@@ -646,7 +654,7 @@ export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote;
         <Markdown text={plan.text} />
       </div>
       <div className="dock plan">
-        <PlanButtons remote={remote} sid={sid} full />
+        <PlanButtons remote={remote} sid={sid} full terminalOnly={isSkeleton(plan)} />
       </div>
     </div>
   );

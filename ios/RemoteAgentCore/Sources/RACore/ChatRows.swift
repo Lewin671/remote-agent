@@ -466,6 +466,11 @@ public func buildChat(
     }
     for e in events {
         let k = "e\(e.seq)"
+        if isSkeleton(e) {
+            flush()
+            out.append(.agent(.init(key: k, text: skeletonMessage)))
+            continue
+        }
         if let ids = unsentAt[e.seq] {
             flush()
             for id in ids { out.append(.unsent(.init(key: "u\(id)", requestId: id, text: textOf(id)))) }

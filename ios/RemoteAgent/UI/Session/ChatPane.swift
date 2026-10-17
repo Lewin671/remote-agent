@@ -549,53 +549,57 @@ private struct PendingBubble: View {
         let cancelFailed = cancel != nil && !canceling
         let label = pendingLabel(pending, cancel: cancel, resuming: resume.running, resumeFailed: !resume.error.isEmpty, starting: starting)
         let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
-        VStack(alignment: .trailing, spacing: 0) {
-            Button {
-                expanded.toggle()
-            } label: {
-                ChatBubble(pending.text.isEmpty ? "（图片）" : pending.text, pending: true, lines: expanded ? nil : 4, padded: false)
-                    .padding(.vertical, -8)
-                    .opacity(canceling ? 0.5 : 1)
-            }
-            .buttonStyle(PressStyle())
-            .accessibilityHint(expanded ? "收起" : "展开全文")
-            HStack(spacing: 6) {
-                // The note gives way; what can be done stays.
-                Text(label + pendingSuffix(pending, origin: origin, index: index))
-                    .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                if pending.paused && !canceling {
-                    TextAction(resume.error.isEmpty ? "发送" : "重试发送", style: T.metaB, enabled: online && !resume.running, alignment: .center) {
-                        SessionHaptics.tap()
-                        resume.run {
-                            var cmd = PBCommand()
-                            cmd.resumeInput = .with {
-                                $0.sessionID = sid
-                                $0.requestID = id
+        if isSkeleton(pending.id) || isSkeleton(pending.text) {
+            Text(skeletonMessage).type(T.sm, Theme.muted)
+        } else {
+            VStack(alignment: .trailing, spacing: 0) {
+                Button {
+                    expanded.toggle()
+                } label: {
+                    ChatBubble(pending.text.isEmpty ? "（图片）" : pending.text, pending: true, lines: expanded ? nil : 4, padded: false)
+                        .padding(.vertical, -8)
+                        .opacity(canceling ? 0.5 : 1)
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityHint(expanded ? "收起" : "展开全文")
+                HStack(spacing: 6) {
+                    // The note gives way; what can be done stays.
+                    Text(label + pendingSuffix(pending, origin: origin, index: index))
+                        .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    if pending.paused && !canceling {
+                        TextAction(resume.error.isEmpty ? "发送" : "重试发送", style: T.metaB, enabled: online && !resume.running, alignment: .center) {
+                            SessionHaptics.tap()
+                            resume.run {
+                                var cmd = PBCommand()
+                                cmd.resumeInput = .with {
+                                    $0.sessionID = sid
+                                    $0.requestID = id
+                                }
+                                try await remote.command(sid, cmd)
                             }
-                            try await remote.command(sid, cmd)
+                        }
+                    }
+                    if !canceling {
+                        TextAction(cancelFailed ? "重试" : "取消", style: T.metaB, enabled: online, alignment: .trailing) {
+                            store.cancel(remote, sid: sid, requestId: id)
                         }
                     }
                 }
-                if !canceling {
-                    TextAction(cancelFailed ? "重试" : "取消", style: T.metaB, enabled: online, alignment: .trailing) {
-                        store.cancel(remote, sid: sid, requestId: id)
-                    }
-                }
+                .frame(minHeight: 36)
             }
-            .frame(minHeight: 36)
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.horizontal, chatMargin).padding(.vertical, 6)
-        .debugSignal("session.cancel") { store.cancel(remote, sid: sid, requestId: id) }
-        .debugSignal("session.resume") {
-            resume.run {
-                var cmd = PBCommand()
-                cmd.resumeInput = .with {
-                    $0.sessionID = sid
-                    $0.requestID = id
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, chatMargin).padding(.vertical, 6)
+            .debugSignal("session.cancel") { store.cancel(remote, sid: sid, requestId: id) }
+            .debugSignal("session.resume") {
+                resume.run {
+                    var cmd = PBCommand()
+                    cmd.resumeInput = .with {
+                        $0.sessionID = sid
+                        $0.requestID = id
+                    }
+                    try await remote.command(sid, cmd)
                 }
-                try await remote.command(sid, cmd)
             }
         }
     }

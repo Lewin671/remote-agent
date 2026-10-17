@@ -1,3 +1,4 @@
+import { isSkeleton } from "./skeleton";
 import { approvalDisplay } from "./approval-display";
 // View models derived from the decrypted state: projects, session states
 // by priority, what is docked above the input, how a sent message is
@@ -1225,6 +1226,7 @@ export function timeline(events: Event[], d: Derived): Item[] {
     else out.push({ kind: "event", key: String(e.seq), event: e });
   };
   for (const e of events) {
+    if (isSkeleton(e)) { flush(); out.push({ kind: "event", key: String(e.seq), event: e }); continue; }
     if (!visible(e, d)) continue;
     const k = e.kind;
     if (k.case === "toolStarted") {

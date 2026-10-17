@@ -1,3 +1,4 @@
+import { isSkeleton, skeletonMessage } from "../skeleton";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { sessionImages, splitPlaceholders } from "../imageview";
@@ -687,6 +688,7 @@ function Row({
     return <ActiveTool tool={{ ...it.tool, title: toolTitle(it.tool, short) }} d={d} unsettled={it.kind === "unsettled"} aborted={it.kind === "unsettled" && it.aborted} remote={remote} />;
   if (it.kind === "turn") return <div className="sep">{duration(it.ms)}</div>;
   const e = it.event;
+  if (isSkeleton(e)) return <div className="record muted">{skeletonMessage}</div>;
   const k = e.kind;
   switch (k.case) {
     case "userMessage": {

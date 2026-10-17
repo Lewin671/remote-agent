@@ -42,3 +42,10 @@ validate the JSON corpus against the generated protobuf schema and sequence/cut
 boundaries. The shared async-question history observation is also checked through Web
 `timeline`, Swift `buildChat`, and Android app `ProjectionRowsVectorsTest`.
 UI wording remains in platform tests.
+
+`skeletons.json` contains one manually specified terminal-only skeleton for
+all 20 event kinds. Web timeline, Swift chat rows and Android chat rows must
+keep every one visible with the same warning; interactive skeletons offer no
+remote answer. These fixtures include rewritten ID markers for the two kinds
+without a payload text field. This is a rendering/marker contract, not a
+transport or real CLI test.

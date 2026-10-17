@@ -48,6 +48,8 @@ import io.github.lewin671.remoteagent.core.optionLabel
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.AnswerPlanRequest
 import io.github.lewin671.remoteagent.proto.AnswerQuestionRequest
+import io.github.lewin671.remoteagent.core.isSkeleton
+import io.github.lewin671.remoteagent.core.skeletonMessage
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.PlanChoice
 import io.github.lewin671.remoteagent.proto.QuestionAsked
@@ -76,9 +78,9 @@ sealed interface DockItem {
 
 /** The dock's one line: type, a summary, 处理 (client-v7). */
 fun dockSummary(item: DockItem, agent: String): Pair<String, String> = when (item) {
-    is DockItem.Approval -> (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to approvalDisplay(item.a.command.ifEmpty { item.a.toolName }).lines().first()
-    is DockItem.Question -> "$agent 在问你" to item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
-    is DockItem.Plan -> "计划待批准" to ""
+    is DockItem.Approval -> if (isSkeleton(item.a)) skeletonMessage to "" else (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to approvalDisplay(item.a.command.ifEmpty { item.a.toolName }).lines().first()
+    is DockItem.Question -> if (isSkeleton(item.q)) skeletonMessage to "" else "$agent 在问你" to item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
+    is DockItem.Plan -> if (isSkeleton(item.text)) skeletonMessage to "" else "计划待批准" to ""
     is DockItem.Popup -> "终端里有弹窗" to item.title
 }
 
@@ -148,6 +150,7 @@ fun DockFoot(left: String, link: String, danger: Boolean = false, arrow: Boolean
 
 @Composable
 fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int, onDetail: () -> Unit) {
+    if (isSkeleton(a)) { Text(skeletonMessage, style = T.sm, color = pal.muted); return }
     val p = pal
     val t = now(15_000)
     val agent = agentName(s.agent())
@@ -197,6 +200,7 @@ object Resolves {
 
 /** Sends [allow], or the earlier decision while its outcome is unknown; returns the decision that went. */
 suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, s: SessionView, a: ApprovalRequested, allow: Boolean, message: String, always: Boolean = false): Boolean {
+    require(!isSkeleton(a)) { skeletonMessage }
     val r = Resolves.of(a.approvalId)
     require(!approvalTruncated(a) || !(allow || (r.attempt.frozen && r.allow))) { approvalTruncatedMessage }
     try {
@@ -225,6 +229,7 @@ suspend fun resolveApproval(remote: io.github.lewin671.remoteagent.core.Remote, 
  */
 @Composable
 fun ApprovalButtons(s: SessionView, a: ApprovalRequested, compact: Boolean, reasonOpen: Boolean = false, onReason: (Boolean) -> Unit = {}, onCard: Boolean = false) {
+    if (isSkeleton(a)) { Text(skeletonMessage, style = T.sm, color = pal.muted); return }
     val p = pal
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
@@ -359,6 +364,7 @@ fun longQuestion(q: io.github.lewin671.remoteagent.proto.Question): Boolean =
  */
 @Composable
 fun QuestionBody(s: SessionView, q: QuestionAsked, onTerminal: () -> Unit, full: Boolean, onLong: () -> Unit = {}, onAnswered: () -> Unit = {}, part: Int = 0, act: Action = rememberAction()) {
+    if (isSkeleton(q)) { if (part != 2) Text(skeletonMessage, style = T.sm, color = pal.muted); return }
     val p = pal
     val remote = LocalRemote.current
     val qid = q.questionId
@@ -498,6 +504,7 @@ fun QuestionPage(sid: String, qid: String) {
 
 @Composable
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
+    if (isSkeleton(text)) { Text(skeletonMessage, style = T.sm, color = pal.muted); return }
     val p = pal
     PendingDock(DockItem.Plan(text), agentName(s.agent()), more, body = {
         DockHead("计划待批准", "展开全文", rightLink = onFull)
@@ -507,7 +514,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
             modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth().clip(Radii.XS).background(p.soft).padding(horizontal = 10.dp, vertical = 7.dp),
         )
         if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE) Text("批准后使用询问模式", style = T.meta, color = p.muted)
-    }) { PlanButtons(s, full = false) }
+    }) { PlanButtons(s, full = false, terminalOnly = isSkeleton(text)) }
 }
 
 /**
@@ -516,7 +523,8 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
  * or given up ([Plans]).
  */
 @Composable
-fun PlanButtons(s: SessionView, full: Boolean, onDone: () -> Unit = {}) {
+fun PlanButtons(s: SessionView, full: Boolean, terminalOnly: Boolean = false, onDone: () -> Unit = {}) {
+    if (terminalOnly) { Text(skeletonMessage, style = T.sm, color = pal.muted); return }
     val remote = LocalRemote.current
     val act = rememberAction()
     val reply = Plans.of(s.id)

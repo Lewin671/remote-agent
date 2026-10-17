@@ -18,7 +18,9 @@ struct PlanScreen: View {
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                if let s, let plan = chat.derived.plan {
+                if let plan = chat.derived.plan, isSkeleton(plan.text) {
+                    PageNote(skeletonMessage)
+                } else if let s, let plan = chat.derived.plan {
                     ScrollView {
                         MarkdownView(plan.text, bleed: 16)
                             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)
@@ -27,7 +29,7 @@ struct PlanScreen: View {
                     // Answered already, here or elsewhere: the plan stays to be read, without its choices.
                     if s.info?.planOpen == true {
                         VStack(alignment: .leading, spacing: 0) {
-                            PlanButtons(session: s, full: true) { nav.back(from: page) }
+                            PlanButtons(session: s, full: true, terminalOnly: isSkeleton(plan.text)) { nav.back(from: page) }
                         }
                         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
                         .readableColumn()

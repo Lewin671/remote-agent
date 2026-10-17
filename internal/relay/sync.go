@@ -295,20 +295,12 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 			}
 			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
 			if err != nil {
-				var failure *syncError
-				if errors.As(err, &failure) && failure.category == "event_size" {
-					// This event will fail on every retry. Commit the valid
-					// prefix (and its notifications) before blocking here.
-					if flushErr := flush(); flushErr != nil {
-						return flushErr
-					}
-				}
 				return err
 			}
 			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
 			batchBytes += proto.Size(env)
 			if notifyKind(e) != pb.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-				notifyBatch = append(notifyBatch, e)
+				notifyBatch = append(notifyBatch, fitEvent(slimEvent(e)))
 			}
 			if len(batch) >= uploadEvents || batchBytes >= uploadBytes {
 				return flush()
@@ -468,10 +460,7 @@ func metaDigest(server string, key []byte, info *pb.Session, revision uint64) []
 }
 
 func (c *conn) sealEvent(key []byte, sessionID string, e *pb.Event) (*pb.Envelope, error) {
-	fitted, err := fitEvent(slimEvent(e))
-	if err != nil {
-		return nil, localSyncError("event_size", err)
-	}
+	fitted := fitEvent(slimEvent(e))
 	env, err := e2e.SealMessage(key, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: e.Seq, Sender: c.acct.DeviceID,
@@ -574,6 +563,16 @@ func (c *conn) notifyRequest(sessionID string, info *pb.Session, kind pb.NotifyK
 	case *pb.Event_TurnEnded:
 		nc.Text, _ = clip(info.GetPreview(), notifyText)
 	}
+	if eventSkeleton(e) {
+		// A notification must not reintroduce a decision button for an
+		// event whose identity or selectable content was reduced.
+		nc.Text = "内容过大，请在终端查看/回答"
+		nc.Approval = nil
+		// The ID prefix is private event content. Only the already-public
+		// sequence may appear in the clear dedupe key and envelope header.
+		dedupe = fmt.Sprintf("skeleton:%d", e.Seq)
+	}
+
 	env, err := e2e.SealMessage(c.keys.Notify, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		RequestId: dedupe, Sender: c.acct.DeviceID,

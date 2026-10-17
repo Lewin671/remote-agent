@@ -278,6 +278,11 @@ fun buildChat(
     }
     for (e in events) {
         val k = "e${e.seq}"
+        if (io.github.lewin671.remoteagent.core.isSkeleton(e)) {
+            flush()
+            out += ChatItem.Agent(k, io.github.lewin671.remoteagent.core.skeletonMessage)
+            continue
+        }
         unsentAt[e.seq]?.let { ids ->
             flush()
             for (id in ids) out += ChatItem.Unsent("u$id", id, textOf(id))

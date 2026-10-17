@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"fmt"
 	"slices"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -10,19 +9,18 @@ import (
 )
 
 // maxEventBytes keeps a sealed event well below the server's 1 MiB
-// envelope limit. Events are uploaded in order; an irreducible oversized
-// event blocks only its session, which retries with the normal backoff.
+// envelope limit, including after a terminal-only skeleton fallback.
 const maxEventBytes = 768 << 10
 
 const truncatedNote = "\n…（remote-agent：内容过长，已截断）"
 
 // fitEvent cuts display text and previews without changing event semantics.
-// IDs, option labels, configuration values and state codes are never cut.
-// The local log keeps the full event. If the remaining structure cannot fit,
-// fail rather than replace a state transition with an unrelated message.
-func fitEvent(e *pb.Event) (*pb.Event, error) {
+// The local log keeps the full event. If display truncation is insufficient,
+// keep the kind and scalar state in a terminal-only skeleton. Only an ID
+// that still makes that skeleton oversized is replaced by prefix + hash.
+func fitEvent(e *pb.Event) *pb.Event {
 	if proto.Size(e) <= maxEventBytes {
-		return e, nil
+		return e
 	}
 	e = proto.CloneOf(e)
 	// Previews go first, largest first: the text, the image refs and the
@@ -32,12 +30,12 @@ func fitEvent(e *pb.Event) (*pb.Event, error) {
 	slices.SortFunc(refs, func(a, b *pb.ImageRef) int { return len(b.Preview) - len(a.Preview) })
 	for _, ref := range refs {
 		if proto.Size(e) <= maxEventBytes {
-			return e, nil
+			return e
 		}
 		ref.Preview, ref.PreviewFormat, ref.PreviewWidth, ref.PreviewHeight = nil, pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED, 0, 0
 	}
 	if proto.Size(e) <= maxEventBytes {
-		return e, nil
+		return e
 	}
 	var fields []*string
 	switch k := e.Kind.(type) {
@@ -102,11 +100,25 @@ func fitEvent(e *pb.Event) (*pb.Event, error) {
 			}
 		}
 		if proto.Size(e) <= maxEventBytes {
-			return e, nil
+			return e
 		}
 		if cap == 0 {
-			// No content in the error: this category is safe to diagnose.
-			return nil, fmt.Errorf("event structure exceeds %d bytes", maxEventBytes)
+			// Option labels can be enormous too. Once selectable content
+			// changes, the entire request becomes terminal-only.
+			if q := e.GetQuestionAsked(); q != nil {
+				for _, question := range q.Questions {
+					for _, option := range question.Options {
+						if len(option.Label) > 64 {
+							option.Label = cutUTF8(option.Label, 64) + truncatedNote
+						}
+					}
+				}
+				markSkeleton(e)
+				if proto.Size(e) <= maxEventBytes {
+					return e
+				}
+			}
+			return minimalEvent(e)
 		}
 	}
 }

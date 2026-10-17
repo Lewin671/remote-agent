@@ -373,6 +373,10 @@ private fun ChatPane(
 
 @Composable
 private fun PendingBubble(sid: String, pending: io.github.lewin671.remoteagent.core.PendingInput, index: Int, state: RemoteState, remote: io.github.lewin671.remoteagent.core.Remote, starting: String?) {
+    if (io.github.lewin671.remoteagent.core.isSkeleton(pending.id) || io.github.lewin671.remoteagent.core.isSkeleton(pending.text)) {
+        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.sm, color = pal.muted)
+        return
+    }
     val p = pal
     var expanded by remember(pending.id) { mutableStateOf(false) }
     val cancel = Cancels.states[pending.id]

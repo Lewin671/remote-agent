@@ -1,0 +1,181 @@
+{
+  "message": "内容过大，请在终端查看/回答",
+  "note": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+  "events": [
+    {
+      "userMessage": {
+        "text": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "requestId": "r"
+      },
+      "seq": "1",
+      "sessionId": "projection-test"
+    },
+    {
+      "agentMessage": {
+        "text": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "2",
+      "sessionId": "projection-test"
+    },
+    {
+      "reasoning": {
+        "text": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "3",
+      "sessionId": "projection-test"
+    },
+    {
+      "toolCall": {
+        "callId": "c",
+        "title": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "outputTruncated": true,
+        "status": "completed"
+      },
+      "seq": "4",
+      "sessionId": "projection-test"
+    },
+    {
+      "turnStarted": {},
+      "turnId": "prefix…#0123456789abcdef\n…（remote-agent：内容过大，请在终端查看/回答）",
+      "seq": "5",
+      "sessionId": "projection-test"
+    },
+    {
+      "turnEnded": {
+        "reason": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "outcome": 1
+      },
+      "seq": "6",
+      "sessionId": "projection-test"
+    },
+    {
+      "tokenUsage": {
+        "planType": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "totalTokens": "1"
+      },
+      "seq": "7",
+      "sessionId": "projection-test"
+    },
+    {
+      "turnContext": {
+        "model": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "8",
+      "sessionId": "projection-test"
+    },
+    {
+      "approvalRequested": {
+        "approvalId": "a",
+        "description": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "9",
+      "sessionId": "projection-test"
+    },
+    {
+      "approvalResolved": {
+        "approvalId": "a",
+        "message": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "decision": 2
+      },
+      "seq": "10",
+      "sessionId": "projection-test"
+    },
+    {
+      "questionAsked": {
+        "questionId": "q",
+        "questions": [
+          {
+            "id": "body",
+            "text": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+          }
+        ]
+      },
+      "seq": "11",
+      "sessionId": "projection-test"
+    },
+    {
+      "questionAnswered": {
+        "questionId": "q",
+        "answers": [
+          {
+            "questionId": "body",
+            "answers": [
+              "\n…（remote-agent：内容过大，请在终端查看/回答）"
+            ]
+          }
+        ]
+      },
+      "seq": "12",
+      "sessionId": "projection-test"
+    },
+    {
+      "sessionState": {
+        "status": 4,
+        "detail": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "13",
+      "sessionId": "projection-test"
+    },
+    {
+      "inputState": {
+        "requestId": "r",
+        "status": 1,
+        "text": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "14",
+      "sessionId": "projection-test"
+    },
+    {
+      "planProposed": {
+        "callId": "plan",
+        "text": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "15",
+      "sessionId": "projection-test"
+    },
+    {
+      "settingsChanged": {
+        "model": "\n…（remote-agent：内容过大，请在终端查看/回答）",
+        "mode": 1,
+        "compacted": true
+      },
+      "seq": "16",
+      "sessionId": "projection-test"
+    },
+    {
+      "toolStarted": {
+        "callId": "c2",
+        "title": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "17",
+      "sessionId": "projection-test"
+    },
+    {
+      "imageGenerated": {
+        "callId": "g",
+        "revisedPrompt": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "18",
+      "sessionId": "projection-test"
+    },
+    {
+      "planAnswered": {
+        "choice": 1
+      },
+      "origin": {
+        "kind": 1,
+        "requestId": "prefix…#0123456789abcdef\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "19",
+      "sessionId": "projection-test"
+    },
+    {
+      "sessionForked": {
+        "sourceSessionId": "source",
+        "sourceTitle": "\n…（remote-agent：内容过大，请在终端查看/回答）"
+      },
+      "seq": "20",
+      "sessionId": "projection-test"
+    }
+  ]
+}

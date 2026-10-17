@@ -305,6 +305,10 @@ fun ApprovalPage(sid: String, aid: String) {
             }
             return@PageScaffold
         }
+        if (io.github.lewin671.remoteagent.core.isSkeleton(a)) {
+            Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.sm, color = p.muted)
+            return@PageScaffold
+        }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
             if (a.toolName.isNotEmpty() && a.command.isEmpty()) Text("请求权限 · ${approvalDisplay(a.toolName)}", style = T.smB, color = p.fg2, modifier = Modifier.padding(bottom = 4.dp))
             if (a.description.isNotEmpty()) Text(approvalDisplay(a.description), style = T.sm, color = p.fg2, modifier = Modifier.padding(bottom = 6.dp))
@@ -331,8 +335,12 @@ fun PlanPage(sid: String) {
             Text(io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…", style = T.body, color = pal.muted, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }
+        if (io.github.lewin671.remoteagent.core.isSkeleton(plan.text)) {
+            Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.sm, color = pal.muted)
+            return@PageScaffold
+        }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) { Markdown(plan.text, bleed = 16.dp) }
-        if (s.info?.planOpen == true) Column(Modifier.padding(horizontal = 14.dp).topLine(pal.line).padding(top = 8.dp, bottom = 16.dp)) { PlanButtons(s, full = true) { nav.back() } }
+        if (s.info?.planOpen == true) Column(Modifier.padding(horizontal = 14.dp).topLine(pal.line).padding(top = 8.dp, bottom = 16.dp)) { PlanButtons(s, full = true, terminalOnly = io.github.lewin671.remoteagent.core.isSkeleton(plan.text)) { nav.back() } }
     }
 }
 

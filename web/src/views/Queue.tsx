@@ -1,3 +1,4 @@
+import { isSkeleton, skeletonMessage } from "../skeleton";
 // The message queue in full (client-v2 队列完整页): every message the
 // computer accepted and has not written yet, in its order, whoever sent
 // it, each cancellable; and what became of a cancel.
@@ -43,6 +44,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   const starting = session.info?.status === SessionStatus.STARTING;
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
   const act = async (id: string, resume = false) => {
+    if (isSkeleton(id) || isSkeleton(d.accepted.get(id)?.text)) return;
     if (resume) { remote.resumes.set(id, { state: "sending", error: "" }); remote.touch(); }
     if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
     try {
@@ -57,6 +59,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   return <>
     {shown.map((id, i) => {
       const a = d.accepted.get(id);
+      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className="pending-bubble me" key={id}>{skeletonMessage}</div>;
       const o = remote.outbox(sid).find((x) => x.sendId === id);
       const c = remote.cancels.get(id);
       const paused = d.paused.has(id);
