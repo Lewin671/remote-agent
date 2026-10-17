@@ -331,3 +331,15 @@ macOS、Codex CLI 0.163.0、`e9ccf793` 的 dev 构建，沿用独立 dev-env 的
 独立 dev-env、macOS、Codex CLI 0.163.0，当前工作区构建：Go remoteclient 经加密 server/daemon 向真实 Codex 完成一轮消息收发。随后通过生产 hook 命令调试触发审批；远程解密元数据确认待审批时 AttentionSince 非空，远程拒绝后清空，hook 成功返回 deny。不是客户端界面操作或模型原生审批触发。图片阶段与 held 故障由真实队列文件、事件存储和替身终端的组件测试验证，本轮未重复磁盘镜像或 Claude 原生 CLI 故障注入。
 
 全量 Go 与 daemon/Claude/Codex/tail race 检查通过；八组反向验证均在撤掉相应修复后以断言失败。测试账户、进程、tmux、Codex home 和临时认证副本均已清理。
+
+### 持久受理的调用方（第四轮反馈）
+
+macOS、Codex CLI 0.163.0、当前 worktree 的 dev 构建；独立 dev-env 的账户、数据库、状态目录、tmux socket 和 CODEX_HOME。Go remoteclient 调试程序经 server 的加密转发、daemon 和真实 Codex 先完成一轮正常收发，再创建定时消息。没有操作网页或原生 App。
+
+事件日志移入独立 16 MiB HFS+ 镜像；为排除文件预分配对满盘测试的影响，停止测试 daemon 后向日志追加一条无正文、无业务 kind 的元数据事件，以 JSON 空白补到 64 KiB 边界，再填满磁盘并启动测试 daemon。队列、任务文件和本机诊断留在另一文件系统。派发时消息队列保存成功、排队事件实际 ENOSPC：任务仍为 queued，active run 的请求 ID、会话 ID 和游标保留，reason 明确说明已排队但记录失败；立即再运行被拒绝。故障期间再重启测试 daemon，上述跟踪信息完全一致。
+
+释放磁盘后没有重发或再次重启 daemon，消息自动进入真实 CLI。客户端解密事件确认定时输入的 UserMessage 和预期回复各一次，没有 UNCONFIRMED；任务记录一次 completed，恢复下一次调度。镜像、临时账户、进程、tmux、Codex home 和认证副本已清理。
+
+组件回归覆盖新建会话首条消息受理后不被清理、图片不退回 pending、恢复输入和 held 释放统一受理标记、真实 MCP/HTTP 工具读取 queued 警告并拒绝重复执行、本地 send 输出原请求 ID。首条消息和 held 取消的精确提交边界使用 protobuf 编码失败注入，不代表真实 CLI 的这两条故障链路。全量 Go、daemon/Claude/Codex/tail/schedulemcp race 检查通过；九组反向验证均在撤掉修复后以断言失败。
+
+未覆盖 Claude 原生 CLI 故障注入或三端直接界面验收。普通 RPC 目前不能同时携带成功结果和记录警告：三端仍按通用错误呈现，本地 send 仍以非零退出报告记录错误；本轮依约不改协议，该限制与后续协议设计见 [plan.md](plan.md#待确认)。

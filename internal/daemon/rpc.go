@@ -37,6 +37,11 @@ func rpcErr(err error) error {
 
 func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.CreateSessionRequest]) (*connect.Response[pb.CreateSessionResponse], error) {
 	s, err := h.d.createBy(req.Msg, originOf(ctx))
+	if err != nil && queueAccepted(err) {
+		// The error names the live session and its accepted first request.
+		// Do not misclassify a recording failure as invalid creation input.
+		return nil, rpcErr(err)
+	}
 	var ce *connect.Error
 	if errors.As(err, &ce) {
 		return nil, err
@@ -90,7 +95,7 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 	}
 	pos, err := s.enqueueMode(req.Msg.Text, req.Msg.RequestId, images, origin, req.Msg.Mode)
 	if err != nil {
-		if !errors.Is(err, errQueueAccepted) {
+		if !queueAccepted(err) {
 			h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
 		}
 		return nil, rpcErr(err)

@@ -122,8 +122,6 @@ const (
 	finished                       // failed before Enter and reported
 )
 
-var errQueueAccepted = errors.New("input queue saved but event could not be recorded")
-
 // enqueue accepts a message and saves the queue before returning, so an
 // accepted message survives a daemon restart. It returns the queue
 // position; a retried request ID is accepted once (position 0).
@@ -169,7 +167,7 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 	}
 	s.mu.Unlock()
 	if err != nil {
-		return pos, fmt.Errorf("%w; message is saved and may still be sent; do not resend with a new request ID: %w", errQueueAccepted, err)
+		return pos, fmt.Errorf("message %s queued at position %d and may still be sent: %w", requestID, pos, err)
 	}
 	return pos, nil
 }

@@ -356,7 +356,7 @@ func runSend(args []string) error {
 		SessionId: args[0], Text: text, RequestId: id, Mode: mode,
 	}))
 	if err != nil {
-		return explain(err)
+		return fmt.Errorf("send request %s: %w", id, explain(err))
 	}
 	if resp.Msg.QueuePosition > 1 || mode == pb.SendMode_SEND_MODE_QUEUE {
 		fmt.Printf("queued at position %d (request %s)\n", resp.Msg.QueuePosition, id)

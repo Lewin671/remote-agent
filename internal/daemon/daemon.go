@@ -515,13 +515,19 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
 		return fail(err)
 	}
+	var acceptedErr error
 	if strings.TrimSpace(req.Prompt) != "" || len(images) > 0 {
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered. A session whose
 		// first message cannot be accepted is not started.
 		if _, err := s.enqueue(req.Prompt, firstRequest, images, origin); err != nil {
-			_ = d.cfg.Tmux.KillSession(m.Tmux)
-			return fail(err)
+			if !queueAccepted(err) {
+				_ = d.cfg.Tmux.KillSession(m.Tmux)
+				return fail(err)
+			}
+			// The prompt and its images belong to this live session now.
+			// Register and supervise it even though its notification failed.
+			acceptedErr = fmt.Errorf("session %s already created; first %w", id, err)
 		}
 	}
 	s.mu.Lock()
@@ -536,7 +542,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 	d.mu.Unlock()
 	s.start(d.ctx)
 	slog.Info("created session", "session", id)
-	return s, nil
+	return s, acceptedErr
 }
 
 // noteLimits keeps the newest usage limits Codex reported.

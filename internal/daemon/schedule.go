@@ -681,7 +681,7 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 	}
 	origin := proto.Clone(originSystem).(*pb.Origin)
 	origin.RequestId = run.RequestID
-	if _, err = s.enqueueMode(t.Spec.Message, run.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE); err != nil {
+	if _, err = s.enqueueMode(t.Spec.Message, run.RequestID, nil, origin, pb.SendMode_SEND_MODE_QUEUE); !queueAccepted(err) {
 		run.Status = "failed"
 		run.Reason = "could_not_queue_message"
 		run.EndedAt = &now
@@ -696,6 +696,13 @@ func (d *Daemon) dispatchScheduled(t *schedule.Task, now time.Time) {
 	t.Status = "queued"
 	t.NextRunAt = nil
 	t.Reason = ""
+	if err != nil {
+		// Keep the stable request ID and cursor: the accepted message can
+		// execute as soon as event storage recovers. This is a warning in
+		// the existing task response, not a failed execution to retry.
+		run.Reason = "message queued, but event recording failed; do not send another copy"
+		t.Reason = run.Reason
+	}
 }
 
 func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) {

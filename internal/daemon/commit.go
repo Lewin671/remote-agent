@@ -11,9 +11,17 @@ import (
 )
 
 var (
-	errEventCommit = errors.New("record session events")
-	errQueueCommit = errors.New("save input queue")
+	errEventCommit   = errors.New("record session events")
+	errQueueCommit   = errors.New("save input queue")
+	errQueueAccepted = errors.New("input queue saved but event could not be recorded; do not resend with a new request ID")
 )
+
+// queueAccepted distinguishes a recording failure after durable acceptance
+// from rejection. It must only be used at queue-operation boundaries: an
+// arbitrary event-commit error does not prove that anything was accepted.
+func queueAccepted(err error) bool {
+	return err == nil || errors.Is(err, errQueueAccepted)
+}
 
 // appendLocked commits and projects events exactly once. Hold mu; parser
 // Replay remains explicit at callers holding readMu (parsed events must not
@@ -53,7 +61,9 @@ func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
 	}
 	defer s.poke()
 	if len(evs) > 0 {
-		return true, s.appendLocked(evs, "", 0)
+		if err := s.appendLocked(evs, "", 0); err != nil {
+			return true, fmt.Errorf("%w: %w", errQueueAccepted, err)
+		}
 	}
 	return true, nil
 }

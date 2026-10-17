@@ -121,7 +121,7 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	}
 	s.mu.Unlock()
 	if err != nil {
-		return fmt.Errorf("message is saved for sending but could not record resumed state: %w", err)
+		return fmt.Errorf("message %s already resumed and queued for sending: %w", requestID, err)
 	}
 	return nil
 }

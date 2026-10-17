@@ -228,6 +228,9 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
 	}
 	if err := s.releaseRequeued(others); err != nil {
+		if queueAccepted(err) {
+			return fmt.Errorf("message already canceled on the computer; other messages already requeued for sending: %w", err)
+		}
 		return fmt.Errorf("message already canceled on the computer but could not record the other queued messages: %w", err)
 	}
 	return nil
