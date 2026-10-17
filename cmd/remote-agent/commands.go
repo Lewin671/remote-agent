@@ -248,7 +248,11 @@ func runList(args []string) error {
 		return explain(err)
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tDIRECTORY")
+	header := "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tDIRECTORY"
+	if *all {
+		header += "\tLOCAL DIAGNOSTICS"
+	}
+	fmt.Fprintln(w, header)
 	for _, s := range resp.Msg.Sessions {
 		status := statusName(s.Status)
 		if s.StatusDetail != "" {
@@ -272,8 +276,22 @@ func runList(args []string) error {
 		if p == "" {
 			p = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
 			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), terminalText(s.Cwd, false))
+		if *all {
+			detail, err := daemon.ReadSessionDiagnostics(paths.Dir(), s.Id)
+			if err != nil {
+				if detail != "" {
+					detail += "; "
+				}
+				detail += "local diagnostics unreadable"
+			}
+			if detail == "" {
+				detail = "-"
+			}
+			fmt.Fprintf(w, "\t%s", terminalText(detail, false))
+		}
+		fmt.Fprintln(w)
 	}
 	return w.Flush()
 }

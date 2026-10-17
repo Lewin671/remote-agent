@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
@@ -112,7 +114,10 @@ func (s *session) noteParseFailure(path string, start, end int64, raw []byte, pa
 		return fmt.Errorf("save parse diagnostic: %w", err)
 	}
 	s.parseHealth = h
-	s.log.Poke()
+	if !errors.Is(parseErr, agent.ErrUnknownRecord) && (s.parseWarnAt.IsZero() || time.Since(s.parseWarnAt) >= time.Minute) {
+		slog.Warn("CLI parse failure", "session", s.meta.ID, "start", start, "end", end, "type", h.Type, "category", h.Category, "failures", h.Failures)
+		s.parseWarnAt = time.Now()
+	}
 	return nil
 }
 
@@ -120,5 +125,8 @@ func (h parseHealth) detail() string {
 	if h.Failures == 0 && h.Unknown == 0 {
 		return ""
 	}
-	return fmt.Sprintf("CLI parse failures=%d unknown=%d; latest bytes=%d..%d type=%s category=%s", h.Failures, h.Unknown, h.Start, h.End, h.Type, h.Category)
+	if h.Failures == 0 {
+		return fmt.Sprintf("unknown records=%d; latest bytes=%d..%d type=%s", h.Unknown, h.Start, h.End, h.Type)
+	}
+	return fmt.Sprintf("parse failures=%d unknown=%d; latest bytes=%d..%d type=%s category=%s", h.Failures, h.Unknown, h.Start, h.End, h.Type, h.Category)
 }

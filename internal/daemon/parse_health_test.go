@@ -33,8 +33,8 @@ func TestParseFailureIsDurableAndDoesNotBlockFollowingRecords(t *testing.T) {
 	if err != nil || strings.Contains(string(data), "PRIVATE_BODY") {
 		t.Fatalf("unsafe/missing diagnostic %s %v", data, err)
 	}
-	if !strings.Contains(h.s.info().StatusDetail, "failures=1 unknown=1") {
-		t.Fatal("query hides parse health")
+	if h.s.info().StatusDetail != "" {
+		t.Fatal("parse health leaked into client metadata")
 	}
 	m := h.s.meta
 	h.s.log.Close()
@@ -81,7 +81,7 @@ func TestParseDiagnosticWriteFailureRetriesBeforeCheckpoint(t *testing.T) {
 	if off != 0 || h.s.running || h.s.parseHealth.Failures != 0 {
 		t.Fatal("failed diagnostic advanced state")
 	}
-	if !strings.Contains(h.s.info().StatusDetail, "storage failure") {
+	if h.s.storageFault == "" {
 		t.Fatal("diagnostic storage failure invisible")
 	}
 	os.Remove(diagnostic)

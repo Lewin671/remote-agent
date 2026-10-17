@@ -24,7 +24,7 @@ func TestCommitFailureDoesNotProjectSettings(t *testing.T) {
 	if h.s.info().Model == "gpt-6-luna" {
 		t.Fatal("uncommitted settings projected")
 	}
-	if !strings.Contains(h.s.info().StatusDetail, "storage failure") {
+	if h.s.storageFault == "" {
 		t.Fatal("storage fault invisible")
 	}
 }

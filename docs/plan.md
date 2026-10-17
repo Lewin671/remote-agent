@@ -10,7 +10,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 | 部分 | 已实现 | 验证到哪 | 还缺什么 |
 |---|---|---|---|
-| daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误、会话存储故障与持久解析诊断可见 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
+| daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误返回调用方，存储故障与持久解析诊断仅本机可查询 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复 | 真实 CLI，手动（[记录](acceptance-notes.md#3-claude-code)） | 没有 Claude Code 版的 `scripts/acceptance.sh` |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩 | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收 |
 | 网页 | 当前界面稿 [client-v39](design/client-v42.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
@@ -54,6 +54,8 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 网页：终端视图的按键栏、键盘弹出、系统选图和分享面板、推送（iPhone 要先添加到主屏幕）、扫码配对，都只在本机 Chrome 上验证过
 
 **范围和产品**
+
+- 客户端暂时看不到会话存储故障；是否增加独立的协议字段及客户端呈现，未定。现有 `StatusDetail` 只承载 CLI 状态说明，不能拼入诊断（[architecture · 事件提交](architecture.md#10-报文同步和指令)）
 
 - Android 通知的系统布局可能截断未被 daemon 截短的审批正文，现有 `truncated` 不能证明已显示全文。要不要把所有「允许」改为「查看全文」，或改用能确认全文已显示的自有审批界面，未定（[android-client · 按钮](android-client.md#推送和通知里审批)）
 - 新会话首条图片的本地副本目前随创建成功释放，网页和 iOS 也一样；创建响应没有首条消息的队列请求 ID。要不要在协议里返回该 ID 后接入待确认记录，或先保留为可恢复的草稿、只在用户移除时释放，未定（[session-images.md](session-images.md)）

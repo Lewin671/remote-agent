@@ -117,6 +117,7 @@ type session struct {
 	storageFault   string
 	storageWarnAt  time.Time
 	parseHealth    parseHealth
+	parseWarnAt    time.Time
 	approvals      map[string]*approval
 	staleApprovals []string
 	questions      map[string]*pb.QuestionAsked
@@ -218,6 +219,9 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	}); err != nil {
 		return nil, fmt.Errorf("restore session events: %w", err)
 	}
+	// Clear the previous runtime snapshot before recovery can encounter a new
+	// commit failure of its own. Persisted parse diagnostics are kept.
+	s.clearStorageDiagnostic()
 	s.staleApprovals = slices.Clone(seen.approvalOrder)
 	s.dropSettled(seen)
 	s.restorePause(seen)
@@ -875,10 +879,6 @@ func (s *session) info() *pb.Session {
 			out.InputWait = "" // not yet: it may be a passing frame
 		}
 	}
-	if s.storageFault != "" {
-		out.StatusDetail = joinDetail(out.StatusDetail, s.storageFault)
-	}
-	out.StatusDetail = joinDetail(out.StatusDetail, s.parseHealth.detail())
 	out.Agent = s.ag.Kind()
 	if c := s.context; c != nil {
 		out.Model, out.Effort = c.Model, c.Effort
