@@ -45,7 +45,7 @@ var errQuota = errors.New("the account's image storage is full")
 
 // putImage stores a sealed image unless it is stored already, and returns
 // when it expires.
-func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID string, env []byte, retention time.Duration, quota int64) (int64, error) {
+func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID string, env []byte, retention time.Duration, quota int64, maxRows int) (int64, error) {
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -78,6 +78,17 @@ func (t *tstore) putImage(ctx context.Context, machineID, sessionID, imageID str
 	}
 	if used+int64(len(env)) > quota {
 		return 0, errQuota
+	}
+	// An expired image keeps its row, to tell it from one never stored;
+	// those rows are bounded by count where the plan says so.
+	if maxRows > 0 {
+		var rows int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM images WHERE account_id = ?`, t.acct).Scan(&rows); err != nil {
+			return 0, err
+		}
+		if rows >= maxRows {
+			return 0, errQuota
+		}
 	}
 	expires = now + retention.Milliseconds()
 	if _, err := tx.ExecContext(ctx, `INSERT INTO images (account_id, session_id, image_id, machine_id, envelope, bytes, created_ms, expires_ms)
@@ -147,7 +158,7 @@ func (m *machineService) PutImage(ctx context.Context, req *connect.Request[pb.P
 	}
 	b, _ := proto.Marshal(req.Msg.Image)
 	t := m.s.tenantFrom(ctx)
-	expires, err := t.store.putImage(ctx, id, req.Msg.SessionId, req.Msg.ImageId, b, m.s.cfg.ImageRetention, t.imageQuota(m.s))
+	expires, err := t.store.putImage(ctx, id, req.Msg.SessionId, req.Msg.ImageId, b, m.s.cfg.ImageRetention, t.imageQuota(m.s), t.plan.imageRows)
 	switch {
 	case errors.Is(err, errNoRows):
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session; put it first"))

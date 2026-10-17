@@ -42,6 +42,9 @@ type plan struct {
 	// remembers for good; prefs the preference objects it stores.
 	revoked int
 	prefs   int
+	// imageRows bounds the images an account ever stored, expired ones
+	// included.
+	imageRows int
 	// streams bounds the account's open streams, a main and a terminal
 	// stream for each of its devices.
 	streams int
@@ -51,7 +54,7 @@ type plan struct {
 // accounts anyone made are for trying remote-agent out.
 var plans = map[string]plan{
 	"owner": {name: "owner", devices: 32, machines: 16, prefs: 16, streams: 64},
-	"trial": {name: "trial", devices: 8, machines: 2, sessions: 200, eventBytes: 256 << 20, imageBytes: 64 << 20, revoked: 64, prefs: 16, streams: 16},
+	"trial": {name: "trial", devices: 8, machines: 2, sessions: 200, eventBytes: 256 << 20, imageBytes: 64 << 20, imageRows: 20000, revoked: 64, prefs: 16, streams: 16},
 }
 
 func planOf(name string) plan {

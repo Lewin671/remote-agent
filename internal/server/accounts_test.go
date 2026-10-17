@@ -593,3 +593,20 @@ func TestLoginChallengesAreBoundedPerAccount(t *testing.T) {
 		}
 	}
 }
+
+// Expired images keep their rows, which a plan bounds by count.
+func TestImageRowsAreBounded(t *testing.T) {
+	ts := newTestServer(t)
+	a := ts.account(t, ts.keys)
+	a.putSession(t, "s")
+	st := ts.tenant()
+	ctx := context.Background()
+	for i := range 2 {
+		if _, err := st.putImage(ctx, a.mid, "s", fmt.Sprintf("%032d", i), []byte("x"), -time.Second, 1<<20, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.putImage(ctx, a.mid, "s", fmt.Sprintf("%032d", 2), []byte("x"), time.Hour, 1<<20, 2); !errors.Is(err, errQuota) {
+		t.Fatalf("an image beyond the rows of expired ones: %v", err)
+	}
+}

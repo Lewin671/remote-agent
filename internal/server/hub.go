@@ -78,7 +78,6 @@ func (a accountHub) machineLocked(machineID string) *peer {
 	return p
 }
 
-
 func (a accountHub) online(machineID string) bool {
 	a.h.mu.Lock()
 	defer a.h.mu.Unlock()
