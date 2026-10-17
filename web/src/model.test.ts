@@ -254,17 +254,17 @@ describe("tools", () => {
     expect(d.tools.map((t) => t.title)).toEqual(["Read a.go", "Grep x"]);
   });
 
-  it("pairs in order without call IDs", () => {
+  it("keeps ID-less starts unknown when an unrelated result arrives", () => {
     const d = derive(
       events(
         { case: "turnStarted", value: {} },
         { case: "toolStarted", value: { title: "go test" } },
         { case: "toolStarted", value: { title: "go vet" } },
-        // Codex's completed call has its own ID, which no start carries.
+        // Without a shared call ID there is no evidence these belong together.
         { case: "toolCall", value: { title: "go test", callId: "call_9" } },
       ),
     );
-    expect(d.tools.map((t) => t.title)).toEqual(["go vet"]);
+    expect(d.tools.map((t) => t.title)).toEqual(["go test", "go vet"]);
   });
 
   it("folds runs of completed calls", () => {
