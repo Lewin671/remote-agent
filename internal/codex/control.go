@@ -276,6 +276,11 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ ag
 	}
 	wantPlan := mode == pb.ApprovalMode_APPROVAL_MODE_PLAN
 	if scr.PlanMode != wantPlan {
+		// Codex disables /plan and ignores Shift+Tab during a turn.
+		// Do not submit a slash command or wait for a switch it cannot make.
+		if running {
+			return agent.ErrBusy
+		}
 		if wantPlan {
 			// Codex can show an idle composer while MCP is still starting.
 			// It ignores Shift+Tab then, but accepts the explicit /plan command.

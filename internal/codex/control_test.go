@@ -2,6 +2,7 @@ package codex
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -14,6 +15,7 @@ import (
 // another "Permission selection requested" conversation message.
 type currentPermissionTerm struct {
 	plan, menu bool
+	draft      string
 	writes     []string
 }
 
@@ -25,7 +27,11 @@ func (t *currentPermissionTerm) Capture() (string, error) {
 	if t.plan {
 		footer += "   Plan mode (⇧tab to cycle)    ⚠ 1 warning"
 	}
-	return "\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n" + footer + "\n", nil
+	prompt := "\x1b[2mAsk Codex to do anything\x1b[0m"
+	if t.draft != "" {
+		prompt = t.draft
+	}
+	return "\x1b[1m›\x1b[0m " + prompt + "\n" + footer + "\n", nil
 }
 func (t *currentPermissionTerm) Write(b []byte) error {
 	key := string(b)
@@ -131,13 +137,27 @@ func TestSetPlanDuringMCPStartup(t *testing.T) {
 }
 
 func TestSetPlanAlreadyEnabled(t *testing.T) {
-	term := &currentPermissionTerm{plan: true}
-	if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, agent.ModeFacts{}); err != nil {
-		t.Fatal(err)
+	for _, running := range []bool{false, true} {
+		term := &currentPermissionTerm{plan: true}
+		if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, running, agent.ModeFacts{}); err != nil {
+			t.Fatal(err)
+		}
+		if len(term.writes) != 0 {
+			t.Fatalf("already enabled Plan mode wrote keys: %q", term.writes)
+		}
 	}
-	if len(term.writes) != 0 {
-		t.Fatalf("already enabled Plan mode wrote keys: %q", term.writes)
-	}
+}
+
+func TestSetModeAllowsPermissionsDuringTurn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		term := &currentPermissionTerm{}
+		if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_ASK, true, agent.ModeFacts{}); err != nil {
+			t.Fatal(err)
+		}
+		if term.plan || term.menu {
+			t.Fatalf("permission selection did not return to the composer: %+v", term)
+		}
+	})
 }
 
 func TestSetPlanPropagatesWriteError(t *testing.T) {
@@ -145,5 +165,45 @@ func TestSetPlanPropagatesWriteError(t *testing.T) {
 	term := &startingMCPTerm{failure: want}
 	if err := new(Adapter).SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, agent.ModeFacts{}); !errors.Is(err, want) {
 		t.Fatalf("got %v, want %v", err, want)
+	}
+}
+
+func TestSetModeRefusesPlanTransitionDuringTurn(t *testing.T) {
+	for _, plan := range []bool{false, true} {
+		t.Run(fmt.Sprintf("from-plan-%t", plan), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				term := &currentPermissionTerm{plan: plan}
+				want := pb.ApprovalMode_APPROVAL_MODE_PLAN
+				if plan {
+					want = pb.ApprovalMode_APPROVAL_MODE_ASK
+				}
+				if err := new(Adapter).SetMode(term, want, true, agent.ModeFacts{}); !errors.Is(err, agent.ErrBusy) {
+					t.Fatalf("got %v, want ErrBusy", err)
+				}
+				if len(term.writes) != 0 || term.plan != plan {
+					t.Fatalf("changed a running terminal: %+v", term)
+				}
+			})
+		})
+	}
+}
+
+func TestSetModePreservesDraftForPlanTransition(t *testing.T) {
+	for _, plan := range []bool{false, true} {
+		for _, running := range []bool{false, true} {
+			t.Run(fmt.Sprintf("from-plan-%t-running-%t", plan, running), func(t *testing.T) {
+				term := &currentPermissionTerm{plan: plan, draft: "local unsent draft"}
+				want := pb.ApprovalMode_APPROVAL_MODE_PLAN
+				if plan {
+					want = pb.ApprovalMode_APPROVAL_MODE_ASK
+				}
+				if err := new(Adapter).SetMode(term, want, running, agent.ModeFacts{}); !errors.Is(err, agent.ErrNotReady) {
+					t.Fatalf("got %v, want ErrNotReady", err)
+				}
+				if len(term.writes) != 0 || term.draft != "local unsent draft" || term.plan != plan {
+					t.Fatalf("changed terminal with a draft: %+v", term)
+				}
+			})
+		}
 	}
 }

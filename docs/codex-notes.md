@@ -98,7 +98,9 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 
 **Codex 0.163.0，真实 CLI 屏幕与回归测试已证实（2026-10-16）**：空闲页脚的标记是 `Plan mode (⇧tab to cycle)`，后面还可能有警告提示，不能只用整行是否以 `Plan mode` 结尾判断。当前输入框上方的旧聊天即使引用这个标记，也不是当前模式。隔离网页验收中旧识别导致进入 Plan 已实际切换却等待超时，之后离开时又跳过退出 Plan；修正后在同一隔离网页环境分别进入、离开，两个方向均已重验通过。
 
-**Codex 0.163.0，隔离真实 CLI 与可控 MCP 初始化已证实（2026-10-17）**：MCP 初始化尚未完成时，输入框和普通 footer 已可见，但 Shift+Tab 被忽略。阻塞测试 MCP 的 initialize 回复，首次切换等待约 4.25 秒超时；释放回复后重试成功。同一条件下 `/plan` 可立即进入 Plan，完成确认后才释放 MCP 回复，证明它不依赖初始化完成。此时 footer 没有快捷键提示，带警告时为 `Plan mode    ⚠ 2 warnings · f2 to view`。对应版本源码中，[忙碌状态包含 MCP 初始化且隐藏指示](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/turn_runtime.rs)，[Shift+Tab 要求非忙碌](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/interaction.rs)，而 [`/plan` 显式选择模式](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/slash_dispatch.rs)。这不证明 Shift+Tab 在 MCP 初始化中可用于退出 Plan，或在模型运行中可用。
+**Codex 0.163.0，隔离真实 CLI 与可控 MCP 初始化已证实（2026-10-17）**：MCP 初始化尚未完成时，输入框和普通 footer 已可见，但 Shift+Tab 被忽略。阻塞测试 MCP 的 initialize 回复，首次切换等待约 4.25 秒超时；释放回复后重试成功。同一条件下 `/plan` 可立即进入 Plan，完成确认后才释放 MCP 回复，证明它不依赖初始化完成。此时 footer 没有快捷键提示，带警告时为 `Plan mode    ⚠ 2 warnings · f2 to view`。对应版本源码中，[忙碌状态包含 MCP 初始化且隐藏指示](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/turn_runtime.rs)，[Shift+Tab 要求非忙碌](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/interaction.rs)，而 [`/plan` 显式选择模式](https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/tui/src/chatwidget/slash_dispatch.rs)。MCP 初始化中用 Shift+Tab 退出 Plan 未验证；模型回合运行中的行为见下段。
+
+**Codex 0.163.0，真实模型回合已证实（2026-10-17）**：让模型执行含 `time.sleep(40)` 的只读命令，普通模式、Plan 模式下的两轮均持续超过 40 秒。运行中输入 `/plan`，原生界面显示 `'/plan' is disabled while a task is in progress.`，没有切换；运行中按 Shift+Tab 退出 Plan 也没有效果。两种情况下输入框均为空，原生记录和客户端都只出现两条测试任务，没有新增 `/plan` 用户消息。因此不能把 MCP 初始化时可用的 `/plan` 推广为模型运行时可用。
 
 **Codex 0.163.0，真实 CLI 已证实（2026-10-16）**：`/permissions` 用 `(current)` 标出当前项；再次选择当前项会关闭菜单，但不再输出新的 `Permission selection requested`。在 Plan 下请求原来的权限级别时，仍要先退出 Plan；不能把缺少这句提示当成权限切换失败。
 

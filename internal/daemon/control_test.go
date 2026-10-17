@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -272,5 +273,42 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	}
 	if _, err := d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
 		t.Fatal("accepted a bad model name")
+	}
+}
+
+// The busy state found by drive is passed to Codex, and a rejected mode
+// transition must neither type keys nor record a SettingsChanged event.
+func TestCodexRunningPlanTransitionDoesNotRecordSettings(t *testing.T) {
+	for _, plan := range []bool{false, true} {
+		t.Run(fmt.Sprintf("from-plan-%t", plan), func(t *testing.T) {
+			h, _ := controlHarness(t)
+			initial, want := pb.ApprovalMode_APPROVAL_MODE_ASK, pb.ApprovalMode_APPROVAL_MODE_PLAN
+			if plan {
+				initial, want = want, initial
+			}
+			if err := h.s.setApprovalMode(initial); err != nil {
+				t.Fatal(err)
+			}
+			countSettings := func() int {
+				n := 0
+				h.s.log.Each(func(e *pb.Event) {
+					if e.GetSettingsChanged() != nil {
+						n++
+					}
+				})
+				return n
+			}
+			beforeSettings, beforeWrites := countSettings(), len(h.term.written())
+			beforeMode := h.s.info().CollaborationMode
+			if err := h.s.emit(&pb.Event{TurnId: "running-turn", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := h.s.setApprovalMode(want); !errors.Is(err, errBusy) {
+				t.Fatalf("got %v, want ErrBusy", err)
+			}
+			if countSettings() != beforeSettings || len(h.term.written()) != beforeWrites || h.s.info().CollaborationMode != beforeMode {
+				t.Fatal("rejected transition changed terminal or settings")
+			}
+		})
 	}
 }
