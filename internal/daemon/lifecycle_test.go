@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -236,7 +235,7 @@ func TestExitSettlesHeldInputOnlyAfterOutcomeIsLogged(t *testing.T) {
 const earlyClaudeUser = `{"type":"user","promptId":"early","origin":{"kind":"human"},"message":{"content":"original question"}}`
 
 func TestClaudeRestoredPromptSettlesEarlyInterruptAfterRestart(t *testing.T) {
-	h := claudeHarness(t, Config{ScreenInterval: 10 * time.Millisecond})
+	h := claudeHarness(t, Config{})
 	h.writeRollout(earlyClaudeUser)
 	h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
 	if _, err := h.s.enqueueMode("next", "next", nil, originLocal, pb.SendMode_SEND_MODE_QUEUE); err != nil {
@@ -244,10 +243,12 @@ func TestClaudeRestoredPromptSettlesEarlyInterruptAfterRestart(t *testing.T) {
 	}
 	h.reopen() // no in-memory interrupt intent survives
 	h.term.setScreen(ccBox("original question"))
-	ctx, cancel := context.WithCancel(context.Background())
-	h.s.start(ctx)
-	defer func() { cancel(); <-h.s.done }()
-	eventually(t, "early interrupt ended", func() bool { h.s.mu.Lock(); defer h.s.mu.Unlock(); return !h.s.running })
+	// Drive the two screen observations explicitly. running changes before
+	// afterTurn pauses the queue, so observing it from another goroutine
+	// is not a barrier for the complete interruption outcome.
+	h.s.checkScreen()
+	h.s.restoredPromptSince = time.Now().Add(-time.Second)
+	h.s.checkScreen()
 	h.s.mu.Lock()
 	if len(h.s.queue.Queue) != 1 || !h.s.queue.Queue[0].Paused {
 		t.Error("waiting input not paused by interruption")
