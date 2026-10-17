@@ -23,7 +23,7 @@ cp "$ROOT"/dist/remote-agent-*"$tag"*.tar.gz "$work/releases/download/$tag/"
 (cd "$work/releases/download/$tag" && if command -v sha256sum >/dev/null; then sha256sum ./*.tar.gz; else shasum -a 256 ./*.tar.gz; fi | sed 's|  \./|  |' >SHA256SUMS)
 echo "version=${tag#v}" >"$work/releases/latest/download/latest.properties"
 install() {
-	(cd "$work" && HOME="$work/home" REMOTE_AGENT_RELEASES="file://$work/releases" sh "$ROOT/deploy/releases-repo/install.sh" "$@")
+	(cd "$work" && HOME="$work/home" REMOTE_AGENT_RELEASES="file://$work/releases" sh "$ROOT/install.sh" "$@")
 }
 
 install

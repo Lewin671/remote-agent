@@ -19,6 +19,8 @@
 
 | 文件 | 类型 | 内容 |
 |---|---|---|
+| [development.md](development.md) | 说明 | 从源码构建、本机运行和调试，开发用的命令 |
+| [self-hosting.md](self-hosting.md)、[self-hosting.zh-CN.md](self-hosting.zh-CN.md) | 说明 | 给别人看的自部署指南（英文为主，附中文），从 Release 安装中继、网页和 daemon |
 | [scope.md](scope.md) | 边界 | 要解决的问题、组件职责、信任边界、MVP 做与不做 |
 | [architecture.md](architecture.md) | 设计 | 部署和发布、报文分层、通信方式、技术决策、接入 Codex 和 Claude Code、审批、项目、账户和密钥、同步和指令、终端、推送、daemon 设置、账户额度、定时任务 |
 | [android-client.md](android-client.md) | 设计 | Android 客户端自己的选型和约束：模块、生命周期、密钥保管、原生终端、更新、推送和在通知里审批 |
@@ -33,7 +35,7 @@
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
 | [design/client-v42.html](design/client-v42.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
 
-根目录的 README 写简介、上手用的命令和链接，项目状态只链接 plan.md；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
+根目录的 README（英文，附 README.zh-CN.md）面向使用者：简介、工作方式、快速开始、安全模型、下载和限制，开发者从那里链到 development.md 和本文；它和自部署指南是公开的门面，内容以本目录的设计文档为准，两种语言同步改；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 
 ## 3. 写之前：内容放哪
 

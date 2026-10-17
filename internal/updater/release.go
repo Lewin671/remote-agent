@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const releases = "https://github.com/Lewin671/remote-agent-releases/releases"
+const releases = "https://github.com/Lewin671/remote-agent/releases"
 const maxArchive = 32 << 20
 const maxBinary = 64 << 20
 

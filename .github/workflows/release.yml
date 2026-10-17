@@ -14,10 +14,6 @@ on:
         description: Version tag to retry (for example v0.2.0). Empty rehearses this branch without publishing.
         required: false
         type: string
-      publish_only:
-        description: Retry public publishing from an already published private Release (requires tag; no rebuild).
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -26,7 +22,6 @@ permissions:
 # of a hosted runner, so sharing a job with lint and tests doubles its time.
 jobs:
   checks:
-    if: ${{ !inputs.publish_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -69,7 +64,6 @@ jobs:
   # What other people deploy from: the daemon and the server for each
   # platform and the web client, built with nothing of our deployment in them.
   dist:
-    if: ${{ !inputs.publish_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -99,7 +93,7 @@ jobs:
       - name: Refuse anything of our deployment
         env:
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
-        run: python3 scripts/public_scan.py dist deploy/releases-repo
+        run: python3 scripts/public_scan.py dist
       - name: Install from the archives as a stranger would
         run: scripts/dist-smoke.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -111,7 +105,6 @@ jobs:
           if-no-files-found: error
 
   android-checks:
-    if: ${{ !inputs.publish_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -157,7 +150,6 @@ jobs:
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
 
   android-build:
-    if: ${{ !inputs.publish_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -223,9 +215,9 @@ jobs:
   publish:
     needs: [checks, android-checks, android-build, dist]
     if: >-
-      ${{ !cancelled() && (github.event_name == 'push' || inputs.tag != '' || inputs.publish_only) &&
-          (inputs.publish_only || (needs.checks.result == 'success' && needs.android-checks.result == 'success' &&
-           needs.android-build.result == 'success' && needs.dist.result == 'success')) }}
+      ${{ !cancelled() && (github.event_name == 'push' || inputs.tag != '') &&
+          needs.checks.result == 'success' && needs.android-checks.result == 'success' &&
+          needs.android-build.result == 'success' && needs.dist.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -257,22 +249,15 @@ jobs:
         env:
           TAG_INPUT: ${{ inputs.tag }}
           BUILT_COMMIT: ${{ needs.android-build.outputs.commit }}
-          PUBLISH_ONLY: ${{ inputs.publish_only }}
         run: |
-          if [ "$PUBLISH_ONLY" = true ] && [ -z "$TAG_INPUT" ]; then
-            echo 'publish_only requires an already published version tag' >&2
-            exit 1
-          fi
           RELEASE_TAG=${TAG_INPUT:-v$(sed -n 's/^version=//p' version.properties)}
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           # Both retries and newly built assets must belong to a release tag
-          # on main; no unvalidated tag gets the public repository's token.
+          # on main; no unvalidated tag is published.
           git merge-base --is-ancestor HEAD origin/main
           python3 scripts/release.py validate "$RELEASE_TAG"
-          if [ "$PUBLISH_ONLY" != true ]; then
-            [ "$(git rev-parse HEAD)" = "$BUILT_COMMIT" ]
-          fi
+          [ "$(git rev-parse HEAD)" = "$BUILT_COMMIT" ]
           if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/is-draft"; then
             if [ "$(cat "$RUNNER_TEMP/is-draft")" = false ]; then
               echo 'skip=true' >> "$GITHUB_OUTPUT"
@@ -281,10 +266,6 @@ jobs:
           else
             # A failed lookup must really be a missing release, not auth/network failure.
             gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > /dev/null
-          fi
-          if [ "$PUBLISH_ONLY" = true ]; then
-            echo 'publish_only cannot use a missing or draft private Release; run the full build first' >&2
-            exit 1
           fi
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         if: steps.plan.outputs.skip != 'true'
@@ -302,55 +283,14 @@ jobs:
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: |
           scripts/package-release.sh "$RELEASE_TAG"
-          python3 scripts/release.py notes "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
+      # The release is public: its notes are only the tag's user-facing
+      # message. A draft is uploaded and checked file by file before it is
+      # published, and an older tag rerun never becomes "latest".
       - name: Publish only after every component passes
         if: steps.plan.outputs.skip != 'true'
-        run: |
-          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
-          fi
-          gh release upload "$RELEASE_TAG" "dist/remote-agent-$RELEASE_TAG.apk" dist/remote-agent-*.tar.gz dist/SHA256SUMS --clobber
-          # Retrying an older tag must not replace a newer release as "latest".
-          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/releases.json"
-          latest=$(python3 - <<'PYTHON'
-          import json, os, re
-          from pathlib import Path
-          current = tuple(map(int, os.environ['RELEASE_TAG'][1:].split('.')))
-          releases = json.loads((Path(os.environ['RUNNER_TEMP'])/'releases.json').read_text())
-          newer = any(not r['draft'] and re.fullmatch(r'v\d+\.\d+\.\d+', r['tag_name']) and tuple(map(int, r['tag_name'][1:].split('.'))) > current for r in releases)
-          print('false' if newer else 'true')
-          PYTHON
-          )
-          gh release edit "$RELEASE_TAG" --draft=false --latest="$latest" --notes-file "$RUNNER_TEMP/release-notes.md"
-      # The app updates itself from the releases of a public repository, and
-      # other people deploy from them: this repository and its releases stay
-      # private. Publishing above cannot be undone, so this step does not
-      # depend on it having run now: a rerun of a tag that is already
-      # published hands over the files that were published, which is how a
-      # failure here is repaired.
-      - name: Publish the latest release in the public repository
         env:
-          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
+          RELEASES_REPO: ${{ github.repository }}
         run: |
-          if [ -z "$RELEASES_TOKEN" ]; then
-            echo 'Configure the RELEASES_TOKEN Actions secret first' >&2
-            exit 1
-          fi
-          # An older tag rerun must not put its files over a newer one. A lookup
-          # that fails must fail the step, not pass for "not the latest".
-          latest_tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
-          [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          if [ "$latest_tag" != "$RELEASE_TAG" ]; then
-            echo "$RELEASE_TAG is not the latest release; the public repository stays as it is"
-            exit 0
-          fi
-          if [ ! -f "dist/remote-agent-$RELEASE_TAG.apk" ]; then
-            rm -rf dist
-            gh release download "$RELEASE_TAG" --dir dist
-            (cd dist && sha256sum --check --strict SHA256SUMS)
-            python3 scripts/release.py manifest "$RELEASE_TAG" "dist/remote-agent-$RELEASE_TAG.apk" > dist/latest.properties
-          fi
-          # Only the tag's user-facing message may reach the public notes.
           git tag --list "$RELEASE_TAG" --format='%(contents)' > "$RUNNER_TEMP/public-notes.md"
-          GH_TOKEN="$RELEASES_TOKEN" release-tools/scripts/publish-public.sh "$RELEASE_TAG" "$GITHUB_WORKSPACE/dist" "$RUNNER_TEMP/public-notes.md" --web-public "$GITHUB_WORKSPACE/web/public"
+          release-tools/scripts/publish-public.sh "$RELEASE_TAG" "$GITHUB_WORKSPACE/dist" "$RUNNER_TEMP/public-notes.md" --web-public "$GITHUB_WORKSPACE/web/public"

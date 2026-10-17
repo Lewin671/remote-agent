@@ -6,8 +6,8 @@
 #   install.sh web [DIR]       the web client's static files (default DIR: ./remote-agent-web)
 #
 # Piped from the network:
-#   curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server
+#   curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- server
 # Or download it, read it, and run it: it needs no root and asks for none.
 #
 # REMOTE_AGENT_VERSION picks a release (such as v0.32.0) instead of the latest;
@@ -15,7 +15,7 @@
 # Every download is checked against the release's SHA256SUMS.
 set -eu
 
-RELEASES=${REMOTE_AGENT_RELEASES:-https://github.com/Lewin671/remote-agent-releases/releases}
+RELEASES=${REMOTE_AGENT_RELEASES:-https://github.com/Lewin671/remote-agent/releases}
 
 say() { printf '%s\n' "$*"; }
 die() {

@@ -51,4 +51,4 @@ PY
 python3 scripts/release.py manifest "$tag" "dist/remote-agent-$tag.apk" > dist/latest.properties
 # The release as a whole: these files and no others, each archive holding
 # exactly what belongs in it, and nothing of ours anywhere.
-python3 scripts/public_scan.py --release "$tag" dist deploy/releases-repo
+python3 scripts/public_scan.py --release "$tag" dist

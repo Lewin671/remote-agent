@@ -6,7 +6,7 @@
 #
 # These are for other people's deployments, so nothing of ours goes in:
 # the web client is built without a default server, and the server comes
-# with the templates of deploy/releases-repo/self-host/ rather than with
+# with the templates of deploy/self-host/ rather than with
 # deploy/. scripts/package-release.sh scans the result before it is published.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -45,7 +45,7 @@ for arch in arm64 amd64; do
 	mkdir "$stage/$name"
 	RA_BUILD_CHANNEL=release CGO_ENABLED=0 GOOS=linux GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent-server" ./cmd/remote-agent-server
 	for f in Dockerfile .dockerignore compose.yaml Caddyfile env.example; do
-		cp "deploy/releases-repo/self-host/$f" "$stage/$name/"
+		cp "deploy/self-host/$f" "$stage/$name/"
 	done
 	GOOS=linux GOARCH=$arch scripts/notices.py go ./cmd/remote-agent-server >"$stage/$name/THIRD_PARTY_NOTICES.txt"
 	pack "$name"

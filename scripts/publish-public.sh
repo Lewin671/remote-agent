@@ -1,5 +1,5 @@
 #!/bin/sh
-# Publish directly with GH_TOKEN (the public repository's RELEASES_TOKEN).
+# Publish a release to RELEASES_REPO (default: this repository) with GH_TOKEN.
 # Usage: publish-public.sh TAG [DIST [NOTES]] [--dry-run]
 # DIST and NOTES may come from a tagged checkout while this tool comes
 # from the current workflow revision, so an old release can be retried.

@@ -166,7 +166,7 @@ def main():
             notes = Path(tmp) / "notes.md"
             notes.write_text(subprocess.check_output(["git", "tag", "--list", args.tag, "--format=%(contents)"], cwd=ROOT, text=True))
         publish(args.tag, args.dist.resolve(), notes.resolve(),
-                os.environ.get("RELEASES_REPO", "Lewin671/remote-agent-releases"), args.dry_run, args.web_public)
+                os.environ.get("RELEASES_REPO", "Lewin671/remote-agent"), args.dry_run, args.web_public)
 
 
 if __name__ == "__main__":

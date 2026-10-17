@@ -15,7 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /** The public repository's releases: the latest one's manifest, and each release's APK under its tag. */
-const val RELEASES_URL = "https://github.com/Lewin671/remote-agent-releases/releases/"
+const val RELEASES_URL = "https://github.com/Lewin671/remote-agent/releases/"
 const val RELEASE_MANIFEST = "latest.properties"
 
 /** The latest published release, as its manifest says. */

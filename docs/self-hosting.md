@@ -18,7 +18,7 @@ Put the relay and the web client under **the same registrable domain** (`ra.exam
 
 ```sh
 sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # not needed as root
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- server /opt/remote-agent
 ```
 
 The installer itself never asks for root. Unless you run it as root, it ends by telling you to hand the `data` directory to the relay's unprivileged user: `sudo chown 65534:65534 /opt/remote-agent/data`. Do that once.
@@ -46,7 +46,7 @@ docker compose logs -f        # Caddy obtains the HTTPS certificate on first sta
 ## 2. The web client
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- web
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- web
 ```
 
 This leaves the static files in `./remote-agent-web`. Host them anywhere that serves HTTPS.
@@ -72,7 +72,7 @@ Whatever address you choose must be listed in the relay's `ALLOWED_ORIGINS`.
 **You need:** macOS or Linux, tmux 3.2 or newer, and `codex` and/or `claude` installed and logged in.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 ```
 
 This installs `remote-agent` and `remote-agent-service` in `~/.local/bin` (set `BIN_DIR` to change that). Then:
@@ -108,7 +108,7 @@ remote-agent account pair --web https://app.example.com
 This shows a QR code, a link and a pairing code.
 
 - **Web:** scan the QR code or open the link, and confirm that both sides show the same emoji. In the browser's menu, install the page as an app to get a home-screen icon and Web Push notifications.
-- **Android:** install the APK from the [latest release](https://github.com/Lewin671/remote-agent-releases/releases/latest), open it and scan the same QR code. When you later add a device *from the app*, its QR code points at `app.<your domain>` if your relay is `ra.<your domain>`, and at the relay itself otherwise; with other names, pair from the computer as above. The app includes Google's Firebase messaging library and may contact Google to register for pushes, even though your relay sends none.
+- **Android:** install the APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest), open it and scan the same QR code. When you later add a device *from the app*, its QR code points at `app.<your domain>` if your relay is `ra.<your domain>`, and at the relay itself otherwise; with other names, pair from the computer as above. The app includes Google's Firebase messaging library and may contact Google to register for pushes, even though your relay sends none.
 - **Another computer:** install the daemon there, then `remote-agent account join --server https://ra.example.com --code <pairing code>`.
 
 Now start a session and it appears on every device:
@@ -127,12 +127,12 @@ Upgrade every part to the same release, and read the release notes first: before
 
 ```sh
 # computer
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 # relay: replaces the binary only, your .env, compose.yaml and Caddyfile stay
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- server /opt/remote-agent
 cd /opt/remote-agent && docker compose up -d --build
 # web client
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- web
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- web
 npx wrangler pages deploy remote-agent-web --project-name <your project> --branch main
 ```
 

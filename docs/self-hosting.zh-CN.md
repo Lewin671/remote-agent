@@ -18,7 +18,7 @@
 
 ```sh
 sudo mkdir -p /opt/remote-agent && sudo chown "$(id -u)" /opt/remote-agent    # 以 root 操作时不需要
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- server /opt/remote-agent
 ```
 
 安装脚本本身不会要求 root。如果不是以 root 运行，它最后会提示你把 `data` 目录交给中继使用的非特权用户：`sudo chown 65534:65534 /opt/remote-agent/data`，执行一次即可。
@@ -46,7 +46,7 @@ docker compose logs -f        # 第一次启动时 Caddy 会申请 HTTPS 证书
 ## 2. 网页
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- web
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- web
 ```
 
 静态文件在 `./remote-agent-web`，放到任何支持 HTTPS 的地方都可以。
@@ -72,7 +72,7 @@ npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --br
 **需要：** macOS 或 Linux，tmux 3.2 以上，`codex` 和/或 `claude` 已安装并登录。
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 ```
 
 它把 `remote-agent` 和 `remote-agent-service` 装进 `~/.local/bin`（用 `BIN_DIR` 改位置）。然后：
@@ -108,7 +108,7 @@ remote-agent account pair --web https://app.example.com
 它会显示二维码、链接和配对码。
 
 - **网页：** 扫二维码或打开链接，确认两边显示的 emoji 相同。在浏览器菜单里把页面安装成应用，就有主屏幕图标和 Web Push 通知。
-- **Android：** 从[最新 Release](https://github.com/Lewin671/remote-agent-releases/releases/latest) 安装 APK，打开后扫同一个二维码。以后*在 App 里*添加设备时，如果中继是 `ra.<你的域名>`，二维码会指向 `app.<你的域名>`，否则指向中继本身；用了别的命名时，请像上面那样从电脑上配对。App 内含 Google 的 Firebase 推送库，即使你的中继不发推送，它也可能连接 Google 注册推送。
+- **Android：** 从[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 安装 APK，打开后扫同一个二维码。以后*在 App 里*添加设备时，如果中继是 `ra.<你的域名>`，二维码会指向 `app.<你的域名>`，否则指向中继本身；用了别的命名时，请像上面那样从电脑上配对。App 内含 Google 的 Firebase 推送库，即使你的中继不发推送，它也可能连接 Google 注册推送。
 - **另一台电脑：** 在那台电脑上装好 daemon，然后 `remote-agent account join --server https://ra.example.com --code <配对码>`。
 
 现在启动一个会话，它会出现在所有设备上：
@@ -127,12 +127,12 @@ remote-agent codex      # 或者：remote-agent claude
 
 ```sh
 # 电脑
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh
 # 中继：只替换二进制，你的 .env、compose.yaml 和 Caddyfile 保持不变
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- server /opt/remote-agent
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- server /opt/remote-agent
 cd /opt/remote-agent && docker compose up -d --build
 # 网页
-curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent-releases/main/install.sh | sh -s -- web
+curl -fsSL https://raw.githubusercontent.com/Lewin671/remote-agent/main/install.sh | sh -s -- web
 npx wrangler pages deploy remote-agent-web --project-name <你的项目名> --branch main
 ```
 

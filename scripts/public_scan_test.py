@@ -148,9 +148,10 @@ class PublicScanTests(unittest.TestCase):
             ('remote-agent-web-v1.2.3.tar.gz', 'assets/deployment-backup.txt', 'not what this archive holds'),
         }, {(Path(f).name, m, why) for f, m, why in public_scan.release('v1.2.3', dist)})
 
-    def test_the_public_repository_pages_are_clean(self):
-        pages = Path(__file__).resolve().parents[1] / 'deploy' / 'releases-repo'
-        self.assertEqual([], public_scan.scan([pages]))
+    def test_the_user_facing_pages_are_clean(self):
+        root = Path(__file__).resolve().parents[1]
+        pages = ['README.md', 'README.zh-CN.md', 'install.sh', 'docs/self-hosting.md', 'docs/self-hosting.zh-CN.md', 'deploy/self-host']
+        self.assertEqual([], public_scan.scan([root / p for p in pages]))
 
 
 if __name__ == '__main__':
