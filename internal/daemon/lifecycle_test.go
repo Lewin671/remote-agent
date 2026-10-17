@@ -2,6 +2,8 @@ package daemon
 
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"os"
@@ -96,5 +98,76 @@ func TestExitEndsMissingTurnForBothAgents(t *testing.T) {
 				t.Fatal("old turn still blocks queue")
 			}
 		})
+	}
+}
+
+func TestRestoreExitedCheckpointReadsFinalTranscript(t *testing.T) {
+	r := newRestoreHarness(t)
+	id := "00000000000000aa"
+	rollout := filepath.Join(paths.SessionDir(id), "rollout.jsonl")
+	dir := r.save(meta{ID: id, RolloutPath: rollout, Exited: true}, false)
+	before := taskStarted + "\n"
+	final := `{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m1","content":[{"text":"last reply"}]}}}` + "\n"
+	if err := os.WriteFile(rollout, []byte(before+final), 0600); err != nil {
+		t.Fatal(err)
+	}
+	l, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = l.Append(id, []*pb.Event{{TurnId: "t1", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}}, rollout, int64(len(before))); err != nil {
+		t.Fatal(err)
+	}
+	l.Close()
+	if err = r.d.restore(); err != nil {
+		t.Fatal(err)
+	}
+	s := r.session(id)
+	path, off := s.log.Checkpoint()
+	evs, _, err := s.log.Since(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("restored EXITED: events=%d checkpoint=%s:%d file_size=%d", len(evs), filepath.Base(path), off, len(before+final))
+	for _, e := range evs {
+		if e.GetAgentMessage() != nil {
+			return
+		}
+	}
+	t.Error("final reply still in transcript but restore skipped it because meta.Exited was already durable")
+}
+
+func TestExitRetriesFailedFinalAppendBeforeSettlingTurn(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.writeRollout(taskStarted)
+	h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+	h.s.log.Close()
+	h.writeRollout(`{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"last","content":[{"text":"final reply"}]}}}`, `{"type":"event_msg","payload":{"type":"task_complete","turn_id":"t1"}}`)
+	h.s.markExited("stopped")
+	if !h.s.running {
+		t.Fatal("settled a turn before its final append succeeded")
+	}
+	l, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = l
+	if !h.s.settleExited() {
+		t.Fatal("final append not retried")
+	}
+	var reply, ends int
+	for _, e := range h.events() {
+		if e.GetAgentMessage().GetText() == "final reply" {
+			reply++
+		}
+		if end := e.GetTurnEnded(); end != nil {
+			ends++
+			if end.Outcome != pb.TurnOutcome_TURN_OUTCOME_COMPLETED {
+				t.Fatalf("premature aborted outcome %v", end)
+			}
+		}
+	}
+	if reply != 1 || ends != 1 || h.s.running {
+		t.Fatalf("reply=%d ends=%d running=%v", reply, ends, h.s.running)
 	}
 }

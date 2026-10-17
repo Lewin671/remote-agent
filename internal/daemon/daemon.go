@@ -297,8 +297,9 @@ func (d *Daemon) restore() error {
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
 		} else if m.Exited {
-			// A daemon that stopped while the session exited may have left
-			// messages queued.
+			// Exited records process liveness, not a transcript checkpoint.
+			// Retry the final read and settlement even when that flag was
+			// saved before the previous daemon stopped.
 			s.settleExited()
 			// Read once to restore it; nothing reads an ended session's
 			// events again unless a client or the server asks. Letting go
