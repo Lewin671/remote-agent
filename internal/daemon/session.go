@@ -697,7 +697,7 @@ func (s *session) settleExited() bool {
 		clear(s.answeredBy)
 	}
 	s.aborted = false // exiting cancels old input; new input belongs to the next CLI
-	if len(s.queue.Queue) == 0 {
+	if len(s.queue.Queue) == 0 && len(s.queue.Held) == 0 {
 		return true
 	}
 	var outcomes []*pb.Event
@@ -714,10 +714,23 @@ func (s *session) settleExited() bool {
 		}
 		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
 	}
+	for _, in := range s.queue.Held {
+		st := &pb.InputState{RequestId: in.RequestID}
+		if in.received || s.loggedUserMessage(in) {
+			st.Status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+		} else {
+			// The CLI acknowledged holding it, but left no record proving
+			// delivery to the model. Do not claim it was never delivered,
+			// and never replay it automatically in the resumed CLI.
+			st.Status, st.Reason = pb.InputStatus_INPUT_STATUS_UNCONFIRMED, "exited"
+		}
+		outcomes = append(outcomes, &pb.Event{Kind: &pb.Event_InputState{InputState: st}})
+	}
 	if !s.logOutcomeLocked(outcomes...) {
 		return false // they stay for the next start, or resume, to settle
 	}
 	s.queue.Queue = nil
+	s.queue.Held = nil
 	s.saveSettledLocked()
 	return true
 }

@@ -355,3 +355,27 @@ func TestReceivedHeldMessageIsSettledAfterRestart(t *testing.T) {
 		t.Fatalf("settled again: %v", st)
 	}
 }
+
+// An old turn's delayed sweep must not race final transcript recovery on
+// an exited session: only settleExited knows the final delivery outcome.
+func TestExitedHeldSweepWaitsForFinalSettlement(t *testing.T) {
+	h, _, _ := heldPair(t)
+	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
+	h.s.log.Close()
+	h.s.markExited("stopped")
+	l, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = l
+	h.s.sweepHeld()
+	if len(h.s.queue.Held) != 2 {
+		t.Fatal("delayed terminal sweep settled exited input")
+	}
+	if !h.s.settleExited() {
+		t.Fatal("settlement failed")
+	}
+	if inputStatus(h, "a") != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		t.Fatal("exited held input must not be claimed canceled in terminal")
+	}
+}

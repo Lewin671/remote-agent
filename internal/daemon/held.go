@@ -122,7 +122,7 @@ func (s *session) dropHeld(requestID string, status pb.InputStatus, reason strin
 func (s *session) sweepHeld() {
 	s.settleReceived()
 	s.mu.Lock()
-	if s.running || len(s.queue.Held) == 0 {
+	if s.meta.Exited || s.running || len(s.queue.Held) == 0 {
 		s.mu.Unlock()
 		return
 	}

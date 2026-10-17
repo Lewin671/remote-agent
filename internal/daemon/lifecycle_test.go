@@ -171,3 +171,58 @@ func TestExitRetriesFailedFinalAppendBeforeSettlingTurn(t *testing.T) {
 		t.Fatalf("reply=%d ends=%d running=%v", reply, ends, h.s.running)
 	}
 }
+
+func TestExitSettlesHeldInput(t *testing.T) {
+	h, _, _ := heldPair(t)
+	if err := h.s.kill(); err != nil {
+		t.Fatal(err)
+	}
+	h.reopen()
+	if !h.s.settleExited() {
+		t.Fatal("settlement failed")
+	}
+	for _, id := range []string{"a", "b"} {
+		states := inputStates(h, id)
+		last := states[len(states)-1]
+		if last.Status != pb.InputStatus_INPUT_STATUS_UNCONFIRMED || last.Reason != "exited" {
+			t.Fatalf("%s: %v", id, last)
+		}
+	}
+	if len(h.s.queue.Held) > 0 {
+		t.Fatal("exited CLI still holds input")
+	}
+	q, err := loadQueue(h.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(q.Held) > 0 {
+		t.Fatal("held input still persisted")
+	}
+}
+
+func TestExitSettlesHeldInputOnlyAfterOutcomeIsLogged(t *testing.T) {
+	h, _, _ := heldPair(t)
+	h.s.log.Close()
+	h.s.markExited("stopped")
+	if len(h.s.queue.Held) != 2 {
+		t.Fatal("held input dropped without outcome")
+	}
+	l, err := eventlog.Open(filepath.Join(h.dir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.s.log = l
+	// A final user message proves one held input reached the model even
+	// when its SUBMITTED outcome has not been written yet.
+	h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "first", RequestId: "a"}}})
+	if !h.s.settleExited() {
+		t.Fatal("settlement failed")
+	}
+	if inputStatus(h, "a") != pb.InputStatus_INPUT_STATUS_SUBMITTED || inputStatus(h, "b") != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+		t.Fatal("wrong final states")
+	}
+	h.reopen()
+	if len(h.s.queue.Held) != 0 {
+		t.Fatal("settled input restored")
+	}
+}
