@@ -31,6 +31,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -487,13 +488,19 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 	// The environment the CLI starts with: a client-created session's
 	// login shell gets what a new terminal gives it and builds the rest
 	// from the user's configuration; any other session gets the caller's
-	// own environment, as from that terminal.
+	// own environment, as from that terminal, and runs the CLI that
+	// terminal would. A session without a caller's environment (doctor's)
+	// runs the daemon's.
 	var env map[string]string
+	bin := ag.Bin()
 	if m.Shell {
 		env = shellSessionEnv(d.cfg.Env)
 		clearShellReport(dir)
 	} else {
 		env = sessionEnv(req.Env, d.cfg.Env)
+		if len(req.Env) > 0 {
+			bin = d.terminalCLI(ag, env["PATH"])
+		}
 	}
 	d.cliEnv(env, &m)
 	envFile, err := startEnv(dir, env)
@@ -516,7 +523,7 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 		_ = os.RemoveAll(dir) // a session that never started leaves nothing
 		return nil, err
 	}
-	argv := d.ptyHostArgv(dir, &m, cliArgs, envFile)
+	argv := d.ptyHostArgv(dir, &m, bin, cliArgs, envFile)
 	defer d.beginStart(id)()
 	err = d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
@@ -738,11 +745,11 @@ func (d *Daemon) shellCmd(kind pb.Agent) string {
 }
 
 // ptyHostArgv is the command that runs a session's CLI in its tmux pane:
-// pty-host wrapping either the CLI itself or the user's login shell.
-func (d *Daemon) ptyHostArgv(dir string, m *meta, args []string, envFile string) []string {
+// pty-host wrapping either the CLI itself (bin) or the user's login shell.
+func (d *Daemon) ptyHostArgv(dir string, m *meta, bin string, args []string, envFile string) []string {
 	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(m.ID), "--env-file", envFile}
 	if !m.Shell {
-		argv = append(argv, "--", d.adapter(m.Agent).Bin())
+		argv = append(argv, "--", bin)
 		return append(argv, args...)
 	}
 	// The login shell starts from exactly envFile (--clean-env): the
@@ -753,11 +760,11 @@ func (d *Daemon) ptyHostArgv(dir string, m *meta, args []string, envFile string)
 	return append(argv, shellLaunchArgv(shell, dir, d.shellCmd(m.Agent), args)...)
 }
 
-// learnCLI records the CLI a login-shell launch resolved, so that version
-// checks, the installed list and doctor follow what sessions actually run
-// rather than the daemon's own PATH at the time it started. The shell
-// reports a plain name when it resolved an alias or function instead of a
-// file; that is not something the daemon can use.
+// learnCLI records the CLI a login-shell launch or a terminal's PATH
+// resolved, so that version checks, the installed list and doctor follow
+// what sessions actually run rather than the daemon's own PATH at the time
+// it started. The shell reports a plain name when it resolved an alias or
+// function instead of a file; that is not something the daemon can use.
 func (d *Daemon) learnCLI(kind pb.Agent, bin string) {
 	ag, ok := d.agents[kind]
 	if !ok || !filepath.IsAbs(bin) {
@@ -770,7 +777,45 @@ func (d *Daemon) learnCLI(kind pb.Agent, bin string) {
 		return
 	}
 	ag.SetBin(bin)
-	slog.Info("the login shell resolved a session's CLI", "agent", ag.Name(), "bin", bin)
+	slog.Info("a session resolved its CLI", "agent", ag.Name(), "bin", bin)
+}
+
+// terminalCLI is the CLI a session started from a terminal runs: what
+// typing the CLI's name in that terminal would start, found in path, the
+// PATH of the session's environment. A CLI the user configured by path
+// runs from that path. When the environment has no PATH, or no such
+// command in it, the daemon's own is used, so the session still starts.
+// What it finds is learned like a login shell's report, so that version
+// checks follow what sessions run.
+func (d *Daemon) terminalCLI(ag agent.Adapter, path string) string {
+	cmd := d.shellCmd(ag.Kind())
+	if cmd == "" || strings.ContainsRune(cmd, '/') || path == "" {
+		return ag.Bin()
+	}
+	bin := findInPath(cmd, path)
+	if bin == "" {
+		slog.Warn("the session's PATH has no such CLI; starting the daemon's", "agent", ag.Name(), "command", cmd, "bin", ag.Bin())
+		return ag.Bin()
+	}
+	d.learnCLI(ag.Kind(), bin)
+	return bin
+}
+
+// findInPath looks name up in path the way a shell does: the first
+// directory, in order, holding an executable regular file of that name.
+// Empty and relative entries are skipped. exec.LookPath cannot be used: it
+// reads this process's PATH, not the session's.
+func findInPath(name, path string) string {
+	for _, dir := range filepath.SplitList(path) {
+		if !filepath.IsAbs(dir) {
+			continue
+		}
+		file := filepath.Join(dir, name)
+		if st, err := os.Stat(file); err == nil && st.Mode().IsRegular() && unix.Access(file, unix.X_OK) == nil {
+			return file
+		}
+	}
+	return ""
 }
 
 // skipEnv lists variables that belong to the caller's terminal rather than
@@ -897,6 +942,7 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	// login shell computes its environment the same way again, so that
 	// configuration changes since apply — that is why it starts that way.
 	var env map[string]string
+	var bin string
 	if m.Shell {
 		env = shellSessionEnv(d.cfg.Env)
 		clearShellReport(s.dir)
@@ -904,13 +950,14 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 		if env, err = readEnvFile(filepath.Join(s.dir, "env.json")); err != nil {
 			return nil, fmt.Errorf("read the session's environment: %w", err)
 		}
+		bin = d.terminalCLI(s.ag, env["PATH"])
 	}
 	d.cliEnv(env, &m)
 	envFile, err := startEnv(s.dir, env)
 	if err != nil {
 		return nil, err
 	}
-	argv := d.ptyHostArgv(s.dir, &m, cliArgs, envFile)
+	argv := d.ptyHostArgv(s.dir, &m, bin, cliArgs, envFile)
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
 	}); err != nil {

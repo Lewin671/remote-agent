@@ -101,10 +101,13 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	// provided credentials or proxies. A source that started through the
 	// login shell computes it again instead, like a resume.
 	var env map[string]string
+	var bin string
 	if nm.Shell {
 		env = shellSessionEnv(d.cfg.Env)
 	} else if env, err = readEnvFile(filepath.Join(src.dir, "env.json")); err != nil {
 		return fail(fmt.Errorf("read the session's environment: %w", err))
+	} else {
+		bin = d.terminalCLI(src.ag, env["PATH"])
 	}
 	d.cliEnv(env, &nm)
 	envFile, err := startEnv(dir, env)
@@ -133,7 +136,7 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	if err := log.Append(nid, []*pb.Event{forked}, "", 0); err != nil {
 		return fail(err)
 	}
-	argv := d.ptyHostArgv(dir, &nm, cliArgs, envFile)
+	argv := d.ptyHostArgv(dir, &nm, bin, cliArgs, envFile)
 	defer d.beginStart(nid)()
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: nm.Tmux, Dir: nm.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
