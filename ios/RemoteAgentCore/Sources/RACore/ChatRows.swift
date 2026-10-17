@@ -366,7 +366,7 @@ public func approvalDecisions(_ events: some Sequence<PBEvent>, d: Derived) -> A
     for e in events {
         switch e.kind {
         case .approvalRequested(let a):
-            if d.resolved[a.approvalID] == nil || a.inputDigest.isEmpty { continue }
+            if a.inputDigest.isEmpty { continue }
             reqs[DigestKey(tool: a.toolName, digest: a.inputDigest), default: []].append((a.approvalID, e.seq))
         case .toolCall(let t):
             if !t.inputDigest.isEmpty { calls[DigestKey(tool: t.itemType, digest: t.inputDigest), default: []].append(e.seq) }

@@ -2725,6 +2725,82 @@
           }
         }
       ]
+    },
+    {
+      "name": "pending-request-makes-digest-ambiguous",
+      "agent": 1,
+      "events": [
+        {
+          "approvalRequested": {
+            "approvalId": "a",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "1",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalResolved": {
+            "approvalId": "a",
+            "decision": 1
+          },
+          "seq": "2",
+          "sessionId": "projection-test"
+        },
+        {
+          "toolCall": {
+            "itemType": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "3",
+          "sessionId": "projection-test"
+        },
+        {
+          "approvalRequested": {
+            "approvalId": "pending",
+            "toolName": "Bash",
+            "inputDigest": "d"
+          },
+          "seq": "4",
+          "sessionId": "projection-test"
+        }
+      ],
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "observations": [
+        {
+          "through": "4",
+          "state": {
+            "running": false,
+            "approvals": [
+              "pending"
+            ],
+            "resolved": {
+              "a": 1
+            },
+            "questions": [],
+            "answered": {},
+            "inputs": [],
+            "accepted": {},
+            "unsent": [],
+            "local": [],
+            "runningTools": [],
+            "unknownTools": [],
+            "interruptedTools": [],
+            "completed": {},
+            "background": [],
+            "compactions": {},
+            "terminalChanges": [],
+            "merged": [],
+            "callDecisions": []
+          }
+        }
+      ]
     }
   ]
 }

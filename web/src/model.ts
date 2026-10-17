@@ -1263,7 +1263,7 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
   const calls = new Map<string, bigint[]>();
   for (const e of events) {
     const k = e.kind;
-    if (k.case === "approvalRequested" && d.resolved.has(k.value.approvalId)) {
+    if (k.case === "approvalRequested") {
       // The daemon gives the request the digest it gives the call; without
       // one (Codex) there is nothing to match.
       const digest = k.value.inputDigest;
@@ -1282,7 +1282,7 @@ export function approvalsOnCalls(events: Event[], d: Derived): { calls: Map<bigi
   const out = { calls: new Map<bigint, ApprovalDecision>(), approvals: new Set<string>(), ids: new Map<bigint, string>() };
   for (const [key, as] of approvals) {
     const cs = calls.get(key) ?? [];
-    if (as.length !== 1 || cs.length !== 1 || cs[0] < as[0].seq) continue;
+    if (as.length !== 1 || cs.length !== 1 || cs[0] < as[0].seq || !d.resolved.has(as[0].id)) continue;
     out.calls.set(cs[0], d.resolved.get(as[0].id)!.decision);
     out.approvals.add(as[0].id);
     out.ids.set(cs[0], as[0].id);

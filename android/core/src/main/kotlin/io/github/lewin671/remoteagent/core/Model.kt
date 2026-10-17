@@ -1145,7 +1145,7 @@ fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> {
     for (e in events) when (e.kindCase) {
         Event.KindCase.APPROVAL_REQUESTED -> {
             val a = e.approvalRequested
-            if (a.approvalId in d.resolved && a.inputDigest.isNotEmpty())
+            if (a.inputDigest.isNotEmpty())
                 reqs.getOrPut(a.toolName to a.inputDigest) { mutableListOf() } += a.approvalId to e.seq
         }
         Event.KindCase.TOOL_CALL -> {
@@ -1157,7 +1157,7 @@ fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> {
     return buildMap {
         for ((key, rs) in reqs) {
             val cs = calls[key].orEmpty()
-            if (rs.size == 1 && cs.size == 1 && cs[0] > rs[0].second) put(cs[0], rs[0].first)
+            if (rs.size == 1 && cs.size == 1 && cs[0] > rs[0].second && rs[0].first in d.resolved) put(cs[0], rs[0].first)
         }
     }
 }
