@@ -2354,6 +2354,7 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   expect(row().disabled).toBe(false);
 
   // A failure stays in the menu, under the item, which can be tried again.
+  const forkCommand = r.command.bind(r);
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 没有回应"));
   await click(row());
@@ -2362,11 +2363,17 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
 
   // While it forks the row says so and the others wait; then the fork opens.
   location.hash = "";
+  let reply!: Promise<CommandResult>;
+  command.mockImplementationOnce((...args) => (reply = forkCommand(...args)));
   await click(row());
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } }, expect.anything());
   expect(row().textContent).toBe("正在分叉…");
   expect(button("重命名")!.disabled).toBe(true);
-  await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
+  // The hash changes synchronously in the command continuation; React
+  // commits setMenu(false) separately. Await the reply inside act so the
+  // complete UI outcome is committed before either assertion.
+  await act(async () => { await reply; });
+  expect(location.hash).toMatch(/^#\/s\/s-fork-/);
   expect(host.querySelector(".actsheet")).toBeNull();
 
   // The fork carries the conversation and says where it came from.
