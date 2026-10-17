@@ -303,12 +303,17 @@ func internal(err error) error {
 // Login challenges can be requested without logging in, so they are
 // bounded: only registered devices get stored challenges, each at most
 // maxDeviceChallenges and each account maxAccountChallenges, the oldest
-// giving way, so that no account can take the others' logins.
+// giving way, so that no account can take the others' logins. The relay
+// holds the share of every account it may have, up to maxChallenges.
 const (
 	maxDeviceChallenges  = 8
-	maxAccountChallenges = 64
-	maxChallenges        = 4096
+	maxAccountChallenges = 32
+	maxChallenges        = 1 << 16
 )
+
+func (s *Server) challengeRoom() int {
+	return min(max(s.cfg.MaxAccounts, 1)*maxAccountChallenges, maxChallenges)
+}
 
 var errTooManyChallenges = errors.New("too many pending logins; try again in a minute")
 
@@ -348,7 +353,7 @@ func (s *Server) newChallenge(deviceID, account string) ([]byte, error) {
 	case len(ours) >= maxAccountChallenges:
 		delete(s.challenges, oldest(ours))
 	}
-	if len(s.challenges) >= maxChallenges {
+	if len(s.challenges) >= s.challengeRoom() {
 		return nil, errTooManyChallenges
 	}
 	s.challenges[string(b)] = challenge{deviceID: deviceID, account: account, expires: now.Add(time.Minute)}

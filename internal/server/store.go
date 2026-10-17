@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS revoked_devices (
 	account_id TEXT NOT NULL,
 	revoked_ms INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS revoked_devices_account ON revoked_devices (account_id);
 CREATE TABLE IF NOT EXISTS tokens (
 	hash BLOB PRIMARY KEY,
 	account_id TEXT NOT NULL,
@@ -331,17 +332,20 @@ func (s *store) addDevice(ctx context.Context, account string, create *newAccoun
 		return errDeviceRevoked
 	}
 	if create != nil {
-		var n int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&n); err != nil {
+		// Two first devices of one account may race: the one that comes
+		// second finds the account made, and joins it.
+		var exists, n int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FILTER (WHERE id = ?), COUNT(*) FROM accounts`, account).Scan(&exists, &n); err != nil {
 			return err
 		}
-		if n >= create.max {
-			return errNoRoom
-		}
-		// Two first devices of one account may race; the account is made once.
-		if _, err := tx.ExecContext(ctx, `INSERT INTO accounts (id, public_key, plan, created_ms, last_active_ms) VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (id) DO NOTHING`, account, create.publicKey, create.plan, nowMs(), nowMs()); err != nil {
-			return err
+		if exists == 0 {
+			if n >= create.max {
+				return errNoRoom
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO accounts (id, public_key, plan, created_ms, last_active_ms) VALUES (?, ?, ?, ?, ?)`,
+				account, create.publicKey, create.plan, nowMs(), nowMs()); err != nil {
+				return err
+			}
 		}
 	}
 	var owner string

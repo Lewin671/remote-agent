@@ -271,7 +271,7 @@ func (c *clientService) PutAccountPrefs(ctx context.Context, req *connect.Reques
 		return nil, invalid("preferences larger than %d bytes", maxPrefsBytes)
 	}
 	t := c.s.tenantFrom(ctx)
-	applied, o, err := t.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b, t.limit(c.s))
+	applied, o, err := t.store.putPrefs(ctx, m.ObjectId, m.ExpectedRevision, b, t.limit(c.s, growsPrefs))
 	var apiErr *connect.Error
 	if errors.As(err, &apiErr) {
 		return nil, err

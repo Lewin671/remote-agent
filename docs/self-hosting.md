@@ -52,7 +52,7 @@ RA_SIGNUP=open          # anyone may create an account, with a proof of work
 RA_MAX_ACCOUNTS=100     # at most this many accounts on the relay
 ```
 
-then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. When the disk has less than 2 GB free, no account can add devices, sessions, events, images or settings until there is room again.
+then `docker compose up -d` (with the `compose.yaml` of v0.41.0 or later, which passes these settings to the relay). With open signup, `remote-agent account init` creates an account without a setup token: the computer spends a second or so on a proof of work, and the relay creates only a few accounts an hour for each address. Such accounts are on a trial plan, with room for 8 devices, 2 computers, 200 sessions and 256 MB of events; accounts made with the setup token have room for 32 devices and 16 computers. The relay checks its free disk space every minute; while it is below 2 GB, no account can add devices, sessions, events, images or settings until there is room again.
 
 The relay counts addresses as Caddy reports them, which the bundled `compose.yaml` arranges with `RA_TRUSTED_PROXIES`. Behind a proxy of your own, set `RA_TRUSTED_PROXIES` to the proxy's address range, or every account looks as if it comes from the proxy.
 

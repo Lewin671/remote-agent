@@ -66,21 +66,33 @@ func errFull(what string) error {
 	return connect.NewError(connect.CodeResourceExhausted, errors.New(what))
 }
 
-// check refuses usage beyond the plan. The image quota is checked by
-// putImage itself, which knows the size of the image.
-func (p plan) check(u accountUsage) error {
+// grows names what a write adds to an account, the part of the plan it
+// is checked against: a full part stops only the writes that add to it.
+type grows int
+
+const (
+	growsDevices grows = iota // a device, maybe a machine, and the room to remove it later
+	growsSessions
+	growsEvents
+	growsPrefs
+)
+
+// check refuses usage beyond the plan, in the part a write adds to. The
+// image quota is checked by putImage itself, which knows the size of the
+// image.
+func (p plan) check(u accountUsage, g grows) error {
 	switch {
-	case p.devices > 0 && u.devices > p.devices:
+	case g == growsDevices && p.devices > 0 && u.devices > p.devices:
 		return errFull(fmt.Sprintf("this account has its %d devices already; remove one first", p.devices))
-	case p.machines > 0 && u.machines > p.machines:
+	case g == growsDevices && p.machines > 0 && u.machines > p.machines:
 		return errFull(fmt.Sprintf("this account has its %d computers already; remove one first", p.machines))
-	case p.sessions > 0 && u.sessions > p.sessions:
+	case g == growsDevices && p.revoked > 0 && u.revoked > p.revoked:
+		return errFull(fmt.Sprintf("this account has removed %d devices on this relay, which takes no new ones", p.revoked))
+	case g == growsSessions && p.sessions > 0 && u.sessions > p.sessions:
 		return errFull(fmt.Sprintf("this account has its %d sessions already on this relay", p.sessions))
-	case p.eventBytes > 0 && u.eventBytes > p.eventBytes:
+	case g == growsEvents && p.eventBytes > 0 && u.eventBytes > p.eventBytes:
 		return errFull("this account's storage on this relay is full")
-	case p.revoked > 0 && u.revoked > p.revoked:
-		return errFull(fmt.Sprintf("this account has removed %d devices on this relay, which takes no more", p.revoked))
-	case p.prefs > 0 && u.prefs > p.prefs:
+	case g == growsPrefs && p.prefs > 0 && u.prefs > p.prefs:
 		return errFull(fmt.Sprintf("this account has its %d preference objects already", p.prefs))
 	}
 	return nil
@@ -106,12 +118,12 @@ func (s *Server) tenantFrom(ctx context.Context) *tenant {
 
 // limit is the check of a tenant's quota and of the relay's disk, for the
 // writes that make an account grow.
-func (t *tenant) limit(s *Server) func(accountUsage) error {
+func (t *tenant) limit(s *Server, g grows) func(accountUsage) error {
 	return func(u accountUsage) error {
 		if s.diskLow.Load() {
 			return errFull("this relay is out of storage; try again later")
 		}
-		return t.plan.check(u)
+		return t.plan.check(u, g)
 	}
 }
 

@@ -87,7 +87,7 @@ func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[p
 		if a.s.diskLow.Load() {
 			return errFull("this relay is out of storage; try again later")
 		}
-		return pl.check(u)
+		return pl.check(u, growsDevices)
 	}
 	if err := a.s.store.addDevice(ctx, acct, create, id, reg, req.Msg.Registration, req.Msg.Signature, limit); err != nil {
 		// No account was made: the signup it was admitted for is not used up.
@@ -323,7 +323,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 		return nil, invalid("ended_ms must not be negative")
 	}
 	t := m.s.tenantFrom(ctx)
-	rs, err := t.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs, t.limit(m.s))
+	rs, err := t.store.putSession(ctx, id, sid, key, meta, revision, req.Msg.EndedMs, t.limit(m.s, growsSessions))
 	var apiErr *connect.Error
 	switch {
 	case errors.As(err, &apiErr):
@@ -359,7 +359,7 @@ func (m *machineService) UploadEvents(ctx context.Context, req *connect.Request[
 		}
 	}
 	t := m.s.tenantFrom(ctx)
-	added, rs, err := t.store.appendEvents(ctx, id, sid, req.Msg.Events, t.limit(m.s))
+	added, rs, err := t.store.appendEvents(ctx, id, sid, req.Msg.Events, t.limit(m.s, growsEvents))
 	var gap *gapError
 	var apiErr *connect.Error
 	switch {

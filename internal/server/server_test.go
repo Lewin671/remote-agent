@@ -236,7 +236,7 @@ func TestChallengesAreBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Unknown devices get challenges, but nothing is stored for them.
-	for i := range 2 * maxChallenges {
+	for i := range 2 * ts.srv.challengeRoom() {
 		unknown := fmt.Sprintf("%032x", i)
 		if _, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: unknown})); err != nil {
 			t.Fatal(err)

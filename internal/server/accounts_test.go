@@ -560,14 +560,19 @@ func TestAccountGrowthIsBounded(t *testing.T) {
 		t.Fatalf("%d tokens of one device: %v", tokens, err)
 	}
 	// Removed devices are remembered up to the plan's bound.
-	if err := planOf("trial").check(accountUsage{revoked: planOf("trial").revoked + 1}); connect.CodeOf(err) != connect.CodeResourceExhausted {
+	if err := planOf("trial").check(accountUsage{revoked: planOf("trial").revoked + 1}, growsDevices); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("removed devices beyond the plan: %v", err)
+	}
+	// and stop only new devices.
+	if err := planOf("trial").check(accountUsage{revoked: planOf("trial").revoked + 1}, growsEvents); err != nil {
+		t.Fatalf("removed devices stop events: %v", err)
 	}
 }
 
 // One account's logins cannot take the relay's login challenges.
 func TestLoginChallengesAreBoundedPerAccount(t *testing.T) {
 	ts := newTestServer(t)
+	ts.srv.cfg.MaxAccounts = 6
 	for i := range maxAccountChallenges * 2 {
 		if _, err := ts.srv.newChallenge(fmt.Sprintf("device-%d", i), "a"); err != nil {
 			t.Fatal(err)
@@ -578,5 +583,13 @@ func TestLoginChallengesAreBoundedPerAccount(t *testing.T) {
 	}
 	if _, err := ts.srv.newChallenge("device-b", "b"); err != nil {
 		t.Fatal(err)
+	}
+	// The relay has room for every account's share.
+	for a := range 4 {
+		for i := range maxAccountChallenges {
+			if _, err := ts.srv.newChallenge(fmt.Sprintf("device-%d-%d", a, i), fmt.Sprint("acct-", a)); err != nil {
+				t.Fatalf("account %d, challenge %d: %v", a, i, err)
+			}
+		}
 	}
 }
