@@ -50,6 +50,9 @@ class PendingImage(val id: String, val uri: String?) {
     }
 
     var processed by mutableStateOf<Processed?>(null)
+    /** Old bytes may stay for recovery, but cannot be uploaded for the new mode. */
+    internal var stale by mutableStateOf(false)
+    val needsProcessing: Boolean get() = processed == null || stale
     var thumb by mutableStateOf<ImageBitmap?>(null)
     var state by mutableStateOf<State>(State.Processing)
 
@@ -59,7 +62,7 @@ class PendingImage(val id: String, val uri: String?) {
     var transferId: String = newRequestId()
     internal var job: Job? = null
 
-    fun readyFor(machine: String) = state == State.Ready && machineId == machine && imageId != null
+    fun readyFor(machine: String) = !needsProcessing && state == State.Ready && machineId == machine && imageId != null
 
     /** Lets go of the bytes, the thumbnail and the picker's grant. */
     fun release() {
@@ -76,7 +79,7 @@ class PendingImage(val id: String, val uri: String?) {
  * count: the latest target wins and the old upload is dropped.
  */
 fun needsUpload(img: PendingImage, machineId: String): Boolean =
-    img.processed != null && !img.readyFor(machineId) && !(img.state is PendingImage.State.Uploading && img.machineId == machineId)
+    !img.needsProcessing && !img.readyFor(machineId) && !(img.state is PendingImage.State.Uploading && img.machineId == machineId)
 
 /** Whether a machine takes images, and if not, why, in words. */
 fun uploadBlocked(m: MachineView?, online: Boolean, name: String): String? {
@@ -126,9 +129,10 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
         if (meta.size < 6) continue
         val img = PendingImage(id, meta[4].takeIf { it.isNotEmpty() })
         img.processed = Processed(bytes, ImageFormat.forNumber(meta[0].toInt()) ?: ImageFormat.IMAGE_FORMAT_JPEG, meta[1].toInt(), meta[2].toInt(), meta[5])
+        img.stale = (meta[3] == "1") != original
         img.thumb = thumb(bytes)
         // Uploads are the daemon's for a while only: send them again.
-        img.state = PendingImage.State.Failed("需要重新传到电脑")
+        img.state = PendingImage.State.Failed(if (img.stale) "需要按当前模式重新处理" else "需要重新传到电脑")
         out += img
     }
     return out to original
@@ -238,10 +242,14 @@ class ImageDraft(
     }
 
     /** An image is being prepared again: its bytes, in memory and on disk, are the old ones until [prepared]. */
-    internal fun invalidate(img: PendingImage) = unmark(img, preparing = true)
+    internal fun invalidate(img: PendingImage) {
+        img.stale = true
+        unmark(img, preparing = true)
+    }
 
     /** An image has the bytes it was prepared for: they are saved. */
     internal fun prepared(img: PendingImage) {
+        img.stale = false
         synchronized(marks) { stale -= img.id }
         persistOrder()
     }
@@ -309,11 +317,11 @@ class ImageDraft(
 
     /** Makes sure every image is on [machineId], e.g. after the new-session card changed machines. */
     fun sendAllTo(remote: Remote, machineId: String) {
-        for (img in images) if (img.processed != null && !img.readyFor(machineId) && img.state !is PendingImage.State.Processing) upload(remote, img, machineId)
+        for (img in images) if (!img.needsProcessing && !img.readyFor(machineId) && img.state !is PendingImage.State.Processing) upload(remote, img, machineId)
     }
 
     fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
-        if (img.processed == null && img.uri != null) process(context, img, remote, machine)
+        if (img.needsProcessing && img.uri != null) process(context, img, remote, machine)
         else machine()?.let { upload(remote, img, it) }
     }
 

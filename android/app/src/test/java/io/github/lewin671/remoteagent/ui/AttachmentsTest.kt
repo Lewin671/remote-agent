@@ -47,6 +47,34 @@ class MemoryFiles : SealedFiles {
 }
 
 class AttachmentsTest {
+    @Test
+    fun failedModeProcessingCannotUploadOldBytesAndRetryNeedsTheSource() {
+        val draft = ImageDraft("session:mode", MemoryFiles())
+        val image = img("a")
+        draft.images += image
+        draft.invalidate(image)
+        image.state = PendingImage.State.Failed("原图超过 20 MiB")
+        assertFalse(needsUpload(image, "mac"))
+        assertFalse(draft.ready("mac"))
+        assertTrue(image.needsProcessing)
+        // A successful retry makes the newly prepared bytes eligible again.
+        image.processed = Processed(byteArrayOf(9), ImageFormat.IMAGE_FORMAT_PNG, 30, 40)
+        draft.prepared(image)
+        assertFalse(image.needsProcessing)
+        assertTrue(needsUpload(image, "mac"))
+    }
+
+    @Test
+    fun restoringAnInterruptedModeChangeDoesNotUploadThePreviousMode() {
+        val files = MemoryFiles()
+        val image = img("a")
+        saveImages(files, "session:mode", listOf(image), original = false)
+        saveOrder(files, "session:mode", listOf(image), original = true)
+        val restored = loadImages(files, "session:mode").first.single()
+        assertTrue(restored.needsProcessing)
+        assertFalse(needsUpload(restored, "mac"))
+    }
+
     private fun img(id: String): PendingImage = PendingImage(id, "content://picker/$id").apply {
         processed = Processed(byteArrayOf(1, 2, id.length.toByte()), ImageFormat.IMAGE_FORMAT_JPEG, 10, 20)
         state = PendingImage.State.Ready
