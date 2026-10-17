@@ -44,7 +44,7 @@ remote-agent events <id> -f    # 持续查看事件
 
 ```sh
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
-scripts/deploy.sh [server|web|all]      # 部署 server 和/或网页，host 取 RA_DEPLOY_HOST
+scripts/ship.sh [vX.Y.Z]                # 我们自己的部署：按顺序上线 server、网页和本机 daemon
 remote-agent account init --server https://ra.example.com   # 建账户，输入 setup token
 remote-agent account pair --web https://app.example.com   # 添加设备：显示二维码和配对码
 remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入

@@ -53,6 +53,7 @@
 - **在公开仓库说话也是公开的**：回 issue、写评论或 Release 说明时，不贴 daemon 或 server 的日志原文、截图、域名、机器 ID、账户密钥、setup token 和配对链接；需要举例就用 `example.com` 和编造的 ID
 - **发布说明是公开的**：`release-task.sh` 的第二个参数成为 tag 的说明，原样进公开的清单和公开仓库的 Release，显示在 App 的更新弹层里。只写用户看得懂的变化和升级要求，不写服务器地址、部署细节、密钥或内部讨论
 - 发布产物不代表部署线上服务，不自动升级本机 daemon，也不自动安装 APK。已有部署授权按原任务执行
+- **上线只用 `scripts/ship.sh [vX.Y.Z]`**：我们自己的 server、网页和本机 daemon 只通过它部署，不单独跑 `deploy/deploy.sh`、`pnpm run deploy` 或 `scripts/install.sh` 去更新线上或日常用的 daemon。它等 Release 工作流成功后，从 tag 的干净 checkout 按 server（代码有变才部署）→ 网页 → daemon 的顺序上线，每一步核对线上跑的是这个 tag 再进行下一步；已是这一版的部分跳过，失败后修好原因重跑即可。协议版本一变各端必须一起换，分开部署会让某一端拒绝另一端
 - 手动 APK 工作流只生成独立 `.dev` 应用，推送关闭，短期保留，不更新正式版本、不创建 Release
 
 ### 多 agent 并行

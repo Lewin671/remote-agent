@@ -39,7 +39,7 @@
 
 Go 构建要求至少 1.26.9，发布流水线用 `govulncheck` 检查代码可达的已知漏洞。
 
-发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布：正式签名 APK，daemon（macOS 和 Linux 的 arm64、amd64）和 server（Linux 的 arm64、amd64）的压缩包，网页包，以及覆盖全部文件的 `SHA256SUMS`。源提交写在私有 Release 的说明中，各端仍统一版本。我们自己的部署仍从源码安装（daemon/server）和 Cloudflare Pages（网页），这些压缩包是给别人部署用的，见下文「公开发布」。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
+发布按开发任务完成触发，不按时间触发：agent 完成一项功能或相关修复并验收后，按 [AGENTS.md](../AGENTS.md) 自动更新版本、推送 tag，无需逐次确认。新功能升 minor，修复升 patch，1.0 以前的不兼容改动升 minor，1.0 起升 major。纯文档、界面稿和测试改动不发版。GitHub 的 `Release` 流水线从 tag 运行 Go、网页、Android 检查，全部通过才发布：正式签名 APK，daemon（macOS 和 Linux 的 arm64、amd64）和 server（Linux 的 arm64、amd64）的压缩包，网页包，以及覆盖全部文件的 `SHA256SUMS`。源提交写在私有 Release 的说明中，各端仍统一版本。我们自己的部署由 `scripts/ship.sh` 从 tag 的源码构建上线（server、Cloudflare Pages 上的网页和本机 daemon），这些压缩包是给别人部署用的，见下文「公开发布」。已发布 tag 和附件不覆盖；暂时失败允许重跑，代码修复使用新版本。
 
 正式 APK 缺少固定签名或 Firebase 客户端配置就停止发布，不退回 debug 签名。GitHub Secrets 的 `ANDROID_SIGNING` 保存签名 keystore 与签名参数，`ANDROID_GOOGLE_SERVICES` 保存客户端配置；FCM 服务账户和账户加密密钥不进入构建流水线。签名密钥必须另有本地备份。手动 `Build development APK` 生成独立 `.dev` 应用，与正式版数据分开，使用固定签名以便后续覆盖升级，推送关闭，产物保留 3 天。
 
@@ -53,7 +53,7 @@ Go 构建要求至少 1.26.9，发布流水线用 `govulncheck` 检查代码可�
 
 公开发布失败时，手动运行 `Release`，填入 tag 并选 `publish_only=true`：只有该 tag 的私有 Release 已公开时才允许继续，取回原附件、检查校验值并重建清单，不重跑构建。产物和 tag 校验使用 tagged checkout，公开发布工具和隐私扫描使用本次工作流所在的提交，因此修复工具后可重试旧版本；网页包的成员名单取自该 tag 的 `web/public`。需要修复产品代码时仍发新版本；不填 tag、不选 `publish_only` 则跑全端检查和打包演练，不公开任何版本。清单和公开 Release 的说明只用 tag 中面向用户的变化和升级要求，不带私有提交日志或部署信息。
 
-Release 不自动部署 VPS/Cloudflare；daemon 可由本机用户显式开启兼容版本自动更新，各端仍分别部署；App 的更新也要在手机上点一下，再由系统确认安装。当前部署脚本仍从本地工作目录构建，并嵌入版本和源提交；它不是从 Release 晋级产物的入口。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
+Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作流成功后由本机的 `scripts/ship.sh` 一次上线，从 tag 的干净 checkout 构建并嵌入版本和源提交，按 server（代码有变才部署）、网页、本机 daemon 的顺序逐个部署并核对线上版本，不从 Release 晋级产物，也不需要在 GitHub 存服务器或 Cloudflare 的凭据。别人的 daemon 可由本机用户显式开启兼容版本自动更新；App 的更新也要在手机上点一下，再由系统确认安装。各端不保证跨版本互通：协议版本变了就要一起升级，数据格式变了要手动迁移或重建，这些升级要求写在发布说明中。
 
 ### daemon 更新
 
