@@ -273,7 +273,8 @@ struct EventReducer: Sendable {
         case .userMessage(let m):
             if e.hasOrigin && e.origin.kind != .unspecified {
                 // The daemon says who sent it: no guessing.
-                if e.origin.kind == .local { d.typedLocally.insert(e.seq) } else if submitted > 0 { submitted -= 1 }
+                if e.origin.kind == .local { d.typedLocally.insert(e.seq) }
+                if submitted > 0 && !m.requestID.isEmpty { submitted -= 1 }
             } else if submitted > 0 {
                 submitted -= 1
             } else if m.text != "Implement the plan." {

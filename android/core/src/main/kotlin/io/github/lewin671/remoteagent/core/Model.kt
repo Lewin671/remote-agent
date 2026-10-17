@@ -681,7 +681,7 @@ internal class EventReducer(agent: Agent) {
                 Event.KindCase.USER_MESSAGE -> if (e.hasOrigin() && e.origin.kind != io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_UNSPECIFIED) {
                     // The daemon says who sent it: no guessing.
                     if (e.origin.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL) d.typedLocally += e.seq
-                    else if (submitted > 0) submitted--
+                    if (submitted > 0 && e.userMessage.requestId.isNotEmpty()) submitted--
                 } else {
                     if (submitted > 0) submitted--
                     // Codex sends this itself when a plan is approved.
