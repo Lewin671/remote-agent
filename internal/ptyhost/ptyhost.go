@@ -23,12 +23,16 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/creack/pty"
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
 // MaxHold bounds how long local input can be held, so that a stuck daemon
 // never locks the user out of their own terminal.
 const MaxHold = 10 * time.Second
+
+// Leave time for the control reply before Conn's five-second deadline.
+const remoteWriteTimeout = 2 * time.Second
 
 const (
 	// Both CLIs persist history as they work; allow time for orderly hangup
@@ -65,7 +69,8 @@ type Host struct {
 	ptmx *os.File
 	cmd  *exec.Cmd
 
-	mu             sync.Mutex // guards writes to ptmx and the fields below
+	mu             sync.Mutex // guards the fields below, never held during PTY I/O
+	writing        bool       // one writer for both local and remote bytes
 	held           bool
 	holder         int // connection that holds input, 0 when not held
 	nextConn       int
@@ -101,6 +106,16 @@ func run(socketPath string, argv []string, stdin *os.File, stdout io.Writer, shu
 	if err != nil {
 		return 1, err
 	}
+	// pty returns a blocking file on macOS. Register a nonblocking duplicate
+	// with Go's poller so write deadlines actually interrupt a full PTY.
+	pollable, err := pollablePTY(ptmx)
+	_ = ptmx.Close()
+	if err != nil {
+		_ = signalProcessGroup(cmd, syscall.SIGKILL)
+		_ = cmd.Wait()
+		return 1, err
+	}
+	ptmx = pollable
 	defer ptmx.Close()
 
 	h := &Host{ptmx: ptmx, cmd: cmd}
@@ -297,20 +312,39 @@ func (h *Host) pumpStdin(r io.Reader) {
 	}
 }
 
-// local handles bytes typed in the local terminal.
+// local handles bytes typed in the local terminal. A single writer drains
+// them outside mu; input arriving during a hold or a write stays ordered.
 func (h *Host) local(b []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.lastLocal = time.Now()
-	if h.held {
-		h.pending = append(h.pending, b...)
+	h.pending = append(h.pending, b...)
+	h.flushLocalLocked()
+}
+
+// flushLocalLocked starts at most one writer. Local bytes have no expiry:
+// a CLI that resumes reading must still receive every buffered keystroke.
+func (h *Host) flushLocalLocked() {
+	if h.held || h.writing || len(h.pending) == 0 {
 		return
 	}
-	_, _ = h.ptmx.Write(b)
+	b := h.pending
+	h.pending = nil
+	h.writing = true
+	go func() {
+		_, _ = h.ptmx.Write(b)
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		h.writing = false
+		h.flushLocalLocked()
+	}()
 }
 
 // errHeld is returned when another connection already holds input.
 var errHeld = errors.New("input is held by another controller")
+
+// A hold must not check the screen while earlier input is still in flight.
+var errWriting = errors.New("input is still being written")
 
 // hold holds local input on behalf of connection conn. Only one connection
 // may hold at a time, so that one controller's release cannot cut short
@@ -323,6 +357,9 @@ func (h *Host) hold(conn int, d time.Duration) error {
 	defer h.mu.Unlock()
 	if h.held && h.holder != conn {
 		return errHeld
+	}
+	if h.writing {
+		return errWriting
 	}
 	h.held, h.holder = true, conn
 	if h.holdTimer != nil {
@@ -362,22 +399,58 @@ func (h *Host) releaseLocked(conn int) {
 		h.holdTimer = nil
 	}
 	h.held, h.holder = false, 0
-	if len(h.pending) > 0 {
-		_, _ = h.ptmx.Write(h.pending)
-		h.pending = nil
-	}
+	h.flushLocalLocked()
 }
 
 // write sends b to the CLI. While input is held, only the holder may
 // write.
 func (h *Host) write(conn int, b []byte) error {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	if h.held && h.holder != conn {
+		h.mu.Unlock()
 		return errHeld
 	}
-	_, err := h.ptmx.Write(b)
+	if h.writing {
+		h.mu.Unlock()
+		return errWriting
+	}
+	h.writing = true
+	h.mu.Unlock()
+
+	// A timeout may follow a partial write. Never retry its remainder: that
+	// could enter a later draft after the controller has reported failure.
+	err := h.ptmx.SetWriteDeadline(time.Now().Add(remoteWriteTimeout))
+	if err == nil {
+		_, err = h.ptmx.Write(b)
+	}
+	_ = h.ptmx.SetWriteDeadline(time.Time{})
+	h.mu.Lock()
+	h.writing = false
+	h.flushLocalLocked()
+	h.mu.Unlock()
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return errors.New("PTY write deadline exceeded; input may have been partially written")
+	}
 	return err
+}
+
+// pollablePTY transfers I/O to a descriptor registered with Go's poller.
+// NewFile preserves O_NONBLOCK even when resize ioctls call File.Fd().
+func pollablePTY(f *os.File) (*os.File, error) {
+	fd, err := unix.FcntlInt(f.Fd(), unix.F_DUPFD_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	if err := unix.SetNonblock(fd, true); err != nil {
+		_ = unix.Close(fd)
+		return nil, err
+	}
+	p := os.NewFile(uintptr(fd), f.Name())
+	if err := p.SetWriteDeadline(time.Time{}); err != nil {
+		_ = p.Close()
+		return nil, err
+	}
+	return p, nil
 }
 
 func (h *Host) status() Response {

@@ -1,6 +1,7 @@
 package ptyhost
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -274,6 +275,7 @@ func (w failingWriter) Write([]byte) (int, error) {
 
 type runHelper struct {
 	cmd        *exec.Cmd
+	stdin      io.WriteCloser
 	done       chan struct{}
 	waitErr    error
 	childPID   int
@@ -309,6 +311,12 @@ func startRunHelper(t *testing.T, mode string) *runHelper {
 		"PTYHOST_TEST_CHILD="+h.child,
 		"PTYHOST_TEST_GRANDCHILD="+h.grandchild,
 	)
+	var err error
+	h.stdin, err = h.cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { h.stdin.Close() })
 	h.cmd.Stdout, h.cmd.Stderr = io.Discard, io.Discard
 	if err := h.cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -419,6 +427,8 @@ func TestPtyhostRunHelper(t *testing.T) {
 	case "failed-stdout":
 		stdout = failingWriter{marker: marker}
 		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete) + "; sleep 1"
+	case "blocked-input":
+		script = `stty raw -echo; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while [ ! -f "$PTYHOST_TEST_COMPLETE" ]; do sleep 0.01; done; cat > "$PTYHOST_TEST_TERM"`
 	case "ignore-signals":
 		grandchildScript := "trap '' HUP TERM; printf '%s' \"$$\" > " + shellQuote(grandchild) + "; while :; do sleep 1; done"
 		script = "trap '' HUP TERM; sh -c " + shellQuote(grandchildScript) + " & wait"
@@ -554,4 +564,88 @@ func waitForProcessExit(pid int, d time.Duration) error {
 		time.Sleep(10 * time.Millisecond)
 	}
 	return fmt.Errorf("process %d is still running", pid)
+}
+
+// A non-reading CLI must not lock state or retain a timed-out paste. Once
+// it reads again, buffered local keys precede subsequent remote input.
+func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
+	h := startRunHelper(t, "blocked-input")
+	if err := waitForFile(h.grandchild, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	c := waitForSocket(t, h.socket)
+	defer c.Close()
+	observer := waitForSocket(t, h.socket)
+	defer observer.Close()
+	if _, err := c.Hold(150 * time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan error, 1)
+	go func() { result <- c.Write(bytes.Repeat([]byte("x"), 1<<20)) }()
+	time.Sleep(50 * time.Millisecond)
+	if _, err := h.stdin.Write([]byte("LOCAL")); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	state := make(chan Response, 1)
+	go func() { st, _ := observer.Status(); state <- st }()
+	select {
+	case st := <-state:
+		if !st.OK || st.Held || st.LastLocalInput == 0 {
+			t.Fatalf("state during blocked write = %+v", st)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("blocked PTY write prevented status or lease expiry")
+	}
+	select {
+	case err := <-result:
+		if err == nil || !strings.Contains(err.Error(), "deadline") {
+			t.Fatalf("blocked paste result = %v, want explicit deadline failure", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("blocked paste did not return a bounded failure")
+	}
+	// The timed-out remote write now gives way to a blocked local writer.
+	// State and new holds must still respond without overtaking those keys.
+	if _, err := observer.Hold(time.Second); err == nil || !strings.Contains(err.Error(), "still being written") {
+		t.Fatalf("hold overtook blocked local input: %v", err)
+	}
+	if st, err := observer.Status(); err != nil || st.Held {
+		t.Fatalf("state during blocked local flush = %+v, %v", st, err)
+	}
+	if err := observer.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.complete, []byte("read"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		b, _ := os.ReadFile(h.term)
+		if bytes.HasSuffix(b, []byte("LOCAL")) {
+			prefix := bytes.TrimSuffix(b, []byte("LOCAL"))
+			if len(prefix) == 0 || len(prefix) >= 1<<20 || bytes.Count(prefix, []byte("x")) != len(prefix) {
+				t.Fatalf("unexpected partial paste before local input: %d bytes", len(prefix))
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("local input did not recover after the CLI resumed reading")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := c.Write([]byte("REMOTE")); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(time.Second)
+	for {
+		b, _ := os.ReadFile(h.term)
+		if bytes.HasSuffix(b, []byte("LOCALREMOTE")) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("subsequent remote input was lost or reordered")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
