@@ -7,31 +7,45 @@ Everything handed to the public repository goes through this first: the
 release's files and that repository's own pages. Archives and the APK are
 read member by member, and text is looked for in UTF-16 as well, which is
 how an APK stores its resources. Files are also refused by name, and with
---release a packaged release must be exactly the files a release has. This
-repository is private, so the list below may name what must stay out.
+--release a packaged release must be exactly the files a release has.
+
+This repository is public, so what names our own deployment is not listed
+here: those terms come from RA_PUBLIC_DENY, one per line (an Actions secret
+in CI), or when it is unset from ~/.config/remote-agent/public-deny. Without
+them nothing is publishable, and a finding names such a term only by number.
 """
 import gzip
 import io
+import os
 import re
 import sys
 import tarfile
 import zipfile
 from pathlib import Path
 
-# Our hosts, addresses and machines; a CI runner's paths; private keys.
+# A CI runner's paths, keys, and the official site of this project.
 DENIED = [
-    "workstation",
     "remote-agent.top",
-    "example-cn-vps",
-    "foxmail",
-    "alibabaweijun",
-    "DEVICE001",
     "/home/runner/",
     "PRIVATE KEY-----",
     "RA_SETUP_TOKEN=[A-Za-z0-9_-]{8,}",
 ]
+
+
+def private_terms():
+    """Our hosts, addresses and machines, from outside the repository."""
+    text = os.environ.get("RA_PUBLIC_DENY")
+    if text is None:
+        file = Path.home() / ".config/remote-agent/public-deny"
+        text = file.read_text() if file.is_file() else ""
+    return [t.strip() for t in text.splitlines() if t.strip() and not t.strip().startswith("#")]
+
+
+PRIVATE = private_terms()
 PATTERNS = [(term, re.compile(term.encode(), re.I)) for term in DENIED]
 PATTERNS += [(term, re.compile(term.encode("utf-16-le"), re.I)) for term in DENIED if term.isascii() and not re.search(r"[\[{]", term)]
+for i, term in enumerate(PRIVATE, 1):
+    PATTERNS += [(f"private term {i}", re.compile(re.escape(term.encode(enc)), re.I)) for enc in ("utf-8", "utf-16-le")]
 
 
 # Files that have no place in a release, whatever they contain: settings and
@@ -75,7 +89,8 @@ def blobs(path):
 
 def scan(paths):
     """(file, member, term) for everything found under paths."""
-    found = []
+    # Without our own terms a scan would pass what it exists to stop.
+    found = [] if PRIVATE else [("", "", "no private terms: set RA_PUBLIC_DENY or write ~/.config/remote-agent/public-deny")]
     for root in map(Path, paths):
         entries = [root] if not root.is_dir() else sorted(p for p in root.rglob("*") if ".git" not in p.relative_to(root).parts[:1])
         files = []

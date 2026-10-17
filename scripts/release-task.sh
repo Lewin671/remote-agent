@@ -13,7 +13,7 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 # Verify setup before changing a version or pushing a tag. Names only, never values.
 secrets=$(gh secret list --json name)
-printf '%s' "$secrets" | python3 -c 'import json,sys; names={s["name"] for s in json.load(sys.stdin)}; missing={"ANDROID_SIGNING", "ANDROID_GOOGLE_SERVICES", "RELEASES_TOKEN"}-names; sys.exit("Configure GitHub release secrets first: " + ", ".join(sorted(missing))) if missing else None'
+printf '%s' "$secrets" | python3 -c 'import json,sys; names={s["name"] for s in json.load(sys.stdin)}; missing={"ANDROID_SIGNING", "ANDROID_GOOGLE_SERVICES", "RELEASES_TOKEN", "RA_PUBLIC_DENY"}-names; sys.exit("Configure GitHub release secrets first: " + ", ".join(sorted(missing))) if missing else None'
 git fetch origin
 # Rebase conflicts stop here for the agent to report, never resolve automatically.
 git rebase origin/main

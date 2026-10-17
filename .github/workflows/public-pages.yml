@@ -36,4 +36,5 @@ jobs:
       - name: Update the public repository
         env:
           RELEASES_DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: scripts/sync-public-pages.sh

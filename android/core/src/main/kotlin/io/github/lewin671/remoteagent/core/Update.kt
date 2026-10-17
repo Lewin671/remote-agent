@@ -1,7 +1,6 @@
 // The app updating itself: what the published release says, and fetching
-// its APK. The source repository is private, so each release is also
-// published, as a manifest and the APK, in a public repository that holds
-// nothing else (architecture §1 「产品版本与发布」).
+// its APK. Each release is published, as a manifest and the APK, in a
+// repository that holds nothing else, apart from the source repository (architecture §1 「产品版本与发布」).
 package io.github.lewin671.remoteagent.core
 
 import java.io.File

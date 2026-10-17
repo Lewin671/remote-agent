@@ -97,6 +97,8 @@ jobs:
         run: scripts/build-dist.sh
       # Also in a rehearsal, which stops before the release is packaged.
       - name: Refuse anything of our deployment
+        env:
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: python3 scripts/public_scan.py dist deploy/releases-repo
       - name: Install from the archives as a stranger would
         run: scripts/dist-smoke.sh
@@ -296,6 +298,8 @@ jobs:
           path: dist
       - name: Package immutable release assets
         if: steps.plan.outputs.skip != 'true'
+        env:
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: |
           scripts/package-release.sh "$RELEASE_TAG"
           python3 scripts/release.py notes "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
@@ -327,6 +331,7 @@ jobs:
       - name: Publish the latest release in the public repository
         env:
           RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: |
           if [ -z "$RELEASES_TOKEN" ]; then
             echo 'Configure the RELEASES_TOKEN Actions secret first' >&2

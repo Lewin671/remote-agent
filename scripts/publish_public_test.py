@@ -187,7 +187,7 @@ class PublishTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'SHA256SUMS'):
             self.publish()
         self.sums()
-        self.notes.write_text('Deploy at ra.' + 'work' + 'station.top')
+        self.notes.write_text('Deploy at ra.private-host.example')
         with self.assertRaisesRegex(ValueError, 'Not publishable'):
             self.publish()
         self.assertEqual([], self.calls)

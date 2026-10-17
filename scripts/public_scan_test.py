@@ -1,17 +1,22 @@
 import importlib.util
 import io
+import os
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
+# A private term of the tests' own, in place of the real ones kept outside the repository.
+os.environ['RA_PUBLIC_DENY'] = 'private-host\n# a comment\n'
 spec = importlib.util.spec_from_file_location('public_scan', Path(__file__).with_name('public_scan.py'))
 public_scan = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(public_scan)
 
-# Assembled so that this file does not itself hold what the scan refuses.
-HOST = 'ra.' + 'work' + 'station.top'
+HOST = 'ra.private-host.example'
+TERM = 'private term 1'
 
 
 class PublicScanTests(unittest.TestCase):
@@ -43,11 +48,18 @@ class PublicScanTests(unittest.TestCase):
         with zipfile.ZipFile(self.root / 'app.apk', 'w', zipfile.ZIP_DEFLATED) as z:
             z.writestr('resources.arsc', HOST.encode('utf-16-le'))
         self.assertEqual({'guide.md', 'web.tar.gz', 'app.apk'}, {f for f, _, _ in self.terms()})
-        self.assertIn(('app.apk', 'resources.arsc', 'work' + 'station'), self.terms())
+        self.assertIn(('app.apk', 'resources.arsc', TERM), self.terms())
+
+    def test_publishes_nothing_without_the_private_terms(self):
+        (self.root / 'README.md').write_text('clean\n')
+        env = {**os.environ, 'RA_PUBLIC_DENY': '', 'HOME': str(self.root)}
+        run = subprocess.run([sys.executable, str(Path(__file__).with_name('public_scan.py')), str(self.root)], env=env, capture_output=True, text=True)
+        self.assertNotEqual(0, run.returncode)
+        self.assertIn('no private terms', run.stderr)
 
     def test_finds_the_packing_user_in_archive_headers(self):
-        self.tar('a.tar.gz', 'a/bin', b'clean', owner='work' + 'station')
-        self.assertEqual([('a.tar.gz', '(unpacked)', 'work' + 'station')], self.terms())
+        self.tar('a.tar.gz', 'a/bin', b'clean', owner='private-host')
+        self.assertEqual([('a.tar.gz', '(unpacked)', TERM)], self.terms())
 
     def test_finds_keys_and_filled_in_tokens(self):
         (self.root / 'key.pem').write_text('-----BEGIN ' + 'PRIVATE KEY-----\n')
