@@ -1,6 +1,7 @@
 import { usePageVisible } from "./ui";
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Remote } from "./remote";
+import { watchAccountLogout } from "./storage";
 import { NavBar, useRemote } from "./ui";
 import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
@@ -29,11 +30,18 @@ async function loadRemote(): Promise<Remote | undefined> {
 export function App() {
   const visible = usePageVisible();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
+  const current = useRef(remote);
+  current.current = remote;
   const load = () =>
     loadRemote().then(
       (r) => setRemote(r ?? null),
       () => setRemote(null),
     );
+  useEffect(() => watchAccountLogout(() => {
+    current.current?.stop();
+    location.hash = "";
+    location.reload();
+  }), []);
   useEffect(() => {
     void load();
   }, []);

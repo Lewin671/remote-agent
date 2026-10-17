@@ -55,9 +55,32 @@ export function saveAccount(a: StoredAccount): Promise<void> {
   return run("readwrite", (s) => s.put(a, KEY));
 }
 
+let logoutChannel: BroadcastChannel | undefined;
+
+/** Stops every open copy of this browser account after an explicit logout.
+ * Reloading also releases keys held by work still completing in the old page. */
+export function watchAccountLogout(onLogout: () => void): () => void {
+  const channel = new BroadcastChannel("ra-account-logout");
+  logoutChannel = channel;
+  channel.onmessage = (event) => {
+    if (event.data === "logout") onLogout();
+  };
+  return () => {
+    channel.close();
+    if (logoutChannel === channel) logoutChannel = undefined;
+  };
+}
+
 /** Forgets the account, and the sealed history cached for it. */
 export async function forgetAccount(): Promise<void> {
   await run("readwrite", (s) => s.delete(KEY));
+  // The account store is shared by same-origin tabs. Notify them as soon
+  // as the deletion commits, even if clearing the sealed cache fails.
+  // Reuse this page's listener so it does not receive its own broadcast:
+  // the caller reloads after clearing the cache below.
+  const channel = logoutChannel ?? new BroadcastChannel("ra-account-logout");
+  channel.postMessage("logout");
+  if (channel !== logoutChannel) channel.close();
   await clearEventCache();
 }
 
