@@ -46,6 +46,7 @@ func TestHoldBuffersLocalInput(t *testing.T) {
 	dir := shortTempDir(t)
 	sock := filepath.Join(dir, "c.sock")
 	out := filepath.Join(dir, "out")
+	ready := filepath.Join(dir, "ready")
 
 	stdinR, stdinW, err := os.Pipe()
 	if err != nil {
@@ -55,7 +56,7 @@ func TestHoldBuffersLocalInput(t *testing.T) {
 
 	done := make(chan int, 1)
 	go func() {
-		code, err := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 12 > " + out}, stdinR, io.Discard, runOptions{})
+		code, err := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; printf ready > " + ready + "; head -c 2 > " + out + "; printf read > " + ready + ".prefix; head -c 10 >> " + out}, stdinR, io.Discard, runOptions{})
 		if err != nil {
 			t.Error(err)
 		}
@@ -64,13 +65,17 @@ func TestHoldBuffersLocalInput(t *testing.T) {
 
 	c := waitForSocket(t, sock)
 	defer c.Close()
-	time.Sleep(200 * time.Millisecond) // let stty take effect
+	if err := waitForFile(ready, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := stdinW.Write([]byte("ab")); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(100 * time.Millisecond)
-	if _, err := c.Hold(time.Second); err != nil {
+	if err := waitForFile(ready+".prefix", 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Hold(30 * time.Second); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := stdinW.Write([]byte("cdef")); err != nil {
@@ -103,20 +108,36 @@ func TestDisconnectReleasesHold(t *testing.T) {
 	dir := shortTempDir(t)
 	sock := filepath.Join(dir, "c.sock")
 	out := filepath.Join(dir, "out")
+	ready := filepath.Join(dir, "ready")
 	stdinR, stdinW, _ := os.Pipe()
 	defer stdinW.Close()
 	done := make(chan int, 1)
 	go func() {
-		code, _ := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; head -c 3 > " + out}, stdinR, io.Discard, runOptions{})
+		code, _ := run(sock, []string{"/bin/sh", "-c", "stty raw -echo; printf ready > " + ready + "; head -c 3 > " + out}, stdinR, io.Discard, runOptions{})
 		done <- code
 	}()
 	c := waitForSocket(t, sock)
-	time.Sleep(200 * time.Millisecond)
-	if _, err := c.Hold(5 * time.Second); err != nil {
+	if err := waitForFile(ready, 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Hold(30 * time.Second); err != nil {
 		t.Fatal(err)
 	}
 	stdinW.Write([]byte("abc"))
-	time.Sleep(100 * time.Millisecond)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		st, err := c.Status()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.LastLocalInput != 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("local bytes did not reach the host")
+		}
+		time.Sleep(time.Millisecond)
+	}
 	c.Close()
 	select {
 	case <-done:
