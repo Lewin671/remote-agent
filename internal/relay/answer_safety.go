@@ -15,8 +15,8 @@ type AnswerSafety struct {
 }
 
 // RemoteAnswerSafety uses the same deterministic reduction as event upload.
-// The daemon can recompute it from its durable original event, including after
-// restart, without trusting a client's version or its rendering of warnings.
+// The daemon projects it when an original event is committed or replayed,
+// without trusting a client's version or its rendering of warnings.
 func RemoteAnswerSafety(e *pb.Event) AnswerSafety {
 	fitted := fitEvent(slimEvent(e))
 	s := AnswerSafety{TerminalOnly: eventSkeleton(fitted)}
@@ -37,4 +37,11 @@ func approvalTextTruncated(a *pb.ApprovalRequested) bool {
 		}
 	}
 	return false
+}
+
+// TerminalOnlyAnswerID identifies skeleton IDs that are display text, never
+// executable request aliases. The same marker in an original ID is treated
+// conservatively, just as it is when detecting a skeleton event.
+func TerminalOnlyAnswerID(id string) bool {
+	return strings.HasSuffix(id, skeletonNote)
 }

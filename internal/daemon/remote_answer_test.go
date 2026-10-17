@@ -248,3 +248,105 @@ func TestRemoteSkeletonPlanCannotWriteKeys(t *testing.T) {
 		})
 	}
 }
+
+// Closing the log makes any read fail deterministically, regardless of the
+// machine's speed or file cache. Safety checks (including both checks in the
+// question RPC) must still work from the pending projection. This is a unit
+// proof that history length does not add request-time log work, not a benchmark.
+func TestRemoteAnswerChecksDoNotReadHistory(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run(map[bool]string{false: "live", true: "replay"}[restart], func(t *testing.T) {
+			h := newHarness(t, Config{})
+			history := make([]*pb.Event, 4096)
+			for i := range history {
+				history[i] = &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: "unrelated history"}}}
+			}
+			history = append(history,
+				&pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a", Command: strings.Repeat("x", 1<<20)}}},
+				&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}},
+				&pb.Event{TurnId: strings.Repeat("t", 1<<20), Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: "plan"}}},
+			)
+			if err := h.s.emit(history...); err != nil {
+				t.Fatal(err)
+			}
+			if restart {
+				restartAnswerHarness(t, h)
+			}
+			h.d.sessions[h.s.meta.ID] = h.s
+			if err := h.s.log.Close(); err != nil {
+				t.Fatal(err)
+			}
+			origin := agent.OriginFrom(oldClientContext())
+			for _, tc := range []struct {
+				kind           remoteAnswerKind
+				id             string
+				allow, blocked bool
+			}{
+				{remoteApproval, "a", true, true}, {remoteApproval, "a", false, false},
+				{remoteQuestion, "q", false, false}, {remotePlan, "", false, true},
+			} {
+				h.s.mu.Lock()
+				err := h.s.checkRemoteAnswer(tc.kind, tc.id, tc.allow, origin)
+				h.s.mu.Unlock()
+				if tc.blocked {
+					if err != errRemoteAnswerTruncated {
+						t.Fatalf("safety check depended on history: %v", err)
+					}
+				} else if err != nil {
+					t.Fatalf("safe answer read closed history: %v", err)
+				}
+			}
+			h.term.setScreen("  Question 1/1 (1 unanswered)\n  Which language?\n  \x1b[1;7m› 1. Go\n")
+			if _, err := (&handler{d: h.d}).AnswerQuestion(oldClientContext(), connect.NewRequest(&pb.AnswerQuestionRequest{SessionId: h.s.meta.ID, QuestionId: "q", Option: 1})); err != nil {
+				t.Fatalf("question RPC read closed history: %v", err)
+			}
+			if w := h.term.written(); len(w) != 1 || w[0] != "1" {
+				t.Fatalf("normal answer did not reach CLI: %q", w)
+			}
+		})
+	}
+}
+
+func TestAnswerSafetyFollowsCommittedPendingState(t *testing.T) {
+	h := newHarness(t, Config{})
+	approval := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a", Command: strings.Repeat("x", 1<<20)}}}
+	question := &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Options: []*pb.QuestionOption{{Label: strings.Repeat("x", 1<<20)}}}}}}}
+	plan := &pb.Event{TurnId: strings.Repeat("t", 1<<20), Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: "plan"}}}
+	if err := h.s.emit(approval, question, plan); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}}); err != nil {
+		t.Fatal(err)
+	}
+	p := &h.s.answerSafety
+	if len(p.questions) != 0 || !p.approvals["a"].ApprovalTruncated || !p.plan.TerminalOnly {
+		t.Fatal("turn end did not preserve approval/plan or release questions")
+	}
+	if err := h.s.emit(question,
+		&pb.Event{Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: "a"}}},
+		&pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{QuestionId: "q"}}},
+		&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{}}},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.approvals) != 0 || len(p.questions) != 0 || p.plan.TerminalOnly {
+		t.Fatal("settled answers retained safety state")
+	}
+	// The same request ID can be used again; only the currently pending
+	// original event should determine its restrictions.
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a", Command: "true"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if p.approvals["a"].ApprovalTruncated {
+		t.Fatal("new complete request inherited an old restriction")
+	}
+	if err := h.s.log.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.emit(approval, question, plan); err == nil {
+		t.Fatal("closed log accepted events")
+	}
+	if p.approvals["a"].ApprovalTruncated || len(p.questions) != 0 || p.plan.TerminalOnly {
+		t.Fatal("uncommitted events changed answer safety")
+	}
+}

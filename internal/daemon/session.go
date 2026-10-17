@@ -91,16 +91,17 @@ type session struct {
 	aborted  bool
 	// A queue message waits until turnEnds reaches gate: the turn in
 	// which the last message was written has ended (sendmode.go).
-	gate        uint64
-	gateAt      time.Time
-	context     *pb.TurnContext
-	usage       *pb.TokenUsage
-	title       string
-	preview     string
-	ordering    sessionOrdering
-	screen      agent.Screen
-	prevScreen  agent.Screen
-	sawComposer bool
+	gate         uint64
+	gateAt       time.Time
+	context      *pb.TurnContext
+	usage        *pb.TokenUsage
+	title        string
+	preview      string
+	ordering     sessionOrdering
+	answerSafety pendingAnswerSafety
+	screen       agent.Screen
+	prevScreen   agent.Screen
+	sawComposer  bool
 	// readySince is when the session last left STARTING.
 	readySince time.Time
 	planOpen   bool
@@ -256,6 +257,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
 	s.ordering.observe(e)
+	s.answerSafety.observe(e)
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnStarted:
 		s.running = true
