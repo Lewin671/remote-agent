@@ -12,6 +12,7 @@ import {
   decisionText,
   derive,
   dockItems,
+  exitReason,
   forkBlocked,
   findModel,
   modelLabel,
@@ -237,6 +238,27 @@ describe("a message the CLI recorded after the daemon stopped waiting", () => {
     const list = events(queued, unconfirmed, { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } }, { case: "userMessage", value: { text: "x", requestId: "a" } });
     expect(rows(list)).toEqual(["userMessage"]);
     expect(phaseOf({ status: "sent" }, derive(list).inputs.get("a"))).toBe("done");
+  });
+});
+
+describe("why a session ended", () => {
+  it("says so in the daemon's own words when its login shell never started the CLI", () => {
+    expect(exitReason("the login shell could not find codex in PATH")).toBe(
+      "电脑上的登录 shell 没能启动 CLI（the login shell could not find codex in PATH）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    );
+    expect(exitReason("the login shell did not start the CLI")).toBe("电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。");
+  });
+
+  it("points out that a login shell that timed out may be waiting for input", () => {
+    expect(exitReason("the login shell did not start the CLI within 1m0s")).toBe(
+      "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    );
+  });
+
+  it("keeps the plain wording for every other detail", () => {
+    expect(exitReason("stopped")).toBe("会话是被手动结束的。");
+    expect(exitReason("")).toBe("tmux 会话已经不在了。");
+    expect(exitReason("tmux session gone")).toBe("tmux 会话已经不在了。");
   });
 });
 

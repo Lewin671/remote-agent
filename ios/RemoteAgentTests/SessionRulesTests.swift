@@ -212,6 +212,21 @@ extension Ref<LiveAnnouncer> {
         #expect(offlineText(lastSeen: "3 分钟前").hasPrefix("3 分钟前断开，可能是"))
     }
 
+    @Test func anEndedSessionSaysWhenItsLoginShellCouldNotStartTheCLI() {
+        #expect(exitReason("the login shell could not find codex in PATH")
+            == "电脑上的登录 shell 没能启动 CLI（the login shell could not find codex in PATH）。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
+        #expect(exitReason("the login shell did not start the CLI")
+            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
+        // The one the daemon ends itself: the shell may be waiting for input.
+        #expect(exitReason("the login shell did not start the CLI within 1m0s")
+            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
+        #expect(endedText(detail: "the login shell did not start the CLI", unlinked: false, machineOnline: true, machine: "MacBook")
+            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。恢复会在 MacBook 上用同样的设置重新打开它，聊天记录都在。")
+        // Every other detail keeps the words the card had before.
+        #expect(exitReason("stopped") == "会话是被手动结束的。")
+        #expect(exitReason("tmux session gone") == "tmux 会话已经不在了。")
+    }
+
     @Test func voiceOverIsToldOfRepliesAndOfWhatWaitsButNotOfEverything() {
         let say = Ref(LiveAnnouncer())
         let reply = { (n: Int) in ChatItem.agent(.init(key: "e\(n)", text: "好")) }

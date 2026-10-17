@@ -1302,9 +1302,19 @@ export function toolsSummary(calls: ToolCall[]): string {
   return `完成了 ${n} 个工具调用`;
 }
 
+/** The daemon's status detail when a client-created session's login shell
+ * could not start the CLI (internal/daemon/shell.go); the timeout one adds
+ * the second phrase. */
+const loginShellDetail = "the login shell";
+const loginShellTimeoutDetail = "did not start the CLI within";
+
 /** Why a session ended, in plain words. */
 export function exitReason(detail: string): string {
   if (detail === "stopped") return "会话是被手动结束的。";
+  if (detail.startsWith(loginShellDetail)) {
+    const stuck = detail.includes(loginShellTimeoutDetail) ? "，可能卡在等待输入" : "";
+    return `电脑上的登录 shell 没能启动 CLI（${detail}）${stuck}。请检查电脑上的 shell 配置，比如 ~/.zshrc。`;
+  }
   return "tmux 会话已经不在了。";
 }
 

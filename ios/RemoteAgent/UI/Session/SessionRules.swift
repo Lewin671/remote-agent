@@ -228,12 +228,30 @@ func forkAction(blocked: String?, running: Bool, error: String, frozen: Bool, ex
 
 // MARK: In place of the message box
 
+// The daemon's status detail when a client-created session's login shell
+// could not start the CLI (internal/daemon/shell.go); the timeout one adds
+// the second phrase.
+private let loginShellDetail = "the login shell"
+private let loginShellTimeoutDetail = "did not start the CLI within"
+
 /// What the card says when a session ended, and whether it can be resumed from here now.
 func endedText(detail: String, unlinked: Bool, machineOnline: Bool, machine: String) -> String {
-    let how = detail == "stopped" ? "会话是被手动结束的。" : "tmux 会话已经不在了。"
+    let how = exitReason(detail)
     if unlinked { return how + "连上服务器后才能恢复。" }
     if machineOnline { return how + "恢复会在 \(machine) 上用同样的设置重新打开它，聊天记录都在。" }
     return how + "\(machine) 不在线，连上后才能恢复。"
+}
+
+/// Why the session ended, in plain words. A login shell that could not start
+/// the CLI says so in the daemon's own words (they name the command or the
+/// timeout), with what the user can do about it.
+func exitReason(_ detail: String) -> String {
+    if detail == "stopped" { return "会话是被手动结束的。" }
+    if detail.hasPrefix(loginShellDetail) {
+        let stuck = detail.contains(loginShellTimeoutDetail) ? "，可能卡在等待输入" : ""
+        return "电脑上的登录 shell 没能启动 CLI（\(detail)）\(stuck)。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
+    }
+    return "tmux 会话已经不在了。"
 }
 
 /// What the card says when the session's computer is away. `lastSeen` is when it went, in words, or "".

@@ -17,4 +17,25 @@ class SessionViewTest {
         // One long paragraph is a single line to count: whether it is cut is the layout's to say.
         assertEquals(false, planFolds("先把筛选条件抽成一个 hook，".repeat(40), 6))
     }
+
+    @Test
+    fun theEndOfASessionSaysWhyItEnded() {
+        assertEquals(
+            "电脑上的登录 shell 没能启动 CLI（the login shell could not find codex in PATH）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+            exitReason("the login shell could not find codex in PATH"),
+        )
+        assertEquals(
+            "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+            exitReason("the login shell did not start the CLI"),
+        )
+        // The one the daemon ends itself: the shell may be waiting for input.
+        assertEquals(
+            "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+            exitReason("the login shell did not start the CLI within 1m0s"),
+        )
+        // Every other detail keeps the words the card had before.
+        assertEquals("会话是被手动结束的。", exitReason("stopped"))
+        assertEquals("tmux 会话已经不在了。", exitReason(""))
+        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone"))
+    }
 }

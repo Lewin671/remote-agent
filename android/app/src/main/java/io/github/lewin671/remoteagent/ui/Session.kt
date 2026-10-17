@@ -476,7 +476,7 @@ private fun Bottom(
     if (status == Status.EXITED) {
         val act = rememberAction()
         EndCard("会话已结束", buildString {
-            append(if (s.info?.statusDetail == "stopped") "会话是被手动结束的。" else "tmux 会话已经不在了。")
+            append(exitReason(s.info?.statusDetail.orEmpty()))
             if (state.unlinked) append("连上服务器后才能恢复。")
             else if (m?.online == true) append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
             else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
@@ -629,6 +629,24 @@ class Follow {
  * 「视图切换」).
  */
 fun terminalAvailable(status: Status): Boolean = status != Status.EXITED && status != Status.OFFLINE
+
+// The daemon's status detail when a client-created session's login shell
+// could not start the CLI (internal/daemon/shell.go); the timeout one adds
+// the second phrase.
+private const val LOGIN_SHELL_DETAIL = "the login shell"
+private const val LOGIN_SHELL_TIMEOUT_DETAIL = "did not start the CLI within"
+
+// Why the session ended, in plain words. A login shell that could not start
+// the CLI says so in the daemon's own words (they name the command or the
+// timeout), with what the user can do about it.
+fun exitReason(detail: String): String {
+    if (detail == "stopped") return "会话是被手动结束的。"
+    if (detail.startsWith(LOGIN_SHELL_DETAIL)) {
+        val stuck = if (detail.contains(LOGIN_SHELL_TIMEOUT_DETAIL)) "，可能卡在等待输入" else ""
+        return "电脑上的登录 shell 没能启动 CLI（$detail）$stuck。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
+    }
+    return "tmux 会话已经不在了。"
+}
 
 /**
  * Forks of sessions asked from here, per session, for this run. One whose
