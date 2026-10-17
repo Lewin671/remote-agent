@@ -123,7 +123,7 @@ private const val WS = "\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028
 
 private fun Char.isSpace(): Boolean =
     this == ' ' || this in '\t'..'\r' || this == ' ' || this == ' ' || this in ' '..' ' ||
-        this == ' ' || this == ' ' || this == ' ' || this == ' ' || this == '　' || this == '﻿'
+        this == ' ' || this == ' ' || this == ' ' || this == ' ' || this == '　' || this == '\uFEFF'
 
 private fun String.trimSpace(): String = trim { it.isSpace() }
 private fun String.isBlankLine(): Boolean = all { it.isSpace() }
