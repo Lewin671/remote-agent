@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
-import { agentName, agentOf, CONTEXT_WARN, findModel, contextPercent, modeOf, noAutoMode } from "./model";
+import { agentName, agentOf, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modeOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet, useEscape } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
@@ -97,9 +97,9 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
 }
 
 /** Why a session cannot switch to mode, or "" if it can. */
-export function unavailable(s: SessionView, mode: ApprovalMode): string {
+export function unavailable(s: SessionView, mode: ApprovalMode, models?: ModelInfo[]): string {
   if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "本会话启动时未启用；需要时新建会话选择";
-  if (mode === ApprovalMode.AUTO && noAutoMode(s)) return "当前 Haiku 模型不支持";
+  if (mode === ApprovalMode.AUTO && autoUnavailable(models, s.info?.model ?? "")) return "当前模型不支持";
   return "";
 }
 
@@ -107,6 +107,11 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmFull, setConfirmFull] = useState(false);
+  // The mode on offer depends on the model, which the CLI's own list says.
+  const [models, setModels] = useState<ListModelsResponse>();
+  useEffect(() => {
+    remote.listModels(s.machineId, agentOf(s)).then(setModels, () => {});
+  }, [remote, s.machineId]);
   const mode = modeOf(s);
   const cur = mode?.mode || undefined;
   const online = remote.conn === "online";
@@ -137,7 +142,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
       {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
-          const why = unavailable(s, m.mode);
+          const why = unavailable(s, m.mode, models?.models);
           return (
             <button
               key={m.mode}

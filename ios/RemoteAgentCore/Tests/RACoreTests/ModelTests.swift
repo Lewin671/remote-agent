@@ -241,7 +241,16 @@ import Testing
         #expect(own.text == "acceptEdits")
         #expect(own.mode == nil)
         #expect(modeLabel(s { $0.collaborationMode = "plan"; $0.approvalPolicy = "on-request" })?.mode == .plan)
-        #expect(noAutoMode(s { $0.agent = .claude; $0.model = "claude-haiku-4-5-20251001" }))
+        // The list says which models come without the auto mode; a model it
+        // does not know gives no answer.
+        let list = [
+            PBModelInfo.with { $0.slug = "claude-haiku-4-5-20251001"; $0.autoUnavailable = true },
+            PBModelInfo.with { $0.slug = "claude-sonnet-5-5" },
+        ]
+        #expect(autoUnavailable(list, model: "claude-haiku-4-5-20251001"))
+        #expect(!autoUnavailable(list, model: "claude-sonnet-5-5"))
+        #expect(!autoUnavailable(list, model: "haiku"))
+        #expect(!autoUnavailable(nil, model: "claude-haiku-4-5-20251001"))
         let models = ["opus", "sonnet", "haiku"]
         #expect(findModel(models, id: "claude-haiku-4-5-20251001") { $0 } == "haiku")
         #expect(findModel(models, id: "sonnet") { $0 } == "sonnet")
@@ -299,8 +308,8 @@ import Testing
     }
 
     @Test func aModelNameMatchesIgnoringCaseTheWayKotlinDoes() {
-        #expect(noAutoMode(s { $0.agent = .claude; $0.model = "Claude-HAIKU-5" }))
-        #expect(!noAutoMode(s { $0.agent = .codex; $0.model = "haiku" }))
+        #expect("Claude-HAIKU-5".jvmContainsIgnoringCase("haiku"))
+        #expect(!"claude-sonnet-5-5".jvmContainsIgnoringCase("haiku"))
         // One character at a time: ß is not SS.
         #expect(!"STRASSE".jvmContainsIgnoringCase("straße"))
         #expect("ÉCOLE".jvmContainsIgnoringCase("école"))

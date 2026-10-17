@@ -306,9 +306,12 @@ public func modeLabel(_ s: SessionView) -> ModeLabel? {
         .map { ModeLabel(text: $0.text, mode: $0) }
 }
 
-/// Claude Code's haiku has no auto mode.
-public func noAutoMode(_ s: SessionView) -> Bool {
-    s.agent == .claude && (s.info?.model ?? "").jvmContainsIgnoringCase("haiku")
+/// Whether a session's model comes without the auto mode: the CLI's own list
+/// says so (Claude Code's Haiku 4.5 and older). A model the list does not
+/// know, or a list not read, gives no answer.
+public func autoUnavailable(_ models: [PBModelInfo]?, model: String) -> Bool {
+    guard let models, !model.isEmpty else { return false }
+    return findModel(models, id: model) { $0.slug }?.autoUnavailable == true
 }
 
 private let modelWordBreak = Rx("[-_.\(Jre.s)]")

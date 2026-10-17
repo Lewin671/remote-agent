@@ -399,17 +399,12 @@ public func defaultModelName(_ c: NewConfig, models: PBListModelsResponse, setti
     ((c.agent == .claude ? settings?.claude.model : settings?.defaultModel) ?? "").ifEmpty(models.defaultModel)
 }
 
-/// Claude Code's haiku has no auto mode.
-public func noAutoModel(_ agent: PBAgent, model: String) -> Bool {
-    agent == .claude && model.jvmContainsIgnoringCase("haiku")
-}
-
 /// `c` with the model `m` chosen: its default effort, and auto given up where the model has none.
 public func pickModel(_ c: NewConfig, _ m: PBModelInfo) -> NewConfig {
     var out = c
     out.model = m.slug
     out.effort = m.defaultEffort
-    if noAutoModel(c.agent, model: m.slug) && c.mode == .auto { out.mode = nil }
+    if m.autoUnavailable && c.mode == .auto { out.mode = nil }
     return out
 }
 
@@ -440,14 +435,18 @@ public struct ApprovalModeChoice: Equatable, Sendable, Identifiable {
     }
 }
 
-public func modeChoices(_ c: NewConfig) -> [ApprovalModeChoice] {
+/// The modes a new session can start in. The auto mode is dropped where the
+/// model shown comes without it; the CLI's own list says which those are
+/// (projectModel), so nothing is greyed out until the list has come.
+public func modeChoices(_ c: NewConfig, models: PBListModelsResponse?, settings: PBDaemonSettings? = nil) -> [ApprovalModeChoice] {
     let name = agentName(c.agent)
+    let off = models.map { projectModel(c, models: $0, settings: settings)?.autoUnavailable == true } ?? false
     return [ApprovalModeChoice(mode: nil, title: "默认", desc: "跟随 \(name) 自己的配置", enabled: true, checked: c.mode == nil)]
         + newSessionModes.map { m in
-            let off = m == .auto && noAutoModel(c.agent, model: c.model)
+            let disabled = m == .auto && off
             return ApprovalModeChoice(
-                mode: m, title: m.text, desc: off ? "当前 Haiku 模型不支持" : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
-                enabled: !off, checked: c.mode == m)
+                mode: m, title: m.text, desc: disabled ? "当前模型不支持" : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
+                enabled: !disabled, checked: c.mode == m)
         }
 }
 

@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
-import { SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
+import { ModelInfoSchema, SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
   agentName,
@@ -25,7 +25,7 @@ import {
   machineAgents,
   minutesLeft,
   modeOf,
-  noAutoMode,
+  autoUnavailable,
   optionLabel,
   phaseOf,
   plain,
@@ -458,9 +458,13 @@ describe("approval modes", () => {
     expect(modeOf(sess({ agent: Agent.CLAUDE, permissionMode: "acceptEdits" }))).toEqual({ cls: "", text: "accept edits", mode: ApprovalMode.UNSPECIFIED });
   });
 
-  it("knows haiku has no auto mode", () => {
-    expect(noAutoMode(sess({ agent: Agent.CLAUDE, model: "claude-haiku-4-5-20251001" }))).toBe(true);
-    expect(noAutoMode(sess({ agent: Agent.CLAUDE, model: "claude-sonnet-5-5" }))).toBe(false);
+  it("knows which models come without auto", () => {
+    const models = [create(ModelInfoSchema, { slug: "claude-haiku-4-5-20251001", autoUnavailable: true }), create(ModelInfoSchema, { slug: "claude-sonnet-5-5" })];
+    expect(autoUnavailable(models, "claude-haiku-4-5-20251001")).toBe(true);
+    expect(autoUnavailable(models, "claude-sonnet-5-5")).toBe(false);
+    // A model the list does not know, and a list not read, give no answer.
+    expect(autoUnavailable(models, "haiku")).toBe(false);
+    expect(autoUnavailable(undefined, "claude-haiku-4-5-20251001")).toBe(false);
   });
 
   it("notes Claude Code mode changes made in the terminal, not model aliases set here", () => {
@@ -841,11 +845,12 @@ describe("switching a new session's machine (v2)", () => {
   });
 
   it("refuses a mode the model cannot run in", () => {
-    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO)).toBe("Haiku 没有自动模式，换一种审批模式再开始");
-    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5", ApprovalMode.AUTO)).not.toBe("");
-    expect(newConfigIssue(Agent.CLAUDE, "sonnet", ApprovalMode.AUTO)).toBe("");
-    expect(newConfigIssue(Agent.CODEX, "haiku", ApprovalMode.AUTO)).toBe("");
-    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.ASK)).toBe("");
+    const models = [create(ModelInfoSchema, { slug: "claude-haiku-4-5-20251001", autoUnavailable: true }), create(ModelInfoSchema, { slug: "claude-sonnet-5-5" })];
+    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("这个模型没有自动模式，换一种审批模式再开始");
+    expect(newConfigIssue(Agent.CLAUDE, "claude-sonnet-5-5", ApprovalMode.AUTO, models)).toBe("");
+    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO, models)).toBe("");
+    expect(newConfigIssue(Agent.CODEX, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("");
+    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.ASK, models)).toBe("");
   });
 });
 

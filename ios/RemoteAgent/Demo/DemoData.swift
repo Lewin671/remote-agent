@@ -56,16 +56,18 @@ enum Demo {
     /// Code's, with efforts and context windows, one of them with a long
     /// slug and no display name. For every computer of every set.
     static let models: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
-        func model(_ slug: String, _ name: String, efforts: [String] = [], window: Int64 = 0) -> PBModelInfo {
+        func model(_ slug: String, _ name: String, efforts: [String] = [], window: Int64 = 0, autoUnavailable: Bool = false) -> PBModelInfo {
             .with {
                 $0.slug = slug
                 $0.displayName = name
                 $0.efforts = efforts
                 $0.defaultEffort = efforts.isEmpty ? "" : "medium"
                 $0.contextWindow = window
+                $0.autoUnavailable = autoUnavailable
             }
         }
         let efforts = ["low", "medium", "high", "xhigh", "max", "ultra"]
+        let modelEfforts = ["low", "medium", "high", "xhigh", "max"]
         let codex = PBListModelsResponse.with {
             $0.defaultModel = "gpt-6.1-sol"
             $0.models = [
@@ -77,11 +79,13 @@ enum Demo {
             ]
         }
         let claude = PBListModelsResponse.with {
-            $0.defaultModel = "sonnet"
+            $0.defaultModel = "claude-opus-5-5"
             $0.models = [
-                model("opus", "Opus", efforts: ["low", "medium", "high"], window: 1_000_000),
-                model("sonnet", "Sonnet", efforts: ["low", "medium", "high"], window: 1_000_000),
-                model("haiku", "Haiku", window: 200_000),
+                model("claude-opus-5-5", "Opus 5.5", efforts: modelEfforts, window: 1_000_000),
+                model("claude-fable-5-1", "Fable 5.1", efforts: modelEfforts, window: 1_000_000),
+                model("claude-sonnet-5-5", "Sonnet 5.5", efforts: modelEfforts, window: 1_000_000),
+                model("claude-haiku-5-5", "Haiku 5.5", efforts: modelEfforts, window: 1_000_000),
+                model("claude-haiku-4-5-20251001", "Haiku 4.5", window: 200_000, autoUnavailable: true),
             ]
         }
         let machines = ["mac", "vps", "imac", "studio", "ci", "nas"]
@@ -172,7 +176,7 @@ enum Demo {
             $0.createdAt = ts(created ?? now - 3_600_000)
             $0.mode = mode
             $0.statusDetail = detail
-            $0.model = agent == .claude ? "sonnet" : "gpt-6-astra"
+            $0.model = agent == .claude ? "claude-sonnet-5-5" : "gpt-6-astra"
             $0.effort = agent == .claude ? "high" : "medium"
             $0.contextTokens = context
             $0.contextWindow = context > 0 ? 760_000 : 0

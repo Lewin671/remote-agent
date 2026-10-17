@@ -11,6 +11,7 @@ import {
   ago,
   findModel,
   STANDARD_WINDOW,
+  autoUnavailable,
   modelLabel,
   inheritConfig,
   machineAgents,
@@ -457,7 +458,7 @@ export function useNewSession(remote: Remote, key: string, go: Go) {
     setWatch,
     // The CLI's last settings are still being fetched: no session starts before.
     reading: unread && remote.conn === "online",
-    issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode),
+    issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode, info.models?.models),
     parts,
     tray,
     attachWhy: attachBlocked(remote, machine),
@@ -787,15 +788,17 @@ export function ConfigSheet({ ns, onClose, start = "" }: { ns: NewSession; onClo
       </>
     );
   } else if (pick === "mode") {
-    // Claude Code's haiku has no auto mode.
-    const noAuto = cfg.agent === Agent.CLAUDE && /haiku/i.test(cfg.model || def.model);
+    // A model without the auto mode (Claude Code's Haiku 4.5) cannot start
+    // with it; the CLI's own list says which those are.
+    const chosen = cfg.model || def.model || info.models?.defaultModel || "";
+    const noAuto = cfg.agent === Agent.CLAUDE && autoUnavailable(info.models?.models, chosen);
     body = (
       <div className="list">
         {[
           { mode: ApprovalMode.UNSPECIFIED, name: "默认", desc: `跟随 ${agentName(cfg.agent)} 自己的配置` },
           { mode: ApprovalMode.ASK, name: "询问", desc: "需要审批时由你确认，超时拒绝" },
           noAuto
-            ? { mode: ApprovalMode.AUTO, name: "自动", desc: "Haiku 没有自动模式", off: true }
+            ? { mode: ApprovalMode.AUTO, name: "自动", desc: "当前模型没有自动模式", off: true }
             : { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(cfg.agent)} 自己判断，拿不准的在对话里问你` },
           { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
         ].map((m: { mode: ApprovalMode; name: string; desc: string; danger?: boolean; off?: boolean }) => (

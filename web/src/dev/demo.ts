@@ -486,12 +486,13 @@ const models = create(ListModelsResponseSchema, {
   ],
 });
 const claudeModels = create(ListModelsResponseSchema, {
-  defaultModel: "sonnet",
+  defaultModel: "claude-opus-5-5",
   models: [
-    { slug: "opus", displayName: "Opus", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
-    { slug: "fable", displayName: "Fable", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
-    { slug: "sonnet", displayName: "Sonnet", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
-    { slug: "haiku", displayName: "Haiku", efforts: [], contextWindow: 200_000n },
+    { slug: "claude-opus-5-5", displayName: "Opus 5.5", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "claude-fable-5-1", displayName: "Fable 5.1", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "high", contextWindow: 1_000_000n },
+    { slug: "claude-sonnet-5-5", displayName: "Sonnet 5.5", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "claude-haiku-5-5", displayName: "Haiku 5.5", efforts: ["low", "medium", "high", "xhigh", "max"], defaultEffort: "medium", contextWindow: 1_000_000n },
+    { slug: "claude-haiku-4-5-20251001", displayName: "Haiku 4.5", contextWindow: 200_000n, autoUnavailable: true },
   ],
 });
 
@@ -946,7 +947,7 @@ export class DemoRemote extends Remote {
       defaultModel: "gpt-6-astra",
       defaultEffort: "medium",
       defaultMode: ApprovalMode.AUTO,
-      claude: { model: "sonnet", effort: "high", mode: ApprovalMode.ASK },
+      claude: { model: "claude-sonnet-5-5", effort: "high", mode: ApprovalMode.ASK },
     }));
   }
 

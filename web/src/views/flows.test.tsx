@@ -260,21 +260,23 @@ it("answers a multi-select question with every ticked option", async () => {
   expect(sent[0]).toMatchObject({ questionId: "cq", questionIndex: 0, options: [1, 3] });
 });
 
-it("greys out modes a Claude Code session cannot switch to, and effort for haiku", async () => {
+it("greys out modes a Claude Code session cannot switch to, and effort for a model without any", async () => {
   const r = demo();
   const s = r.sessions.get("s-claude-idle")!;
   mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
   expect(button(/^完全放行/)?.disabled).toBe(true);
   expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
-  expect(host.textContent).toContain("当前 Haiku 模型不支持");
-  expect(button(/^自动/)?.disabled).toBe(true);
+  // The model list says which models come without auto; until it has come,
+  // nothing is greyed out.
+  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(true), { timeout: 3000 });
+  expect(host.textContent).toContain("当前模型不支持");
   expect(button(/^询问/)?.disabled).toBe(false);
   // acceptEdits is none of the four: nothing is ticked, and it says so.
   expect(host.querySelector(".ck")).toBeNull();
   expect(host.textContent).toContain("当前：accept edits（在终端设置）");
   expect(host.textContent).toContain("不提供切到 accept edits 的按钮");
   act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
-  await vi.waitFor(() => expect(host.textContent).toContain("Haiku 没有推理强度可调"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.textContent).toContain("Haiku 4.5 没有推理强度可调"), { timeout: 3000 });
   expect(host.querySelector(".slider")).toBeNull();
 });
 
@@ -1158,7 +1160,7 @@ describe("a message the session ended before sending", () => {
   });
 });
 
-it("lists every Claude Code model after switching away from haiku", async () => {
+it("lists every Claude Code model, and sends none for a model without effort levels", async () => {
   const r = demo();
   const s = r.sessions.get("s-claude-idle")!;
   s.info = { ...s.info!, model: "claude-sonnet-5-5", effort: "medium" };
@@ -1169,12 +1171,12 @@ it("lists every Claude Code model after switching away from haiku", async () => 
     return real(sid, cmd, slot);
   };
   mount(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />);
-  await vi.waitFor(() => expect(button(/^Haiku/)).toBeTruthy(), { timeout: 3000 });
-  expect(button(/^Opus/)).toBeTruthy();
-  await click(button(/^Haiku/));
-  // Haiku has no effort levels: none is sent.
+  await vi.waitFor(() => expect(button(/^Haiku 4\.5/)).toBeTruthy(), { timeout: 3000 });
+  expect(button(/^Opus 5\.5/)).toBeTruthy();
+  await click(button(/^Haiku 4\.5/));
+  // Haiku 4.5 has no effort levels: none is sent.
   await vi.waitFor(() => expect(switched).toHaveLength(1));
-  expect(switched[0]).toMatchObject({ model: "haiku", effort: "" });
+  expect(switched[0]).toMatchObject({ model: "claude-haiku-4-5-20251001", effort: "" });
 });
 
 it("names models in switch records as the chips do", async () => {
@@ -1182,15 +1184,15 @@ it("names models in switch records as the chips do", async () => {
   const s = r.sessions.get("s-claude-idle")!;
   const push = (kind: object) => r.events("s-claude-idle").push(create(EventSchema, { seq: BigInt(r.events("s-claude-idle").length + 1), kind: kind as never }));
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-haiku-4-5-20251001" } });
-  push({ case: "settingsChanged", value: { model: "sonnet", effort: "medium" } });
+  push({ case: "settingsChanged", value: { model: "claude-sonnet-5-5", effort: "medium" } });
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-sonnet-5-5", effort: "medium" } });
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-opus-5-5", effort: "medium" } });
   // The model list has come, as it has once the session page asks for it.
   await r.listModels("mac", Agent.CLAUDE);
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
-  expect(lines).toContain("切换到 Sonnet · medium");
-  expect(lines.some((l) => l?.includes("模型切到了 Opus · medium"))).toBe(true);
+  expect(lines).toContain("切换到 Sonnet 5.5 · medium");
+  expect(lines.some((l) => l?.includes("模型切到了 Opus 5.5 · medium"))).toBe(true);
 });
 
 describe("a new-session draft", () => {

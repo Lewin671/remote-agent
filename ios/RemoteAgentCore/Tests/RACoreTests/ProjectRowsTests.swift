@@ -262,8 +262,9 @@ import Testing
             $0.contextWindow = 1_000_000
         }
         let haiku = PBModelInfo.with {
-            $0.slug = "claude-haiku"
+            $0.slug = "claude-haiku-4-5-20251001"
             $0.contextWindow = 200_000
+            $0.autoUnavailable = true
         }
         let models = PBListModelsResponse.with {
             $0.models = [sonnet, haiku]
@@ -284,11 +285,11 @@ import Testing
         // Haiku has neither a larger window nor auto.
         let h = pickModel(c, haiku)
         #expect(h.mode == nil && settingsContext(h, shown: haiku).fixed && effortChoices(h, models: models, settings: nil) == nil)
-        let choices = modeChoices(h)
+        let choices = modeChoices(h, models: models)
         #expect(choices.map(\.title) == ["默认", "询问", "自动", "完全放行"])
         #expect(choices[0].checked && choices[0].desc == "跟随 Claude Code 自己的配置")
-        #expect(!choices[2].enabled && choices[2].desc == "当前 Haiku 模型不支持")
-        #expect(modeChoices(c)[2].desc == "由 Claude Code 自己判断，拿不准的在对话里问你")
+        #expect(!choices[2].enabled && choices[2].desc == "当前模型不支持")
+        #expect(modeChoices(c, models: models)[2].desc == "由 Claude Code 自己判断，拿不准的在对话里问你")
         // Red: full access chosen, or a default that could not be read.
         #expect(settingsModeRed(NewConfig(machineId: "m", cwd: "/p", mode: .full), default: DefaultMode(mode: .ask, known: true, varies: false)))
         #expect(settingsModeRed(NewConfig(machineId: "m", cwd: "/p"), default: DefaultMode(mode: nil, known: false, varies: false)))

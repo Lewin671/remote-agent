@@ -444,8 +444,13 @@ fun modeLabel(s: SessionView): ModeLabel? {
     return contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode)?.let { ModeLabel(it.text, it) }
 }
 
-/** Claude Code's haiku has no auto mode. */
-fun noAutoMode(s: SessionView): Boolean = s.agent() == Agent.AGENT_CLAUDE && s.info?.model.orEmpty().contains("haiku", ignoreCase = true)
+/** Whether a session's model comes without the auto mode: the CLI's own
+ * list says so (Claude Code's Haiku 4.5 and older). A model the list does
+ * not know, or a list not read, gives no answer. */
+fun autoUnavailable(models: List<io.github.lewin671.remoteagent.proto.ModelInfo>?, model: String): Boolean {
+    if (models == null || model.isEmpty()) return false
+    return findModel(models, model) { it.slug }?.autoUnavailable == true
+}
 
 /**
  * The entry of a model list that a session's model is. Codex reports the slug

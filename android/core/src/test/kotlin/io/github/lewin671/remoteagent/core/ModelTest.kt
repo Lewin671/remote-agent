@@ -280,7 +280,16 @@ class ModelTest {
         assertEquals("acceptEdits", own.text)
         assertEquals(null, own.mode)
         assertEquals(Mode.PLAN, modeLabel(s { collaborationMode = "plan"; approvalPolicy = "on-request" })?.mode)
-        assertTrue(noAutoMode(s { agent = Agent.AGENT_CLAUDE; model = "claude-haiku-4-5-20251001" }))
+        // The list says which models come without the auto mode; a model it
+        // does not know gives no answer.
+        val list = listOf(
+            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("claude-haiku-4-5-20251001").setAutoUnavailable(true).build(),
+            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("claude-sonnet-5-5").build(),
+        )
+        assertTrue(autoUnavailable(list, "claude-haiku-4-5-20251001"))
+        assertFalse(autoUnavailable(list, "claude-sonnet-5-5"))
+        assertFalse(autoUnavailable(list, "haiku"))
+        assertFalse(autoUnavailable(null, "claude-haiku-4-5-20251001"))
         val models = listOf("opus", "sonnet", "haiku")
         assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
         assertEquals("sonnet", findModel(models, "sonnet") { it })

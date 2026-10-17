@@ -280,7 +280,7 @@ struct ProjectSettingsSheet: View {
     }
 
     @ViewBuilder private func modePage(_ c: NewConfig, done: (() -> Void)?) -> some View {
-        let choices = modeChoices(c)
+        let choices = modeChoices(c, models: models, settings: settings)
         SheetHead("审批模式", action: done == nil ? nil : "完成", onAction: done, onBack: { page = .main })
         ForEach(Array(choices.enumerated()), id: \.element.id) { i, choice in
             // Full access is the one choice that takes the asking away: red, as wherever it is written.

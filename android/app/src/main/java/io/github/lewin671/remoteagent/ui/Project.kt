@@ -942,8 +942,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         ms.modelsList.forEachIndexed { i, m ->
                             ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
-                                val noAuto = c.agent == Agent.AGENT_CLAUDE && m.slug.contains("haiku", ignoreCase = true)
-                                edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { noAuto && it == Mode.AUTO }))
+                                edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
                             })
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
@@ -965,10 +964,12 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             "mode" -> {
                 SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
                 ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
+                val chosen = models?.let { projectModel(c, it, settings) }
                 newSessionModes.forEachIndexed { i, m ->
-                    // Claude Code's haiku has no auto mode.
-                    val off = m == Mode.AUTO && c.agent == Agent.AGENT_CLAUDE && c.model.contains("haiku", ignoreCase = true)
-                    ListItem(m.text, if (off) "当前 Haiku 模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
+                    // The list says which models come without the auto mode
+                    // (Claude Code's Haiku 4.5); until it has come, none is.
+                    val off = m == Mode.AUTO && chosen?.autoUnavailable == true
+                    ListItem(m.text, if (off) "当前模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
                 }
                 Hint("完全放行的新会话直接按此设置启动。")
             }

@@ -21,9 +21,11 @@ struct SessionModeSheet: View {
     @Environment(AccountContext.self) private var context
     @State private var act = ActionRunner()
     @State private var confirmFull = false
+    /// The auto mode goes with the model, which the CLI's own list says.
+    @State private var modelList: [PBModelInfo]?
 
     private func unavailable(_ m: Mode) -> Bool {
-        (m == .full && session.info?.fullAccessUnavailable == true) || (m == .auto && noAutoMode(session))
+        (m == .full && session.info?.fullAccessUnavailable == true) || (m == .auto && autoUnavailable(modelList, model: session.info?.model ?? ""))
     }
 
     private func set(_ m: Mode) {
@@ -49,7 +51,7 @@ struct SessionModeSheet: View {
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
                 let off = unavailable(m)
                 let help = off
-                    ? (m == .full ? "本会话启动时未启用；需要时新建会话选择" : "当前 Haiku 模型不支持")
+                    ? (m == .full ? "本会话启动时未启用；需要时新建会话选择" : "当前模型不支持")
                     : modeHelp(m).replacingOccurrences(of: "CLI", with: agentName(session.agent))
                 ListItem(
                     m.text, desc: help, checked: m == current, enabled: !off, danger: m == .full && !off,
@@ -70,6 +72,10 @@ struct SessionModeSheet: View {
             confirm: "切换", danger: true
         ) { set(.full) }
         .task { if startConfirm { confirmFull = true } }
+        .task {
+            let (remote, machine) = (context.remote, session.machineId)
+            modelList = try? await remote.listModels(machine, agent: session.agent).models
+        }
         .debugSignal("session.mode.pick") {
             let named: [String: Mode] = ["ask": .ask, "auto": .auto, "plan": .plan, "full": .full]
             if let m = named[SessionDebug.text] { set(m) }

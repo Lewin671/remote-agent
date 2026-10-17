@@ -146,7 +146,7 @@ enum SessionSamples {
             session("sample-claude", "终端里设的模式", now: now, agent: .claude) {
                 $0.mode = .unspecified
                 $0.permissionMode = "acceptEdits"
-                $0.model = "claude-haiku-4-5"
+                $0.model = "claude-haiku-4-5-20251001"
                 $0.fullAccessUnavailable = true
             },
             session("sample-old", "另一个协议版本的电脑", now: now, machine: oldMachine),
@@ -162,12 +162,13 @@ enum SessionSamples {
     }
 
     private static let modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
-        func model(_ slug: String, _ name: String, _ efforts: [String]) -> PBModelInfo {
+        func model(_ slug: String, _ name: String, _ efforts: [String], autoUnavailable: Bool = false) -> PBModelInfo {
             .with {
                 $0.slug = slug
                 $0.displayName = name
                 $0.efforts = efforts
                 $0.defaultEffort = efforts.contains("medium") ? "medium" : ""
+                $0.autoUnavailable = autoUnavailable
             }
         }
         let codex = PBListModelsResponse.with {
@@ -183,10 +184,10 @@ enum SessionSamples {
             ]
         }
         let claude = PBListModelsResponse.with {
-            $0.defaultModel = "sonnet"
+            $0.defaultModel = "claude-opus-5-5"
             $0.models = [
-                model("sonnet", "Sonnet", ["low", "medium", "high"]), model("opus", "Opus", ["low", "medium", "high", "max"]),
-                model("haiku", "Haiku", []),
+                model("claude-opus-5-5", "Opus 5.5", ["low", "medium", "high", "xhigh", "max"]), model("claude-sonnet-5-5", "Sonnet 5.5", ["low", "medium", "high", "xhigh", "max"]),
+                model("claude-haiku-4-5-20251001", "Haiku 4.5", [], autoUnavailable: true),
             ]
         }
         return [machine, oldMachine].flatMap {

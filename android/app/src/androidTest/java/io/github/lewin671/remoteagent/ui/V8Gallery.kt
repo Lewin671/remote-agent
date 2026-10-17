@@ -116,7 +116,7 @@ class V8Gallery {
         id, machine,
         Session.newBuilder().setId(id).setCwd(cwd).setTitle(title).setStatus(status).setAgent(agent).setPendingApprovals(approvals)
             .setPendingQuestions(questions).setPlanOpen(plan).setPreview(preview).setCreatedAt(ts(created)).setMode(mode).setStatusDetail(detail)
-            .setModel(if (agent == Agent.AGENT_CLAUDE) "sonnet" else "gpt-6-astra").setEffort(if (agent == Agent.AGENT_CLAUDE) "high" else "medium")
+            .setModel(if (agent == Agent.AGENT_CLAUDE) "claude-sonnet-5-5" else "gpt-6-astra").setEffort(if (agent == Agent.AGENT_CLAUDE) "high" else "medium")
             .setContextTokens(context).setContextWindow(if (context > 0) 760_000 else 0)
             .also { if (status == SessionStatus.SESSION_STATUS_EXITED) it.setEndedAt(ts(updated)) }.build(),
         updatedMs = updated,

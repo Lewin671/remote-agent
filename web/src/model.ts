@@ -8,7 +8,7 @@ import { approvalDisplay } from "./approval-display";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
 import type { ApprovalRequested, Event, PlanProposed, QuestionAsked, TokenUsage, ToolCall } from "./gen/remoteagent/v1/event_pb";
 import { Agent, ApprovalDecision, ApprovalMode, InputStage, InputStatus, OriginKind, SendMode, SessionStatus, ToolBackground, ToolKind, TurnOutcome } from "./gen/remoteagent/v1/event_pb";
-import type { Session } from "./gen/remoteagent/v1/local_pb";
+import type { ModelInfo, Session } from "./gen/remoteagent/v1/local_pb";
 import { DefaultModeSource, type MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
 // The parts of Remote's views the rules need; kept structural so tests can
@@ -489,9 +489,11 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
   return text ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) } : undefined;
 }
 
-/** Whether a session's model lacks the auto mode (Claude Code's haiku). */
-export function noAutoMode(s: SessionLike): boolean {
-  return agentOf(s) === Agent.CLAUDE && /haiku/i.test(s.info?.model ?? "");
+/** Whether the auto approval mode is not offered with a model: the CLI's
+ * own list says so (Claude Code's Haiku 4.5 and older take none). A model
+ * the list does not know, or a list not read yet, gives no answer. */
+export function autoUnavailable(models: ModelInfo[] | undefined, model: string): boolean {
+  return !!findModel(models, model)?.autoUnavailable;
 }
 
 export function contextPercent(s: SessionLike): number | undefined {
@@ -597,8 +599,8 @@ export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
 }
 
 /** Why a new session cannot start with this CLI, model and mode, or "". */
-export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode): string {
-  if (agent === Agent.CLAUDE && mode === ApprovalMode.AUTO && /haiku/i.test(model)) return "Haiku 没有自动模式，换一种审批模式再开始";
+export function newConfigIssue(agent: Agent, model: string, mode: ApprovalMode, models?: ModelInfo[]): string {
+  if (agent === Agent.CLAUDE && mode === ApprovalMode.AUTO && autoUnavailable(models, model)) return "这个模型没有自动模式，换一种审批模式再开始";
   return "";
 }
 

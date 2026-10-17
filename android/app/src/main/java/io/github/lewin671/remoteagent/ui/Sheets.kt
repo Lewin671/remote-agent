@@ -81,7 +81,12 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
     val act = rememberAction()
     var confirmFull by remember { mutableStateOf(false) }
     val cur = modeOf(s)
-    fun unavailable(m: Mode) = (m == Mode.FULL && s.info?.fullAccessUnavailable == true) || (m == Mode.AUTO && io.github.lewin671.remoteagent.core.noAutoMode(s))
+    // The auto mode goes with the model, which the CLI's own list says.
+    var modelList by remember { mutableStateOf<List<io.github.lewin671.remoteagent.proto.ModelInfo>?>(null) }
+    LaunchedEffect(s.machineId, s.info?.model) {
+        modelList = runCatching { remote.listModels(s.machineId, s.agent()) }.getOrNull()?.modelsList
+    }
+    fun unavailable(m: Mode) = (m == Mode.FULL && s.info?.fullAccessUnavailable == true) || (m == Mode.AUTO && io.github.lewin671.remoteagent.core.autoUnavailable(modelList, s.info?.model.orEmpty()))
     fun set(m: Mode) = act.run({
         remote.command(s.id, remote.cmd { setApprovalMode = SetApprovalModeRequest.newBuilder().setSessionId(s.id).setMode(m.proto).build() })
     }) { onClose() }
@@ -96,7 +101,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                 m.text,
                 when {
                     off && m == Mode.FULL -> "本会话启动时未启用；需要时新建会话选择"
-                    off -> "当前 Haiku 模型不支持"
+                    off -> "当前模型不支持"
                     else -> modeHelp.getValue(m).replace("CLI", agentName(s.agent()))
                 },
                 checked = m == cur, enabled = !off, danger = m == Mode.FULL && !off, last = i == Mode.entries.size - 1,
