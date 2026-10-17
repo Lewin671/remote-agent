@@ -65,6 +65,9 @@ type Relay struct {
 	backlog chan struct{}
 	// Retry is the first reconnect delay; it doubles up to a minute.
 	Retry time.Duration
+	// syncInterval paces idle workers and completed-session checks. Tests can
+	// shorten it without changing the production schedule.
+	syncInterval time.Duration
 	// keyMu makes reading or creating a session's key one step. A sync
 	// left over from the previous connection may still be writing one.
 	keyMu sync.Mutex
@@ -85,7 +88,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second}
+	return &Relay{backend: backend, cmds: openCommandLog(paths.Commands()), calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.

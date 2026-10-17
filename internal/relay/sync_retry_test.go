@@ -62,3 +62,11 @@ func TestSyncRetryBackoffLogsAndRecovery(t *testing.T) {
 		t.Fatalf("recovery did not reset delay: %v", s.delay)
 	}
 }
+
+func TestProductionSyncIntervalIsUnchanged(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	r := New(nil)
+	if r.syncInterval != 5*time.Second || min(time.Second, r.syncInterval) != time.Second {
+		t.Fatalf("production sync interval = %v; want 5s with a 1s scheduler tick", r.syncInterval)
+	}
+}

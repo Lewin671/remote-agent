@@ -63,7 +63,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	slots := map[string]*slot{}
 	blocked := map[string]bool{}
 	done := make(chan finished, 16)
-	t := time.NewTicker(time.Second)
+	t := time.NewTicker(min(time.Second, c.r.syncInterval))
 	defer t.Stop()
 	endedRunning := 0
 	for {
@@ -97,7 +97,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			changed := !state.synced || info.LastSeq > state.after || !proto.Equal(syncMeta(info), state.meta)
 			if state.synced && !changed && !c.r.hasOwedNotify(id) {
 				state.failure.recovered(id)
-				state.nextCheck = now.Add(5 * time.Second)
+				state.nextCheck = now.Add(c.r.syncInterval)
 				continue
 			}
 			isEnded := info.Status == pb.SessionStatus_SESSION_STATUS_EXITED
@@ -161,7 +161,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			}
 			state.synced, state.onServer, state.completed = true, true, true
 			state.after, state.meta = result.after, syncMeta(result.info)
-			state.nextCheck = time.Now().Add(5 * time.Second)
+			state.nextCheck = time.Now().Add(c.r.syncInterval)
 			// Re-read completed snapshots before sleeping: an event or
 			// metadata edit which landed while the worker was in flight must
 			// schedule an immediate follow-up.
@@ -343,7 +343,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead,
 		case <-ctx.Done():
 			return after, nil, false, nil
 		case <-changed:
-		case <-time.After(5 * time.Second):
+		case <-time.After(c.r.syncInterval):
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -253,32 +254,48 @@ func appendText(t *testing.T, l *eventlog.Log, id, text string) {
 }
 
 type env struct {
-	srv     *server.Server
-	http    *httptest.Server
-	dbPath  string
-	backend *fakeBackend
-	acct    *relay.Account
-	client  *remoteclient.Client
-	stop    context.CancelFunc
-	done    chan struct{}
+	srv       *server.Server
+	http      *httptest.Server
+	dbPath    string
+	backend   *fakeBackend
+	acct      *relay.Account
+	client    *remoteclient.Client
+	stop      context.CancelFunc
+	done      chan struct{}
+	streamsMu sync.Mutex
+	streams   map[net.Conn]bool
 }
 
 func setup(t *testing.T) *env {
 	return setupWithHandler(t, func(h http.Handler) http.Handler { return h })
 }
 
-func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler) *env {
+func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, configure ...func(*server.Config)) *env {
 	t.Helper()
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	e := &env{dbPath: filepath.Join(t.TempDir(), "ra.db"), backend: newFakeBackend(t)}
 	var err error
-	e.srv, err = server.New(server.Config{DBPath: e.dbPath, SetupToken: "setup", PingInterval: time.Second})
+	cfg := server.Config{DBPath: e.dbPath, SetupToken: "setup"}
+	for _, f := range configure {
+		f(&cfg)
+	}
+	e.srv, err = server.New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.http = httptest.NewServer(wrap(e.srv.Handler()))
+	e.streams = map[net.Conn]bool{}
+	e.http = httptest.NewUnstartedServer(wrap(e.srv.Handler()))
+	e.http.Config.ConnState = func(c net.Conn, state http.ConnState) {
+		if state == http.StateHijacked {
+			e.streamsMu.Lock()
+			e.streams[c] = true
+			e.streamsMu.Unlock()
+		}
+	}
+	e.http.Start()
 	t.Cleanup(func() {
 		e.stopRelay()
+		e.dropStreams()
 		e.http.Close()
 		e.srv.Close()
 	})
@@ -295,6 +312,17 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler) *env {
 		t.Fatal(err)
 	}
 	return e
+}
+
+// httptest.CloseClientConnections excludes hijacked WebSocket connections.
+// Close them explicitly when a test needs an actual stream disconnect.
+func (e *env) dropStreams() {
+	e.streamsMu.Lock()
+	defer e.streamsMu.Unlock()
+	for c := range e.streams {
+		_ = c.Close()
+		delete(e.streams, c)
+	}
 }
 
 func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
@@ -349,17 +377,39 @@ func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
 	e.session(t, "history-000", 2)
 }
 
-func (e *env) startRelay() {
-	e.startRelayBackend(e.backend)
+// Keep the same scheduling paths with a shorter per-instance interval;
+// integration tests synchronize on effects rather than five-second sleeps.
+const testSyncInterval = 20 * time.Millisecond
+
+func newTestRelay(backend relay.Backend) *relay.Relay {
+	r := relay.New(backend)
+	r.Retry = 50 * time.Millisecond
+	relay.SetSyncIntervalForTest(r, testSyncInterval)
+	return r
 }
 
-func (e *env) startRelayBackend(backend relay.Backend) {
+// A second uploaded, non-notifying event proves the preceding pass (including
+// notification handling) has finished. This checks no duplicate was sent on a
+// later pass without guessing when a sleeping worker will wake up.
+func (e *env) syncLaterPasses(t *testing.T, l *eventlog.Log, id string) {
+	t.Helper()
+	for range 2 {
+		appendText(t, l, id, "sync barrier")
+		e.session(t, id, l.LastSeq())
+	}
+}
+
+func (e *env) startRelay() *relay.Relay {
+	return e.startRelayBackend(e.backend)
+}
+
+func (e *env) startRelayBackend(backend relay.Backend) *relay.Relay {
 	ctx, cancel := context.WithCancel(context.Background())
 	e.stop = cancel
 	e.done = make(chan struct{})
-	r := relay.New(backend)
-	r.Retry = 50 * time.Millisecond
+	r := newTestRelay(backend)
 	go func() { defer close(e.done); r.Run(ctx) }()
+	return r
 }
 
 func (e *env) stopRelay() {
@@ -441,7 +491,10 @@ func TestEventsReachClientsInOrder(t *testing.T) {
 	deadline := time.After(10 * time.Second)
 	for got := false; !got; {
 		select {
-		case f := <-stream:
+		case f, ok := <-stream:
+			if !ok {
+				t.Fatal("client stream closed before the live event")
+			}
 			if ea := f.GetEventsAppended(); ea != nil && ea.SessionId == "sess1" {
 				for _, se := range ea.Events {
 					ev, err := e.client.OpenEvent(s, se)
@@ -1095,7 +1148,7 @@ func TestForkedHistoryIsNotNotified(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, "the fork's own turn to be notified", func() bool { return notifies.Load() > 0 })
-	time.Sleep(200 * time.Millisecond)
+	e.syncLaterPasses(t, l, "fork")
 	if n := notifies.Load(); n != 1 {
 		t.Fatalf("%d notifications for a fork with one turn of its own", n)
 	}
@@ -1114,7 +1167,7 @@ func TestRefusedNotificationIsOfferedAgain(t *testing.T) {
 	}
 	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
 	// Once taken it is not offered a third time.
-	time.Sleep(6 * time.Second)
+	e.syncLaterPasses(t, l, "sess1")
 	if n := notifies.Load(); n != 2 {
 		t.Fatalf("%d notify calls for one event refused once", n)
 	}
@@ -1152,10 +1205,10 @@ func TestExitedSessionRetriesOwedNotificationOnScheduler(t *testing.T) {
 	mu.Lock()
 	delay := at[1].Sub(at[0])
 	mu.Unlock()
-	if delay < 4*time.Second || delay > 8*time.Second {
-		t.Fatalf("ended-session notification retry took %v, want a paced retry near five seconds", delay)
+	if delay < testSyncInterval {
+		t.Fatalf("ended-session notification retried after %v, before its %v interval", delay, testSyncInterval)
 	}
-	time.Sleep(time.Second)
+	e.syncLaterPasses(t, l, "ended-notify")
 	if n := notifies.Load(); n != 2 {
 		t.Fatalf("%d notify calls after the owed event was accepted", n)
 	}
@@ -1179,14 +1232,14 @@ func TestExitedMetadataChangeDoesNotResendSyncedEvents(t *testing.T) {
 	e.startRelay()
 	e.session(t, "ended-meta", 1)
 	e.stopRelay()
-	e.startRelay()
+	r := e.startRelay()
 	e.online(t, true)
 	appendText(t, l, "ended-meta", "second")
 	e.session(t, "ended-meta", 2)
 	waitFor(t, "both event batches uploaded", func() bool { return uploads.Load() >= 2 })
 	// Let the exited worker finish and leave only the scheduler's completed
 	// snapshot before changing metadata.
-	time.Sleep(5 * time.Second)
+	waitFor(t, "the ended worker to release its backlog slot", func() bool { return !relay.HasBacklogWorkerForTest(r) })
 	e.backend.mu.Lock()
 	e.backend.titles["ended-meta"] = "renamed"
 	e.backend.mu.Unlock()
@@ -1202,7 +1255,11 @@ func TestExitedMetadataChangeDoesNotResendSyncedEvents(t *testing.T) {
 		}
 		return false
 	})
-	time.Sleep(250 * time.Millisecond)
+	// A second metadata edit must also be noticed by a later pass.
+	e.backend.mu.Lock()
+	e.backend.titles["ended-meta"] = "renamed again"
+	e.backend.mu.Unlock()
+	waitFor(t, "the next metadata pass", func() bool { return e.session(t, "ended-meta", 2).Info.GetTitle() == "renamed again" })
 	if n := uploads.Load(); n != 2 {
 		t.Fatalf("metadata-only update triggered %d event uploads, want 2 total", n)
 	}
@@ -1214,18 +1271,18 @@ func TestRefusedNotificationSurvivesReconnect(t *testing.T) {
 	l := e.backend.add(t, "sess1")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := relay.New(e.backend)
-	r.Retry = 50 * time.Millisecond
+	r := newTestRelay(e.backend)
+	relay.SetSyncIntervalForTest(r, time.Hour)
 	done := make(chan struct{})
 	go func() { defer close(done); r.Run(ctx) }()
 	defer func() { cancel(); <-done }()
 	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "the notification to be refused", func() bool { return notifies.Load() >= 1 })
+	waitFor(t, "the refused notification to be retained", func() bool { return relay.HasOwedNotificationForTest(r, "sess1") })
 	// The stream drops before the next pass; the event is on the server,
 	// so the next connection uploads nothing for it.
-	e.http.CloseClientConnections()
+	e.dropStreams()
 	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
 }
 
@@ -1233,41 +1290,48 @@ func TestRefusedNotificationSurvivesReconnect(t *testing.T) {
 // server gave no answer, and the event is long uploaded, so the
 // notification is still owed on the next connection.
 func TestOwedNotificationSurvivesAnInterruptedRetry(t *testing.T) {
-	var notifies atomic.Int32
-	var srv atomic.Pointer[httptest.Server]
+	var notifies, logins atomic.Int32
+	var interrupted atomic.Pointer[env]
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/Login") {
+				logins.Add(1)
+			}
 			if r.URL.Path == "/remoteagent.v1.MachineService/Notify" {
 				switch notifies.Add(1) {
 				case 1:
 					connect.NewErrorWriter().Write(w, r, connect.NewError(connect.CodeResourceExhausted, errors.New("push capacity exhausted; try again later")))
 					return
 				case 2:
-					// Every connection goes, this request's included.
-					srv.Load().CloseClientConnections()
+					// Drop the machine stream and abort this HTTP request before any response.
+					interrupted.Load().dropStreams()
 					panic(http.ErrAbortHandler)
 				}
 			}
 			next.ServeHTTP(w, r)
 		})
 	})
-	srv.Store(e.http)
+	interrupted.Store(e)
+	logins.Store(0)
 	l := e.backend.add(t, "sess1")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := relay.New(e.backend)
-	r.Retry = 50 * time.Millisecond
+	r := newTestRelay(e.backend)
+	relay.SetSyncIntervalForTest(r, time.Hour)
 	done := make(chan struct{})
 	go func() { defer close(done); r.Run(ctx) }()
 	defer func() { cancel(); <-done }()
 	if err := l.Append("sess1", []*pb.Event{turnEnded()}, "", 0); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "the notification to be refused", func() bool { return notifies.Load() >= 1 })
-	e.http.CloseClientConnections()
+	waitFor(t, "the refused notification to be retained", func() bool { return relay.HasOwedNotificationForTest(r, "sess1") })
+	l.Poke()
 	waitFor(t, "the notification to be offered again after the interrupted retry", func() bool { return notifies.Load() >= 3 })
+	if logins.Load() < 2 {
+		t.Fatal("interrupted retry did not reconnect")
+	}
 	// Once taken it is not offered again.
-	time.Sleep(6 * time.Second)
+	e.syncLaterPasses(t, l, "sess1")
 	if n := notifies.Load(); n != 3 {
 		t.Fatalf("%d notify calls for one event", n)
 	}
@@ -1293,7 +1357,7 @@ func TestRejectedNotificationIsNotOfferedAgain(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, "the notification to be offered", func() bool { return notifies.Load() >= 1 })
-	time.Sleep(6 * time.Second)
+	e.syncLaterPasses(t, l, "sess1")
 	if n := notifies.Load(); n != 1 {
 		t.Fatalf("%d notify calls for one rejected notification", n)
 	}
