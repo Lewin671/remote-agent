@@ -50,12 +50,14 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 		after     uint64
 		meta      *pb.Session
 		nextCheck time.Time
+		failure   syncRetry
 	}
 	type finished struct {
 		id      string
 		after   uint64
 		info    *pb.Session
 		skipped bool
+		healthy bool
 		err     error
 	}
 	slots := map[string]*slot{}
@@ -84,15 +86,17 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				slots[id] = state
 			}
 			now := time.Now()
-			if state.synced && now.Before(state.nextCheck) {
+			if now.Before(state.failure.next) || state.synced && now.Before(state.nextCheck) {
 				continue
 			}
 			info, err := c.r.backend.SessionInfo(id)
 			if err != nil {
-				return fmt.Errorf("session %s: read metadata: %w", id, err)
+				state.failure.fail(id, "metadata", now)
+				continue
 			}
 			changed := !state.synced || info.LastSeq > state.after || !proto.Equal(syncMeta(info), state.meta)
 			if state.synced && !changed && !c.r.hasOwedNotify(id) {
+				state.failure.recovered(id)
 				state.nextCheck = now.Add(5 * time.Second)
 				continue
 			}
@@ -110,7 +114,12 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta)}
 			}
 			go func(id string, head *pb.SessionHead) {
-				after, info, skipped, err := c.syncSession(ctx, id, head)
+				after, info, skipped, err := c.syncSession(ctx, id, head, func() {
+					select {
+					case done <- finished{id: id, healthy: true}:
+					case <-ctx.Done():
+					}
+				})
 				select {
 				case done <- finished{id: id, after: after, info: info, skipped: skipped, err: err}:
 				case <-ctx.Done():
@@ -125,13 +134,26 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				return ctx.Err()
 			}
 			state := slots[result.id]
+			if result.healthy {
+				state.failure.recovered(result.id)
+				continue
+			}
 			state.running = false
 			if state.ended {
 				endedRunning--
 				state.ended = false
 			}
 			if result.err != nil {
-				return fmt.Errorf("session %s: %w", result.id, result.err)
+				var failure *syncError
+				if errors.As(result.err, &failure) && failure.connection {
+					return fmt.Errorf("session %s: %w", result.id, result.err)
+				}
+				category := "events"
+				if failure != nil {
+					category = failure.category
+				}
+				state.failure.fail(result.id, category, time.Now())
+				continue
 			}
 			if result.skipped {
 				blocked[result.id] = true
@@ -145,7 +167,8 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			// schedule an immediate follow-up.
 			latest, err := c.r.backend.SessionInfo(result.id)
 			if err != nil {
-				return fmt.Errorf("session %s: read metadata: %w", result.id, err)
+				state.failure.fail(result.id, "metadata", time.Now())
+				continue
 			}
 			if latest.LastSeq > state.after || !proto.Equal(syncMeta(latest), state.meta) {
 				state.synced = false
@@ -167,7 +190,7 @@ func syncMeta(info *pb.Session) *pb.Session {
 }
 
 // syncSession keeps one session's metadata and events on the server.
-func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead) (uint64, *pb.Session, bool, error) {
+func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead, healthy func()) (uint64, *pb.Session, bool, error) {
 	key, err := c.sessionKey(id, head != nil)
 	if errors.Is(err, errKeyLost) {
 		slog.Error("relay: not syncing session", "session", id, "err", err)
@@ -178,7 +201,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 		return after, nil, true, nil
 	}
 	if err != nil {
-		return 0, nil, false, err
+		return 0, nil, false, localSyncError("key", err)
 	}
 	var after uint64
 	var sent *pb.Session
@@ -202,7 +225,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 	put := func() (*pb.Session, error) {
 		info, err := c.r.backend.SessionInfo(id)
 		if err != nil {
-			return nil, err
+			return nil, localSyncError("metadata", err)
 		}
 		meta := syncMeta(info)
 		if sent == nil || !proto.Equal(meta, sent) {
@@ -232,7 +255,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			}
 			res, err := c.machine.UploadEvents(ctx, connect.NewRequest(&pb.UploadEventsRequest{SessionId: id, Events: batch}))
 			if err != nil {
-				return fmt.Errorf("upload events: %w", err)
+				return rpcSyncError("upload_events", err)
 			}
 			after = res.Msg.LastSeq
 			batch, batchBytes = nil, 0
@@ -263,7 +286,7 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 			}
 			env, err := c.sealEvent(key, id, c.withImageStates(id, e))
 			if err != nil {
-				return err
+				return localSyncError("encryption", err)
 			}
 			batch = append(batch, &pb.StoredEvent{Seq: e.Seq, Envelope: env})
 			batchBytes += proto.Size(env)
@@ -299,10 +322,14 @@ func (c *conn) syncSession(ctx context.Context, id string, head *pb.SessionHead)
 		c.r.oweNotify(id, owed)
 		latest, err := c.r.backend.SessionInfo(id)
 		if err != nil {
-			return after, nil, false, err
+			return after, nil, false, localSyncError("metadata", err)
 		}
 		if latest.LastSeq > after || !proto.Equal(syncMeta(latest), syncMeta(info)) {
 			continue
+		}
+		if healthy != nil {
+			healthy()
+			healthy = nil // One successful pass is enough to reset this worker's backoff.
 		}
 		if latest.Status == pb.SessionStatus_SESSION_STATUS_EXITED {
 			return after, latest, false, nil
@@ -335,10 +362,16 @@ func (c *conn) sendNotifications(ctx context.Context, id string, info *pb.Sessio
 			req, err := c.notifyRequest(id, info, kind, e)
 			if err != nil {
 				owed = append(owed, pending[i:]...)
-				return boundedOwed(owed), err
+				return boundedOwed(owed), localSyncError("encryption", err)
 			}
 			if _, err := c.machine.Notify(ctx, connect.NewRequest(req)); err != nil {
-				slog.Warn("relay: notify", "session", id, "err", err)
+				failure := rpcSyncError("notify", err)
+				var se *syncError
+				if errors.As(failure, &se) && se.connection {
+					owed = append(owed, pending[i:]...)
+					return boundedOwed(owed), failure
+				}
+				slog.Warn("relay: notify", "session", id, "code", connect.CodeOf(err).String())
 				if notifyOwed(err) {
 					owed = append(owed, e)
 				}
@@ -438,7 +471,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
 	}, key)
 	if err != nil {
-		return 0, err
+		return 0, localSyncError("encryption", err)
 	}
 	rev := revision()
 	meta, err := e2e.SealMessage(key, &pb.Header{
@@ -446,11 +479,11 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 		Seq: rev, Sender: c.acct.DeviceID,
 	}, info)
 	if err != nil {
-		return 0, err
+		return 0, localSyncError("encryption", err)
 	}
 	_, err = c.machine.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: id, Key: keyEnv, Meta: meta, EndedMs: EndedMs(info)}))
 	if err != nil {
-		return 0, fmt.Errorf("put session: %w", err)
+		return 0, rpcSyncError("put_session", err)
 	}
 	slog.Debug("relay: session metadata sent", "session", id)
 	return rev, nil

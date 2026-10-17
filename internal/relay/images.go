@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -68,6 +67,11 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			b.ImageUploaded(sessionID, imageID, true, res.Msg.ExpiresMs)
 			return nil
 		}
+		failure := rpcSyncError("upload_image", err)
+		var se *syncError
+		if errors.As(failure, &se) && se.connection {
+			return failure
+		}
 		switch connect.CodeOf(err) {
 		case connect.CodeResourceExhausted, connect.CodeInvalidArgument, connect.CodePermissionDenied, connect.CodeFailedPrecondition:
 			// Will not change by trying again: the quota is full, or the
@@ -89,7 +93,7 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 			return nil
 		}
 		if try >= 2 {
-			return fmt.Errorf("upload image: %w", err)
+			return failure
 		}
 		select {
 		case <-ctx.Done():

@@ -350,10 +350,14 @@ func TestManySessionsSyncWithinServerRequestLimit(t *testing.T) {
 }
 
 func (e *env) startRelay() {
+	e.startRelayBackend(e.backend)
+}
+
+func (e *env) startRelayBackend(backend relay.Backend) {
 	ctx, cancel := context.WithCancel(context.Background())
 	e.stop = cancel
 	e.done = make(chan struct{})
-	r := relay.New(e.backend)
+	r := relay.New(backend)
 	r.Retry = 50 * time.Millisecond
 	go func() { defer close(e.done); r.Run(ctx) }()
 }
