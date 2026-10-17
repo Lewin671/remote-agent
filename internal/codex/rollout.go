@@ -188,7 +188,7 @@ type typed struct {
 }
 
 // Parse converts one rollout line into zero or more events without seq and
-// session ID. Unknown record types yield no events.
+// session ID. Known metadata is ignored; unknown types are diagnosed.
 func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	p.found = nil
 	var l line
@@ -204,6 +204,10 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		evs, err = turnContext(l.Payload)
 	case "response_item":
 		evs, err = p.responseItem(l.Payload)
+	case "session_meta", "compacted", "token_usage_record", "world_state", "retained_context":
+		// Session metadata, retained context and duplicate accounting.
+	default:
+		return nil, agent.ErrUnknownRecord
 	}
 	if err != nil {
 		return nil, err
@@ -267,8 +271,11 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 			}
 		}
 		return evs, err
+	case "thread_settings_applied":
+		// Context is emitted from turn_context or explicit local settings.
+		return nil, nil
 	}
-	return nil, nil
+	return nil, agent.ErrUnknownRecord
 }
 
 type usage struct {
@@ -670,8 +677,10 @@ func (p *Parser) responseItem(raw json.RawMessage) ([]*pb.Event, error) {
 		return one("", &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{
 			QuestionId: m.CallID, Answers: answers,
 		}}}), nil
+	case "reasoning", "compaction":
+		return nil, nil
 	}
-	return nil, nil
+	return nil, agent.ErrUnknownRecord
 }
 
 // ParseQuestions converts request_user_input arguments into a QuestionAsked.

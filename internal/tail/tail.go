@@ -45,8 +45,12 @@ const BlobPrefix = "\x1bra-blob:"
 
 // Line is one complete line and the file offset just past its newline.
 type Line struct {
-	Data []byte
-	End  int64
+	Data  []byte
+	Start int64
+	End   int64
+	// Err reports a complete line that could not be compacted. Consumers
+	// decide how to diagnose it before advancing their durable checkpoint.
+	Err error
 	// Compacted: long strings of the line were replaced (see the package
 	// comment).
 	Compacted bool
@@ -114,11 +118,14 @@ func (r *Reader) Next() (lines []Line, truncated bool, err error) {
 			// A complete line, ending at pos.
 			if long {
 				if line, lerr := compactLine(r.Path, r.off, pos-1); lerr == nil {
-					lines = append(lines, Line{Data: line, End: pos, Compacted: true})
+					lines = append(lines, Line{Data: line, Start: r.off, End: pos, Compacted: true})
 					batch += len(line)
+				} else {
+					lines = append(lines, Line{Start: r.off, End: pos, Err: lerr})
+					batch += MaxLine
 				}
 			} else if data := bytes.TrimSuffix(buf, []byte("\n")); len(bytes.TrimSpace(data)) > 0 {
-				lines = append(lines, Line{Data: data, End: pos})
+				lines = append(lines, Line{Data: data, Start: r.off, End: pos})
 				batch += len(data)
 			}
 			r.off, buf, long = pos, nil, false

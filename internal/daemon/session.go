@@ -116,6 +116,7 @@ type session struct {
 	detail         string
 	storageFault   string
 	storageWarnAt  time.Time
+	parseHealth    parseHealth
 	approvals      map[string]*approval
 	staleApprovals []string
 	questions      map[string]*pb.QuestionAsked
@@ -195,6 +196,11 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		queue:      q,
 		queueLost:  err != nil,
 		images:     openImageStore(dir),
+	}
+	if h, err := loadParseHealth(dir); err != nil {
+		return nil, fmt.Errorf("load parse diagnostics: %w", err)
+	} else {
+		s.parseHealth = h
 	}
 	if m.ForkedFrom != "" {
 		s.copied = ag.Copied(dir)
@@ -478,13 +484,36 @@ func (s *session) readBatch() (more, ok bool) {
 	}
 	for _, l := range lines {
 		var evs []*pb.Event
-		if s.copied != nil && s.copied(l.Data) {
+		err = l.Err
+		if err != nil {
+			// The tail reader could not compact a complete oversized line.
+		} else if s.copied != nil && s.copied(l.Data) {
 			evs = nil
 		} else {
 			evs, err = s.parser.Parse(l.Data)
 		}
 		if err != nil {
-			slog.Warn("parse rollout line", "session", s.meta.ID, "offset", l.End, "err", errClass(err))
+			// Parsing may have changed state before returning an error. Rebuild
+			// from committed events before proceeding; never use partial output.
+			path, off := s.log.Checkpoint()
+			if path != r.Path {
+				off = 0
+			}
+			diagnosticErr := s.noteParseFailure(r.Path, l.Start, l.End, l.Data, err)
+			p := s.ag.NewParser()
+			replayErr := s.log.Each(p.Replay)
+			if replayErr == nil && off > 0 {
+				replayErr = p.Restore(r.Path, off)
+			}
+			if diagnosticErr != nil || replayErr != nil {
+				s.mu.Lock()
+				s.reader = tail.NewReader(r.Path, off)
+				s.parserReplayPending = true
+				s.parserReplayPath, s.parserReplayOffset = r.Path, off
+				s.mu.Unlock()
+				return false, false
+			}
+			s.parser, evs = p, nil
 		}
 		found := s.parser.Images()
 		for _, f := range found {
@@ -849,6 +878,7 @@ func (s *session) info() *pb.Session {
 	if s.storageFault != "" {
 		out.StatusDetail = joinDetail(out.StatusDetail, s.storageFault)
 	}
+	out.StatusDetail = joinDetail(out.StatusDetail, s.parseHealth.detail())
 	out.Agent = s.ag.Kind()
 	if c := s.context; c != nil {
 		out.Model, out.Effort = c.Model, c.Effort

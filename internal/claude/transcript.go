@@ -186,7 +186,7 @@ type block struct {
 }
 
 // Parse converts one transcript line into zero or more events without seq
-// and session ID. Records it does not know yield no events.
+// and session ID. Known metadata is ignored; unknown types are diagnosed.
 func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	p.found = nil
 	var r record
@@ -204,9 +204,23 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	case "assistant":
 		evs, err = p.assistant(&r)
 	case "system":
-		evs = p.system(&r)
+		switch r.Subtype {
+		case "turn_duration", "compact_boundary":
+			evs = p.system(&r)
+		case "informational", "stop_hook_summary": // terminal notices and hook bookkeeping
+		default:
+			return nil, agent.ErrUnknownRecord
+		}
 	case "attachment":
 		evs = p.attachment(&r)
+	case "ai-title", "api-request", "api-request-blob", "api-request-shape",
+		"atis-latch", "cost-state", "file-history-delta", "file-history-snapshot",
+		"last-prompt", "mode", "permission-mode", "queue-operation",
+		"summary", "progress":
+		// Bookkeeping, request tracing and terminal-only progress. Queue
+		// acknowledgements are checked independently by Queued below.
+	default:
+		return nil, agent.ErrUnknownRecord
 	}
 	if err != nil {
 		return nil, err

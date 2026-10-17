@@ -221,7 +221,7 @@ func restored(t *testing.T, path string, lines []string) *Parser {
 // further in than the first batch is still found after a restart.
 func TestYieldedExecBeyondTheFirstBatchAfterRestart(t *testing.T) {
 	lines := []string{`{"type":"event_msg","payload":{"type":"task_started","turn_id":"t1"}}`}
-	filler := `{"type":"other","payload":"` + strings.Repeat("x", 1<<20) + `"}`
+	filler := `{"type":"session_meta","payload":"` + strings.Repeat("x", 1<<20) + `"}`
 	for size := 0; size <= tail.MaxBatch; size += len(filler) {
 		lines = append(lines, filler)
 	}

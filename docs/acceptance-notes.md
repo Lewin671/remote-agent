@@ -298,3 +298,11 @@ Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。
 恢复生产修复后，完整检查通过：Go 全量；网页 typecheck、718 项测试和 build；Android core 214、app 203 项及 lintDebug；iOS core 421 项、63 个 suite。共享语料为 39 场景、53 观察点、194 切点。构建并发限制为 2。测试结束调用 dev-env.sh stop，server、daemon、tmux、预览服务和独立 Chrome 均停止，临时账户状态和浏览器密钥状态文件已清理，保留截图/事件证据供审查。
 
 本轮没有启动 Android/iOS 真机或模拟器，原生端仍只过自动测试；没有验收真实网络故障、持久快照、序列化 continuation 或历史分页。以上结果来自未发布的任务分支，不代表线上部署。
+
+## 2026-10-16：daemon 事件提交与解析诊断
+
+macOS、Codex CLI 0.163.0、当前 checkout 的 dev 构建；通过 `ios/scripts/dev-env.sh` 创建独立 server、账户、daemon、tmux socket 和 Codex home。操作由 Go `remoteclient` 调试程序发起，经过 server 的加密转发、daemon 和真实 CLI，再读取客户端解密后的结果与元数据；没有直接操作网页或原生 App。启动信任提示通过隔离 tmux 的按键处理。
+
+将测试会话的事件日志放进独立 16 MiB 磁盘镜像并填满：远程排队返回「队列已保存，但事件没能记录，不要换 ID 重发」；切换推理强度在终端已变成 high，远程返回「电脑上已生效但没能记录」，元数据仍保留已提交的 low 并显示存储故障。释放磁盘后取消测试消息、恢复记录，故障提示清除。只在该隔离 Codex home 的 rollout 追加一条字段类型错误和一条未知类型记录，再远程发送短消息：真实 CLI 回复、轮次结束继续同步，detail 显示 `failures=1 unknown=1` 和最近位置、类型、类别；重启 daemon 后计数不变。没有按无输出时间推断结束。
+
+未覆盖：Claude 的真实故障注入、真实审批等待中的磁盘故障、网页/Android/iOS 的错误呈现和手势操作。它们的 daemon 提交边界由回归测试覆盖；本次不代表这些客户端的直接界面验收。

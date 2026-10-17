@@ -162,3 +162,18 @@ func TestBacklogIsReadInBatches(t *testing.T) {
 		t.Fatalf("batches %v, offset %d", got, r.Offset())
 	}
 }
+
+func TestUncompactableLineIsReportedWithPosition(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bad.jsonl")
+	bad := strings.Repeat("x", MaxLine+1)
+	os.WriteFile(path, []byte("\n"+bad+"\n{}\n"), 0o600)
+	r := NewReader(path, 0)
+	lines, _, err := r.Next()
+	if err != nil || len(lines) != 1 || lines[0].Err == nil || lines[0].Start != 1 || lines[0].End != int64(len(bad)+2) {
+		t.Fatalf("lines=%+v err=%v", lines, err)
+	}
+	lines, _, err = r.Next()
+	if err != nil || len(lines) != 1 || string(lines[0].Data) != "{}" {
+		t.Fatal("following record blocked")
+	}
+}
