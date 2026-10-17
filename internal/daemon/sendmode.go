@@ -72,7 +72,7 @@ func (s *session) afterTurn() {
 		time.AfterFunc(heldSweep, s.sweepHeld)
 	}
 	for _, in := range paused {
-		s.emit(pausedState(in))
+		_ = s.emit(pausedState(in))
 	}
 	s.poke()
 }
@@ -119,10 +119,12 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 		return fmt.Errorf("save input queue: %w", err)
 	}
 	s.mu.Unlock()
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING,
 		Mode: pb.SendMode_SEND_MODE_STEER,
-	}}}, origin))
+	}}}, origin)); err != nil {
+		return fmt.Errorf("message is saved for sending but could not record resumed state: %w", err)
+	}
 	s.poke()
 	return nil
 }

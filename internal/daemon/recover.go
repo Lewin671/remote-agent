@@ -328,7 +328,7 @@ func (s *session) restorePause(l *logged) {
 		}
 	}
 	for _, in := range report {
-		s.emit(pausedState(in))
+		_ = s.emit(pausedState(in))
 	}
 }
 

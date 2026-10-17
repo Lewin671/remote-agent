@@ -122,6 +122,8 @@ const (
 	finished                       // failed before Enter and reported
 )
 
+var errQueueAccepted = errors.New("input queue saved but event could not be recorded")
+
 // enqueue accepts a message and saves the queue before returning, so an
 // accepted message survives a daemon restart. It returns the queue
 // position; a retried request ID is accepted once (position 0).
@@ -164,7 +166,9 @@ func (s *session) enqueueMode(text, requestID string, images []queuedImage, orig
 	for _, im := range images {
 		st.ImageIds = append(st.ImageIds, im.ID)
 	}
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin))
+	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: st}}, origin)); err != nil {
+		return pos, fmt.Errorf("%w; message is saved and may still be sent; do not resend with a new request ID: %w", errQueueAccepted, err)
+	}
 	select {
 	case s.wake <- struct{}{}:
 	default:
@@ -555,7 +559,7 @@ func (s *session) setStage(requestID string, stage pb.InputStage, indexes []int3
 	}
 	s.mu.Unlock()
 	if stage != prev.Stage {
-		s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		return s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 			RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: stage,
 		}}})
 	}
@@ -824,8 +828,7 @@ func (s *session) logOutcomeLocked(outcomes ...*pb.Event) bool {
 		}
 	}
 	// An InputState changes no derived state: nothing to observe.
-	if err := s.log.Append(s.meta.ID, outcomes, "", 0); err != nil {
-		slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
+	if err := s.appendLocked(outcomes, "", 0); err != nil {
 		return false
 	}
 	return true
@@ -863,10 +866,9 @@ func (s *session) markInflight(offset int64, requestID string) error {
 		return err
 	}
 	s.mu.Unlock()
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+	return s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_SUBMITTING,
 	}}})
-	return nil
 }
 
 // boxHolds reports whether the input box holds exactly the placeholders

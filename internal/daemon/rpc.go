@@ -89,7 +89,9 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 	}
 	pos, err := s.enqueueMode(req.Msg.Text, req.Msg.RequestId, images, origin, req.Msg.Mode)
 	if err != nil {
-		h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
+		if !errors.Is(err, errQueueAccepted) {
+			h.d.uploads.untake(images, s.meta.ID, req.Msg.RequestId)
+		}
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil

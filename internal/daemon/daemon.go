@@ -293,7 +293,7 @@ func (d *Daemon) restore() error {
 			if err := s.meta.save(dir); err != nil {
 				slog.Error("save session", "session", m.ID, "err", errClass(err))
 			}
-			s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+			_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 				Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "reattached",
 			}}})
 		} else if m.Exited {
@@ -331,11 +331,13 @@ func (d *Daemon) terminal(m *meta) terminal {
 // daemon stopped; their hooks have given up on that daemon.
 func (s *session) cancelStaleApprovals() {
 	order := s.staleApprovals
-	s.staleApprovals = nil
 	for _, id := range order {
-		s.emit(&pb.Event{Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
+		if err := s.emit(&pb.Event{Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
 			ApprovalId: id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, Message: "daemon restarted",
-		}}})
+		}}}); err != nil {
+			return
+		}
+		s.staleApprovals = s.staleApprovals[1:]
 	}
 }
 
@@ -507,9 +509,12 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin) (*ses
 		_ = d.cfg.Tmux.KillSession(m.Tmux)
 		return fail(err)
 	}
-	s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+	if err := s.emit(&pb.Event{Time: timestamppb.Now(), Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
-	}}})
+	}}}); err != nil {
+		_ = d.cfg.Tmux.KillSession(m.Tmux)
+		return fail(err)
+	}
 	if strings.TrimSpace(req.Prompt) != "" || len(images) > 0 {
 		// Queued like any message: it is written once the CLI shows its
 		// input box, after startup prompts are answered. A session whose
@@ -820,11 +825,14 @@ func (d *Daemon) resumeContext(ctx context.Context, id string) (*session, error)
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", id, "err", errClass(err))
 	}
-	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed",
 	}}})
 	s.start(d.ctx)
 	slog.Info("resumed session", "session", id)
+	if commitErr != nil {
+		return nil, fmt.Errorf("session already resumed on the computer but could not be recorded: %w", commitErr)
+	}
 	return s, nil
 }
 

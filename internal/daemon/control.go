@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"fmt"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -138,7 +139,9 @@ func (s *session) setModelBy(model, effort string, origin *pb.Origin) error {
 	}); err != nil {
 		return err
 	}
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin))
+	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin)); err != nil {
+		return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+	}
 	return nil
 }
 
@@ -154,7 +157,9 @@ func (s *session) setApprovalModeBy(mode pb.ApprovalMode, origin *pb.Origin) err
 	if err := s.drive(func(t agent.Term, busy bool) error { return s.ag.SetMode(t, mode, busy, s.modeFacts()) }); err != nil {
 		return err
 	}
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin))
+	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin)); err != nil {
+		return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+	}
 	return nil
 }
 
@@ -181,6 +186,8 @@ func (s *session) answerPlanBy(choice pb.PlanChoice, origin *pb.Origin) error {
 	if err := s.drive(func(t agent.Term, _ bool) error { return s.ag.AnswerPlan(t, choice) }); err != nil {
 		return err
 	}
-	s.emit(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin))
+	if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {
+		return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
+	}
 	return nil
 }

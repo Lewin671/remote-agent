@@ -61,7 +61,7 @@ func (s *session) hold(in input) {
 		return
 	}
 	s.d.uploads.releaseRefs(in.Images, s.meta.ID, in.RequestID)
-	s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
+	_ = s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_HELD_BY_CLI}}})
 }
 
 // received settles a held message once the model got it: the user message
@@ -217,18 +217,20 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	}
 	if !s.emptyBox(c, l, footer, len(held)*4+4) {
 		for _, in := range others {
-			s.emit(pausedState(in))
+			_ = s.emit(pausedState(in))
 		}
 		return errHeldChanged
 	}
 	if !s.dropHeld(requestID, pb.InputStatus_INPUT_STATUS_CANCELED, "", origin) {
 		// The others stay paused, for the user to send.
 		for _, in := range others {
-			s.emit(pausedState(in))
+			_ = s.emit(pausedState(in))
 		}
 		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
 	}
-	s.releaseRequeued(others)
+	if err := s.releaseRequeued(others); err != nil {
+		return fmt.Errorf("message already canceled on the computer but could not record the other queued messages: %w", err)
+	}
 	return nil
 }
 
@@ -266,9 +268,9 @@ func (s *session) requeueHeld(held []input, requestID string) ([]input, error) {
 
 // releaseRequeued lets the messages requeueHeld paused go, ahead of what
 // was accepted after them: the input box is verified empty.
-func (s *session) releaseRequeued(moved []input) {
+func (s *session) releaseRequeued(moved []input) error {
 	if len(moved) == 0 {
-		return
+		return nil
 	}
 	s.mu.Lock()
 	prev := s.queue.Queue
@@ -292,17 +294,20 @@ func (s *session) releaseRequeued(moved []input) {
 		s.mu.Unlock()
 		for _, in := range released {
 			in.Paused = true
-			s.emit(pausedState(in))
+			_ = s.emit(pausedState(in))
 		}
-		return
+		return fmt.Errorf("save input queue: %w", err)
 	}
 	s.mu.Unlock()
 	for _, in := range released {
-		s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
+		if err := s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 			RequestId: in.RequestID, Status: pb.InputStatus_INPUT_STATUS_QUEUED, Stage: pb.InputStage_INPUT_STAGE_WAITING, Mode: in.Mode,
-		}}})
+		}}}); err != nil {
+			return err
+		}
 	}
 	s.poke()
+	return nil
 }
 
 // waitComposer waits for the input box to hold text.

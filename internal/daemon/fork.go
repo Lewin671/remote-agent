@@ -156,9 +156,12 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	s.meta.Starting = false
 	started := s.meta
 	s.mu.Unlock()
-	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+	if err := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_STARTING,
-	}}})
+	}}}); err != nil {
+		_ = d.cfg.Tmux.KillSession(nm.Tmux)
+		return fail(err)
+	}
 	if err := started.save(dir); err != nil {
 		slog.Error("save session", "session", nid, "err", errClass(err))
 	}

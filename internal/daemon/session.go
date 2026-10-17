@@ -114,6 +114,8 @@ type session struct {
 	warned         bool
 	status         pb.SessionStatus
 	detail         string
+	storageFault   string
+	storageWarnAt  time.Time
 	approvals      map[string]*approval
 	staleApprovals []string
 	questions      map[string]*pb.QuestionAsked
@@ -139,6 +141,7 @@ type session struct {
 }
 
 type approval struct {
+	turnID   string
 	id       string
 	decision chan decision
 	// claimed is set, under s.mu, by whoever settles the approval first:
@@ -163,7 +166,8 @@ type decision struct {
 	// output no longer matters.
 	terminal bool
 	// origin is who answered through remote-agent.
-	origin *pb.Origin
+	origin   *pb.Origin
+	recorded bool // the remote reply was committed before claiming the approval
 }
 
 func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log) (*session, error) {
@@ -296,8 +300,10 @@ func (s *session) observe(e *pb.Event) {
 	}
 }
 
-// emit appends daemon-originated events.
-func (s *session) emit(evs ...*pb.Event) {
+// emit appends daemon-originated events. Background observers may discard
+// its error: appendLocked still exposes the session storage fault and logs
+// it with a rate limit; no event projection advances on failure.
+func (s *session) emit(evs ...*pb.Event) error {
 	now := timestamppb.Now()
 	settings := false
 	for _, e := range evs {
@@ -317,30 +323,30 @@ func (s *session) emit(evs ...*pb.Event) {
 		s.readMu.Lock()
 		defer s.readMu.Unlock()
 	}
-	s.emitLocked(settings, evs...)
+	return s.emitLocked(settings, evs...)
 }
 
 // emitLocked logs and applies events; with settings among them, the
 // caller holds readMu.
-func (s *session) emitLocked(settings bool, evs ...*pb.Event) {
+func (s *session) emitLocked(settings bool, evs ...*pb.Event) error {
 	now := timestamppb.Now()
 	for _, e := range evs {
 		if e.Time == nil {
 			e.Time = now
 		}
 	}
-	if err := s.log.Append(s.meta.ID, evs, "", 0); err != nil {
-		slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
-		return
-	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.appendLocked(evs, "", 0); err != nil {
+		return err
+	}
 	for _, e := range evs {
 		if settings && (e.GetSettingsChanged() != nil || e.GetTurnContext() != nil) {
 			s.parser.Replay(e)
 		}
 		s.observe(e)
 	}
-	s.mu.Unlock()
+	return nil
 }
 
 // modeFacts tells the adapter what is known of the modes on offer.
@@ -375,7 +381,7 @@ func (s *session) noteScreenMode(mode string) {
 	}
 	c.PermissionMode = mode
 	s.mu.Unlock()
-	s.emitLocked(true, &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: c}})
+	_ = s.emitLocked(true, &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: c}})
 }
 
 // start runs the session's background loops until it exits or ctx ends.
@@ -422,6 +428,7 @@ func (s *session) readRollout() bool {
 // readRolloutLocked reports whether all available records were persisted.
 // Callers hold readMu, including when settling a turn after the final read.
 func (s *session) readRolloutLocked() bool {
+	s.cancelStaleApprovals()
 	// A backlog comes in batches of bounded size (tail.MaxBatch).
 	for {
 		more, ok := s.readBatch()
@@ -491,8 +498,10 @@ func (s *session) readBatch() (more, ok bool) {
 		}
 		consume := s.annotate(evs)
 		evs = s.confirmLate(evs)
-		if err := s.log.Append(s.meta.ID, evs, r.Path, l.End); err != nil {
-			slog.Error("append events", "session", s.meta.ID, "err", errClass(err))
+		s.mu.Lock()
+		appendErr := s.appendLocked(evs, r.Path, l.End)
+		s.mu.Unlock()
+		if appendErr != nil {
 			// Read this line and the rest of the batch again next time,
 			// with a parser that has not seen them: parsing changed its
 			// state (a turn it ended would not end again), so it is
@@ -596,7 +605,6 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 		return true
 	}
 	planChanged := s.planOpen != scr.PlanOpen
-	s.planOpen = scr.PlanOpen
 	retract := s.watchApprovals(scr, styled)
 	if scr.Mode != "" {
 		family := ""
@@ -640,7 +648,7 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	// RUNNING is derived from turn events; the state event only records
 	// startup, popups and exit.
 	if next != status || nextDetail != detail || planChanged {
-		s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
+		_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
 	}
 	s.settleRestoredPrompt(styled)
 	return true
@@ -706,11 +714,11 @@ func (s *session) abortTurnLocked(reason string) bool {
 	return true
 }
 
-func (s *session) markExited(detail string) {
+func (s *session) markExited(detail string) error {
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
-		return
+		return nil
 	}
 	s.meta.Exited = true
 	m := s.meta
@@ -727,8 +735,8 @@ func (s *session) markExited(detail string) {
 	}
 	// Read the final records before settling the old turn and input. A
 	// failed read or append is retried when restoring or resuming.
-	s.settleExited()
-	s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
+	settled := s.settleExited()
+	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
 		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail,
 	}}})
 	// Images sent for the session are kept while it runs: Codex reads
@@ -738,6 +746,13 @@ func (s *session) markExited(detail string) {
 	if s.stop != nil {
 		s.stop()
 	}
+	if commitErr != nil {
+		return fmt.Errorf("CLI already exited but could not record session state: %w", commitErr)
+	}
+	if !settled {
+		return errors.New("CLI already exited but final events could not be recorded; restart the daemon or resume to retry")
+	}
+	return nil
 }
 
 // settleExited settles the messages an exited session still has queued:
@@ -830,6 +845,9 @@ func (s *session) info() *pb.Session {
 		if s.waitReason == "unrecognized" && !s.warned {
 			out.InputWait = "" // not yet: it may be a passing frame
 		}
+	}
+	if s.storageFault != "" {
+		out.StatusDetail = joinDetail(out.StatusDetail, s.storageFault)
 	}
 	out.Agent = s.ag.Kind()
 	if c := s.context; c != nil {
@@ -1197,8 +1215,7 @@ func (s *session) killContext(ctx context.Context) error {
 		}
 		slog.Warn("pty-host still running after stop", "session", s.meta.ID, "err", errClass(err))
 	}
-	s.markExited("stopped")
-	return nil
+	return s.markExited("stopped")
 }
 
 func (s *session) waitForPTYHostGone(parent context.Context) error {
@@ -1298,13 +1315,18 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 				continue
 			}
 			e.TurnId = turn
-			s.parser.Replay(e)
 			fresh = append(fresh, e)
 		}
-		s.readMu.Unlock()
 		if len(fresh) > 0 {
-			s.emit(fresh...)
+			if err := s.emitLocked(false, fresh...); err != nil {
+				s.readMu.Unlock()
+				return nil, err
+			}
+			for _, e := range fresh {
+				s.parser.Replay(e)
+			}
 		}
+		s.readMu.Unlock()
 	}
 	return nil, nil
 }
@@ -1327,7 +1349,7 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 	}
 
 	timeout := s.d.approvalTimeout()
-	a := &approval{id: newID(4), decision: make(chan decision, 1), deadline: time.Now().Add(timeout)}
+	a := &approval{turnID: p.TurnID, id: newID(4), decision: make(chan decision, 1), deadline: time.Now().Add(timeout)}
 	req := &pb.ApprovalRequested{
 		ApprovalId:    a.id,
 		ToolName:      p.ToolName,
@@ -1349,6 +1371,12 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		s.mu.Unlock()
 		return agent.PermissionDecision(false, "remote-agent: session exited"), nil
 	}
+	e := &pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: req}}
+	e.Time = timestamppb.Now()
+	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
+		s.mu.Unlock()
+		return agent.PermissionDecision(false, "remote-agent: could not record approval request; denied"), err
+	}
 	s.approvals[a.id] = a
 	s.mu.Unlock()
 	defer func() {
@@ -1356,10 +1384,9 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		delete(s.approvals, a.id)
 		s.mu.Unlock()
 	}()
-	s.emit(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: req}})
 
-	resolved := func(d pb.ApprovalDecision, msg string, o *pb.Origin) {
-		s.emit(withOrigin(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
+	resolved := func(d pb.ApprovalDecision, msg string, o *pb.Origin) error {
+		return s.emit(withOrigin(&pb.Event{TurnId: p.TurnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
 			ApprovalId: a.id, Decision: d, Message: msg,
 		}}}, o))
 	}
@@ -1374,24 +1401,30 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 			break
 		}
 		msg := fmt.Sprintf("remote-agent: no answer within %s, denied", timeout)
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg, originSystem)
-		return agent.PermissionDecision(false, msg), nil
+		err := resolved(pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT, msg, originSystem)
+		return agent.PermissionDecision(false, msg), err
 	case <-ctx.Done():
 		if !s.claim(a) {
 			d = <-a.decision
 			break
 		}
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "", originSystem)
-		return nil, ctx.Err()
+		err := resolved(pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, "", originSystem)
+		return nil, errors.Join(ctx.Err(), err)
 	}
 	if d.terminal {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "", originLocal)
+		if err := resolved(pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL, "", originLocal); err != nil {
+			return nil, fmt.Errorf("approval already answered on the computer but could not be recorded: %w", err)
+		}
 		return nil, nil
 	}
-	if d.allow {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_ALLOW, d.message, d.origin)
-	} else {
-		resolved(pb.ApprovalDecision_APPROVAL_DECISION_DENY, d.message, d.origin)
+	if !d.recorded {
+		kind := pb.ApprovalDecision_APPROVAL_DECISION_DENY
+		if d.allow {
+			kind = pb.ApprovalDecision_APPROVAL_DECISION_ALLOW
+		}
+		if err := resolved(kind, d.message, d.origin); err != nil {
+			return agent.PermissionDecision(false, "remote-agent: could not record approval result; denied"), err
+		}
 	}
 	return agent.PermissionDecision(d.allow, denialFor(d)), nil
 }
@@ -1446,10 +1479,21 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 		s.mu.Unlock()
 		return fmt.Errorf("approval %s: %w", id, errExpired)
 	}
+	kind := pb.ApprovalDecision_APPROVAL_DECISION_DENY
+	if allow {
+		kind = pb.ApprovalDecision_APPROVAL_DECISION_ALLOW
+	}
+	e := withOrigin(&pb.Event{TurnId: a.turnID, Time: timestamppb.Now(), Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{
+		ApprovalId: id, Decision: kind, Message: message,
+	}}}, origin)
+	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("approval was not delivered; could not record result: %w", err)
+	}
 	a.claimed = true
 	delete(s.approvals, id)
 	s.mu.Unlock()
-	a.decision <- decision{allow: allow, message: message, origin: origin}
+	a.decision <- decision{allow: allow, message: message, origin: origin, recorded: true}
 	return nil
 }
 
