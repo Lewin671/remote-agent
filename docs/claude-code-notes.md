@@ -4,7 +4,9 @@
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。升级 Claude Code 后，涉及的条目要重新验证。
 
-最近一次验证：Claude Code **2.1.284**，macOS，tmux 3.7c，2026-09-29。实测在独立的 tmux socket 里进行，会话用 `--settings <文件>` 注入 hook，模型用 `--model haiku`（部分条目用 sonnet，已注明）。本机 `~/.claude/settings.json` 的 `permissions.defaultMode` 是 `bypassPermissions`、`skipDangerousModePermissionPrompt` 为 true、`language` 为中文，下文凡是受它们影响的地方会注明。
+最近一次验证：Claude Code **2.1.300**，macOS，tmux 3.7c，2026-10-17；在此之前是 2.1.287（2026-10-03）和 2.1.284（2026-09-29）。实测在独立的 tmux socket 里进行，会话用 `--settings <文件>` 注入 hook，模型用 `--model haiku`（部分条目用 sonnet，已注明）。本机 `~/.claude/settings.json` 的 `permissions.defaultMode` 是 `bypassPermissions`、`skipDangerousModePermissionPrompt` 为 true、`language` 为中文，下文凡是受它们影响的地方会注明。`permissions.defaultMode` 是 bypass 时，`FullAccess` 为真（第 5 节），启动时用 `--permission-mode default` 仍会进入 manual。
+
+标注了版本的条目以该版本为准；升级后重新验证过的会在版本号里带上新版本。
 
 ## 1. 启动
 
@@ -163,8 +165,8 @@
 
 ## 9. 切换模型和 effort
 
-- `/model` 回车打开 `Select model`：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，每行后面是显示名和说明（`Opus 5.5 · Best for everyday, complex tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。列表随账号和版本变化：2.1.287（Claude Max，2026-10-02）列的是带版本号的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 4.5`，后面还有旧版本模型，没有单独的 1M 上下文选项；2.1.293（Claude Max，2026-10-09）又是每个别名一行：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，后面的显示名是 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 5.5`，没有旧版本
-- 列表下面是 effort 行：`◐ Medium effort (default) ←/→ to adjust`，按 → 依次是 `● High effort`、`◉ xHigh effort`、`◈ Max effort`、`○ Low effort`，再回到 Medium，首尾相接。haiku 显示 `○ Effort not supported for Haiku`
+- `/model` 回车打开 `Select model`：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，每行后面是显示名和说明（`Opus 5.5 · Best for everyday, complex tasks`），当前模型带 `✔`，光标（`❯`）停在当前模型上。列表随账号和版本变化：2.1.287（Claude Max，2026-10-02）列的是带版本号的 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 4.5`，后面还有旧版本模型，没有单独的 1M 上下文选项；2.1.293（Claude Max，2026-10-09）又是每个别名一行：`1. Default (recommended)`、`2. Opus`、`3. Fable`、`4. Sonnet`、`5. Haiku`，后面的显示名是 `Opus 5.5`、`Fable 5.1`、`Sonnet 5.5`、`Haiku 5.5`，没有旧版本；2.1.300（Claude Max，2026-10-17）也是每个别名一行，别名行之后另有带版本号的 `Haiku 4.5`、`Sonnet 5`、`Opus 5`、`Fable 5`、`Opus 4.8`，末尾一行 `⏷ +3 models` 表示还有更多（截图见 `internal/claude/testdata/model/model-2.1.300.txt`）
+- 列表下面是 effort 行：`◐ Medium effort (default) ←/→ to adjust`。档位从低到高是 low、medium、high、xhigh、max（2.1.300 实测，用 `--model sonnet` 的会话；`←/→` 每按一次走一档，**两端停住、不循环**：在 Max 再按 → 仍是 Max，在 Low 再按 ← 仍是 Low）。2.1.284 到 2.1.287 的实测是 `→` 从 Medium 依次经过 High、xHigh、Max、Low，再回到 Medium，**首尾相接**；档位顺序相同，只是当时会循环。两端是同一台机器上两次实测，不排除中间版本改过，取舍见 [architecture.md](architecture.md) 第 16 节。haiku：2.1.284 的 Haiku 4.5 显示 `○ Effort not supported for Haiku`，2.1.300 的别名 haiku 是 Haiku 5.5，有 effort 行，状态栏右侧显示 `○ low · /effort`（和 2.1.293 一致，见第 5 节）
 - 底部：`Enter to set as default · s to use this session only · Esc to cancel`。和 Codex 一样，**回车改全局默认值，`s` 只改当前会话**；按 `s` 后 `~/.claude/settings.json` 不变
 - **按数字键等于移到那一行再按回车**（走「设为默认」这条路），不能用
 - 对话已有缓存时，按 `s` 后还会弹 `Switch model?` / `❯ 1. Yes, switch to Haiku 4.5` / `2. No, go back`，按 1 确认后仍然只改当前会话
@@ -182,6 +184,7 @@
 - **首条输出前中断**（2.1.300，haiku，2026-10-16，本地隔离环境实测）：用户消息写入后立即发 Esc，CLI 返回非忙碌输入框，并把本轮原文恢复为草稿。transcript 保留这条 `user` 和请求元数据，却没有 assistant 回复、`[Request interrupted by user…]` 或 `turn_duration`。修复前本地命令仍报 running；修复后通过 Go 调试客户端经本地 server 连续三次复现相同原生状态，并收到中断结束事件，随后 QUEUE 消息正常完成。另在 44 列、55 行的终端中复测中文长提示，原文在中文字之间软折成五行；修正空白比较后，中断和 daemon 重启恢复均可结算。此项为调试触发，未直接操作浏览器或手机；API 错误、图片和超长草稿未验证。
 - **撤回排队的消息**（2.1.285，haiku，2026-09-30 实测）：运行中有排队消息时按 ↑，所有排队的消息一起回到输入框，多条之间换行，transcript 记一条 `queue-operation` `popAll`（实测 `content` 只有最后一条）。这时 Ctrl-U 清空输入框，这些消息就不会再发出：这一轮照常结束，之后也不会作为新的一轮提交。要撤回其中一条，只能全部拉回、清空，再把其余的重新回车排队
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
+- **Bash 工具拦截独立的 `sleep`**（2.1.300，haiku，2026-10-17 实测）：让模型「只运行 `sleep 30`」时，Bash 调用立刻返回错误 `<tool_use_error>Blocked: standalone sleep 30. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>`，这一轮在几秒内以 `turn_duration` 结束，模型改成建议用户在终端敲 `! sleep 30`。所以「发一条命令让它一直跑到被中断」不能再用独立 `sleep`；用工具自己建议的 `until [ -f <不会出现的文件> ]; do sleep 2; done` 实测能一直运行、也能被 Esc 中断（2.1.284 到 2.1.287 上 `sleep 30` 可以照常运行，notes 前述条目）。`sleep` 在 auto 模式下的分类器行为未测
 
 粘贴图片路径（2.1.284，haiku，2026-09-29 实测，用 `tmux send-keys -H` 写入 bracketed paste）：
 

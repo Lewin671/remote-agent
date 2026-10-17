@@ -27,7 +27,7 @@ import (
 
 // TestedVersions are the Claude Code versions the screen analysis, menus
 // and transcript parsing were checked against (docs/claude-code-notes.md).
-var TestedVersions = []string{"2.1.284"}
+var TestedVersions = []string{"2.1.284", "2.1.300"}
 
 // hookCommand runs remote-agent's hook; the session environment names the
 // executable in RA_EXE, as for Codex.
