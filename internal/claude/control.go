@@ -280,14 +280,23 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	if effort != "" {
-		// → cycles low … max and wraps; read the line after every press.
+		// ←/→ step one level along low … max and stop at the ends rather
+		// than wrapping (2.1.300); the level may be below the one showing.
+		// The order is the same on both sides, so which key to press is
+		// the direction to the wanted one.
+		want := slices.Index(efforts, effort)
 		for i := 0; shownEffort(plain) != effort; i++ {
-			if i >= len(efforts) {
+			cur := slices.Index(efforts, shownEffort(plain))
+			if i >= len(efforts) || want < 0 || cur < 0 {
 				bail(t)
 				return fmt.Errorf("effort %s is not offered for %s", effort, info.DisplayName)
 			}
+			key := agent.KeyRight
+			if want < cur {
+				key = agent.KeyLeft
+			}
 			before := shownEffort(plain)
-			if err := t.Write([]byte(agent.KeyRight)); err != nil {
+			if err := t.Write([]byte(key)); err != nil {
 				return err
 			}
 			plain, err = waitFor(t, "the effort to change", func(_ agent.Screen, p string) bool { return shownEffort(p) != before })

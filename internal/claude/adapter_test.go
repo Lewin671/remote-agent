@@ -136,6 +136,7 @@ type fakeClaude struct {
 	canceled   bool // 2 was pressed on the review page
 	plan       bool
 	stuck      bool   // s does nothing in the model menu
+	noWrap     bool   // ←/→ stop at the ends instead of cycling (2.1.300)
 	wrap       int    // wrap question and plan text after this many characters
 	planText   string // the plan prompt as drawn, if set
 	background string // appended to the mode line
@@ -230,7 +231,21 @@ func (f *fakeClaude) Write(b []byte) error {
 		case agent.KeyDown:
 			f.cursor++
 		case agent.KeyRight:
-			f.effort = (f.effort + 1) % len(efforts)
+			if f.noWrap {
+				if f.effort < len(efforts)-1 {
+					f.effort++
+				}
+			} else {
+				f.effort = (f.effort + 1) % len(efforts)
+			}
+		case agent.KeyLeft:
+			if f.noWrap {
+				if f.effort > 0 {
+					f.effort--
+				}
+			} else {
+				f.effort = (f.effort + len(efforts) - 1) % len(efforts)
+			}
 		case "s":
 			if f.stuck {
 				return nil
