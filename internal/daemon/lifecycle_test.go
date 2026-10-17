@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -336,6 +337,42 @@ func TestClaudeRestoredPromptKeepsOutputTurnAndRetriesFailedEnd(t *testing.T) {
 			h.s.settleRestoredPrompt(ccBox("original question"))
 			if h.s.running != output {
 				t.Fatalf("running=%v output=%v", h.s.running, output)
+			}
+		})
+	}
+}
+
+func TestClaudeRestoredWrappedPromptEndsTurn(t *testing.T) {
+	for _, tt := range []struct{ name, prompt, display string }{
+		{"Chinese", "请仔细思考这个问题然后用中文完整回答不要调用任何工具", "请仔细思考这个问题\n然后用中文完整回答\n不要调用任何工具"},
+		{"long token", "https://example.com/averylongpath/withoutspaces", "https://example.com/aver\nylongpath/withoutspaces"},
+		{"multiline whitespace", "先比较 alpha beta\n然后检查路径 /some/long/path\n最后回答", "先比较 alpha be\nta\n然后检查路径 /some/lo\nng/path\n最后回答"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			h := claudeHarness(t, Config{})
+			prompt, err := json.Marshal(tt.prompt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.writeRollout(fmt.Sprintf(`{"type":"user","promptId":"wrapped","origin":{"kind":"human"},"message":{"content":%s}}`, prompt))
+			h.s.bindRollout("cli", filepath.Join(h.dir, "rollout.jsonl"))
+			if _, err := h.s.enqueueMode("next", "next", nil, originLocal, pb.SendMode_SEND_MODE_QUEUE); err != nil {
+				t.Fatal(err)
+			}
+			h.term.setScreen(ccBox(tt.display))
+			h.s.checkScreen()
+			h.s.checkScreen()
+			h.s.mu.Lock()
+			h.s.restoredPromptSince = time.Now().Add(-2 * time.Second)
+			h.s.mu.Unlock()
+			h.s.checkScreen()
+			h.s.mu.Lock()
+			defer h.s.mu.Unlock()
+			if h.s.running {
+				t.Fatal("soft-wrapped restored prompt left turn running")
+			}
+			if len(h.s.queue.Queue) != 1 || !h.s.queue.Queue[0].Paused {
+				t.Fatal("waiting input not paused after interruption")
 			}
 		})
 	}

@@ -179,7 +179,7 @@
 | Esc | 中断这一轮：工具运行中时，这个工具记为被拒绝（`User rejected tool use`），另记 `[Request interrupted by user for tool use]`；生成文字时记 `[Request interrupted by user]`。都没有 `turn_duration`，也不触发 Stop hook | 未测；按两次会打开回退菜单（推测，未验证） |
 | Enter | 输入框里的消息**排队**：transcript 记 `queue-operation` `enqueue`，输入框上方显示这条消息，占位提示变成 `Press up to edit queued messages`。工具结束时它被并入当前这一轮（`queue-operation` `remove`，`reason: absorbed_mid_turn`，再有一条 `queued_command` 附件），模型在同一轮里回应 | 发送 |
 
-- **首条输出前中断**（2.1.300，haiku，2026-10-16，本地隔离环境实测）：用户消息写入后立即发 Esc，CLI 返回非忙碌输入框，并把本轮原文恢复为草稿。transcript 保留这条 `user` 和请求元数据，却没有 assistant 回复、`[Request interrupted by user…]` 或 `turn_duration`。修复前本地命令仍报 running；修复后通过 Go 调试客户端经本地 server 连续三次复现相同原生状态，并收到中断结束事件，随后 QUEUE 消息正常完成。此项为调试触发，未直接操作浏览器或手机；API 错误、图片和超长草稿未验证。
+- **首条输出前中断**（2.1.300，haiku，2026-10-16，本地隔离环境实测）：用户消息写入后立即发 Esc，CLI 返回非忙碌输入框，并把本轮原文恢复为草稿。transcript 保留这条 `user` 和请求元数据，却没有 assistant 回复、`[Request interrupted by user…]` 或 `turn_duration`。修复前本地命令仍报 running；修复后通过 Go 调试客户端经本地 server 连续三次复现相同原生状态，并收到中断结束事件，随后 QUEUE 消息正常完成。另在 44 列、55 行的终端中复测中文长提示，原文在中文字之间软折成五行；修正空白比较后，中断和 daemon 重启恢复均可结算。此项为调试触发，未直接操作浏览器或手机；API 错误、图片和超长草稿未验证。
 - **撤回排队的消息**（2.1.285，haiku，2026-09-30 实测）：运行中有排队消息时按 ↑，所有排队的消息一起回到输入框，多条之间换行，transcript 记一条 `queue-operation` `popAll`（实测 `content` 只有最后一条）。这时 Ctrl-U 清空输入框，这些消息就不会再发出：这一轮照常结束，之后也不会作为新的一轮提交。要撤回其中一条，只能全部拉回、清空，再把其余的重新回车排队
 - 中断时正在运行的 `sleep 30` 界面显示 `Interrupted · What should Claude do instead?`；后台是否继续运行，未测
 

@@ -124,3 +124,21 @@ func TestRestoredPromptRequiresOriginalNonBusyDraft(t *testing.T) {
 		})
 	}
 }
+
+func TestRestoredPromptAcrossSoftWraps(t *testing.T) {
+	for _, tt := range []struct{ name, prompt, display string }{
+		{"Chinese", "请仔细思考这个问题然后用中文完整回答不要调用任何工具", "请仔细思考这个问题\n然后用中文完整回答\n不要调用任何工具"},
+		{"long token", "https://example.com/averylongpath/withoutspaces", "https://example.com/aver\nylongpath/withoutspaces"},
+		{"multiline whitespace", "先比较 alpha beta\n然后检查路径 /some/long/path\n最后回答", "先比较 alpha be\nta\n然后检查路径 /some/lo\nng/path\n最后回答"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			styled := rule + "\n❯ " + tt.display + "\n" + rule
+			if !RestoredPrompt(styled, tt.prompt) {
+				t.Fatal("soft-wrapped original prompt not recognized")
+			}
+			if RestoredPrompt(styled, tt.prompt+"不同") {
+				t.Fatal("different non-whitespace content accepted")
+			}
+		})
+	}
+}

@@ -271,3 +271,5 @@ Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。
 退出无结束记录、退出标记先落盘的恢复快照、最终事件写入失败重试、Claude 持有输入的最终状态和持久化顺序由正式 Go 回归测试覆盖，两个 CLI 的遗留轮次都验证重放后不再阻塞。移除相应修复时，回归断言失败。验收命令为 `go test ./...` 和 `go test -race ./internal/daemon/... ./internal/claude/... ./internal/codex/...`。
 
 未覆盖真实 Codex 的异常退出注入、真实 daemon 崩溃注入、API 错误、图片或超长原文恢复，以及浏览器和移动客户端界面。测试结束后清理隔离环境。
+
+**软折行补验收（同日，Claude Code 2.1.300 / haiku）**：隔离环境将 tmux 终端调为 44 列、55 行，发送一条不含空白的中文长提示，首条输出前中断。原文在中文字之间折成五行；未修比较规则时仍报 RUNNING，修复后 daemon 重启恢复为 IDLE。Go 调试客户端再经本地 server 发送同样长提示并中断，读回 ABORTED（input restored by CLI）；随后 QUEUE 消息收到真实回复和 COMPLETED。清空多行恢复草稿由 tmux 调试触发，没有直接操作浏览器或手机。中文、长 token、原有空格和换行的多行提示均补了适配层和 daemon 回归测试，原比较规则下全部失败；全量 Go 测试及 daemon/Claude race 测试通过。仍未覆盖超过输入框识别行数范围的超长草稿和图片。
